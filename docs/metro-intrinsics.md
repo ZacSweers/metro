@@ -35,6 +35,8 @@ Provider functions can be freely mixed with `Lazy<T>`, and also work with multib
 !!! tip "Opting out"
     Function provider support is enabled by default and can be disabled via the `enableFunctionProviders` compiler option. Disabling it reverts to using `Provider<T>` exclusively.
 
+For suspending bindings, `suspend () -> T` is the equivalent deferred form. See [Suspend Support](suspend.md).
+
 ## `Lazy`
 
 `Lazy` is Kotlin’s standard library `Lazy`. It lazily computes a value the first time it’s evaluated and is thread-safe.

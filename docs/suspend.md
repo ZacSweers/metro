@@ -1,0 +1,217 @@
+# Suspend Support
+
+Metro supports `suspend` provider functions and `suspend` graph accessors. This lets you model dependencies whose creation requires suspending work, such as opening a database, reading a config file, or performing a network handshake.
+
+!!! warning "Experimental"
+
+    Suspend support is experimental. The APIs are annotated with `@ExperimentalMetroSuspendApi` and require an opt-in, either at the use site or by compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroSuspendApi`.
+
+## Declaring suspend bindings
+
+Annotate a `suspend` function with `@Provides` like any other provider.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  suspend fun database(): Database
+
+  @Provides
+  suspend fun provideDatabase(config: DbConfig): Database = openDatabase(config)
+}
+```
+
+Because creating a `Database` suspends, the graph accessor for it must also be a `suspend` function. Metro validates this at compile time.
+
+`@Binds` and `@Multibinds` declarations cannot be `suspend`. They have no body to suspend in.
+
+## How suspend-ness spreads through the graph
+
+Suspend-ness is contagious. A binding is suspend if either:
+
+1. Its provider is a `suspend` function, or
+2. It depends on a suspend binding directly, without a deferring wrapper.
+
+This applies per graph and requires no annotations on consuming classes. In this example, `Repository` never mentions suspension, but it depends on `Database`, which is suspend. That makes `Repository` suspend too, so its accessor must be a `suspend` function:
+
+```kotlin
+@Inject
+class Repository(val database: Database)
+
+@DependencyGraph
+interface AppGraph {
+  suspend fun repository(): Repository
+
+  @Provides
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+The chain can be arbitrarily long. Any binding that transitively reaches a suspend binding through unwrapped dependencies becomes suspend itself. If you expose such a binding through a non-suspend accessor, Metro reports an error with a trace showing the full path to the suspend source.
+
+The reverse direction is always fine. Suspend providers can depend on non-suspend bindings freely.
+
+## Deferring with `suspend () -> T`
+
+Injecting `suspend () -> T` instead of `T` defers the suspending work to whenever you invoke the function. This breaks the suspend chain: the consuming class is not itself suspend, because constructing it doesn't suspend. Only calling the function does.
+
+```kotlin
+@Inject
+class Repository(val database: suspend () -> Database) {
+  suspend fun load(id: String): Row = database().query(id)
+}
+
+@DependencyGraph
+interface AppGraph {
+  // Not a suspend accessor. Repository construction doesn't suspend.
+  val repository: Repository
+
+  @Provides
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+The same works for graph accessors:
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val database: suspend () -> Database
+
+  @Provides
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+`suspend () -> T` is the suspend analog of the [`() -> T` function provider](metro-intrinsics.md). The underlying raw type is `SuspendProvider<T>`, which relates to `suspend () -> T` the same way `Provider<T>` relates to `() -> T`. Prefer the function type. Like function providers generally, this requires the `enableFunctionProviders` option, which is on by default.
+
+Each invocation resolves the binding again, or returns the cached instance if the binding is scoped.
+
+### What you can't do
+
+`Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` instead.
+
+There is no injectable lazy form for suspend bindings today. If you want call-site memoization of an unscoped suspend binding, inject `suspend () -> T` and memoize it yourself with the [runtime helpers](#runtime-helpers) below, or scope the binding.
+
+## Scoping
+
+Scoped suspend bindings work like any other scoped binding. The value is computed once and cached:
+
+```kotlin
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  suspend fun database(): Database
+
+  @Provides
+  @SingleIn(AppScope::class)
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+The cache is coroutine-safe:
+
+- Only one caller computes the value. Concurrent callers wait for it and share the result.
+- A failed initialization is not cached. The next caller retries.
+- If the computing coroutine is cancelled mid-initialization, the cache is untouched and the next caller recomputes.
+- A binding that resolves itself during its own initialization fails with a circular dependency error instead of deadlocking.
+
+Scoped suspend bindings require the `dev.zacsweers.metro:runtime-coroutines` artifact on your compile and runtime classpath. It carries the coroutine-based cache implementation and depends on `kotlinx-coroutines-core`. Graphs that only use unscoped suspend bindings do not need it. If it's missing when needed, Metro reports a compile-time error naming the artifact.
+
+## Multibindings
+
+Maps of deferred suspend values are supported:
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val handlers: Map<String, suspend () -> Handler>
+
+  @Provides @IntoMap @StringKey("login")
+  suspend fun provideLoginHandler(): Handler = createLoginHandler()
+
+  @Provides @IntoMap @StringKey("logout")
+  fun provideLogoutHandler(): Handler = LogoutHandler()
+}
+```
+
+Suspend and non-suspend contributions can be mixed. Each value resolves when you invoke it.
+
+Scalar aggregates over suspend bindings are errors:
+
+- `Set<T>` multibindings cannot contain suspend contributions at all. Building the set would require awaiting each element inside non-suspend aggregation code.
+- `Map<K, V>` over suspend values must be consumed as `Map<K, suspend () -> V>` instead.
+
+## Assisted injection
+
+If an `@AssistedInject` class consumes suspend bindings, its `@AssistedFactory` function must be declared `suspend`:
+
+```kotlin
+class AccountCreator
+@AssistedInject
+constructor(@Assisted val region: String, val database: Database) {
+  @AssistedFactory
+  fun interface Factory {
+    suspend fun create(region: String): AccountCreator
+  }
+}
+
+@DependencyGraph
+interface AppGraph {
+  val accountCreatorFactory: AccountCreator.Factory
+
+  @Provides
+  suspend fun provideDatabase(): Database = openDatabase()
+}
+```
+
+The factory itself is not suspend to hold or create. Suspension happens when you call `create(...)`. Metro reports an error if the factory function is not suspend but the target needs it.
+
+## Member injection
+
+Member injection does not support suspend bindings. Injector functions and `MembersInjector` are not suspend and cannot await anything. Metro reports an error. Change the member's type to `suspend () -> T` to defer the resolution instead:
+
+```kotlin
+class ProfileActivity {
+  @Inject lateinit var database: suspend () -> Database
+}
+```
+
+## Runtime helpers
+
+The `runtime` artifact includes small utilities for working with suspend providers:
+
+```kotlin
+// Wrap a lambda
+val provider: SuspendProvider<String> = suspendProvider { fetchToken() }
+
+// Wrap an existing value
+val fixed: SuspendProvider<String> = suspendProviderOf("token")
+
+// Transform lazily
+val mapped: SuspendProvider<Int> = provider.map { it.length }
+val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> a to b }
+```
+
+The `runtime-coroutines` artifact adds memoization:
+
+```kotlin
+// Compute once, cache, and share across concurrent callers
+val memoized: SuspendProvider<String> = provider.memoize()
+
+// Same, exposed as SuspendLazy
+val lazy: SuspendLazy<String> = provider.memoizeAsLazy()
+println(lazy.isInitialized()) // false
+val value = lazy.value() // suspends and computes
+```
+
+`SuspendLazy<T>` is the suspend analog of Kotlin's `Lazy<T>`. Since a suspending computation can't back a plain `val`, it exposes a `suspend fun value()` instead of a property. You can also create one directly:
+
+```kotlin
+val config: SuspendLazy<Config> = suspendLazy { loadConfig() }
+val fixedConfig: SuspendLazy<Config> = suspendLazyOf(Config())
+```
+
+`suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`. Note that `SuspendLazy<T>` is a runtime utility type only. It is not injectable as a dependency.
+
+## Multiplatform
+
+All of the above is common code and works on JVM, Android, JS, Native, and Wasm targets.

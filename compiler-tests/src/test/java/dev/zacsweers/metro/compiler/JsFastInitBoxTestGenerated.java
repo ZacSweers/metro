@@ -2557,9 +2557,21 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MapFunctionValuesMixed.kt")
+    public void testMapFunctionValuesMixed() {
+      run("MapFunctionValuesMixed.kt");
+    }
+
+    @Test
     @TestMetadata("MapSuspendProviderValues.kt")
     public void testMapSuspendProviderValues() {
       run("MapSuspendProviderValues.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectionDeferredSuspendDep.kt")
+    public void testMemberInjectionDeferredSuspendDep() {
+      run("MemberInjectionDeferredSuspendDep.kt");
     }
 
     @Test
