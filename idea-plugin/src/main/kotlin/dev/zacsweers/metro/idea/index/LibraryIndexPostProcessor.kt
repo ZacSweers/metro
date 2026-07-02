@@ -204,7 +204,7 @@ internal class LibraryIndexPostProcessor(
    * class itself is injectable and synthesizes a binding entry targeting the library declaration.
    */
   private fun resolveLibraryInjectBindings() {
-    val bindingKeys = bindings.mapToSet { it.key }
+    val bindingKeys = bindings.mapToSet { it.typeKey }
     val unresolved =
       consumers
         .filter {

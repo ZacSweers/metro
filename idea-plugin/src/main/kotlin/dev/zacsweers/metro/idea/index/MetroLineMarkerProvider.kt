@@ -99,7 +99,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           append("Metro ")
           append(entry.label)
           append(": ")
-          append(entry.key.render(short = true))
+          append(entry.typeKey.render(short = true))
           entry.scope?.let {
             append(" · scoped ")
             append(it.render(short = true))
@@ -110,7 +110,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       anchor = anchor,
       icon = MetroIcons.PROVIDER,
       tooltip = tooltip,
-      popupTitle = "Consumers of ${entries.first().key.render(short = true)}",
+      popupTitle = "Consumers of ${entries.first().typeKey.render(short = true)}",
       emptyText = "No Metro consumers found",
       targets = targets,
     )

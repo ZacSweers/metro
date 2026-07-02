@@ -38,7 +38,7 @@ internal class BindingIndex(
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
   private val bindingsByKey: Map<KaTypeKey, List<KaBinding>> by lazy {
-    bindings.filter { it.multibindingId == null }.groupBy { it.key }
+    bindings.filter { it.multibindingId == null }.groupBy { it.typeKey }
   }
 
   private val consumersByKey: Map<KaTypeKey, List<ConsumerEntry>> by lazy {
@@ -370,9 +370,12 @@ internal class BindingIndex(
       }
       is KaBinding.BoundInstance -> entry.containerId in context.graphClassIds
       is KaBinding.GraphDependency -> entry.containerId in context.includedDependencies
-      // Injected classes and assisted factories are implicit bindings
+      // Injected classes and assisted factories are implicit bindings. Seal-time nodes never
+      // appear in the index.
       is KaBinding.ConstructorInjected,
-      is KaBinding.AssistedFactory -> true
+      is KaBinding.AssistedFactory,
+      is KaBinding.MultibindingElement,
+      is KaBinding.GraphInstance -> true
     }
   }
 
@@ -400,7 +403,7 @@ internal class BindingIndex(
       if (entry.multibindingId != null) {
         candidates += consumersByMultibindingId[entry.multibindingId].orEmpty()
       } else {
-        candidates += consumersByKey[entry.key].orEmpty()
+        candidates += consumersByKey[entry.typeKey].orEmpty()
       }
     }
     if (graphs.isEmpty()) return candidates.toList()

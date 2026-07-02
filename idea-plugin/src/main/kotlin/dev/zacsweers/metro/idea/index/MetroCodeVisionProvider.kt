@@ -73,7 +73,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     val bindingEntries = index.bindingEntriesAt(declaration)
     if (bindingEntries.isNotEmpty()) {
       val consumers = index.consumersFor(bindingEntries)
-      val key = bindingEntries.first().key.render(short = true)
+      val key = bindingEntries.first().typeKey.render(short = true)
       entries +=
         declaration.textRange to
           entry(
