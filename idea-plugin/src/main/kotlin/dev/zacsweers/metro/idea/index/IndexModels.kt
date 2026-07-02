@@ -48,6 +48,8 @@ internal class BindingData(
   val mapKeyValue: String? = null,
   /** See [KaBinding.Alias.isClassContribution]. */
   val isClassContribution: Boolean = false,
+  /** See [KaBinding.Multibinding.allowEmpty]. */
+  val allowEmpty: Boolean = false,
 ) {
   /** The [KaBinding] subtype this data maps to. */
   enum class Kind {
