@@ -17,11 +17,12 @@ import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.implicitSingleInAnnotation
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
-import dev.zacsweers.metro.idea.model.BindingKind
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.aggregateMultibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotations
@@ -177,6 +178,18 @@ internal class IndexBuilder(
                 containerId = containerId,
               )
             }
+            // An extension receiver on a provider function is a dependency too.
+            val receiverRef = target.receiverTypeReference
+            val receiverSymbol = (target.symbol as? KaCallableSymbol)?.receiverParameter
+            if (receiverRef != null && receiverSymbol != null) {
+              addConsumer(
+                receiverRef,
+                receiverSymbol,
+                originClassId = consumerOriginClassId,
+                contributionScopes = consumerContributionScopes,
+                containerId = containerId,
+              )
+            }
           }
         }
       }
@@ -190,11 +203,17 @@ internal class IndexBuilder(
       is KtConstructor<*> -> processInjectClass(declaration.getContainingClassOrObject())
       is KtClassOrObject -> processInjectClass(declaration)
       is KtProperty -> {
-        // Member injection site
+        // Member injection site. @Inject has no PROPERTY target, so also check the backing field
+        // and setter.
         if (declaration.isLocal || !processedMemberInjects.add(declaration)) return
         analyze(declaration) {
-          val symbol = declaration.symbol as? KaCallableSymbol
-          if (symbol != null && symbol.hasAnyAnnotation(options.allInjectAnnotations)) {
+          val symbol = declaration.symbol as? KaPropertySymbol ?: return@analyze
+          val injectIds = options.allInjectAnnotations
+          val injected =
+            symbol.hasAnyAnnotation(injectIds) ||
+              symbol.backingFieldSymbol?.hasAnyAnnotation(injectIds) == true ||
+              symbol.setter?.hasAnyAnnotation(injectIds) == true
+          if (injected) {
             addConsumer(declaration, symbol)
           }
         }
@@ -299,8 +318,11 @@ internal class IndexBuilder(
             }
           }
           is KtCallableDeclaration -> {
-            // Abstract accessor members are consumers of their return type.
-            if (member is KtNamedFunction && member.valueParameters.isNotEmpty()) continue
+            // Members with parameters are injector candidates, not accessors.
+            if (member is KtNamedFunction && member.valueParameters.isNotEmpty()) {
+              processGraphInjector(member, graphClassId)
+              continue
+            }
             if (member !is KtNamedFunction && member !is KtProperty) continue
             if (member.receiverTypeReference != null) continue
             val symbol = member.symbol as? KaCallableSymbol ?: continue
@@ -327,7 +349,7 @@ internal class IndexBuilder(
             consumers +=
               ConsumerEntry(
                 ptr(member),
-                site.key,
+                site.contextKey,
                 site.isAbstractType,
                 site.multibindingId,
                 site.typeClassId,
@@ -362,6 +384,32 @@ internal class IndexBuilder(
     }
   }
 
+  /**
+   * Indexes a graph injector member such as `fun inject(target: Foo)`. Each of the target's
+   * member-inject keys becomes a consumer anchored at the injector.
+   */
+  private fun KaSession.processGraphInjector(member: KtNamedFunction, graphClassId: ClassId?) {
+    if (member.valueParameters.size != 1) return
+    val symbol = member.symbol as? KaNamedFunctionSymbol ?: return
+    if (symbol.modality != KaSymbolModality.ABSTRACT) return
+    if (!symbol.returnType.isUnitType) return
+    if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) return
+    val targetType =
+      symbol.valueParameters.single().returnType.fullyExpandedType as? KaClassType ?: return
+    val targetSymbol = targetType.symbol as? KaNamedClassSymbol ?: return
+    for (contextKey in memberInjectDependencyKeys(targetSymbol, options)) {
+      consumers +=
+        ConsumerEntry(
+          ptr(member),
+          contextKey,
+          multibindingId = contextKey.aggregateMultibindingId(options),
+          typeClassId = contextKey.typeKey.type.classId,
+          graphClassId = graphClassId,
+          isOptional = contextKey.hasDefault,
+        )
+    }
+  }
+
   /** `@Includes` graph dependencies expose their accessors as bindings in the including graph. */
   private fun KaSession.registerIncludedDependencyAccessors(depClassId: ClassId) {
     val depSymbol = findClass(depClassId) as? KaNamedClassSymbol ?: return
@@ -371,12 +419,9 @@ internal class IndexBuilder(
       if (callable.returnType.isUnitType) continue
       val psi = callable.psi as? KtElement ?: continue
       bindings +=
-        KaBinding(
+        KaBinding.GraphDependency(
           ptr(psi),
           typeKey(callable.returnType, qualifierAnnotation(callable, options)),
-          BindingKind.INCLUDED,
-          null,
-          null,
           containerId = depClassId,
         )
     }
@@ -393,19 +438,21 @@ internal class IndexBuilder(
         classSymbol.declaredMemberScope.callables
           .filterIsInstance<KaNamedFunctionSymbol>()
           .firstOrNull { it.modality == KaSymbolModality.ABSTRACT }
-      val createdName =
-        (samFunction?.returnType?.fullyExpandedType as? KaClassType)
-          ?.classId
-          ?.shortClassName
-          ?.asString()
+      val createdClassSymbol =
+        (samFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol as? KaNamedClassSymbol
+      val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
+      // The factory constructs its target directly, so it inherits the target's graph-provided
+      // dependencies. The assisted class itself has no own-type binding.
+      val targetDependencies =
+        createdClassSymbol?.let { injectClassDependencyKeys(it, options) }.orEmpty()
       bindings +=
-        KaBinding(
+        KaBinding.AssistedFactory(
           ptr(ktClass),
           typeKey(classSymbol.defaultType, qualifierAnnotation(classSymbol, options)),
-          BindingKind.ASSISTED_FACTORY,
           scopeAnnotation(classSymbol, options),
           createdName,
           originClassId = ktClass.getClassId(),
+          dependencies = targetDependencies,
         )
     }
   }
@@ -453,7 +500,14 @@ internal class IndexBuilder(
             }
 
           val scopes = annotationScopeKeys(annotation)
-          addCircuitContribution(declaration, scopes, factoryClassId)
+          // The generated factory injects the declaration's non-circuit-provided, non-assisted
+          // parameters.
+          val dependencies =
+            symbol.valueParameters
+              .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+              .filterNot { isCircuitProvidedType(it.returnType) }
+              .map { dependencyKey(it, options) }
+          addCircuitContribution(declaration, scopes, factoryClassId, dependencies)
 
           for (parameter in declaration.valueParameters) {
             addCircuitParameterConsumer(parameter, contributionScopes = scopes)
@@ -476,7 +530,16 @@ internal class IndexBuilder(
               else -> return@analyze
             }
           val scopes = annotationScopeKeys(annotation)
-          addCircuitContribution(declaration, scopes, factoryClassId)
+          // The generated factory constructs the class, injecting its non-circuit-provided,
+          // non-assisted constructor parameters.
+          val dependencies =
+            findInjectConstructorSymbol(classSymbol, options)
+              ?.valueParameters
+              .orEmpty()
+              .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+              .filterNot { isCircuitProvidedType(it.returnType) }
+              .map { dependencyKey(it, options) }
+          addCircuitContribution(declaration, scopes, factoryClassId, dependencies)
         }
         // Constructor dependencies are covered by the regular inject sweep when annotated
         processInjectClass(declaration)
@@ -489,19 +552,19 @@ internal class IndexBuilder(
     declaration: KtDeclaration,
     scopes: Set<ClassId>,
     factoryClassId: ClassId,
+    dependencies: List<KaContextualTypeKey>,
   ) {
     contributions += ContributionEntry(ptr(declaration), scopes)
     val factoryType = (findClass(factoryClassId) as? KaNamedClassSymbol)?.defaultType ?: return
     val elementKey = typeKey(factoryType, null)
     bindings +=
-      KaBinding(
+      KaBinding.Provided(
         ptr(declaration),
         elementKey,
-        BindingKind.MULTIBINDING_CONTRIBUTION,
-        null,
-        declaration.name,
+        implementationName = declaration.name,
         multibindingId = elementKey.computeMultibindingId(),
         contributionScopes = scopes,
+        dependencies = dependencies,
       )
   }
 
@@ -574,7 +637,7 @@ internal class IndexBuilder(
     consumers +=
       ConsumerEntry(
         ptr(element),
-        site.key,
+        site.contextKey,
         site.isAbstractType,
         site.multibindingId,
         site.typeClassId,
