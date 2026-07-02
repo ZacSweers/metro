@@ -2563,6 +2563,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("MixedSuspendChain.kt")
+    public void testMixedSuspendChain() {
+      run("MixedSuspendChain.kt");
+    }
+
+    @Test
     @TestMetadata("MixedSuspendNonSuspendDeps.kt")
     public void testMixedSuspendNonSuspendDeps() {
       run("MixedSuspendNonSuspendDeps.kt");

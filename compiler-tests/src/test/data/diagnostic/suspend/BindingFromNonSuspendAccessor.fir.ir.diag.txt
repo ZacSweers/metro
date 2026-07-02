@@ -1,1 +1,0 @@
-/SuspendBindingFromNonSuspendAccessor.kt:(214,336): error: [Metro/SuspendBindingFromNonSuspendAccessor] Accessor '<get-value>' must be a suspend function because it transitively depends on suspend binding(s).

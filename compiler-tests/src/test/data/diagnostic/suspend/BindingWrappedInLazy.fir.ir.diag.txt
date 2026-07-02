@@ -1,3 +1,0 @@
-/SuspendBindingWrappedInLazy.kt:(146,321): error: [Metro/SuspendBindingFromNonSuspendAccessor] Accessor '<get-value>' must be a suspend function because it transitively depends on suspend binding(s).
-
-/SuspendBindingWrappedInLazy.kt:(222,232): error: [Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding 'String' via Lazy.
