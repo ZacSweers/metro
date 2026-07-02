@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.ScatterMap
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -37,40 +39,42 @@ internal class BindingIndex(
 
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
   // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
-  private val bindingsByKey: Map<KaTypeKey, List<KaBinding>> by lazy {
-    bindings.filter { it.multibindingId == null }.groupBy { it.typeKey }
+  private val bindingsByKey: ScatterMap<KaTypeKey, List<KaBinding>> by lazy {
+    bindings.groupToScatter { binding ->
+      binding.typeKey.takeIf { binding.multibindingId == null }
+    }
   }
 
-  private val consumersByKey: Map<KaTypeKey, List<ConsumerEntry>> by lazy {
-    consumers.groupBy { it.key }
+  private val consumersByKey: ScatterMap<KaTypeKey, List<ConsumerEntry>> by lazy {
+    consumers.groupToScatter { it.key }
   }
 
-  private val contributionsByMultibindingId: Map<String, List<KaBinding>> by lazy {
-    bindings.filter { it.multibindingId != null }.groupBy { it.multibindingId!! }
+  private val contributionsByMultibindingId: ScatterMap<String, List<KaBinding>> by lazy {
+    bindings.groupToScatter { it.multibindingId }
   }
 
-  private val consumersByMultibindingId: Map<String, List<ConsumerEntry>> by lazy {
-    consumers.filter { it.multibindingId != null }.groupBy { it.multibindingId!! }
+  private val consumersByMultibindingId: ScatterMap<String, List<ConsumerEntry>> by lazy {
+    consumers.groupToScatter { it.multibindingId }
   }
 
   // PSI-identity lookups for editor features classifying the element under the caret/pass.
   // Bucketed by the pointers' virtual files (no PSI dereference) so the index never pins PSI
   // project-wide; only the queried file's bucket dereferences its pointers. Must be accessed in
   // a read action.
-  private val bindingsByFile: Map<VirtualFile, List<KaBinding>> by lazy {
-    bindings.groupByFile { it.pointer }
+  private val bindingsByFile: ScatterMap<VirtualFile, List<KaBinding>> by lazy {
+    bindings.groupToScatter { it.pointer.virtualFile }
   }
 
-  private val consumersByFile: Map<VirtualFile, List<ConsumerEntry>> by lazy {
-    consumers.groupByFile { it.pointer }
+  private val consumersByFile: ScatterMap<VirtualFile, List<ConsumerEntry>> by lazy {
+    consumers.groupToScatter { it.pointer.virtualFile }
   }
 
-  private val graphsByFile: Map<VirtualFile, List<KaGraphNode>> by lazy {
-    graphs.groupByFile { it.pointer }
+  private val graphsByFile: ScatterMap<VirtualFile, List<KaGraphNode>> by lazy {
+    graphs.groupToScatter { it.pointer.virtualFile }
   }
 
-  private val assistedSitesByFile: Map<VirtualFile, List<AssistedSite>> by lazy {
-    assistedSites.groupByFile { it.pointer }
+  private val assistedSitesByFile: ScatterMap<VirtualFile, List<AssistedSite>> by lazy {
+    assistedSites.groupToScatter { it.pointer.virtualFile }
   }
 
   /**
@@ -407,8 +411,9 @@ internal class BindingIndex(
     val result = LinkedHashSet<ConsumerEntry>()
     val candidates = LinkedHashSet<ConsumerEntry>()
     for (entry in bindingSet) {
-      if (entry.multibindingId != null) {
-        candidates += consumersByMultibindingId[entry.multibindingId].orEmpty()
+      val multibindingId = entry.multibindingId
+      if (multibindingId != null) {
+        candidates += consumersByMultibindingId[multibindingId].orEmpty()
       } else {
         candidates += consumersByKey[entry.typeKey].orEmpty()
       }
@@ -461,16 +466,18 @@ internal class BindingIndex(
   }
 }
 
-/** Groups entries by their pointers' virtual files without dereferencing any PSI. */
-private inline fun <T> List<T>.groupByFile(
-  pointer: (T) -> SmartPsiElementPointer<*>
-): Map<VirtualFile, List<T>> {
-  val result = HashMap<VirtualFile, MutableList<T>>()
+/**
+ * Groups entries into a memory-compact ScatterMap, skipping entries whose key is null. These maps
+ * live for the whole index lifetime, so the per-entry savings over HashMap add up.
+ */
+private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): ScatterMap<K, List<T>> {
+  val result = MutableScatterMap<K, MutableList<T>>()
   for (entry in this) {
-    val file = pointer(entry).virtualFile ?: continue
-    result.getOrPut(file, ::mutableListOf) += entry
+    val key = keyOf(entry) ?: continue
+    result.getOrPut(key, ::mutableListOf) += entry
   }
-  return result
+  @Suppress("UNCHECKED_CAST")
+  return result as ScatterMap<K, List<T>>
 }
 
 /** The result of resolving a consumer against every graph in the project. */
