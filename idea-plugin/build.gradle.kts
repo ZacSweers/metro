@@ -133,6 +133,7 @@ java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLangu
 
 repositories {
   mavenCentral()
+  google()
   intellijPlatform { defaultRepositories() }
 }
 
@@ -182,7 +183,18 @@ val libFixtureJar =
 
 val shaded = configurations.dependencyScope("shaded")
 
-val shadedClasspath = configurations.resolvable("shadedClasspath") { extendsFrom(shaded) }
+// androidx.tracing pulls a plain kotlinx-coroutines that must never shadow the platform's patched
+// coroutines (bundled by the IDE) in the plugin jar or test runtime.
+val coroutinesExclude =
+  mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
+
+val shadedClasspath =
+  configurations.resolvable("shadedClasspath") {
+    extendsFrom(shaded)
+    exclude(coroutinesExclude)
+  }
+
+configurations.named("testImplementation") { exclude(coroutinesExclude) }
 
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
 // To use a locally installed IDE (e.g., Android Studio) instead of the default target:
