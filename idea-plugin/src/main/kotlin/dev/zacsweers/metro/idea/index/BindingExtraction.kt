@@ -11,10 +11,11 @@ import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
-import dev.zacsweers.metro.idea.model.BindingKind
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
+import dev.zacsweers.metro.idea.toKaAnnotationSnapshot
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
@@ -22,6 +23,7 @@ import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
@@ -90,11 +92,17 @@ internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
 }
 
 /**
- * Resolves the map key type of an `@IntoMap` contribution from its map key annotation, mirroring
- * the compiler's `mapKeyType`: the annotation's single member type when the `@MapKey`
- * meta-annotation has `unwrapValue = true` (the default), otherwise the annotation type itself.
+ * The map key of an `@IntoMap` contribution. [keyTypeRender] identifies the aggregate binding and
+ * [annotationRender] carries the key value for duplicate detection.
  */
-internal fun KaSession.mapKeyType(annotated: KaAnnotated, options: MetroOptions): String? {
+internal class MapKeyInfo(val keyTypeRender: String, val annotationRender: String?)
+
+/**
+ * Resolves the map key of an `@IntoMap` contribution from its map key annotation, mirroring the
+ * compiler's `mapKeyType`: the annotation's single member type when the `@MapKey` meta-annotation
+ * has `unwrapValue = true` (the default), otherwise the annotation type itself.
+ */
+internal fun KaSession.mapKeyInfo(annotated: KaAnnotated, options: MetroOptions): MapKeyInfo? {
   for (annotation in annotated.annotations) {
     val classId = annotation.classId ?: continue
     val annotationClass = findClass(classId) as? KaNamedClassSymbol ?: continue
@@ -113,7 +121,10 @@ internal fun KaSession.mapKeyType(annotated: KaAnnotated, options: MetroOptions)
       } else {
         annotationClass.defaultType
       }
-    return renderKeyType(keyType)
+    return MapKeyInfo(
+      keyTypeRender = renderKeyType(keyType),
+      annotationRender = annotation.toKaAnnotationSnapshot()?.render(short = false),
+    )
   }
   return null
 }
@@ -155,15 +166,19 @@ private fun KaSession.callableBindingData(
   val scope = scopeAnnotation(symbol, options)
   val returnType = symbol.returnType
 
+  val mapKeyInfo =
+    if (has(options.intoMapAnnotations)) {
+      mapKeyInfo(symbol, options) ?: getterSymbol?.let { mapKeyInfo(it, options) }
+    } else {
+      null
+    }
+
   // Mirrors the compiler's transformIfIntoMultibinding: a contribution keeps its element key as
   // declared and joins its aggregate by id.
   fun multibindingId(elementKey: KaTypeKey): String? {
     return when {
       has(options.intoMapAnnotations) -> {
-        val mapKeyType =
-          mapKeyType(symbol, options)
-            ?: getterSymbol?.let { mapKeyType(it, options) }
-            ?: return null
+        val mapKeyType = mapKeyInfo?.keyTypeRender ?: return null
         createMapBindingId(mapKeyType, elementKey)
       }
       has(options.intoSetAnnotations) || has(options.elementsIntoSetAnnotations) ->
@@ -179,7 +194,12 @@ private fun KaSession.callableBindingData(
           ?: (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()?.returnType
           ?: return emptyList()
       val sourceParam = (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()
-      val consumedKey = typeKey(sourceType, sourceParam?.let { qualifierAnnotation(it, options) })
+      val consumedKey =
+        contextualTypeKey(
+          sourceType,
+          sourceParam?.let { qualifierAnnotation(it, options) },
+          options,
+        )
       val implementationName =
         (sourceType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
       val elementKey = typeKey(returnType, qualifier)
@@ -187,15 +207,12 @@ private fun KaSession.callableBindingData(
       listOf(
         BindingData(
           elementKey,
-          if (multibindingId != null) {
-            BindingKind.MULTIBINDING_CONTRIBUTION
-          } else {
-            BindingKind.BINDS
-          },
+          BindingData.Kind.ALIAS,
           scope,
           implementationName,
           consumedKey,
           multibindingId,
+          mapKeyValue = mapKeyInfo?.annotationRender,
         )
       )
     }
@@ -207,7 +224,7 @@ private fun KaSession.callableBindingData(
       listOf(
         BindingData(
           optionalTypeKey(returnType, qualifier),
-          BindingKind.OPTIONAL,
+          BindingData.Kind.CUSTOM_WRAPPER,
           null,
           implementationName,
         )
@@ -217,7 +234,7 @@ private fun KaSession.callableBindingData(
       listOf(
         BindingData(
           typeKey(returnType, qualifier),
-          BindingKind.MULTIBINDING_DECLARATION,
+          BindingData.Kind.MULTIBINDING,
           scope,
           null,
         )
@@ -233,17 +250,24 @@ private fun KaSession.callableBindingData(
         }
       val elementKey = typeKey(elementType, qualifier)
       val multibindingId = multibindingId(elementKey)
+      // Extension receivers on provider callables are dependencies, same as value parameters.
+      val receiverDependency = symbol.receiverParameter?.let { dependencyKey(it, options) }
+      val dependencies =
+        listOfNotNull(receiverDependency) +
+          (symbol as? KaNamedFunctionSymbol)
+            ?.valueParameters
+            .orEmpty()
+            .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+            .map { dependencyKey(it, options) }
       listOf(
         BindingData(
           elementKey,
-          if (multibindingId != null) {
-            BindingKind.MULTIBINDING_CONTRIBUTION
-          } else {
-            BindingKind.PROVIDES
-          },
+          BindingData.Kind.PROVIDED,
           scope,
           null,
           multibindingId = multibindingId,
+          dependencies = dependencies,
+          mapKeyValue = mapKeyInfo?.annotationRender,
         )
       )
     }
@@ -260,7 +284,7 @@ private fun KaSession.instanceBindingData(
   return listOf(
     BindingData(
       typeKey(symbol.returnType, qualifierAnnotation(symbol, options)),
-      BindingKind.INSTANCE,
+      BindingData.Kind.BOUND_INSTANCE,
       null,
       null,
     )
@@ -294,16 +318,26 @@ private fun KaSession.classBindingData(
     classSymbol.isInjectableKind() &&
       (hasInject || (options.contributesAsInject && contributesAnnotations.isNotEmpty()))
   val originClassId = ktClass.getClassId()
-  if (isInjectable && !isAssisted) {
+  val ownsInjectBinding = isInjectable && !isAssisted
+  if (ownsInjectBinding) {
     result +=
       BindingData(
         typeKey(classSymbol.defaultType, qualifier),
-        BindingKind.INJECT,
+        BindingData.Kind.CONSTRUCTOR_INJECTED,
         scope,
         ktClass.name,
         originClassId = originClassId,
+        dependencies = injectClassDependencyKeys(classSymbol, options),
       )
   }
+  // Contributed bindings alias the class's own inject binding, matching the compiler's model.
+  // No alias edge when the class originates no own-type binding.
+  val consumedKey =
+    if (ownsInjectBinding) {
+      contextualTypeKey(classSymbol.defaultType, qualifier, options)
+    } else {
+      null
+    }
 
   val intoSetIds =
     options.contributesIntoSetAnnotations + options.customContributesIntoSetAnnotations
@@ -318,39 +352,46 @@ private fun KaSession.classBindingData(
         result +=
           BindingData(
             elementKey,
-            BindingKind.CONTRIBUTED,
+            BindingData.Kind.ALIAS,
             scope,
             ktClass.name,
+            consumedKey = consumedKey,
             originClassId = originClassId,
             replaces = replaces,
             contributionScopes = contributionScopes,
+            isClassContribution = true,
           )
 
       in intoSetIds ->
         result +=
           BindingData(
             elementKey,
-            BindingKind.MULTIBINDING_CONTRIBUTION,
+            BindingData.Kind.ALIAS,
             scope,
             ktClass.name,
+            consumedKey = consumedKey,
             multibindingId = elementKey.computeMultibindingId(),
             originClassId = originClassId,
             replaces = replaces,
             contributionScopes = contributionScopes,
+            isClassContribution = true,
           )
 
       in options.contributesIntoMapAnnotations -> {
-        val mapKeyType = mapKeyType(classSymbol, options) ?: continue
+        val mapKeyInfo = mapKeyInfo(classSymbol, options) ?: continue
         result +=
           BindingData(
             elementKey,
-            BindingKind.MULTIBINDING_CONTRIBUTION,
+            BindingData.Kind.ALIAS,
             scope,
             ktClass.name,
-            multibindingId = createMapBindingId(mapKeyType, elementKey),
+            consumedKey = consumedKey,
+            multibindingId = createMapBindingId(mapKeyInfo.keyTypeRender, elementKey),
             originClassId = originClassId,
             replaces = replaces,
             contributionScopes = contributionScopes,
+            mapKeyValue = mapKeyInfo.annotationRender,
+            isClassContribution = true,
           )
       }
     }
@@ -429,6 +470,105 @@ private fun KaSession.resolveDefaultBindingType(supertypeSymbol: KaClassSymbol):
     .filterIsInstance<KaNamedFunctionSymbol>()
     .firstOrNull { it.name.asString() == "defaultBinding" }
     ?.returnType
+}
+
+/**
+ * Resolves the constructor Metro injects for [classSymbol]. Works for both source and library
+ * classes.
+ */
+internal fun KaSession.findInjectConstructorSymbol(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): KaConstructorSymbol? {
+  if (!classSymbol.isInjectableKind()) return null
+  val injectish = options.allInjectAnnotations
+  val classLevel =
+    classSymbol.hasAnyAnnotation(injectish) ||
+      (options.contributesAsInject &&
+        classSymbol.annotations.any { it.classId in bindingContributionAnnotations(options) })
+  val constructors = classSymbol.memberScope.constructors.toList()
+  val annotatedConstructor = constructors.firstOrNull { it.hasAnyAnnotation(injectish) }
+  if (annotatedConstructor != null) return annotatedConstructor
+  return if (classLevel) constructors.firstOrNull { it.isPrimary } else null
+}
+
+/**
+ * The dependency keys of [classSymbol]'s inject constructor. `@Assisted` parameters are excluded
+ * because they are supplied at creation time, not by the graph.
+ */
+internal fun KaSession.injectConstructorDependencyKeys(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): List<KaContextualTypeKey> {
+  val constructor = findInjectConstructorSymbol(classSymbol, options) ?: return emptyList()
+  return constructor.valueParameters
+    .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+    .map { dependencyKey(it, options) }
+}
+
+/**
+ * The dependency keys of [classSymbol]'s member injection sites. Superclasses are only checked when
+ * annotated with `@HasMemberInjections`, which Metro requires for inherited member injections.
+ */
+internal fun KaSession.memberInjectDependencyKeys(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): List<KaContextualTypeKey> {
+  val result = mutableListOf<KaContextualTypeKey>()
+  var current: KaNamedClassSymbol? = classSymbol
+  while (current != null) {
+    collectDeclaredMemberInjectKeys(current, options, result)
+    current =
+      superClassSymbol(current)?.takeIf {
+        it.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))
+      }
+  }
+  return result
+}
+
+private fun KaSession.collectDeclaredMemberInjectKeys(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+  result: MutableList<KaContextualTypeKey>,
+) {
+  val injectIds = options.allInjectAnnotations
+  for (callable in classSymbol.declaredMemberScope.callables) {
+    when (callable) {
+      is KaPropertySymbol -> {
+        // @Inject has no PROPERTY target. A bare annotation lands on the backing field.
+        val injected =
+          callable.hasAnyAnnotation(injectIds) ||
+            callable.backingFieldSymbol?.hasAnyAnnotation(injectIds) == true ||
+            callable.setter?.hasAnyAnnotation(injectIds) == true
+        if (injected) {
+          result += dependencyKey(callable, options)
+        }
+      }
+      is KaNamedFunctionSymbol ->
+        if (callable.hasAnyAnnotation(injectIds)) {
+          callable.valueParameters.mapTo(result) { dependencyKey(it, options) }
+        }
+      else -> {}
+    }
+  }
+}
+
+private fun KaSession.superClassSymbol(classSymbol: KaNamedClassSymbol): KaNamedClassSymbol? {
+  for (superType in classSymbol.superTypes) {
+    val symbol =
+      (superType.fullyExpandedType as? KaClassType)?.symbol as? KaNamedClassSymbol ?: continue
+    if (symbol.classKind == KaClassKind.CLASS) return symbol
+  }
+  return null
+}
+
+/** Every key the graph must provide to construct and member-inject [classSymbol]. */
+internal fun KaSession.injectClassDependencyKeys(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): List<KaContextualTypeKey> {
+  return injectConstructorDependencyKeys(classSymbol, options) +
+    memberInjectDependencyKeys(classSymbol, options)
 }
 
 /** Class-literal list argument values (e.g. `excludes`, `replaces`, `bindingContainers`). */

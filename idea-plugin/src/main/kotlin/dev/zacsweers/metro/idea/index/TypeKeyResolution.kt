@@ -5,13 +5,12 @@ package dev.zacsweers.metro.idea.index
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.buildWrappedType
-import dev.zacsweers.metro.compiler.graph.computeMultibindingId
-import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.aggregateMultibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
@@ -67,10 +66,15 @@ internal fun KaSession.optionalTypeKey(
 /** Builds a session-free type snapshot for the current analysis session. */
 internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
+  val classType = expanded as? KaClassType
   return KaTypeSnapshot(
     renderKeyType(expanded),
     renderShortKeyType(expanded),
-    (expanded as? KaClassType)?.classId,
+    classType?.classId,
+    classType
+      ?.typeArguments
+      ?.mapNotNull { argument -> argument.type?.let { typeSnapshot(it) } }
+      .orEmpty(),
   )
 }
 
@@ -138,16 +142,7 @@ internal fun KaSession.consumedSite(
     return ConsumedSite(contextKey, isAbstractType = false, typeClassId = JAVA_OPTIONAL_CLASS_ID)
   }
 
-  val rawContextKey = contextualTypeKey(returnType, qualifier, options)
-  val contextKey =
-    rawContextKey.copy(
-      aggregateMultibindingId =
-        aggregateMultibindingId(
-          (returnType as? KaClassType)?.aggregateType(options),
-          rawContextKey,
-          options,
-        )
-    )
+  val contextKey = contextualTypeKey(returnType, qualifier, options)
   val classSymbol = contextKey.typeKey.type.classId?.let { findClass(it) }
   val isAbstract =
     classSymbol != null &&
@@ -156,6 +151,7 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
+    contextKey.aggregateMultibindingId(options),
     contextKey.typeKey.type.classId,
   )
 }
@@ -169,7 +165,7 @@ internal fun KaSession.dependencyKey(
   options: MetroOptions,
 ): KaContextualTypeKey {
   val site = consumedSite(symbol, options)
-  return site.contextKey.copy(hasDefault = symbol.isOptionalConsumer(options))
+  return site.contextKey.withDefault(symbol.isOptionalConsumer(options))
 }
 
 /** The `X` of a `java.util.Optional<X>` consumed type, when Dagger interop is enabled. */
@@ -178,45 +174,4 @@ private fun optionalInnerType(type: KaType, options: MetroOptions): KaType? {
   val classType = type as? KaClassType ?: return null
   if (classType.classId != JAVA_OPTIONAL_CLASS_ID) return null
   return classType.typeArguments.firstOrNull()?.type
-}
-
-/**
- * Peels `Provider`/`Lazy` wrappers to the underlying aggregate type, so wrapped multibinding
- * consumers (`Provider<Set<E>>`, `Lazy<Map<K, V>>`, etc.) are detected just like bare ones.
- */
-context(session: KaSession)
-private fun KaClassType.aggregateType(options: MetroOptions): KaClassType {
-  val classId = this.classId
-  if (classId in options.providerTypes || classId in options.lazyTypes) {
-    val innerType = typeArguments.firstOrNull()?.type ?: return this
-    val inner = with(session) { innerType.fullyExpandedType } as? KaClassType ?: return this
-    return inner.aggregateType(options)
-  }
-  return this
-}
-
-/** Computes the multibinding id collected by a `Set<E>`/`Map<K, V>` consumer site, if any. */
-private fun KaSession.aggregateMultibindingId(
-  classType: KaClassType?,
-  contextKey: KaContextualTypeKey,
-  options: MetroOptions,
-): String? {
-  if (classType == null) return null
-  return when (classType.classId) {
-    StandardClassIds.Set -> {
-      val elementType = classType.typeArguments.firstOrNull()?.type ?: return null
-      val elementKeyType = elementType.asWrappedType(options).canonicalType()
-      contextKey.typeKey.copy(type = elementKeyType).computeMultibindingId()
-    }
-    StandardClassIds.Map -> {
-      // The Map node may sit under Provider/Lazy wrappers in the contextual key's wrapped type.
-      val wrappedMap =
-        contextKey.wrappedType.innerTypesSequence
-          .filterIsInstance<WrappedType.Map<KaTypeSnapshot>>()
-          .firstOrNull() ?: return null
-      val valueType = wrappedMap.valueType.canonicalType()
-      createMapBindingId(wrappedMap.keyType.renderedType, contextKey.typeKey.copy(type = valueType))
-    }
-    else -> null
-  }
 }
