@@ -1453,7 +1453,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-      options = metroOptions.copy(contributesAsInject = false),
+      options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesBinding` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
@@ -1805,13 +1805,17 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: AltScope.kt:24:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ContributedInterface
+        e: AltScope.kt:24:7 [Metro/MissingBinding] No binding found for ContributedInterface
 
-            test.ContributedInterface is requested at
-                [test.AltGraph] test.AltGraph.contributedInterface
+          trace (in test.AltGraph):
+              ContributedInterface is requested at test.AltGraph.contributedInterface
 
-        Similar bindings:
-          - Impl (Subtype). Type: ConstructorInjected. Source: AltScope.kt:12:1
+          similar bindings:
+              - Impl (Subtype. Type: ConstructorInjected) - AltScope.kt:12:1
+
+          help: ensure ContributedInterface has an @Inject constructor or is provided by an @Provides or
+                @Binds declaration visible to AltGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )
@@ -2145,7 +2149,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-      options = metroOptions.copy(contributesAsInject = false),
+      options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesIntoSet` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
@@ -2642,7 +2646,7 @@ class AggregationTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
-      options = metroOptions.copy(contributesAsInject = false),
+      options = metroOptions.toBuilder().contributesAsInject(false).build(),
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:1 `@ContributesIntoMap` is only applicable to constructor-injected classes, assisted factories, or objects. Ensure test.Impl is injectable or a bindable object."
@@ -3423,7 +3427,7 @@ class AggregationTest : MetroCompilerTest() {
         e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
 
         (context)
-        Encountered while processing declaration 'feature.Bindings.BindsMirror.bind1854383119_intomap' (no source location available)
+        Encountered while processing declaration 'feature.Bindings.BindsMirror.bind_property1854383119_intomap' (no source location available)
         - This is Metro-generated code for 'feature.Bindings.bind' (where the problem is).
         """
           .trimIndent()

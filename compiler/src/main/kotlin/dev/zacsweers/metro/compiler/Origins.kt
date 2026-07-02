@@ -19,6 +19,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphCreatorsObjectInvokeDeclaration)
   val GraphImplClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GraphImplClassDeclaration)
+  val GraphFactoryImplClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.GraphFactoryImplClassDeclaration)
   val MetroGraphAccessorCallableOverride: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MetroGraphAccessorCallableOverride)
   val MetroGraphInjectorCallableOverride: IrDeclarationOrigin =
@@ -35,6 +37,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.InjectConstructorFactoryClassDeclaration)
   val MembersInjectorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.MembersInjectorClassDeclaration)
+  val MembersInjectorStaticInjectFunction: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.MembersInjectorStaticInjectFunction)
   val FactoryCreateFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.FactoryCreateFunction)
   val FactoryNewInstanceFunction: IrDeclarationOrigin =
@@ -49,6 +53,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedGraphExtension)
   val BindingMirrorClassDeclaration: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.BindingMirrorClassDeclaration)
+  val DefaultBindingMirrorClassDeclaration: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.DefaultBindingMirrorClassDeclaration)
   val GeneratedDynamicGraph: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedDynamicGraph)
   val DynamicContainerParam: IrDeclarationOrigin =
@@ -57,6 +63,8 @@ internal object Origins {
     IrDeclarationOrigin.GeneratedByPlugin(Keys.ParentGraphParam)
   val GeneratedAssistedFactoryCreateFunction: IrDeclarationOrigin =
     IrDeclarationOrigin.GeneratedByPlugin(Keys.GeneratedAssistedFactoryCreateFunction)
+  val ContributionSupertypeChunk: IrDeclarationOrigin =
+    IrDeclarationOrigin.GeneratedByPlugin(Keys.ContributionSupertypeChunk)
 
   object FirstParty {
     // in 2.3.20, Kotlin changed the types of origins like IrDeclarationOrigin.DEFINED to
@@ -75,6 +83,7 @@ internal object Origins {
     val IR_TEMPORARY_VARIABLE: IrDeclarationOrigin by getConstant("IR_TEMPORARY_VARIABLE")
     val IR_EXTERNAL_JAVA_DECLARATION_STUB: IrDeclarationOrigin by
       getConstant("IR_EXTERNAL_JAVA_DECLARATION_STUB")
+    val DEFAULT_PROPERTY_ACCESSOR: IrDeclarationOrigin by getConstant("DEFAULT_PROPERTY_ACCESSOR")
   }
 }
 

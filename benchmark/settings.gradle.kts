@@ -13,7 +13,7 @@ pluginManagement {
     // https://kotlinlang.slack.com/archives/C7L3JB43G/p1757001642402909
     maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
-  plugins { id("com.gradle.develocity") version "4.4.1" }
+  plugins { id("com.gradle.develocity") version "4.4.3" }
 }
 
 dependencyResolutionManagement {
@@ -92,3 +92,5 @@ develocity {
     }
   }
 }
+
+enableFeaturePreview("NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS")

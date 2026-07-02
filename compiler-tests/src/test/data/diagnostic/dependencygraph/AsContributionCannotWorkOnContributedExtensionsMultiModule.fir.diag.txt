@@ -1,1 +1,0 @@
-/module_main_AsContributionCannotWorkOnContributedExtensionsMultiModule.kt:(357,367): error: `asContribution` receiver must be annotated with a `@DependencyGraph` annotation.

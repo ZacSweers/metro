@@ -1,0 +1,107 @@
+// FILE: DefaultBindingMirror.kt
+
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class Impl : Base<Impl>, Other {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<Impl> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): Impl {
+      return Impl()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Impl {
+      return MetroFactory.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Impl {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = Impl::class)
+  @ComptimeOnly
+  interface MetroContributionToAppScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsBase", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindsAsBase(instance: Impl): Base<*> {
+        return error(message = "Never called")
+      }
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    fun bindsAsBase(instance: Impl): Base<*> {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DefaultBinding<Base<*>>()
+interface Base<T : Any?> {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class DefaultBindingMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    fun defaultBinding(): Base<*> {
+      return error(message = "Never called")
+    }
+
+  }
+
+}
+
+interface Other {
+}
+
+// FILE: implDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: Impl) {
+  return error(message = "Never called")
+}
+

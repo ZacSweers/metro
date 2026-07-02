@@ -244,35 +244,167 @@ interface AppGraph {
 
 By default, all bindings in a graph are implicitly available to its graph extensions. `@GraphPrivate` allows marking `@Provides`, `@Binds`, or `@Multibinds` declarations as _private_ to the graph they are provided in. This means:
 
-- The binding **may not** be exposed directly via an accessor.
+- Private `@Provides` and `@Binds` bindings **may not** be exposed directly via an accessor.
 - The binding **will not** be visible to extensions of this graph.
 
 Private bindings _may_ be depended on by other bindings within the same graph as an implementation detail.
+`@GraphPrivate @Multibinds` declarations may also be requested from the graph that declares them;
+the privacy boundary only prevents them from being inherited by extensions.
 
-This is useful for a few situations:
+#### Private Implementation Bindings
 
-- Confining certain bindings to a given graph, such as a base `HttpClient` that shouldn't leak to child graphs.
-- Omitting certain contributions to multibindings from leaking to extensions.
-- Avoiding accidental leaking of same-typed scoped instances across graph boundaries. For example, both a parent and child graph may provide a scoped `CoroutineScope` — by marking each as private, you can trust that each graph uses its own instance without needing qualifier annotations like `@ForScope` to disambiguate.
+Use `@GraphPrivate` when a binding should be available as an implementation detail of its graph,
+but should not become part of that graph's public accessor surface or extension surface.
 
 ```kotlin
+@Inject
+class ApiService(val httpClient: HttpClient)
+
 @DependencyGraph(AppScope::class)
 interface AppGraph {
+  val apiService: ApiService
+
   @GraphPrivate
   @Provides
-  @SingleIn(AppScope::class)
-  fun provideCoroutineScope(): CoroutineScope = ...
+  fun provideHttpClient(): HttpClient = HttpClient()
 
-  // Error — cannot expose a @GraphPrivate binding as an accessor
-  val coroutineScope: CoroutineScope
+  // Error: cannot expose a @GraphPrivate binding as an accessor
+  val httpClient: HttpClient
 
-  val loggedInGraph: LoggedInGraph
+  fun loggedInGraph(): LoggedInGraph
 }
 
 @GraphExtension
 interface LoggedInGraph {
-  // Error — CoroutineScope is @GraphPrivate in the parent and not visible here
-  val coroutineScope: CoroutineScope
+  // Error: HttpClient is @GraphPrivate in the parent and not visible here
+  val httpClient: HttpClient
+}
+```
+
+#### Same-typed Scoped Bindings
+
+`@GraphPrivate` is also useful when parent and child graphs both provide the same scoped type. The
+private binding remains available inside the graph that provides it, so consumers can request the
+plain type without qualifiers that only exist to distinguish graph ownership.
+
+Compare a qualifier-based version with the same graph-local binding expressed with `@GraphPrivate`:
+
+=== "With qualifiers"
+
+    ```kotlin
+    @Inject
+    class AppWorker(@Named("app") val scope: CoroutineScope)
+
+    @Inject
+    class LoggedInWorker(@Named("logged-in") val scope: CoroutineScope)
+
+    @DependencyGraph(AppScope::class)
+    interface AppGraph {
+      val appWorker: AppWorker
+
+      @Named("app")
+      @Provides
+      @SingleIn(AppScope::class)
+      fun provideCoroutineScope(): CoroutineScope = CoroutineScope("app")
+
+      val loggedInGraph: LoggedInGraph
+    }
+
+    @GraphExtension(LoggedInScope::class)
+    interface LoggedInGraph {
+      val loggedInWorker: LoggedInWorker
+
+      @Named("logged-in")
+      @Provides
+      @SingleIn(LoggedInScope::class)
+      fun provideCoroutineScope(): CoroutineScope = CoroutineScope("logged-in")
+    }
+    ```
+
+=== "With @GraphPrivate"
+
+    ```kotlin
+    @Inject
+    class AppWorker(val scope: CoroutineScope)
+
+    @Inject
+    class LoggedInWorker(val scope: CoroutineScope)
+
+    @DependencyGraph(AppScope::class)
+    interface AppGraph {
+      val appWorker: AppWorker
+
+      @GraphPrivate
+      @Provides
+      @SingleIn(AppScope::class)
+      fun provideCoroutineScope(): CoroutineScope = CoroutineScope("app")
+
+      fun loggedInGraph(): LoggedInGraph
+    }
+
+    @GraphExtension(LoggedInScope::class)
+    interface LoggedInGraph {
+      val loggedInWorker: LoggedInWorker
+
+      @GraphPrivate
+      @Provides
+      @SingleIn(LoggedInScope::class)
+      fun provideCoroutineScope(): CoroutineScope = CoroutineScope("logged-in")
+    }
+    ```
+
+#### Graph-private Multibindings
+
+Graph-local multibindings use the same pattern, but the private binding is the collection declaration
+plus its local contributions. This is useful for graph-local registries such as menu actions,
+navigation entries, or feature handlers. You can leave individual contributions public when they
+should continue to be visible to extensions.
+
+```kotlin
+data class MenuAction(val label: String)
+
+@Inject
+class AppMenu(val actions: Set<MenuAction>)
+
+@Inject
+class AccountMenu(val actions: Set<MenuAction>)
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  val appMenu: AppMenu
+
+  @GraphPrivate
+  @Multibinds(allowEmpty = true)
+  val menuActions: Set<MenuAction>
+
+  @GraphPrivate
+  @Provides
+  @IntoSet
+  fun provideHelpAction(): MenuAction = MenuAction("Help")
+
+  fun loggedInGraph(): LoggedInGraph
+}
+
+@GraphExtension(LoggedInScope::class)
+interface LoggedInGraph {
+  val accountMenu: AccountMenu
+
+  @GraphPrivate
+  @Multibinds(allowEmpty = true)
+  val menuActions: Set<MenuAction>
+
+  @GraphPrivate
+  @Provides
+  @IntoSet
+  fun provideSignOutAction(): MenuAction = MenuAction("Sign out")
+}
+
+fun example(appGraph: AppGraph) {
+  // appActions contains only "Help"
+  val appActions = appGraph.appMenu.actions
+
+  // loggedInActions contains only "Sign out"
+  val loggedInActions = appGraph.loggedInGraph().accountMenu.actions
 }
 ```
 
@@ -285,10 +417,10 @@ interface LoggedInGraph {
     interface AppGraph {
       @GraphPrivate @SingleIn(AppScope::class) @Provides fun provideString(): String = "hello"
       @Binds fun bindCharSequence(value: String): CharSequence
-    
+
       fun createChild(): ChildGraph
     }
-    
+
     @GraphExtension
     interface ChildGraph {
       val text: CharSequence // OK — CharSequence is visible via the public @Binds alias
@@ -356,7 +488,7 @@ The generated code will modify `AppGraph` to implement `LoggedInGraph.Factory` a
 interface AppGraph
 // modifications generated during compile-time
   interface AppGraph : LoggedInGraph.Factory {
-  
+
   override fun createLoggedInGraph(): LoggedInGraph {
     return LoggedInGraphImpl(this)
   }
@@ -549,13 +681,13 @@ Dynamic graphs are a powerful feature of the Metro compiler that allow for dynam
 @DependencyGraph
 interface AppGraph {
   val message: String
-  
+
   @Provides fun provideMessage(): String = "real"
 }
 
 class AppTest {
   val testGraph = createDynamicGraph<AppGraph>(FakeBindings)
-  
+
   @Test
   fun test() {
     assertEquals("fake", testGraph.message)
@@ -622,7 +754,7 @@ By default, Metro removes bindings that are not reachable from any accessor or m
 @DependencyGraph
 interface AppGraph {
   val httpClient: HttpClient  // This is a root - it's reachable
-  
+
   fun inject(memberInjectedClass: MemberInjectedClass) // This is also a root
 
   @Provides fun provideHttpClient(): HttpClient = HttpClient()
@@ -739,7 +871,7 @@ You should really _only_ use this if you've benchmarked it and measured a meanin
 interface AppGraph {
   @Provides @SingleIn(AppScope::class) fun provideString(): String = "Hello, world!"
   @Provides @SingleIn(AppScope::class) fun provideInt(string: String): Int = string.length
-  
+
   val stringLength: Int
 }
 
@@ -747,8 +879,8 @@ interface AppGraph {
 class AppGraph$Impl : AppGraph {
   private val provider1: Provider<String> DoubleCheck.provider(SwitchingProvider<String>(this, 0))
   private val provider2: Provider<Int> DoubleCheck.provider(SwitchingProvider<Int>(this, 1))
-  
-  @Provides 
+
+  @Provides
 
   private class SwitchingProvider<T>(private val graph: Impl, private val id: Int) : Provider<T> {
     override operator fun invoke(): T {

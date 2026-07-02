@@ -2,8 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   alias(libs.plugins.android.library)
-  alias(libs.plugins.kotlin.android)
   id("metro.publish")
+}
+
+metroArtifact {
+  artifactId.set("metrox-android")
+  name.set("Metrox Android")
+  packaging.set("aar")
 }
 
 android {

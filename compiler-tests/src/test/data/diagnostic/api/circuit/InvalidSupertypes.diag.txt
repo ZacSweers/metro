@@ -1,0 +1,1 @@
+/InvalidSupertypes.kt:19:7: error: @CircuitInject-annotated class must implement Presenter or Ui.

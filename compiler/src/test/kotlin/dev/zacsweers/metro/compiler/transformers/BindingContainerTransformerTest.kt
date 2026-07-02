@@ -486,7 +486,7 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           """
             .trimIndent()
         ),
-        options = metroOptions.copy(enableFunctionProviders = false),
+        options = metroOptions.toBuilder().enableFunctionProviders(false).build(),
       )
       .apply {
         val graph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
@@ -614,7 +614,8 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
           .trimIndent()
       ),
       previousCompilationResult = firstCompilation,
-      options = metroOptions.withDaggerInterop().copy(unusedGraphInputsSeverity = NONE),
+      options =
+        metroOptions.withDaggerInterop().toBuilder().unusedGraphInputsSeverity(NONE).build(),
     ) {
       assertDiagnostics(
         """
@@ -626,10 +627,10 @@ class BindingContainerTransformerTest : MetroCompilerTest() {
   }
 
   private fun MetroOptions.withDaggerInterop(): MetroOptions {
-    return copy(
-      enableDaggerRuntimeInterop = true,
-      customBindingContainerAnnotations = setOf(ClassId.fromString("dagger/Module")),
-    )
+    return toBuilder()
+      .enableDaggerRuntimeInterop(true)
+      .customBindingContainerAnnotations(setOf(ClassId.fromString("dagger/Module")))
+      .build()
   }
 
   // TODO

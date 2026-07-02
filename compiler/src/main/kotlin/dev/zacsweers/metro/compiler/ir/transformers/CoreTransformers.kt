@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -88,7 +89,7 @@ internal class CoreTransformers(
     get() = currentDeclarationParent
 
   override fun visitCall(expression: IrCall): IrExpression {
-    return createGraphTransformer.visitCall(expression)
+    return with(this) { createGraphTransformer.visitCall(expression) }
       ?: AsContributionTransformer.visitCall(expression, metroContext)
       // Optimization: skip intermediate visit methods (visitFunctionAccessExpression, etc.)
       // since we don't override them. Call visitExpression directly to save stack frames.
@@ -128,7 +129,7 @@ internal class CoreTransformers(
 
     // TODO need to better divvy these
     // TODO can we eagerly check for known metro types and skip?
-    // Native/WASM/JS compilation hint gen can't be done in IR
+    // Native/Wasm/JS compilation hint gen can't be done in IR
     // https://youtrack.jetbrains.com/issue/KT-75865
     val generateHints = options.generateContributionHints && !options.generateContributionHintsInFir
     if (generateHints) {
@@ -165,9 +166,13 @@ internal class CoreTransformers(
         return
       } else {
         declaration.nestedClassOrNull(Origins.GraphImplClassDeclaration)
-          ?: reportCompilerBug(
-            "Expected generated dependency graph for ${declaration.classIdOrFail}"
-          )
+          ?: if (options.generateClassesInIr) {
+            declaration.getOrCreateGraphImplClassShell()
+          } else {
+            reportCompilerBug(
+              "Expected generated dependency graph for ${declaration.classIdOrFail}"
+            )
+          }
       }
 
     data.graphs +=

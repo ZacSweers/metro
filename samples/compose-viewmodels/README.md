@@ -6,7 +6,9 @@ This sample demonstrates how to use Metro for ViewModel injection in a multi-mod
 
 ```
 compose-viewmodels/
-├── app/             # Multiplatform app module
+├── app/             # Multiplatform library module (shared UI + platform entry points)
+├── androidApp/      # Android application shell
+├── desktopApp/      # JVM/desktop application shell
 ├── screen-home/     # Home screen with standard ViewModel injection
 └── screen-details/  # Details screen with manual assisted ViewModel injection
 └── screen-settings/ # Settings screen with assisted ViewModel injection
@@ -14,8 +16,8 @@ compose-viewmodels/
 
 ## Running
 
-- **Android**: `./gradlew -p samples :compose-viewmodels:app:installDebug`
-- **Desktop**: `./gradlew -p samples :compose-viewmodels:app:jvmRun`
+- **Android**: `./gradlew -p samples :compose-viewmodels:androidApp:installDebug`
+- **Desktop**: `./gradlew -p samples :compose-viewmodels:desktopApp:run`
 
 ## Key Concepts
 

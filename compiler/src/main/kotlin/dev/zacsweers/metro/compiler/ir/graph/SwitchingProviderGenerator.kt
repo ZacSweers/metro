@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
+import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addTypeParameter
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBranch
 import org.jetbrains.kotlin.ir.builders.irConcat
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
@@ -147,50 +149,49 @@ internal class SwitchingProviderGenerator(
    */
   private fun IrClass.addConstructorAndFields(): Triple<IrConstructor, IrProperty, IrProperty> {
     // TODO switch to direct initializers? For some reason when I try, the fields are not set
-    val graphProperty =
-      addProperty {
-          name = Name.identifier(Symbols.StringNames.GRAPH)
-          visibility = DescriptorVisibilities.PRIVATE
-        }
-        .apply { addBackingFieldCompat { type = graphOrShardClass.defaultType } }
+    val graphProperty = addProperty {
+      name = Name.identifier(Symbols.StringNames.GRAPH)
+      visibility = DescriptorVisibilities.PRIVATE
+    }
+      .apply { addBackingFieldCompat { type = graphOrShardClass.defaultType } }
 
-    val idProperty =
-      addProperty {
-          name = Name.identifier("id")
-          visibility = DescriptorVisibilities.PRIVATE
-        }
-        .apply { addBackingFieldCompat { type = irBuiltIns.intType } }
+    val idProperty = addProperty {
+      name = Name.identifier("id")
+      visibility = DescriptorVisibilities.PRIVATE
+    }
+      .apply { addBackingFieldCompat { type = irBuiltIns.intType } }
 
     // Add constructor
-    val constructor =
-      addConstructor { isPrimary = true }
-        .apply {
-          val graphParam = addValueParameter {
-            name = Name.identifier(Symbols.StringNames.GRAPH)
-            type = graphOrShardClass.defaultType
-          }
-          val idParam = addValueParameter {
-            name = Name.identifier("id")
-            type = irBuiltIns.intType
-          }
-
-          val switchingThisReceiver = this@addConstructorAndFields.thisReceiverOrFail
-
-          buildBlockBody {
-            // Call super constructor (Any)
-            +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
-
-            // Initialize graph field
-            +irSetField(
-              irGet(switchingThisReceiver),
-              graphProperty.backingField!!,
-              irGet(graphParam),
-            )
-
-            // Initialize id field
-            +irSetField(irGet(switchingThisReceiver), idProperty.backingField!!, irGet(idParam))
-          }
+    val constructor = addConstructor {
+      isPrimary = true
+    }
+      .apply {
+        val graphParam = addValueParameter {
+          name = Name.identifier(Symbols.StringNames.GRAPH)
+          type = graphOrShardClass.defaultType
         }
+        val idParam = addValueParameter {
+          name = Name.identifier("id")
+          type = irBuiltIns.intType
+        }
+
+        val switchingThisReceiver = this@addConstructorAndFields.thisReceiverOrFail
+
+        buildBlockBody {
+          // Call super constructor (Any)
+          +irDelegatingConstructorCall(irBuiltIns.anyClass.owner.primaryConstructor!!)
+
+          // Initialize graph field
+          +irSetField(
+            irGet(switchingThisReceiver),
+            graphProperty.backingField!!,
+            irGet(graphParam),
+          )
+
+          // Initialize id field
+          +irSetField(irGet(switchingThisReceiver), idProperty.backingField!!, irGet(idParam))
+        }
+      }
 
     return Triple(constructor, graphProperty, idProperty)
   }
@@ -256,9 +257,9 @@ internal class SwitchingProviderGenerator(
     isOnly: Boolean,
   ) {
     addFunction {
-        name = Symbols.Names.invoke
-        returnType = typeParam.defaultType
-      }
+      name = Symbols.Names.invoke
+      returnType = typeParam.defaultType
+    }
       .apply {
         // Pass explicit type to avoid type parameter remapping (class has T, function has none)
         val localDispatchReceiver =
@@ -297,10 +298,10 @@ internal class SwitchingProviderGenerator(
     nameAllocator: NameAllocator,
   ): IrSimpleFunction {
     return addFunction {
-        name = nameAllocator.newName(Symbols.Names.invoke)
-        returnType = typeParam.defaultType
-        visibility = DescriptorVisibilities.PRIVATE
-      }
+      name = nameAllocator.newName(Symbols.Names.invoke)
+      returnType = typeParam.defaultType
+      visibility = DescriptorVisibilities.PRIVATE
+    }
       .apply {
         val localDispatchReceiver =
           this@addInvokeChunkFunction.thisReceiverOrFail.copyTo(
@@ -361,45 +362,48 @@ internal class SwitchingProviderGenerator(
           parentShardIndex = shardExprContext?.currentShardIndex,
         )
 
-      // Build branches for each switching binding in this chunk
-      val branches = ArrayList<IrBranch>(bindings.size + 1)
+      // Hoist `this.id` into a local so the JVM backend recognises the dense int-equals branches
+      // and lowers them to `tableswitch` instead of a chain of `if_icmpne` re-fetches.
+      return irBlock(resultType = typeParam.defaultType) {
+        val idLocal =
+          irTemporaryVariable(
+            value = irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
+            nameHint = "id",
+          )
+        +idLocal
 
-      branches += bindings.map { switchingBinding ->
-        val condition =
-          irEquals(
-            irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
-            irInt(switchingBinding.id),
-          )
-        val result =
-          irImplicitCast(
-            generateBindingExpression(
-              switchingBinding,
-              switchingProviderThisReceiver,
-              switchingProviderContext,
-            ),
-            typeParam.defaultType,
-          )
-        irBranch(condition, result)
-      }
+        val branches = ArrayList<IrBranch>(bindings.size + 1)
 
-      // For the else branch: either call the next chunk function or throw an error
-      val elseBranchExpr =
-        if (isLast) {
-          // Last chunk: throw an error for unexpected IDs
-          val errorString = irConcat()
-          errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
-          errorString.addArgument(irGetProperty(irGet(switchingProviderThisReceiver), idProperty))
-          irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
-        } else {
-          // Not the last chunk: call the next function
-          irInvoke(
-            dispatchReceiver = irGet(switchingProviderThisReceiver),
-            callee = nextFunction!!.symbol,
-          )
+        branches += bindings.map { switchingBinding ->
+          val condition = irEquals(irGet(idLocal), irInt(switchingBinding.id))
+          val result =
+            irImplicitCast(
+              generateBindingExpression(
+                switchingBinding,
+                switchingProviderThisReceiver,
+                switchingProviderContext,
+              ),
+              typeParam.defaultType,
+            )
+          irBranch(condition, result)
         }
-      branches += irElseBranch(elseBranchExpr)
 
-      return irWhen(typeParam.defaultType, branches)
+        val elseBranchExpr =
+          if (isLast) {
+            val errorString = irConcat()
+            errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
+            errorString.addArgument(irGet(idLocal))
+            irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
+          } else {
+            irInvoke(
+              dispatchReceiver = irGet(switchingProviderThisReceiver),
+              callee = nextFunction!!.symbol,
+            )
+          }
+        branches += irElseBranch(elseBranchExpr)
+
+        +irWhen(typeParam.defaultType, branches)
+      }
     }
 
   /** Generates the expression to create the binding instance. */

@@ -1,1 +1,0 @@
-/DefaultBinding_InvalidTypeArg.kt:(112,113): error: `@DefaultBinding` type argument must not be a star projection (`*`).

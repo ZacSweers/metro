@@ -1,3 +1,4 @@
+// IGNORE_BACKEND: JS_IR
 // MODULE: lib
 @GraphExtension(String::class)
 interface ChildGraph {

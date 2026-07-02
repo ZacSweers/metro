@@ -2,8 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.zacsweers.metro.compiler.test.BUILD_COMPILER_VERSION
+import dev.zacsweers.metro.compiler.test.COMPILER_TOOLING_VERSION
 import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
+import dev.zacsweers.metro.compiler.test.TEST_COMPILER_VERSION
 import org.jetbrains.kotlin.test.builders.RegisteredDirectivesBuilder
+import org.jetbrains.kotlin.test.directives.DiagnosticsDirectives
 import org.jetbrains.kotlin.test.directives.LanguageSettingsDirectives.OPT_IN
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.services.MetaTestConfigurator
@@ -16,15 +21,73 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     get() = listOf(MetroDirectives)
 
   override fun shouldSkipTest(): Boolean {
-    if (MetroDirectives.METRO_IGNORE in testServices.moduleStructure.allDirectives) return true
+    val directives = testServices.moduleStructure.allDirectives
+    if (MetroDirectives.METRO_IGNORE in directives) return true
+
+    if (
+      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION
+    ) {
+      // JS box tests compile against Metro's runtime KLIB. KLIB compatibility depends on the
+      // producing compiler, so only run these tests against the compiler version that built it.
+      return true
+    }
+
+    val jsDiagnosticSuite =
+      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
+        "JsDiagnosticTestGenerated"
+    if (testServices.isJsBackend() && jsDiagnosticSuite) {
+      val rendersIrDiagnostics = DiagnosticsDirectives.RENDER_IR_DIAGNOSTICS_FULL_TEXT in directives
+      val usesJvmInteropDependencies =
+        MetroDirectives.WITH_ANVIL in directives ||
+          MetroDirectives.WITH_KI_ANVIL in directives ||
+          MetroDirectives.WITH_DAGGER in directives ||
+          MetroDirectives.ENABLE_DAGGER_INTEROP in directives ||
+          MetroDirectives.ENABLE_DAGGER_KSP in directives ||
+          MetroDirectives.ENABLE_ANVIL_KSP in directives ||
+          MetroDirectives.GUICE_ANNOTATIONS in directives ||
+          MetroDirectives.ENABLE_GUICE_INTEROP in directives ||
+          MetroDirectives.WITH_HILT in directives ||
+          MetroDirectives.ENABLE_HILT_INTEROP in directives ||
+          MetroDirectives.ENABLE_HILT_KSP in directives
+      if (rendersIrDiagnostics || usesJvmInteropDependencies) return true
+    }
 
     System.getProperty("metro.singleTestName")?.let { singleTest ->
       return testServices.testInfo.methodName != singleTest
     }
 
-    val directives = testServices.moduleStructure.allDirectives
+    val generateClassesInIrDirectives = directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
+    if (
+      generateClassesInIrDirectives.any { it.toString().toBoolean() } &&
+        generateClassesInIrDirectives.any { !it.toString().toBoolean() }
+    ) {
+      return true
+    }
+    val generateClassesInIr =
+      generateClassesInIrDirectives.lastOrNull()?.toString()?.toBoolean() == true
+    val irOnlyClassesSuite =
+      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
+        "IrOnlyClassesBoxTestGenerated"
+    if (
+      irOnlyClassesSuite &&
+        shouldSkipForCompilerVersion(
+          compilerVersion = COMPILER_VERSION,
+          compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
+          minVersion = MIN_IR_ONLY_CLASSES_COMPILER_VERSION,
+        )
+    ) {
+      return true
+    }
+    if (
+      (MetroDirectives.ENABLE_CIRCUIT in directives ||
+        MetroDirectives.ENABLE_HILT_INTEROP in directives ||
+        MetroDirectives.ENABLE_HILT_KSP in directives) && generateClassesInIr
+    ) {
+      return true
+    }
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
+      compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
       minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
       maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
@@ -32,42 +95,53 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   }
 
   companion object {
+    private const val MIN_IR_ONLY_CLASSES_COMPILER_VERSION = "2.4.20-dev-6138"
+
     /**
      * Determines whether a test should be skipped based on compiler version directives.
      *
      * [targetVersion] (from `COMPILER_VERSION`) supersedes [minVersion]/[maxVersion] — if set, the
      * min/max directives are ignored.
      *
-     * Version comparisons use [KotlinVersion] which compares only major.minor.patch numerically,
-     * ignoring classifiers. This means dev builds like "2.4.0-dev-1234" are treated as equal to
-     * "2.4.0" for comparison purposes, so `MIN_COMPILER_VERSION: 2.4` correctly includes dev
-     * builds.
+     * Version comparisons use [KotlinToolingVersion] so dev build thresholds like `2.4.20-dev-6138`
+     * compare against their classifier/build number instead of collapsing to `2.4.20`.
      */
     fun shouldSkipForCompilerVersion(
       compilerVersion: KotlinVersion,
+      compilerToolingVersion: KotlinToolingVersion =
+        KotlinToolingVersion(
+          compilerVersion.major,
+          compilerVersion.minor,
+          compilerVersion.patch,
+          classifier = null,
+        ),
       targetVersion: String? = null,
       minVersion: String? = null,
       maxVersion: String? = null,
     ): Boolean {
       // COMPILER_VERSION supersedes MIN/MAX_COMPILER_VERSION
       if (targetVersion != null) {
-        val (target, requiresFullMatch) = KotlinVersion.parse(targetVersion)
-        return !versionMatches(target, requiresFullMatch, compilerVersion)
+        val (target, requiresFullMatch) = toolingVersionDirective(targetVersion)
+        return !versionMatches(target, requiresFullMatch, compilerToolingVersion)
       }
 
-      val min = minVersion?.let { KotlinVersion.parse(it).first }
-      if (min != null && compilerVersion < min) return true
+      val min = minVersion?.let { toolingVersionDirective(it).first }
+      if (min != null && compilerToolingVersion < min) return true
 
-      val max = maxVersion?.let { KotlinVersion.parse(it).first }
-      if (max != null && compilerVersion > max) return true
+      val max = maxVersion?.let { toolingVersionDirective(it).first }
+      if (max != null && compilerToolingVersion > max) return true
 
       return false
     }
   }
 }
 
+private val BUILD_COMPILER_TOOLING_VERSION = KotlinToolingVersion(BUILD_COMPILER_VERSION)
+private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_VERSION)
+
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
+  OPT_IN.with("dev.zacsweers.metro.DelicateMetroApi")
 }
 
 /**
@@ -79,12 +153,22 @@ fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
  * @param actualVersion The actual compiler version
  */
 private fun versionMatches(
-  targetVersion: KotlinVersion,
+  targetVersion: KotlinToolingVersion,
   requiresFullMatch: Boolean,
-  actualVersion: KotlinVersion,
+  actualVersion: KotlinToolingVersion,
 ): Boolean {
   if (targetVersion.major != actualVersion.major) return false
   if (targetVersion.minor != actualVersion.minor) return false
   if (requiresFullMatch && targetVersion.patch != actualVersion.patch) return false
+  if (requiresFullMatch && targetVersion.classifier != null) {
+    return targetVersion.classifier.equals(actualVersion.classifier, ignoreCase = true)
+  }
   return true
+}
+
+private fun toolingVersionDirective(versionString: String): Pair<KotlinToolingVersion, Boolean> {
+  val versionPart = versionString.substringBefore('-')
+  val parts = versionPart.split('.')
+  val requiresFullMatch = parts.size == 3
+  return KotlinToolingVersion(versionString) to requiresFullMatch
 }

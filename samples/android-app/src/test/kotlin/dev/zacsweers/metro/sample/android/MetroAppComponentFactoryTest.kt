@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
+import androidx.tracing.Tracer
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
@@ -36,7 +37,7 @@ const val EXTRA_DATA = "extra_data"
 
 class TestApp : Application(), MetroApplication {
   override val appComponentProviders: MetroAppComponentProviders by lazy {
-    createDynamicGraphFactory<AppGraph.Factory>(TestBindings()).create(this)
+    createDynamicGraphFactory<AppGraph.Factory>(TestBindings()).create(this, Tracer.getStubTracer())
   }
 
   init {

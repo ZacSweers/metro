@@ -13,11 +13,13 @@ import org.junit.Test
 
 class IrTest {
 
+  private val metroOptions = MetroOptions()
+
   // region shouldCheckMirrorParamMismatches tests
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns false when enableKlibParamsCheck is false`() {
-    val options = MetroOptions(enableKlibParamsCheck = false)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(false).build()
 
     // Should return false regardless of platform when the option is disabled
     assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { true })
@@ -36,7 +38,7 @@ class IrTest {
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns true for Native platform when enabled`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(
         shouldCheckMirrorParamMismatches(options, NativePlatforms.unspecifiedNativePlatform) {
@@ -48,7 +50,7 @@ class IrTest {
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns true for JS platform when enabled`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(shouldCheckMirrorParamMismatches(options, JsPlatforms.defaultJsPlatform) { false })
       .isTrue()
@@ -56,14 +58,14 @@ class IrTest {
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns true for Wasm platform when enabled`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(shouldCheckMirrorParamMismatches(options, WasmPlatforms.Default) { false }).isTrue()
   }
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns true for JVM when AnnotationsInMetadata is enabled`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { true })
       .isTrue()
@@ -71,7 +73,7 @@ class IrTest {
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns false for JVM when AnnotationsInMetadata is disabled`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { false })
       .isFalse()
@@ -79,7 +81,7 @@ class IrTest {
 
   @Test
   fun `shouldCheckMirrorParamMismatches returns false for null platform`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(shouldCheckMirrorParamMismatches(options, null) { true }).isFalse()
   }
@@ -87,7 +89,7 @@ class IrTest {
   @Suppress("RETURN_VALUE_NOT_USED")
   @Test
   fun `shouldCheckMirrorParamMismatches lambda is only called for JVM platform`() {
-    val options = MetroOptions(enableKlibParamsCheck = true)
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
     // Native
     shouldCheckMirrorParamMismatches(options, NativePlatforms.unspecifiedNativePlatform) {
       fail("Should not be called")

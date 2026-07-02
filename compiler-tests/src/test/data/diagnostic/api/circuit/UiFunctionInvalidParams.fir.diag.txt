@@ -1,3 +1,0 @@
-/UiFunctionInvalidParams.kt:(687,694): error: @CircuitInject functions cannot have a CircuitContext parameter. CircuitContext is only available at the factory level.
-
-/UiFunctionInvalidParams.kt:(714,723): error: @CircuitInject UI functions cannot have a Navigator parameter. Navigator is only for presenters.

@@ -1,1 +1,0 @@
-/CannotBeScoped.kt:(100,126): error: Injected functions are stateless and should not be scoped.

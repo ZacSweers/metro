@@ -16,6 +16,8 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
 /** @see [BaseDoubleCheck] */
 public class DoubleCheck<T> private constructor(provider: Provider<T>) :
@@ -23,6 +25,8 @@ public class DoubleCheck<T> private constructor(provider: Provider<T>) :
 
   public companion object {
     /** Returns a [Provider] that caches the value from the given delegate provider. */
+    @JvmStatic
+    @JsStatic
     public fun <P : Provider<T>, T> provider(delegate: P): Provider<T> {
       if (delegate is DoubleCheck<*>) {
         /*
@@ -35,6 +39,8 @@ public class DoubleCheck<T> private constructor(provider: Provider<T>) :
     }
 
     /** Returns a [Lazy] that caches the value from the given provider. */
+    @JvmStatic
+    @JsStatic
     public fun <P : Provider<T>, T> lazy(provider: P): Lazy<T> {
       if (provider is Lazy<*>) {
         @Suppress("UNCHECKED_CAST") val lazy = provider as Lazy<T>

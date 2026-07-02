@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
+import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -46,7 +47,6 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
-import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -84,6 +84,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -98,10 +99,14 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 // TODO a bunch of this could probably be cleaned up now that the functions are generated in IR
 /**
  * Generates `@MetroContribution`-annotated nested contribution classes for
- * `@Contributes*`-annotated classes.
+ * `@Contributes*`-annotated classes (and any external interop extensions that report
+ * [ContributionTarget][dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtension.ContributionTarget]s).
  */
-internal class ContributionsFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class ContributionsFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   companion object {
     /** Suffix appended to the contributing class name for the holder class. */
@@ -158,6 +163,26 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     if (!holder.contributingClassSymbol.usesContributionProviderPath(session)) return null
     return holder
   }
+
+  /**
+   * Maps external target class IDs to their generated contribution names and scope class IDs.
+   *
+   * Targets are reported by [MetroFirDeclarationGenerationExtension.getContributionTargets]. Metro
+   * generates the same nested `MetroContribution`-annotated interface it generates for
+   * `@ContributesTo`, with the `KClass<*>` scope argument filled in during nested class generation.
+   */
+  private val externalScopesByClassId: FirCache<Unit, Map<ClassId, Map<Name, ClassId>>, Unit> =
+    session.firCachesFactory.createCache { _, _ ->
+      externalExtensions
+        .flatMap { it.getContributionTargets() }
+        .groupBy(keySelector = { it.contributingClassId }, valueTransform = { it.scope })
+        .mapValues { (_, scopes) ->
+          scopes.distinct().associateBy { MetroContributions.metroContributionName(it) }
+        }
+    }
+
+  private fun externalScopesFor(classId: ClassId): Map<Name, ClassId> =
+    externalScopesByClassId.getValue(Unit, Unit)[classId].orEmpty()
 
   // For each contributing class, track its nested contribution classes and their scope arguments
   private val contributingClassToScopedContributions:
@@ -506,8 +531,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             if (!added) {
               add(
                 buildAnnotationCallCopy(mapKeyFirAnnotation) {
-                  source =
-                    mapKeyFirAnnotation.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                  source = mapKeyFirAnnotation.source?.fakeElement(pluginGeneratedSourceElementKind)
                   containingDeclarationSymbol = function.symbol
                 }
               )
@@ -527,7 +551,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           ?.let {
             add(
               buildAnnotationCallCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
                 containingDeclarationSymbol = function.symbol
               }
             )
@@ -545,13 +569,13 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
           val anno =
             if (it is FirAnnotationCall) {
               buildAnnotationCallCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
                 containingDeclarationSymbol = function.symbol
               }
             } else {
               // External decl we're copying from
               buildAnnotationCopy(it) {
-                source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+                source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
               }
             }
           add(anno)
@@ -607,7 +631,7 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         ?.let {
           add(
             buildAnnotationCallCopy(it) {
-              source = it.source?.fakeElement(KtFakeSourceElementKind.PluginGenerated)
+              source = it.source?.fakeElement(pluginGeneratedSourceElementKind)
               containingDeclarationSymbol = function.symbol
             }
           )
@@ -744,14 +768,19 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
         return emptySet()
       }
 
-      // Metro contribution class that needs a binding mirror IFF it's not a @ContributesTo
-      val isContributesTo =
-        context.owner
-          .parentsWithSelf(session)
-          .drop(1)
-          .firstOrNull { it is FirClassSymbol }
-          ?.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ?: false
-      return if (!isContributesTo) {
+      // Metro contribution class that needs a binding mirror IFF it's not a @ContributesTo (or an
+      // external supertype-style contribution target). The latter are pure supertype contributors -
+      // they don't carry @Binds, so a BindsMirror would be empty noise.
+      val parentClassSymbol =
+        context.owner.parentsWithSelf(session).drop(1).firstOrNull { it is FirClassSymbol }
+
+      val isSupertypeContribution =
+        parentClassSymbol?.let {
+          it.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations) ||
+            externalScopesFor(it.classId).isNotEmpty()
+        } ?: false
+
+      return if (!isSupertypeContribution) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
         emptySet()
@@ -803,7 +832,13 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       }
     }
 
-    return contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
+    val nativeNames = contributingClassToScopedContributions.getValue(classSymbol, Unit).keys
+    val externalNames = externalScopesFor(classSymbol.classId).keys
+    return if (externalNames.isEmpty()) {
+      nativeNames
+    } else {
+      nativeNames + externalNames
+    }
   }
 
   /**
@@ -890,8 +925,10 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
             )
             // @BindingContainer
             add(buildBindingContainerAnnotation())
-            // @IROnlyFactories — provider factories are generated in IR, not FIR
-            add(buildIROnlyFactoriesAnnotation())
+            if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+              // Legacy path: provider factories are generated in IR, not FIR.
+              add(buildIROnlyFactoriesAnnotation())
+            }
             // @ContributesTo(scope) — replaces are resolved from @Origin in IR via the
             // original contributing class's @ContributesBinding annotations
             add(buildContributesToAnnotation(scopeArg))
@@ -902,7 +939,44 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
     }
 
     if (!name.identifier.startsWith(Symbols.StringNames.METRO_CONTRIBUTION_NAME_PREFIX)) return null
+
+    // External interop targets: same style as @ContributesTo (interface extending the owner with a
+    // synthesized @MetroContribution(scope) annotation)
+    val externalScope = externalScopesFor(owner.classId)[name]
+    if (externalScope != null) {
+      return createMetroContributionClass(
+        owner,
+        name,
+        scopeArg = buildClassReference(session, externalScope),
+        superTypeProviders = listOf { owner.defaultType() },
+      )
+    }
+
     val contributions = findContributions(owner) ?: return null
+    val generateAsContainer = contributions.none { it is Contribution.ContributesTo }
+    return createMetroContributionClass(
+      owner,
+      name,
+      scopeArg = contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name),
+      superTypeProviders =
+        contributions.mapNotNull { contribution ->
+          if (contribution is Contribution.ContributesTo) {
+            { contribution.origin.defaultType(emptyList()) }
+          } else {
+            null
+          }
+        },
+      generateAsContainer = generateAsContainer,
+    )
+  }
+
+  private fun createMetroContributionClass(
+    owner: FirClassSymbol<*>,
+    name: Name,
+    scopeArg: FirGetClassCall?,
+    superTypeProviders: List<() -> ConeKotlinType> = emptyList(),
+    generateAsContainer: Boolean = false,
+  ): FirClassLikeSymbol<*> {
     return createNestedClass(
         owner,
         name = name,
@@ -911,30 +985,39 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
       ) {
         // annoyingly not implicit from the class kind
         modality = Modality.ABSTRACT
-        for (contribution in contributions) {
-          if (contribution is Contribution.ContributesTo) {
-            superType(contribution.origin.defaultType(emptyList()))
-          }
-        }
+        superTypeProviders.forEach { superType(it()) }
       }
       .apply {
         markAsDeprecatedHidden(session)
-        val metroContributionAnnotation =
-          buildMetroContributionAnnotation().apply {
-            replaceArgumentMapping(
-              buildAnnotationArgumentMapping {
-                val originalScopeArg =
-                  contributingClassToScopedContributions.getValueIfComputed(owner)?.get(name)
-                    ?: reportCompilerBug(
-                      "Could not find a contribution scope for ${owner.classId}.$name"
-                    )
-                this.mapping[Symbols.Names.scope] = originalScopeArg
-              }
-            )
-          }
-        replaceAnnotations(annotations + listOf(metroContributionAnnotation))
+        replaceAnnotations(
+          annotations + metroContributionAnnotations(owner.classId, scopeArg, generateAsContainer)
+        )
       }
       .symbol
+  }
+
+  private fun metroContributionAnnotations(
+    originClassId: ClassId,
+    scopeArg: FirGetClassCall?,
+    generateAsContainer: Boolean,
+  ): List<FirAnnotation> = buildList {
+    add(
+      buildMetroContributionAnnotation().apply {
+        if (scopeArg != null) {
+          replaceArgumentMapping(
+            buildAnnotationArgumentMapping { mapping[Symbols.Names.scope] = scopeArg }
+          )
+        }
+      }
+    )
+    // Newer binding contributions are routed as @BindingContainer instead of being merged
+    // into the graph as a supertype, so that graphs don't accumulate one supertype per
+    // contributing class.
+    if (generateAsContainer) {
+      add(buildBindingContainerAnnotation())
+      add(buildOriginAnnotation(originClassId))
+      add(buildComptimeOnlyAnnotation())
+    }
   }
 
   private fun buildBindsAnnotation(): FirAnnotation {
@@ -985,17 +1068,24 @@ internal class ContributionsFirGenerator(session: FirSession, compatContext: Com
   }
 
   private fun buildBindingContainerAnnotation(): FirAnnotation {
-    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("BindingContainer"))
+    val classId = ClassId(Symbols.FqNames.metroRuntimePackage, "BindingContainer".asName())
     return buildSimpleAnnotation {
       session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+    }
+  }
+
+  private fun buildComptimeOnlyAnnotation(): FirAnnotation {
+    return buildSimpleAnnotation {
+      session.symbolProvider.getClassLikeSymbolByClassId(Symbols.ClassIds.ComptimeOnly)
+        as FirRegularClassSymbol
     }
   }
 
   private fun buildContributesToAnnotation(scopeArg: FirGetClassCall?): FirAnnotation {
     val classId = ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesTo"))
     return buildSimpleAnnotation {
-        session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
-      }
+      session.symbolProvider.getClassLikeSymbolByClassId(classId) as FirRegularClassSymbol
+    }
       .apply {
         if (scopeArg != null) {
           replaceArgumentMapping(

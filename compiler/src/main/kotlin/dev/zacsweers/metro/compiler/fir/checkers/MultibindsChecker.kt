@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.checkers
 
+import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
 import dev.zacsweers.metro.compiler.fir.isOrImplements
@@ -15,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.isAnnotationClass
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -28,7 +31,6 @@ import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
@@ -54,8 +56,29 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
     if (declaration is FirValueParameter) return
     val source = declaration.source ?: return
     val session = context.session
+    // Single-pass annotation extraction. checkImpl reuses this so we don't walk the annotation
+    // list more than once per call.
+    val annotations = declaration.symbol.metroAnnotations()
+    val isRelevant =
+      annotations.isMultibinds ||
+        annotations.isElementsIntoSet ||
+        annotations.isIntoMap ||
+        annotations.isIntoSet ||
+        annotations.mapKey != null
+    if (!isRelevant) return
+    session.trace(name = { "MultibindsChecker(${declaration.symbol.callableId})" }) {
+      checkImpl(declaration, source, annotations)
+    }
+  }
 
-    val annotations = declaration.symbol.metroAnnotations(session)
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImpl(
+    declaration: FirCallableDeclaration,
+    source: KtSourceElement,
+    annotations: MetroAnnotations<MetroFirAnnotation>,
+  ) {
+    val session = context.session
+
     val isMultibinds = annotations.isMultibinds
     val isElementsIntoSet = annotations.isElementsIntoSet
     val isIntoMap = annotations.isIntoMap
@@ -87,11 +110,7 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
 
     // Multibinds cannot be overrides
     if (declaration.isOverride) {
-      reporter.reportOn(
-        source,
-        MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR,
-        "Multibinding contributors cannot be overrides.",
-      )
+      reporter.reportOn(source, MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR)
       return
     }
 
@@ -173,7 +192,9 @@ internal object MultibindsChecker : FirCallableDeclarationChecker(MppCheckerKind
                           "Multibinding map key '${keyClass.classId.diagnosticString}' is not annotated with @MapKey(unwrapValue = false).",
                         )
                       } else if (
-                        mapKey.getBooleanArgument(Symbols.Names.unwrapValue, session) != false
+                        with(session.compatContext) {
+                          mapKey.getBooleanArgumentCompat(Symbols.Names.unwrapValue, session)
+                        } != false
                       ) {
                         reporter.reportOn(
                           declaration.returnTypeRef.source ?: source,

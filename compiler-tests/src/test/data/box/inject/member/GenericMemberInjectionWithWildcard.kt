@@ -3,7 +3,7 @@ sealed class Base<T : Any> {
     @Inject private lateinit var formatter: Formatter
 
     fun doSomething(t: T): String {
-        return formatter.format("${javaClass.simpleName} is doing something with ${formatter.format(t)}")
+        return formatter.format("${this::class.simpleName} is doing something with ${formatter.format(t)}")
     }
 }
 

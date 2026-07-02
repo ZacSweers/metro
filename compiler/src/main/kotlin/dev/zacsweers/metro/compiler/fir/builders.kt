@@ -97,24 +97,24 @@ internal fun FirDeclarationGenerationExtension.copyParameters(
         // so we build a real one here based on it
         is FirJavaField -> {
           buildValueParameter {
-              this.moduleData = originalFir.moduleData
-              name = original.name
-              origin = Keys.RegularParameter.origin
-              symbol = FirValueParameterSymbol()
-              containingDeclarationSymbol = functionBuilder.symbol
-              returnTypeRef = originalFir.returnTypeRef
-              symbol = FirValueParameterSymbol()
-              parameterInit(original)
-              if (originalFir.symbol.hasInitializer) {
-                if (originalFir.symbol.hasMetroDefault(session)) {
-                  if (!copyParameterDefaults) {
-                    defaultValue = buildSafeDefaultValueStub(session)
-                  }
-                } else {
-                  defaultValue = null
+            this.moduleData = originalFir.moduleData
+            name = original.name
+            origin = Keys.RegularParameter.origin
+            symbol = FirValueParameterSymbol()
+            containingDeclarationSymbol = functionBuilder.symbol
+            returnTypeRef = originalFir.returnTypeRef
+            symbol = FirValueParameterSymbol()
+            parameterInit(original)
+            if (originalFir.symbol.hasInitializer) {
+              if (originalFir.symbol.hasMetroDefault(session)) {
+                if (!copyParameterDefaults) {
+                  defaultValue = buildSafeDefaultValueStub(session)
                 }
+              } else {
+                defaultValue = null
               }
             }
+          }
             .apply {
               context(session.compatContext) { replaceAnnotationsSafe(original.symbol.annotations) }
             }

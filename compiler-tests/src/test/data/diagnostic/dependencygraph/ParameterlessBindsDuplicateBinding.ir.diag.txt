@@ -1,0 +1,16 @@
+/ParameterlessBindsDuplicateBinding.kt:6:11: error: 
+[Metro/DuplicateBinding] Multiple bindings found for Target
+
+      ParameterlessBindsDuplicateBinding.kt:11:13
+        @Provides fun provideTarget(): Target
+                                       ~~~~~~
+
+      ParameterlessBindsDuplicateBinding.kt:14:1
+        class Target
+              ~~~~~~
+
+  help: the constructor-injected binding for Target is explicitly declared with a parameter-less
+        `@Binds` at ParameterlessBindsDuplicateBinding.kt:9:10
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding

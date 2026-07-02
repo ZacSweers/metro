@@ -4,187 +4,67 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.name.Name
 
-public class ClassIds(
-  customLazyClasses: Set<ClassId> = emptySet(),
-  customProviderClasses: Set<ClassId> = emptySet(),
-  customAssistedAnnotations: Set<ClassId> = emptySet(),
-  customAssistedFactoryAnnotations: Set<ClassId> = emptySet(),
-  customAssistedInjectAnnotations: Set<ClassId> = emptySet(),
-  customBindsAnnotations: Set<ClassId> = emptySet(),
-  customContributesToAnnotations: Set<ClassId> = emptySet(),
-  customContributesBindingAnnotations: Set<ClassId> = emptySet(),
-  internal val customContributesIntoSetAnnotations: Set<ClassId> = emptySet(),
-  customGraphExtensionAnnotations: Set<ClassId> = emptySet(),
-  customGraphExtensionFactoryAnnotations: Set<ClassId> = emptySet(),
-  customElementsIntoSetAnnotations: Set<ClassId> = emptySet(),
-  customGraphAnnotations: Set<ClassId> = emptySet(),
-  customGraphFactoryAnnotations: Set<ClassId> = emptySet(),
-  customInjectAnnotations: Set<ClassId> = emptySet(),
-  customIntoMapAnnotations: Set<ClassId> = emptySet(),
-  customIntoSetAnnotations: Set<ClassId> = emptySet(),
-  customMapKeyAnnotations: Set<ClassId> = emptySet(),
-  customMultibindsAnnotations: Set<ClassId> = emptySet(),
-  customProvidesAnnotations: Set<ClassId> = emptySet(),
-  customQualifierAnnotations: Set<ClassId> = emptySet(),
-  customScopeAnnotations: Set<ClassId> = emptySet(),
-  customBindingContainerAnnotations: Set<ClassId> = emptySet(),
-  customOriginAnnotations: Set<ClassId> = emptySet(),
-  customOptionalBindingAnnotations: Set<ClassId> = emptySet(),
-  private val contributesAsInject: Boolean = false,
-  private val enableFunctionProviders: Boolean = false,
-  private val enableDaggerRuntimeInterop: Boolean = false,
-) {
+public class ClassIds(private val options: MetroOptions = MetroOptions()) {
   public companion object {
-    public fun fromOptions(options: MetroOptions): ClassIds =
-      ClassIds(
-        customProviderClasses = options.customProviderTypes,
-        customLazyClasses = options.customLazyTypes,
-        customAssistedAnnotations = options.customAssistedAnnotations,
-        customAssistedFactoryAnnotations = options.customAssistedFactoryAnnotations,
-        customAssistedInjectAnnotations = options.customAssistedInjectAnnotations,
-        customBindsAnnotations = options.customBindsAnnotations,
-        customContributesToAnnotations = options.customContributesToAnnotations,
-        customContributesBindingAnnotations = options.customContributesBindingAnnotations,
-        customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations,
-        customGraphExtensionAnnotations = options.customGraphExtensionAnnotations,
-        customGraphExtensionFactoryAnnotations = options.customGraphExtensionFactoryAnnotations,
-        customElementsIntoSetAnnotations = options.customElementsIntoSetAnnotations,
-        customGraphAnnotations = options.customGraphAnnotations,
-        customGraphFactoryAnnotations = options.customGraphFactoryAnnotations,
-        customInjectAnnotations = options.customInjectAnnotations,
-        customIntoMapAnnotations = options.customIntoMapAnnotations,
-        customIntoSetAnnotations = options.customIntoSetAnnotations,
-        customMapKeyAnnotations = options.customMapKeyAnnotations,
-        customMultibindsAnnotations = options.customMultibindsAnnotations,
-        customProvidesAnnotations = options.customProvidesAnnotations,
-        customQualifierAnnotations = options.customQualifierAnnotations,
-        customScopeAnnotations = options.customScopeAnnotations,
-        customBindingContainerAnnotations = options.customBindingContainerAnnotations,
-        customOriginAnnotations = options.customOriginAnnotations,
-        customOptionalBindingAnnotations = options.customOptionalBindingAnnotations,
-        contributesAsInject = options.contributesAsInject,
-        enableFunctionProviders = options.enableFunctionProviders,
-        enableDaggerRuntimeInterop = options.enableDaggerRuntimeInterop,
-      )
-  }
-
-  private fun FqName.classIdOf(simpleName: String): ClassId {
-    return classIdOf(Name.identifier(simpleName))
-  }
-
-  private fun FqName.classIdOf(simpleName: Name): ClassId {
-    return ClassId(this, simpleName)
+    public fun fromOptions(options: MetroOptions): ClassIds = ClassIds(options)
   }
 
   // Graphs
-  internal val dependencyGraphAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("DependencyGraph")
-  internal val dependencyGraphAnnotations =
-    setOf(dependencyGraphAnnotation) + customGraphAnnotations
-  internal val dependencyGraphFactoryAnnotations =
-    setOf(dependencyGraphAnnotation.createNestedClassId(Name.identifier("Factory"))) +
-      customGraphFactoryAnnotations
+  internal val dependencyGraphAnnotation = MetroClassIds.dependencyGraph
+  internal val dependencyGraphAnnotations = options.dependencyGraphAnnotations
+  internal val dependencyGraphFactoryAnnotations = options.dependencyGraphFactoryAnnotations
 
   // Assisted inject
-  internal val assistedInjectAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedInject")) +
-      customAssistedInjectAnnotations
-  internal val metroAssisted = Symbols.FqNames.metroRuntimePackage.classIdOf("Assisted")
-  internal val assistedAnnotations = setOf(metroAssisted) + customAssistedAnnotations
-  internal val metroAssistedFactory =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("AssistedFactory")
-  internal val assistedFactoryAnnotations =
-    setOf(metroAssistedFactory) + customAssistedFactoryAnnotations
+  internal val assistedInjectAnnotations = options.assistedInjectAnnotations
+  internal val metroAssisted = MetroClassIds.assisted
+  internal val assistedAnnotations = options.assistedAnnotations
+  internal val metroAssistedFactory = MetroClassIds.assistedFactory
+  internal val assistedFactoryAnnotations = options.assistedFactoryAnnotations
 
-  internal val injectAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Inject")) + customInjectAnnotations
+  internal val injectAnnotations = options.injectAnnotations
 
-  internal val allInjectAnnotations = injectAnnotations + assistedInjectAnnotations
+  internal val allInjectAnnotations = options.allInjectAnnotations
 
-  internal val qualifierAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Qualifier")) + customQualifierAnnotations
-  internal val scopeAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Scope")) + customScopeAnnotations
-  internal val bindingContainerAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("BindingContainer")) +
-      customBindingContainerAnnotations
+  internal val qualifierAnnotations = options.qualifierAnnotations
+  internal val scopeAnnotations = options.scopeAnnotations
+  internal val bindingContainerAnnotations = options.bindingContainerAnnotations
 
-  internal val originAnnotations = setOf(Symbols.ClassIds.metroOrigin) + customOriginAnnotations
+  internal val originAnnotations = options.originAnnotations
 
-  internal val defaultBindingAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("DefaultBinding")
+  internal val defaultBindingAnnotation = MetroClassIds.defaultBinding
 
-  internal val graphPrivateAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("GraphPrivate")
+  internal val graphPrivateAnnotation = MetroClassIds.graphPrivate
 
-  internal val exposeImplBindingAnnotation = Symbols.ClassIds.ExposeImplBinding
+  internal val exposeImplBindingAnnotation = MetroClassIds.exposeImplBinding
 
-  internal val contributionProviderExclusionAnnotations by memoize {
-    buildSet {
-      add(exposeImplBindingAnnotation)
-      addAll(assistedFactoryAnnotations)
-    }
-  }
+  internal val contributionProviderExclusionAnnotations =
+    options.contributionProviderExclusionAnnotations
 
-  internal val optionalBindingAnnotations =
-    setOf(
-      Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalBinding"),
-      // TODO can remove once OptionalDependency is removed
-      Symbols.FqNames.metroRuntimePackage.classIdOf("OptionalDependency"),
-    ) + customOptionalBindingAnnotations
+  internal val optionalBindingAnnotations = options.optionalBindingAnnotations
 
-  internal val bindsAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Binds")) + customBindsAnnotations
+  internal val bindsAnnotations = options.bindsAnnotations
 
-  internal val providesAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Provides")) + customProvidesAnnotations
+  internal val providesAnnotations = options.providesAnnotations
 
   // Multibindings
-  internal val intoSetAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoSet")) + customIntoSetAnnotations
-  internal val elementsIntoSetAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("ElementsIntoSet")) +
-      customElementsIntoSetAnnotations
-  internal val mapKeyAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("MapKey")) + customMapKeyAnnotations
-  internal val intoMapAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("IntoMap")) + customIntoMapAnnotations
-  internal val multibindsAnnotations =
-    setOf(Symbols.FqNames.metroRuntimePackage.classIdOf("Multibinds")) + customMultibindsAnnotations
+  internal val intoSetAnnotations = options.intoSetAnnotations
+  internal val elementsIntoSetAnnotations = options.elementsIntoSetAnnotations
+  internal val mapKeyAnnotations = options.mapKeyAnnotations
+  internal val intoMapAnnotations = options.intoMapAnnotations
+  internal val multibindsAnnotations = options.multibindsAnnotations
 
-  private val contributesToAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesTo")
-  private val contributesBindingAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesBinding")
-  private val contributesIntoSetAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoSet")
-  private val contributesIntoMapAnnotation =
-    Symbols.FqNames.metroRuntimePackage.classIdOf("ContributesIntoMap")
-
-  internal val contributesToAnnotations =
-    setOf(contributesToAnnotation) + customContributesToAnnotations
-  internal val contributesBindingAnnotations =
-    setOf(contributesBindingAnnotation) + customContributesBindingAnnotations
-  internal val contributesIntoSetAnnotations =
-    setOf(contributesIntoSetAnnotation) + customElementsIntoSetAnnotations
-  internal val contributesIntoMapAnnotations =
-    setOf(contributesIntoMapAnnotation) + customIntoMapAnnotations
-  internal val graphExtensionAnnotations =
-    setOf(Symbols.ClassIds.graphExtension) + customGraphExtensionAnnotations
-  internal val graphExtensionFactoryAnnotations =
-    setOf(Symbols.ClassIds.graphExtensionFactory) + customGraphExtensionFactoryAnnotations
+  internal val contributesToAnnotations = options.contributesToAnnotations
+  internal val contributesBindingAnnotations = options.contributesBindingAnnotations
+  internal val contributesIntoSetAnnotations = options.contributesIntoSetAnnotations
+  internal val customContributesIntoSetAnnotations = options.customContributesIntoSetAnnotations
+  internal val contributesIntoMapAnnotations = options.contributesIntoMapAnnotations
+  internal val graphExtensionAnnotations = options.graphExtensionAnnotations
+  internal val graphExtensionFactoryAnnotations = options.graphExtensionFactoryAnnotations
   internal val allGraphExtensionAndFactoryAnnotations =
     graphExtensionAnnotations + graphExtensionFactoryAnnotations
 
-  internal val allContributesAnnotations =
-    contributesToAnnotations +
-      contributesBindingAnnotations +
-      contributesIntoSetAnnotations +
-      contributesIntoMapAnnotations +
-      customContributesIntoSetAnnotations
+  internal val allContributesAnnotations = options.allContributesAnnotations
 
   /**
    * Repeatable annotations in compiled sources behave interestingly. They get an implicit
@@ -204,11 +84,7 @@ public class ClassIds(
     contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
 
   /** All binding-like contributes annotations (everything except `@ContributesTo`). */
-  internal val contributesBindingLikeAnnotations =
-    contributesBindingAnnotations +
-      contributesIntoSetAnnotations +
-      contributesIntoMapAnnotations +
-      customContributesIntoSetAnnotations
+  internal val contributesBindingLikeAnnotations = options.contributesBindingLikeAnnotations
 
   internal val contributesBindingLikeAnnotationsWithContainers =
     contributesBindingLikeAnnotations + contributesBindingLikeAnnotations.toContainerAnnotations()
@@ -232,27 +108,13 @@ public class ClassIds(
    * - The inclusion of @Contributes* annotations can be controlled by the `contributesAsInject`
    *   option.
    */
-  internal val injectLikeAnnotations =
-    if (contributesAsInject) {
-      injectAnnotations +
-        assistedInjectAnnotations +
-        contributesBindingAnnotations +
-        contributesIntoSetAnnotations +
-        contributesIntoMapAnnotations
-    } else {
-      injectAnnotations + assistedInjectAnnotations
-    }
+  internal val injectLikeAnnotations = options.injectLikeAnnotations
 
-  internal val providerTypes = buildSet {
-    add(Symbols.ClassIds.metroProvider)
-    addAll(customProviderClasses)
-    if (enableFunctionProviders) {
-      add(Symbols.ClassIds.function0)
-    }
-  }
+  internal val providerTypes = options.providerTypes
+
   internal val suspendProviderTypes = buildSet {
     add(Symbols.ClassIds.metroSuspendProvider)
-    if (enableFunctionProviders) {
+    if (options.enableFunctionProviders) {
       add(Symbols.ClassIds.suspendFunction0)
     }
   }
@@ -260,37 +122,11 @@ public class ClassIds(
   /** Marker annotation for `@Inject`/`@AssistedInject` classes that consume suspend bindings. */
   internal val metroSuspendAware: ClassId = Symbols.ClassIds.metroSuspendAware
 
-  internal val nonFunctionProviderTypes by memoize { providerTypes - Symbols.ClassIds.function0 }
+  internal val nonFunctionProviderTypes by memoize { providerTypes - MetroClassIds.function0 }
 
-  internal val lazyTypes = setOf(Symbols.ClassIds.Lazy) + customLazyClasses
+  internal val lazyTypes = options.lazyTypes
 
-  internal val includes = setOf(Symbols.ClassIds.metroIncludes)
+  internal val includes = setOf(MetroClassIds.includes)
 
-  internal val allCustomAnnotations = buildSet {
-    addAll(customLazyClasses)
-    addAll(customProviderClasses)
-    addAll(customAssistedAnnotations)
-    addAll(customAssistedFactoryAnnotations)
-    addAll(customAssistedInjectAnnotations)
-    addAll(customBindsAnnotations)
-    addAll(customContributesToAnnotations)
-    addAll(customContributesBindingAnnotations)
-    addAll(customContributesIntoSetAnnotations)
-    addAll(customGraphExtensionAnnotations)
-    addAll(customGraphExtensionFactoryAnnotations)
-    addAll(customElementsIntoSetAnnotations)
-    addAll(customGraphAnnotations)
-    addAll(customGraphFactoryAnnotations)
-    addAll(customInjectAnnotations)
-    addAll(customIntoMapAnnotations)
-    addAll(customIntoSetAnnotations)
-    addAll(customMapKeyAnnotations)
-    addAll(customMultibindsAnnotations)
-    addAll(customProvidesAnnotations)
-    addAll(customQualifierAnnotations)
-    addAll(customScopeAnnotations)
-    addAll(customBindingContainerAnnotations)
-    addAll(customOriginAnnotations)
-    addAll(customOptionalBindingAnnotations)
-  }
+  internal val allCustomAnnotations = options.allCustomClassIds
 }

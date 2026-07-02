@@ -14,9 +14,11 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -76,7 +78,17 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
 
         val mirrorClass =
           declaration.nestedClassOrNull(Symbols.Names.DefaultBindingMirrorClass)
-            ?: return@getOrPut Optional.empty()
+            ?: if (options.generateClassesInIr) {
+              declaration
+                .getOrCreateMetadataVisibleHiddenNestedClass(
+                  name = Symbols.Names.DefaultBindingMirrorClass,
+                  origin = Origins.DefaultBindingMirrorClassDeclaration,
+                  copyTypeParameters = false,
+                )
+                .apply { modality = Modality.ABSTRACT }
+            } else {
+              return@getOrPut Optional.empty()
+            }
 
         val defaultBindingType =
           resolveDefaultBindingType(caller, mirrorClass, defaultBindingAnnotation)
@@ -135,11 +147,11 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
         .addFunction(
           Symbols.Names.defaultBindingFunction.asString(),
           returnType = finalType,
-          modality = Modality.ABSTRACT,
           origin = Origins.Default,
         )
         .apply {
-          qualifier?.let { annotations += it.ir.deepCopyWithSymbols() }
+          body = stubExpressionBody()
+          qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
           // Register as metadata visible
           metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
         }

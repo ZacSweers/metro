@@ -1,1 +1,0 @@
-/DoNotSuggestMovingInjectAnnotationToClassWhenUsingJavaxOrJakartaInject.kt:(285,292): warning: There is only one @Inject-annotated constructor. Consider moving the annotation to the class instead.

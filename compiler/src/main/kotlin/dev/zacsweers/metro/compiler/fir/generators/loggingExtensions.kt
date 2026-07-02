@@ -212,4 +212,12 @@ internal class LoggingFirSupertypeGenerationExtension(
     }
     return additionalSupertypes
   }
+
+  // Forward registerPredicates to the delegate so the wrapped supertype generator's predicates
+  // actually get registered. Without this, predicate-based provider lookups inside the delegate
+  // return empty.
+  override fun FirDeclarationPredicateRegistrar.registerPredicates() {
+    val registrar = this
+    with(delegate) { registrar.registerPredicates() }
+  }
 }

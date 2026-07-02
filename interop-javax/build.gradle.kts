@@ -5,6 +5,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("interop-javax")
+  name.set("Metro Javax Interop")
+}
+
 dependencies {
   api(project(":runtime"))
   api(libs.javaxInject)

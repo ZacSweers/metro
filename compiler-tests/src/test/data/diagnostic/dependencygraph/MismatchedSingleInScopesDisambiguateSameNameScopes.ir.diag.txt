@@ -1,0 +1,11 @@
+/MismatchedSingleInScopesDisambiguateSameNameScopes.kt:17:11: error: 
+[Metro/IncompatiblyScopedBindings] test.graph.ExampleGraph (scopes
+    '@dev.zacsweers.metro.SingleIn(test.graph.AppScope::class)') may not reference bindings from
+    different scopes
+
+  trace (in test.graph.ExampleGraph):
+      MyClass (scoped to '@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)')
+      MyClass is requested at test.graph.ExampleGraph.myClass
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
+

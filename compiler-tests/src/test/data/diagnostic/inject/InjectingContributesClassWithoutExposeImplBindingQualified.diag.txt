@@ -1,0 +1,3 @@
+/InjectingContributesClassWithoutExposeImplBindingQualified.kt:16:44: warning: Directly injecting 'RepositoryImpl' (which has one or more `@Contributes*` annotations) and will not be visible since `generateContributionProviders` is enabled. This is probably a bug! Inject the bound supertype instead, or annotate 'RepositoryImpl' with `@ExposeImplBinding` to expose the underlying binding.
+
+/InjectingContributesClassWithoutExposeImplBindingQualified.kt:21:23: warning: Directly injecting 'RepositoryImpl' (which has one or more `@Contributes*` annotations) and will not be visible since `generateContributionProviders` is enabled. This is probably a bug! Inject the bound supertype instead, or annotate 'RepositoryImpl' with `@ExposeImplBinding` to expose the underlying binding.

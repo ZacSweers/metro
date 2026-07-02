@@ -2,15 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
-import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
+import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -27,6 +38,7 @@ import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.allCallableMembers
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
@@ -44,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.metroGraphOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
+import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInMembersInjector
@@ -51,13 +64,14 @@ import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
-import dev.zacsweers.metro.compiler.ir.renderDiagnostic
+import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.scopeAnnotations
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.BindingContainer
+import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
@@ -105,7 +119,6 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.platform.konan.isNative
 
 internal class GraphNodes(
   metroContext: IrMetroContext,
@@ -264,7 +277,7 @@ internal class GraphNodes(
     }
 
     private fun buildCreator(diagnosticTag: String): GraphNode.Creator? {
-      var bindingContainerFields = BitField()
+      val bindingContainerFields = BitFieldBuilder()
       fun populateBindingContainerFields(parameters: Parameters) {
         for ((i, parameter) in parameters.regularParameters.withIndex()) {
           if (parameter.isIncludes) {
@@ -274,7 +287,7 @@ internal class GraphNodes(
 
             // Check if the parameter is a binding container
             if (parameterClass.isBindingContainer()) {
-              bindingContainerFields = bindingContainerFields.withSet(i)
+              bindingContainerFields.set(i)
             }
           }
         }
@@ -289,7 +302,7 @@ internal class GraphNodes(
             graphDeclaration,
             graphDeclaration.primaryConstructor!!,
             ctorParams,
-            bindingContainerFields,
+            bindingContainerFields.build(),
           )
         } else {
           // TODO since we already check this in FIR can we leave a more specific breadcrumb
@@ -303,7 +316,12 @@ internal class GraphNodes(
               val createFunction = factory.singleAbstractFunction()
               val parameters = createFunction.parameters()
               populateBindingContainerFields(parameters)
-              GraphNode.Creator.Factory(factory, createFunction, parameters, bindingContainerFields)
+              GraphNode.Creator.Factory(
+                factory,
+                createFunction,
+                parameters,
+                bindingContainerFields.build(),
+              )
             }
         }
 
@@ -415,21 +433,28 @@ internal class GraphNodes(
     ) {
       if (bindingStack.entryFor(graphTypeKey) != null) {
         // TODO dagger doesn't appear to error for this case to model off of
-        val message = renderDiagnostic {
+        val title =
           if (bindingStack.entries.size == 1) {
             // If there's just one entry, specify that it's a self-referencing cycle for clarity
-            appendLine(
-              "Graph dependency cycle detected! The below graph ${bold("depends on itself")}."
-            )
+            buildText {
+              append("${DiagnosticHeadlines.GRAPH_DEPENDENCY_CYCLE}: ")
+              append(graphDeclaration.kotlinFqName.asString(), Style.EMPHASIS)
+              append(" depends on itself")
+            }
           } else {
-            appendLine("Graph dependency cycle detected!")
+            textOf(DiagnosticHeadlines.GRAPH_DEPENDENCY_CYCLE)
           }
-          appendBindingStack(bindingStack, short = false)
-        }
+        val diagnostic =
+          MetroDiagnostic(
+            id = MetroDiagnosticId.DEPENDENCY_CYCLE,
+            severity = MetroSeverity.ERROR,
+            title = title,
+            sections = listOfNotNull(bindingStack.toTraceSection()),
+          )
         metroContext.reportCompat(
           graphDeclaration,
-          MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
-          message,
+          diagnostic.id.factory,
+          metroContext.render(diagnostic).padForConsole(),
         )
         // In this case, we exit early as we have a self-cycle in the graph that deferring would
         // just loop
@@ -484,35 +509,138 @@ internal class GraphNodes(
 
     private fun flushQualifierMismatchErrors() {
       if (qualifierMismatches.isEmpty()) return
-      val message =
+      val helpNote =
+        Note.help("match the qualifier annotations on overrides with their overridden declarations")
+      val diagnostic =
         if (qualifierMismatches.size == 1) {
           val e = qualifierMismatches[0]
-          renderDiagnostic {
-            append(
-              "[Metro/QualifierOverrideMismatch] Overridden ${e.type} '${bold(e.declarationFqName)}' must have the same qualifier annotations as the overridden ${e.type}. However, the final ${e.type} qualifier is ${red(e.actualQualifier)} but overridden symbol ${e.overriddenSymbolFqName} has ${green(e.expectedQualifier)}."
-            )
-          }
+          MetroDiagnostic(
+            id = MetroDiagnosticId.QUALIFIER_OVERRIDE_MISMATCH,
+            severity = MetroSeverity.ERROR,
+            title =
+              buildText {
+                append("Overridden ${e.type} ")
+                append(e.declarationFqName, Style.EMPHASIS)
+                append(" must have the same qualifier annotations as the overridden ${e.type}")
+              },
+            sections =
+              listOf(
+                DiagnosticSection.Generic(
+                  buildText {
+                    append("The final ${e.type} qualifier is ")
+                    append(e.actualQualifier, Style.ERROR)
+                    append(" but overridden symbol ${e.overriddenSymbolFqName} has ")
+                    append(e.expectedQualifier, Style.SUCCESS)
+                  }
+                )
+              ),
+            notes = listOf(helpNote),
+          )
         } else {
-          renderDiagnostic {
-            appendLine(
-              "[Metro/QualifierOverrideMismatch] Overridden declarations must have matching qualifier annotations:"
-            )
-            for (e in qualifierMismatches) {
-              appendLine()
-              appendLine("  ${e.type} '${bold(e.declarationFqName)}'")
-              appendLine(
-                "    expected: ${green(e.expectedQualifier)} (from ${e.overriddenSymbolFqName})"
-              )
-              appendLine("    actual:   ${red(e.actualQualifier)}")
-            }
-          }
+          MetroDiagnostic(
+            id = MetroDiagnosticId.QUALIFIER_OVERRIDE_MISMATCH,
+            severity = MetroSeverity.ERROR,
+            title = textOf("Overridden declarations must have matching qualifier annotations"),
+            sections =
+              qualifierMismatches.map { e ->
+                DiagnosticSection.Locations(
+                  header =
+                    buildText {
+                      append("${e.type} ")
+                      append(e.declarationFqName, Style.EMPHASIS)
+                    },
+                  items =
+                    listOf(
+                      LocatedItem(
+                        location = null,
+                        code = null,
+                        description =
+                          buildText {
+                            append("expected: ")
+                            append(e.expectedQualifier, Style.SUCCESS)
+                            append(" (from ${e.overriddenSymbolFqName})")
+                          },
+                      ),
+                      LocatedItem(
+                        location = null,
+                        code = null,
+                        description =
+                          buildText {
+                            append("actual: ")
+                            append(e.actualQualifier, Style.ERROR)
+                          },
+                      ),
+                    ),
+                )
+              },
+            notes = listOf(helpNote),
+          )
         }
       reportCompat(
         sequenceOf(graphDeclaration.sourceGraphIfMetroGraph),
-        MetroDiagnostics.QUALIFIER_OVERRIDE_MISMATCH,
-        message,
+        diagnostic.id.factory,
+        render(diagnostic).padForConsole(),
       )
       qualifierMismatches.clear()
+    }
+
+    private fun isValidBindsCallable(callable: BindsCallable): Boolean {
+      if (callable.source != null) return true
+
+      val targetClass = callable.rawTarget.type.rawTypeOrNull()
+      val hasClassFactory =
+        targetClass != null &&
+          metroDeclarations.findClassFactory(
+            targetClass,
+            previouslyFoundConstructor = null,
+            doNotErrorOnMissing = true,
+          ) != null
+
+      if (hasClassFactory) return true
+
+      val target = callable.rawTarget.render(short = false)
+      val message = buildString {
+        append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+        append("Cannot use parameter-less @Binds for `$target` because the upstream ")
+        appendLine("injected declaration was not processed by Metro.")
+        appendLine()
+        append("Run Metro's compiler for the upstream module.")
+      }
+      reportCompat(
+        callable.function,
+        MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION,
+        message,
+      )
+      hasErrors = true
+      return false
+    }
+
+    private fun addBindsCallable(callable: BindsCallable, isDynamic: Boolean) {
+      if (!isValidBindsCallable(callable)) return
+
+      if (callable.callableMetadata.annotations.isGraphPrivate) {
+        graphPrivateKeys += callable.typeKey
+      }
+
+      val typeKey = callable.typeKey
+      val existingIsDynamic = typeKey in dynamicTypeKeys
+      if (isDynamic) {
+        if (!existingIsDynamic) {
+          bindsCallables[typeKey] = mutableListOf(callable)
+        } else {
+          bindsCallables.getAndAdd(typeKey, callable)
+        }
+        dynamicTypeKeys.getAndAdd(typeKey, callable)
+      } else if (!existingIsDynamic) {
+        bindsCallables.getAndAdd(typeKey, callable)
+      }
+    }
+
+    private fun manageBindingContainer(container: BindingContainer) {
+      linkDeclarationsInCompilation(graphDeclaration, container.ir)
+      if (container.canBeManaged) {
+        managedBindingContainers += container.ir
+      }
     }
 
     context(traceScope: TraceScope)
@@ -551,7 +679,7 @@ internal class GraphNodes(
             // @GraphExtension.Factory marker annotations in one walk (was previously two walks —
             // scopeAnnotations() + isAnnotatedWithAny()).
             var isExtensionFactory = false
-            for (anno in clazz.annotations) {
+            for (anno in clazz.annotationsCompat()) {
               val annoClass = anno.type.classOrNull?.owner ?: continue
               if (!isExtensionFactory) {
                 val annoClassId = annoClass.classId
@@ -594,7 +722,7 @@ internal class GraphNodes(
       if (graphDeclaration.origin.isSyntheticGeneratedGraph) {
         // If it's a contributed/dynamic graph, just add it directly as these are not visible to
         // metadata anyway
-        graphDeclaration.annotations += inheritedScopes
+        graphDeclaration.addAnnotationsCompat(inheritedScopes)
       } else {
         metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
           graphDeclaration,
@@ -624,7 +752,7 @@ internal class GraphNodes(
           //  https://youtrack.jetbrains.com/issue/KT-83666
           val isBindsLike =
             annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
-          val canDeferToDefaultImpl = !isBindsLike || !platform.isNative()
+          val canDeferToDefaultImpl = !isBindsLike || !platform.usesKlib()
 
           when (declaration) {
             is IrSimpleFunction -> {
@@ -733,10 +861,11 @@ internal class GraphNodes(
 
               if (isInjector && !declaration.returnType.isUnit()) {
                 // FIR checks this in explicit graphs but need to account for inherited functions
-                // from
-                // supertypes
+                // from supertypes. This branch is looking at a generated graph-impl override, so
+                // prefer the source graph for diagnostics. The override may have a synthetic
+                // location that is technically reportable but points at the start of the file.
                 reportCompat(
-                  sequenceOf(declaration, graphDeclaration.sourceGraphIfMetroGraph),
+                  sequenceOf(graphDeclaration.sourceGraphIfMetroGraph, declaration),
                   MetroDiagnostics.METRO_ERROR,
                   "Injector function ${declaration.kotlinFqName} must return Unit. Or, if it's not an injector, remove its parameter.",
                 )
@@ -836,7 +965,7 @@ internal class GraphNodes(
                         "this inject function"
                       }
                     metroContext.reportCompat(
-                      originalDeclaration.takeUnless { isExternal } ?: declaration,
+                      originalDeclaration.takeUnless { isExternal } ?: graphDeclaration,
                       MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION,
                       "Injected class '${declaration.regularParameters[0].type.classFqName!!.asString()}' is constructor-injected and can be instantiated by Metro directly, so $middle is unnecessary.",
                     )
@@ -849,8 +978,7 @@ internal class GraphNodes(
                 val contextKey =
                   IrContextualTypeKey.from(declaration, hasDefaultOverride = isOptionalBinding)
                 if (metroFunction.annotations.isBinds) {
-                  // Only needed for native platform workarounds now
-                  if (metroContext.platform.isNative()) {
+                  if (metroContext.platform.usesKlib()) {
                     bindsFunctions += (metroFunction to contextKey)
                   }
                 } else {
@@ -997,8 +1125,7 @@ internal class GraphNodes(
                 hasGraphExtensions = true
               } else {
                 if (metroFunction.annotations.isBinds) {
-                  // Only needed for native platform workarounds now
-                  if (metroContext.platform.isNative()) {
+                  if (metroContext.platform.usesKlib()) {
                     bindsFunctions += (metroFunction to contextKey)
                   }
                 } else {
@@ -1029,12 +1156,12 @@ internal class GraphNodes(
                     val createFunction = factory.singleAbstractFunction()
                     val parameters = createFunction.parameters()
                     // Compute binding container fields similar to buildCreator
-                    var bindingContainerFields = BitField()
+                    val bindingContainerFields = BitFieldBuilder()
                     for ((i, parameter) in parameters.regularParameters.withIndex()) {
                       if (parameter.isIncludes) {
                         val parameterClass = parameter.typeKey.type.classOrNull?.owner ?: continue
                         if (parameterClass.isBindingContainer()) {
-                          bindingContainerFields = bindingContainerFields.withSet(i)
+                          bindingContainerFields.set(i)
                         }
                       }
                     }
@@ -1042,7 +1169,7 @@ internal class GraphNodes(
                         factory,
                         createFunction,
                         parameters,
-                        bindingContainerFields,
+                        bindingContainerFields.build(),
                       )
                       .also { factory.cachedFactoryCreator = it }
                   }
@@ -1112,13 +1239,7 @@ internal class GraphNodes(
         }
       bindingContainers += resolvedContainers
       resolvedBindingContainers += resolvedContainers
-      resolvedContainers.forEach { container ->
-        linkDeclarationsInCompilation(graphDeclaration, container.ir)
-        // Annotation-included containers may need to be managed directly
-        if (container.canBeManaged) {
-          managedBindingContainers += container.ir
-        }
-      }
+      resolvedContainers.forEach(::manageBindingContainer)
 
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
@@ -1147,13 +1268,7 @@ internal class GraphNodes(
               bindingContainers +=
                 containers
                   .mapNotNull { metroDeclarations.findBindingContainer(it) }
-                  .onEach { container ->
-                    linkDeclarationsInCompilation(graphDeclaration, container.ir)
-                    // Annotation-included containers may need to be managed directly
-                    if (container.canBeManaged) {
-                      managedBindingContainers += container.ir
-                    }
-                  }
+                  .onEach(::manageBindingContainer)
             }
         }
       } else {
@@ -1169,6 +1284,7 @@ internal class GraphNodes(
             if (it in resolvedBindingContainers) null else it.ir
           }
           val newlyResolved = bindingContainerResolver.resolve(unresolvedRoots)
+          newlyResolved.forEach(::manageBindingContainer)
           resolvedBindingContainers + newlyResolved
         }
 
@@ -1199,25 +1315,7 @@ internal class GraphNodes(
 
           container.bindsMirror?.let { bindsMirror ->
             for (callable in bindsMirror.bindsCallables) {
-              if (callable.callableMetadata.annotations.isGraphPrivate) {
-                graphPrivateKeys += callable.typeKey
-              }
-              val typeKey = callable.typeKey
-              // Dynamic containers should override non-dynamic ones with the same typeKey
-              val existingIsDynamic = typeKey in dynamicTypeKeys
-              if (isDynamicContainer) {
-                if (!existingIsDynamic) {
-                  // Dynamic overrides non-dynamic, clear existing and add new
-                  bindsCallables[typeKey] = mutableListOf(callable)
-                } else {
-                  // Both are dynamic, add to list for duplicate detection
-                  bindsCallables.getAndAdd(typeKey, callable)
-                }
-                dynamicTypeKeys.getAndAdd(typeKey, callable)
-              } else if (!existingIsDynamic) {
-                // Neither is dynamic, add to list for duplicate detection
-                bindsCallables.getAndAdd(typeKey, callable)
-              }
+              addBindsCallable(callable, isDynamic = isDynamicContainer)
             }
             for (callable in bindsMirror.multibindsCallables) {
               if (callable.callableMetadata.annotations.isGraphPrivate) {
@@ -1379,7 +1477,7 @@ internal class GraphNodes(
 
             bindingContainer.bindsMirror?.let { bindsMirror ->
               for (callable in bindsMirror.bindsCallables) {
-                bindsCallables.getAndAdd(callable.typeKey, callable)
+                addBindsCallable(callable, isDynamic = false)
               }
               multibindsCallables += bindsMirror.multibindsCallables
               for (callable in bindsMirror.optionalKeys) {
@@ -1452,8 +1550,11 @@ private fun computePublishedBindsKeys(
   return buildSet {
     for ((_, callables) in bindsCallables) {
       val callable = callables.firstOrNull() ?: continue
+      val source = callable.source
       if (
-        !callable.callableMetadata.annotations.isGraphPrivate && callable.source in graphPrivateKeys
+        !callable.callableMetadata.annotations.isGraphPrivate &&
+          source != null &&
+          source in graphPrivateKeys
       ) {
         add(callable.typeKey)
       }

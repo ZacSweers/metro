@@ -1,0 +1,18 @@
+/ParameterlessBindsConstructorCycle.kt:6:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing AppGraph
+
+  cycle:
+      +-> Dependency -> Target --+
+      +--------------------------+
+
+  trace (in AppGraph):
+      Dependency is injected at Target(…, dependency)
+      Target is injected at Dependency(…, target)
+      Dependency is injected at Target(…, dependency)
+      ...
+
+  help: the constructor-injected binding for Target is explicitly declared with a parameter-less
+        `@Binds` at ParameterlessBindsConstructorCycle.kt:9:10
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Dependency` or
+        `Lazy<Dependency>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

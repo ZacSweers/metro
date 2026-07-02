@@ -1,0 +1,71 @@
+interface IntProvider {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 55, endOffset = 141, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: IntProvider = instance
+    private /* final field */ val stringValue: Provider<String?> = stringValue
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: IntProvider, stringValue: Provider<String?> = provider<String?>(provider = local fun <anonymous>(): String? {
+        return null
+      }
+)): ProvideIntMetroFactory {
+        return ProvideIntMetroFactory(instance = instance, stringValue = stringValue)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt(instance: IntProvider, stringValue: String? = null): Int {
+        return instance.provideInt(stringValue = stringValue)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: IntProvider, stringValue: Provider<String?>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(stringValue: String? = error(message = "Never called")): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideInt(stringValue: String? = null): Int {
+    return { // BLOCK
+      val tmp1_elvis_lhs: Int? = { // BLOCK
+        val tmp0_safe_receiver: String? = stringValue
+        when {
+          EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+          else -> toInt(/* <this> = tmp0_safe_receiver /*as String */ */)
+        }
+      }
+      when {
+        EQEQ(arg0 = tmp1_elvis_lhs, arg1 = null) -> 0
+        else -> tmp1_elvis_lhs
+      }
+    }
+  }
+
+}
+

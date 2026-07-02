@@ -1,0 +1,3 @@
+/main.kt:19:10: error: [Metro/UnprocessedUpstreamDeclaration] Cannot use parameter-less @Binds for `ExternalTarget` because the upstream injected declaration was not processed by Metro.
+
+Run Metro's compiler for the upstream module.

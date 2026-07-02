@@ -2,21 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
+import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
+
 /**
- * Interface for reporting errors from binding graph validation. Implementations collect errors and
- * flush them as batched diagnostics.
+ * Interface for reporting structured diagnostics from binding graph validation. Implementations
+ * collect diagnostics and flush them as batched reports.
  */
 internal interface ErrorReporter<BindingStack : BaseBindingStack<*, *, *, *, BindingStack>> {
-  /** Records a non-fatal error. Processing continues after this call. */
-  fun report(kind: BindingGraphDiagnosticKind, message: String, stack: BindingStack)
+  /** Records a non-fatal diagnostic. Processing continues after this call. */
+  fun report(diagnostic: MetroDiagnostic, stack: BindingStack)
 
   /**
-   * Records a fatal error and halts processing. Implementations should call [report], [flush], then
-   * throw.
+   * Records a fatal diagnostic and halts processing. Implementations should call [report], [flush],
+   * then throw.
    */
-  fun reportFatal(kind: BindingGraphDiagnosticKind, message: String, stack: BindingStack): Nothing
+  fun reportFatal(diagnostic: MetroDiagnostic, stack: BindingStack): Nothing
 
-  /** Flushes all collected errors, batching messages that target the same diagnostic slot. */
+  /** Flushes all collected diagnostics, batching messages that target the same diagnostic slot. */
   fun flush()
 
   companion object {
@@ -24,17 +28,13 @@ internal interface ErrorReporter<BindingStack : BaseBindingStack<*, *, *, *, Bin
     fun <BindingStack : BaseBindingStack<*, *, *, *, BindingStack>> throwing():
       ErrorReporter<BindingStack> =
       object : ErrorReporter<BindingStack> {
-        override fun report(
-          kind: BindingGraphDiagnosticKind,
-          message: String,
-          stack: BindingStack,
-        ) = error(message)
+        private val renderer = DiagnosticRenderer(RenderProfile.PLAIN)
 
-        override fun reportFatal(
-          kind: BindingGraphDiagnosticKind,
-          message: String,
-          stack: BindingStack,
-        ): Nothing = error(message)
+        override fun report(diagnostic: MetroDiagnostic, stack: BindingStack) =
+          error(renderer.render(diagnostic))
+
+        override fun reportFatal(diagnostic: MetroDiagnostic, stack: BindingStack): Nothing =
+          error(renderer.render(diagnostic))
 
         override fun flush() {}
       }

@@ -19,12 +19,7 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 @Suppress("UNCHECKED_CAST")
 private val NoIrCompilationErrorsHandler =
-  listOf(
-      // 2.3.0 name
-      "NoIrCompilationErrorsHandler",
-      // 2.2.20 name
-      "NoFir2IrCompilationErrorsHandler",
-    )
+  listOf("NoIrCompilationErrorsHandler")
     .firstNotNullOf {
       try {
         Class.forName("org.jetbrains.kotlin.test.backend.handlers.$it")
@@ -88,6 +83,19 @@ open class AbstractContributionProvidersBoxTest : AbstractBoxTest() {
         +MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR
 
         MetroDirectives.GENERATE_CONTRIBUTION_PROVIDERS.with(true)
+      }
+    }
+  }
+}
+
+open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) {
+      defaultDirectives {
+        MetroDirectives.MIN_COMPILER_VERSION.with("2.4.20-dev-6138")
+        MetroDirectives.GENERATE_CLASSES_IN_IR.with(true)
       }
     }
   }

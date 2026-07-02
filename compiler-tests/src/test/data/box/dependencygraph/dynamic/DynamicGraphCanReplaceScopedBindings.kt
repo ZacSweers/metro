@@ -32,7 +32,7 @@ interface ActivityGraph {
 // MODULE: main(lib)
 @BindingContainer
 object TestBindingContainer {
-  @Provides @SingleIn(AppScope::class) @JvmStatic fun httpClient(): HttpClient = HttpClient("fake")
+  @Provides @SingleIn(AppScope::class) fun httpClient(): HttpClient = HttpClient("fake")
 }
 
 fun box(): String {

@@ -1,5 +1,0 @@
-/AssistedTypesCannotBeProvidedWithoutQualifiers.kt:(262,266): error: 'Taco' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
-
-(Hint)
-It looks like the @AssistedFactory for 'Taco' may be 'Taco.Factory'.
-

@@ -1,0 +1,16 @@
+/ExampleGraph.kt:31:11: error: 
+[Metro/MissingBinding] No binding found for @Named("qualified") Dependency
+
+  ExampleClass -> @Named("qualified") Dependency
+
+  trace (in ExampleGraph):
+      @Named("qualified") Dependency is injected at ExampleClass.qualified
+      ExampleClass is injected at ExampleGraph.inject()
+
+  similar bindings:
+      - Dependency (Different qualifier. Type: Alias) - DependencyImpl.kt:25:1
+
+  help: ensure @Named("qualified") Dependency has an @Inject constructor or is provided by an
+        @Provides or @Binds declaration visible to ExampleGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

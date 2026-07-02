@@ -42,6 +42,40 @@ If adopting Metro into an existing codebase, you can use a few different strateg
     }
     ```
 
+    If your Dagger codebase also uses Hilt, use `includeHilt()` instead of `includeDagger()` in
+    Metro modules that should consume Hilt declarations. This also enables Dagger interop.
+
+    ```kotlin
+    metro {
+      interop {
+        includeHilt()
+      }
+    }
+    ```
+
+    With this enabled, Metro treats Hilt's component target as an aggregation scope:
+
+    - `@InstallIn(<component>::class) @Module` classes are merged as binding containers.
+    - `@InstallIn(<component>::class) @EntryPoint` interfaces are merged as graph supertypes.
+    - Standard Hilt components map to their canonical scopes, such as
+      `SingletonComponent` to `@Singleton`.
+    - Custom `@DefineComponent` interfaces are mapped from the scope annotation on the component
+      interface.
+
+    This lets you keep Hilt modules and entry points in place while introducing Metro graphs. Hilt
+    scoped bindings still use their concrete scope annotations, so a Metro graph that consumes
+    scoped Hilt bindings should carry both the aggregation key and the concrete scope annotation:
+
+    ```kotlin
+    @Singleton
+    @DependencyGraph(Singleton::class)
+    interface AppGraph
+    ```
+
+    Metro does not consume Hilt's generated component tree from `@HiltAndroidApp`; it merges the
+    Hilt declarations into Metro graphs directly. See [Hilt interop](interop.md#hilt) for the full
+    mapping and current limitations.
+
     Most things will Just Work™, but you will still possibly need to do some manual migrations.
 
     - If you use `KClass` and `Class` interchangeably in your graph, Metro distinguishes between these by default. You can temporarily enable interop via `enableKClassToClassMapKeyInterop` (with some runtime overhead caveats, see the docs), or you'll need to move fully over to `KClass`.

@@ -62,10 +62,6 @@ theme:
   # - https://squidfunk.github.io/mkdocs-material/customization/
   custom_dir: 'docs/site-assets/overrides'
 
-hooks:
-  # Hook to fix view & edit links for files copied into docs/ from other locations in the repo
-  - scripts/mkdocs_hook_fix_view_edit_uri.py
-
 plugins:
   # Social plugin for delightful card previews on social media
   # https://squidfunk.github.io/mkdocs-material/plugins/social/
@@ -145,6 +141,7 @@ nav:
       - 'Aggregation (aka "Anvil")': aggregation.md
       - 'Multiplatform': multiplatform.md
       - 'Validation & Error Reporting': validation-and-error-reporting.md
+      - 'Diagnostics Reference': diagnostics.md
       - 'Interop': interop.md
       - 'Generating Custom Metro Code': generating-metro-code.md
       - 'Circuit': circuit.md

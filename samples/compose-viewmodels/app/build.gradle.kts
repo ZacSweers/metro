@@ -1,9 +1,7 @@
 // Copyright (C) 2025 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-
 plugins {
-  alias(libs.plugins.android.application)
+  alias(libs.plugins.android.kmp)
   alias(libs.plugins.kotlin.multiplatform)
   alias(libs.plugins.kotlin.plugin.compose)
   alias(libs.plugins.kotlin.plugin.serialization)
@@ -12,11 +10,8 @@ plugins {
 }
 
 kotlin {
-  androidTarget()
-  jvm {
-    @OptIn(ExperimentalKotlinGradlePluginApi::class)
-    mainRun { mainClass = "dev.zacsweers.metro.sample.composeviewmodels.app.MainKt" }
-  }
+  android { namespace = "dev.zacsweers.metro.sample.composeviewmodels" }
+  jvm()
 
   sourceSets {
     commonMain {
@@ -51,16 +46,4 @@ kotlin {
       }
     }
   }
-}
-
-android {
-  namespace = "dev.zacsweers.metro.sample.composeviewmodels"
-
-  defaultConfig {
-    applicationId = "dev.zacsweers.metro.sample.composeviewmodels"
-    versionCode = 1
-    versionName = "1.0"
-  }
-
-  buildTypes { release { isMinifyEnabled = false } }
 }

@@ -6,6 +6,6 @@ interface AppGraph {
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertEquals("AppGraph.Impl2", graph::class.qualifiedName)
+  assertEquals("Impl2", graph::class.simpleName)
   return "OK"
 }

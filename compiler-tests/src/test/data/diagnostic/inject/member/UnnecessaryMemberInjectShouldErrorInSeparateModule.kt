@@ -14,8 +14,7 @@ class DemoClass {
 }
 
 // MODULE: main(lib)
-<!SUSPICIOUS_MEMBER_INJECT_FUNCTION!>@DependencyGraph(AppScope::class)
-interface AppGraph : AppGraphInterface {
+@DependencyGraph(AppScope::class)
+interface <!SUSPICIOUS_MEMBER_INJECT_FUNCTION!>AppGraph<!> : AppGraphInterface {
   @Provides fun provideString(): String = "Demo"
-}<!>
-
+}

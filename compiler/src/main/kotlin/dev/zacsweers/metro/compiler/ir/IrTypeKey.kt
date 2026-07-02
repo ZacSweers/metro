@@ -26,12 +26,8 @@ private constructor(
 
   val classId by memoize { type.rawTypeOrNull()?.classId }
 
-  private val cachedRender by memoize { render(short = false, includeQualifier = true) }
-  private val cachedHashCode by memoize {
-    var result = type.hashCode()
-    result = 31 * result + (qualifier?.hashCode() ?: 0)
-    result
-  }
+  private var cachedRender: String? = null
+  private var cachedHashCode: Int = 0
 
   val hasTypeArgs: Boolean
     get() = type is IrSimpleType && type.arguments.isNotEmpty()
@@ -70,13 +66,23 @@ private constructor(
     originalType: IrType = this.originalType,
   ): IrTypeKey = IrTypeKey(type, qualifier, multibindingKeyData, originalType)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String =
-    renderForDiagnostic(short, includeQualifier, false)
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String =
+    renderForDiagnostic(
+      short = short,
+      includeQualifier = includeQualifier,
+      useOriginalQualifier = false,
+      useRelativeClassNames = useRelativeClassNames,
+    )
 
   fun renderForDiagnostic(
     short: Boolean,
     includeQualifier: Boolean = true,
     useOriginalQualifier: Boolean = includeQualifier,
+    useRelativeClassNames: Boolean = false,
   ): String = buildString {
     if (includeQualifier) {
       var qualifierToRender = qualifier
@@ -86,22 +92,28 @@ private constructor(
         multibindingKeyData?.multibindingTypeKey?.let { qualifierToRender = it.qualifier }
       }
       qualifierToRender?.let {
-        append(it.render(short))
+        append(it.render(short, useRelativeClassNames = useRelativeClassNames))
         append(" ")
       }
     }
-    type.renderTo(this, short)
+    type.renderTo(this, short, useRelativeClassNames = useRelativeClassNames)
   }
 
-  override fun toString(): String = cachedRender
+  override fun toString(): String {
+    var result = cachedRender
+    if (result == null) {
+      result = render(short = false, includeQualifier = true)
+      cachedRender = result
+    }
+    return result
+  }
 
   // Optimized comparison that just uses natural sorting based on the cached render
   override fun compareTo(other: IrTypeKey): Int {
     if (this === other) return 0
-    return cachedRender.compareTo(other.cachedRender)
+    return toString().compareTo(other.toString())
   }
 
-  // Optimized equals: Fast-fail with hashCode, authoritative check with cachedRender
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -109,14 +121,23 @@ private constructor(
     other as IrTypeKey
 
     // Fast fail: If hash codes differ, they are definitely not equal
-    if (cachedHashCode != other.cachedHashCode) return false
+    if (hashCode() != other.hashCode()) return false
 
-    // Slow(er) authoritative check
-    return cachedRender == other.cachedRender
+    // Structural compare. Both `IrType` and `IrAnnotation` provide structural equals/hashCode, so
+    // this avoids materializing/comparing the diagnostic render string on every map operation.
+    return type == other.type && qualifier == other.qualifier
   }
 
   // Optimized hashCode that uses a cached hashCode
-  override fun hashCode() = cachedHashCode
+  override fun hashCode(): Int {
+    var h = cachedHashCode
+    if (h == 0) {
+      h = type.hashCode()
+      h = 31 * h + (qualifier?.hashCode() ?: 0)
+      cachedHashCode = h
+    }
+    return h
+  }
 
   data class MultibindingKeyData(
     /**

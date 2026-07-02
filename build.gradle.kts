@@ -5,9 +5,9 @@ import kotlinx.validation.ExperimentalBCVApi
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
   alias(libs.plugins.kotlin.multiplatform) apply false
-  alias(libs.plugins.kotlin.android) apply false
   alias(libs.plugins.android.library) apply false
   alias(libs.plugins.android.lint) apply false
+  alias(libs.plugins.android.kmp) apply false
   alias(libs.plugins.dokka)
   alias(libs.plugins.ksp) apply false
   alias(libs.plugins.mavenPublish) apply false
@@ -39,6 +39,7 @@ if (file(".git").exists()) {
 apiValidation {
   ignoredProjects += buildList {
     add("compiler")
+    add("metro-common")
     add("compiler-tests")
     add("compiler-compat")
     layout.projectDirectory.dir("compiler-compat").asFile.listFiles()!!.forEach {
@@ -53,6 +54,7 @@ apiValidation {
       "dev.zacsweers.metro.compiler.compat",
       "dev.zacsweers.metro.interop.dagger.internal",
       "dev.zacsweers.metro.interop.guice.internal",
+      "dev.zacsweers.metro.trace.internal",
     )
   nonPublicMarkers +=
     listOf(
@@ -91,6 +93,7 @@ dependencies {
   dokka(project(":interop-guice"))
   dokka(project(":interop-jakarta"))
   dokka(project(":interop-javax"))
+  dokka(project(":metro-trace"))
   dokka(project(":metrox-android"))
   dokka(project(":metrox-viewmodel"))
   dokka(project(":metrox-viewmodel-compose"))

@@ -145,11 +145,14 @@ For example:
 Standard semantic version comparison would incorrectly say `2.3.20-dev-7791 < 2.3.20-Beta1` (because dev < BETA in maturity ordering), potentially selecting the wrong factory.
 
 The resolution logic handles this by:
-1. If the current version is a dev build, first look for dev track factories only
-2. Compare only within the dev track (by build number)
-3. If no dev factory matches, fall back to non-dev factories
+1. If the current version is a dev build, first look for dev track factories with the same base
+   version (the same trunk lineage), comparing by build number
+2. If none match, cross base versions: lower-base dev factories and non-dev factories compete,
+   and the highest minVersion wins (e.g. a `2.4.0` stable factory outranks `2.4.0-dev-2124`)
 
-This ensures dev builds use dev-specific factories when available, and Beta/RC/Stable versions never accidentally use dev factories.
+This ensures dev builds use same-lineage dev factories when available, don't regress to stale
+lower-base dev factories when a newer stable factory exists, and Beta/RC/Stable versions never
+accidentally use dev factories.
 
 ## Development Notes
 

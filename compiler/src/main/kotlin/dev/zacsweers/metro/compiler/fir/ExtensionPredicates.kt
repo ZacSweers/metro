@@ -24,6 +24,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
     annotated(classIds.bindingContainerAnnotations.asFqNames())
   internal val originPredicate = annotated(classIds.originAnnotations.asFqNames())
   internal val dependencyGraphPredicate = annotated(classIds.dependencyGraphAnnotations.asFqNames())
+  internal val graphExtensionPredicate = annotated(classIds.graphExtensionAnnotations.asFqNames())
   internal val graphExtensionFactoryPredicate =
     annotated(classIds.graphExtensionFactoryAnnotations.asFqNames())
 
@@ -68,4 +69,7 @@ internal class ExtensionPredicates(private val classIds: ClassIds) {
 
   internal val defaultBindingAnnotationPredicate =
     annotated(classIds.defaultBindingAnnotation.asSingleFqName())
+
+  internal val mergeContributionsInIrPredicate =
+    annotated(Symbols.ClassIds.mergeContributionsInIr.asSingleFqName())
 }

@@ -1,0 +1,2 @@
+/file1.kt:20:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.
+/file2.kt:31:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.

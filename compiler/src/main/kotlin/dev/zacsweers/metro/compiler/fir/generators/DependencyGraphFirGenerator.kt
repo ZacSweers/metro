@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isInterface
+import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
@@ -196,7 +197,7 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
     classSymbol: FirClassSymbol<*>,
     context: NestedClassGenerationContext,
   ): Set<Name> {
-    if (classSymbol.isLocalCompat) return emptySet()
+    if (classSymbol.isLocal) return emptySet()
     val names = mutableSetOf<Name>()
     if (classSymbol.isDependencyGraph(session)) {
       log("Found graph ${classSymbol.classId}")
@@ -211,10 +212,12 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         }
       }
 
-      val classId =
-        classSymbol.classId.createNestedClassId(nameAllocator.newName(Symbols.Names.Impl))
-      graphImpls += classId
-      names += classId.shortClassName
+      if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+        val classId =
+          classSymbol.classId.createNestedClassId(nameAllocator.newName(Symbols.Names.Impl))
+        graphImpls += classId
+        names += classId.shortClassName
+      }
 
       if (!hasCompanion) {
         // Generate a companion for us to generate these functions on to
@@ -222,11 +225,13 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
       }
     } else if (classSymbol.isGraphFactory(session)) {
       log("Found graph factory ${classSymbol.classId}")
-      val classId = classSymbol.classId.createNestedClassId(Symbols.Names.Impl)
-      factoryImpls += classId
-      // Always generate this impl though we may not use it. It's just easier to do it this way in
-      // FIR unfortunately due to lifecycles
-      names += classId.shortClassName
+      if (!session.metroFirBuiltIns.options.generateClassesInIr) {
+        val classId = classSymbol.classId.createNestedClassId(Symbols.Names.Impl)
+        factoryImpls += classId
+        // Always generate this impl though we may not use it. It's just easier to do it this way in
+        // FIR unfortunately due to lifecycles
+        names += classId.shortClassName
+      }
     }
 
     if (names.isNotEmpty()) {

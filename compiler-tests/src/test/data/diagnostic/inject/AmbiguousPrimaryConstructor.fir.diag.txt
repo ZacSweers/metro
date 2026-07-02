@@ -1,1 +1,0 @@
-/AmbiguousPrimaryConstructor.kt:(76,90): error: Class 'AccountManager' is annotated with an @Inject-like annotation but does not have a primary constructor. It does have one or more secondary instructions. Did you mean to annotate one of them with @Inject instead?

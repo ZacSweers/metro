@@ -1,0 +1,5 @@
+/DesugaredProviderWarning.kt:12:18: warning: Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.
+
+/DesugaredProviderWarning.kt:14:23: warning: Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.
+
+/DesugaredProviderWarning.kt:20:20: warning: Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.

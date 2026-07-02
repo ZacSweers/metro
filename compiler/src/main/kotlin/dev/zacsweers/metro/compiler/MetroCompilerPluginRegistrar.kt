@@ -8,10 +8,10 @@ import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
 import dev.zacsweers.metro.compiler.fir.MetroFirExtensionRegistrar
 import dev.zacsweers.metro.compiler.ir.MetroIrGenerationExtension
+import dev.zacsweers.metro.compiler.tracing.TraceContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer.PLAIN_FULL_PATHS
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -77,12 +77,12 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     val classIds = ClassIds.fromOptions(options)
 
-    val realMessageCollector = configuration.messageCollector
+    val realMessageCollector = with(compatContext) { configuration.messageCollectorCompat() }
     val messageCollector =
       if (options.debug) {
         DebugMessageCollector(realMessageCollector)
       } else {
-        configuration.messageCollector
+        realMessageCollector
       }
 
     if (options.debug) {
@@ -117,6 +117,14 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
+    memoizeThreadSafetyMode =
+      if (options.parallelThreads > 0) {
+        LazyThreadSafetyMode.PUBLICATION
+      } else {
+        LazyThreadSafetyMode.NONE
+      }
+
     if (version != null) {
       val valid =
         options.validate(version, configuration) { error ->
@@ -125,41 +133,46 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       if (!valid) return
     }
 
+    val traceContext = TraceContext(options)
+
     with(compatContext) {
       registerFirExtensionCompat(
-        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext)
+        MetroFirExtensionRegistrar(classIds, options, isIde, compatContext, traceContext)
       )
     }
 
     if (!isIde) {
-      val lookupTracker = configuration.get(CommonConfigurationKeys.LOOKUP_TRACKER)
+      val lookupTracker = configuration[CommonConfigurationKeys.LOOKUP_TRACKER]
       val expectActualTracker: ExpectActualTracker =
-        configuration.get(
-          CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER,
-          ExpectActualTracker.DoNothing,
-        )
+        configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]
       with(compatContext) {
         // Register Circuit IR extension if enabled first
         if (options.enableCircuitCodegen) {
-          registerIrExtensionCompat(CircuitIrExtension(compatContext))
+          registerIrExtensionCompat(
+            CircuitIrExtension(
+              generateClassesInIr = options.generateClassesInIr,
+              assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
+              injectAnnotations = classIds.allInjectAnnotations,
+              qualifierAnnotations = classIds.qualifierAnnotations,
+              compatContext = compatContext,
+            )
+          )
         }
         registerIrExtensionCompat(
           MetroIrGenerationExtension(
-            messageCollector = configuration.messageCollector,
+            messageCollector = messageCollector,
             classIds = classIds,
             options = options,
             lookupTracker = lookupTracker,
             expectActualTracker = expectActualTracker,
             compatContext = compatContext,
+            traceContext = traceContext,
           )
         )
       }
     }
   }
 }
-
-internal val CompilerConfiguration.messageCollector: MessageCollector
-  get() = get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
 
 private class DebugMessageCollector(private val delegate: MessageCollector) : MessageCollector {
   override fun clear() {
@@ -171,8 +184,15 @@ private class DebugMessageCollector(private val delegate: MessageCollector) : Me
     message: String,
     location: CompilerMessageSourceLocation?,
   ) {
-    println(PLAIN_FULL_PATHS.render(severity, message, location))
-    println("${severity.presentableName}: $message")
+    // Render manually rather than with MessageRenderer, which is a CLI-only class that IDE
+    // kotlinc distributions don't ship.
+    val renderedLocation = location?.let { " ($it)" }.orEmpty()
+    val message = "${severity.presentableName}: $message$renderedLocation"
+    if (severity.isError) {
+      System.err.println(message)
+    } else {
+      println(message)
+    }
     delegate.report(severity, message, location)
   }
 

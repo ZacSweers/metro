@@ -1,1 +1,0 @@
-/PresenterFunctionImplicitReturnType.kt:(539,552): error: @CircuitInject presenter functions must have an explicit CircuitUiState subtype return type and cannot be implicit.

@@ -1,0 +1,7 @@
+/main.kt:29:7: error: [Metro/UnprocessedUpstreamDeclaration] Cannot generate a members injector for Leaf because Metro found inherited member-injection state, but the upstream declaration was not processed by Metro.
+
+Metro can read inherited member injections across modules only when Metro processed the upstream declaration. Dagger interop can also use Dagger-generated `_MembersInjector` classes.
+
+Run Metro's compiler for the upstream module. If Dagger owns that upstream declaration instead, run Dagger's compiler there.
+
+Expected 2 member-injection parameters from generated injector fields, but only reconstructed 1.

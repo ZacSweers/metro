@@ -36,6 +36,14 @@ class SetFactoryTest {
     assertEquals(setOf(2, 12, 24, 25, 34, 35), factory())
   }
 
+  @Test
+  fun singletonInvokesProviderEveryTime() {
+    val factory: Factory<Set<Int>> = SetFactory.singleton(incrementingIntProvider(0))
+    assertEquals(setOf(0), factory())
+    assertEquals(setOf(1), factory())
+    assertEquals(setOf(2), factory())
+  }
+
   companion object {
     private fun incrementingIntProvider(seed: Int): Provider<Int> {
       val value = SimpleCounter(seed)

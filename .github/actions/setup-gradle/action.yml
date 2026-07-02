@@ -13,8 +13,12 @@ inputs:
     description: 'Whether to set up konan cache'
     required: false
     default: 'false'
-  konan-cache-prefix:
-    description: 'Extra prefix segment for konan cache key (e.g. matrix.kotlin-compiler)'
+  kotlin-compiler-version:
+    description: |
+      Kotlin compiler version this run targets (e.g. matrix.kotlin-compiler from
+      version-aliases.txt). Used directly as the per-version segment of the konan klib cache key
+      so each Kotlin version owns its own `kotlin-native-prebuilt-*` distribution. Leave empty
+      when the caller uses the default Kotlin from libs.versions.toml.
     required: false
     default: ''
 
@@ -39,26 +43,40 @@ runs:
           wrapper/dists
 
     - name: Cache Gradle wrapper
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.gradle/wrapper/dists
         key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
 
-    - name: Cache konan
+    # ~/.konan/ has two top-level layers with different cache lifetimes:
+    #
+    #  1. `dependencies/` — toolchain bits (LLVM, sysroots, gcc cross-compile dirs). Versioned by
+    #     the dep itself (e.g. `x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-...`), additive
+    #     across Kotlin versions, large. Cached once per OS with a static key — bump the `-v1`
+    #     suffix if K/N ever restructures this directory in a backward-incompatible way.
+    #
+    #  2. `kotlin-native-prebuilt-<os>-<arch>-<version>/` — the per-Kotlin-version compiler
+    #     distribution + bundled klibs. Cached with the explicit `kotlin-compiler-version` input as
+    #     the discriminator, so each matrix entry owns its own prebuilt.
+    #
+    # `~/.konan/cache/` (K/N's incremental compile cache) is also kept on the per-version key —
+    # its contents depend on the Kotlin version's compiler output. It may not exist on cold runs;
+    # actions/cache silently ignores missing paths.
+    - name: Cache konan toolchain (shared)
       if: inputs.konan == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
+      with:
+        path: ~/.konan/dependencies
+        key: ${{ runner.os }}-konan-deps-v1
+
+    - name: Cache konan klibs (per Kotlin version)
+      if: inputs.konan == 'true'
+      uses: actions/cache@v6
       with:
         path: |
           ~/.konan/cache
-          ~/.konan/dependencies
-          ~/.konan/kotlin-native-macos*
-          ~/.konan/kotlin-native-mingw*
-          ~/.konan/kotlin-native-windows*
-          ~/.konan/kotlin-native-linux*
+          ~/.konan/kotlin-native-prebuilt-linux*
           ~/.konan/kotlin-native-prebuilt-macos*
           ~/.konan/kotlin-native-prebuilt-mingw*
           ~/.konan/kotlin-native-prebuilt-windows*
-          ~/.konan/kotlin-native-prebuilt-linux*
-        key: ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-${{ hashFiles('**/*.gradle*') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ inputs.konan-cache-prefix && format('{0}-', inputs.konan-cache-prefix) || '' }}konan-
+        key: ${{ runner.os }}-konan-klibs-${{ inputs.kotlin-compiler-version || 'default' }}

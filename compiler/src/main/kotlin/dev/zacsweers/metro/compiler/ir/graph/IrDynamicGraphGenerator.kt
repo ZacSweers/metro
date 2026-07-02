@@ -6,6 +6,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.hashSuffix
 import dev.zacsweers.metro.compiler.ir.GraphToProcess
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
@@ -21,17 +22,16 @@ import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.transformers.TransformerContextAccess
 import dev.zacsweers.metro.compiler.mapToSet
-import dev.zacsweers.metro.compiler.md5base64
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationContainer
+import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.name.ClassId
@@ -52,7 +52,14 @@ internal class IrDynamicGraphGenerator(
     }
   private val generatedClassesCache = mutableMapOf<CacheKey, IrClass>()
 
-  private data class CacheKey(val targetGraphClassId: ClassId, val containerKeys: Set<IrTypeKey>)
+  // callerFile keys the cache so call sites in different files/packages don't share an impl and end
+  // up referencing another file's package-private nested class.
+  // https://github.com/ZacSweers/metro/issues/2324
+  private data class CacheKey(
+    val targetGraphClassId: ClassId,
+    val containerKeys: Set<IrTypeKey>,
+    val callerFile: IrFile,
+  )
 
   context(traceScope: TraceScope)
   fun getOrBuildDynamicGraph(
@@ -77,7 +84,11 @@ internal class IrDynamicGraphGenerator(
     }
 
     val cacheKey =
-      CacheKey(targetGraphClassId = targetClass.classIdOrFail, containerKeys = containerTypeKeys)
+      CacheKey(
+        targetGraphClassId = targetClass.classIdOrFail,
+        containerKeys = containerTypeKeys,
+        callerFile = context.currentFileAccess,
+      )
 
     return generatedClassesCache
       .getOrPut(cacheKey) {
@@ -112,17 +123,19 @@ internal class IrDynamicGraphGenerator(
     val targetClass = factorySamFunction?.let { factorySamFunction.returnType.rawType() } ?: rawType
     val containerClasses = containerTypeKeys.map { it.type.rawType() }
     val containerClassIds = containerClasses.map { it.classIdOrFail }.toSet()
-    val graphName = computeStableName(targetClass.classIdOrFail, containerClassIds)
-
-    // Get the target graph's @DependencyGraph annotation
-    val targetGraphAnno =
-      targetClass.annotationsIn(metroSymbols.classIds.dependencyGraphAnnotations).firstOrNull()
-        ?: reportCompilerBug("Expected @DependencyGraph on ${targetClass.kotlinFqName}")
 
     // Add the generated class as a nested class in the call site's parent class,
     // or as a file-level class if no parent exists
     val containerToAddTo: IrDeclarationContainer =
       context.currentClassAccess?.irElement as? IrClass ?: context.currentFileAccess
+
+    val graphName =
+      computeStableName(targetClass.classIdOrFail, containerClassIds, containerToAddTo)
+
+    // Get the target graph's @DependencyGraph annotation
+    val targetGraphAnno =
+      targetClass.annotationsIn(metroSymbols.classIds.dependencyGraphAnnotations).firstOrNull()
+        ?: reportCompilerBug("Expected @DependencyGraph on ${targetClass.kotlinFqName}")
 
     val syntheticGraphGenerator =
       SyntheticGraphGenerator(
@@ -139,10 +152,10 @@ internal class IrDynamicGraphGenerator(
     // Extend the target type (graph interface or factory interface)
     val supertype = factorySamFunction?.returnType ?: targetType
 
-    val storedParams = containerClasses.mapIndexed { index, containerClass ->
+    val storedParams = containerTypeKeys.mapIndexed { index, containerTypeKey ->
       SyntheticGraphParameter(
         name = "container$index",
-        type = containerClass.symbol.defaultType,
+        type = containerTypeKey.type,
         origin = Origins.DynamicContainerParam,
       )
     }
@@ -172,18 +185,23 @@ internal class IrDynamicGraphGenerator(
   private fun computeStableName(
     targetGraphClassId: ClassId,
     containerClassIds: Set<ClassId>,
+    containerToAddTo: IrDeclarationContainer,
   ): Name {
     // Sort container IDs for order-independence
     val sortedIds = containerClassIds.sortedBy { it.toString() }
 
     // Compute stable hash from target graph and sorted containers
     val hash =
-      md5base64(
-        buildList {
+      buildList<Any> {
           add(targetGraphClassId)
           addAll(sortedIds)
+          // File-level impls aren't namespaced by an enclosing class, so include the file to avoid
+          // colliding with a same-typed impl in a sibling file in the same package.
+          if (containerToAddTo is IrFile) {
+            add(containerToAddTo.fileEntry.name)
+          }
         }
-      )
+        .hashSuffix
 
     val targetSimpleName = targetGraphClassId.shortClassName.asString()
     return "Dynamic${targetSimpleName}Impl_${hash}".asName()

@@ -16,7 +16,12 @@ public interface MetroApplication {
    * ```kotlin
    * class MetroApp : Application(), MetroApplication {
    *   /** Holder reference for the app graph for [MetroAppComponentFactory]. */
-   *   val appGraph by lazy { createGraph<AppGraph>() }
+   *   internal lateinit var appGraph: AppGraph
+   *
+   *   override fun onCreate() {
+   *     super.onCreate()
+   *     appGraph = createGraph<AppGraph>()
+   *   }
    *
    *   override val appComponentProviders: MetroAppComponentProviders
    *     get() = appGraph

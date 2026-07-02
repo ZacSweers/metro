@@ -1,0 +1,14 @@
+/module_main_InternalBindings.kt:32:11: error: 
+[Metro/MissingBinding] No binding found for SomeRepository
+
+  trace (in AppGraph.Impl.LoggedInGraphImpl):
+      SomeRepository is requested at LoggedInGraph.someRepository
+
+  similar bindings:
+      - SomeRepository (Contributed by 'SomeRepositoryImpl' but that class is internal to its module
+        and its module is not a friend module to this one.)
+
+  help: ensure SomeRepository has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to LoggedInGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

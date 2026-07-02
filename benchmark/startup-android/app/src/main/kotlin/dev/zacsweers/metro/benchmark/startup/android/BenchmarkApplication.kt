@@ -3,12 +3,21 @@
 package dev.zacsweers.metro.benchmark.startup.android
 
 import android.app.Application
-import dev.zacsweers.metro.benchmark.app.component.createAndInitialize
+import androidx.tracing.AbstractTraceDriver
+import dev.zacsweers.metro.benchmark.app.component.AppComponent
 
-class BenchmarkApplication : Application() {
+class BenchmarkApplication : Application(), AbstractTraceDriver.Factory {
+  val runtimeTracing by lazy { BenchmarkRuntimeTracing(this) }
+
+  lateinit var appGraph: AppComponent
+    private set
+
   override fun onCreate() {
     super.onCreate()
-    // Initialize the Metro dependency graph
-    createAndInitialize()
+    appGraph = runtimeTracing.createAndInitializeGraph()
+  }
+
+  override fun create(): AbstractTraceDriver {
+    return runtimeTracing.createTraceDriver()
   }
 }

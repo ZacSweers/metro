@@ -3,21 +3,33 @@
 package dev.zacsweers.metro.compiler.compat.k230
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.k2220.CompatContextImpl as DelegateType
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
+import kotlin.reflect.KClass
 import org.jetbrains.kotlin.GeneratedDeclarationKey
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
+import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.config.CommonConfigurationKeys
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticWithoutSource
+import org.jetbrains.kotlin.diagnostics.KtSourcelessDiagnosticFactory
 import org.jetbrains.kotlin.fakeElement as fakeElementNative
+import org.jetbrains.kotlin.fir.FirAnnotationContainer
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.copy as copyDeclarationNative
-import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirDeclaration
+import org.jetbrains.kotlin.fir.declarations.DeprecationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
-import org.jetbrains.kotlin.fir.declarations.FirDeclarationStatus
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirSimpleFunction
@@ -25,19 +37,27 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameter
 import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirSimpleFunctionBuilder
+import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
+import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
+import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
+import org.jetbrains.kotlin.fir.declarations.getDeprecationsProvider
+import org.jetbrains.kotlin.fir.declarations.getStringArgument
 import org.jetbrains.kotlin.fir.declarations.impl.FirResolvedDeclarationStatusImpl
-import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.declarations.result
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
+import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.SimpleFunctionBuildingContext
 import org.jetbrains.kotlin.fir.plugin.createMemberFunction as createMemberFunctionNative
 import org.jetbrains.kotlin.fir.plugin.createTopLevelFunction as createTopLevelFunctionNative
-import org.jetbrains.kotlin.fir.resolve.providers.firProvider
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -45,33 +65,70 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.ir.builders.Scope
+import org.jetbrains.kotlin.ir.IrDiagnosticReporter
+import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.builders.IrBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.IrFieldBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addBackingField
-import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrVariable
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
-import org.jetbrains.kotlin.ir.util.addFakeOverrides as addFakeOverridesNative
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.util.PrivateForInline
 
-public class CompatContextImpl : CompatContext by DelegateType() {
+public class CompatContextImpl : CompatContext {
 
-  override fun FirBasedSymbol<*>.getContainingClassSymbol(): FirClassLikeSymbol<*>? {
-    return moduleData.session.firProvider.getContainingClass(this)
+  override fun KtSourcelessDiagnosticFactory.createCompat(
+    message: String,
+    location: CompilerMessageSourceLocation?,
+    languageVersionSettings: LanguageVersionSettings,
+  ): KtDiagnosticWithoutSource? {
+    return create(message, languageVersionSettings)
   }
 
-  override fun FirCallableSymbol<*>.getContainingSymbol(session: FirSession): FirBasedSymbol<*>? {
-    return getContainingClassSymbol()
-      ?: session.firProvider.getFirCallableContainerFile(this)?.symbol
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    declaration: IrDeclaration,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(declaration).report(factory, a)
   }
 
-  override fun FirDeclaration.getContainingClassSymbol(): FirClassLikeSymbol<*>? =
-    symbol.getContainingClassSymbol()
+  override fun <A : Any> IrDiagnosticReporter.reportAt(
+    element: IrElement,
+    file: IrFile,
+    factory: KtDiagnosticFactory1<A>,
+    a: A,
+  ) {
+    at(element, file).report(factory, a)
+  }
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
+    extension: FirExtensionRegistrar
+  ) {
+    FirExtensionRegistrarAdapter.registerExtension(extension)
+  }
+
+  context(_: CompilerPluginRegistrar)
+  override fun CompilerPluginRegistrar.ExtensionStorage.registerIrExtensionCompat(
+    extension: IrGenerationExtension
+  ) {
+    IrGenerationExtension.registerExtension(extension)
+  }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun FirExtension.createTopLevelFunction(
@@ -121,55 +178,6 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     return createMemberFunctionNative(owner, key, name, returnTypeProvider, config)
   }
 
-  override fun FirDeclarationStatus.copy(
-    visibility: Visibility?,
-    modality: Modality?,
-    isExpect: Boolean,
-    isActual: Boolean,
-    isOverride: Boolean,
-    isOperator: Boolean,
-    isInfix: Boolean,
-    isInline: Boolean,
-    isValue: Boolean,
-    isTailRec: Boolean,
-    isExternal: Boolean,
-    isConst: Boolean,
-    isLateInit: Boolean,
-    isInner: Boolean,
-    isCompanion: Boolean,
-    isData: Boolean,
-    isSuspend: Boolean,
-    isStatic: Boolean,
-    isFromSealedClass: Boolean,
-    isFromEnumClass: Boolean,
-    isFun: Boolean,
-    hasStableParameterNames: Boolean,
-  ): FirDeclarationStatus =
-    copyDeclarationNative(
-      visibility = visibility,
-      modality = modality,
-      isExpect = isExpect,
-      isActual = isActual,
-      isOverride = isOverride,
-      isOperator = isOperator,
-      isInfix = isInfix,
-      isInline = isInline,
-      isValue = isValue,
-      isTailRec = isTailRec,
-      isExternal = isExternal,
-      isConst = isConst,
-      isLateInit = isLateInit,
-      isInner = isInner,
-      isCompanion = isCompanion,
-      isData = isData,
-      isSuspend = isSuspend,
-      isStatic = isStatic,
-      isFromSealedClass = isFromSealedClass,
-      isFromEnumClass = isFromEnumClass,
-      isFun = isFun,
-      hasStableParameterNames = hasStableParameterNames,
-    )
-
   override fun KtSourceElement.fakeElement(
     newKind: KtFakeSourceElementKind,
     startOffset: Int,
@@ -180,19 +188,6 @@ public class CompatContextImpl : CompatContext by DelegateType() {
       KtSourceElementOffsetStrategy.Custom.Initialized(startOffset, endOffset),
     )
   }
-
-  override fun IrClass.addFakeOverrides(typeSystem: IrTypeSystemContext): Unit =
-    addFakeOverridesNative(typeSystem)
-
-  override fun Scope.createTemporaryVariableDeclarationCompat(
-    irType: IrType,
-    nameHint: String?,
-    isMutable: Boolean,
-    origin: IrDeclarationOrigin,
-    startOffset: Int,
-    endOffset: Int,
-  ): IrVariable =
-    createTemporaryVariableDeclaration(irType, nameHint, isMutable, origin, startOffset, endOffset)
 
   override fun FirFunction.isNamedFunction(): Boolean {
     return this is FirSimpleFunction
@@ -250,15 +245,141 @@ public class CompatContextImpl : CompatContext by DelegateType() {
     return addBackingField(builder)
   }
 
-  override val FirClassLikeSymbol<*>.isLocalCompat: Boolean
-    get() = isLocal
+  override fun createIrGeneratedDeclarationsRegistrar(
+    pluginContext: IrPluginContext
+  ): IrGeneratedDeclarationsRegistrarCompat {
+    return IrConstructorCallIrGeneratedDeclarationsRegistrarCompat(
+      pluginContext.metadataDeclarationRegistrar
+    )
+  }
 
-  override val FirClass.isLocalCompat: Boolean
-    get() = isLocal
+  override fun IrBuilder.irAnnotationCompat(
+    callee: IrConstructorSymbol,
+    typeArguments: List<IrType>,
+  ): IrConstructorCall {
+    return irCallConstructor(callee, typeArguments)
+  }
+
+  override fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+    replaceAnnotationsCompat(annotationsCompat() + annotation)
+  }
+
+  override fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+    replaceAnnotationsCompat(annotationsCompat() + annotations)
+  }
+
+  override fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
+    return annotations
+  }
+
+  override fun IrAnnotationContainer.replaceAnnotationsCompat(
+    annotations: List<IrConstructorCall>
+  ) {
+    (this as IrMutableAnnotationContainer).annotations = annotations
+  }
+
+  override fun IrPluginContext.finderForBuiltinsCompat(): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(this)
+  }
+
+  override fun IrPluginContext.finderForSourceCompat(
+    fromFile: IrFile
+  ): CompatContext.DeclarationFinderCompat {
+    return ReferenceApiDeclarationFinderCompat(this)
+  }
+
+  override fun <T : FirElement> FirExpression.evaluateAsCompat(
+    session: FirSession,
+    tKlass: KClass<T>,
+  ): T? {
+    @Suppress("UNCHECKED_CAST") @OptIn(PrivateConstantEvaluatorAPI::class, PrivateForInline::class)
+    return FirExpressionEvaluator.evaluateExpression(this, session)?.result as? T
+  }
+
+  override fun FirAnnotationContainer.getDeprecationsProviderCompat(
+    session: FirSession
+  ): DeprecationsProvider? {
+    return getDeprecationsProvider(session)
+  }
+
+  override fun FirAnnotation.getBooleanArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): Boolean? {
+    return getBooleanArgument(name, session)
+  }
+
+  override fun FirAnnotation.getStringArgumentCompat(
+    name: Name,
+    session: FirSession,
+  ): String? {
+    return getStringArgument(name, session)
+  }
+
+  override fun buildValueParameterCopyCompat(
+    original: FirValueParameter,
+    init: FirValueParameterBuilder.() -> Unit,
+  ): FirValueParameter {
+    return buildValueParameterCopy(original, init)
+  }
+
+  override fun CompilerConfiguration.messageCollectorCompat(): MessageCollector {
+    // Do not fall back to PrintingMessageCollector here. It (and MessageRenderer) are CLI-only
+    // classes that IDE kotlinc distributions don't ship, so referencing them throws
+    // NoClassDefFoundError when the IDE's KtCompilerPluginsCache loads Metro's registrar and
+    // no collector is configured (the IDE never configures one).
+    return get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY) ?: SystemErrMessageCollector()
+  }
+
+  /** A non-silent fallback collector that avoids CLI-only printing classes. */
+  private class SystemErrMessageCollector : MessageCollector {
+    private var hasErrors = false
+
+    override fun clear() {
+      hasErrors = false
+    }
+
+    override fun report(
+      severity: CompilerMessageSeverity,
+      message: String,
+      location: CompilerMessageSourceLocation?,
+    ) {
+      if (severity.isError) {
+        hasErrors = true
+      }
+      val renderedLocation = location?.let { " ($it)" }.orEmpty()
+      System.err.println("${severity.presentableName}: $message$renderedLocation")
+    }
+
+    override fun hasErrors(): Boolean = hasErrors
+  }
 
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.3.0"
 
     override fun create(): CompatContext = CompatContextImpl()
+  }
+
+  private class ReferenceApiDeclarationFinderCompat(private val context: IrPluginContext) :
+    CompatContext.DeclarationFinderCompat {
+    override fun findClass(classId: ClassId): IrClassSymbol? {
+      return context.referenceClass(classId)
+    }
+
+    override fun findClassifier(classId: ClassId): IrSymbol? {
+      return context.referenceClass(classId)
+    }
+
+    override fun findConstructors(classId: ClassId): Collection<IrConstructorSymbol> {
+      return context.referenceConstructors(classId)
+    }
+
+    override fun findFunctions(callableId: CallableId): Collection<IrSimpleFunctionSymbol> {
+      return context.referenceFunctions(callableId)
+    }
+
+    override fun findProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+      return context.referenceProperties(callableId)
+    }
   }
 }

@@ -1,0 +1,23 @@
+/OverridesAreTypeChecked.kt:38:11: error: 
+[Metro/IncompatibleReturnTypes] 2 incompatible return type clashes found
+
+  Incompatible return types: Int vs String
+      OverridesAreTypeChecked.kt:30:3
+        val fooProperty: kotlin.Int (defined in 'IntProvider')
+                         ~~~~~~~~~~
+
+      OverridesAreTypeChecked.kt:21:3
+        val fooProperty: kotlin.String (defined in 'StringProvider')
+                         ~~~~~~~~~~~~~
+
+  Incompatible return types: Int vs String
+      OverridesAreTypeChecked.kt:31:3
+        fun fooFunction(): kotlin.Int (defined in 'IntProvider')
+                           ~~~~~~~~~~
+
+      OverridesAreTypeChecked.kt:22:3
+        fun fooFunction(): kotlin.String (defined in 'StringProvider')
+                           ~~~~~~~~~~~~~
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblereturntypes
+

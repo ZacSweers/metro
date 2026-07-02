@@ -17,7 +17,7 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import okio.Buffer
 import org.intellij.lang.annotations.Language
-import org.jetbrains.kotlin.compiler.plugin.CliOption
+import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -58,11 +58,15 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(debug = debug, generateAssistedFactories = generateAssistedFactories),
+      metroOptions
+        .toBuilder()
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val finalOptions = options.copy(debug = debug || options.debug)
+    val finalOptions = options.toBuilder().debug(debug || options.debug).build()
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
@@ -73,8 +77,7 @@ abstract class MetroCompilerTest {
       sources = sourceFiles.asList()
       verbose = false
       jvmTarget = JVM_TARGET
-      kotlincArguments +=
-        listOf("-jvm-default=no-compatibility", "-Xverify-ir=error", "-Xverify-ir-visibility")
+      kotlincArguments += listOf("-jvm-default=no-compatibility", "-Xverify-ir=error")
 
       if (previousCompilationResult != null) {
         addPreviousResultToClasspath(previousCompilationResult)
@@ -84,294 +87,312 @@ abstract class MetroCompilerTest {
 
   private fun MetroOptions.toPluginOptions(processor: CommandLineProcessor): List<PluginOption> {
     return sequence {
-        for (entry in MetroOption.entries) {
-          val option =
-            when (entry) {
-              DEBUG -> processor.option(entry.raw.cliOption, debug)
-              ENABLED -> processor.option(entry.raw.cliOption, enabled)
-              REPORTS_DESTINATION ->
-                processor.option(
-                  entry.raw.cliOption,
-                  reportsDir.value?.absolutePathString().orEmpty(),
-                )
-              TRACE_DESTINATION ->
-                processor.option(
-                  entry.raw.cliOption,
-                  traceDir.value?.absolutePathString().orEmpty(),
-                )
-              GENERATE_ASSISTED_FACTORIES ->
-                processor.option(entry.raw.cliOption, generateAssistedFactories)
-              ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
-                processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
-              GENERATE_CONTRIBUTION_HINTS ->
-                processor.option(entry.raw.cliOption, generateContributionHints)
-              GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.generateContributionHintsInFir,
-                )
-              SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
-              STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
-              ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
-              KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
-              PUBLIC_SCOPED_PROVIDER_SEVERITY ->
-                processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
-              NON_PUBLIC_CONTRIBUTION_SEVERITY ->
-                processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
-              WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
-                processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
-              INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
-                processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
-              UNUSED_GRAPH_INPUTS_SEVERITY ->
-                processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
-              ENABLE_SWITCHING_PROVIDERS ->
-                processor.option(entry.raw.cliOption, enableSwitchingProviders)
-              LOGGING -> {
-                if (enabledLoggers.isEmpty()) continue
-                processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
-              }
-              ENABLE_DAGGER_RUNTIME_INTEROP ->
-                processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
-              MAX_IR_ERRORS_COUNT -> processor.option(entry.raw.cliOption, maxIrErrorsCount)
-              CUSTOM_PROVIDER -> {
-                if (customProviderTypes.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
-              }
-              CUSTOM_LAZY -> {
-                if (customLazyTypes.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customLazyTypes.joinToString(":"))
-              }
-              CUSTOM_ASSISTED -> {
-                if (customAssistedAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customAssistedAnnotations.joinToString(":"))
-              }
-              CUSTOM_ASSISTED_FACTORY -> {
-                if (customAssistedFactoryAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customAssistedFactoryAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_ASSISTED_INJECT -> {
-                if (customAssistedInjectAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customAssistedInjectAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_BINDS -> {
-                if (customBindsAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
-              }
-              CUSTOM_CONTRIBUTES_TO -> {
-                if (customContributesToAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customContributesToAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_CONTRIBUTES_BINDING -> {
-                if (customContributesBindingAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customContributesBindingAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_ELEMENTS_INTO_SET -> {
-                if (customElementsIntoSetAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customElementsIntoSetAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_DEPENDENCY_GRAPH -> {
-                if (customGraphAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
-              }
-              CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
-                if (customGraphFactoryAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customGraphFactoryAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_INJECT -> {
-                if (customInjectAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customInjectAnnotations.joinToString(":"))
-              }
-              CUSTOM_INTO_MAP -> {
-                if (customIntoMapAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customIntoMapAnnotations.joinToString(":"))
-              }
-              CUSTOM_INTO_SET -> {
-                if (customIntoSetAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customIntoSetAnnotations.joinToString(":"))
-              }
-              CUSTOM_MAP_KEY -> {
-                if (customMapKeyAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customMapKeyAnnotations.joinToString(":"))
-              }
-              CUSTOM_MULTIBINDS -> {
-                if (customMultibindsAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customMultibindsAnnotations.joinToString(":"))
-              }
-              CUSTOM_PROVIDES -> {
-                if (customProvidesAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customProvidesAnnotations.joinToString(":"))
-              }
-              CUSTOM_QUALIFIER -> {
-                if (customQualifierAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customQualifierAnnotations.joinToString(":"))
-              }
-              CUSTOM_SCOPE -> {
-                if (customScopeAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
-              }
-              CUSTOM_BINDING_CONTAINER -> {
-                if (customBindingContainerAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customBindingContainerAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_CONTRIBUTES_INTO_SET -> {
-                if (customContributesIntoSetAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customContributesIntoSetAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_GRAPH_EXTENSION -> {
-                if (customGraphExtensionAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customGraphExtensionAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_GRAPH_EXTENSION_FACTORY -> {
-                if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customGraphExtensionFactoryAnnotations.joinToString(":"),
-                )
-              }
-              CUSTOM_ORIGIN -> {
-                if (customOriginAnnotations.isEmpty()) continue
-                processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
-              }
-              CUSTOM_OPTIONAL_BINDING -> {
-                if (customOptionalBindingAnnotations.isEmpty()) continue
-                processor.option(
-                  entry.raw.cliOption,
-                  customOptionalBindingAnnotations.joinToString(":"),
-                )
-              }
-              ENABLE_DAGGER_ANVIL_INTEROP -> {
-                processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
-              }
-              ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
-                processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
-              }
-              ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
-                processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
-              }
-              OPTIONAL_BINDING_BEHAVIOR -> {
-                processor.option(entry.raw.cliOption, optionalBindingBehavior)
-              }
-              CONTRIBUTES_AS_INJECT -> {
-                processor.option(entry.raw.cliOption, contributesAsInject)
-              }
-              ENABLE_KLIB_PARAMS_CHECK -> {
-                processor.option(entry.raw.cliOption, enableKlibParamsCheck)
-              }
-              PATCH_KLIB_PARAMS -> {
-                processor.option(entry.raw.cliOption, patchKlibParams)
-              }
-              INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              ENABLE_GUICE_RUNTIME_INTEROP -> {
-                processor.option(entry.raw.cliOption, enableGuiceRuntimeInterop)
-              }
-              INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
-                processor.option(entry.raw.cliOption, false)
-              }
-              FORCE_ENABLE_FIR_IN_IDE -> {
-                processor.option(entry.raw.cliOption, forceEnableFirInIde)
-              }
-              PLUGIN_ORDER_SET -> {
-                processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
-              }
-              COMPILER_VERSION -> {
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.compilerVersion.orEmpty(),
-                )
-              }
-              COMPILER_VERSION_ALIASES -> {
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.compilerVersionAliases
-                    .map { (k, v) -> "$k=$v" }
-                    .joinToString(":"),
-                )
-              }
-              PARALLEL_THREADS -> {
-                processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
-              }
-              ENABLE_FUNCTION_PROVIDERS -> {
-                processor.option(entry.raw.cliOption, enableFunctionProviders)
-              }
-              DESUGARED_PROVIDER_SEVERITY -> {
-                processor.option(entry.raw.cliOption, desugaredProviderSeverity)
-              }
-              ENABLE_KCLASS_TO_CLASS_INTEROP -> {
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.enableKClassToClassInterop,
-                )
-              }
-              GENERATE_CONTRIBUTION_PROVIDERS -> {
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.generateContributionProviders,
-                )
-              }
-              ENABLE_CIRCUIT_CODEGEN -> {
-                processor.option(entry.raw.cliOption, enableCircuitCodegen)
-              }
-              RICH_DIAGNOSTICS -> {
-                processor.option(entry.raw.cliOption, richDiagnostics)
-              }
-              GENERATE_STATIC_ANNOTATIONS -> {
-                processor.option(
-                  entry.raw.cliOption,
-                  this@toPluginOptions.generateStaticAnnotations,
-                )
-              }
+      for (entry in MetroOption.entries) {
+        val option =
+          when (entry) {
+            DEBUG -> processor.option(entry.raw.cliOption, debug)
+            ENABLED -> processor.option(entry.raw.cliOption, enabled)
+            REPORTS_DESTINATION ->
+              processor.option(
+                entry.raw.cliOption,
+                reportsDir.value?.absolutePathString().orEmpty(),
+              )
+            TRACE_DESTINATION ->
+              processor.option(
+                entry.raw.cliOption,
+                traceDir.value?.absolutePathString().orEmpty(),
+              )
+            GENERATE_ASSISTED_FACTORIES ->
+              processor.option(entry.raw.cliOption, generateAssistedFactories)
+            ENABLE_TOP_LEVEL_FUNCTION_INJECTION ->
+              processor.option(entry.raw.cliOption, enableTopLevelFunctionInjection)
+            GENERATE_CONTRIBUTION_HINTS ->
+              processor.option(entry.raw.cliOption, generateContributionHints)
+            GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.generateContributionHintsInFir,
+              )
+            GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
+            SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
+            STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
+            ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
+            KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
+            MERGED_SUPERTYPE_CHUNK_SIZE ->
+              processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)
+            PUBLIC_SCOPED_PROVIDER_SEVERITY ->
+              processor.option(entry.raw.cliOption, publicScopedProviderSeverity)
+            NON_PUBLIC_CONTRIBUTION_SEVERITY ->
+              processor.option(entry.raw.cliOption, nonPublicContributionSeverity)
+            WARN_ON_INJECT_ANNOTATION_PLACEMENT ->
+              processor.option(entry.raw.cliOption, warnOnInjectAnnotationPlacement)
+            INTEROP_ANNOTATIONS_NAMED_ARG_SEVERITY ->
+              processor.option(entry.raw.cliOption, interopAnnotationsNamedArgSeverity)
+            UNUSED_GRAPH_INPUTS_SEVERITY ->
+              processor.option(entry.raw.cliOption, unusedGraphInputsSeverity)
+            ENABLE_SWITCHING_PROVIDERS ->
+              processor.option(entry.raw.cliOption, this@toPluginOptions.enableSwitchingProviders)
+            LOGGING -> {
+              if (enabledLoggers.isEmpty()) continue
+              processor.option(entry.raw.cliOption, enabledLoggers.joinToString("|") { it.name })
             }
-          yield(option)
-        }
+            ENABLE_DAGGER_RUNTIME_INTEROP ->
+              processor.option(entry.raw.cliOption, enableDaggerRuntimeInterop)
+            MAX_IR_ERRORS_COUNT -> processor.option(entry.raw.cliOption, maxIrErrorsCount)
+            CUSTOM_PROVIDER -> {
+              if (customProviderTypes.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customProviderTypes.joinToString(":"))
+            }
+            CUSTOM_LAZY -> {
+              if (customLazyTypes.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customLazyTypes.joinToString(":"))
+            }
+            CUSTOM_ASSISTED -> {
+              if (customAssistedAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customAssistedAnnotations.joinToString(":"))
+            }
+            CUSTOM_ASSISTED_FACTORY -> {
+              if (customAssistedFactoryAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customAssistedFactoryAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_ASSISTED_INJECT -> {
+              if (customAssistedInjectAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customAssistedInjectAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_BINDS -> {
+              if (customBindsAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customBindsAnnotations.joinToString(":"))
+            }
+            CUSTOM_CONTRIBUTES_TO -> {
+              if (customContributesToAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customContributesToAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_CONTRIBUTES_BINDING -> {
+              if (customContributesBindingAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customContributesBindingAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_ELEMENTS_INTO_SET -> {
+              if (customElementsIntoSetAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customElementsIntoSetAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_DEPENDENCY_GRAPH -> {
+              if (customGraphAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customGraphAnnotations.joinToString(":"))
+            }
+            CUSTOM_DEPENDENCY_GRAPH_FACTORY -> {
+              if (customGraphFactoryAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customGraphFactoryAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_INJECT -> {
+              if (customInjectAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customInjectAnnotations.joinToString(":"))
+            }
+            CUSTOM_INTO_MAP -> {
+              if (customIntoMapAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customIntoMapAnnotations.joinToString(":"))
+            }
+            CUSTOM_INTO_SET -> {
+              if (customIntoSetAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customIntoSetAnnotations.joinToString(":"))
+            }
+            CUSTOM_MAP_KEY -> {
+              if (customMapKeyAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customMapKeyAnnotations.joinToString(":"))
+            }
+            CUSTOM_MULTIBINDS -> {
+              if (customMultibindsAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customMultibindsAnnotations.joinToString(":"))
+            }
+            CUSTOM_PROVIDES -> {
+              if (customProvidesAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customProvidesAnnotations.joinToString(":"))
+            }
+            CUSTOM_QUALIFIER -> {
+              if (customQualifierAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customQualifierAnnotations.joinToString(":"))
+            }
+            CUSTOM_SCOPE -> {
+              if (customScopeAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customScopeAnnotations.joinToString(":"))
+            }
+            CUSTOM_BINDING_CONTAINER -> {
+              if (customBindingContainerAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customBindingContainerAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_CONTRIBUTES_INTO_SET -> {
+              if (customContributesIntoSetAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customContributesIntoSetAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_GRAPH_EXTENSION -> {
+              if (customGraphExtensionAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customGraphExtensionAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_GRAPH_EXTENSION_FACTORY -> {
+              if (customGraphExtensionFactoryAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customGraphExtensionFactoryAnnotations.joinToString(":"),
+              )
+            }
+            CUSTOM_ORIGIN -> {
+              if (customOriginAnnotations.isEmpty()) continue
+              processor.option(entry.raw.cliOption, customOriginAnnotations.joinToString(":"))
+            }
+            CUSTOM_OPTIONAL_BINDING -> {
+              if (customOptionalBindingAnnotations.isEmpty()) continue
+              processor.option(
+                entry.raw.cliOption,
+                customOptionalBindingAnnotations.joinToString(":"),
+              )
+            }
+            ENABLE_DAGGER_ANVIL_INTEROP -> {
+              processor.option(entry.raw.cliOption, enableDaggerAnvilInterop)
+            }
+            ENABLE_FULL_BINDING_GRAPH_VALIDATION -> {
+              processor.option(entry.raw.cliOption, enableFullBindingGraphValidation)
+            }
+            ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE -> {
+              processor.option(entry.raw.cliOption, enableGraphImplClassAsReturnType)
+            }
+            OPTIONAL_BINDING_BEHAVIOR -> {
+              processor.option(entry.raw.cliOption, optionalBindingBehavior)
+            }
+            CONTRIBUTES_AS_INJECT -> {
+              processor.option(entry.raw.cliOption, contributesAsInject)
+            }
+            ENABLE_KLIB_PARAMS_CHECK -> {
+              processor.option(entry.raw.cliOption, enableKlibParamsCheck)
+            }
+            PATCH_KLIB_PARAMS -> {
+              processor.option(entry.raw.cliOption, patchKlibParams)
+            }
+            INTEROP_INCLUDE_JAVAX_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            INTEROP_INCLUDE_JAKARTA_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            INTEROP_INCLUDE_DAGGER_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            INTEROP_INCLUDE_KOTLIN_INJECT_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            INTEROP_INCLUDE_ANVIL_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            INTEROP_INCLUDE_KOTLIN_INJECT_ANVIL_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            ENABLE_GUICE_RUNTIME_INTEROP -> {
+              processor.option(entry.raw.cliOption, enableGuiceRuntimeInterop)
+            }
+            INTEROP_INCLUDE_GUICE_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, false)
+            }
+            FORCE_ENABLE_FIR_IN_IDE -> {
+              processor.option(entry.raw.cliOption, forceEnableFirInIde)
+            }
+            PLUGIN_ORDER_SET -> {
+              processor.option(entry.raw.cliOption, pluginOrderSet?.toString().orEmpty())
+            }
+            COMPILER_VERSION -> {
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.compilerVersion.orEmpty(),
+              )
+            }
+            COMPILER_VERSION_ALIASES -> {
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.compilerVersionAliases
+                  .map { (k, v) -> "$k=$v" }
+                  .joinToString(":"),
+              )
+            }
+            PARALLEL_THREADS -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.parallelThreads)
+            }
+            BUFFERED_IC_TRACKING -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
+            }
+            ENABLE_PROVIDER_INLINING -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
+            }
+            ENABLE_FUNCTION_PROVIDERS -> {
+              processor.option(entry.raw.cliOption, enableFunctionProviders)
+            }
+            DESUGARED_PROVIDER_SEVERITY -> {
+              processor.option(entry.raw.cliOption, desugaredProviderSeverity)
+            }
+            ENABLE_KCLASS_TO_CLASS_INTEROP -> {
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.enableKClassToClassInterop,
+              )
+            }
+            GENERATE_CONTRIBUTION_PROVIDERS -> {
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.generateContributionProviders,
+              )
+            }
+            ENABLE_CIRCUIT_CODEGEN -> {
+              processor.option(entry.raw.cliOption, enableCircuitCodegen)
+            }
+            INTEROP_INCLUDE_HILT_ANNOTATIONS -> {
+              processor.option(entry.raw.cliOption, enableHiltInterop)
+            }
+            DIAGNOSTICS_RENDER_MODE -> {
+              processor.option(entry.raw.cliOption, diagnosticsRenderMode)
+            }
+            ENABLE_RUNTIME_TRACING -> {
+              processor.option(entry.raw.cliOption, enableRuntimeTracing)
+            }
+            GENERATE_STATIC_ANNOTATIONS -> {
+              processor.option(
+                entry.raw.cliOption,
+                this@toPluginOptions.generateStaticAnnotations,
+              )
+            }
+            MEMBER_NAMING_STRATEGY -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.memberNamingStrategy)
+            }
+          }
+        yield(option)
       }
+    }
       .toList()
   }
 
-  protected fun CommandLineProcessor.option(key: CliOption, value: Any?): PluginOption {
+  protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())
   }
 
@@ -449,11 +470,12 @@ abstract class MetroCompilerTest {
     generateAssistedFactories: Boolean =
       MetroOption.GENERATE_ASSISTED_FACTORIES.raw.defaultValue.expectAs(),
     options: MetroOptions =
-      metroOptions.copy(
-        enabled = metroEnabled,
-        debug = debug,
-        generateAssistedFactories = generateAssistedFactories,
-      ),
+      metroOptions
+        .toBuilder()
+        .enabled(metroEnabled)
+        .debug(debug)
+        .generateAssistedFactories(generateAssistedFactories)
+        .build(),
     expectedExitCode: KotlinCompilation.ExitCode = KotlinCompilation.ExitCode.OK,
     compilationBlock: KotlinCompilation.() -> Unit = {},
     previousCompilationResult: JvmCompilationResult? = null,

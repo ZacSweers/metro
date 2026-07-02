@@ -1,0 +1,16 @@
+/SomeUnusedAndSomeUsed.kt:10:14: error: 
+[Metro/MissingBinding] No binding found for Int
+
+  AppGraph.number -> Number -> Int
+
+  trace (in AppGraph):
+      Int is injected at AppGraph.unusedBinding: kotlin.Int
+      Number is requested at AppGraph.number
+
+  similar bindings:
+      - Number (Supertype. Type: Alias) - SomeUnusedAndSomeUsed.kt:10:10
+
+  help: ensure Int has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.ir.IrDependencyGraph
 import java.util.Locale
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -12,6 +13,9 @@ import org.jetbrains.kotlin.name.Name
 // As of Kotlin 2.3, context parameters always have a mapped name of
 // "$context-<simple name>"
 internal const val CONTEXT_PARAMETER_NAME_PREFIX = $$"$context-"
+
+/** The maximum value for a signed 32-bit integer that is equal to a power of 2. */
+private const val INT_MAX_POWER_OF_TWO: Int = 1 shl (Int.SIZE_BITS - 2)
 
 internal fun generatedContextParameterName(classId: ClassId): Name {
   return "$CONTEXT_PARAMETER_NAME_PREFIX${classId.shortClassName.capitalizeUS()}".asName()
@@ -33,7 +37,19 @@ internal const val LOG_PREFIX = "[METRO]"
 internal const val REPORT_METRO_MESSAGE =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
-internal fun <T> memoize(initializer: () -> T) = lazy(LazyThreadSafetyMode.PUBLICATION, initializer)
+/**
+ * Thread-safety mode used by [memoize]. Default is [LazyThreadSafetyMode.PUBLICATION] so callers
+ * remain safe under the parallel transformation pool wired up in [IrDependencyGraph]. The plugin
+ * registrar swaps this to [LazyThreadSafetyMode.NONE] when `parallelThreads == 0`, which removes
+ * the per-access CAS/volatile cost for the 100+ memoized properties in the hot compile path.
+ *
+ * Treated as process-global mutable state, matching the existing single-compilation-per-process
+ * assumption (see [dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory]).
+ */
+@Volatile
+internal var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION
+
+internal fun <T> memoize(initializer: () -> T) = lazy(memoizeThreadSafetyMode, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }
@@ -193,8 +209,7 @@ internal fun String.suffixIfNot(suffix: String) =
 internal fun Name.suffixIfNot(suffix: String) =
   if (asString().endsWith(suffix)) this else "$this$suffix".asName()
 
-// TODO this doesn't include the package name, should we include it
-internal fun ClassId.scopeHintFunctionName(): Name = joinSimpleNames().shortClassName
+internal fun ClassId.scopeHintFunctionName(): Name = safePathString.asName()
 
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun reportCompilerBug(message: String): Nothing {
@@ -220,43 +235,23 @@ internal fun StringBuilder.appendLineWithUnderlinedContent(
   repeat(target.length) { append(char) }
 }
 
-/**
- * Copied from [kotlin.collections.joinTo] with the support for dynamically choosing a [separator].
- */
-@IgnorableReturnValue
-internal fun <T, A : Appendable> Iterable<T>.joinWithDynamicSeparatorTo(
-  buffer: A,
-  separator: (prev: T, next: T) -> CharSequence,
-  prefix: CharSequence = "",
-  postfix: CharSequence = "",
-  limit: Int = -1,
-  truncated: CharSequence = "...",
-  transform: ((T) -> CharSequence)? = null,
-): A {
-  buffer.append(prefix)
-  var count = 0
-  var prev: T? = null
-  for (element in this) {
-    if (++count > 1) {
-      buffer.append(separator(prev!!, element))
+internal fun StringBuilder.appendLineWithUnderlinedRanges(
+  content: String,
+  ranges: List<IntRange>,
+  char: Char = '~',
+) {
+  appendLine(content)
+  val underline = CharArray(content.length) { ' ' }
+  for (range in ranges) {
+    val start = range.first.coerceAtLeast(0)
+    val end = range.last.coerceAtMost(content.lastIndex)
+    if (start > end) continue
+    for (index in start..end) {
+      underline[index] = char
     }
-    prev = element
-    if (limit !in 0..<count) {
-      buffer.appendElement(element, transform)
-    } else break
   }
-  if (limit in 0..<count) buffer.append(truncated)
-  buffer.append(postfix)
-  return buffer
-}
-
-private fun <T> Appendable.appendElement(element: T, transform: ((T) -> CharSequence)?) {
-  when {
-    transform != null -> append(transform(element))
-    element is CharSequence? -> append(element)
-    element is Char -> append(element)
-    else -> append(element.toString())
-  }
+  if (underline.none { it == char }) return
+  append(underline.concatToString().trimEnd())
 }
 
 internal fun computeMetroDefault(
@@ -322,3 +317,47 @@ internal fun <K, V> MutableMap<K, MutableList<V>>.getOrInit(key: K): MutableList
 
 internal val ClassId.safePathString: String
   get() = asFqNameString().replace('.', '_')
+
+/**
+ * Calculate the initial capacity of a map, based on Guava's
+ * [com.google.common.collect.Maps.capacity](https://github.com/google/guava/blob/v28.2/guava/src/com/google/common/collect/Maps.java#L325)
+ * approach.
+ *
+ * Pulled from Kotlin stdlib's collection builders. Slightly different from dagger's but
+ * functionally the same.
+ *
+ * @param loadFactor configurable load factor. JVM uses 0.75f, but scatter collections use 7/8.
+ */
+internal fun calculateInitialCapacity(expectedSize: Int, loadFactor: Float = 0.75f): Int =
+  when {
+    // We are not coercing the value to a valid one and not throwing an exception. It is up to the
+    // caller to properly handle negative values.
+    expectedSize < 0 -> expectedSize
+    expectedSize < 3 -> expectedSize + 1
+    expectedSize < INT_MAX_POWER_OF_TWO -> ((expectedSize / loadFactor) + 1.0F).toInt()
+    // any large value
+    else -> Int.MAX_VALUE
+  }
+
+internal const val HASH_SUFFIX_LENGTH = 5
+
+private const val HEX_CHARS = HASH_SUFFIX_LENGTH - 1
+private const val HEX_BITS = HEX_CHARS * 4
+private const val HEX_MASK = (1 shl HEX_BITS) - 1
+
+/**
+ * Computes a unique, deterministic suffix string derived from the object's hash code. This suffix
+ * is Java identifier-safe and file name-safe, ensuring compatibility across use cases where such
+ * constraints are necessary.
+ *
+ * The suffix is a combination of a lowercase alphabetic character followed by a fixed-length hex
+ * representation of a portion of the hash code (length is [HASH_SUFFIX_LENGTH]).
+ */
+internal val Any.hashSuffix: String
+  get() {
+    val hash = hashCode()
+    // Letter + (HASH_SUFFIX_LENGTH - 1) hex chars
+    val first = 'a' + ((hash ushr HEX_BITS) and 0xff) % 26
+    val rest = hash and HEX_MASK
+    return first + rest.toString(16).padStart(HEX_CHARS, '0')
+  }

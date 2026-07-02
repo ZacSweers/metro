@@ -42,6 +42,15 @@ class MapFactoryTest {
   }
 
   @Test
+  fun `test factory singleton invokes provider every time`() {
+    var counter = 0
+    val factory = MapFactory.singleton("k") { counter++ }
+    assertEquals(mapOf("k" to 0), factory())
+    assertEquals(mapOf("k" to 1), factory())
+    assertEquals(mapOf("k" to 2), factory())
+  }
+
+  @Test
   fun `test builder with invalid provider`() {
     val mapFactory =
       MapFactory.builder<String, Int>(1)

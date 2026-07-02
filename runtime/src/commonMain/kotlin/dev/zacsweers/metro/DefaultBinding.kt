@@ -33,4 +33,4 @@ import kotlin.annotation.AnnotationTarget.CLASS
  * Abstract subtypes can supersede the parent default by specifying an explicit [binding] parameter
  * on their contributing annotation.
  */
-@ExperimentalMetroApi @Target(CLASS) public annotation class DefaultBinding<@Suppress("unused") T>
+@Target(CLASS) public annotation class DefaultBinding<@Suppress("unused") T>

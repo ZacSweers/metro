@@ -1,3 +1,5 @@
+// GENERATE_CLASSES_IN_IR: false
+
 package test
 
 import kotlin.reflect.KClass
@@ -18,6 +20,6 @@ interface AppGraph {
 
 fun box(): String {
   val foo = createGraph<AppGraph>().foo
-  assertEquals("test.Foo.Impl", foo::class.qualifiedName)
+  assertIs<Foo.Impl>(foo)
   return "OK"
 }

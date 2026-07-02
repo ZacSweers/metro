@@ -3,14 +3,13 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import java.util.Optional
-import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.SupertypeSupplier
 import org.jetbrains.kotlin.fir.resolve.TypeResolutionConfiguration
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.typeResolver
 import org.jetbrains.kotlin.fir.scopes.createImportingScopes
@@ -45,7 +44,8 @@ public sealed interface MetroFirTypeResolver {
     public fun create(functionSymbol: FirFunctionSymbol<*>): MetroFirTypeResolver?
 
     public companion object {
-      internal operator fun invoke(session: FirSession): Factory = FactoryImpl(session)
+      /** Use the cached factory provided by the API if possible. */
+      operator fun invoke(session: FirSession): Factory = FactoryImpl(session)
     }
   }
 
@@ -74,7 +74,7 @@ public sealed interface MetroFirTypeResolver {
       }
 
       // if it's not top-level, create in the class instead
-      val enclosingClass = with(compatContext) { functionSymbol.getContainingClassSymbol() }
+      val enclosingClass = functionSymbol.getContainingClassSymbol()
       if (enclosingClass != null) return create(enclosingClass)
 
       // Look up through all firProviders as we may be a KMP compilation
@@ -159,16 +159,22 @@ public sealed interface MetroFirTypeResolver {
   }
 }
 
-internal fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
+public fun MetroFirTypeResolver.Factory.caching(): MetroFirTypeResolver.Factory {
   return object : MetroFirTypeResolver.Factory by this {
     private val delegate = this@caching
-    private val typeResolverCache =
-      mutableMapOf<FirClassLikeSymbol<*>, Optional<MetroFirTypeResolver>>()
+    private val typeResolverCache = mutableMapOf<FirClassLikeSymbol<*>, Any>()
 
     override fun create(classSymbol: FirClassLikeSymbol<*>): MetroFirTypeResolver? {
-      return typeResolverCache
-        .getOrPut(classSymbol) { Optional.ofNullable(delegate.create(classSymbol)) }
-        .getOrNull()
+      val cached = typeResolverCache[classSymbol]
+      if (cached != null) {
+        @Suppress("UNCHECKED_CAST")
+        return if (cached === NULL_SENTINEL) null else cached as MetroFirTypeResolver
+      }
+      val computed = delegate.create(classSymbol)
+      typeResolverCache[classSymbol] = computed ?: NULL_SENTINEL
+      return computed
     }
   }
 }
+
+private val NULL_SENTINEL = Any()

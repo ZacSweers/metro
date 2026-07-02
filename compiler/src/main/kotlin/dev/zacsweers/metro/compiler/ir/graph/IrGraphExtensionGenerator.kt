@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionMerger
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -15,9 +16,11 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawType
+import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.singleAbstractFunction
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.safeNestedSimpleName
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -122,15 +125,31 @@ internal class IrGraphExtensionGenerator(
         sourceAnnotation = extensionAnno,
         parentGraph = parentGraph,
         originDeclaration = parentGraph,
+        parentExclusionDeclaration = parentGraph,
         containerToAddTo = parentGraph,
         traceScope = traceScope,
       )
 
-    // Ensure a unique name
+    // Falls back to a hashed name when chain depth would push the basename past the FS limit.
+    val parentClassId = parentGraph.classIdOrFail
+    val candidate = "${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}"
     val name =
       classNameAllocator
-        .newName("${sourceGraph.name.asString().capitalizeUS()}${Symbols.StringNames.IMPL}")
+        .newName(parentClassId.safeNestedSimpleName(candidate, sourceGraph.classIdOrFail))
         .asName()
+
+    val chainDepth = parentClassId.relativeClassName.pathSegments().size - 1
+    if (chainDepth >= GRAPH_EXTENSION_CHAIN_DEPTH_WARNING) {
+      reportCompat(
+        sourceGraph,
+        MetroDiagnostics.METRO_WARNING,
+        "Graph extension chain is ${chainDepth + 1} levels deep at " +
+          "'${sourceGraph.kotlinFqName}'. Generated nested class file names grow with chain " +
+          "depth and can exceed the per-segment file name limit (255 bytes) on most " +
+          "filesystems. Metro substitutes a shortened hash-based name at this depth, but " +
+          "consider flattening the hierarchy.",
+      )
+    }
 
     // Source is a `@GraphExtension`-annotated class, we want to generate a header impl class
     val (_, graphImpl, factoryImpl) =
@@ -147,6 +166,8 @@ internal class IrGraphExtensionGenerator(
     return graphImpl
   }
 }
+
+private const val GRAPH_EXTENSION_CHAIN_DEPTH_WARNING = 10
 
 internal class GeneratedGraphExtensionData(val typeKey: IrTypeKey, val factoryImpl: IrClass? = null)
 

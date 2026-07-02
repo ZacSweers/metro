@@ -1,0 +1,9 @@
+/NoProvidesOnParams.kt:7:3: error: @Provides cannot be applied to constructor parameters. Use a member property or function in the class instead.
+
+/NoProvidesOnParams.kt:8:3: error: @Provides cannot be applied to constructor parameters. Use a member property or function in the class instead.
+
+/NoProvidesOnParams.kt:9:3: error: @Provides cannot be applied to constructor parameters. Use a member property or function in the class instead.
+
+/NoProvidesOnParams.kt:10:3: error: @Provides cannot be applied to constructor parameters. Use a member property or function in the class instead.
+
+/NoProvidesOnParams.kt:11:3: error: @Provides cannot be applied to constructor parameters. Use a member property or function in the class instead.

@@ -11,24 +11,33 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.escapeIfNull
+import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
+import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.isStaticIsh
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -58,7 +67,11 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.jvm.optionals.getOrNull
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
+import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
+import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irSetField
@@ -67,10 +80,11 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isUnit
+import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -187,12 +201,14 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
       // Use cached member inject parameters if available, otherwise fall back to fresh lookup
       val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
-      val parameterGroupsForClass = injectedMembersByClass.getValue(injectedClassId)
+      // This map is sparse: classes with no direct injected members are omitted, even if inherited
+      // members still require an injector for this class.
+      val directInjectedMembers = injectedMembersByClass[injectedClassId].orEmpty()
 
       val creatorsClass = injectorClass.staticIshDeclarationContainerOrNull()
       val declaredInjectFunctions =
         if (creatorsClass != null) {
-          parameterGroupsForClass.associateBy { params ->
+          directInjectedMembers.associateBy { params ->
             val name =
               if (params.isProperty) {
                 params.irProperty!!.name
@@ -222,9 +238,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       if (lazyClassMetadata.value == null) {
         if (options.enableDaggerRuntimeInterop) {
           val daggerInjector =
-            pluginContext.referenceClass(
-              declaration.classIdOrFail.generatedClass("_MembersInjector")
-            )
+            declaration.lookupClass(declaration.classIdOrFail.generatedClass("_MembersInjector"))
           if (daggerInjector != null) {
             return computeMemberInjectClass(daggerInjector.owner, isDagger = true).also {
               generatedInjectors[injectedClassId] = Optional.of(it)
@@ -255,16 +269,62 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
             return null
           }
       } else {
-        declaration.nestedClasses
-          .singleOrNull { it.origin == Origins.MembersInjectorClassDeclaration }
-          .escapeIfNull {
-            // For in-compilation classes, assume no members to inject
-            generatedInjectors[injectedClassId] = Optional.empty()
-            return null
+        declaration.nestedClasses.singleOrNull {
+          it.origin == Origins.MembersInjectorClassDeclaration
+        }
+          ?: run {
+            if (options.generateClassesInIr) {
+              val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(false)
+              if (injectedMembersByClass.values.all { it.isEmpty() }) {
+                // For in-compilation classes, assume no members to inject
+                generatedInjectors[injectedClassId] = Optional.empty()
+                return null
+              }
+              createMembersInjectorShell(declaration, injectedMembersByClass)
+            } else {
+              // For in-compilation classes, assume no members to inject
+              generatedInjectors[injectedClassId] = Optional.empty()
+              return null
+            }
           }
       }
 
     val companionObject = injectorClass.companionObject()!!
+    if (
+      options.generateClassesInIr &&
+        companionObject.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
+    ) {
+      val directMemberInjectParameters =
+        declaration.getOrComputeMemberInjectParameters(isDagger = false)[injectedClassId].orEmpty()
+      for (params in directMemberInjectParameters) {
+        val name =
+          if (params.isProperty) {
+            params.irProperty!!.name
+          } else {
+            params.callableId.callableName
+          }
+        companionObject
+          .addFunction(
+            "inject${name.capitalizeUS().asString()}",
+            irBuiltIns.unitType,
+            origin = Origins.MembersInjectorStaticInjectFunction,
+          )
+          .apply {
+            addValueParameter(
+              name = Symbols.Names.instance,
+              type = declaration.defaultType,
+              origin = Origins.InstanceParameter,
+            )
+            addParameters(
+              params.regularParameters,
+              wrapInProvider = false,
+              copyQualifiers = true,
+              stubDefaults = false,
+            )
+            metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+          }
+      }
+    }
 
     val memberInjectClass =
       trace("computeMemberInjectClass") {
@@ -285,8 +345,18 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     val constructorParametersToFields =
       trace("assignConstructorParamsToFields") {
-        assignConstructorParamsToFields(ctor, injectorClass)
+        assignConstructorParamsToFields(ctor, injectorClass, namer = memberNamer)
       }
+
+    val fieldCount = constructorParametersToFields.size
+    val hasUnmatchedInjectorFields = fieldCount > allParameters.size
+    if (hasUnmatchedInjectorFields) {
+      reportUnprocessedUpstreamDeclaration(
+        declaration = declaration,
+        fieldCount = fieldCount,
+        parameterCount = allParameters.size,
+      )
+    }
 
     // TODO This is ugly. Can we just source all the params directly from the FIR class now?
     val sourceParametersToFields: Map<Parameter, IrField> =
@@ -296,30 +366,54 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         sourceParam to field
       }
 
+    val createParameters =
+      injectedMembersByClass.values
+        .flatten()
+        .reduce { current, next -> current.mergeValueParametersWith(next) }
+        .let {
+          Parameters(
+            Parameters.empty().callableId,
+            null,
+            null,
+            it.regularParameters,
+            it.contextParameters,
+          )
+        }
+
     // Static create()
     trace("Generate static create()") {
       @Suppress("RETURN_VALUE_NOT_USED")
-      transformStaticCreateFunction(
-        objectClassToGenerateIn = companionObject,
-        factoryClass = injectorClass,
-        targetConstructor = ctor.symbol,
-        parameters =
-          injectedMembersByClass.values
-            .flatten()
-            .reduce { current, next -> current.mergeValueParametersWith(next) }
-            .let {
-              Parameters(
-                Parameters.empty().callableId,
-                null,
-                null,
-                it.regularParameters,
-                it.contextParameters,
-              )
-            },
-        providerFunction = null,
-        patchCreationParams = false, // TODO when we support absent
-        copyQualifiers = true,
-      )
+      // MembersInjector params are synthetic, so there are no source defaults to patch.
+      if (
+        options.generateClassesInIr &&
+          companionObject.functions.none { it.origin == Origins.FactoryCreateFunction }
+      ) {
+        generateStaticCreateFunction(
+          objectClassToGenerateIn = companionObject,
+          factoryClass = injectorClass,
+          sourceTypeParameters = declaration,
+          returnTypeProvider = { typeParams ->
+            metroSymbols.metroMembersInjector.typeWith(
+              declaration.symbol.typeWithParameters(typeParams)
+            )
+          },
+          targetConstructor = ctor.symbol,
+          parameters = createParameters,
+          sourceFunction = null,
+          patchCreationParams = false,
+          stubDefaults = false,
+        )
+      } else {
+        transformStaticCreateFunction(
+          objectClassToGenerateIn = companionObject,
+          factoryClass = injectorClass,
+          targetConstructor = ctor.symbol,
+          parameters = createParameters,
+          providerFunction = null,
+          patchCreationParams = false,
+          copyQualifiers = true,
+        )
+      }
     }
 
     // Implement static inject{name}() for each declared callable in this class
@@ -380,7 +474,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
             // This is what generates supertypes lazily as needed
             val functions =
-              requireInjector(pluginContext.referenceClass(classId)!!.owner).declaredInjectFunctions
+              requireInjector(memberInjectClass.sourceClass.lookupClass(classId)!!.owner)
+                .declaredInjectFunctions
 
             putAll(functions)
           }
@@ -393,11 +488,9 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     trace("Override injectMembers()") {
       injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
         finalizeFakeOverride(injectorClass.thisReceiverOrFail)
-        val typeArgs = declaration.typeParameters.map { it.defaultType }
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(
-              typeArgs = typeArgs,
               callingFunction = this@apply,
               instanceReceiver = regularParameters[0],
               injectorReceiver = dispatchReceiverParameter!!,
@@ -414,6 +507,55 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     trace("Write injector metadata") { declaration.writeMetadata(memberInjectClass) }
 
     return memberInjectClass.also { generatedInjectors[injectedClassId] = Optional.of(it) }
+  }
+
+  private fun createMembersInjectorShell(
+    declaration: IrClass,
+    injectedMembersByClass: Map<ClassId, List<Parameters>>,
+  ): IrClass {
+    val allParameters =
+      injectedMembersByClass.values.flatMap { it.flatMap(Parameters::regularParameters) }
+
+    return declaration
+      .getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.MetroMembersInjector,
+        origin = Origins.MembersInjectorClassDeclaration,
+        superTypesProvider = {
+          listOf(metroSymbols.metroMembersInjector.typeWith(declaration.defaultType))
+        },
+      )
+      .apply {
+        addConstructor {
+          visibility = DescriptorVisibilities.PRIVATE
+          isPrimary = true
+        }
+          .apply {
+            addParameters(
+              allParameters,
+              wrapInProvider = true,
+              copyQualifiers = true,
+              stubDefaults = false,
+            )
+            body = generateDefaultConstructorBody()
+            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+          }
+        addFunction(Symbols.StringNames.INJECT_MEMBERS, irBuiltIns.unitType).apply {
+          isFakeOverride = true
+          overriddenSymbols =
+            listOf(
+              metroSymbols.metroMembersInjector.owner.requireSimpleFunction(
+                Symbols.StringNames.INJECT_MEMBERS
+              )
+            )
+          addValueParameter(
+            name = Symbols.Names.instance,
+            type = declaration.defaultType,
+            origin = Origins.RegularParameter,
+          )
+          metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
+        }
+        addMetadataVisibleHiddenCompanionObject()
+      }
   }
 
   private fun IrClass.getOrComputeMemberInjectParameters(
@@ -475,6 +617,37 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     return result
   }
 
+  private fun reportUnprocessedUpstreamDeclaration(
+    declaration: IrClass,
+    fieldCount: Int,
+    parameterCount: Int,
+  ): Nothing {
+    val message = buildString {
+      append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+      append("Cannot generate a members injector for ${declaration.kotlinFqName} because ")
+      append("Metro found inherited member-injection state, but the ")
+      appendLine("upstream declaration was not processed by Metro.")
+      appendLine()
+      append("Metro can read inherited member injections across modules only when Metro ")
+      append("processed the upstream declaration.")
+      if (options.enableDaggerRuntimeInterop) {
+        append(" Dagger interop can also use Dagger-generated `_MembersInjector` classes.")
+      }
+      appendLine()
+      appendLine()
+      append("Run Metro's compiler for the upstream module")
+      if (options.enableDaggerRuntimeInterop) {
+        append(". If Dagger owns that upstream declaration instead, run Dagger's compiler there")
+      }
+      appendLine(".")
+      appendLine()
+      append("Expected $fieldCount member-injection parameters from generated injector fields, ")
+      append("but only reconstructed $parameterCount.")
+    }
+    reportCompat(declaration, MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION, message)
+    exitProcessing()
+  }
+
   /**
    * Attempts to derive member inject parameters from a Dagger-generated _MembersInjector class.
    * Returns null if no Dagger injector is found.
@@ -483,8 +656,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     nameAllocator: NameAllocator
   ): List<Parameters>? {
     val injectorClass =
-      pluginContext.referenceClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner
-        ?: return null
+      lookupClass(classIdOrFail.generatedClass("_MembersInjector"))?.owner ?: return null
 
     // Compute source member parameters for qualifier lookup
     // For Dagger, only include properties with setter injection (narrower scope)
@@ -655,7 +827,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           }
         } else {
           // Metro injector, it has the qualifier on the parameter
-          param.qualifierAnnotation()
+          param.generatedMetroQualifierAnnotation()
         }
 
       // Create the parameter with the determined qualifier
@@ -684,6 +856,18 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       contextParameters = emptyList(),
       ir = function,
     )
+  }
+
+  private fun IrValueParameter.generatedMetroQualifierAnnotation(): IrAnnotation? {
+    qualifierAnnotation()?.let {
+      return it
+    }
+    return annotationsCompat()
+      .asSequence()
+      .filterNot { it.annotationClass.classId in metroSymbols.classIds.optionalBindingAnnotations }
+      .map(::IrAnnotation)
+      .distinct()
+      .singleOrNull()
   }
 
   /**
@@ -731,17 +915,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     membersExtractor: (IrClass, ClassId, NameAllocator) -> List<Parameters>,
   ): Map<ClassId, List<Parameters>> {
     return buildList {
-        val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+      val nameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
 
-        for (clazz in types) {
-          val classId = clazz.classIdOrFail
-          val injectedMembers = membersExtractor(clazz, classId, nameAllocator)
+      for (clazz in types) {
+        val classId = clazz.classIdOrFail
+        val injectedMembers = membersExtractor(clazz, classId, nameAllocator)
 
-          if (injectedMembers.isNotEmpty()) {
-            add(classId to injectedMembers)
-          }
+        if (injectedMembers.isNotEmpty()) {
+          add(classId to injectedMembers)
         }
       }
+    }
       // Reverse it such that the supertypes are first
       .asReversed()
       .associate { it.first to it.second }
@@ -750,7 +934,6 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
 context(context: IrMetroContext)
 internal fun IrBlockBodyBuilder.addMemberInjection(
-  typeArgs: List<IrType>?,
   callingFunction: IrSimpleFunction,
   injectFunctions: Map<IrSimpleFunction, Parameters>,
   parametersToFields: Map<Parameter, IrField>,
@@ -761,7 +944,6 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
     trackFunctionCall(callingFunction, function)
     +irInvoke(
       callee = function.symbol,
-      typeArgs = typeArgs,
       args =
         buildList {
           add(irGet(instanceReceiver))

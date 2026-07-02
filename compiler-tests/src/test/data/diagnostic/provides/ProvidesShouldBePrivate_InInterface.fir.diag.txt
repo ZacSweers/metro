@@ -1,1 +1,0 @@
-/ProvidesShouldBePrivate_InInterface.kt:(258,271): warning: Scoped @Provides declarations should be private.

@@ -1,0 +1,1 @@
+/AssistedFactoryWithMissingSAM.kt:8:13: error: @AssistedFactory declarations must have exactly one abstract function but found none.

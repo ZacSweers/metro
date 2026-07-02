@@ -1,0 +1,13 @@
+/module_main_RequiredAnnotationResultsInMissingBindingMultiModule.kt:19:11: error: 
+[Metro/MissingBinding] No binding found for String?
+
+  AppGraph.example -> Example -> String?
+
+  trace (in AppGraph):
+      String? is injected at Example(…, value)
+      Example is requested at AppGraph.example
+
+  help: ensure String? has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

@@ -1,3 +1,0 @@
-/OptionalBindingParamRequiresDefaultValue.kt:(214,217): error: @OptionalBinding-annotated parameters must have a default value.
-
-/OptionalBindingParamRequiresDefaultValue.kt:(365,368): error: @OptionalBinding-annotated parameters must have a default value.

@@ -1,0 +1,1 @@
+/AssistedFactoryMustTargetAssistedInjectTypesButMissingConstructor.kt:7:27: error: Invalid return type: ExampleClass. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor.

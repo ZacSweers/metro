@@ -1,0 +1,1 @@
+/ParameterlessBindsContributionProviders.kt:19:24: error: Parameter-less @Binds target 'HiddenService' is hidden by `generateContributionProviders`. Bind the contributed type instead, or annotate 'HiddenService' with `@ExposeImplBinding`.

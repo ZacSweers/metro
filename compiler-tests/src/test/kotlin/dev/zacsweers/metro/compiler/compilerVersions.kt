@@ -2,8 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.test.COMPILER_VERSION
 import org.jetbrains.kotlin.test.services.TestServices
 import org.jetbrains.kotlin.test.services.moduleStructure
+
+/**
+ * True if the Kotlin compiler we're testing against still emits diagnostic / IR dump goldens with
+ * the legacy `.fir.` infix (e.g. `<name>.fir.diag.txt`). KT-85292 dropped that infix in Kotlin
+ * 2.4.20 as part of the K1 removal effort.
+ *
+ * Drives the diagnostic-handler shim wired in by [AbstractDiagnosticTest]. Once Metro's floor moves
+ * to 2.4.20+, this constant, the two `Metro*DiagnosticsHandler` classes, and the inline configure
+ * path can all be deleted.
+ */
+internal val NEEDS_LEGACY_GOLDEN_NAMING: Boolean = COMPILER_VERSION < KotlinVersion(2, 4, 20)
 
 fun targetKotlinVersionString(testServices: TestServices): String? {
   return testServices.moduleStructure.allDirectives[MetroDirectives.COMPILER_VERSION].firstOrNull()

@@ -69,6 +69,50 @@ interface AppGraph {
 !!! note
     In theory, you can implement a provider with a getter that replicates this (similar to how kotlin-inject uses `@get:Provider` + `this`), but this will be an error in FIR because Metro can generate more efficient code at compile-time if you use `@Binds`. This is because Metro can avoid calling the function entirely and just use this information at compile-time to optimize the generated code.
 
+### Parameter-less `@Binds`
+
+`@Binds` can also declare a constructor-injected class as an explicit binding for itself.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: MessageImpl
+
+  @Binds fun bindMessage(): MessageImpl
+
+  @Provides
+  fun provideText(): String = "Hello, world!"
+}
+
+@Inject
+class MessageImpl(val text: String)
+```
+
+This is useful when you want Metro to fail if another explicit binding for `MessageImpl` is added
+to the same graph.
+
+```kotlin
+@DependencyGraph
+interface AppGraph {
+  val message: MessageImpl
+
+  @Binds fun bindMessage(): MessageImpl
+
+  // Error: duplicate binding for MessageImpl.
+  @Provides fun provideMessage(): MessageImpl = MessageImpl("Hello, world!")
+}
+
+@Inject
+class MessageImpl(val text: String)
+```
+
+The target must be a non-generic constructor-injected class and the
+`@Binds` declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding
+annotations. If `generateContributionProviders` hides the implementation binding, bind the
+contributed type instead or annotate the implementation with `@ExposeImplBinding`.
+
+This matches Dagger 2.60+'s behavior: https://dagger.dev/dev-guide/#parameterless-binds
+
 ## Multibindings
 
 Like Dagger and KI, Metro supports `Set` and `Map` multibindings. Multibindings are collections of bindings of a common type. Multibindings are implicitly declared by the existence of providers annotated with `@IntoSet`, `@IntoMap`, or `@ElementsIntoSet`.

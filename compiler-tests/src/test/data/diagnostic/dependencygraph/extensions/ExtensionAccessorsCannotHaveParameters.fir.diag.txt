@@ -1,5 +1,0 @@
-/ExtensionAccessorsCannotHaveParameters.kt:(306,326): error: Ad-hoc graph extension factories are not supported in Metro. Use `@GraphExtension.Factory` instead.
-
-/ExtensionAccessorsCannotHaveParameters.kt:(376,382): error: Graph extension accessors may not have extension receivers. Use `@GraphExtension.Factory` instead.
-
-/ExtensionAccessorsCannotHaveParameters.kt:(432,435): error: Graph extension accessors may not have context parameters.

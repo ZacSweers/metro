@@ -16,6 +16,8 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmStatic
 
 /**
  * A [Factory] implementation used to implement [Set] bindings. This factory always returns a new
@@ -81,15 +83,30 @@ private constructor(
   public companion object {
     private val EMPTY_FACTORY: Factory<Set<Any>> = InstanceFactory(emptySet())
 
+    @JvmStatic
+    @JsStatic
     public fun <T> empty(): Factory<Set<T>> {
       @Suppress("UNCHECKED_CAST")
       return EMPTY_FACTORY as Factory<Set<T>>
     }
 
     /**
+     * Returns a [Factory] for a [Set] containing exactly one element, sourced from [provider]. Each
+     * [invoke] call invokes [provider] once and wraps the result in a fresh single-element set.
+     *
+     * Equivalent to [builder] with one individual provider but skips the [Builder] allocation.
+     */
+    @JvmStatic
+    @JsStatic
+    public fun <T : Any> singleton(provider: Provider<T>): Factory<Set<T>> =
+      SingletonSetFactory(provider)
+
+    /**
      * Constructs a new [Builder] for a [SetFactory] with `individualProviderSize` individual
      * `Provider<T>` and `collectionProviderSize` `Provider<Collection<T>>` instances.
      */
+    @JvmStatic
+    @JsStatic
     public fun <T : Any> builder(
       individualProviderSize: Int,
       collectionProviderSize: Int,
@@ -97,4 +114,8 @@ private constructor(
       return Builder(individualProviderSize, collectionProviderSize)
     }
   }
+}
+
+private class SingletonSetFactory<T : Any>(private val provider: Provider<T>) : Factory<Set<T>> {
+  override fun invoke(): Set<T> = SingletonSet(provider())
 }

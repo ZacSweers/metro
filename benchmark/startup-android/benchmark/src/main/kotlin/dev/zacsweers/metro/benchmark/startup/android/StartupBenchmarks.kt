@@ -6,6 +6,8 @@ import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,10 +43,19 @@ class StartupBenchmarks {
     ) {
       pressHome()
       startActivityAndWait()
+      flushRuntimeTraces()
     }
+  }
+
+  /** Flushes the target app's AndroidX trace driver before UTP copies additional output. */
+  private fun flushRuntimeTraces() {
+    val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    device.executeShellCommand("am broadcast -a $TRACE_FLUSH_ACTION $PACKAGE_NAME/$TRACE_RECEIVER")
   }
 
   companion object {
     private const val PACKAGE_NAME = "dev.zacsweers.metro.benchmark.startup.android"
+    private const val TRACE_FLUSH_ACTION = "androidx.tracing.profiler.action.FLUSH_TRACES_GET_PATH"
+    private const val TRACE_RECEIVER = "androidx.tracing.profiler.ConnectedProfilerTracingReceiver"
   }
 }

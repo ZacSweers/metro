@@ -1,3 +1,0 @@
-/UiClassInvalidParams.kt:(681,690): error: @CircuitInject UI classes cannot have a Navigator parameter. Navigator is only for presenters.
-
-/UiClassInvalidParams.kt:(705,712): error: @CircuitInject classes cannot have a CircuitContext parameter. CircuitContext is only available at the factory level.

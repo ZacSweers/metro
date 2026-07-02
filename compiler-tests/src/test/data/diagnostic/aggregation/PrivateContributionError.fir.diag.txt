@@ -1,7 +1,0 @@
-/PrivateContributionError.kt:(129,136): error: @Contributes*-annotated classes cannot be private.
-
-/PrivateContributionError.kt:(217,224): error: @Contributes*-annotated classes cannot be private.
-
-/PrivateContributionError.kt:(350,376): error: @Contributes*-annotated classes cannot be private.
-
-/PrivateContributionError.kt:(463,470): error: @Contributes*-annotated classes cannot be private.

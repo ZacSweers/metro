@@ -1,0 +1,5 @@
+/PositionalAnnotationArgsWarning.kt:15:17: warning: Interop annotation @MergeComponent should use named arguments instead of positional arguments for better compatibility in Metro.
+
+/PositionalAnnotationArgsWarning.kt:16:19: warning: Interop annotation @MergeComponent should use named arguments instead of positional arguments for better compatibility in Metro.
+
+/PositionalAnnotationArgsWarning.kt:17:24: warning: Interop annotation @MergeComponent should use named arguments instead of positional arguments for better compatibility in Metro.

@@ -1,0 +1,556 @@
+@Inject
+class A {
+  val b: B
+    field = b
+    get
+
+  val e: E
+    field = e
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<A> {
+    private /* final field */ val b: Provider<B> = b
+    private /* final field */ val e: Provider<E> = e
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(b: Provider<B>, e: Provider<E>): MetroFactory {
+        return MetroFactory(b = b, e = e)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(b: B, e: E): A {
+        return A(b = b, e = e)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(b: Provider<B>, e: Provider<E>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): A {
+      return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(b: B, e: E): A {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(b: B, e: E) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class B {
+  val c: C
+    field = c
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<B> {
+    private /* final field */ val c: Provider<C> = c
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(c: Provider<C>): MetroFactory {
+        return MetroFactory(c = c)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(c: C): B {
+        return B(c = c)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(c: Provider<C>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): B {
+      return MetroFactory/* companion */.newInstance(c = <this>.#c.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(c: C): B {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(c: C) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Suppress(names = ["MEMBERS_INJECT_WARNING"])
+@Inject
+class C {
+  val aProvider: Function0<A>
+    field = aProvider
+    get
+
+  lateinit var aLazy: Lazy<A>
+    get
+    set
+
+  lateinit var aLazyProvider: Function0<Lazy<A>>
+    get
+    set
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<C> {
+    private /* final field */ val aProvider: Provider<A> = aProvider
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(aProvider: Provider<A>): MetroFactory {
+        return MetroFactory(aProvider = aProvider)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(aProvider: Function0<A>): C {
+        return C(aProvider = aProvider)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(aProvider: Provider<A>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): C {
+      val tmp0: C = C.MetroFactory/* companion */.newInstance(aProvider = <this>.#aProvider)
+      MetroMembersInjector/* companion */.injectALazy(instance = tmp0, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aProvider))
+      MetroMembersInjector/* companion */.injectALazyProvider(instance = tmp0, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aProvider))
+      return tmp0
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(aProvider: Function0<A>): C {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroMembersInjector : MembersInjector<C> {
+    private /* final field */ val aLazy: Provider<A> = aLazy
+    private /* final field */ val aLazyProvider: Provider<A> = aLazyProvider
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(aLazy: Provider<A>, aLazyProvider: Provider<A>): MembersInjector<C> {
+        return MetroMembersInjector(aLazy = aLazy, aLazyProvider = aLazyProvider)
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun injectALazy(@Assisted instance: C, aLazy: Lazy<A>) {
+        return instance.#aLazy = aLazy
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun injectALazyProvider(@Assisted instance: C, aLazyProvider: Function0<Lazy<A>>) {
+        return instance.#aLazyProvider = aLazyProvider
+      }
+
+    }
+
+    private constructor(aLazy: Provider<A>, aLazyProvider: Provider<A>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun injectMembers(instance: C) {
+      MetroMembersInjector/* companion */.injectALazy(instance = instance, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aLazy))
+      MetroMembersInjector/* companion */.injectALazyProvider(instance = instance, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aLazyProvider))
+    }
+
+  }
+
+  constructor(aProvider: Function0<A>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class D {
+  val b: B
+    field = b
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<D> {
+    private /* final field */ val b: Provider<B> = b
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(b: Provider<B>): MetroFactory {
+        return MetroFactory(b = b)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(b: B): D {
+        return D(b = b)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(b: Provider<B>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): D {
+      return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(b: B): D {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(b: B) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class E {
+  val d: D
+    field = d
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<E> {
+    private /* final field */ val d: Provider<D> = d
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(d: Provider<D>): MetroFactory {
+        return MetroFactory(d = d)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(d: D): E {
+        return E(d = d)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(d: Provider<D>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): E {
+      return MetroFactory/* companion */.newInstance(d = <this>.#d.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(d: D): E {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(d: D) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@GraphExtension
+interface ChildCycleGraph {
+  @GraphExtension.Factory
+  fun interface Factory {
+    abstract fun create(): ChildCycleGraph
+
+  }
+
+  abstract val a: A
+    abstract get
+
+  abstract val obj: Any
+    abstract get
+
+}
+
+@DependencyGraph
+interface CycleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : CycleGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private val cProvider: Provider<C>
+      field = DelegateFactory<C>()
+
+    private val bProvider: Provider<B>
+      field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
+
+    private val aProvider: Provider<A>
+      field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
+
+    private val provideObjectWithCycleProvider: Provider<Any>
+      field = DelegateFactory<Any>()
+
+    @DependencyGraph
+    private class ChildCycleGraphImpl : ChildCycleGraph {
+      private val cycleGraphImpl: Impl
+        field = cycleGraphImpl
+
+      private val cProvider: Provider<C>
+        field = DelegateFactory<C>()
+
+      private val bProvider: Provider<B>
+        field = B.MetroFactory/* companion */.create(c = <this>.#cProvider)
+
+      private val aProvider: Provider<A>
+        field = A.MetroFactory/* companion */.create(b = <this>.#bProvider, e = E.MetroFactory/* companion */.create(d = D.MetroFactory/* companion */.create(b = <this>.#bProvider)))
+
+      private val provideObjectWithCycleProvider: Provider<Any>
+        field = DelegateFactory<Any>()
+
+      private class FactoryImpl : ChildCycleGraph.Factory {
+        private /* final field */ val CycleGraphImpl: Impl = CycleGraphImpl
+        constructor(CycleGraphImpl: Impl) /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        override fun create(): ChildCycleGraph {
+          return ChildCycleGraphImpl(cycleGraphImpl = <this>.#CycleGraphImpl)
+        }
+
+      }
+
+      constructor(cycleGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+        DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
+        DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#cycleGraphImpl, obj = <this>.#provideObjectWithCycleProvider))
+      }
+
+      override val a: A
+        override get(): A {
+          return <this>.#aProvider.invoke()
+        }
+
+      override val obj: Any
+        override get(): Any {
+          return <this>.#provideObjectWithCycleProvider.invoke()
+        }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      DelegateFactory/* companion */.setDelegate<C>(delegateFactory = <this>.#cProvider, delegate = C.MetroFactory/* companion */.create(aProvider = <this>.#aProvider))
+      DelegateFactory/* companion */.setDelegate<Any>(delegateFactory = <this>.#provideObjectWithCycleProvider, delegate = ProvideObjectWithCycleMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, obj = <this>.#provideObjectWithCycleProvider))
+    }
+
+    override fun a(): A {
+      return <this>.#aProvider.invoke()
+    }
+
+    override fun c(): C {
+      return <this>.#cProvider.invoke()
+    }
+
+    override fun childCycleGraph(): ChildCycleGraph.Factory {
+      return CycleGraph.Impl.ChildCycleGraphImpl.FactoryImpl(CycleGraphImpl = <this>.#thisGraphInstance)
+    }
+
+    override val objWithCycle: Any
+      override get(): Any {
+        return <this>.#provideObjectWithCycleProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): CycleGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideObjectWithCycle", propertyName = "", startOffset = 489, endOffset = 582, newInstanceName = "provideObjectWithCycle")
+  class ProvideObjectWithCycleMetroFactory : Factory<Any> {
+    private /* final field */ val instance: CycleGraph = instance
+    private /* final field */ val obj: Provider<Any> = obj
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: CycleGraph, obj: Provider<Any>): ProvideObjectWithCycleMetroFactory {
+        return ProvideObjectWithCycleMetroFactory(instance = instance, obj = obj)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideObjectWithCycle(instance: CycleGraph, obj: Function0<Any>): Any {
+        return instance.provideObjectWithCycle(obj = obj)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: CycleGraph, obj: Provider<Any>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Any {
+      return ProvideObjectWithCycleMetroFactory/* companion */.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(obj: Function0<Any>): Any {
+      return error(message = "Never called")
+    }
+
+  }
+
+  abstract fun a(): A
+
+  abstract fun c(): C
+
+  abstract fun childCycleGraph(): ChildCycleGraph.Factory
+
+  @Provides
+  private final fun provideObjectWithCycle(obj: Function0<Any>): Any {
+    return "object"
+  }
+
+  abstract val objWithCycle: Any
+    abstract get
+
+}
+

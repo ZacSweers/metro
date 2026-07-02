@@ -1,1 +1,0 @@
-/ExposeImplBindingWithoutContributionProviders.kt:(174,192): warning: `@ExposeImplBinding` has no effect when `generateContributionProviders` is not enabled.

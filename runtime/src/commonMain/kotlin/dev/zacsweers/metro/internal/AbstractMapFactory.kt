@@ -17,6 +17,7 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.providerOf
+import kotlin.jvm.JvmField
 
 /**
  * An `abstract` [Factory] implementation used to implement [Map] bindings.
@@ -35,6 +36,7 @@ public sealed class AbstractMapFactory<K : Any, V, V2>(map: Map<K, Provider<V>>)
   }
 
   protected companion object {
+    @JvmField
     protected val EMPTY: Provider<Map<Any, Any>> = InstanceFactory(emptyMap())
   }
 
@@ -51,7 +53,7 @@ public sealed class AbstractMapFactory<K : Any, V, V2>(map: Map<K, Provider<V>>)
     // expand their accessibility
     /** Associates `key` with `providerOfValue`. */
     public open fun put(key: K, providerOfValue: Provider<V>): Builder<K, V, V2> = apply {
-      map.put(key, providerOfValue)
+      map[key] = providerOfValue
     }
 
     public open fun putAll(mapOfProviders: Provider<Map<K, V2>>): Builder<K, V, V2> = apply {

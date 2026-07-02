@@ -1,3 +1,0 @@
-/PresenterClassMissingInject.kt:(563,576): error: @CircuitInject-annotated class must also be annotated with @Inject. If no dependencies are needed, consider using a presenter function instead.
-
-/PresenterClassMissingInject.kt:(816,830): error: @CircuitInject-annotated class must also be annotated with @Inject. Circuit-provided parameters (Screen, Navigator, etc.) should use @AssistedInject with @Assisted annotations, or consider using a presenter function instead.

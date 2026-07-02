@@ -1,0 +1,18 @@
+/MembersInjectorParameterWithNoDefaultShouldError.kt:15:5: error: 
+[Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
+
+  TestGraph.injector -> MembersInjector<*> -> MembersInjector<ClassWithoutMembersInjector>
+
+  trace (in TestGraph):
+      MembersInjector<ClassWithoutMembersInjector> is injected at
+          TestGraph.provideGenericMembersInjector(…, instance)
+      MembersInjector<*> is requested at TestGraph.injector
+
+  similar bindings:
+      - MembersInjector<*> (Supertype. Type: Provided) -
+        MembersInjectorParameterWithNoDefaultShouldError.kt:13:3
+
+  help: ensure MembersInjector<ClassWithoutMembersInjector> has an @Inject constructor or is
+        provided by an @Provides or @Binds declaration visible to TestGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

@@ -1,0 +1,12 @@
+/GraphPrivateBindingNotVisibleToChild.kt:15:7: error: 
+[Metro/MissingBinding] No binding found for String
+
+  trace (in ParentGraph.Impl.ChildGraphImpl):
+      String is requested at ChildGraph.text
+
+  note: a binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ChildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

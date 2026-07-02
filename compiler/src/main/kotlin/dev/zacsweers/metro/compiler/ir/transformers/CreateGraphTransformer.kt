@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
 import dev.zacsweers.metro.compiler.ir.implements
@@ -15,14 +16,19 @@ import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
+import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -100,7 +106,7 @@ internal class CreateGraphTransformer(
           // Replace it with a call directly to the factory function
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = irGetObject(companion.symbol)
+              dispatchReceiver = companionReceiver(companion)
             }
           }
         }
@@ -117,9 +123,15 @@ internal class CreateGraphTransformer(
 
         val companionIsTheGraph = companion.implements(rawType.classIdOrFail)
         if (companionIsTheGraph) {
+          val graphImpl =
+            if (options.generateClassesInIr) {
+              rawType.getOrCreateGraphImplClassShell()
+            } else {
+              rawType.metroGraphOrFail
+            }
           withIrBuilder(expression.symbol) {
             irCallConstructor(
-              rawType.metroGraphOrFail.primaryConstructor!!.symbol,
+              graphImpl.primaryConstructor!!.symbol,
               type.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail },
             )
           }
@@ -134,7 +146,7 @@ internal class CreateGraphTransformer(
           // Replace it with a call directly to the create function
           withIrBuilder(expression.symbol) {
             irCall(callee = factoryFunction.symbol, type = type).apply {
-              dispatchReceiver = irGetObject(companion.symbol)
+              dispatchReceiver = companionReceiver(companion)
             }
           }
         }
@@ -202,6 +214,26 @@ internal class CreateGraphTransformer(
           }
         }
       }
+    }
+  }
+
+  context(context: TransformerContextAccess)
+  /**
+   * Returns the dispatch receiver for calls to functions on [companion].
+   *
+   * Most rewritten `createGraph*()` calls happen outside the target graph companion, so the call
+   * needs an object access receiver. When the intrinsic appears inside that same companion though,
+   * the current dispatch receiver is already the companion instance. Reusing `this` keeps the
+   * rewritten call scoped like a normal companion member call instead of manufacturing a new object
+   * access inside the companion body.
+   */
+  private fun IrBuilderWithScope.companionReceiver(companion: IrClass): IrExpression {
+    val currentClass = context.currentClassAccess?.irElement as? IrClass
+    val currentFunction = context.currentFunctionAccess?.irElement as? IrFunction
+    return if (currentClass == companion) {
+      irGet(currentFunction?.dispatchReceiverParameter ?: companion.thisReceiverOrFail)
+    } else {
+      irGetObject(companion.symbol)
     }
   }
 }

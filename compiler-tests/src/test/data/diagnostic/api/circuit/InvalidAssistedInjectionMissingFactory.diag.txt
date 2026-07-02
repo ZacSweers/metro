@@ -1,0 +1,1 @@
+/InvalidAssistedInjectionMissingFactory.kt:19:15: error: @CircuitInject @AssistedFactory must be nested inside the target Presenter or Ui class.

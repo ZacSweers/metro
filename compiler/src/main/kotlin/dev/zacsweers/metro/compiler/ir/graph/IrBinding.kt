@@ -5,7 +5,9 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
@@ -22,7 +24,10 @@ import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
+import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.implements
+import dev.zacsweers.metro.compiler.ir.originClassOrNull
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.rawType
@@ -31,8 +36,12 @@ import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderForDiagnostic
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toNameDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toTypeDiagnosticSpan
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.TreeSet
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -40,12 +49,14 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrErrorType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
@@ -65,6 +76,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   /** Returns true if this binding is provided by a suspend function. */
   val isSuspend: Boolean
     get() = false
+
+  /** A human-readable type name for this binding, used in diagnostic messages. */
+  val diagnosticTypeName: String
+    get() = javaClass.simpleName
 
   /**
    * Returns true if this binding should be scoped (cached) in the graph. For most bindings, this is
@@ -96,6 +111,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     return LocationDiagnostic(
       locationString,
       renderDescriptionDiagnostic(short = short, underlineTypeKey = underlineTypeKey),
+      reportableDeclaration?.let { declaration ->
+        if (underlineTypeKey) {
+          declaration.toTypeDiagnosticSpan(shortDisplayPath = shortLocation)
+        } else {
+          declaration.toDiagnosticSpan(shortDisplayPath = shortLocation)
+        }
+      },
     )
   }
 
@@ -117,6 +139,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val annotations: MetroAnnotations<IrAnnotation>,
     override val typeKey: IrTypeKey,
     val injectedMembers: Set<IrContextualTypeKey>,
+    val explicitBinding: BindsCallable? = null,
     /**
      * True if the source class is annotated with `@SuspendAware`. Drives factory *shape*:
      * `SuspendFactory<T>` supertype, suspend `invoke()`, ctor params wrapped in
@@ -131,7 +154,8 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = classFactory.targetFunctionParameters
 
     val isAssisted
-      get() = classFactory.isAssistedInject
+      get() =
+        classFactory.isAssistedInject || parameters.nonDispatchParameters.any { it.isAssisted }
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.nonDispatchParameters.filterNot { it.isAssisted }.map { it.contextualTypeKey } +
@@ -149,6 +173,19 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val reportableDeclaration: IrDeclarationWithName
       get() = type
 
+    override val diagnosticNotes: List<Note> by memoize {
+      explicitBinding?.let { binding ->
+        val location =
+          binding.function.renderSourceLocation(short = true)
+            ?: binding.callableId.asSingleFqName().asString()
+        listOf(
+          Note.help(
+            "the constructor-injected binding for ${typeKey.renderForDiagnostic(short = true)} is explicitly declared with a parameter-less `@Binds` at $location"
+          )
+        )
+      } ?: emptyList()
+    }
+
     /**
      * Returns true this binding can be invoked directly without going through the factory. This is
      * used to optimize instance access by skipping factory creation.
@@ -156,7 +193,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      * We can't use direct invocation if there are injected members because the factory handles
      * member injection
      */
-    fun canBypassFactory(): Boolean = !classFactory.isAssistedInject && injectedMembers.isEmpty()
+    fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
     fun parameterFor(typeKey: IrTypeKey) =
       classFactory.function.regularParameters.getOrNull(
@@ -182,6 +219,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         annotations = annotations.copy(mapKey = mapKey),
         typeKey = typeKey,
         injectedMembers = injectedMembers,
+        explicitBinding = explicitBinding,
         isSuspendAware = isSuspendAware,
       )
     }
@@ -268,8 +306,37 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val nameHint: String
       get() = providerFactory.callableId.callableName.asString()
 
+    /** The `@Origin` annotation on the provider container, if present. */
+    private val originAnnotation: IrConstructorCall? by memoize {
+      providerFactory.function.parentClassOrNull
+        ?.findAnnotations(Symbols.ClassIds.metroOrigin)
+        ?.firstOrNull()
+    }
+
+    /**
+     * For contribution provider bindings, resolves the origin class from the `@Origin` annotation
+     * on the provider container. Returns null if not a contribution provider or origin can't be
+     * resolved (e.g., internal visibility across modules).
+     */
+    val originClass: IrClass? by memoize { originAnnotation?.originClassOrNull() }
+
+    /**
+     * The origin ClassId, available even when [originClass] can't be resolved (e.g., internal
+     * visibility). Used as fallback for diagnostic messages.
+     */
+    val originClassId: ClassId? by memoize { originAnnotation?.originOrNull() }
+
     override val reportableDeclaration: IrDeclarationWithName
-      get() = providerFactory.function
+      get() =
+        originClass
+          ?: (providerFactory.realDeclaration as? IrDeclarationWithName)
+          ?: providerFactory.function
+
+    override val diagnosticTypeName: String
+      get() {
+        val name = originClass?.name?.asString() ?: originClassId?.shortClassName?.asString()
+        return if (name != null) "$name (Contributing class)" else super.diagnosticTypeName
+      }
 
     fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
       return parameters.allParameters
@@ -283,16 +350,75 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean) =
       buildString {
-        renderForDiagnostic(
-          declaration = providerFactory.function,
-          short = short,
-          typeKey = providerFactory.typeKey,
-          annotations = providerFactory.annotations,
-          parameters = providerFactory.parameters,
-          isProperty = providerFactory.isPropertyAccessor,
-          underlineTypeKey = underlineTypeKey,
-        )
+        val originName = renderOriginName()
+        if (originName != null) {
+          // For contribution provider bindings, show the origin class instead of the
+          // generated provides function
+          val renderedType = providerFactory.typeKey.renderForDiagnostic(short = short)
+          val content = "$originName contributes a binding of $renderedType"
+          if (underlineTypeKey) {
+            appendContributionSummaryWithUnderlines(content, originName, renderedType)
+          } else {
+            append(content)
+          }
+        } else {
+          renderForDiagnostic(
+            declaration = providerFactory.function,
+            short = short,
+            typeKey = providerFactory.typeKey,
+            annotations = providerFactory.annotations,
+            parameters = providerFactory.parameters,
+            isProperty = providerFactory.isPropertyAccessor,
+            underlineTypeKey = underlineTypeKey,
+          )
+        }
       }
+
+    fun renderContributionLocationDiagnostic(
+      short: Boolean,
+      shortLocation: Boolean,
+    ): LocationDiagnostic? {
+      val originName = renderOriginName() ?: return null
+      val location =
+        originClass?.renderSourceLocation(short = shortLocation)
+          ?: originClassId?.asSingleFqName()?.asString()
+          ?: return null
+      val renderedType = providerFactory.typeKey.renderForDiagnostic(short = short)
+      val content = "$originName contributes a binding of $renderedType"
+      val description = buildString {
+        appendContributionSummaryWithUnderlines(content, originName, renderedType)
+      }
+      return LocationDiagnostic(
+        location,
+        description,
+        originClass?.toNameDiagnosticSpan(shortDisplayPath = shortLocation),
+      )
+    }
+
+    private fun renderOriginName(): String? {
+      originClass?.let { originClass ->
+        return originClass.kotlinFqName.asString()
+      }
+      originClassId?.let { originClassId ->
+        return originClassId.asSingleFqName().asString()
+      }
+      return null
+    }
+
+    context(builder: StringBuilder)
+    private fun appendContributionSummaryWithUnderlines(
+      content: String,
+      originName: String,
+      renderedType: String,
+    ) {
+      builder.appendLineWithUnderlinedRanges(
+        content,
+        listOf(
+          0 until originName.length,
+          content.length - renderedType.length until content.length,
+        ),
+      )
+    }
 
     override fun toString() = renderDescriptionDiagnostic(short = true, underlineTypeKey = false)
   }

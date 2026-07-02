@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import org.jetbrains.kotlin.backend.jvm.ir.fileParentOrNull
 import org.jetbrains.kotlin.backend.jvm.ir.getIoFile
 import org.jetbrains.kotlin.backend.jvm.ir.getKtFile
+import org.jetbrains.kotlin.incremental.components.ExpectActualTracker
 import org.jetbrains.kotlin.incremental.components.LocationInfo
 import org.jetbrains.kotlin.incremental.components.LookupTracker
 import org.jetbrains.kotlin.incremental.components.Position
@@ -60,14 +61,15 @@ internal fun linkDeclarationsInCompilation(callingFile: IrFile?, calleeDeclarati
     // Does it have an origin?
     val origin = calleeDeclaration.originClassId()
     if (origin != null) {
-      val originClass = context.referenceClass(origin)?.owner
+      val finder = with(context) { context.pluginContext.finderForSourceCompat(callingFile) }
+      val originClass = finder.findClass(origin)?.owner
       if (originClass != null) {
         linkDeclarationsInCompilation(callingFile = callingFile, calleeDeclaration = originClass)
       }
     }
     return
   }
-  context.expectActualTracker.report(expectedFile = expectedFile, actualFile = actualFile)
+  withExpectActualTracker { report(expectedFile = expectedFile, actualFile = actualFile) }
 }
 
 /**
@@ -182,12 +184,84 @@ internal fun trackLookup(
   }
 }
 
+/**
+ * Whether IC writes go straight to the trackers (and their report-file logging) and therefore need
+ * a lock under parallelism. Buffered tracking (`enableBufferedIcTracking`) writes to a thread-safe
+ * log that is flushed serially after IR, so it never needs a lock here.
+ */
+context(context: IrMetroContext)
+internal fun icWritesNeedLock(): Boolean =
+  !context.options.bufferedIcTracking && context.options.parallelThreads > 0
+
 context(context: IrMetroContext)
 internal inline fun withLookupTracker(body: LookupTracker.() -> Unit) {
-  context.lookupTracker?.let { tracker -> synchronized(tracker) { tracker.body() } }
+  context.lookupTracker?.let { tracker ->
+    if (icWritesNeedLock()) {
+      synchronized(tracker) { tracker.body() }
+    } else {
+      tracker.body()
+    }
+  }
 }
 
-private fun IrDeclaration.withAnalyzableKtFile(body: (filePath: String) -> Unit) {
+context(context: IrMetroContext)
+internal inline fun withExpectActualTracker(body: ExpectActualTracker.() -> Unit) {
+  val tracker = context.expectActualTracker
+  if (icWritesNeedLock()) {
+    synchronized(tracker) { tracker.body() }
+  } else {
+    tracker.body()
+  }
+}
+
+/**
+ * Run [body] with a [BindsTrackerScope] that has resolved [callingDeclaration]'s file path once for
+ * a tight loop of lookups. When IC writes are unbuffered under parallelism, the lookup tracker lock
+ * is also acquired once instead of per-call.
+ */
+context(context: IrMetroContext)
+internal inline fun batchTrackForCallingDeclaration(
+  callingDeclaration: IrDeclaration,
+  body: BindsTrackerScope.() -> Unit,
+) {
+  callingDeclaration.withAnalyzableKtFile { filePath ->
+    withLookupTracker { BindsTrackerScope(this, filePath).body() }
+  }
+}
+
+internal class BindsTrackerScope(private val tracker: LookupTracker, private val filePath: String) {
+  fun trackFunctionCall(calleeFunction: IrFunction) {
+    val callee =
+      if (calleeFunction is IrOverridableDeclaration<*> && calleeFunction.isFakeOverride) {
+        calleeFunction.resolveFakeOverrideMaybeAbstract() ?: calleeFunction
+      } else {
+        calleeFunction
+      }
+    val declaration: IrDeclarationWithName =
+      (callee as? IrSimpleFunction)?.correspondingPropertySymbol?.owner ?: callee
+    tracker.record(
+      filePath = filePath,
+      position = Position.NO_POSITION,
+      scopeFqName = callee.parent.kotlinFqName.asString(),
+      scopeKind = ScopeKind.CLASSIFIER,
+      name = declaration.name.asString(),
+    )
+  }
+
+  fun trackClassLookup(calleeClass: IrClass) {
+    val classId = calleeClass.classId ?: return
+    val container = classId.outerClassId?.asSingleFqName() ?: classId.packageFqName
+    tracker.record(
+      filePath = filePath,
+      position = Position.NO_POSITION,
+      scopeFqName = container.asString(),
+      scopeKind = ScopeKind.PACKAGE,
+      name = classId.shortClassName.asString(),
+    )
+  }
+}
+
+private inline fun IrDeclaration.withAnalyzableKtFile(body: (filePath: String) -> Unit) {
   val callingDeclaration = this
   val ktFile = callingDeclaration.fileParentOrNull?.getKtFile()
   if ((ktFile != null && ktFile.doNotAnalyze == null) || ktFile == null) {

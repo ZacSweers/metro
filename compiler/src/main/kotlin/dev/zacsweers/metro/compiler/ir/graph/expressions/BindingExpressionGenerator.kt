@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.ir.util.classId
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
   context: IrMetroContext,
   traceScope: TraceScope,
+  internal val expressionDecorator: GraphBindingExpressionDecorator,
 ) : IrMetroContext by context, TraceScope by traceScope {
   abstract val thisReceiver: IrValueParameter
   abstract val bindingGraph: IrBindingGraph
@@ -80,6 +81,10 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
    * @param allowPropertyGetter Whether to allow wrapping property getter calls in InstanceFactory.
    *   Normally this would eagerly init the getter, but for graph extension GETTER properties this
    *   is intentional since the getter lazily creates the extension.
+   * @param bindingKind Optional diagnostic label for the binding implementation that produced this
+   *   expression. When present, it is attached as tracing metadata.
+   * @param providerOrigin Where a provider-valued result came from. Decorators can use this to
+   *   avoid repeating work that happened while a stored provider property was initialized.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.toTargetType(
@@ -101,6 +106,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       },
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
+    bindingKind: String? = null,
+    providerOrigin: ProviderExpressionOrigin = ProviderExpressionOrigin.NewExpression,
+    providerType: IrType? = null,
   ): IrExpression {
     // Step 1: Transform access type
     val accessTransformed =
@@ -112,7 +120,9 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             // actual is an instance, wrap it
             wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
           } else {
-            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) { this@toTargetType }
+            scope.wrapInProviderFunction(contextualTypeKey.typeKey.type) {
+              this@toTargetType
+            }
           }
         }
         SUSPEND_PROVIDER -> {
@@ -143,15 +153,47 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
     // Only do this if we're in PROVIDER mode (or transformed to it)
     // SuspendProvider doesn't need framework conversion (no Dagger/Javax equivalent)
+    val maybeTraced =
+      if (requested == AccessType.PROVIDER) {
+        expressionDecorator.decorateProviderExpression(
+          accessTransformed,
+          ProviderExpressionRequest(
+            contextualTypeKey = contextualTypeKey,
+            bindingKind = bindingKind,
+            origin = providerOrigin,
+            providerType = providerType,
+          ),
+        )
+      } else {
+        accessTransformed
+      }
+
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
       with(scope) {
-        with(metroSymbols.providerTypeConverter) { accessTransformed.convertTo(contextualTypeKey) }
+        with(metroSymbols.providerTypeConverter) {
+          if (providerType == null) {
+            maybeTraced.convertTo(contextualTypeKey)
+          } else {
+            maybeTraced.convertTo(contextualTypeKey, providerType = providerType)
+          }
+        }
       }
     } else {
-      accessTransformed
+      maybeTraced
     }
   }
+
+  /**
+   * Resolves the user-provided AndroidX `Tracer` binding through the normal binding graph.
+   *
+   * Metro uses this to initialize the generated `metroTraceContext` property. It does not
+   * synthesize a tracer binding, so callers should only invoke this after
+   * [runtimeTracingAvailable][dev.zacsweers.metro.compiler.ir.runtimeTracingAvailable] has
+   * confirmed that tracing can be generated.
+   */
+  context(scope: IrBuilderWithScope)
+  abstract fun generateTracerBindingCode(): IrExpression
 
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.wrapInInstanceFactory(
@@ -226,5 +268,31 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         typeHint = type,
       )
     }
+  }
+
+  /**
+   * Wraps a direct instance expression in a `MetroTraceContext.trace` call when tracing is enabled.
+   *
+   * This is only for code paths that already have a `T` expression from direct constructor or
+   * provider-function invocation. Provider-valued access is decorated separately with
+   * `TracedProvider`, so this avoids creating a temporary `Provider<T>` just to trace and invoke
+   * it.
+   *
+   * Returns [directExpr] unchanged when this graph's expression decorators do not need to observe
+   * the direct value.
+   */
+  context(scope: IrBuilderWithScope)
+  protected fun maybeTraceDirectExpression(
+    directExpr: IrExpression,
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String?,
+  ): IrExpression {
+    return expressionDecorator.decorateDirectExpression(
+      directExpr,
+      DirectExpressionRequest(
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = bindingKind,
+      ),
+    )
   }
 }

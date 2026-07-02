@@ -1,4 +1,5 @@
 // WITH_DAGGER
+// IGNORE_BACKEND: JS_IR
 // GENERATE_ASSISTED_FACTORIES
 
 // Tests that assisted factory gen handles identifiers in interop

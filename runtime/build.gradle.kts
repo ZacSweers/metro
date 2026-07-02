@@ -7,6 +7,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("runtime")
+  name.set("Metro Runtime")
+}
+
 metroProject { configureCommonKmpTargets("metro-runtime") }
 
 kotlin {
@@ -27,5 +32,8 @@ kotlin {
     }
   }
 
-  compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
+  compilerOptions {
+    freeCompilerArgs.add("-Xexpect-actual-classes")
+    optIn.add("kotlin.js.ExperimentalJsStatic")
+  }
 }

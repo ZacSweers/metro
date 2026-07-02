@@ -7,6 +7,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("metrox-viewmodel")
+  name.set("Metrox ViewModel")
+}
+
 metroProject { configureCommonKmpTargets("metrox-viewmodel", requiresAndroidXDeps = true) }
 
 kotlin {

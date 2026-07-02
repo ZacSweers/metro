@@ -16,9 +16,13 @@
 package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.Provider
+import kotlin.js.JsStatic
+import kotlin.jvm.JvmInline
+import kotlin.jvm.JvmStatic
 
 /** A [Provider] of [Lazy] instances that each delegate to a given [Provider]. */
-public class ProviderOfLazy<T> private constructor(private val provider: Provider<T>) :
+@JvmInline
+public value class ProviderOfLazy<T> private constructor(private val provider: Provider<T>) :
   Provider<Lazy<T>> {
 
   /**
@@ -33,6 +37,8 @@ public class ProviderOfLazy<T> private constructor(private val provider: Provide
      *
      * @see invoke
      */
+    @JvmStatic
+    @JsStatic
     public fun <T> create(provider: Provider<T>): Provider<Lazy<T>> = ProviderOfLazy(provider)
   }
 }

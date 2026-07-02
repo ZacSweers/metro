@@ -1,0 +1,3 @@
+/ProvidesNamesMustBeUniqueInGraph.kt:9:17: error: Class AppGraph cannot contain multiple @Provides callables with the same name 'provideNumber'.
+
+/ProvidesNamesMustBeUniqueInGraph.kt:10:17: error: Class AppGraph cannot contain multiple @Provides callables with the same name 'provideNumber'.

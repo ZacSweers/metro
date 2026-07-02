@@ -9,14 +9,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform)
-  alias(libs.plugins.android.library)
+  alias(libs.plugins.android.kmp)
   id("dev.zacsweers.metro")
-}
-
-android {
-  namespace = "dev.zacsweers.metro.test.integration.android"
-
-  buildFeatures { viewBinding = true }
 }
 
 @OptIn(ExperimentalMetroGradleApi::class, DelicateMetroGradleApi::class, RequiresIdeSupport::class)
@@ -30,7 +24,8 @@ metro {
 
 @OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
 kotlin {
-  androidTarget()
+  android { namespace = "dev.zacsweers.metro.test.integration.android" }
+
   jvm()
 
   js { browser() }
@@ -71,10 +66,8 @@ kotlin {
     compilations.configureEach {
       compileTaskProvider.configure {
         compilerOptions.freeCompilerArgs.addAll(
-          // Big yikes in how this was rolled out as noisy compiler warnings
-          "-Xannotation-default-target=param-property",
           // This is irrelevant for these tests and creates a bit of noise
-          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled",
+          "-Xwarning-level=SUSPICIOUS_UNUSED_MULTIBINDING:disabled"
         )
       }
     }

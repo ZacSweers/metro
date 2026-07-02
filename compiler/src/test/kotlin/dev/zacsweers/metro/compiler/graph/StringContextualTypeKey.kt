@@ -16,7 +16,11 @@ private constructor(
 
   override fun toString(): String = render(short = true)
 
-  override fun render(short: Boolean, includeQualifier: Boolean): String = buildString {
+  override fun render(
+    short: Boolean,
+    includeQualifier: Boolean,
+    useRelativeClassNames: Boolean,
+  ): String = buildString {
     append(
       wrappedType.render { type ->
         if (type == typeKey.type) {

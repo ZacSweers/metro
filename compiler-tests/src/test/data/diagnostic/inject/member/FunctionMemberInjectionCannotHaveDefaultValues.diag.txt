@@ -1,0 +1,3 @@
+/FunctionMemberInjectionCannotHaveDefaultValues.kt:5:54: error: Function member injection cannot have default values.
+
+/FunctionMemberInjectionCannotHaveDefaultValues.kt:5:71: error: Function member injection cannot have default values.

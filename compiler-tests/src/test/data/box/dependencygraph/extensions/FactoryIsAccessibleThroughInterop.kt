@@ -1,5 +1,6 @@
 // ENABLE_DAGGER_INTEROP
 // WITH_ANVIL
+// IGNORE_BACKEND: JS_IR
 
 import com.squareup.anvil.annotations.MergeComponent
 import dagger.Module

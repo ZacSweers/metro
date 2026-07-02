@@ -44,11 +44,10 @@ import org.jetbrains.kotlin.fir.declarations.FirTypeParameterRef
 import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
-import org.jetbrains.kotlin.fir.declarations.getBooleanArgument
 import org.jetbrains.kotlin.fir.declarations.getTargetType
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.classId
@@ -56,6 +55,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
+import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOpen
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
@@ -94,6 +94,7 @@ import org.jetbrains.kotlin.fir.renderer.ConeIdShortRenderer
 import org.jetbrains.kotlin.fir.renderer.ConeTypeRendererForReadability
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.defaultType
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
@@ -147,11 +148,17 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.ClassIdBasedLocality
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.types.ConstantValueKind
 
 @OptIn(UnresolvedExpressionTypeAccess::class)
 internal val FirExpression.isResolved: Boolean
   get() = coneTypeOrNull != null
+
+internal fun TargetPlatform?.supportsTracing(): Boolean {
+  return this == null || isJvm()
+}
 
 internal fun FirBasedSymbol<*>.isAnnotatedInject(session: FirSession): Boolean {
   return isAnnotatedWithAny(session, session.classIds.injectAnnotations)
@@ -204,9 +211,9 @@ internal fun FirBasedSymbol<*>.isGraphFactory(session: FirSession): Boolean {
 
 internal fun FirAnnotationContainer.isAnnotatedWithAny(
   session: FirSession,
-  names: Collection<ClassId>,
+  names: Set<ClassId>,
 ): Boolean {
-  return names.any { hasAnnotation(it, session) }
+  return annotations.any { it.isResolved && it.toAnnotationClassId(session) in names }
 }
 
 internal fun FirAnnotationContainer.annotationsIn(
@@ -450,6 +457,11 @@ private fun renderAnnotationArgument(
           }
       }
 
+      is FirNamedArgumentExpression -> {
+        // Ignore the name for the hash, it's the value we want
+        renderAnnotationArgument(session, arg.expression, typeResolver)
+      }
+
       // Enum entry reference or const val reference.
       // Use toResolvedCallableSymbol() (not toResolvedPropertySymbol()) because
       // enum entries are FirEnumEntrySymbol, not FirPropertySymbol.
@@ -465,8 +477,7 @@ private fun renderAnnotationArgument(
           evaluated.value
         } else {
           // May have been something like a GetClass expression, which can fall through here in 2.4+
-          // but isn't
-          // "evaluatable"
+          // but isn't "evaluatable"
           null
         }
       }
@@ -479,9 +490,10 @@ private fun renderAnnotationArgument(
       }
 
       else -> {
-        reportCompilerBug(
+        System.err.println(
           "Unexpected annotation argument type: ${arg::class.java} - ${arg.render()}"
         )
+        null
       }
     }
   }
@@ -612,7 +624,7 @@ internal fun FirClass.validateInjectedClass(
   reporter: DiagnosticReporter,
   classInjectAnnotations: List<FirAnnotation>,
 ) {
-  if (with(compatContext) { isLocalCompat }) {
+  if (isLocal) {
     reporter.reportOn(source, MetroDiagnostics.LOCAL_CLASSES_CANNOT_BE_INJECTED, context)
     return
   }
@@ -673,7 +685,7 @@ internal inline fun FirClass.validateApiDeclaration(
   checkConstructor: Boolean,
   onError: () -> Nothing,
 ) {
-  if (with(compatContext) { isLocalCompat }) {
+  if (isLocal) {
     reporter.reportOn(
       source,
       MetroDiagnostics.METRO_DECLARATION_ERROR,
@@ -800,7 +812,9 @@ internal fun MetroFirAnnotation.hasImplicitClassKey(session: FirSession): Boolea
     annotationClassSymbol.resolvedCompilerAnnotationsWithClassIds
       .annotationsIn(session, session.classIds.mapKeyAnnotations)
       .firstOrNull() ?: return false
-  return mapKeyAnno.getBooleanArgument(Symbols.Names.implicitClassKey, session) == true
+  return with(session.compatContext) {
+    mapKeyAnno.getBooleanArgumentCompat(Symbols.Names.implicitClassKey, session)
+  } == true
 }
 
 /**
@@ -1011,11 +1025,8 @@ internal fun FirCallableSymbol<*>.findAnnotation(
   return null
 }
 
-context(compatContext: CompatContext)
 internal fun FirBasedSymbol<*>.requireContainingClassSymbol(): FirClassLikeSymbol<*> =
-  with(compatContext) {
-    getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
-  }
+  getContainingClassSymbol() ?: reportCompilerBug("No containing class symbol found for $this")
 
 private val FirPropertyAccessExpression.qualifierName: Name?
   get() = (calleeReference as? FirSimpleNamedReference)?.name
@@ -1046,12 +1057,14 @@ internal fun FirAnnotation.bindingContainerClasses(
 internal fun FirAnnotation.includesArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.includes, index = 0)
 
-internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> =
-  buildSet {
-      resolvedScopeClassId(session)?.let(::add)
-      resolvedAdditionalScopesClassIds(session)?.let(::addAll)
-    }
-    .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
+internal fun FirAnnotation.subcomponentsArgument(session: FirSession) =
+  arrayArgument(session, Symbols.Names.subcomponents, index = 1)
+
+internal fun FirAnnotation.allScopeClassIds(session: FirSession): Set<ClassId> = buildSet {
+  resolvedScopeClassId(session)?.let(::add)
+  resolvedAdditionalScopesClassIds(session)?.let(::addAll)
+}
+  .filterNotTo(mutableSetOf()) { it == StandardClassIds.Nothing }
 
 internal fun FirAnnotation.excludesArgument(session: FirSession) =
   arrayArgument(session, Symbols.Names.excludes, index = 2)
@@ -1695,7 +1708,7 @@ internal fun FirClassLikeSymbol<*>.bindingContainerErrorMessage(
     "Platform type '${classId.diagnosticString(session)}' is not a binding container."
   } else if (this is FirAnonymousObjectSymbol) {
     "Anonymous objects cannot be binding containers."
-  } else if (with(compatContext) { isLocalCompat }) {
+  } else if (isLocal) {
     "Local class '${classId.shortClassName}' cannot be a binding container."
   } else if (isInner) {
     "Inner class '${classId.diagnosticString(session)}' cannot be a binding container."
@@ -1859,3 +1872,6 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
     else -> false
   }
 }
+
+internal fun FirSession.shouldCheckRuntimeTracingGraphInputs(): Boolean =
+  metroFirBuiltIns.options.enableRuntimeTracing

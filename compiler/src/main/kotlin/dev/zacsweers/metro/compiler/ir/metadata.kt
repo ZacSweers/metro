@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
-import dev.zacsweers.metro.compiler.BitField
+import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.METADATA_VERSION
 import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
@@ -90,8 +90,9 @@ internal var IrClass.metroMetadata: MetroMetadata?
 internal fun GraphNode.toProto(
   bindingGraph: IrBindingGraph,
   ownProviderFactories: Set<ProviderFactory>,
+  generateClassesInIr: Boolean,
 ): DependencyGraphProto {
-  var multibindingAccessors = BitField()
+  val multibindingAccessors = BitFieldBuilder()
   val accessorNames =
     accessors
       .sortedBy { it.metroFunction.ir.name.asString() }
@@ -99,7 +100,7 @@ internal fun GraphNode.toProto(
         val isMultibindingAccessor =
           bindingGraph.requireBinding(contextKey) is IrBinding.Multibinding
         if (isMultibindingAccessor) {
-          multibindingAccessors = multibindingAccessors.withSet(index)
+          multibindingAccessors.set(index)
         }
       }
       .map { it.metroFunction.ir.name.asString() }
@@ -107,15 +108,17 @@ internal fun GraphNode.toProto(
   return createGraphProto(
     isGraph = true,
     providerFactories = ownProviderFactories,
+    generateClassesInIr = generateClassesInIr,
     accessorNames = accessorNames,
-    multibindingAccessorIndices = multibindingAccessors.toIntList(),
+    multibindingAccessorIndices = multibindingAccessors.build().toIntList(),
   )
 }
 
-internal fun BindingContainer.toProto(): DependencyGraphProto {
+internal fun BindingContainer.toProto(generateClassesInIr: Boolean): DependencyGraphProto {
   return createGraphProto(
     isGraph = false,
     providerFactories = providerFactories.values,
+    generateClassesInIr = generateClassesInIr,
     includedBindingContainers = includes.map { it.asString() },
   )
 }
@@ -125,6 +128,7 @@ internal fun BindingContainer.toProto(): DependencyGraphProto {
 private fun createGraphProto(
   isGraph: Boolean,
   providerFactories: Collection<ProviderFactory> = emptyList(),
+  generateClassesInIr: Boolean,
   accessorNames: Collection<String> = emptyList(),
   multibindingAccessorIndices: List<Int> = emptyList(),
   includedBindingContainers: Collection<String> = emptyList(),
@@ -136,7 +140,9 @@ private fun createGraphProto(
         .map { factory ->
           val factoryClass = factory.factoryClass
           val isInvisible =
-            factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) == true
+            !generateClassesInIr &&
+              (factoryClass.parentClassOrNull?.hasAnnotation(Symbols.ClassIds.irOnlyFactories) ==
+                true || !factoryClass.hasAnnotation(Symbols.ClassIds.CallableMetadata))
           ProviderFactoryProto(
             class_id = factoryClass.classIdOrFail.protoString,
             invisible = isInvisible,
@@ -145,6 +151,7 @@ private fun createGraphProto(
             property_name =
               if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
             new_instance_name = factory.newInstanceName.asString(),
+            inlined = factory.inlinedValue?.toProto(),
           )
         }
         .sortedBy { it.class_id },

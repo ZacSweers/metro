@@ -35,7 +35,7 @@ jobs:
     if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
@@ -62,9 +62,6 @@ jobs:
 
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
-
-      - name: Validate documentation file mappings
-        run: ./scripts/copy_docs_files_mapping_validator.sh
 
       - name: Extract Metro version from gradle.properties
         id: version
@@ -154,7 +151,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
@@ -164,25 +161,23 @@ jobs:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: true
 
-      - name: Generate API docs
-        run: ./scripts/generate_docs_dokka.sh
-        env:
-          GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
-      - name: Install docs dependencies
-        run: |
-          pip install --requirement .github/workflows/mkdocs-requirements.txt
+      - parallel:
+          - name: Generate API docs
+            run: ./scripts/generate_docs_dokka.sh
+            env:
+              GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
+
+          - name: Install docs dependencies
+            run: |
+              pip install --requirement .github/workflows/mkdocs-requirements.txt
 
       - name: Copy documentation files
         run: ./scripts/copy_docs_files.sh
-
-      - name: Validate documentation file mappings
-        run: ./scripts/copy_docs_files_mapping_validator.sh
 
       - name: Build docs (dry run with Zensical)
         run: |

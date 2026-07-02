@@ -13,59 +13,63 @@
 # limitations under the License.
 
 [versions]
-agp = "8.13.2"
+agp = "9.0.1"
+android-compileSdk = "36"
 androidx-lifecycle = "2.10.0"
-androidx-lint-gradle = "1.0.0-beta01"
+androidx-lint-gradle = "1.0.0"
 annotation = "1.10.0"
-anvil = "0.5.3"
-circuit = "0.33.1"
+anvil = "0.5.4"
+circuit = "0.34.0"
 compose-jb = "1.10.3"
 jetbrains-lifecycle-navigation3 = "2.10.0"
-jetbrains-navigation3 = "1.1.0"
-dagger = "2.59.2"
+jetbrains-navigation3 = "1.1.1"
+dagger = "2.60"
 gjf = "1.35.0"
-jdk = "24"
+jdk = "25"
 robolectric = "4.16.1"
-junit-jupiter = "6.0.3"
+junit-jupiter = "6.1.0"
 jvmTarget = "11"
 compilerJvmTarget = "21"
-kct = "0.12.1"
-kotlin = "2.3.21"
-kotlinPublished = "2.2.20"
+ideaJvmTarget = "21"
+kct = "0.13.0"
+kotlin = "2.4.0"
+kotlinPublished = "2.3.0"
 kotlinInject = "0.9.0"
-koin = "4.2.1"
-koin-compiler = "1.0.0-RC2"
-metro = "1.0.0"
+koin = "4.2.2"
+koin-compiler = "1.0.1"
+metro = "1.2.1"
 kotlinInject-anvil = "0.1.7"
-kotlinx-benchmark = "0.4.16"
-kotlinx-coroutines = "1.10.2"
-kotlinx-serialization = "1.10.0"
-ksp = "2.3.7"
-ktfmt = "0.62"
-ktor = "3.4.3"
-okhttp = "5.3.2"
+kotlinx-benchmark = "0.4.17"
+kotlinx-browser = "0.5.0"
+kotlinx-coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+ksp = "2.3.9"
+ktor = "3.5.1"
+mordant = "3.0.2"
+okhttp = "5.4.0"
 okio = "3.17.0"
 pluginId = "dev.zacsweers.metro.compiler"
-poko = "0.22.1"
-wire = "6.2.0"
+poko = "0.23.1"
+tracing = "2.0.0-alpha09"
+wire = "6.4.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-kmp = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 android-lint = { id = "com.android.lint", version.ref = "agp" }
 android-test = { id = "com.android.test", version.ref = "agp" }
 anvil = { id = "dev.zacsweers.anvil", version.ref = "anvil" }
 benchmark = { id = "androidx.benchmark", version = "1.4.1" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version = "0.18.1" }
-buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9" }
+buildConfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.10" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose-jb" }
 dokka = { id = "org.jetbrains.dokka", version = "2.2.0" }
-gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.4" }
-intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.15.0" }
+gradleTestRetry = { id = "org.gradle.test-retry", version = "1.6.5" }
+intellijPlatform = { id = "org.jetbrains.intellij.platform", version = "2.16.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-compiler" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -73,10 +77,10 @@ kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.re
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.36.0" }
+mavenPublish = { id = "com.vanniktech.maven.publish", version = "0.37.0" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 poko = { id = "dev.drewhamilton.poko", version.ref = "poko" }
-shadow = { id = "com.gradleup.shadow", version = "9.4.1" }
+shadow = { id = "com.gradleup.shadow", version = "9.4.3" }
 testkit = { id = "com.autonomousapps.testkit", version = "0.18" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 
@@ -91,7 +95,7 @@ androidx-core = "androidx.core:core-ktx:1.18.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
-androidx-material3 = "com.google.android.material:material:1.13.0"
+androidx-material3 = "com.google.android.material:material:1.14.0"
 androidx-viewmodelKtx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
 androidx-work = "androidx.work:work-runtime:2.11.2"
 androidx-test = "androidx.test:core-ktx:1.7.0"
@@ -102,8 +106,8 @@ androidx-test-uiautomator = "androidx.test.uiautomator:uiautomator:2.3.0"
 androidx-benchmark-macro = "androidx.benchmark:benchmark-macro-junit4:1.4.1"
 androidx-benchmark-micro = "androidx.benchmark:benchmark-junit4:1.4.1"
 androidx-profileinstaller = "androidx.profileinstaller:profileinstaller:1.4.1"
-androidx-tracing-wire = "androidx.tracing:tracing-wire-desktop:2.0.0-alpha06"
-
+androidx-tracing = { module = "androidx.tracing:tracing", version.ref = "tracing" }
+androidx-tracing-wire = { module = "androidx.tracing:tracing-wire", version.ref = "tracing" }
 anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = "anvil" }
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
@@ -122,6 +126,7 @@ compose-materialIcons = { module = "org.jetbrains.compose.material:material-icon
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version = "1.9.0" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-jb" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-jb" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-jb" }
 compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "compose-jb" }
 compose-ui-test-junit4 = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "compose-jb" }
 
@@ -131,8 +136,10 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 
 dagger-runtime = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
+hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "dagger" }
+hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "dagger" }
 
-foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.35.1"
+foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.35.2"
 
 guice = "com.google.inject:guice:7.0.0"
 guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
@@ -170,16 +177,15 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlin-testJunit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinx-benchmark" }
+kotlinx-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinx-browser" }
 kotlinx-datetime = "org.jetbrains.kotlinx:kotlinx-datetime:0.7.1"
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-
-# Only present to trigger automatic renovate updates
-gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "gjf" }
-ktfmt = { module = "com.facebook:ktfmt", version.ref = "ktfmt" }
 
 graphSupport = "com.autonomousapps:graph-support:0.12.0"
 
 guava = "com.google.guava:guava:33.6.0-jre"
+
+mordant = { module = "com.github.ajalt.mordant:mordant", version.ref = "mordant" }
 
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -199,7 +205,7 @@ r8 = "com.android.tools:r8:9.1.31"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
-slf4jNop = "org.slf4j:slf4j-nop:2.0.17"
+slf4jNop = "org.slf4j:slf4j-nop:2.0.18"
 
 junit = { module = "junit:junit", version = "4.13.2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -208,7 +214,7 @@ ksp-symbolProcessing = { module = "com.google.devtools.ksp:symbol-processing", v
 ksp-symbolProcessing-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp-symbolProcessing-commonDeps = { module = "com.google.devtools.ksp:symbol-processing-common-deps", version.ref = "ksp" }
 ksp-symbolProcessing-aaEmbeddable = { module = "com.google.devtools.ksp:symbol-processing-aa-embeddable", version.ref = "ksp" }
-testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.23"}
+testkit-support = { module =  "com.autonomousapps:gradle-testkit-support", version = "0.26"}
 testkit-truth = { module =  "com.autonomousapps:gradle-testkit-truth", version = "1.7.0"}
 truth = { module = "com.google.truth:truth", version = "1.4.5" }
 kct = { module = "dev.zacsweers.kctfork:core", version.ref = "kct" }

@@ -2,14 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir
 
+import com.intellij.openapi.util.TextRange
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import java.io.File
+import org.jetbrains.kotlin.KtPsiSourceElement
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
+import org.jetbrains.kotlin.diagnostics.PositioningStrategies
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -22,14 +28,19 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
+import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyField
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
+import org.jetbrains.kotlin.ir.util.sourceElement
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.psi.KtDeclaration
 
 internal data class DiagnosticMetadata(val fullPath: String, val metadata: List<String>)
 
@@ -334,9 +345,12 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
   annotations: MetroAnnotations<IrAnnotation>? = null,
   short: Boolean = false,
 ): LocationDiagnostic {
+  val sourceDeclaration = sourceDeclarationForDiagnostic()
+
   val location =
-    (this as IrDeclaration).renderSourceLocation(short = shortLocation)
+    sourceDeclaration.renderSourceLocation(short = shortLocation)
       ?: parentAsClass.kotlinFqName.asString()
+
   val description = buildString {
     renderForDiagnostic(
       declaration = this@renderLocationDiagnostic,
@@ -344,7 +358,97 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
       annotations = annotations,
     )
   }
-  return LocationDiagnostic(location, description)
+
+  return LocationDiagnostic(
+    location,
+    description,
+    sourceDeclaration.toDiagnosticSpan(shortDisplayPath = shortLocation),
+  )
+}
+
+/**
+ * Resolves this declaration's source location into a [DiagnosticSpan] for source-frame rendering,
+ * or null when no source is available (cross-module declarations, synthetics).
+ */
+internal fun IrDeclaration.toDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val location = locationOrNull() ?: return null
+  if (location.line < 1 || location.column < 1) return null
+  return DiagnosticSpan(
+    filePath = location.path,
+    line = location.line,
+    column = location.column,
+    endLine = (location as? CompilerMessageLocationWithRange)?.lineEnd ?: location.line,
+    endColumn = (location as? CompilerMessageLocationWithRange)?.columnEnd ?: location.column,
+    displayPath =
+      if (shortDisplayPath) location.path.substringAfterLast(File.separatorChar) else location.path,
+  )
+}
+
+internal fun IrDeclaration.toTypeDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val fallback = toDiagnosticSpan(shortDisplayPath)
+  val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback
+  val sourceDeclaration = sourceElement.psi as? KtDeclaration ?: return fallback
+  val textRange =
+    PositioningStrategies.DECLARATION_RETURN_TYPE.mark(sourceDeclaration).firstOrNull()
+      ?: return fallback
+  return toDiagnosticSpan(textRange, shortDisplayPath) ?: fallback
+}
+
+internal fun IrDeclaration.toNameDiagnosticSpan(
+  shortDisplayPath: Boolean = MetroOptions.SystemProperties.SHORTEN_LOCATIONS
+): DiagnosticSpan? {
+  val fallback = toDiagnosticSpan(shortDisplayPath)
+  val sourceElement = sourceElement() as? KtPsiSourceElement ?: return fallback
+  val sourceDeclaration = sourceElement.psi as? KtDeclaration ?: return fallback
+  val textRange =
+    PositioningStrategies.DECLARATION_NAME.mark(sourceDeclaration).firstOrNull() ?: return fallback
+  return toDiagnosticSpan(textRange, shortDisplayPath) ?: fallback
+}
+
+private fun IrDeclaration.toDiagnosticSpan(
+  textRange: TextRange,
+  shortDisplayPath: Boolean,
+): DiagnosticSpan? {
+  val file = fileOrNull ?: return null
+  val sourceRangeInfo =
+    file.fileEntry.getSourceRangeInfo(
+      beginOffset = textRange.startOffset,
+      endOffset = textRange.endOffset,
+    )
+  val path = sourceRangeInfo.filePath
+  return DiagnosticSpan(
+    filePath = path,
+    line = sourceRangeInfo.startLineNumber + 1,
+    column = sourceRangeInfo.startColumnNumber + 1,
+    endLine = sourceRangeInfo.endLineNumber + 1,
+    endColumn = sourceRangeInfo.endColumnNumber + 1,
+    displayPath = if (shortDisplayPath) path.substringAfterLast(File.separatorChar) else path,
+  )
+}
+
+private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDeclaration {
+  val parentClass = parentAsClass
+  if (!parentClass.hasAnnotation(Symbols.FqNames.MetroContribution)) return this as IrDeclaration
+
+  val sourceClass = parentClass.parent as? IrClass ?: return this as IrDeclaration
+  return when (this) {
+    is IrProperty -> sourceClass.properties.firstOrNull { it.name == name }
+    is IrSimpleFunction -> {
+      val property = propertyIfAccessor.expectAsOrNull<IrProperty>()
+      if (property != null) {
+        sourceClass.properties.firstOrNull { it.name == property.name }
+      } else {
+        sourceClass.functions.firstOrNull {
+          it.name == name && it.regularParameters.size == regularParameters.size
+        }
+      }
+    }
+    else -> null
+  } ?: this as IrDeclaration
 }
 
 private fun StringBuilder.renderAnnotations(

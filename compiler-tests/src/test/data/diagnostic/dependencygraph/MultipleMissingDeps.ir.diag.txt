@@ -1,0 +1,41 @@
+/MultipleMissingDeps.kt:13:3: error: 
+[Metro/MissingBinding] No binding found for Foo1
+
+  AppGraph.injectedThing -> InjectedThing -> Foo1
+
+  trace (in AppGraph):
+      Foo1 is injected at InjectedThing(…, foo1)
+      InjectedThing is requested at AppGraph.injectedThing
+
+  help: ensure Foo1 has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/MultipleMissingDeps.kt:14:3: error: 
+[Metro/MissingBinding] No binding found for Foo2
+
+  AppGraph.injectedThing -> InjectedThing -> Foo2
+
+  trace (in AppGraph):
+      Foo2 is injected at InjectedThing(…, foo2)
+      InjectedThing is requested at AppGraph.injectedThing
+
+  help: ensure Foo2 has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/MultipleMissingDeps.kt:15:3: error: 
+[Metro/MissingBinding] No binding found for Foo3
+
+  AppGraph.injectedThing -> InjectedThing -> Foo3
+
+  trace (in AppGraph):
+      Foo3 is injected at InjectedThing(…, foo3)
+      InjectedThing is requested at AppGraph.injectedThing
+
+  help: ensure Foo3 has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

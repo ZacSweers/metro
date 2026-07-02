@@ -1,0 +1,207 @@
+// FILE: MergeContributionsInIrOptIn.kt
+
+class A {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class B {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@MergeContributionsInIr
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph, ContributedA, ContributedA.MetroContributionToAppScope, ContributedB, ContributedB.MetroContributionToAppScope {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val a: A
+      override get(): A {
+        return <this>.#thisGraphInstance.provideA()
+      }
+
+    override val b: B
+      override get(): B {
+        return <this>.#thisGraphInstance.provideB()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideA", propertyName = "", startOffset = 270, endOffset = 303, newInstanceName = "provideA")
+  class ProvideAMetroFactory : Factory<A> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideAMetroFactory {
+        return ProvideAMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideA(instance: AppGraph): A {
+        return instance.provideA()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): A {
+      return ProvideAMetroFactory/* companion */.provideA(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): A {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideB", propertyName = "", startOffset = 306, endOffset = 339, newInstanceName = "provideB")
+  class ProvideBMetroFactory : Factory<B> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideBMetroFactory {
+        return ProvideBMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideB(instance: AppGraph): B {
+        return instance.provideB()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): B {
+      return ProvideBMetroFactory/* companion */.provideB(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): B {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideA(): A {
+    return A()
+  }
+
+  @Provides
+  fun provideB(): B {
+    return B()
+  }
+
+}
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedA {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope : ContributedA {
+  }
+
+  abstract val a: A
+    abstract get
+
+}
+
+@ContributesTo(scope = AppScope::class)
+interface ContributedB {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  interface MetroContributionToAppScope : ContributedB {
+  }
+
+  abstract val b: B
+    abstract get
+
+}
+
+// FILE: contributedADev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: ContributedA) {
+  return error(message = "Never called")
+}
+
+// FILE: contributedBDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: ContributedB) {
+  return error(message = "Never called")
+}
+

@@ -1,0 +1,1 @@
+/AssistedFactoryMustTargetAssistedInjectTypesButMissingReturnType.kt:7:7: error: Invalid return type: kotlin.Unit. `@AssistedFactory` target classes must have a single `@AssistedInject`-annotated constructor or be annotated `@AssistedInject` with only a primary constructor.

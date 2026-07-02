@@ -1,0 +1,215 @@
+@DependencyGraph(scope = AppScope::class, bindingContainers = [Bindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private val provideStringProvider: Provider<String>
+      field = DoubleCheck/* companion */.provider<Provider<String>, String>(delegate = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+
+    private val optionalStringProvider: Provider<Optional<String>>
+      field = provider<Optional<String>>(provider = local fun <anonymous>(): Optional<String> {
+        return of<String>(p0 = <this>.#provideStringProvider.invoke())
+      }
+)
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val intProvider: Function0<Optional<Int>>
+      override get(): Function0<Optional<Int>> {
+        return provider<Optional<Int>>(provider = local fun <anonymous>(): Optional<Int> {
+          return of<Int>(p0 = <this>.#thisGraphInstance.provideInt())
+        }
+)
+      }
+
+    override val string: Optional<String>
+      override get(): Optional<String> {
+        return <this>.#optionalStringProvider.invoke()
+      }
+
+    override val stringProvider: Function0<Optional<String>>
+      override get(): Function0<Optional<String>> {
+        return <this>.#optionalStringProvider
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 600, endOffset = 635, newInstanceName = "provideInt")
+  class ProvideIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideIntMetroFactory {
+        return ProvideIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideInt(instance: AppGraph): Int {
+        return instance.provideInt()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 523, endOffset = 597, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Provides
+  fun provideInt(): Int {
+    return 3
+  }
+
+  @Provides
+  @SingleIn(scope = AppScope::class)
+  fun provideString(): String {
+    return "Hello"
+  }
+
+  abstract val intProvider: Function0<Optional<Int>>
+    abstract get
+
+  abstract val string: Optional<String>
+    abstract get
+
+  abstract val stringProvider: Function0<Optional<String>>
+    abstract get
+
+}
+
+@BindingContainer
+interface Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @ComptimeOnly
+  abstract class BindsMirror {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @BindsOptionalOf
+    @CallableMetadata(callableName = "optionalInt", propertyName = "", startOffset = 221, endOffset = 243)
+    fun optionalInt_opt(): Int {
+      return error(message = "Never called")
+    }
+
+    @BindsOptionalOf
+    @CallableMetadata(callableName = "optionalString", propertyName = "", startOffset = 171, endOffset = 199)
+    fun optionalString_opt(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @BindsOptionalOf
+  @ComptimeOnly
+  fun optionalInt(): Int {
+    return error(message = "Never called")
+  }
+
+  @BindsOptionalOf
+  @ComptimeOnly
+  fun optionalString(): String {
+    return error(message = "Never called")
+  }
+
+}
+

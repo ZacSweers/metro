@@ -1,0 +1,10 @@
+/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt:7:7: error: 
+[Metro/MissingBinding] No binding found for Any
+
+  trace (in AppGraph):
+      Any is requested at AppGraph.any
+
+  help: ensure Any has an @Inject constructor or is provided by an @Provides or @Binds declaration
+        visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

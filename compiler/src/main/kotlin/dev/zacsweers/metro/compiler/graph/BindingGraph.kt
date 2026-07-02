@@ -4,15 +4,22 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.MutableObjectIntMap
 import androidx.collection.MutableScatterMap
-import androidx.collection.MutableScatterSet
 import androidx.collection.ScatterMap
-import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.allElementsAreEqual
+import dev.zacsweers.metro.compiler.diagnostics.CycleNode
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.TraceEntry
+import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.getValue
-import dev.zacsweers.metro.compiler.ir.graph.appendBindingStack
-import dev.zacsweers.metro.compiler.ir.graph.appendBindingStackEntries
 import dev.zacsweers.metro.compiler.ir.graph.withEntry
-import dev.zacsweers.metro.compiler.joinWithDynamicSeparatorTo
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -20,6 +27,7 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
 import java.util.SortedSet
 import java.util.TreeSet
+import org.jetbrains.kotlin.name.FqName
 
 internal interface BindingGraph<
   Type : Any,
@@ -36,14 +44,6 @@ internal interface BindingGraph<
   operator fun contains(key: TypeKey): Boolean
 
   fun TypeKey.dependsOn(other: TypeKey): Boolean
-}
-
-/** Kind of diagnostic error from the binding graph, used to select the appropriate factory. */
-internal enum class BindingGraphDiagnosticKind {
-  MISSING_BINDING,
-  DUPLICATE_BINDING,
-  DEPENDENCY_CYCLE,
-  GENERIC,
 }
 
 // TODO instead of implementing BindingGraph, maybe just make this a builder and have build()
@@ -78,10 +78,9 @@ internal open class MutableBindingGraph<
       emptySet()
     },
   private val errorReporter: ErrorReporter<BindingStack> = ErrorReporter.throwing(),
-  private val missingBindingHints: (key: TypeKey) -> MissingBindingHints<Type, TypeKey> = {
+  private val missingBindingHints: (key: TypeKey) -> MissingBindingHints = {
     MissingBindingHints()
   },
-  protected val messageRenderer: MessageRenderer = MessageRenderer(),
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
@@ -106,8 +105,8 @@ internal open class MutableBindingGraph<
    * This operation runs in O(V+E). After calling this function, the binding graph becomes
    * immutable.
    *
-   * Calls [onError] if a strict dependency cycle or missing binding is encountered during
-   * validation.
+   * Reports errors to [errorReporter] if a strict dependency cycle or missing binding is
+   * encountered during validation.
    *
    * @param onPopulated a callback for when the graph is fully populated but not yet validated.
    * @param validateBindings a callback to perform optional extra validation on bindings
@@ -229,7 +228,7 @@ internal open class MutableBindingGraph<
     // Tracks type keys whose dependencies have already been walked. Bindings may appear in the
     // queue more than once (e.g. when multiple paths resolve to the same class-based binding or
     // shared member-injector ancestors) and this avoids re-walking their dependency lists.
-    val visited = MutableScatterSet<TypeKey>(bindings.size)
+    val visited = HashSet<TypeKey>(bindings.size)
 
     trace("Populate bindings") {
       while (bindingQueue.isNotEmpty()) {
@@ -249,7 +248,8 @@ internal open class MutableBindingGraph<
           if (typeKey in bindings) continue
           stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
             // If the binding isn't present, we'll report it later
-            val newBindings = computeBindings(depKey, bindings, stack)
+            val newBindings =
+              trace("Compute new bindings") { computeBindings(depKey, bindings, stack) }
             if (newBindings.isNotEmpty()) {
               for (newBinding in newBindings) {
                 bindingQueue.addLast(newBinding)
@@ -375,64 +375,66 @@ internal open class MutableBindingGraph<
   }
 
   private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {
-    val message = messageRenderer.buildMessage {
-      appendLine(
-        "[Metro/DependencyCycle] Found a dependency cycle while processing ${bold("'${stack.graphFqName.asString()}'")}."
-      )
-      // Print a simple diagram of the cycle first
-      val indent = "    "
-      appendLine("Cycle:")
-      if (fullCycle.size == 2) {
-        val key = fullCycle[0].contextKey.typeKey
-        val rendered = bold(key.render(short = true))
-        append("$indent$rendered <--> $rendered (depends on itself)")
-      } else {
-        val singleLine = fullCycle.size < 5
-        fullCycle.joinWithDynamicSeparatorTo(
-          this,
-          separator = { prev, _ ->
-            buildString {
-              if (singleLine) {
-                append(' ')
-              } else {
-                append('\n')
-                append(indent)
-              }
-              val prevBinding = bindings.getValue(prev.typeKey)
-              if (prevBinding.isAlias) {
-                append(dim("~~>"))
-              } else {
-                append("-->")
-              }
-              append(' ')
-            }
-          },
-          prefix = indent,
-        ) {
-          bold(it.contextKey.render(short = true))
-        }
+    // The cycle list closes back on its first key; the loop drawing makes that explicit, so drop
+    // the repeated final node.
+    val isSelfCycle = fullCycle.size == 2
+    val nodeEntries =
+      when {
+        isSelfCycle -> fullCycle.take(1)
+        fullCycle.size > 1 && fullCycle.last().typeKey == fullCycle.first().typeKey ->
+          fullCycle.dropLast(1)
+        else -> fullCycle
       }
 
-      val entriesToReport =
-        if (fullCycle.size == 2) {
-          fullCycle.take(1)
-        } else {
-          fullCycle
-        }
-
-      appendLine()
-      appendLine()
-      // Print the full stack
-      appendLine("Trace:")
-      appendBindingStackEntries(
-        stack.graphFqName,
-        entriesToReport,
-        indent = indent,
-        ellipse = entriesToReport.size > 1,
-        short = false,
+    val nodes = nodeEntries.map { entry ->
+      CycleNode(
+        name = entry.contextKey.toText(),
+        aliasEdgeToNext = bindings.getValue(entry.typeKey).isAlias,
       )
     }
-    errorReporter.reportFatal(BindingGraphDiagnosticKind.DEPENDENCY_CYCLE, message, stack)
+
+    val entriesToReport = if (isSelfCycle) fullCycle.take(1) else fullCycle
+    val trace =
+      DiagnosticSection.BindingTrace(
+        graphName = stack.graphFqName.asString(),
+        entries =
+          buildList {
+            entriesToReport.mapTo(this) { it.toTraceEntry() }
+            if (entriesToReport.size > 1) {
+              // The trace loops; make that visible like the cycle drawing above.
+              add(TraceEntry(key = textOf("..."), usage = null, context = null))
+            }
+          },
+      )
+
+    val deferredExample = nodes.first().name
+    val diagnostic =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.DEPENDENCY_CYCLE,
+        severity = MetroSeverity.ERROR,
+        title =
+          buildText {
+            append(DiagnosticHeadlines.DEPENDENCY_CYCLE_PREFIX)
+            append(stack.graphFqName.asString(), Style.EMPHASIS)
+          },
+        sections = listOf(DiagnosticSection.Cycle(nodes), trace),
+        notes =
+          buildList {
+            addAll(entriesToReport.flatMap { it.diagnosticNotes }.distinct())
+            add(
+              Note.help(
+                buildText {
+                  append("you can break the cycle by injecting a deferred type at one edge, e.g. ")
+                  appendCode("() -> $deferredExample")
+                  append(" or ")
+                  appendCode("Lazy<$deferredExample>")
+                  append(". Only do this if you know what you're doing though!")
+                }
+              )
+            )
+          },
+      )
+    errorReporter.reportFatal(diagnostic, stack)
   }
 
   fun replace(binding: Binding) {
@@ -458,39 +460,61 @@ internal open class MutableBindingGraph<
   }
 
   fun reportDuplicateBindings(key: TypeKey, bindings: List<Binding>, bindingStack: BindingStack) {
-    reportDuplicateBindings(key, bindings.map { it.renderLocationDiagnostic() }, bindingStack) {
+    val notes = buildList {
+      addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
-        appendLine()
-        appendLine(dim("(Hint) Bindings are all the same instance"))
+        add(Note.note("the duplicate bindings are all the same instance"))
       } else if (bindings.allElementsAreEqual()) {
-        appendLine()
-        appendLine(dim("(Hint) Bindings are all equal"))
+        add(Note.note("the duplicate bindings are all equal"))
       }
     }
+    reportDuplicateBindings(
+      key,
+      bindings.map { it.renderLocationDiagnostic(short = true) },
+      bindingStack,
+      notes,
+    )
   }
 
   fun reportDuplicateBindings(
     key: TypeKey,
     locations: List<LocationDiagnostic>,
     bindingStack: BindingStack,
-    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
+    extraNotes: List<Note> = emptyList(),
   ) {
     if (locations.size < 2) {
       reportCompilerBug("Must have at least two locations to report duplicate bindings")
     }
-    val message = messageRenderer.buildMessage {
-      appendLine(
-        "[Metro/DuplicateBinding] Multiple bindings found for ${bold(key.render(short = false, includeQualifier = true))}"
+    val diagnostic =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.DUPLICATE_BINDING,
+        severity = MetroSeverity.ERROR,
+        title =
+          buildText {
+            append(DiagnosticHeadlines.DUPLICATE_BINDING_PREFIX)
+            append(key.toText())
+          },
+        sections =
+          buildList {
+            add(
+              DiagnosticSection.Locations(
+                header = null,
+                items =
+                  locations.map {
+                    LocatedItem(location = it.location, code = it.description, span = it.span)
+                  },
+              )
+            )
+            bindingStack.toTraceSection()?.let(::add)
+          },
+        notes =
+          extraNotes +
+            Note.help(
+              "remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), " +
+                "or use @IntoSet/@IntoMap if you intended a multibinding"
+            ),
       )
-      appendLine()
-      for (location in locations) {
-        appendLine("  ${location.location}")
-        location.description?.let { appendLine(it.prependIndent("    ")) }
-      }
-      extraContent()
-      appendBindingStack(bindingStack)
-    }
-    errorReporter.report(BindingGraphDiagnosticKind.DUPLICATE_BINDING, message, bindingStack)
+    errorReporter.report(diagnostic, bindingStack)
   }
 
   override operator fun get(key: TypeKey): Binding? = bindings[key]
@@ -502,44 +526,50 @@ internal open class MutableBindingGraph<
     return bindingIndices[this] >= bindingIndices[other]
   }
 
-  fun reportMissingBinding(
-    typeKey: TypeKey,
-    bindingStack: BindingStack,
-    extraContent: MessageRenderer.MessageBuilder.() -> Unit = {},
-  ) {
+  fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
     if (reportedMissingKeys.add(typeKey)) {
-      val message = messageRenderer.buildMessage {
-        append(
-          "[Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: "
+      val hints = missingBindingHints(typeKey)
+      // Don't have access to an IrPluginContext here to check it's an anyType
+      val isAnyType = typeKey.render(short = false) == "kotlin.Any"
+      val graphName = bindingStack.graphFqName.takeIf { it != FqName.ROOT }?.shortName()?.asString()
+
+      val diagnostic =
+        MetroDiagnostic(
+          id = MetroDiagnosticId.MISSING_BINDING,
+          severity = MetroSeverity.ERROR,
+          title =
+            buildText {
+              append("No binding found for ")
+              append(typeKey.toText())
+            },
+          sections =
+            buildList {
+              bindingStack.toChainSection()?.let(::add)
+              bindingStack.toTraceSection()?.let(::add)
+              addAll(hints.sections)
+              if (hints.similarBindings.isNotEmpty() && !isAnyType) {
+                add(
+                  DiagnosticSection.SimilarBindings(
+                    hints.similarBindings.sortedBy { it.key.toString() }
+                  )
+                )
+              }
+            },
+          notes =
+            hints.notes +
+              bindingStack.entries.flatMap { it.diagnosticNotes }.distinct() +
+              Note.help(
+                buildText {
+                  append("ensure ")
+                  append(typeKey.toText())
+                  append(
+                    " has an @Inject constructor or is provided by an @Provides or @Binds declaration visible to "
+                  )
+                  append(graphName ?: "this graph", Style.EMPHASIS)
+                }
+              ),
         )
-        appendLine(bold(typeKey.render(short = false)))
-        appendLine()
-        appendBindingStack(bindingStack, short = false)
-        val hints = missingBindingHints(typeKey)
-        val messages = hints.messages
-        val similarBindings = hints.similarBindings
-
-        if (messages.isNotEmpty() || similarBindings.isNotEmpty()) {
-          if (messages.isNotEmpty()) {
-            appendLine()
-            appendLine(dim("(Hint)"))
-            messages.joinTo(this, separator = "\n\n")
-          }
-
-          // Don't have access to an IrPluginContext here to check it's an anyType
-          if (similarBindings.isNotEmpty() && typeKey.render(short = false) != "kotlin.Any") {
-            appendLine()
-            appendLine("Similar bindings:")
-            for (binding in similarBindings.values.map { "  - $it" }.sorted()) {
-              appendLine(binding)
-            }
-          }
-        }
-
-        extraContent()
-      }
-
-      errorReporter.report(BindingGraphDiagnosticKind.MISSING_BINDING, message, bindingStack)
+      errorReporter.report(diagnostic, bindingStack)
     }
   }
 }

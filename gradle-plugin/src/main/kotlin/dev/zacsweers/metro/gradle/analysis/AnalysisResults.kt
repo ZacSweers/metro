@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import kotlinx.serialization.Serializable
 
 /** Statistics about a dependency graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class GraphStatistics(
   val totalBindings: Int,
@@ -21,6 +23,7 @@ public data class GraphStatistics(
 )
 
 /** Result of longest path analysis. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class LongestPathResult(
   val longestPathLength: Int,
@@ -30,9 +33,12 @@ public data class LongestPathResult(
 )
 
 /** Result of dominator analysis. */
-@Serializable public data class DominatorResult(val dominators: List<DominatorNode>)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class DominatorResult(val dominators: List<DominatorNode>)
 
 /** A node in the dominator tree with its dominated nodes. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class DominatorNode(
   val key: String,
@@ -42,9 +48,12 @@ public data class DominatorNode(
 )
 
 /** Result of betweenness centrality analysis. */
-@Serializable public data class CentralityResult(val centralityScores: List<CentralityScore>)
+@ExperimentalMetroGradleApi
+@Serializable
+public data class CentralityResult(val centralityScores: List<CentralityScore>)
 
 /** Centrality score for a single binding. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class CentralityScore(
   val key: String,
@@ -54,6 +63,7 @@ public data class CentralityScore(
 )
 
 /** Result of fan-in/fan-out analysis. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class FanAnalysisResult(
   val bindings: List<FanScore>,
@@ -64,6 +74,7 @@ public data class FanAnalysisResult(
 )
 
 /** Fan-in and fan-out scores for a single binding. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class FanScore(
   val key: String,
@@ -75,6 +86,7 @@ public data class FanScore(
 )
 
 /** Result of paths-to-root analysis. Contains shortest paths from each node to the graph root. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class PathsToRootResult(
   /** The graph root node key. */
@@ -84,6 +96,7 @@ public data class PathsToRootResult(
 )
 
 /** Complete analysis for a single dependency graph. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class GraphAnalysis(
   val graphName: String,
@@ -96,6 +109,7 @@ public data class GraphAnalysis(
 )
 
 /** Combined analysis report for all graphs in a project. */
+@ExperimentalMetroGradleApi
 @Serializable
 public data class FullAnalysisReport(val projectPath: String, val graphs: List<GraphAnalysis>) {
   /** Number of graphs in this report. */

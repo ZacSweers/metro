@@ -42,12 +42,29 @@ pluginManager.withPlugin("java") {
 }
 
 // Suppress native access warnings and ReservedStackAccess warnings in forked JVMs
+val ciVerbose = providers.gradleProperty("metro.ciVerbose").map { it.toBoolean() }.orElse(false)
+
 tasks.withType<Test>().configureEach {
   jvmArgs(
     "--enable-native-access=ALL-UNNAMED",
     "--sun-misc-unsafe-memory-access=allow",
     "-XX:StackReservedPages=0",
   )
+
+  // metro.ciVerbose surfaces test-lifecycle events (started/passed/skipped/failed) and stdout/err
+  // so CI logs show in-flight test progress instead of just batch-completion summaries. Useful
+  // for diagnosing test hangs where the build dies inside a single test without ever printing a
+  // result line.
+  if (ciVerbose.get()) {
+    testLogging {
+      events("started", "passed", "skipped", "failed")
+      showStandardStreams = true
+      showStackTraces = true
+      showCauses = true
+      exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+      displayGranularity = 0
+    }
+  }
 }
 
 tasks.withType<JavaExec>().configureEach {
@@ -68,18 +85,15 @@ plugins.withType<KotlinBasePlugin> {
       if (this is KotlinJvmCompilerOptions) {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)
-        freeCompilerArgs.addAll("-Xassertions=jvm", "-Xannotation-default-target=param-property")
+        freeCompilerArgs.add("-Xassertions=jvm")
         if (isCompilerProject) {
           freeCompilerArgs.addAll(
-            "-Xcontext-parameters",
             "-Xreturn-value-checker=full",
             "-Xcontext-sensitive-resolution",
             "-Xwhen-expressions=indy",
             //  "-Xallow-contracts-on-more-functions",
             //  "-Xallow-condition-implies-returns-contracts",
             //  "-Xallow-holdsin-contract",
-            // TODO Kotlin 2.3.0
-            //  "-Xexplicit-backing-fields",
           )
           optIn.addAll(
             "kotlin.contracts.ExperimentalContracts",
@@ -103,12 +117,12 @@ pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
 }
 
 pluginManager.withPlugin("metro.publish") {
-  val metroPublish = extensions.getByType<MetroPublishExtension>()
+  val metroArtifact = extensions.getByType<MetroArtifactExtension>()
   tasks.withType<KotlinCompilationTask<*>>().configureEach {
     compilerOptions {
       if (this is KotlinJvmCompilerOptions) {
         // Configuration required to produce unique META-INF/*.kotlin_module file names
-        moduleName.set(metroPublish.artifactId)
+        moduleName.set(metroArtifact.artifactId)
       }
     }
   }

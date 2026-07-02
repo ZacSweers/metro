@@ -34,6 +34,7 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
   ): List<TestFile> {
     val daggerCompilerEnabled = MetroDirectives.enableDaggerKsp(module.directives)
     val anvilKspEnabled = MetroDirectives.enableAnvilKsp(module.directives)
+    val hiltKspEnabled = MetroDirectives.enableHiltKsp(module.directives)
     val providers = buildList {
       if (anvilKspEnabled) {
         val anvilKspProcessors =
@@ -47,6 +48,22 @@ class Ksp2AdditionalSourceProvider(testServices: TestServices) :
       }
       if (daggerCompilerEnabled) {
         add(KspComponentProcessor.Provider())
+      }
+      if (hiltKspEnabled) {
+        // Hilt's processors coordinate across multiple steps (aggregated_deps, define_component,
+        // disable_install_in_check, etc.). Loading just `KspAggregatedDepsProcessor` reports
+        // spurious "@Module is missing @InstallIn" errors because the install-in validation
+        // step doesn't get to see the parallel @InstallIn scan. Load every Hilt KSP processor
+        // via ServiceLoader (same shape as the Anvil block above) so the processing graph is
+        // complete.
+        val hiltKspProcessors =
+          ServiceLoader.load(
+              SymbolProcessorProvider::class.java,
+              SymbolProcessorProvider::class.java.classLoader,
+            )
+            .filter { it.javaClass.packageName.startsWith("dagger.hilt.processor") }
+            .toSet()
+        addAll(hiltKspProcessors)
       }
     }
     if (providers.isEmpty()) return emptyList()

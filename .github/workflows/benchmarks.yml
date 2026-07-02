@@ -97,7 +97,7 @@ jobs:
       ref2_is_metro_version: ${{ steps.detect_ref_types.outputs.ref2_is_metro_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -209,7 +209,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -327,7 +327,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -457,7 +457,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -505,7 +505,7 @@ jobs:
       - name: Cache gradle-profiler
         id: gradle-profiler-cache
         if: ${{ inputs.force-refresh-gradle-profiler-cache != true }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: tmp/gradle-profiler-source/build/install/gradle-profiler
           key: gradle-profiler-${{ runner.os }}-${{ steps.gradle-profiler-cache-key.outputs.week }}
@@ -588,7 +588,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ inputs.ref1 }}

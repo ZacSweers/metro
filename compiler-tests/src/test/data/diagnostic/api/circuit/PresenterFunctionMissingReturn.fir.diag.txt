@@ -1,1 +1,0 @@
-/PresenterFunctionMissingReturn.kt:(496,509): error: @CircuitInject @Composable functions that return Unit are treated as UI functions and must have a Modifier parameter. If this is a presenter, add a CircuitUiState return type.

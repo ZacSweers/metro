@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MemberNamer
+import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.graph.GraphPropertyData
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
@@ -242,6 +244,8 @@ internal class IrGraphShardGenerator(
   context(context: IrMetroContext)
   private fun generateGraphAsShard(shardLookup: ShardLookup): Shard {
     val properties = mutableMapOf<IrContextualTypeKey, ShardProperty>()
+    // Single-shard mode reuses the graph's allocator and the base namer from context.
+    val namer = context.memberNamer
 
     for (shardBinding in shardBindings) {
       shardLookup.assignToShard(shardBinding.typeKey, 0)
@@ -249,13 +253,16 @@ internal class IrGraphShardGenerator(
       val property =
         graphClass
           .addProperty {
-            name = propertyNameAllocator.newName(shardBinding.nameHint)
+            name =
+              propertyNameAllocator
+                .allocateName(namer, shardBinding.kind) { shardBinding.nameHint.asString() }
+                .asName()
             visibility = DescriptorVisibilities.PRIVATE
           }
           .apply {
             graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
             shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-              annotations += it.deepCopyWithSymbols()
+              addAnnotationCompat(it.deepCopyWithSymbols())
             }
             ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
           }
@@ -286,13 +293,9 @@ internal class IrGraphShardGenerator(
     shardGroups: List<List<ShardBinding>>,
     shardLookup: ShardLookup,
   ): List<Shard> {
-    // Use a single shared allocator for all binding properties across all shards.
-    // Pre-allocate "graph" so binding properties can't collide with the graph field in shard
-    // classes.
-    val sharedNameAllocator =
-      NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
-        reserveName(Symbols.StringNames.GRAPH)
-      }
+    // Multi-shard mode collapses to Minimal when shortening is on; otherwise preserves
+    // the base namer (Descriptive).
+    val shorten = context.memberNamer != MemberNamer.Descriptive
 
     return shardGroups.mapIndexed { index, bindings ->
       val shardName = classNameAllocator.newName("Shard${index + 1}").asName()
@@ -309,6 +312,16 @@ internal class IrGraphShardGenerator(
             parent = graphClass
             graphClass.addChild(this)
           }
+
+      // Per-shard allocator so positional names (e.g. provider0..) restart in each shard class.
+      // Pre-allocate "graph" so binding properties can't collide with the graph field.
+      val shardNameAllocator =
+        NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
+          reserveName(Symbols.StringNames.GRAPH)
+        }
+
+      // Multi-shard graphs collapse to a single short names per shard.
+      val namer = if (shorten) MemberNamer.Minimal else MemberNamer.Descriptive
 
       // Create properties inside the shard class
       val properties = mutableMapOf<IrContextualTypeKey, ShardProperty>()
@@ -328,16 +341,24 @@ internal class IrGraphShardGenerator(
         val property =
           shardClass
             .addProperty {
-              // Use internal visibility so other shards can access these fields
-              name = sharedNameAllocator.newName(shardBinding.nameHint)
+              // Use internal property visibility so generated code can access shards across the
+              // graph. The backing fields stay private for JS/KLIB validation.
+              name =
+                shardNameAllocator
+                  .allocateName(namer, shardBinding.kind) { shardBinding.nameHint.asString() }
+                  .asName()
               visibility = DescriptorVisibilities.INTERNAL
             }
             .apply {
               graphPropertyData = GraphPropertyData(shardBinding.contextKey, shardBinding.irType)
               shardBinding.contextKey.typeKey.qualifier?.ir?.let {
-                annotations += it.deepCopyWithSymbols()
+                addAnnotationCompat(it.deepCopyWithSymbols())
               }
-              ensureInitialized(shardBinding.propertyKind, shardBinding.irType)
+              ensureInitialized(
+                shardBinding.propertyKind,
+                shardBinding.irType,
+                backingFieldVisibility = DescriptorVisibilities.PRIVATE,
+              )
             }
 
         properties[shardBinding.contextKey] =
@@ -357,7 +378,7 @@ internal class IrGraphShardGenerator(
         graphParam = null,
         graphProperty = null,
         isGraphAsShard = false,
-        nameAllocator = sharedNameAllocator,
+        nameAllocator = shardNameAllocator,
         // Each shard gets its own class name allocator for nested classes (e.g., SwitchingProvider)
         classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT),
       )
@@ -406,8 +427,8 @@ internal class IrGraphShardGenerator(
         }
 
         if (needsGraphAccess) {
-          // Add graph property field to store the graph reference (needed for cross-shard access)
-          // Use INTERNAL visibility so other shards can access it
+          // Add graph property to store the graph reference needed for cross-shard access. The
+          // property is internal for generated access, but the backing field must remain private.
           val graphProperty =
             shardClass
               .addProperty {
@@ -417,7 +438,7 @@ internal class IrGraphShardGenerator(
               .apply {
                 addBackingFieldCompat {
                   type = graphClass.defaultType
-                  visibility = DescriptorVisibilities.INTERNAL
+                  visibility = DescriptorVisibilities.PRIVATE
                 }
               }
           shard.graphProperty = graphProperty

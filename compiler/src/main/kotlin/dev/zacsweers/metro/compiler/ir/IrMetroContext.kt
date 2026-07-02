@@ -8,13 +8,16 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.LOG_PREFIX
-import dev.zacsweers.metro.compiler.MessageRenderer
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.createDiagnosticReportPath
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.exitProcessing
+import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.cache.IrCache
 import dev.zacsweers.metro.compiler.ir.cache.IrCachesFactory
 import dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory
@@ -35,7 +38,6 @@ import org.jetbrains.kotlin.incremental.components.ScopeKind
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
-import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentDeclarationsWithSelf
 
 internal interface IrMetroContext : IrPluginContext, CompatContext {
@@ -47,13 +49,27 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
   val options: MetroOptions
+
+  /**
+   * Base namer for generated graph/factory/members-injector members. Nested-shard generation may
+   * override to [MemberNamer.Minimal] locally.
+   */
+  val memberNamer: MemberNamer
+
   val debug: Boolean
     get() = options.debug
 
   val lookupTracker: LookupTracker?
   val expectActualTracker: ExpectActualTracker
 
-  val messageRenderer: MessageRenderer
+  /**
+   * Flushes any buffered IC tracking (lookups + expect/actual links) to the underlying trackers.
+   * No-op unless [MetroOptions.bufferedIcTracking] is on. Call once after IR/graph validation
+   * completes, when no parallel work is in flight.
+   */
+  fun flushIcTracking()
+
+  val diagnosticRenderer: DiagnosticRenderer
 
   val irTypeSystemContext: IrTypeSystemContext
 
@@ -132,7 +148,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun IrElement.dumpToMetroLog(name: String) {
     loggerFor(MetroLogger.Type.GeneratedFactories).log {
-      val irSrc = dumpKotlinLike()
+      val irSrc = metroDumpKotlinLike()
       buildString {
         append("IR source dump for ")
         appendLine(name)
@@ -155,10 +171,11 @@ internal class IrMetroContextImpl(
   override val messageCollector: MessageCollector,
   symbols: Symbols,
   override val options: MetroOptions,
+  override val memberNamer: MemberNamer,
   rawLookupTracker: LookupTracker?,
   rawExpectActualTracker: ExpectActualTracker,
   override val traceDriver: AbstractTraceDriver,
-  override val messageRenderer: MessageRenderer,
+  override val diagnosticRenderer: DiagnosticRenderer,
   override val irTypeSystemContext: IrTypeSystemContext,
   override val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat,
   @ReportFile("log.txt") logFile: Lazy<Path?>,
@@ -181,13 +198,33 @@ internal class IrMetroContextImpl(
     }
   }
 
-  override val lookupTracker: LookupTracker? = rawLookupTracker?.let {
-    if (options.reportsEnabled) RecordingLookupTracker(this, it) else it
+  override val lookupTracker: LookupTracker? = rawLookupTracker?.let { raw ->
+    val recording = if (options.reportsEnabled) RecordingLookupTracker(this, raw) else raw
+    if (options.bufferedIcTracking) {
+      BufferingLookupTracker(recording, parallel = options.parallelThreads > 0)
+    } else {
+      recording
+    }
   }
 
-  override val expectActualTracker: ExpectActualTracker =
-    if (options.reportsEnabled) RecordingExpectActualTracker(this, rawExpectActualTracker)
-    else rawExpectActualTracker
+  override val expectActualTracker: ExpectActualTracker = run {
+    val recording =
+      if (options.reportsEnabled) {
+        RecordingExpectActualTracker(this, rawExpectActualTracker)
+      } else {
+        rawExpectActualTracker
+      }
+    if (options.bufferedIcTracking) {
+      BufferingExpectActualTracker(recording, parallel = options.parallelThreads > 0)
+    } else {
+      recording
+    }
+  }
+
+  override fun flushIcTracking() {
+    lookupTracker?.expectAsOrNull<BufferingLookupTracker>()?.flush()
+    expectActualTracker.expectAsOrNull<BufferingExpectActualTracker>()?.flush()
+  }
 
   override val reportsDir: Path?
     get() = options.reportsDir.value
@@ -216,10 +253,22 @@ internal class IrMetroContextImpl(
   }
 }
 
-/** Builds a diagnostic message string using the [MessageRenderer.MessageBuilder] DSL. */
-internal inline fun IrMetroContext.renderDiagnostic(
-  body: MessageRenderer.MessageBuilder.() -> Unit
-): String = messageRenderer.buildMessage(body)
+/**
+ * Renders a single structured [MetroDiagnostic] with the context's configured console mode. For
+ * call sites that report immediately rather than through a batched pending-diagnostics queue.
+ */
+internal fun IrMetroContext.render(diagnostic: MetroDiagnostic): String {
+  val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
+  return diagnosticRenderer.render(prepared.diagnostic, prepared.renderContext)
+}
+
+/**
+ * Pads a rendered diagnostic for console reporting: the leading newline left-aligns the body
+ * (instead of trailing kotlinc's `file:line:col: severity:` prefix) and the trailing newline adds
+ * breathing room between consecutive diagnostics. Apply exactly once, at the point a rendered
+ * message is handed to the diagnostic reporter — never in machine-readable outputs.
+ */
+internal fun String.padForConsole(): String = "\n$this\n"
 
 /** See the other [writeDiagnostic] */
 context(context: IrMetroContext)

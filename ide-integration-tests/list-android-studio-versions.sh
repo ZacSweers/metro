@@ -82,7 +82,7 @@ print_channel() {
 
     echo "  $name"
     echo "    Version: $version"
-    if [[ "$channel" != "Release" && -n "$filename" ]]; then
+    if [[ -n "$filename" ]]; then
       echo "    ide-versions.txt: AS:$version:$filename # $display"
     else
       echo "    ide-versions.txt: AS:$version # $display"

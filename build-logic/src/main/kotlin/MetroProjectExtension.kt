@@ -24,7 +24,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
   val progressiveMode: Property<Boolean> =
     objects
       .property(Boolean::class.java)
-      .convention(languageVersion.map { it < KotlinVersion.DEFAULT })
+      .convention(languageVersion.map { it >= KotlinVersion.DEFAULT })
 
   /*
    * Here's the main hierarchy of variants. Any `expect` functions in one level of the tree are
@@ -63,7 +63,7 @@ constructor(private val project: Project, objects: ObjectFactory) {
     project.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
       with(project.kotlinExtension as KotlinMultiplatformExtension) {
         jvm()
-        js(IR) {
+        js {
           outputModuleName.set("$jsModuleName-js")
           compilations.configureEach {
             compileTaskProvider.configure {

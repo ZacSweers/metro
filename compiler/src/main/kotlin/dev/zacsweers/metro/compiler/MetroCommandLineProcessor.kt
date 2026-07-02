@@ -21,7 +21,7 @@ public class MetroCommandLineProcessor : CommandLineProcessor {
   ) {
     when (val metroOption = MetroOption.entriesByOptionName[option.optionName]) {
       null -> throw CliOptionProcessingException("Unknown plugin option: ${option.optionName}")
-      else -> with(metroOption.raw) { configuration.put(value) }
+      else -> metroOption.raw.put(configuration, value)
     }
   }
 }

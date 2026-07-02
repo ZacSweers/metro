@@ -10,7 +10,7 @@ body:
 
         If you have a usage or debugging question, please use the [Q&A feature of the repo's Discussions section](https://github.com/ZacSweers/metro/discussions/new?category=q-a) instead of creating an issue.
 
-        Provide a brief summary of the issue in the title above
+        Provide a brief, **HUMAN-WRITTEN** summary of the issue in the title above. AI-generated walls of text are not generally welcome, the issue tracker is for human-to-human discussion. Pasting AI output without disclosure may result in your issue being closed.
         
         When submitting, DO
         - Use conventional **markdown formatting**
@@ -45,11 +45,21 @@ body:
         Please include any relevant stack traces as you can (formatted as code blocks).
     validations:
       required: true
-  - type: input
-    id: metro-version
+  - type: textarea
+    id: metro-env
     attributes:
-      label: Metro version
-      description: What version of Metro are you using? (e.g. `0.1.0`)
+      label: Metro environment
+      description: |
+        Run `./gradlew :path:to:project:metroEnv` (Metro 1.1.2+) in the affected project and paste the relevant report from `build/reports/metro/env/`. If on an older version, just put the Metro and Kotlin versions.
+      value: |
+        <details>
+        <summary>Metro environment</summary>
+
+        ```text
+        Paste metroEnv output here.
+        ```
+
+        </details>
     validations:
       required: true
   - type: input
@@ -57,13 +67,6 @@ body:
     attributes:
       label: Previous working version
       description: If this is a regression in an update, what version of Metro did it previously work in? If not applicable (new feature), write N/A
-    validations:
-      required: true
-  - type: input
-    id: kotlin-version
-    attributes:
-      label: Kotlin version
-      description: What version of Kotlin are you using? (e.g. `2.3.20`)
     validations:
       required: true
   - type: input

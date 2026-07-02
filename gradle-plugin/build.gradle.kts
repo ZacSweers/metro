@@ -18,6 +18,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("gradle-plugin")
+  name.set("Metro Gradle Plugin")
+}
+
 metroProject {
   jvmTarget.set(libs.versions.compilerJvmTarget)
   // Lower version for Gradle compat
@@ -78,9 +83,9 @@ kotlin.compilerOptions.optIn.add("dev.zacsweers.metro.gradle.DelicateMetroGradle
  * We shade guava and graph-support to avoid conflicts with other Gradle plugins that may use
  * different versions.
  */
-val embedded by configurations.dependencyScope("embedded")
+val embedded = configurations.dependencyScope("embedded")
 
-val embeddedClasspath by configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
+val embeddedClasspath = configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 
@@ -93,7 +98,7 @@ tasks.jar.configure { enabled = false }
 val shadowJar =
   tasks.register<ShadowJar>("shadowJar") {
     from(java.sourceSets.main.map { it.output })
-    configurations = listOf(embeddedClasspath)
+    configurations.add(embeddedClasspath)
 
     dependencies {
       exclude(dependency("org.jetbrains:.*"))
@@ -124,6 +129,7 @@ dependencies {
   compileOnly(libs.kotlin.gradlePlugin)
   compileOnly(libs.kotlin.gradlePlugin.api)
   compileOnly(libs.kotlin.stdlib)
+  implementation(project(":metro-common"))
   implementation(libs.kotlinx.serialization.json)
 
   add(embedded.name, libs.graphSupport)
@@ -163,6 +169,10 @@ fun androidHomeOrNull(): File? {
   return if (androidHome?.exists() == true) androidHome else null
 }
 
+// Forwarded to KmpTarget.selectedTargets() to scope IC test parameterization. PR/branch CI leaves
+// this unset (JVM only); main runs use a per-target value or `all` to fan out across targets.
+val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
+
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty(
@@ -172,6 +182,7 @@ tasks.withType<Test>().configureEach {
   systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
   systemProperty("metro.agpVersion", libs.versions.agp.get())
   systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
+  functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
 }
 
 tasks

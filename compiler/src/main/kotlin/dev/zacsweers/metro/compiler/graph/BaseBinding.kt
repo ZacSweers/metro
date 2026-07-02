@@ -3,6 +3,8 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
+import dev.zacsweers.metro.compiler.diagnostics.Note
 
 internal interface BaseBinding<
   Type : Any,
@@ -28,6 +30,9 @@ internal interface BaseBinding<
   val isTransient: Boolean
     get() = false
 
+  val diagnosticNotes: List<Note>
+    get() = emptyList()
+
   /**
    * Some types may be implicitly deferrable such as lazy/provider types, instance-based bindings,
    * or bindings that don't participate in object construction such as object classes or members
@@ -45,4 +50,9 @@ internal interface BaseBinding<
   fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
 }
 
-internal data class LocationDiagnostic(val location: String, val description: String?)
+internal data class LocationDiagnostic(
+  val location: String,
+  val description: String?,
+  /** Resolved source span when available; enables source-frame rendering in rich console mode. */
+  val span: DiagnosticSpan? = null,
+)

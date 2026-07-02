@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
@@ -45,7 +46,6 @@ import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.config.LanguageFeature
-import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.DescriptorVisibility
@@ -64,7 +64,6 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
-import org.jetbrains.kotlin.ir.builders.irAnnotation
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -102,6 +101,7 @@ import org.jetbrains.kotlin.ir.expressions.IrBody
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -110,13 +110,17 @@ import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImplWithShape
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.overrides.isEffectivelyPrivate
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrScriptSymbol
+import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.DescriptorlessExternalPackageFragmentSymbol
@@ -176,6 +180,7 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.superClass
 import org.jetbrains.kotlin.library.KOTLIN_JS_STDLIB_NAME
 import org.jetbrains.kotlin.load.java.JavaDescriptorVisibilities
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
@@ -269,9 +274,15 @@ internal fun IrType.rawTypeOrNull(): IrClass? {
   }
 }
 
+private val irAnnotationCompatContext: CompatContext by lazy { CompatContext.create() }
+
+internal fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
+  return with(irAnnotationCompatContext) { this@annotationsCompat.annotationsCompat() }
+}
+
 // Compat copies because of IrAnnotation in 2.4.0
 internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
-  annotations.find {
+  annotationsCompat().find {
     it.isAnnotationWithEqualFqName(name)
   }
 
@@ -291,7 +302,7 @@ internal fun IrConstructorCall.getAnnotationStringValue(name: String): String {
 }
 
 internal fun IrAnnotationContainer.isAnnotatedWithAny(names: Collection<ClassId>): Boolean {
-  return names.any { hasAnnotation(it) }
+  return annotationsIn(names.toSet()).any()
 }
 
 /**
@@ -316,7 +327,7 @@ internal fun IrClass.usesContributionProviderPath(
 }
 
 internal fun IrAnnotationContainer.annotationsIn(names: Set<ClassId>): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
+  return annotationsCompat().asSequence().filter { it.symbol.owner.parentAsClass.classId in names }
 }
 
 /**
@@ -342,7 +353,9 @@ internal fun <Container, T> Container.repeatableAnnotationsIn(
 }
 
 internal fun IrAnnotationContainer.findAnnotations(classId: ClassId): Sequence<IrConstructorCall> {
-  return annotations.asSequence().filter { it.symbol.owner.parentAsClass.classId == classId }
+  return annotationsCompat().asSequence().filter {
+    it.symbol.owner.parentAsClass.classId == classId
+  }
 }
 
 internal fun IrConstructorCall.isAnnotatedWithAny(names: Set<ClassId>): Boolean {
@@ -356,9 +369,7 @@ internal fun IrClass.isBindingContainer(): Boolean {
     isAnnotatedWithAny(context.metroSymbols.classIds.bindingContainerAnnotations) -> true
     context.options.enableGuiceRuntimeInterop -> {
       // Guice interop
-      with(context.pluginContext) {
-        return implements(GuiceSymbols.ClassIds.module)
-      }
+      implements(GuiceSymbols.ClassIds.module)
     }
     else -> false
   }
@@ -468,20 +479,19 @@ internal fun IrBuilderWithScope.irTemporaryVariable(
   irType: IrType = value?.type!!, // either value or irType should be supplied at callsite
   isMutable: Boolean = false,
   origin: IrDeclarationOrigin = Origins.FirstParty.IR_TEMPORARY_VARIABLE,
-): IrVariable =
-  with(context) {
-    val temporary =
-      scope.createTemporaryVariableDeclarationCompat(
-        irType,
-        nameHint,
-        isMutable,
-        startOffset = startOffset,
-        endOffset = endOffset,
-        origin = origin,
-      )
-    value?.let { temporary.initializer = it }
-    return temporary
-  }
+): IrVariable {
+  val temporary =
+    scope.createTemporaryVariableDeclaration(
+      irType,
+      nameHint,
+      isMutable,
+      startOffset = startOffset,
+      endOffset = endOffset,
+      origin = origin,
+    )
+  value?.let { temporary.initializer = it }
+  return temporary
+}
 
 /**
  * Computes a hash key for this annotation instance composed of its underlying type and value
@@ -619,7 +629,20 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   source: IrSimpleFunction,
   constructor: IrConstructorSymbol,
 ): IrConstructorCall {
-  return irCall(constructor)
+  val constructedClass = constructor.owner.parentAsClass
+  return IrConstructorCallImplWithShape(
+      startOffset = startOffset,
+      endOffset = endOffset,
+      type = constructor.owner.returnType,
+      symbol = constructor,
+      typeArgumentsCount =
+        constructor.owner.typeParameters.size + constructedClass.typeParameters.size,
+      constructorTypeArgumentsCount = constructor.owner.typeParameters.size,
+      valueArgumentsCount = source.nonDispatchParameters.size,
+      contextParameterCount = 0,
+      hasDispatchReceiver = false,
+      hasExtensionReceiver = false,
+    )
     .apply {
       for ((i, parameter) in source.nonDispatchParameters.withIndex()) {
         arguments[i] = irGet(parameter)
@@ -931,14 +954,14 @@ internal fun IrType.normalizeToKClassIfJavaClass(): IrType {
 }
 
 context(context: IrMetroContext)
-internal fun IrValueParameter.addBackingFieldTo(clazz: IrClass): IrField {
-  return clazz
-    .addField(toSafeIdentifier(name.asString()), type, DescriptorVisibilities.PRIVATE)
-    .apply {
-      isFinal = true
-      initializer =
-        context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
-    }
+internal fun IrValueParameter.addBackingFieldTo(
+  clazz: IrClass,
+  name: String = toSafeIdentifier(this.name.asString()),
+): IrField {
+  return clazz.addField(name, type, DescriptorVisibilities.PRIVATE).apply {
+    isFinal = true
+    initializer = context.createIrBuilder(symbol).run { irExprBody(irGet(this@addBackingFieldTo)) }
+  }
 }
 
 // TODO eventually just return a Map<TypeKey, IrField>
@@ -946,10 +969,14 @@ context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   constructor: IrConstructor,
   clazz: IrClass = constructor.parentAsClass,
+  namer: MemberNamer = MemberNamer.Descriptive,
+  kind: MemberNamer.Kind = MemberNamer.Kind.PROVIDER,
 ): Map<IrValueParameter, IrField> {
+  val allocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   return buildMap {
     for (irParameter in constructor.regularParameters) {
-      put(irParameter, irParameter.addBackingFieldTo(clazz))
+      val fieldName = allocator.allocateName(namer, kind) { irParameter.name.asString() }
+      put(irParameter, irParameter.addBackingFieldTo(clazz, fieldName))
     }
   }
 }
@@ -958,10 +985,15 @@ context(context: IrMetroContext)
 internal fun assignConstructorParamsToFields(
   parameters: Parameters,
   clazz: IrClass,
+  namer: MemberNamer = MemberNamer.Descriptive,
+  kind: MemberNamer.Kind = MemberNamer.Kind.PROVIDER,
 ): Map<Parameter, IrField> {
+  val allocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   return buildMap {
     for (irParameter in parameters.regularParameters) {
-      put(irParameter, irParameter.asValueParameter.addBackingFieldTo(clazz))
+      val valueParam = irParameter.asValueParameter
+      val fieldName = allocator.allocateName(namer, kind) { valueParam.name.asString() }
+      put(irParameter, valueParam.addBackingFieldTo(clazz, fieldName))
     }
   }
 }
@@ -1061,7 +1093,15 @@ internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolea
   (getValueArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun IrConstructorCall.replacesArgument() =
-  getValueArgument(Symbols.Names.replaces)?.expectAsOrNull<IrVararg>()
+  (getValueArgument(Symbols.Names.replaces) ?: arguments.getOrNull(replacesArgumentIndex()))
+    ?.expectAsOrNull<IrVararg>()
+
+private fun IrConstructorCall.replacesArgumentIndex(): Int {
+  // ContributesTo(scope, replaces) has two parameters. Binding-like Metro contribution annotations
+  // have scope/binding/replaces. Prefer the name-based lookup above, but fall back to the stable
+  // runtime constructor order for compiler versions that don't preserve value argument names in IR.
+  return if (arguments.size > 2) 2 else 1
+}
 
 internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
   return replacesArgument().toClassReferences()
@@ -1196,16 +1236,34 @@ internal fun IrFunction.buildBlockBody(blockBody: IrBlockBodyBuilder.() -> Unit)
   body = context.createIrBuilder(symbol).irBlockBody(body = blockBody)
 }
 
-internal fun IrType.render(short: Boolean, includeAnnotations: Boolean = false): String {
-  return buildString { renderTo(this, short, includeAnnotations) }
+internal fun IrType.render(
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+): String {
+  return buildString { renderTo(this, short, includeAnnotations, useRelativeClassNames) }
 }
 
-internal fun IrTypeArgument.render(short: Boolean, includeAnnotations: Boolean = false): String {
+internal fun IrTypeArgument.render(
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+): String {
   return buildString {
-    when (this@render) {
-      is IrStarProjection -> append("*")
-      is IrTypeProjection -> type.renderTo(this, short, includeAnnotations)
-    }
+    renderTo(this, short, includeAnnotations, useRelativeClassNames)
+  }
+}
+
+internal fun IrTypeArgument.renderTo(
+  appendable: Appendable,
+  short: Boolean,
+  includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
+) {
+  when (this) {
+    is IrStarProjection -> appendable.append("*")
+    is IrTypeProjection ->
+      type.renderTo(appendable, short, includeAnnotations, useRelativeClassNames)
   }
 }
 
@@ -1213,11 +1271,12 @@ internal fun IrType.renderTo(
   appendable: Appendable,
   short: Boolean,
   includeAnnotations: Boolean = false,
+  useRelativeClassNames: Boolean = false,
 ) {
   val type = this
   if (includeAnnotations && type.annotations.isNotEmpty()) {
     type.annotations.joinTo(appendable, separator = " ", postfix = " ") {
-      IrAnnotation(it).render(short)
+      IrAnnotation(it).render(short, useRelativeClassNames = useRelativeClassNames)
     }
   }
   when (type) {
@@ -1231,10 +1290,12 @@ internal fun IrType.renderTo(
       val name =
         when (val classifier = type.classifier) {
           is IrClassSymbol ->
-            if (short) {
-              classifier.owner.name.asString()
-            } else {
-              classifier.owner.kotlinFqName.asString()
+            when {
+              !short -> classifier.owner.kotlinFqName.asString()
+              useRelativeClassNames ->
+                classifier.owner.classId?.relativeClassName?.asString()
+                  ?: classifier.owner.name.asString()
+              else -> classifier.owner.name.asString()
             }
 
           is IrScriptSymbol ->
@@ -1265,7 +1326,11 @@ internal fun IrType.renderTo(
                 IN_VARIANCE -> appendable.append("in ")
                 OUT_VARIANCE -> appendable.append("out ")
               }
-              typeArg.type.renderTo(appendable, short)
+              typeArg.type.renderTo(
+                appendable,
+                short,
+                useRelativeClassNames = useRelativeClassNames,
+              )
             }
           }
         }
@@ -1352,11 +1417,11 @@ private fun IrSimpleType.patchMutableCollections(): IrSimpleType {
 internal val IrProperty.allAnnotations: List<IrConstructorCall>
   get() {
     return buildList {
-        addAll(annotations)
-        getter?.let { addAll(it.annotations) }
-        setter?.let { addAll(it.annotations) }
-        backingField?.let { addAll(it.annotations) }
-      }
+      addAll(annotationsCompat())
+      getter?.let { addAll(it.annotationsCompat()) }
+      setter?.let { addAll(it.annotationsCompat()) }
+      backingField?.let { addAll(it.annotationsCompat()) }
+    }
       .distinct()
   }
 
@@ -1467,11 +1532,26 @@ internal fun buildAnnotation(
   body: IrBuilderWithScope.(IrConstructorCall) -> Unit = {},
 ): IrConstructorCall {
   return context.createIrBuilder(symbol).run {
-    if (context.languageVersionSettings.languageVersion >= LanguageVersion.KOTLIN_2_4) {
-      irAnnotation(callee, typeArguments = emptyList()).also { body(it) }
-    } else {
-      irCallConstructor(callee = callee, typeArguments = emptyList()).also { body(it) }
+    with(irAnnotationCompatContext) {
+      irAnnotationCompat(callee = callee, typeArguments = emptyList()).also { body(it) }
     }
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.addAnnotationCompat(annotation: IrConstructorCall) {
+  with(context as CompatContext) { this@addAnnotationCompat.addAnnotationCompat(annotation) }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.addAnnotationsCompat(annotations: List<IrConstructorCall>) {
+  with(context as CompatContext) { this@addAnnotationsCompat.addAnnotationsCompat(annotations) }
+}
+
+context(context: IrMetroContext)
+internal fun IrAnnotationContainer.replaceAnnotationsCompat(annotations: List<IrConstructorCall>) {
+  with(context as CompatContext) {
+    this@replaceAnnotationsCompat.replaceAnnotationsCompat(annotations)
   }
 }
 
@@ -1485,7 +1565,28 @@ internal fun buildAnnotation(
 context(context: IrMetroContext)
 internal fun addHiddenFromObjCAnnotation(function: IrFunction) {
   val ctor = context.metroSymbols.hiddenFromObjCAnnotationConstructor ?: return
-  function.annotations += buildAnnotation(function.symbol, ctor)
+  function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.addDeprecatedHiddenAnnotation() {
+  addAnnotationCompat(
+    buildAnnotation(symbol, context.metroSymbols.deprecatedAnnotationConstructor) { annotation ->
+      annotation.arguments[0] = irString("This synthesized declaration should not be used directly")
+      annotation.arguments[2] =
+        IrGetEnumValueImpl(
+          SYNTHETIC_OFFSET,
+          SYNTHETIC_OFFSET,
+          context.metroSymbols.deprecationLevel.defaultType,
+          context.metroSymbols.hiddenDeprecationLevel,
+        )
+    }
+  )
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.addMetroImplMarkerAnnotation() {
+  addAnnotationCompat(buildAnnotation(symbol, context.metroSymbols.metroImplMarkerConstructor))
 }
 
 /**
@@ -1496,10 +1597,10 @@ context(context: IrMetroContext)
 internal fun addStaticAnnotations(function: IrFunction) {
   if (!context.options.generateStaticAnnotations) return
   context.metroSymbols.jvmStaticAnnotationConstructor?.let { ctor ->
-    function.annotations += buildAnnotation(function.symbol, ctor)
+    function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
   }
   context.metroSymbols.jsStaticAnnotationConstructor?.let { ctor ->
-    function.annotations += buildAnnotation(function.symbol, ctor)
+    function.addAnnotationCompat(buildAnnotation(function.symbol, ctor))
   }
 }
 
@@ -1676,7 +1777,7 @@ internal fun IrTypeParametersContainer.buildSubstitutionMapFor(
       typeParameters.zip(type.arguments).forEach { (param, arg) ->
         when (arg) {
           is IrTypeProjection -> put(param.symbol, arg.type)
-          else -> null
+          else -> {}
         }
       }
     }
@@ -1853,10 +1954,11 @@ internal fun patchQualifierAnnotation(
   correctQualifier: IrConstructorCall?,
 ) {
   // Remove any existing qualifier annotations
-  parameter.annotations -=
-    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations)
+  val annotationsToRemove =
+    parameter.annotationsAnnotatedWith(context.metroSymbols.classIds.qualifierAnnotations).toSet()
+  parameter.replaceAnnotationsCompat(parameter.annotationsCompat() - annotationsToRemove)
   // Add the correct qualifier if present
-  correctQualifier?.let { parameter.annotations += it }
+  correctQualifier?.let { parameter.addAnnotationCompat(it) }
 }
 
 /**
@@ -1935,11 +2037,17 @@ internal inline fun shouldCheckMirrorParamMismatches(
 ): Boolean {
   return options.enableKlibParamsCheck &&
     // Only on klib platforms by default
-    (platform.isNative() ||
-      platform.isWasm() ||
-      platform.isJs() ||
+    (platform.usesKlib() ||
       // Enabled on JVM IFF the AnnotationsInMetadata flag is enabled
       (platform.isJvm() && annotationsInMetadataEnabled()))
+}
+
+internal fun TargetPlatform?.usesKlib(): Boolean {
+  return this != null && (isNative() || isWasm() || isJs())
+}
+
+internal fun TargetPlatform?.supportsTracing(): Boolean {
+  return this == null || isJvm()
 }
 
 context(context: IrMetroContext)
@@ -2029,12 +2137,65 @@ internal fun IrBuilderWithScope.instanceFactory(
     )
   }
 
+  val primitiveFactoryCidOrNull = primitiveFactoryClassId(type, arg)
+  if (primitiveFactoryCidOrNull == Symbols.ClassIds.BooleanFactory) {
+    context
+      .builtinsFinderCompat()
+      .findClass(Symbols.ClassIds.BooleanFactory)
+      ?.owner
+      ?.companionObject()
+      ?.let { companionObject ->
+        return irInvoke(
+          irGetObject(companionObject.symbol),
+          callee = companionObject.requireSimpleFunction(Symbols.StringNames.INVOKE).owner.symbol,
+          args = listOf(arg),
+        )
+      }
+  }
+
+  primitiveFactoryCidOrNull?.let { primitiveFactoryClassId ->
+    val constructor =
+      context.builtinsFinderCompat().findClass(primitiveFactoryClassId)?.owner?.primaryConstructor
+    if (constructor != null) {
+      return irCallConstructor(constructor.symbol, emptyList()).apply { arguments[0] = arg }
+    }
+  }
+
   return irInvoke(
     irGetObject(context.metroSymbols.instanceFactoryCompanionObject),
     callee = context.metroSymbols.instanceFactoryInvoke,
     typeArgs = listOf(type),
     args = listOf(arg),
   )
+}
+
+private fun primitiveFactoryClassId(type: IrType, arg: IrExpression?): ClassId? {
+  if (!type.isMarkedNullable()) {
+    val typeClassId = type.classOrNull?.owner?.classId
+    when (typeClassId) {
+      StandardClassIds.Byte -> return Symbols.ClassIds.ByteFactory
+      StandardClassIds.Short -> return Symbols.ClassIds.ShortFactory
+      StandardClassIds.Int -> return Symbols.ClassIds.IntFactory
+      StandardClassIds.Long -> return Symbols.ClassIds.LongFactory
+      StandardClassIds.Boolean -> return Symbols.ClassIds.BooleanFactory
+      StandardClassIds.Char -> return Symbols.ClassIds.CharFactory
+      StandardClassIds.Float -> return Symbols.ClassIds.FloatFactory
+      StandardClassIds.Double -> return Symbols.ClassIds.DoubleFactory
+    }
+  }
+
+  val const = arg as? IrConst ?: return null
+  return when (const.kind) {
+    IrConstKind.Byte -> Symbols.ClassIds.ByteFactory
+    IrConstKind.Short -> Symbols.ClassIds.ShortFactory
+    IrConstKind.Int -> Symbols.ClassIds.IntFactory
+    IrConstKind.Long -> Symbols.ClassIds.LongFactory
+    IrConstKind.Boolean -> Symbols.ClassIds.BooleanFactory
+    IrConstKind.Char -> Symbols.ClassIds.CharFactory
+    IrConstKind.Float -> Symbols.ClassIds.FloatFactory
+    IrConstKind.Double -> Symbols.ClassIds.DoubleFactory
+    else -> null
+  }
 }
 
 context(context: IrMetroContext)
@@ -2146,6 +2307,24 @@ internal fun IrDeclarationWithVisibility.isVisibleAsInternal(file: IrFile): Bool
   )
 }
 
+internal fun IrDeclarationWithVisibility.isVisibleAsInternalTo(
+  declaration: IrDeclaration
+): Boolean {
+  declaration.fileOrNull?.let {
+    return isVisibleAsInternal(it)
+  }
+
+  val referencedDeclarationPackageFragment = getPackageFragment()
+  if (referencedDeclarationPackageFragment.symbol is DescriptorlessExternalPackageFragmentSymbol) {
+    return false
+  }
+
+  val callingDeclarationPackageFragment = declaration.getPackageFragment()
+  return callingDeclarationPackageFragment.moduleDescriptor.shouldSeeInternalsOf(
+    referencedDeclarationPackageFragment.moduleDescriptor
+  )
+}
+
 private fun IrDeclarationWithVisibility.isPackagePrivateIsh(): Boolean {
   if (isFromJava()) {
     when (visibility) {
@@ -2224,24 +2403,23 @@ internal fun IrType.requireSimpleType(
     val isExternalStub =
       declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_DECLARATION_STUB ||
         declaration?.origin == IrDeclarationOrigin.IR_EXTERNAL_JAVA_DECLARATION_STUB
-    val message =
-      buildString {
-          appendLine(
-            "Encountered an unexpected error while processing type: '${render(short = false)}'"
-          )
-          if (isExternalStub) {
-            appendLine(
-              "- Note: the IR compiler may be omitting required generic arguments from the render"
-            )
-          }
-          appendLine("- Make sure you don't have any missing dependencies or imports")
-          if (isExternalStub) {
-            appendLine(
-              "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
-            )
-          }
-        }
-        .trimEnd()
+    val message = buildString {
+      appendLine(
+        "Encountered an unexpected error while processing type: '${render(short = false)}'"
+      )
+      if (isExternalStub) {
+        appendLine(
+          "- Note: the IR compiler may be omitting required generic arguments from the render"
+        )
+      }
+      appendLine("- Make sure you don't have any missing dependencies or imports")
+      if (isExternalStub) {
+        appendLine(
+          "- This type appears to be from a library. If so, make sure the library exposes this type as a visible dependency (i.e. \"api\" dependency in Gradle)."
+        )
+      }
+    }
+      .trimEnd()
     if (context != null) {
       context.reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message, extraContext)
       // Bomb out early because we don't wanna poison the binding graph construction later
@@ -2274,6 +2452,34 @@ internal fun <T : Any> IrPluginContext.withIrBuilder(
   block: DeclarationIrBuilder.() -> T,
 ): T {
   return createIrBuilder(symbol).run(block)
+}
+
+context(compatContext: CompatContext)
+internal fun IrPluginContext.finderFor(from: IrDeclaration): CompatContext.DeclarationFinderCompat {
+  return with(compatContext) {
+    from.fileOrNull?.let { finderForSourceCompat(it) } ?: finderForBuiltinsCompat()
+  }
+}
+
+internal fun IrMetroContext.builtinsFinderCompat(): CompatContext.DeclarationFinderCompat {
+  return finderForBuiltinsCompat()
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupClass(classId: ClassId): IrClassSymbol? {
+  return with(context) { pluginContext.finderFor(this@lookupClass).findClass(classId) }
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupFunctions(
+  callableId: CallableId
+): Collection<IrSimpleFunctionSymbol> {
+  return with(context) { pluginContext.finderFor(this@lookupFunctions).findFunctions(callableId) }
+}
+
+context(context: IrMetroContext)
+internal fun IrDeclaration.lookupProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+  return with(context) { pluginContext.finderFor(this@lookupProperties).findProperties(callableId) }
 }
 
 internal fun IrBuilderWithScope.irGetProperty(
@@ -2330,6 +2536,10 @@ internal fun IrClass.staticIshDeclarationContainerOrNull(): IrClass? {
 internal val IrFunction.isStaticIsh: Boolean
   get() = parent is IrClass && (dispatchReceiverParameter == null || parentAsClass.isObject)
 
+internal fun IrDeclarationWithVisibility.isEffectivelyPublic(): Boolean {
+  return effectiveVisibility() == DescriptorVisibilities.PUBLIC
+}
+
 // TODO reconcile this with isVisibleTo()?
 internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibility {
   if (isTopLevelDeclaration) return visibility
@@ -2350,4 +2560,18 @@ internal fun IrDeclarationWithVisibility.effectiveVisibility(): DescriptorVisibi
       }
     }
     ?.visibility ?: visibility
+}
+
+internal fun IrFunction.canBeInlined(): Boolean {
+  if (this !is IrSimpleFunction) return false
+  if (!this.isInline) return false
+  val effectiveVisibility = effectiveVisibility()
+  return when (effectiveVisibility) {
+    DescriptorVisibilities.PUBLIC -> true
+    DescriptorVisibilities.INTERNAL -> {
+      // Check that it's @PublishedApi
+      hasAnnotation(StandardNames.FqNames.publishedApi)
+    }
+    else -> false
+  }
 }

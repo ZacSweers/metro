@@ -5,9 +5,11 @@ package dev.zacsweers.metro.compiler.fir
 import dev.zacsweers.metro.compiler.MetroAnnotations.Kind
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.isInterface
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.classKind
+import org.jetbrains.kotlin.fir.copy
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirBackingField
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
@@ -27,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isAbstract
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirStatusTransformerExtension
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.toClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -117,14 +120,23 @@ internal class FirAccessorOverrideStatusTransformer(
 
       val classSymbol = superType.toClassSymbol(session) ?: continue
 
-      // We only want @ContributesTo types, which have supertypes
       val contributedInterface =
-        classSymbol.resolvedSuperTypes.firstOrNull()?.toClassSymbol(session) ?: continue
+        if (classSymbol.isAnnotatedWithAny(session, session.classIds.contributesToAnnotations)) {
+          classSymbol
+        } else if (
+          classSymbol.isAnnotatedWithAny(session, setOf(Symbols.ClassIds.metroContribution))
+        ) {
+          // Legacy MetroContribution marker types expose the contributed interface as their first
+          // supertype.
+          classSymbol.resolvedSuperTypes.firstOrNull()?.toClassSymbol(session) ?: continue
+        } else {
+          continue
+        }
 
       // Walk its direct callables. If any clash, mark needsOverride as true
       val hasMatchingCallable =
         contributedInterface
-          .callableDeclarations(session, includeSelf = true, includeAncestors = false)
+          .callableDeclarations(session, includeSelf = true, includeAncestors = true)
           .any { callable ->
             // Extensions are not accessor candidates
             callable.receiverParameterSymbol == null &&

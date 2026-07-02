@@ -1,0 +1,23 @@
+/BindingCallableMultibindingDiagnostics.kt:17:16: error: `@Multibinds` declarations can only return a `Map` or `Set`.
+
+/BindingCallableMultibindingDiagnostics.kt:19:16: error: Multibinding Set elements cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:21:21: error: Multibinding Set elements cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:23:19: error: Multibinding Map keys cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:25:21: error: Multibinding Map values cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:27:29: error: Multibinding Map values cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:29:35: error: Multibinding Map values cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:31:22: error: Multibinding Map keys cannot be star projections. Use a concrete type instead.
+
+/BindingCallableMultibindingDiagnostics.kt:35:18: error: Multibinding map keys must be a primitive, String, KClass, enum, or an annotation class.
+
+/BindingCallableMultibindingDiagnostics.kt:37:20: error: Multibinding map keys cannot be arrays.
+
+/BindingCallableMultibindingDiagnostics.kt:39:22: error: Multibinding map key 'MissingMapKey' is not annotated with @MapKey(unwrapValue = false).
+
+/BindingCallableMultibindingDiagnostics.kt:41:24: error: Multibinding map key 'UnwrappedCustomKey' is annotated with @MapKey but does not set MapKey.unwrapValue to false. This is necessary to use wrapped values as multibinding map keys.

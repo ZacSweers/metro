@@ -1,3 +1,0 @@
-/OptionalBindingErrorIfDisabled.kt:(191,196): error: @OptionalBinding is disabled in this project.
-
-/OptionalBindingErrorIfDisabled.kt:(346,351): error: @OptionalBinding is disabled in this project.

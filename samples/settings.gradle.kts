@@ -14,8 +14,8 @@ pluginManagement {
     maven("https://redirector.kotlinlang.org/maven/intellij-dependencies/")
   }
   plugins {
-    id("com.gradle.develocity") version "4.4.1"
-    id("com.android.settings") version "9.2.0"
+    id("com.gradle.develocity") version "4.4.3"
+    id("com.android.settings") version "9.2.1"
   }
 }
 
@@ -49,7 +49,9 @@ rootProject.name = "metro-samples"
 include(
   ":android-app",
   ":circuit-app",
+  ":compose-viewmodels:androidApp",
   ":compose-viewmodels:app",
+  ":compose-viewmodels:desktopApp",
   ":compose-viewmodels:screen-details",
   ":compose-viewmodels:screen-home",
   ":compose-viewmodels:screen-settings",
@@ -57,6 +59,8 @@ include(
   ":integration-tests",
   ":interop:customAnnotations-dagger",
   ":interop:customAnnotations-guice",
+  ":interop:customAnnotations-hilt",
+  ":interop:customAnnotations-hilt:lib",
   ":interop:customAnnotations-kotlinInject",
   ":interop:dependencies-dagger",
   ":interop:dependencies-kotlinInject",
@@ -79,3 +83,5 @@ develocity {
     }
   }
 }
+
+enableFeaturePreview("NO_IMPLICIT_LOOKUP_IN_PARENT_PROJECTS")

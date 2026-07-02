@@ -79,7 +79,8 @@ internal sealed class GraphNode {
 
   val contextKey: IrContextualTypeKey by memoize { IrContextualTypeKey(typeKey) }
 
-  // For quick lookups
+  // For quick lookups. Keep this lazy: some graph nodes have very large transitive supertype
+  // fan-out and most nodes never need to materialize this set.
   val supertypeClassIds: Set<ClassId> by memoize {
     supertypes.mapNotNullToSet { it.classOrNull?.owner?.classId }
   }

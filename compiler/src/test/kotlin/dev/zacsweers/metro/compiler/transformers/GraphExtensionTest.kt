@@ -560,7 +560,7 @@ class GraphExtensionTest : MetroCompilerTest() {
             }
         """
       ),
-      options = metroOptions.copy(enableFullBindingGraphValidation = true),
+      options = metroOptions.toBuilder().enableFullBindingGraphValidation(true).build(),
     ) {
       val parentGraph = ParentGraph.generatedImpl().createGraphWithNoArgs()
       val childGraph = parentGraph.callFunction<Any>("create")

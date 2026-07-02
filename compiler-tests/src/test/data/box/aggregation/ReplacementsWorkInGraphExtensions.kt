@@ -31,6 +31,6 @@ interface LoggedInGraph {
 fun box(): String {
   val appGraph = createGraph<AppGraph>()
   val loggedInGraph = appGraph.createLoggedInGraph()
-  assertEquals("RealDependency", loggedInGraph.dependency::class.qualifiedName)
+  assertIs<RealDependency>(loggedInGraph.dependency)
   return "OK"
 }

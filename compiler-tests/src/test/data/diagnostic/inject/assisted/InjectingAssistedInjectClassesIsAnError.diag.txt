@@ -1,0 +1,11 @@
+/InjectingAssistedInjectClassesIsAnError.kt:25:8: error: 'ClassAnnotated' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+
+(Hint)
+It looks like the @AssistedFactory for 'ClassAnnotated' may be 'ClassAnnotated.Factory'.
+
+
+/InjectingAssistedInjectClassesIsAnError.kt:26:8: error: 'ConstructorAnnotated' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+
+(Hint)
+It looks like the @AssistedFactory for 'ConstructorAnnotated' may be 'ConstructorAnnotated.Factory'.
+

@@ -1,0 +1,319 @@
+@DependencyGraph
+interface AppGraph : ChildGraph.Factory {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val tracerInstance: Tracer
+      field = tracer
+
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private val metroTraceContext: MetroTraceContext
+      field = MetroTraceContext(tracer = <this>.#tracerInstance, category = "dev.zacsweers.metro", graphName = "AppGraph", graphPath = "AppGraph")
+
+    private val provideStringProvider: Provider<String>
+      field = TracedProvider<String>(traceContext = <this>.#metroTraceContext, qualifier = null, type = "String", kind = "Provided", provider = ProvideStringMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance))
+
+    @DependencyGraph
+    private class ChildGraphImpl : ChildGraph {
+      private val appGraphImpl: Impl
+        field = appGraphImpl
+
+      private val thisGraphInstance: ChildGraphImpl
+        field = <this>
+
+      private val metroTraceContext: MetroTraceContext
+        field = <this>.#appGraphImpl.#metroTraceContext.child(graphName = "ChildGraph")
+
+      constructor(appGraphImpl: Impl) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      override val count: Int
+        override get(): Int {
+          return { // BLOCK
+            <this>.#metroTraceContext.instant(name = "ChildGraph.count", callable = "count", qualifier = null, type = "Int", contextualType = "Int", kind = "Accessor")
+            <this>.#metroTraceContext.trace<Int>(qualifier = null, type = "Int", contextualType = "Int", kind = "Provided", block = local fun <anonymous>(): Int {
+              return <this>.#thisGraphInstance.provideCount()
+            }
+)
+          }
+        }
+
+    }
+
+    private constructor(@Provides tracer: Tracer) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun createChildGraph(): ChildGraph {
+      return { // BLOCK
+        <this>.#metroTraceContext.instant(name = "AppGraph.createChildGraph", callable = "createChildGraph", qualifier = null, type = "ChildGraph", contextualType = "ChildGraph", kind = "Accessor")
+        ChildGraphImpl(appGraphImpl = <this>)
+      }
+    }
+
+    @Named(name = "special")
+    override val qualifiedString: String
+      override get(): String {
+        return { // BLOCK
+          <this>.#metroTraceContext.instant(name = "AppGraph.qualifiedString", callable = "qualifiedString", qualifier = "@Named(\"special\")", type = "String", contextualType = "String", kind = "Accessor")
+          <this>.#metroTraceContext.trace<String>(qualifier = "@Named(\"special\")", type = "String", contextualType = "String", kind = "Provided", block = local fun <anonymous>(): String {
+            return <this>.#thisGraphInstance.provideQualifiedString()
+          }
+)
+        }
+      }
+
+    override val string: String
+      override get(): String {
+        return { // BLOCK
+          <this>.#metroTraceContext.instant(name = "AppGraph.string", callable = "string", qualifier = null, type = "String", contextualType = "String", kind = "Accessor")
+          <this>.#provideStringProvider.invoke()
+        }
+      }
+
+    override val stringProvider: Provider<String>
+      override get(): Provider<String> {
+        return { // BLOCK
+          <this>.#metroTraceContext.instant(name = "AppGraph.stringProvider", callable = "stringProvider", qualifier = null, type = "String", contextualType = "Provider<String>", kind = "Accessor")
+          <this>.#provideStringProvider
+        }
+      }
+
+    override val tracer: Tracer
+      override get(): Tracer {
+        return <this>.#tracerInstance
+      }
+
+  }
+
+  companion object Companion : Factory {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    override fun create(@Provides tracer: Tracer): AppGraph {
+      return Impl(tracer = tracer)
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideQualifiedString", propertyName = "", startOffset = 712, endOffset = 790, newInstanceName = "provideQualifiedString")
+  class ProvideQualifiedStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideQualifiedStringMetroFactory {
+        return ProvideQualifiedStringMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideQualifiedString(instance: AppGraph): String {
+        return instance.provideQualifiedString()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideQualifiedStringMetroFactory/* companion */.provideQualifiedString(instance = <this>.#instance)
+    }
+
+    @Named(name = "special")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 661, endOffset = 708, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideStringMetroFactory {
+        return ProvideStringMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString(instance: AppGraph): String {
+        return instance.provideString()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @DependencyGraph.Factory
+  interface Factory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @MetroImplMarker
+    object Impl : Factory {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @GraphFactoryInvokeFunctionMarker
+      override fun create(@Provides tracer: Tracer): AppGraph {
+        return Impl(tracer = tracer)
+      }
+
+    }
+
+    abstract fun create(@Provides tracer: Tracer): AppGraph
+
+  }
+
+  @Provides
+  @Named(name = "special")
+  fun provideQualifiedString(): String {
+    return "qualified"
+  }
+
+  @Provides
+  fun provideString(): String {
+    return "hello"
+  }
+
+  @Named(name = "special")
+  abstract val qualifiedString: String
+    abstract get
+
+  abstract val string: String
+    abstract get
+
+  abstract val stringProvider: Provider<String>
+    abstract get
+
+  abstract val tracer: Tracer
+    abstract get
+
+}
+
+@GraphExtension
+interface ChildGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideCount", propertyName = "", startOffset = 337, endOffset = 374, newInstanceName = "provideCount")
+  class ProvideCountMetroFactory : Factory<Int> {
+    private /* final field */ val instance: ChildGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ChildGraph): ProvideCountMetroFactory {
+        return ProvideCountMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideCount(instance: ChildGraph): Int {
+        return instance.provideCount()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ChildGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideCountMetroFactory/* companion */.provideCount(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @GraphExtension.Factory
+  interface Factory {
+    abstract fun createChildGraph(): ChildGraph
+
+  }
+
+  @Provides
+  fun provideCount(): Int {
+    return 3
+  }
+
+  abstract val count: Int
+    abstract get
+
+}
+

@@ -5,17 +5,143 @@
 package dev.zacsweers.metro.gradle
 
 import com.autonomousapps.kit.GradleBuilder.build
+import com.autonomousapps.kit.GradleProject
+import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class MetroArtifactsTest {
   @Test
-  fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
+  fun `metroEnv task creates human-readable output`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "metroEnv")
+
+    val report =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .toPath()
+    assertTrue(report.exists(), "Metro environment report should exist")
+
+    val content = report.readText()
+    assertThat(content).contains("Metro environment report")
+    assertThat(content).contains("Project")
+    assertThat(content).contains("Versions")
+    assertThat(content).contains("Kotlin compiler options")
+    assertThat(content).contains("Metro compiler plugin options")
+    assertThat(content).contains("  compilation: main")
+    assertThat(content).contains("    enabled = true")
+    assertThat(content).contains("    reports-destination = ")
+  }
+
+  @Test
+  fun `diagnosticsRenderMode resolves AUTO plugin-side and explicit values pass through`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    fun envReport(): String =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .readText()
+
+    // AUTO + --console=plain resolves to PLAIN before reaching the compiler.
+    build(project.rootDir, "metroEnv", "--console=plain")
+    assertThat(envReport()).contains("diagnostics-render-mode = PLAIN")
+
+    // IDE-invoked builds (idea.active) resolve AUTO to PLAIN — IDE build output windows don't
+    // render ANSI codes.
+    build(project.rootDir, "metroEnv", "-Didea.active=true")
+    assertThat(envReport()).contains("diagnostics-render-mode = PLAIN")
+
+    // An explicit value skips AUTO resolution entirely.
+    build(project.rootDir, "metroEnv", "--console=plain", "-PdiagnosticsRenderMode=RICH")
+    assertThat(envReport()).contains("diagnostics-render-mode = RICH")
+  }
+
+  @Test
+  fun `diagnosticsRenderMode is not a compilation input`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "compileKotlin", "--console=plain")
+
+    // Render mode is presentation-only; switching it (IDE vs CLI environments) must not
+    // invalidate compilation or split build caches.
+    val secondBuild = build(project.rootDir, "compileKotlin", "-PdiagnosticsRenderMode=RICH")
+    assertThat(secondBuild.task(":compileKotlin")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE)
+  }
+
+  @Test
+  fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
+    val testCompilerVersion = getTestCompilerToolingVersion()
+    val topLevelFirGenEnabled =
+      if (testCompilerVersion.isDev) {
+        testCompilerVersion >= KotlinToolingVersion("2.3.20-dev-6204")
+      } else {
+        testCompilerVersion >= KotlinToolingVersion("2.3.20-Beta1")
+      }
+    val enableKlibParamsCheck =
+      testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
+        testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
+    val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
         override fun sources() =
           listOf(
             source(
@@ -36,8 +162,9 @@ class MetroArtifactsTest {
     val project = fixture.gradleProject
     val reports = AnalysisReports.from(project.rootDir)
 
-    // Run the graph metadata generation task
-    build(project.rootDir, "generateMetroGraphMetadata")
+    // Run the graph metadata generation task. Plain console keeps the recorded
+    // Keep the diagnosticsRenderMode option deterministic (AUTO resolves from console state).
+    build(project.rootDir, "generateMetroGraphMetadata", "--console=plain")
 
     val metadataFile = reports.graphMetadataFile
     assertTrue(metadataFile.exists(), "Aggregated graph metadata file should exist")
@@ -70,6 +197,112 @@ class MetroArtifactsTest {
                 "factoryAccessors": [],
                 "factoriesImplemented": []
               },
+              "config": {
+                "debug": false,
+                "enabled": true,
+                "generateAssistedFactories": false,
+                "enableTopLevelFunctionInjection": $topLevelFirGenEnabled,
+                "generateContributionHints": true,
+                "generateContributionHintsInFir": ${topLevelFirGenEnabled && !generateClassesInIrEnabled},
+                "generateClassesInIr": $generateClassesInIrEnabled,
+                "shrinkUnusedBindings": true,
+                "statementsPerInitFun": 25,
+                "enableGraphSharding": true,
+                "keysPerGraphShard": 2000,
+                "mergedSupertypeChunkSize": 0,
+                "enableSwitchingProviders": false,
+                "publicScopedProviderSeverity": "NONE",
+                "nonPublicContributionSeverity": "NONE",
+                "optionalBindingBehavior": "DEFAULT",
+                "warnOnInjectAnnotationPlacement": true,
+                "interopAnnotationsNamedArgSeverity": "NONE",
+                "unusedGraphInputsSeverity": "WARN",
+                "enabledLoggers": [],
+                "enableDaggerRuntimeInterop": false,
+                "enableGuiceRuntimeInterop": false,
+                "maxIrErrorsCount": 20,
+                "customProviderTypes": [],
+                "customLazyTypes": [],
+                "customAssistedAnnotations": [],
+                "customAssistedFactoryAnnotations": [],
+                "customAssistedInjectAnnotations": [],
+                "customBindsAnnotations": [],
+                "customContributesToAnnotations": [],
+                "customContributesBindingAnnotations": [],
+                "customContributesIntoSetAnnotations": [],
+                "customGraphExtensionAnnotations": [],
+                "customGraphExtensionFactoryAnnotations": [],
+                "customElementsIntoSetAnnotations": [],
+                "customGraphAnnotations": [],
+                "customGraphFactoryAnnotations": [],
+                "customInjectAnnotations": [],
+                "customIntoMapAnnotations": [],
+                "customIntoSetAnnotations": [],
+                "customMapKeyAnnotations": [],
+                "customMultibindsAnnotations": [],
+                "customProvidesAnnotations": [],
+                "customQualifierAnnotations": [],
+                "customScopeAnnotations": [],
+                "customBindingContainerAnnotations": [],
+                "enableDaggerAnvilInterop": false,
+                "enableFullBindingGraphValidation": false,
+                "enableGraphImplClassAsReturnType": false,
+                "customOriginAnnotations": [],
+                "customOptionalBindingAnnotations": [],
+                "contributesAsInject": true,
+                "enableKlibParamsCheck": $enableKlibParamsCheck,
+                "patchKlibParams": true,
+                "forceEnableFirInIde": false,
+                "pluginOrderSet": true,
+                "compilerVersionAliases": {},
+                "parallelThreads": 0,
+                "bufferedIcTracking": true,
+                "enableProviderInlining": true,
+                "enableFunctionProviders": true,
+                "desugaredProviderSeverity": "WARN",
+                "enableKClassToClassInterop": false,
+                "generateContributionProviders": false,
+                "enableCircuitCodegen": false,
+                "enableHiltInterop": false,
+                "diagnosticsRenderMode": "PLAIN",
+                "generateStaticAnnotations": true,
+                "enableRuntimeTracing": false,
+                "memberNamingStrategy": "DESCRIPTIVE"
+              },
+              "stats": {
+                "providerFactories": 1,
+                "bindsCallables": 0,
+                "multibindsCallables": 0,
+                "optionalBindings": 0,
+                "accessors": 1,
+                "injectors": 0,
+                "graphExtensionAccessors": 0,
+                "graphExtensionFactories": 0,
+                "includedGraphs": 0,
+                "bindingContainers": 0,
+                "dynamicBindings": 0,
+                "graphPrivateKeys": 0,
+                "publishedBindsKeys": 0,
+                "populatedKeys": 2,
+                "validatedKeys": 2,
+                "reachableKeys": 2,
+                "deferredKeys": 0,
+                "unusedInputs": 0,
+                "providerProperties": 0,
+                "scopedProviderProperties": 0,
+                "shards": 0,
+                "optimizations": {
+                  "bindingsPrunedByShrinking": 0,
+                  "classConstructorDirectInvocations": 0,
+                  "classConstructorNewInstanceCalls": 0,
+                  "providerDirectInvocations": 1,
+                  "providerNewInstanceCalls": 0,
+                  "shardsGenerated": 0,
+                  "shardedSupertypes": 0,
+                  "shardedInitFunctions": 0,
+                  "providerInlines": 0
+                }
+              },
               "bindings": [
                 {
                   "key": "kotlin.String",
@@ -83,10 +316,8 @@ class MetroArtifactsTest {
                     }
                   ],
                   "isSynthetic": false,
-                  "origin": "AppGraph.kt:11:3",
-                  "declaration": "provideValue",
-                  "multibinding": null,
-                  "optionalWrapper": null
+                  "origin": "AppGraph.kt:10:3",
+                  "declaration": "provideValue"
                 },
                 {
                   "key": "test.AppGraph",
@@ -95,10 +326,8 @@ class MetroArtifactsTest {
                   "nameHint": "AppGraphProvider",
                   "dependencies": [],
                   "isSynthetic": false,
-                  "origin": "AppGraph.kt:6:1",
-                  "declaration": "AppGraph",
-                  "multibinding": null,
-                  "optionalWrapper": null
+                  "origin": "AppGraph.kt:5:1",
+                  "declaration": "AppGraph"
                 }
               ]
             }
@@ -112,7 +341,7 @@ class MetroArtifactsTest {
   @Test
   fun `analyzeMetroGraph task for graph with just injectors`() {
     val fixture =
-      object : MetroProject() {
+      object : MetroProject(multiplatform = false) {
         override fun sources() =
           listOf(
             source(
@@ -403,5 +632,106 @@ class MetroArtifactsTest {
 
     val htmlFile = reports.htmlFileForGraph("test.AppGraph")
     assertTrue(htmlFile.exists(), "Graph HTML file should exist")
+  }
+
+  @Test
+  fun `reportsDestination directories do not collide across multiplatform targets`() {
+    val fixture =
+      object : MetroProject(multiplatform = true, reportsEnabled = true) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  GradlePlugins.Kotlin.multiplatform(),
+                  GradlePlugins.agpKmp,
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
+                    kotlin {
+                      jvm()
+
+                      android {
+                        namespace = "com.example.test"
+                        minSdk = 36
+                        compileSdk = 36
+                      }
+                    }
+
+                    ${buildMetroBlock()}
+                  """
+                    .trimIndent()
+                )
+              }
+
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null) // skip if environment not set up for Android
+              // Use invariantSeparatorsPath for cross-platform .properties file compatibility
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SUCCESS)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertTrue(reportingDir.resolve("jvm/main").exists())
+    assertTrue(reportingDir.resolve("android/main").exists())
+  }
+
+  @Test
+  fun `analysis tasks are skipped when reportsDestination is not present`() {
+    val fixture =
+      object : MetroProject(multiplatform = false, reportsEnabled = false) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+    val result = build(project.rootDir, "generateMetroGraphHtml", "--console=plain")
+
+    assertThat(result.task(":generateMetroGraphMetadata")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":analyzeMetroGraph")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+    assertThat(result.task(":generateMetroGraphHtml")?.outcome)
+      .isEqualTo(org.gradle.testkit.runner.TaskOutcome.SKIPPED)
+
+    val reportingDir = project.rootDir.toPath().resolve("build/tmp/metro/reporting")
+    assertFalse(reportingDir.exists())
   }
 }

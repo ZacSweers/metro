@@ -1,0 +1,3 @@
+/AssistedFactoryWithMultipleSAMs.kt:9:9: error: @AssistedFactory declarations must have exactly one abstract function but found 2.
+
+/AssistedFactoryWithMultipleSAMs.kt:10:9: error: @AssistedFactory declarations must have exactly one abstract function but found 2.

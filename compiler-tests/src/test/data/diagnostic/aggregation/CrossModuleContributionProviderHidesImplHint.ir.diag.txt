@@ -1,0 +1,19 @@
+/module_main_CrossModuleContributionProviderHidesImplHint.kt:23:45: error: 
+[Metro/MissingBinding] No binding found for ChangelogRepositoryImpl
+
+  AppGraph.repo -> ChangelogRepository -> ChangelogRepositoryImpl
+
+  trace (in AppGraph):
+      ChangelogRepositoryImpl is injected at StubChangelogRepository(…, realImpl)
+      ChangelogRepository is requested at AppGraph.repo
+
+  similar bindings:
+      - ChangelogRepository (Supertype. Type: StubChangelogRepository (Contributing class). This is
+        a generated contribution provider for StubChangelogRepository. If that class is the binding
+        you're looking for, annotate the contributing class with `@ExposeImplBinding` to expose its
+        impl type to the graph)
+
+  help: ensure ChangelogRepositoryImpl has an @Inject constructor or is provided by an @Provides or
+        @Binds declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

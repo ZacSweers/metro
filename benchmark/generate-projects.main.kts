@@ -4,6 +4,7 @@
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
@@ -60,6 +61,10 @@ class GenerateProjectsCommand : CliktCommand() {
     option("--enable-tracing", help = "Enable Metro compiler tracing (Metro mode only).")
       .flag(default = false)
 
+  private val enableRuntimeTracing by
+    option("--enable-runtime-tracing", help = "Enable Metro runtime tracing (Metro mode only).")
+      .flag(default = false)
+
   private val enableGraphShardingFlag by
     option(
         "--enable-graph-sharding",
@@ -100,6 +105,12 @@ class GenerateProjectsCommand : CliktCommand() {
     if (multiplatform && buildMode != BuildMode.METRO && buildMode != BuildMode.KOIN) {
       echo("Error: --multiplatform flag is only supported with Metro or Koin mode", err = true)
       return
+    }
+    if (enableRuntimeTracing && buildMode != BuildMode.METRO) {
+      throw UsageError("--enable-runtime-tracing is only supported with --mode metro")
+    }
+    if (enableRuntimeTracing && multiplatform) {
+      throw UsageError("--enable-runtime-tracing is only supported for JVM/Android benchmarks")
     }
 
     val modeDesc = if (multiplatform) "$buildMode (multiplatform)" else buildMode.toString()
@@ -280,8 +291,8 @@ class GenerateProjectsCommand : CliktCommand() {
                   )
                 } else emptyList()
             },
-          hasSubcomponent =
-            i <= (appCount * 0.1).toInt().coerceAtLeast(1), // ~10% of app modules have subcomponents
+          // ~10% of app modules have subcomponents
+          hasSubcomponent = i <= (appCount * 0.1).toInt().coerceAtLeast(1),
         )
       }
 
@@ -336,6 +347,9 @@ class GenerateProjectsCommand : CliktCommand() {
       }
       if (parallelThreads > 0) {
         echo("Parallel threads: $parallelThreads")
+      }
+      if (enableRuntimeTracing) {
+        echo("Runtime tracing: enabled")
       }
     }
 
@@ -1560,7 +1574,7 @@ class PlainDataProcessor {
     plainFile.writeText(plainSourceCode.trimIndent())
   }
 
-  fun metroDsl(): String {
+  fun metroDsl(includeRuntimeTracing: Boolean = false): String {
     val options =
       mutableListOf<String>().apply {
         if (enableSharding) add("  enableGraphSharding.set(true)")
@@ -1569,6 +1583,9 @@ class PlainDataProcessor {
         if (enableReports)
           add("  reportsDestination.set(layout.buildDirectory.dir(\"metro-reports\"))")
         if (enableTracing) add("  traceDestination.set(layout.buildDirectory.dir(\"metro-trace\"))")
+        if (includeRuntimeTracing) {
+          add("  enableRuntimeTracing.set(true)")
+        }
       }
     return if (options.isEmpty()) {
       ""
@@ -1576,7 +1593,7 @@ class PlainDataProcessor {
       options.add(0, "metro {")
       options.add(
         0,
-        "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.DangerousMetroGradleApi::class)",
+        "@OptIn(dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class, dev.zacsweers.metro.gradle.DangerousMetroGradleApi::class, dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class)",
       )
       options.add("}")
       options.joinToString("\n")
@@ -1653,10 +1670,10 @@ plugins {
   id("dev.zacsweers.metro")
   application
 }
-${metroDsl()}
+${metroDsl(includeRuntimeTracing = enableRuntimeTracing)}
 dependencies {
   implementation("dev.zacsweers.metro:runtime:+")
-  implementation(project(":core:foundation"))
+${if (enableRuntimeTracing) "  implementation(libs.androidx.tracing.wire)\n" else ""}  implementation(project(":core:foundation"))
 
   // Depend on all generated modules to aggregate everything
 $moduleDepsJvm
@@ -1931,8 +1948,8 @@ application {
         $$"""
 fun main() {
   val graph = createAndInitialize()
-  val plugins = $$pluginsAccess
-  val initializers = $$initializersAccess
+  val plugins = $${pluginsAccess}
+  val initializers = $${initializersAccess}
 
   println("Metro benchmark graph successfully created!")
   println("  - Plugins: ${plugins.size}")
@@ -1948,8 +1965,8 @@ fun main() {
   val graph = createAndInitialize()
   val fields = graph.javaClass.declaredFields.size
   val methods = graph.javaClass.declaredMethods.size
-  val plugins = $$pluginsAccess
-  val initializers = $$initializersAccess
+  val plugins = $${pluginsAccess}
+  val initializers = $${initializersAccess}
 
   println("Metro benchmark graph successfully created!")
   println("  - Fields: $fields")
@@ -1973,7 +1990,17 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.Multibinds
 import dev.zacsweers.metro.ContributesTo
-import dev.zacsweers.metro.createGraph
+$${if (enableRuntimeTracing) """import androidx.tracing.Tracer
+import androidx.tracing.wire.TraceDriver
+import androidx.tracing.wire.TraceSink
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.createGraphFactory
+import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.EmptyCoroutineContext
+import okio.buffer
+import okio.sink
+""" else "import dev.zacsweers.metro.createGraph\n"}
 import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 $${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}
@@ -1981,8 +2008,8 @@ $${if (providerImport.isNotEmpty()) "$providerImport\n" else ""}
 @DependencyGraph(AppScope::class)
 interface AppComponent {
   // Multibinding accessors
-  fun getAllPlugins(): $$pluginsType
-  fun getAllInitializers(): $$initializersType
+  fun getAllPlugins(): $${pluginsType}
+  fun getAllInitializers(): $${initializersType}
 
   // Multibind declarations
   @Multibinds
@@ -1990,20 +2017,115 @@ interface AppComponent {
 
   @Multibinds
   fun bindInitializers(): Set<Initializer>
+$${if (enableRuntimeTracing) """
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Provides tracer: Tracer): AppComponent
+  }
+""" else ""}
 }
 
 /**
  * Creates and fully initializes the dependency graph.
  * This is the primary entry point for benchmarking graph creation and initialization.
  */
+$${if (enableRuntimeTracing) """
+private object MetroBenchmarkRuntimeTracing {
+  private val captureNextGraphInit = AtomicBoolean(false)
+
+  private val traceDriver: TraceDriver by lazy {
+    val outputDir =
+      File(
+          System.getProperty(
+            "metro.benchmark.runtimeTraceDir",
+            "app/component/build/metro-runtime-traces",
+          )
+        )
+        .apply { mkdirs() }
+    val outputFile = File(outputDir, "startup-${System.nanoTime()}.perfetto-trace")
+    TraceDriver(TraceSink(sequenceId = 1, outputFile.sink().buffer(), EmptyCoroutineContext))
+  }
+
+  fun claimGraphInitTrace(): Boolean {
+    return captureNextGraphInit.compareAndSet(true, false)
+  }
+
+  fun traceNextGraphInit() {
+    traceDriver
+    captureNextGraphInit.set(true)
+  }
+
+  fun tracerForGraphInit(captureTrace: Boolean): Tracer {
+    if (captureTrace) {
+      return traceDriver.tracer
+    }
+    return TraceDriver.getStubTraceDriver().tracer
+  }
+
+  fun flushGraphInitTrace(captureTrace: Boolean) {
+    if (captureTrace) {
+      traceDriver.flush()
+    }
+  }
+}
+
+/**
+ * Arms runtime tracing for the next graph initialization.
+ *
+ * The JVM benchmark calls this from the first measurement iteration so warmup iterations stay
+ * untraced while the copied trace still represents a warmed-up graph init.
+ */
+fun traceNextCreateAndInitialize() {
+  MetroBenchmarkRuntimeTracing.traceNextGraphInit()
+}
+
+fun createAndInitialize(): AppComponent {
+  val captureTrace = MetroBenchmarkRuntimeTracing.claimGraphInitTrace()
+  val graph = createAndInitialize(MetroBenchmarkRuntimeTracing.tracerForGraphInit(captureTrace))
+  MetroBenchmarkRuntimeTracing.flushGraphInitTrace(captureTrace)
+  return graph
+}
+
+fun createAndInitialize(tracer: Tracer): AppComponent {
+  val graph = createGraphFactory<AppComponent.Factory>().create(tracer)
+  // Force full initialization by accessing all multibindings
+  ${pluginsAccess}
+  ${initializersAccess}
+  return graph
+}
+
+/**
+ * Android startup benchmarks own their TraceDriver and pass its tracer through this entry point.
+ */
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  val tracer =
+    runtimeTracer as? Tracer
+      ?: error("Metro runtime tracing benchmarks must pass an AndroidX Tracer.")
+  return createAndInitialize(tracer)
+}
+""" else """
+fun traceNextCreateAndInitialize() {
+  // Runtime tracing is disabled for this generated component.
+}
+
 fun createAndInitialize(): AppComponent {
   val graph = createGraph<AppComponent>()
   // Force full initialization by accessing all multibindings
-  $$pluginsAccess
-  $$initializersAccess
+  ${pluginsAccess}
+  ${initializersAccess}
   return graph
 }
-$$metroMainFunction
+
+/**
+ * Stable entry point used by Android startup benchmarks. Non-traced builds ignore the parameter.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  return createAndInitialize()
+}
+"""}
+$${metroMainFunction}
 """
 
         BuildMode.METRO_NOOP,
@@ -2023,6 +2145,22 @@ import dev.zacsweers.metro.benchmark.core.foundation.Initializer
  * This is a baseline to measure compilation overhead.
  */
 interface AppComponent
+
+fun traceNextCreateAndInitialize() {
+  // Baseline modes do not own a runtime trace driver.
+}
+
+fun createAndInitialize(): AppComponent {
+  return object : AppComponent {}
+}
+
+/**
+ * Stable entry point used by Android startup benchmarks. Baseline modes ignore the parameter.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  return createAndInitialize()
+}
 
 fun main() {
   println("${buildMode.name} benchmark completed!")
@@ -2054,6 +2192,10 @@ abstract class AppComponent {
   abstract val allInitializers: Set<Initializer>
 }
 
+fun traceNextCreateAndInitialize() {
+  // Runtime tracing is only supported for Metro-generated graphs.
+}
+
 /**
  * Creates and fully initializes the dependency graph.
  * This is the primary entry point for benchmarking graph creation and initialization.
@@ -2064,6 +2206,14 @@ fun createAndInitialize(): AppComponent {
   graph.allPlugins
   graph.allInitializers
   return graph
+}
+
+/**
+ * Stable entry point used by Android startup benchmarks. Kotlin-inject ignores the parameter.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  return createAndInitialize()
 }
 
 fun main() {
@@ -2146,7 +2296,7 @@ import dev.zacsweers.metro.benchmark.core.foundation.Plugin
 import org.koin.core.Koin
 import org.koin.core.annotation.KoinApplication
 import org.koin.plugin.module.dsl.koinApplication
-$$koinModuleImports
+$${koinModuleImports}
 
 /**
  * Root Koin application. `@KoinApplication(modules = [...])` enumerates every per-Gradle-module
@@ -2159,7 +2309,7 @@ $$koinModuleImports
  */
 @KoinApplication(
   modules = [
-    $$koinModuleClassLiterals,
+    $${koinModuleClassLiterals},
   ],
 )
 class AppKoinApp
@@ -2175,6 +2325,10 @@ class AppComponent(val koin: Koin) {
   fun getAllInitializers(): Set<Initializer> = koin.getAll<Initializer>().toSet()
 }
 
+fun traceNextCreateAndInitialize() {
+  // Runtime tracing is only supported for Metro-generated graphs.
+}
+
 /**
  * Creates and fully initializes the dependency graph.
  * Primary entry point for benchmarking graph creation and initialization.
@@ -2187,7 +2341,15 @@ fun createAndInitialize(): AppComponent {
   component.getAllInitializers()
   return component
 }
-$$koinMainFunction
+
+/**
+ * Stable entry point used by Android startup benchmarks. Koin ignores the parameter.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  return createAndInitialize()
+}
+$${koinMainFunction}
 """
         }
 
@@ -2213,8 +2375,8 @@ import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 @MergeComponent(Unit::class)
 interface AppComponent {
   // Multibinding accessors
-  fun getAllPlugins(): $$pluginsType
-  fun getAllInitializers(): $$initializersType
+  fun getAllPlugins(): $${pluginsType}
+  fun getAllInitializers(): $${initializersType}
 
   @MergeComponent.Factory
   interface Factory {
@@ -2232,6 +2394,10 @@ interface AppComponentMultibinds {
   fun bindInitializers(): Set<Initializer>
 }
 
+fun traceNextCreateAndInitialize() {
+  // Runtime tracing is only supported for Metro-generated graphs.
+}
+
 /**
  * Creates and fully initializes the dependency graph.
  * This is the primary entry point for benchmarking graph creation and initialization.
@@ -2239,17 +2405,25 @@ interface AppComponentMultibinds {
 fun createAndInitialize(): AppComponent {
   val component = DaggerAppComponent.factory().create()
   // Force full initialization by accessing all multibindings
-  $$daggerPluginsAccess
-  $$daggerInitializersAccess
+  $${daggerPluginsAccess}
+  $${daggerInitializersAccess}
   return component
+}
+
+/**
+ * Stable entry point used by Android startup benchmarks. Dagger ignores the parameter.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
+  return createAndInitialize()
 }
 
 fun main() {
   val component = createAndInitialize()
   val fields = component.javaClass.declaredFields.size
   val methods = component.javaClass.declaredMethods.size
-  val plugins = $$daggerPluginsAccess
-  val initializers = $$daggerInitializersAccess
+  val plugins = $${daggerPluginsAccess}
+  val initializers = $${daggerInitializersAccess}
 
   println("Anvil benchmark graph successfully created!")
   println("  - Fields: $fields")

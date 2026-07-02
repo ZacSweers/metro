@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import org.jetbrains.kotlin.name.FqName
 
 internal interface BaseBindingStack<
@@ -45,6 +46,9 @@ internal interface BaseBindingStack<
     val usage: String?
     val graphContext: String?
     val displayTypeKey: TypeKey
+    val diagnosticNotes: List<Note>
+      get() = emptyList()
+
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.

@@ -7,6 +7,7 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.RootProject
 import com.autonomousapps.kit.Source
+import com.autonomousapps.kit.Source.Companion.DEFAULT_SOURCE_SET
 import com.autonomousapps.kit.gradle.BuildScript
 import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.DependencyResolutionManagement
@@ -15,13 +16,40 @@ import com.autonomousapps.kit.gradle.PluginManagement
 import com.autonomousapps.kit.gradle.Repositories
 import com.autonomousapps.kit.gradle.Repository
 import com.google.errorprone.annotations.CanIgnoreReturnValue
+import org.intellij.lang.annotations.Language
 
 abstract class MetroProject(
   private val debug: Boolean = false,
   private val metroOptions: MetroOptionOverrides = MetroOptionOverrides(),
   private val reportsEnabled: Boolean = true,
   private val kotlinVersion: String? = null,
+  private val multiplatform: Boolean = true,
 ) : AbstractGradleProject() {
+
+  /** Source set this project's [source] declarations target by default. */
+  private val defaultSourceSet: String = if (multiplatform) "commonMain" else DEFAULT_SOURCE_SET
+
+  /**
+   * Mirror of the top-level [dev.zacsweers.metro.gradle.source] helper that picks the appropriate
+   * source set ([defaultSourceSet]) for this project. Shadows the top-level helper for fixture
+   * subclasses so call sites don't have to repeat `sourceSet = ...`.
+   */
+  protected fun source(
+    @Language("kotlin") source: String,
+    fileNameWithoutExtension: String? = null,
+    packageName: String = "test",
+    includeDefaultImports: Boolean = true,
+    vararg extraImports: String,
+  ): Source =
+    source(
+      source = source,
+      fileNameWithoutExtension = fileNameWithoutExtension,
+      packageName = packageName,
+      sourceSet = defaultSourceSet,
+      includeDefaultImports = includeDefaultImports,
+      extraImports = extraImports,
+    )
+
   /**
    * Sources for the default single-module project. Not used when [buildGradleProject] is
    * overridden.
@@ -117,7 +145,7 @@ abstract class MetroProject(
             withBuildScript {
               applyMetroDefault()
               if (config.dependencies.isNotEmpty()) {
-                dependencies(*config.dependencies.toTypedArray())
+                dependencies(*config.dependencies.mappedForTarget().toTypedArray())
               }
               config.buildScriptExtra?.invoke(this)
             }
@@ -139,7 +167,7 @@ abstract class MetroProject(
                   applyMetroDefault()
                 }
                 if (config.dependencies.isNotEmpty()) {
-                  dependencies(*config.dependencies.toTypedArray())
+                  dependencies(*config.dependencies.mappedForTarget().toTypedArray())
                 }
                 config.buildScriptExtra?.invoke(this)
               }
@@ -147,6 +175,17 @@ abstract class MetroProject(
           }
         }
         .write()
+    }
+
+    // KMP build scripts can't use the bare `implementation(...)` configuration; rewrite to the
+    // source-set-scoped variant (e.g. `commonMainImplementation`). No-op for plain JVM projects.
+    private fun List<Dependency>.mappedForTarget(): List<Dependency> {
+      if (!multiplatform) return this
+      return map { dep ->
+        dep.copy(
+          configuration = "commonMain" + dep.configuration.replaceFirstChar { it.titlecase() }
+        )
+      }
     }
   }
 
@@ -206,6 +245,7 @@ abstract class MetroProject(
       dependencyResolutionManagement =
         DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
     }
+    gradleProperties = gradleProperties.plus(METRO_TESTKIT_GRADLE_PROPERTIES)
   }
 
   private fun metroRepositories(defaults: List<Repository>): Repositories =
@@ -243,16 +283,64 @@ abstract class MetroProject(
   }
 
   /**
-   * Default setup for simple JVM projects. For KMP or custom setups, override [buildGradleProject].
+   * Default setup for simple projects. JVM-only by default, or KMP with the targets emitted by
+   * [multiplatformTargetsBlock] when [multiplatform] is true. For more custom setups, override
+   * [buildGradleProject].
    */
   fun BuildScript.Builder.applyMetroDefault() {
-    plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
+    if (multiplatform) {
+      plugins(GradlePlugins.Kotlin.multiplatform(kotlinVersion), GradlePlugins.metro)
+      withKotlin(
+        buildString {
+          onBuildScript()
+          append(multiplatformTargetsBlock())
+          append(buildMetroBlock())
+        }
+      )
+    } else {
+      plugins(GradlePlugins.Kotlin.jvm(kotlinVersion), GradlePlugins.metro)
+      withKotlin(
+        buildString {
+          onBuildScript()
+          append(buildMetroBlock())
+        }
+      )
+    }
+  }
 
-    withKotlin(
-      buildString {
-        onBuildScript()
-        append(buildMetroBlock())
-      }
-    )
+  /**
+   * Returns the `kotlin { ... }` targets block written into multiplatform projects. Override to
+   * scope down the target set; the default emits every [KmpTarget] entry so a single project can be
+   * exercised against the full parameter matrix.
+   */
+  protected open fun multiplatformTargetsBlock(): String = buildString {
+    appendLine("kotlin {")
+    appendLine("  jvm()")
+    appendLine("  js { nodejs() }")
+    appendLine("  wasmJs { nodejs() }")
+    appendLine("  ${KmpTarget.NATIVE_HOST.gradleTargetName}()")
+    appendLine("}")
+  }
+
+  private companion object {
+    /**
+     * Extra gradle.properties entries layered onto every generated TestKit project via
+     * [RootProject.Builder.gradleProperties]. Order matters: these are appended after the
+     * testkit-support defaults so any duplicate key here wins (last-write-wins for `.properties`),
+     * which is how the bigger `org.gradle.jvmargs` override takes effect.
+     */
+    private val METRO_TESTKIT_GRADLE_PROPERTIES =
+      listOf(
+        // Daemon JVM tuning: bigger heap up front avoids slow ramp-up across the per-test
+        // compile/IC cycles, MaxMetaspaceSize caps growth in tests that exercise many classloaders.
+        "org.gradle.jvmargs=-Xmx4g -Xms1g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1024m",
+        "org.gradle.parallel=true",
+        "systemProp.org.gradle.configuration-cache.read-only=true",
+        // Allow producing klibs for non-host Kotlin/Native targets without that host present.
+        "kotlin.native.enableKlibsCrossCompilation=true",
+        // Silently skip targets the host can't compile rather than failing the build. Scoped to
+        // generated TestKit fixtures only — the root project keeps strict target resolution.
+        "kotlin.native.ignoreDisabledTargets=true",
+      )
   }
 }

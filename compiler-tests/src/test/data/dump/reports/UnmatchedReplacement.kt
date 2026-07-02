@@ -1,3 +1,4 @@
+// RUN_PIPELINE_TILL: BACKEND
 // FIR reports (from @ContributesTo)
 // CHECK_REPORTS: merging-unmatched-replacements-fir/AppGraph
 // CHECK_REPORTS: merging-unmatched-exclusions-fir/ExcludingSupertypeGraph

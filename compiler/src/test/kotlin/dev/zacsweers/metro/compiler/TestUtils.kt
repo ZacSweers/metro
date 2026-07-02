@@ -536,13 +536,21 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
     }
     .groupBy { it.severity }
     .mapValues { (_, messages) ->
-      messages.map { it.message.lineSequence().map(String::cleanOutputLine).joinToString("\n") }
+      messages.map {
+        it.message
+          .lineSequence()
+          .map(String::cleanOutputLine)
+          .joinToString("\n")
+          // Structured diagnostics pad with a leading newline so console output left-aligns
+          // after kotlinc's location prefix; rejoin here so assertions read on one line.
+          .replaceFirst(Regex("^(\\S+\\.kt(?::\\d+:\\d+)?)\\n"), "$1 ")
+      }
     }
     .let { parsed ->
       buildMap {
         putAll(parsed)
         DiagnosticSeverity.entries.forEach { severity ->
-          @Suppress("RETURN_VALUE_NOT_USED") getOrPut(severity, ::emptyList)
+          @Suppress("RETURN_VALUE_NOT_USED_COERCION") getOrPut(severity, ::emptyList)
         }
       }
     }
@@ -550,8 +558,11 @@ private fun String.parseDiagnostics(): Map<DiagnosticSeverity, List<String>> {
 
 private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 
+/** Matches ANSI escape codes. */
+private val ANSI_PATTERN = Regex("\u001B\\[[;:\\d]*m")
+
 fun String.cleanOutputLine(): String =
-  MessageRenderer.stripAnsi(FILE_PATH_REGEX.replace(trimEnd(), ""))
+  FILE_PATH_REGEX.replace(trimEnd(), "").replace(ANSI_PATTERN, "")
 
 inline fun <reified T : Throwable> assertThrows(block: () -> Unit): ThrowableSubject {
   val throwable = assertFailsWith(T::class, block)

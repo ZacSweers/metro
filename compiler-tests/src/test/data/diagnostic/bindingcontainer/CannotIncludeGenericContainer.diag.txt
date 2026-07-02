@@ -1,0 +1,3 @@
+/CannotIncludeGenericContainer.kt:9:31: error: Included binding container 'SomeBindings' is generic and thus cannot be included via annotation. Remove its generics or declare it as a graph factory parameter instead.
+
+/CannotIncludeGenericContainer.kt:12:39: error: Included binding container 'SomeBindings' is generic and thus cannot be included via annotation. Remove its generics or declare it as a graph factory parameter instead.

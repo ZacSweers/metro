@@ -1,0 +1,5 @@
+/SuspiciousScopeWarnings.kt:17:21: warning: Suspicious aggregation scope 'Singleton' is a concrete `@Scope` annotation type, and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.
+
+/SuspiciousScopeWarnings.kt:21:21: warning: Suspicious aggregation scope 'AppGraph' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.
+
+/SuspiciousScopeWarnings.kt:25:21: warning: Suspicious aggregation scope 'LoggedIngraph' appears to be a dependency graph or graph extension and probably not what you meant. Aggregation scopes are usually simple abstract classes like 'dev.zacsweers.metro.AppScope'.

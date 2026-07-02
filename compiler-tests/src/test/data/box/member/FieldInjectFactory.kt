@@ -1,3 +1,5 @@
+// GENERATE_CLASSES_IN_IR: false
+
 class ExampleClass {
   @Inject lateinit var string: String
   @Inject lateinit var stringProvider: Provider<String>

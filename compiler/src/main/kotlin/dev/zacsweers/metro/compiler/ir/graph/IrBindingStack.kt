@@ -8,6 +8,7 @@ import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
+import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
@@ -38,6 +39,7 @@ import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
@@ -52,6 +54,7 @@ internal interface IrBindingStack :
     graphContext: String?,
     val declaration: IrDeclarationWithName?,
     override val displayTypeKey: IrTypeKey = contextKey.typeKey,
+    override val diagnosticNotes: List<Note> = emptyList(),
     /**
      * Indicates this entry is informational only and not an actual functional binding that should
      * participate in validation.
@@ -169,10 +172,12 @@ internal interface IrBindingStack :
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
         isMirrorFunction: Boolean = false,
+        diagnosticNotes: List<Note> = emptyList(),
       ): Entry {
         return Entry(
           contextKey = contextKey,
           displayTypeKey = displayTypeKey,
+          diagnosticNotes = diagnosticNotes,
           usage = "is injected at",
           graphContext = null,
           declaration = declaration,
@@ -356,16 +361,6 @@ internal inline fun <
   return result
 }
 
-internal val IrBindingStack.lastEntryOrGraph
-  get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
-
-internal fun Appendable.appendBindingStack(
-  stack: BaseBindingStack<*, *, *, *, *>,
-  indent: String = "    ",
-  ellipse: Boolean = false,
-  short: Boolean = true,
-) = appendBindingStackEntries(stack.graphFqName, stack.entries, indent, ellipse, short)
-
 internal fun Appendable.appendBindingStackEntries(
   graphName: FqName,
   entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
@@ -382,6 +377,9 @@ internal fun Appendable.appendBindingStackEntries(
     appendLine("...")
   }
 }
+
+internal val IrBindingStack.lastEntryOrGraph
+  get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 
 internal class IrBindingStackImpl(override val graph: IrClass, private val logger: MetroLogger) :
   IrBindingStack {
@@ -520,23 +518,30 @@ internal fun bindingStackEntryForDependency(
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
         isMirrorFunction = true,
+        diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
     is CustomWrapper -> {
       Entry.injectedAt(contextKey, callingBinding.declaration, displayTypeKey = targetKey)
     }
     is Alias -> {
+      val sourceParameter =
+        callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs<IrValueParameter>()
       Entry.injectedAt(
         contextKey,
         callingBinding.ir,
-        callingBinding.parameters.extensionOrFirstParameter?.ir?.expectAs(),
+        sourceParameter,
+        declaration = sourceParameter ?: callingBinding.ir,
         displayTypeKey = targetKey,
       )
     }
     is Provided -> {
+      // For contribution provider bindings, use the origin class constructor for the
+      // diagnostic trace instead of the generated provides function
+      val originConstructor = callingBinding.originClass?.primaryConstructor
       Entry.injectedAt(
         contextKey,
-        callingBinding.providerFactory.function,
+        originConstructor ?: callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
         isMirrorFunction = false,

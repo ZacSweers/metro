@@ -30,7 +30,9 @@ There are a few primary subprojects to consider.
 
 To include the `samples` project in IntelliJ, open the Gradle tab and just add it as another project. It depends on the regular artifacts as included build dependencies.
 
-Git hooks for code formatting are automatically configured on the first Gradle invocation via `config/git/.gitconfig`. The formatter binaries in `config/bin/` can be updated by running `scripts/update-binaries.sh`.
+Code formatting is handled by [kempt](https://github.com/ZacSweers/kempt), which wraps ktfmt + google-java-format and is configured via `.kempt.toml`. Install with `brew install ZacSweers/tap/kempt-fmt` or `cargo install kempt-fmt`.
+
+Git hooks for code formatting are automatically configured on the first Gradle invocation via `config/git/.gitconfig`. The pre-commit hook delegates to `kempt hook`. The formatter versions are pinned in `.kempt.toml` and bumped automatically by Renovate; bump them manually with `kempt upgrade`.
 
 There is a useful `./metrow` helper CLI that can perform a few common commands across the various subprojects. See its `--help` usage for more details.
 

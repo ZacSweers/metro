@@ -1,5 +1,0 @@
-/DefaultBinding_MustBeSubclassable.kt:(91,118): error: `@DefaultBinding` is only applicable to interfaces and abstract classes.
-
-/DefaultBinding_MustBeSubclassable.kt:(161,187): error: `@DefaultBinding` is only applicable to interfaces and abstract classes.
-
-/DefaultBinding_MustBeSubclassable.kt:(228,251): error: `@DefaultBinding` is only applicable to interfaces and abstract classes.

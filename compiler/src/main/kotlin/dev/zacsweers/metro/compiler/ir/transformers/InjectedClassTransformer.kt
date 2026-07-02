@@ -8,15 +8,19 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.generatedClass
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
+import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -29,10 +33,13 @@ import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.getAnnotationStringValue
+import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isExternalParent
+import dev.zacsweers.metro.compiler.ir.lookupClass
+import dev.zacsweers.metro.compiler.ir.lookupFunctions
 import dev.zacsweers.metro.compiler.ir.metroAnnotationsOf
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -107,7 +114,10 @@ internal class InjectedClassTransformer(
     // Skip factory generation when generateContributionProviders is enabled and the class
     // has binding contributions — the contribution provider handles construction.
     // @ExposeImplBinding opts out of this skip.
-    if (declaration.usesContributionProviderPath(options, metroSymbols.classIds)) {
+    if (
+      !options.generateClassesInIr &&
+        declaration.usesContributionProviderPath(options, metroSymbols.classIds)
+    ) {
       // Cache absence so later lookups (e.g., from BindingLookup) return null instead of
       // attempting to generate after locking.
       generatedFactories[declaration.classIdOrFail] = Optional.empty()
@@ -141,16 +151,19 @@ internal class InjectedClassTransformer(
 
       fun reportAndReturn(): ClassFactory? {
         val message = buildString {
-          append(
-            "Could not find generated factory for '${declaration.kotlinFqName}' in the upstream module where it's defined. "
-          )
-          append("Run the Metro compiler over that module too")
+          append("[${MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION.fullId}] ")
+          append("Cannot use injected declaration `${declaration.kotlinFqName}` because ")
+          appendLine("the upstream declaration was not processed by Metro.")
+          appendLine()
+          append("Run Metro's compiler for the upstream module")
           if (options.enableDaggerRuntimeInterop) {
-            append(" (or Dagger if you're using its interop)")
+            append(
+              ". If Dagger owns that upstream declaration instead, run Dagger's compiler there"
+            )
           }
           appendLine(".")
         }
-        reportCompat(declaration, MetroDiagnostics.METRO_ERROR, message)
+        reportCompat(declaration, MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION, message)
         return null
       }
 
@@ -203,7 +216,7 @@ internal class InjectedClassTransformer(
               ?: return null
           // Look up where dagger would generate one
           val daggerFactoryClassId = injectedClassId.generatedClass("_Factory")
-          val daggerFactoryClass = pluginContext.referenceClass(daggerFactoryClassId)?.owner
+          val daggerFactoryClass = declaration.lookupClass(daggerFactoryClassId)?.owner
           if (daggerFactoryClass != null) {
             val wrapper =
               ClassFactory.DaggerFactory(
@@ -239,13 +252,22 @@ internal class InjectedClassTransformer(
 
     checkNotLocked()
 
+    val isAssistedInject =
+      listOf(declaration, targetConstructor).any {
+        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
+      }
+
     val factoryCls =
       declaration.nestedClasses.singleOrNull {
         it.origin == Origins.InjectConstructorFactoryClassDeclaration
       }
-        ?: reportCompilerBug(
-          "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
-        )
+        ?: if (options.generateClassesInIr) {
+          createInjectConstructorFactoryShell(declaration, isAssistedInject)
+        } else {
+          reportCompilerBug(
+            "No expected FIR-generated factory class found for '${declaration.kotlinFqName}'."
+          )
+        }
 
     /*
     Implement a simple Factory class that takes all injected values as providers
@@ -261,11 +283,6 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
-
-    val isAssistedInject =
-      listOf(declaration, targetConstructor).any {
-        it.isAnnotatedWithAny(metroSymbols.classIds.assistedInjectAnnotations)
-      }
 
     val isSuspendAware =
       declaration.hasAnnotation(metroSymbols.classIds.metroSuspendAware) ||
@@ -310,12 +327,11 @@ internal class InjectedClassTransformer(
     addHiddenFromObjCAnnotation(invokeFunction)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(invokeFunction)
 
-    val allParameters =
-      buildList {
-          add(constructorParameters)
-          addAll(memberInjectParameters)
-        }
-        .distinct()
+    val allParameters = buildList {
+      add(constructorParameters)
+      addAll(memberInjectParameters)
+    }
+      .distinct()
     val allValueParameters = allParameters.flatMap { it.regularParameters }
     val nonAssistedParameters = allValueParameters.filterNot { it.isAssisted }
 
@@ -425,6 +441,23 @@ internal class InjectedClassTransformer(
     return wrapper
   }
 
+  private fun createInjectConstructorFactoryShell(
+    declaration: IrClass,
+    isAssistedInject: Boolean,
+  ): IrClass {
+    return declaration
+      .getOrCreateMetadataVisibleHiddenNestedClass(
+        name = Symbols.Names.MetroFactory,
+        origin = Origins.InjectConstructorFactoryClassDeclaration,
+      )
+      .apply {
+        if (isAssistedInject) {
+          addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
+        }
+        addMetadataVisibleHiddenCompanionObject()
+      }
+  }
+
   private fun cacheFactoryInMetadata(declaration: IrClass, classFactory: ClassFactory) {
     if (classFactory.factoryClass.isExternalParent) {
       return
@@ -511,14 +544,12 @@ internal class InjectedClassTransformer(
           val instance = createAndAddTemporaryVariable(newInstance)
           for (injector in injectors) {
             val injectorClass = injector.injectorClass ?: continue
-            val typeArgs = injectorClass.parentAsClass.typeParameters.map { it.defaultType }
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
               +irInvoke(
                 dispatchReceiver = irGetObject(function.parentAsClass.symbol),
                 callee = function.symbol,
-                typeArgs = typeArgs,
                 args =
                   buildList {
                     add(irGet(instance))
@@ -548,13 +579,22 @@ internal class InjectedClassTransformer(
       val callableName = injectedFunctionClass.getAnnotationStringValue()!!.asName()
       val callableId = CallableId(declaration.packageFqName!!, callableName)
       var targetCallable =
-        pluginContext.referenceFunctions(callableId).single {
+        declaration.lookupFunctions(callableId).single {
           it.owner.isAnnotatedWithAny(metroSymbols.classIds.injectAnnotations)
         }
 
       // Assign fields
+      val constructorFields =
+        assignConstructorParamsToFields(
+          declaration.primaryConstructor!!,
+          declaration,
+          namer = memberNamer,
+        )
       val constructorParametersToFields =
-        assignConstructorParamsToFields(constructorParameters, declaration)
+        constructorFields.entries.withIndex().associate { (index, pair) ->
+          val (_, field) = pair
+          constructorParameters.regularParameters[index] to field
+        }
 
       val invokeFunction =
         declaration.functions.first { it.origin == Origins.TopLevelInjectFunctionClassFunction }
@@ -712,17 +752,12 @@ internal class InjectedClassTransformer(
         regularParameters = mergedParameters.regularParameters.dedupeParameters()
       )
 
-    val factoryReturnSymbol =
-      if (isSuspendAware) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
-
     // Generate create()
     generateStaticCreateFunction(
       objectClassToGenerateIn = classToGenerateCreatorsIn,
       factoryClass = factoryCls,
       sourceTypeParameters = targetClass,
-      returnTypeProvider = { typeParams ->
-        factoryReturnSymbol.typeWith(targetClass.symbol.typeWithParameters(typeParams))
-      },
+      returnTypeProvider = { typeParams -> factoryCls.symbol.typeWithParameters(typeParams) },
       targetConstructor = factoryConstructor,
       parameters = dedupedMerged,
       isAssistedInject = isAssistedInject,

@@ -390,17 +390,23 @@ class InjectedClassTransformerTest : MetroCompilerTest() {
           .trimIndent()
       ),
       expectedExitCode = ExitCode.COMPILATION_ERROR,
-      options = metroOptions.copy(enableDaggerRuntimeInterop = true),
+      options = metroOptions.toBuilder().enableDaggerRuntimeInterop(true).build(),
       previousCompilationResult = previousResult,
     ) {
       assertDiagnostics(
         """
-        e: Could not find generated factory for 'test.ExampleClass' in the upstream module where it's defined. Run the Metro compiler over that module too (or Dagger if you're using its interop).
+        e: [Metro/UnprocessedUpstreamDeclaration] Cannot use injected declaration `test.ExampleClass` because the upstream declaration was not processed by Metro.
 
-        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] Cannot find an @Inject constructor or @Provides-annotated function/property for: test.ExampleClass
+        Run Metro's compiler for the upstream module. If Dagger owns that upstream declaration instead, run Dagger's compiler there.
 
-            test.ExampleClass is requested at
-                [test.ExampleGraph] test.ExampleGraph.exampleClass
+        e: ExampleGraph.kt:8:7 [Metro/MissingBinding] No binding found for ExampleClass
+
+          trace (in test.ExampleGraph):
+              ExampleClass is requested at test.ExampleGraph.exampleClass
+
+          help: ensure ExampleClass has an @Inject constructor or is provided by an @Provides or @Binds
+                declaration visible to ExampleGraph
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
         """
           .trimIndent()
       )

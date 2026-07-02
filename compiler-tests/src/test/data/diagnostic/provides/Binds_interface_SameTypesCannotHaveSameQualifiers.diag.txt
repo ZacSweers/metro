@@ -1,0 +1,7 @@
+/Binds_interface_SameTypesCannotHaveSameQualifiers.kt:12:18: error: Binds receiver type `kotlin.Int` is the same type and qualifier as the bound type `kotlin.Int`.
+
+/Binds_interface_SameTypesCannotHaveSameQualifiers.kt:13:59: error: Binds receiver type `@Named("named") kotlin.Int` is the same type and qualifier as the bound type `@Named("named") kotlin.Int`.
+
+/Binds_interface_SameTypesCannotHaveSameQualifiers.kt:14:21: error: Binds receiver type `kotlin.String` is the same type and qualifier as the bound type `kotlin.String`.
+
+/Binds_interface_SameTypesCannotHaveSameQualifiers.kt:15:62: error: Binds receiver type `@Named("named") kotlin.String` is the same type and qualifier as the bound type `@Named("named") kotlin.String`.
