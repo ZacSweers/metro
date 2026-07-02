@@ -46,7 +46,7 @@ internal fun BindingData.toKaBinding(
     BindingData.Kind.CONSTRUCTOR_INJECTED ->
       KaBinding.ConstructorInjected(
         pointer = pointer,
-        key = key,
+        typeKey = key,
         scope = scope,
         implementationName = implementationName,
         originClassId = originClassId,
@@ -57,7 +57,7 @@ internal fun BindingData.toKaBinding(
     BindingData.Kind.PROVIDED ->
       KaBinding.Provided(
         pointer = pointer,
-        key = key,
+        typeKey = key,
         scope = scope,
         implementationName = implementationName,
         multibindingId = multibindingId,
@@ -71,7 +71,7 @@ internal fun BindingData.toKaBinding(
     BindingData.Kind.ALIAS ->
       KaBinding.Alias(
         pointer = pointer,
-        key = key,
+        typeKey = key,
         consumedKey = consumedKey,
         scope = scope,
         implementationName = implementationName,
@@ -86,19 +86,20 @@ internal fun BindingData.toKaBinding(
     BindingData.Kind.MULTIBINDING ->
       KaBinding.Multibinding(
         pointer = pointer,
-        key = key,
+        typeKey = key,
         scope = scope,
         originClassId = originClassId,
         containerId = containerId,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        allowEmpty = allowEmpty,
       )
     BindingData.Kind.BOUND_INSTANCE ->
-      KaBinding.BoundInstance(pointer = pointer, key = key, containerId = containerId)
+      KaBinding.BoundInstance(pointer = pointer, typeKey = key, containerId = containerId)
     BindingData.Kind.CUSTOM_WRAPPER ->
       KaBinding.CustomWrapper(
         pointer = pointer,
-        key = key,
+        typeKey = key,
         implementationName = implementationName,
         originClassId = originClassId,
         containerId = containerId,
