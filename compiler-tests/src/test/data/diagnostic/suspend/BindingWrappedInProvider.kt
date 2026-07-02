@@ -5,9 +5,9 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  val value: Int
+  val <!METRO_ERROR!>value<!>: Int
 
-  @Provides fun provideInt(<!METRO_ERROR!>dep: Provider<String><!>): Int = 1
+  @Provides fun provideInt(<!METRO_ERROR!>dep: <!DESUGARED_PROVIDER_WARNING!>Provider<String><!><!>): Int = 1
 
   @Provides suspend fun provideString(): String = "hello"
 }

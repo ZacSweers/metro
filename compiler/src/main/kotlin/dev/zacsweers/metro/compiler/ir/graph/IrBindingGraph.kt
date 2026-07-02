@@ -1092,6 +1092,10 @@ internal class IrBindingGraph(
       changed = false
       bindings.forEachValue { binding ->
         if (binding.typeKey in suspendSet) return@forEachValue // Already marked
+        // Assisted factories defer all suspension into their SAM invocation — holding/creating
+        // the factory itself never suspends, so target dep suspend-ness doesn't propagate to the
+        // factory binding. Validated separately below.
+        if (binding is IrBinding.AssistedFactory) return@forEachValue
 
         for (dep in binding.dependencies) {
           if (dep.typeKey in suspendSet && !dep.isWrappedInSuspendProvider) {
@@ -1143,6 +1147,9 @@ internal class IrBindingGraph(
 
     // Step 3: Validate wrapping conflicts — Provider<T>/Lazy<T> wrapping a suspend binding
     bindings.forEachValue { binding ->
+      // Assisted factories' dependencies are synthetically Provider-wrapped for cycle detection;
+      // their suspend handling is validated in step 4 below.
+      if (binding is IrBinding.AssistedFactory) return@forEachValue
       for (dep in binding.dependencies) {
         if (dep.typeKey !in suspendSet) continue
 
@@ -1171,6 +1178,33 @@ internal class IrBindingGraph(
           reportError(element.originalDeclarationIfOverride(), message)
         }
       }
+    }
+
+    // Step 4: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
+    // its SAM as `suspend` so the generated impl can await them.
+    bindings.forEachValue { binding ->
+      if (binding !is IrBinding.AssistedFactory) return@forEachValue
+      if (binding.function.isSuspend) return@forEachValue
+      val target = binding.targetBinding
+      val blockingDep =
+        target.parameters.nonDispatchParameters.firstOrNull { param ->
+          !param.isAssisted &&
+            param.contextualTypeKey.typeKey in suspendSet &&
+            !param.contextualTypeKey.defersSuspendAtAccess
+        } ?: return@forEachValue
+      val head =
+        bindingStackEntryForDependency(target, blockingDep.contextualTypeKey, blockingDep.typeKey)
+          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+      val trace = buildSuspendTrace(bindings, suspendSet, blockingDep.typeKey, head)
+      val message = buildString {
+        appendLine(
+          "[Metro/AssistedFactorySuspendRequired] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings — declare '${binding.function.name}' as a suspend function so it can await them."
+        )
+        appendLine()
+        appendLine("Trace:")
+        appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+      }
+      reportError(binding.function.originalDeclarationIfOverride(), message)
     }
   }
 

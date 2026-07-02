@@ -1453,9 +1453,9 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("AwareAssistedFactoryRequiresSuspend.kt")
-    public void testAwareAssistedFactoryRequiresSuspend() {
-      run("AwareAssistedFactoryRequiresSuspend.kt");
+    @TestMetadata("AssistedFactorySuspendRequired.kt")
+    public void testAssistedFactorySuspendRequired() {
+      run("AssistedFactorySuspendRequired.kt");
     }
 
     @Test

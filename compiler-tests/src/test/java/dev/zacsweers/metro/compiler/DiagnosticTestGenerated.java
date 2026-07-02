@@ -1621,9 +1621,9 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("AwareAssistedFactoryRequiresSuspend.kt")
-    public void testAwareAssistedFactoryRequiresSuspend() {
-      run("AwareAssistedFactoryRequiresSuspend.kt");
+    @TestMetadata("AssistedFactorySuspendRequired.kt")
+    public void testAssistedFactorySuspendRequired() {
+      run("AssistedFactorySuspendRequired.kt");
     }
 
     @Test

@@ -488,11 +488,24 @@ private constructor(
         }
 
         is AssistedFactory -> {
-          // Example9_Factory_Impl.create(example9Provider);
-          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
-
           // The target binding is stored directly on the Assisted binding (not in the graph)
           val targetBinding = binding.targetBinding
+
+          val targetConsumesSuspend =
+            targetBinding.parameters.nonDispatchParameters.any { param ->
+              !param.isAssisted &&
+                !param.contextualTypeKey.defersSuspendAtAccess &&
+                bindingGraph.isTransitivelySuspend(param.contextualTypeKey.typeKey)
+            }
+          if (targetConsumesSuspend) {
+            // The shared per-class Impl delegates to the target's plain Factory<T>, which can't
+            // hold suspend deps. Generate an IR-only nested impl that holds the deps directly and
+            // awaits them in its suspend SAM override. Validation guarantees the SAM is suspend.
+            return generateNestedAssistedImplCall(binding, contextualTypeKey, fieldInitKey)
+          }
+
+          // Example9_Factory_Impl.create(example9Provider);
+          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
 
           // Assisted-inject factories don't implement Provider.
           // The target binding is not an independent graph binding — it's an implementation
@@ -799,6 +812,65 @@ private constructor(
           )
         }
       }
+    }
+
+  /**
+   * Generates `NestedAssistedSuspendImpl(depProviders...)` for an assisted factory whose target
+   * consumes suspend bindings in this graph — see
+   * [GraphSuspendFactoryGenerator.getOrGenerateAssistedImpl].
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateNestedAssistedImplCall(
+    binding: IrBinding.AssistedFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      val targetBinding = binding.targetBinding
+      val classFactory = targetBinding.classFactory
+      val buildTargetCall: IrBuilderWithScope.(List<IrExpression?>) -> IrExpression
+      if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+        val targetConstructor = classFactory.targetConstructor!!
+        val typeArgs = targetBinding.type.typeParameters.map { it.defaultType }
+        buildTargetCall = { resolved ->
+          irCallConstructor(targetConstructor.symbol, typeArgs).apply {
+            for ((i, expr) in resolved.withIndex()) {
+              if (expr != null) arguments[i] = expr
+            }
+          }
+        }
+      } else {
+        buildTargetCall = { resolved ->
+          classFactory.invokeNewInstanceExpression(
+            targetBinding.typeKey,
+            Symbols.Names.newInstance,
+          ) { _, _ ->
+            resolved
+          }
+        }
+      }
+
+      val nested = suspendFactoryGenerator.getOrGenerateAssistedImpl(binding, buildTargetCall)
+      // Ctor args are the target's non-assisted deps; generateBindingArguments filters assisted
+      // params from the target parameter list, matching the nested ctor's parameter order.
+      val ctorArgs =
+        generateBindingArguments(
+          targetParams = classFactory.targetFunctionParameters,
+          function = nested.constructor,
+          binding = targetBinding,
+          fieldInitKey = fieldInitKey,
+        )
+      val implInstance =
+        irCallConstructor(nested.constructor.symbol, emptyList()).apply {
+          for ((i, arg) in ctorArgs.withIndex()) {
+            if (arg != null) arguments[i] = arg
+          }
+        }
+      return implInstance.toTargetType(
+        actual = AccessType.INSTANCE,
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = binding.diagnosticTypeName,
+      )
     }
 
   /**
