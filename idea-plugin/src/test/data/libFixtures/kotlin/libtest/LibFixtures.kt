@@ -19,6 +19,9 @@ interface LibAnalytics
 /** Resolvable on demand as a constructor-injected library class. */
 @Inject @SingleIn(AppScope::class) class LibHttpClient
 
+/** Carries constructor dependencies, for binary dependency-key extraction. */
+@Inject class LibClientWithDeps(val client: LibHttpClient)
+
 @Inject @ContributesBinding(AppScope::class) class LibServiceImpl : LibService
 
 @Inject @ContributesIntoSet(AppScope::class) class LibAnalyticsImpl : LibAnalytics
