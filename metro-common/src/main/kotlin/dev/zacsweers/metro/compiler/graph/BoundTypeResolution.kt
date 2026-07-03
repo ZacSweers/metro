@@ -29,7 +29,7 @@ public sealed interface BoundTypeResolution<out T : Any> {
  * Resolves the implicit bound type of a contributed binding from [supertypesExcludingAny].
  *
  * Priority (mirrors `AggregationChecker`/`ContributionsFirGenerator`): a supertype's
- * `@DefaultBinding<T>` wins — ambiguous if more than one declares it — otherwise the sole supertype
+ * `@DefaultBinding<T>` wins (ambiguous if more than one declares it), otherwise the sole supertype
  * is used. Callers handle the explicit `binding<T>()`/`boundType` case before calling this.
  *
  * @param T The "type" model of whatever system (FIR, IR, KA) is being used here.

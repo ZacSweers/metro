@@ -7,9 +7,9 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 
 /**
  * The default [MetroDiagnostics] factory that transports the rendered message through kotlinc's
- * diagnostic reporting. Call sites with severity-dependent factories (e.g.
- * [MetroDiagnosticId.UNUSED_GRAPH_INPUTS], which maps a configured severity to warning/error
- * variants) select their own instead.
+ * diagnostic reporting. Call sites with severity-dependent factories, like
+ * [MetroDiagnosticId.UNUSED_GRAPH_INPUTS] mapping a configured severity to warning or error
+ * variants, select their own instead.
  */
 internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
   get() =

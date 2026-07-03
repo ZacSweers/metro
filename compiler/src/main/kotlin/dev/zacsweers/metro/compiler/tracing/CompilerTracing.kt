@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 
 /**
- * FIR-side counterpart to [trace]. Pulls the [TraceScope] off [MetroFirBuiltIns]; when tracing is
+ * FIR-side counterpart to [trace]. Pulls the [TraceScope] off [MetroFirBuiltIns]. When tracing is
  * disabled (IDE or no `traceDestination`), invokes [block] against [NoopTraceScope] without
  * touching the real tracer or evaluating [metadataBlock].
  *

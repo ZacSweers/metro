@@ -214,7 +214,7 @@ internal class MetroTreeStructure(
       element is MetroTreeNode.Summary
 
   internal fun computeChildren(node: MetroTreeNode): List<MetroTreeNode> {
-    // The index needs stub indexes and Analysis API resolution; wait for smart mode
+    // The index needs stub indexes and Analysis API resolution, so wait for smart mode
     if (DumbService.isDumb(project)) return emptyList()
     return when (node) {
       is MetroTreeNode.Root -> graphNodes(node)

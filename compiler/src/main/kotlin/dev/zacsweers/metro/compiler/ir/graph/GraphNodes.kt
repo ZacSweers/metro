@@ -166,7 +166,7 @@ internal class GraphNodes(
 
     val node =
       trace("Build GraphNode") {
-        // Split Builder construction from .build() — the constructor does non-trivial work
+        // Split Builder construction from .build(). The constructor does non-trivial work
         // (materialises `supertypes = allSupertypesSequence(...).toList()` and other props),
         // so tracing it separately keeps that cost visible.
         val builder =
@@ -673,12 +673,12 @@ internal class GraphNodes(
             val clazz = type.classOrFail.owner
 
             // Platform supertypes (kotlin.*, java.*, android.*, etc.) can't carry Metro scope
-            // annotations or `@GraphExtension.Factory` markers — skip them before walking their
+            // annotations or `@GraphExtension.Factory` markers, so skip them before walking their
             // annotation list.
             if (clazz.classId?.isPlatformType() == true) return@forEachIndexed
 
             // Single pass over the class's annotations: collect scope annotations AND detect
-            // @GraphExtension.Factory marker annotations in one walk (was previously two walks —
+            // @GraphExtension.Factory marker annotations in one walk (was previously two walks,
             // scopeAnnotations() + isAnnotatedWithAny()).
             var isExtensionFactory = false
             for (anno in clazz.annotationsCompat()) {
@@ -704,7 +704,7 @@ internal class GraphNodes(
         }
 
         // The findBindingContainer lookup can be expensive on first-touch (parses the class's
-        // declarations). Tracing it separately — and per-supertype — makes the outliers visible.
+        // declarations). Tracing it separately and per-supertype makes the outliers visible.
         trace("Find supertype binding containers") {
           for (type in supertypes) {
             val clazz = type.classOrFail.owner
@@ -819,7 +819,7 @@ internal class GraphNodes(
                       if (isInjectorCandidate) {
                         overridden.owner.regularParameters[0].qualifierAnnotation()
                       } else {
-                        // Direct qualifier lookup — equivalent to reading .qualifier off a full
+                        // Direct qualifier lookup, equivalent to reading .qualifier off a full
                         // classification but skips categorizing every other annotation kind.
                         overridden.owner.qualifierAnnotation()
                       }

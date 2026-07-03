@@ -24,7 +24,7 @@ internal sealed interface KaAnnotationValueSnapshot {
 /**
  * An annotation participating in key/scope identity (a qualifier like `@Named("cdn")` or a scope
  * like `@SingleIn(AppScope::class)`). The Analysis API analog of the compiler's
- * `MetroFirAnnotation`/`IrAnnotation`, with the same canonical-render equality semantics — but
+ * `MetroFirAnnotation`/`IrAnnotation`, with the same canonical-render equality semantics. It is
  * built from the structured resolved argument values rather than source text, so spelling
  * differences (named vs positional args, import styles) don't break identity.
  */

@@ -8,7 +8,7 @@ import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 
 public data class MissingBindingHints(
   val notes: List<Note> = emptyList(),
-  /** Extra body sections (e.g. a near-miss binding's location + signature). */
+  /** Extra body sections, such as a near-miss binding's location and signature. */
   val sections: List<DiagnosticSection> = emptyList(),
   val similarBindings: List<SimilarBindingItem> = emptyList(),
 )

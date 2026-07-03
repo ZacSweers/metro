@@ -78,7 +78,7 @@ public data class GraphAdjacency<T>(
  *
  * ### Deferrable (breakable) cycles
  *
- * Some DI cycles can be "valid" if at least one edge is wrapped in a deferrable type (e.g.,
+ * Some DI cycles can be "valid" if at least one edge is wrapped in a deferrable type (like
  * `Provider`/`Lazy`/ `() -> T`), which means the dependency is resolved on-demand rather than at
  * construction. The [isDeferrable] predicate identifies such edges.
  *
@@ -103,7 +103,7 @@ public data class GraphAdjacency<T>(
  *
  * If a cycle has **no** deferrable edge, [onCycle] is invoked with the offending vertex list and
  * the caller decides how to surface it (typically a compilation error). If a cycle has deferrable
- * edges but no subset of deferring sources actually breaks it (rare, e.g., multiple interleaved
+ * edges but no subset of deferring sources actually breaks it (rare, like multiple interleaved
  * cycles), [onCycle] is also invoked.
  *
  * @param fullAdjacency outgoing‑edge map (every vertex key must be present)
@@ -206,10 +206,10 @@ public fun <V : Comparable<V>> metroSort(
  * ### Strategy
  *
  * 1. Walk the SCC and build:
- *     - `sccAdjacency` — edges that stay inside the SCC (cross-SCC edges can't contribute to its
+ *     - `sccAdjacency`: edges that stay inside the SCC (cross-SCC edges can't contribute to its
  *       internal cycle).
- *     - `deferrableEdgesFrom` — for each vertex, the set of its outgoing deferrable edges.
- *     - `potentialCandidates` — every vertex that has at least one outgoing deferrable edge. Only
+ *     - `deferrableEdgesFrom`: for each vertex, the set of its outgoing deferrable edges.
+ *     - `potentialCandidates`: every vertex that has at least one outgoing deferrable edge. Only
  *       these can break the cycle, since deferring a vertex with no deferrable outgoing edge is a
  *       no-op.
  * 2. If there are no candidates, the cycle has no soft edges -> return empty (caller treats this as
@@ -222,9 +222,9 @@ public fun <V : Comparable<V>> metroSort(
  * 5. If even that fails, return empty (the available deferrable edges aren't enough to break the
  *    cycle).
  *
- * Candidate priority: implicitly deferrable vertices (e.g. `@AssistedFactory`s, which the user
- * already marked as constructed-on-demand) come first, then natural order. This keeps generated
- * code more stable and prefers obvious-on-the-source choices over arbitrary picks.
+ * Candidate priority: implicitly deferrable vertices (`@AssistedFactory`s, which the user already
+ * marked as constructed-on-demand) come first, then natural order. This keeps generated code more
+ * stable and prefers obvious-on-the-source choices over arbitrary picks.
  *
  * Cycle-checking is done via [ReusableCycleChecker], which masks the deferred edges during a
  * standard recursive DFS instead of materializing a new adjacency map for each candidate test.
@@ -279,7 +279,7 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
   val cycleChecker = ReusableCycleChecker(vertices, sccAdjacency, deferrableEdgesFrom)
 
   // Two flavors of "deferrable" inform candidate priority:
-  // - implicit (whole-node, e.g., @AssistedFactory, user already marked it on-demand)
+  // - implicit (whole-node, like @AssistedFactory, user already marked it on-demand)
   // - explicit (edge-only, source wraps the target in Provider/Lazy)
   //
   // Implicit wins ties so codegen prefers the user-visible choice.
@@ -443,7 +443,7 @@ private fun <V : Comparable<V>> expandComponents(
  * Within an SCC we classify each edge as either **hard** (non-deferrable, or deferrable but the
  * source isn't in [deferredInScc]) or **soft** (deferrable + source is deferred). Soft edges are
  * the ones a `DelegateFactory` will paper over at runtime, so we pretend they don't exist when
- * ordering — the remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
+ * ordering. The remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
  *
  * Example: `A <-> B` cycle, B -> A is deferrable, deferredInScc = {B}.
  *
@@ -466,7 +466,7 @@ private fun <V : Comparable<V>> expandComponents(
  * 3. Then natural order for determinism.
  *
  * @throws IllegalStateException if a hard cycle remains after removing soft edges (shouldn't happen
- *   — [findMinimalDeferralSet] is supposed to have proved acyclicity).
+ *   because [findMinimalDeferralSet] is supposed to have proved acyclicity).
  */
 private fun <V : Comparable<V>> sortVerticesInSCC(
   vertices: List<V>,
@@ -558,7 +558,7 @@ public data class TarjanResult<V : Comparable<V>>(
  * Computes the strongly connected components (SCCs) of a directed graph using Tarjan's algorithm.
  *
  * An SCC is a maximal subset of vertices in which every vertex can reach every other vertex **and
- * is reachable from every other vertex** (mutual reachability — one-way reachability is not
+ * is reachable from every other vertex** (mutual reachability, since one-way reachability is not
  * enough). A cycle is a single SCC containing every vertex on it; vertices that can be reached but
  * cannot reach back form their own size-1 SCCs.
  *
@@ -590,24 +590,24 @@ public data class TarjanResult<V : Comparable<V>>(
  * ### How it works
  *
  * Tarjan does a single DFS, marking each vertex with two integers:
- * - `index[v]` — the order in which v was first visited (0, 1, 2, …).
- * - `lowlink[v]` — the smallest `index` reachable from v's DFS subtree **without leaving the
- *   current DFS path**.
+ * - `index[v]`: the order in which v was first visited (0, 1, 2, ...).
+ * - `lowlink[v]`: the smallest `index` reachable from v's DFS subtree **without leaving the current
+ *   DFS path**.
  *
  * `lowlink[v] == index[v]` precisely when v is the root of an SCC: no descendant could reach an
  * ancestor of v, so everything sitting above v on the SCC stack belongs to v's component.
  *
  * Two stacks are needed:
- * - **DFS stack** — the current call path (`callStack` here, with parallel `edgeCursor` for "which
+ * - **DFS stack**: the current call path (`callStack` here, with parallel `edgeCursor` for "which
  *   outgoing edge of v are we up to"). Pops as the DFS unwinds.
- * - **SCC stack** — vertices visited but **not yet assigned to a component**, in DFS-discovery
- *   order (`dfsStack`). When an SCC root finalises, we pop everything down to and including that
- *   root from this stack — those popped vertices form the SCC.
+ * - **SCC stack**: vertices visited but **not yet assigned to a component**, in DFS-discovery order
+ *   (`dfsStack`). When an SCC root finalises, we pop everything down to and including that root
+ *   from this stack, and those popped vertices form the SCC.
  *
  * The two stacks differ because the SCC stack can hold a long chain across many backtracked DFS
  * frames. In the example above, when we finish processing C's only outgoing edge (`C -> A`), C
- * stays on the SCC stack — C still has no SCC assigned. Only when we finally backtrack all the way
- * to A and find `lowlink[A] == index[A]` do we pop C, D, B, A together as one SCC.
+ * stays on the SCC stack, so C still has no SCC assigned. Only when we finally backtrack all the
+ * way to A and find `lowlink[A] == index[A]` do we pop C, D, B, A together as one SCC.
  *
  * Walk-through of the example (edges visited in sorted order):
  * ```
@@ -834,13 +834,13 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
   val rawForward = HashMap<V, HashSet<V>>(n)
   val reachableReverse = HashMap<V, MutableSet<V>>(n)
   for (id in 0 until n) {
-    // Skip vertices the DFS never visited — they're not part of the reachable subgraph.
+    // Skip vertices the DFS never visited. They're not part of the reachable subgraph.
     if (indexOfId[id] == UNVISITED) continue
     val vertex = vertexAt(id)
     val edges = adj[id]!!
     if (edges.isEmpty()) {
       // Vertex has no outgoing edges. Record an empty set so callers that index into the result
-      // (e.g. `forward[v]`) see a present-but-empty entry rather than null.
+      // (like `forward[v]`) see a present-but-empty entry rather than null.
       rawForward[vertex] = HashSet(0)
       continue
     }

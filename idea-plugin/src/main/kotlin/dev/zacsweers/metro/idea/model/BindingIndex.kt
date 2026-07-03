@@ -38,7 +38,7 @@ internal class BindingIndex(
   private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
 
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
-  // @MultibindingElement qualifier swap — their element key must not satisfy plain consumers.
+  // @MultibindingElement qualifier swap. Their element key must not satisfy plain consumers.
   private val bindingsByKey: ScatterMap<KaTypeKey, List<KaBinding>> by lazy {
     bindings.groupToScatter { binding ->
       binding.typeKey.takeIf { binding.multibindingId == null }

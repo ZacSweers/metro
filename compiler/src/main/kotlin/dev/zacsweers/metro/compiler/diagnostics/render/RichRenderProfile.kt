@@ -13,7 +13,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Style
  * Resolves the effective diagnostics render mode.
  *
  * The `metro.diagnosticsRenderMode` system property overrides the compiler option.
- * [DiagnosticsRenderMode.AUTO] is resolved by the Gradle plugin before compiler invocation; if it
+ * [DiagnosticsRenderMode.AUTO] is resolved by the Gradle plugin before compiler invocation. If it
  * reaches the compiler anyway, use plain output.
  */
 internal fun MetroOptions.resolveDiagnosticsRenderMode(): DiagnosticsRenderMode {

@@ -365,7 +365,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       .setTargets(
         NotNullLazyValue.lazy {
           // Cluster KMP source sets in hierarchy order: commonMain first, then intermediate
-          // source sets (e.g. nativeMain), then leaf platforms; alphabetical within each.
+          // source sets like nativeMain, then leaf platforms, alphabetical within each.
           targets
             .mapNotNull { it.element }
             .sortedWith(

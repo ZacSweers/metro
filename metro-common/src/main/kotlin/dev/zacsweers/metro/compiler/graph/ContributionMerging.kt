@@ -84,7 +84,7 @@ private inline fun removeTarget(
 /**
  * A contribution that participates in [applyExcludesAndReplaces]. [mergeId] is the class whose
  * identity excludes/replaces match against (the contributed/`@Origin` class), or null for
- * contributions that can never be excluded or replaced (e.g. plain injected classes).
+ * contributions that can never be excluded or replaced, like plain injected classes.
  */
 public interface MergeContribution {
   public val mergeId: ClassId?

@@ -142,7 +142,7 @@ private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Bool
   val uastClassId = toUElement(UAnnotation::class.java)?.resolve()?.classId
   if (uastClassId != null) return uastClassId in classIds
 
-  // PSI/UAST reference resolution can fail for library annotations outside JVM contexts (e.g.
+  // PSI/UAST reference resolution can fail for library annotations outside JVM contexts (like
   // klib-backed annotations in KMP common source sets); the Analysis API is authoritative.
   val typeReference = typeReference ?: return false
   return allowAnalysisOnEdt {

@@ -70,7 +70,7 @@ public open class MutableBindingGraph<
       roots: Map<ContextualTypeKey, BindingStackEntry>,
     ) -> BindingStackEntry,
   /**
-   * Creates bindings for keys not necessarily manually added to the graph (e.g.,
+   * Creates bindings for keys not necessarily manually added to the graph (like
    * constructor-injected types). Note one key may incur the creation of multiple bindings, so this
    * returns a set.
    */
@@ -232,7 +232,7 @@ public open class MutableBindingGraph<
     val bindingQueue = ArrayDeque<Binding>(bindings.size * 2).apply { bindings.forEachValue(::add) }
 
     // Tracks type keys whose dependencies have already been walked. Bindings may appear in the
-    // queue more than once (e.g. when multiple paths resolve to the same class-based binding or
+    // queue more than once (when multiple paths resolve to the same class-based binding or
     // shared member-injector ancestors) and this avoids re-walking their dependency lists.
     val visited = HashSet<TypeKey>(bindings.size)
 

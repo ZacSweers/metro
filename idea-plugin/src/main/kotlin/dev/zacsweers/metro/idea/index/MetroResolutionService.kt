@@ -62,7 +62,7 @@ class MetroResolutionService(private val project: Project) {
    * Returns the cached binding index for the module owning [element], or [BindingIndex.EMPTY] when
    * Metro is disabled or the element has no module.
    *
-   * Must be called under a read action — building the index performs Analysis API resolution.
+   * Must be called under a read action because building the index performs Analysis API resolution.
    * Normally that happens on background highlighting passes; EDT analysis is permitted for the
    * platform flows (and tests) that compute markers on the EDT.
    */

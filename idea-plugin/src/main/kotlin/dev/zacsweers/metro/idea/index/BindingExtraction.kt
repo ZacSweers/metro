@@ -433,7 +433,7 @@ private fun KaSession.contributedBoundType(
   if (anvilBoundType != null) return anvilBoundType
 
   // Metro's binding<T>() carries the bound type as a *type argument* of a nested annotation,
-  // which the Analysis API doesn't expose structurally — read it from PSI. For binary classes
+  // which the Analysis API doesn't expose structurally, so read it from PSI. For binary classes
   // KaAnnotation.psi is null, but the decompiled class renders its annotation entries.
   val entryPsi =
     annotation.psi as? KtAnnotationEntry
@@ -587,7 +587,7 @@ internal fun KaSession.injectClassDependencyKeys(
     memberInjectDependencyKeys(classSymbol, options)
 }
 
-/** Class-literal list argument values (e.g. `excludes`, `replaces`, `bindingContainers`). */
+/** Class-literal list argument values, such as `excludes`, `replaces`, and `bindingContainers`. */
 internal fun classListArgument(annotation: KaAnnotation, name: String): List<ClassId> {
   val argument =
     annotation.arguments.firstOrNull { it.name.asString() == name } ?: return emptyList()

@@ -63,7 +63,7 @@ internal interface IrBindingStack :
      * Optional deferred-evaluation alternative to [graphContext]. When non-null, this takes
      * precedence and [graphContext] is ignored. The expensive formatting that some factories do
      * (parent traversals, fake-override resolution, buildString) only runs when the stack is
-     * actually rendered — i.e. error reports or when logging is enabled.
+     * actually rendered, meaning error reports or enabled logging.
      */
     graphContextProvider: (() -> String?)? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {

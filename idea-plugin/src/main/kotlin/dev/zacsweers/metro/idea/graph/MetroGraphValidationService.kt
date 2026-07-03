@@ -76,7 +76,7 @@ internal class MetroGraphValidationService(
 
   /**
    * The last result for [graph], or null if it was never validated. Results survive index
-   * invalidation so the outcome stays visible; [CachedValidation.stale] flags that the code may
+   * invalidation so the outcome stays visible. [CachedValidation.stale] flags that the code may
    * have changed since the run.
    */
   fun cachedResult(element: PsiElement, graph: KaGraphNode): CachedValidation? {

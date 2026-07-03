@@ -134,7 +134,7 @@ internal class IrBindingGraph(
         ?: node.reportableSourceGraphDeclaration
     hasErrors = true
     if (element is IrDeclaration) {
-      // For missing bindings the anchor is the interesting injection/request site — carry its
+      // For missing bindings the anchor is the interesting injection/request site, so carry its
       // source span so rich console mode draws a frame for it. Other codes anchor at the graph
       // declaration, where a frame adds noise rather than signal.
       val enriched =
@@ -145,7 +145,8 @@ internal class IrBindingGraph(
         }
       pendingDiagnostics += PendingDiagnostic.Structured(enriched.id.factory, element, enriched)
     } else {
-      // Rare non-declaration anchor — report immediately (no batch passes to share with).
+      // Rare non-declaration anchor. Report immediately, since there are no batch passes to share
+      // with.
       val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
       with(metroContext) {
         diagnosticReporter.reportAt(
@@ -709,7 +710,7 @@ internal class IrBindingGraph(
   // When function-provider mode is enabled, `() -> T` is treated as a provider wrapper for
   // `T` rather than a bindable value type. An empty multibinding or a missing binding for a
   // `Function0<T>` key often means either (a) contributors weren't migrated from
-  // `Provider<T>`, or (b) the author intended the function itself to be the bound value —
+  // `Provider<T>`, or (b) the author intended the function itself to be the bound value,
   // which is no longer supported at the top level under this mode. Returns null when the
   // mode is off or the type isn't a zero-arg function.
   private fun functionProviderMigrationHint(type: IrType): String? {

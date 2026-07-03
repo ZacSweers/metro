@@ -1408,7 +1408,7 @@ public class MetroOptions(
   @Transient
   public val traceDir: Lazy<Path?> = lazy {
     // Don't wipe the directory: when a Gradle daemon reruns compilation
-    // (e.g. gradle-profiler iterations), wiping each time loses every
+    // (like gradle-profiler iterations), wiping each time loses every
     // prior trace. Filenames are timestamped, so accumulation is safe.
     rawTraceDestination?.apply { createDirectories() }
   }

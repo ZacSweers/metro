@@ -196,7 +196,7 @@ public sealed interface WrappedType<T : Any> {
 /**
  * Structurally maps every stored type in this wrapped type with [transform], preserving the
  * Provider/Lazy/Map structure. Useful when the navigated and stored type representations differ
- * (e.g. building a snapshot tree from live compiler types).
+ * (like building a snapshot tree from live compiler types).
  */
 public fun <T : Any, R : Any> WrappedType<T>.mapTypes(transform: (T) -> R): WrappedType<R> =
   when (this) {

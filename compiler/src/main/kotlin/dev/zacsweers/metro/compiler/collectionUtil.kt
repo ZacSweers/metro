@@ -55,8 +55,8 @@ internal fun <T, R> Iterable<T>.mapToSetWithDupes(transform: (T) -> R): Pair<Set
 /**
  * Maps items in parallel using a [ForkJoinPool]. Each item is forked as a [ForkJoinTask], and the
  * caller thread participates via [ForkJoinTask.join] which uses work-stealing rather than blocking.
- * This means nested `parallelMap` calls (e.g. recursive graph extension validation) work correctly
- * without thread starvation — a joining thread will execute other queued tasks while waiting,
+ * This means nested `parallelMap` calls, like recursive graph extension validation, work
+ * correctly without thread starvation. A joining thread executes other queued tasks while waiting,
  * keeping the thread count bounded to the pool's parallelism.
  *
  * Results are returned in the same order as the input.
@@ -77,6 +77,6 @@ internal fun <T, R> List<T>.parallelMap(
       if (onPoolThread) task.fork() else forkJoinPool.submit(task)
     }
 
-  // Join all tasks — work-stealing keeps the thread active while waiting
+  // Join all tasks. Work-stealing keeps the thread active while waiting.
   return tasks.map { it.join() }
 }

@@ -43,10 +43,10 @@ internal class ConsumerEntry(
  */
 internal class AssistedSite(
   val pointer: SmartPsiElementPointer<out KtElement>,
-  /** Short description of what supplies the value, e.g. `@Assisted` or `Circuit`. */
+  /** Short description of what supplies the value, such as `@Assisted` or `Circuit`. */
   val supplier: String,
   /**
-   * True when nothing in the source marks the parameter as assisted (e.g. Circuit-provided types),
+   * True when nothing in the source marks the parameter as assisted, like Circuit-provided types,
    * as opposed to an explicit `@Assisted` annotation. Implicit sites get an `assisted` inlay;
    * explicit ones don't need a second marker.
    */

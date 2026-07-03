@@ -8,9 +8,9 @@ import org.jetbrains.kotlin.name.ClassId
 /**
  * A session-free snapshot of a [org.jetbrains.kotlin.analysis.api.types.KaType].
  *
- * [renderedType] and [shortType] give cached keys and UI text to cross-session indexes, and
- * [classId] the type's class for key matching. [typeArguments] keep the type navigable after the
- * session ends, the way `IrTypeKey` navigates its `IrType`.
+ * [renderedType] and [shortType] serve as cache keys and UI text. [classId] identifies the class
+ * for key matching. [typeArguments] keep the type navigable after the session ends, the way
+ * `IrTypeKey` navigates its `IrType`.
  *
  * Equality is structural by [renderedType], so a snapshot can outlive the
  * [org.jetbrains.kotlin.analysis.api.KaSession] it was built in.

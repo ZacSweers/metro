@@ -69,7 +69,7 @@ internal class LibraryIndexPostProcessor(
     }
     if (scopeIds.isEmpty()) return
     // Analyze from a project-source use site: library-use-site sessions deserialize annotation
-    // values differently (e.g. unresolved class literal ids).
+    // values differently, like unresolved class literal ids.
     val context =
       graphs.firstNotNullOfOrNull { it.pointer.element }
         ?: contributions.firstNotNullOfOrNull { it.pointer.element }
@@ -160,7 +160,7 @@ internal class LibraryIndexPostProcessor(
           )
       }
       // Generated members hold the machine-readable binding declarations that annotation
-      // arguments in binaries can't carry (e.g. binding<T>() type args): contribution-provider
+      // arguments in binaries can't carry, like binding<T>() type args. Contribution-provider
       // containers hold @Provides members directly, and contributed classes hold nested
       // MetroContribution interfaces with @Binds members.
       val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()

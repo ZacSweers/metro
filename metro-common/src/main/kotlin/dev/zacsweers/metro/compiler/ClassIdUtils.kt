@@ -145,7 +145,7 @@ public fun ClassId.generatedClass(suffix: String): ClassId {
  * short, stable fallback `Impl_${hashSource.hashSuffix}`.
  *
  * The basename of a nested class's `.class` file joins all relative class name segments with `$`,
- * so chained nested generation (e.g. deep `@GraphExtension` impls and their factory impls) can
+ * so chained nested generation, like deep `@GraphExtension` impls and their factory impls, can
  * exceed the 255-byte per-segment limit on most filesystems. The fallback name is deterministic
  * across compilations via [hashSource]. See https://github.com/ZacSweers/metro/issues/2268.
  */
