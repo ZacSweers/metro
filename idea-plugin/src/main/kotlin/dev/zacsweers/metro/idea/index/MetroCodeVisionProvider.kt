@@ -73,15 +73,18 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     val bindingEntries = index.bindingEntriesAt(declaration)
     if (bindingEntries.isNotEmpty()) {
       val consumers = index.consumersFor(bindingEntries)
-      val key = bindingEntries.first().typeKey.render(short = true)
-      entries +=
-        declaration.textRange to
-          entry(
-            text = countText(consumers.size, "consumer"),
-            tooltip = "Metro consumers of $key",
-            targets = consumers.map { it.pointer },
-            popupTitle = "Consumers of $key",
-          )
+      // A zero count is noise, not signal
+      if (consumers.isNotEmpty()) {
+        val key = bindingEntries.first().typeKey.render(short = true)
+        entries +=
+          declaration.textRange to
+            entry(
+              text = countText(consumers.size, "consumer"),
+              tooltip = "Metro consumers of $key",
+              targets = consumers.map { it.pointer },
+              popupTitle = "Consumers of $key",
+            )
+      }
     }
 
     val graph = (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }
@@ -89,6 +92,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
       val contexts = index.contextsFor(graph)
       val contributions = contexts.flatMap { index.contributionsFor(it) }.distinct()
       val inherited = contexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
+      if (contributions.isEmpty() && inherited.isEmpty()) return
       val scopes = graph.scopeKeys.joinToString { it.shortClassName.asString() }
       val text = buildString {
         append(countText(contributions.size, "contribution"))

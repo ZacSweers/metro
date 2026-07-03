@@ -56,8 +56,42 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         MetroIcons.CONSUMER_UNRESOLVED,
         MetroIcons.CONSUMER_ASSISTED,
         MetroIcons.GRAPH,
+        MetroIcons.GRAPH_VALIDATED,
+        MetroIcons.GRAPH_PROBLEMS,
+        MetroIcons.CONTRIBUTED,
       )
     return myFixture.findAllGutters().filter { it.icon in metroIcons }.mapNotNull { it.tooltipText }
+  }
+
+  fun testInjectorMarkerTargetsInjectedMembers() {
+    myFixture.configureMetroFile(
+      """
+      interface Api
+      interface Tracker
+
+      class Target {
+        @Inject lateinit var api: Api
+        @Inject lateinit var tracker: Tracker
+      }
+
+      @DependencyGraph
+      interface AppGraph {
+        fun inject(target: Target)
+
+        @Provides fun provideApi(): Api = object : Api {}
+        @Provides fun provideTracker(): Tracker = object : Tracker {}
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER || it.icon === MetroIcons.CONSUMER_UNRESOLVED }
+        .mapNotNull { it.tooltipText }
+    assertTrue("Expected an injector marker in:\n$tooltips") {
+      tooltips.any { it.startsWith("Metro injector: injects 2 dependencies into Target") }
+    }
   }
 
   fun testProviderConsumerAndGraphMarkersArePresent() {
@@ -75,8 +109,8 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     assertTrue("Expected a graph accessor consumer marker in:\n$tooltips") {
       tooltips.any { it.startsWith("Metro dependency: Consumer") }
     }
-    assertTrue("Expected a graph marker in:\n$tooltips") {
-      tooltips.any { it.startsWith("Metro dependency graph") }
+    assertTrue("Expected a graph contributions marker in:\n$tooltips") {
+      tooltips.any { it.startsWith("Contributions to AppScope") }
     }
     assertTrue("Expected an unresolved-consumer marker for the missing param in:\n$tooltips") {
       tooltips.any {
