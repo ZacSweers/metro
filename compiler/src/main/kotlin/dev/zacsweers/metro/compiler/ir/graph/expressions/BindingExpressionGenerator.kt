@@ -180,6 +180,11 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
 
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
+      // NOTE: SUSPEND_PROVIDER results are deliberately NOT converted here. These expressions
+      // also initialize graph fields typed SuspendProvider<T>; converting to the requested
+      // `suspend () -> T` function type at this layer produces type-mismatched field
+      // initializers (invalid IR on JS). The function-type adaptation happens at the consumer
+      // boundary in typeAsProviderArgument instead.
       with(scope) {
         with(metroSymbols.providerTypeConverter) {
           if (providerType == null) {

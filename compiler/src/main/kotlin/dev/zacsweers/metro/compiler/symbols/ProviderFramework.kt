@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.platform.isJs
@@ -267,32 +268,40 @@ internal class MetroProviderFramework(
   /**
    * Converts a SuspendProvider to SuspendFunction0 (`suspend () -> T`).
    *
-   * On non-JS platforms, SuspendProvider implements `suspend () -> T`, so no conversion is needed.
-   * On JS, SuspendProvider does not implement `suspend () -> T`, so we wrap it in a suspend lambda.
+   * On non-JS platforms, a SuspendProvider IS-A `suspend () -> T`, so no conversion is needed. On
+   * JS, invocation through a function TYPE compiles to a direct JS call, and a class instance
+   * implementing the fun interface is not a callable JS function — it throws TypeError at runtime.
+   * Wrap it in a real suspend lambda so the value handed to `suspend () -> T` sites is directly
+   * callable.
    */
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   private fun IrExpression.toSuspendFunctionType(targetKey: IrContextualTypeKey): IrExpression {
     val provider = this
     return if (context.platform.isJs()) {
-      // JS: SuspendProvider does not implement suspend () -> T, wrap in a suspend lambda
+      // JS: a SuspendProvider instance is not a callable JS function, wrap in a suspend lambda
       val valueType =
         (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
           ?: targetKey.typeKey.type
       irLambda(
-        parent = scope.parent,
-        receiverParameter = null,
-        valueParameters = emptyList(),
-        returnType = valueType,
-        suspend = true,
-      ) {
-        +irReturn(
-          irInvoke(
-            provider,
-            callee = context.metroSymbols.suspendProviderInvoke,
-            typeHint = valueType,
+          parent = scope.parent,
+          receiverParameter = null,
+          valueParameters = emptyList(),
+          returnType = valueType,
+          suspend = true,
+        ) {
+          +irReturn(
+            irInvoke(
+              provider,
+              callee = context.metroSymbols.suspendProviderInvoke,
+              typeHint = valueType,
+            )
           )
-        )
-      }
+        }
+        .also {
+          // The wrapped provider expression may itself contain lambdas parented to the enclosing
+          // declaration; they are now nested inside this lambda and must be re-parented to it.
+          it.function.body?.patchDeclarationParents(it.function)
+        }
     } else {
       // Non-JS: SuspendProvider implements suspend () -> T, no conversion needed
       provider
