@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.graph
 
 import androidx.collection.ScatterMap
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
@@ -38,6 +39,8 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class KaGraphDiagnostic(
   val diagnostic: MetroDiagnostic,
   val stack: List<KaBindingStack.Entry>,
+  /** The bindings this diagnostic is about, such as the sources of a duplicate. */
+  val related: List<KaBinding> = emptyList(),
 ) {
   val id: MetroDiagnosticId
     get() = diagnostic.id
@@ -147,8 +150,9 @@ internal class KaBindingGraph(
         throw e
       } catch (_: SealAborted) {
         null
-      } catch (e: IllegalStateException) {
+      } catch (e: Exception) {
         // Covers reportCompilerBug and unexpected model states. Report instead of crashing.
+        logger<KaBindingGraph>().warn("Sealing $graphName failed", e)
         report(
           MetroDiagnostic(
             id = MetroDiagnosticId.GENERIC,
@@ -168,8 +172,12 @@ internal class KaBindingGraph(
     return GraphValidationResult(graph, diagnostics, topology, realGraph.bindings)
   }
 
+  // The bindings the in-flight report is about, attached to the next reported diagnostic. The
+  // shared core builds the diagnostic itself, so this is the only seam to carry them through.
+  private var pendingRelated: List<KaBinding> = emptyList()
+
   override fun report(diagnostic: MetroDiagnostic, stack: KaBindingStack) {
-    diagnostics += KaGraphDiagnostic(diagnostic, stack.entries.toList())
+    diagnostics += KaGraphDiagnostic(diagnostic, stack.entries.toList(), pendingRelated)
   }
 
   override fun reportFatal(diagnostic: MetroDiagnostic, stack: KaBindingStack): Nothing {
@@ -184,7 +192,12 @@ internal class KaBindingGraph(
     bindings: List<KaBinding>,
     stack: KaBindingStack,
   ) {
-    realGraph.reportDuplicateBindings(key, bindings, stack)
+    pendingRelated = bindings
+    try {
+      realGraph.reportDuplicateBindings(key, bindings, stack)
+    } finally {
+      pendingRelated = emptyList()
+    }
   }
 
   /** Checks aggregates for duplicate map keys and unexpected emptiness after sealing. */
@@ -214,10 +227,15 @@ internal class KaBindingGraph(
             code = locationDiagnostic.description,
           )
         }
-        report(
-          duplicateMapKeysDiagnostic(aggregate.typeKey, mapKey.orEmpty(), locations),
-          KaBindingStack(graph),
-        )
+        pendingRelated = dupes
+        try {
+          report(
+            duplicateMapKeysDiagnostic(aggregate.typeKey, mapKey.orEmpty(), locations),
+            KaBindingStack(graph),
+          )
+        } finally {
+          pendingRelated = emptyList()
+        }
       }
     }
   }

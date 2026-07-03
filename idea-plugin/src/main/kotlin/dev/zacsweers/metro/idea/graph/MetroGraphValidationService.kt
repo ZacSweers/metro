@@ -2,66 +2,97 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.graph
 
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiElement
-import com.intellij.util.concurrency.AppExecutorUtil
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Consumer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.name.ClassId
 
+/** A retained validation result plus whether the index changed since it was produced. */
+internal class CachedValidation(val result: GraphValidationResult, val stale: Boolean)
+
 /**
- * On-demand graph validation. Seals one graph at a time via [KaBindingGraph]. Results are cached
- * against the producing [BindingIndex] instance, so any PSI change drops them. Sealing never
+ * On-demand graph validation. Seals one graph at a time via [KaBindingGraph]. Results are retained
+ * per graph and marked stale when the index they were sealed against is invalidated. Sealing never
  * happens eagerly.
  */
 @Service(Service.Level.PROJECT)
-internal class MetroGraphValidationService(private val project: Project) {
+internal class MetroGraphValidationService(
+  private val project: Project,
+  private val scope: CoroutineScope,
+) {
 
-  private class Cache(val index: BindingIndex) {
-    // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound
-    // keeps a long browsing session from retaining every sealed graph until the next PSI change.
-    // The synchronized wrapper is required because validateAsync seals on pooled threads and
-    // access ordering mutates internal links even on reads.
-    val results: MutableMap<ClassId, GraphValidationResult> =
-      Collections.synchronizedMap(
-        object : LinkedHashMap<ClassId, GraphValidationResult>(8, 0.75f, true) {
-          override fun removeEldestEntry(
-            eldest: MutableMap.MutableEntry<ClassId, GraphValidationResult>
-          ): Boolean = size > 8
-        }
-      )
-  }
+  private class CachedEntry(val result: GraphValidationResult, val index: BindingIndex)
 
-  @Volatile private var cache: Cache? = null
+  // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
+  // browsing session from retaining every sealed graph forever. The synchronized wrapper is
+  // required because async validation seals on pooled threads and access ordering mutates
+  // internal links even on reads.
+  private val results: MutableMap<ClassId, CachedEntry> =
+    Collections.synchronizedMap(
+      object : LinkedHashMap<ClassId, CachedEntry>(8, 0.75f, true) {
+        override fun removeEldestEntry(
+          eldest: MutableMap.MutableEntry<ClassId, CachedEntry>
+        ): Boolean = size > 8
+      }
+    )
 
-  /** The cached result for [graph] against the current index, or null if not validated yet. */
-  fun cachedResult(element: PsiElement, graph: KaGraphNode): GraphValidationResult? {
-    val classId = graph.classId ?: return null
-    val index = project.service<MetroResolutionService>().index(element)
-    return cacheFor(index).results[classId]
+  /** In-flight validations by graph, so repeat requests coalesce into one computation. */
+  private val inFlight = ConcurrentHashMap<Any, Job>()
+
+  /** Drops all retained results. */
+  fun clearResults() {
+    results.clear()
   }
 
   /**
-   * Validates [graph], reusing a cached result when the index is unchanged. Must be called under a
-   * read action.
+   * The last result for [graph], or null if it was never validated. Results survive index
+   * invalidation so the outcome stays visible; [CachedValidation.stale] flags that the code may
+   * have changed since the run.
+   */
+  fun cachedResult(element: PsiElement, graph: KaGraphNode): CachedValidation? {
+    val classId = graph.classId ?: return null
+    val entry = results[classId] ?: return null
+    val index = project.service<MetroResolutionService>().index(element)
+    return CachedValidation(entry.result, stale = entry.index !== index)
+  }
+
+  /**
+   * Validates [graph], reusing the cached result only when the index is unchanged. Must be called
+   * under a read action.
    */
   fun validate(element: PsiElement, graph: KaGraphNode): GraphValidationResult {
     val index = project.service<MetroResolutionService>().index(element)
     val options = moduleOptions(element)
     val classId = graph.classId ?: return KaBindingGraph(index, graph, options).seal()
-    return cacheFor(index).results.getOrPut(classId) {
-      KaBindingGraph(index, graph, options).seal()
-    }
+    results[classId]
+      ?.takeIf { it.index === index }
+      ?.let {
+        return it.result
+      }
+    val result = KaBindingGraph(index, graph, options).seal()
+    results[classId] = CachedEntry(result, index)
+    return result
   }
 
   /**
@@ -86,28 +117,55 @@ internal class MetroGraphValidationService(private val project: Project) {
     return results
   }
 
-  /** Runs [validate] on a background thread and delivers the result on the EDT. */
+  /** Runs [validate] in a cancellable smart-mode read action and delivers the result on the EDT. */
   fun validateAsync(
     element: PsiElement,
     graph: KaGraphNode,
     onDone: Consumer<GraphValidationResult>,
   ) {
-    ReadAction.nonBlocking<GraphValidationResult> { validate(element, graph) }
-      .inSmartMode(project)
-      .expireWhen { project.isDisposed }
-      // Concurrent submissions for the same graph collapse into one computation
-      .coalesceBy(this, graph.classId ?: graph)
-      .finishOnUiThread(ModalityState.defaultModalityState(), onDone)
-      .submit(AppExecutorUtil.getAppExecutorService())
+    launchCoalesced(graph) {
+      val result =
+        withBackgroundProgress(project, progressTitle(graph)) {
+          smartReadAction(project) { validate(element, graph) }
+        }
+      withContext(Dispatchers.EDT) { onDone.accept(result) }
+    }
   }
 
-  private fun cacheFor(index: BindingIndex): Cache {
-    cache
-      ?.takeIf { it.index === index }
-      ?.let {
-        return it
+  /** Runs [validateWithExtensions] like [validateAsync]. */
+  fun validateWithExtensionsAsync(
+    element: PsiElement,
+    graph: KaGraphNode,
+    onDone: Consumer<List<GraphValidationResult>>,
+  ) {
+    launchCoalesced(graph) {
+      val results =
+        withBackgroundProgress(project, progressTitle(graph)) {
+          smartReadAction(project) { validateWithExtensions(element, graph) }
+        }
+      withContext(Dispatchers.EDT) { onDone.accept(results) }
+    }
+  }
+
+  private fun progressTitle(graph: KaGraphNode): String =
+    "Validating Metro graph ${graph.name ?: ""}".trimEnd()
+
+  /** Launches [block] on the service scope, cancelling any in-flight run for the same graph. */
+  private fun launchCoalesced(graph: KaGraphNode, block: suspend CoroutineScope.() -> Unit) {
+    val key: Any = graph.classId ?: graph
+    val job =
+      scope.launch(start = CoroutineStart.LAZY) {
+        try {
+          block()
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          logger<MetroGraphValidationService>().warn("Metro graph validation failed", e)
+        }
       }
-    return Cache(index).also { cache = it }
+    inFlight.put(key, job)?.cancel()
+    job.invokeOnCompletion { inFlight.remove(key, job) }
+    job.start()
   }
 
   private fun moduleOptions(element: PsiElement): MetroOptions {

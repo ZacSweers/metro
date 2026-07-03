@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.GraphValidationResult
@@ -16,6 +17,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    // Results are retained across index invalidation by design, so they survive across tests
+    // sharing this project. Start each test clean.
+    project.service<MetroGraphValidationService>().clearResults()
   }
 
   private fun validate(source: String, graphName: String = "AppGraph"): GraphValidationResult {
@@ -151,8 +155,10 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
-    val rendered = result.diagnostics.single().render()
-    assertTrue(rendered, "Multiple bindings found for" in rendered)
+    val diagnostic = result.diagnostics.single()
+    assertTrue(diagnostic.render(), "Multiple bindings found for" in diagnostic.render())
+    // The duplicate sources ride along for navigation
+    assertEquals(2, diagnostic.related.size)
   }
 
   fun testDuplicateMapKeysAreReported() {
@@ -174,8 +180,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
     assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
-    val rendered = result.diagnostics.single().render()
-    assertTrue(rendered, "same map key" in rendered)
+    val diagnostic = result.diagnostics.single()
+    assertTrue(diagnostic.render(), "same map key" in diagnostic.render())
+    assertEquals(2, diagnostic.related.size)
   }
 
   fun testEmptyMultibindingIsReported() {
@@ -370,6 +377,74 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(results.last().diagnostics.isEmpty())
   }
 
+  fun testReplacedContributionKeepsItsOwnInjectableType() {
+    val result =
+      validate(
+        """
+        interface Repo
+
+        @Inject @ContributesBinding(AppScope::class)
+        class RealRepo : Repo
+
+        @Inject
+        @ContributesBinding(AppScope::class, replaces = [RealRepo::class])
+        class StubRepo(val real: RealRepo) : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val repo: Repo
+        }
+        """
+      )
+    // Replaces drops RealRepo's contributed Repo binding, but RealRepo itself stays injectable
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.RealRepo" })
+  }
+
+  fun testCompanionObjectProvidesBelongToTheirContainer() {
+    val result =
+      validate(
+        """
+        interface Api
+
+        interface ApiProviders {
+          companion object {
+            @Provides fun provideApi(): Api = object : Api {}
+          }
+        }
+
+        @DependencyGraph(bindingContainers = [ApiProviders::class])
+        interface AppGraph {
+          val api: Api
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testGraphSupertypeMembersMergeIntoTheGraph() {
+    val result =
+      validate(
+        """
+        interface Json
+
+        interface BaseGraph {
+          val baseJson: Json
+
+          @Provides fun provideJson(): Json = object : Json {}
+        }
+
+        @DependencyGraph
+        interface AppGraph : BaseGraph {
+          val json: Json
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    // Both the graph's own accessor and the supertype's accessor resolve to the supertype provider
+    assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.Json" })
+  }
+
   fun testResultsAreCachedPerIndex() {
     val file =
       myFixture.configureMetroFile(
@@ -384,5 +459,28 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val first = validationService.validate(file, graph)
     val second = validationService.validate(file, graph)
     assertSame(first, second)
+  }
+
+  fun testResultsSurviveIndexInvalidationAsStale() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val result = validationService.validate(file, graph)
+    assertFalse(validationService.cachedResult(file, graph)!!.stale)
+
+    // Any PSI change invalidates the index; the result must stay visible, flagged stale
+    myFixture.openFileInEditor(file.virtualFile)
+    myFixture.type(" ")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val cached = validationService.cachedResult(file, graph)!!
+    assertSame(result, cached.result)
+    assertTrue(cached.stale)
   }
 }
