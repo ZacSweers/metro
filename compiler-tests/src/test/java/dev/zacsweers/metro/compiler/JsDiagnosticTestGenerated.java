@@ -1519,6 +1519,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MixedCauseTransitiveSuspend.kt")
+    public void testMixedCauseTransitiveSuspend() {
+      run("MixedCauseTransitiveSuspend.kt");
+    }
+
+    @Test
     @TestMetadata("MultibindsIsNotAllowed.kt")
     public void testMultibindsIsNotAllowed() {
       run("MultibindsIsNotAllowed.kt");

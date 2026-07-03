@@ -129,9 +129,15 @@ internal class BindingPropertyContext(
       }
     }
 
-    // For non-suspend-provider requests, try SuspendProvider key
-    // (suspend bindings may be stored with SuspendProvider wrapping)
-    if (!key.isWrappedInSuspendProvider) {
+    // Try the SuspendProvider key for non-suspend-provider requests (suspend bindings may be
+    // stored with SuspendProvider wrapping) AND for suspend-provider requests spelled as the
+    // `suspend () -> T` function type — fields store metro's SuspendProvider classId, so the
+    // function-type spelling must normalize or scoped bindings get re-created per lookup miss.
+    val tryReWrappingSuspend =
+      !key.isWrappedInSuspendProvider ||
+        (key.wrappedType is WrappedType.SuspendProvider &&
+          key.wrappedType.providerType != Symbols.ClassIds.metroSuspendProvider)
+    if (tryReWrappingSuspend) {
       val suspendProviderKey = key.stripOuterProviderOrLazy().wrapInSuspendProvider()
       properties[suspendProviderKey]?.let {
         return BindingProperty(

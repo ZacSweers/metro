@@ -2545,6 +2545,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DeepChainDiamondPropagation.kt")
+    public void testDeepChainDiamondPropagation() {
+      run("DeepChainDiamondPropagation.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredMapDoesNotPropagateSuspend.kt")
     public void testDeferredMapDoesNotPropagateSuspend() {
       run("DeferredMapDoesNotPropagateSuspend.kt");
@@ -2560,6 +2566,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("FunctionProvider.kt")
     public void testFunctionProvider() {
       run("FunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionTypeInvocationOnAllPlatforms.kt")
+    public void testFunctionTypeInvocationOnAllPlatforms() {
+      run("FunctionTypeInvocationOnAllPlatforms.kt");
     }
 
     @Test

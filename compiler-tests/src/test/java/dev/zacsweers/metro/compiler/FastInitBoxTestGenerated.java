@@ -3343,6 +3343,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DeepChainDiamondPropagation.kt")
+    public void testDeepChainDiamondPropagation() {
+      run("DeepChainDiamondPropagation.kt");
+    }
+
+    @Test
     @TestMetadata("DeferredMapDoesNotPropagateSuspend.kt")
     public void testDeferredMapDoesNotPropagateSuspend() {
       run("DeferredMapDoesNotPropagateSuspend.kt");
@@ -3358,6 +3364,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("FunctionProvider.kt")
     public void testFunctionProvider() {
       run("FunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionTypeInvocationOnAllPlatforms.kt")
+    public void testFunctionTypeInvocationOnAllPlatforms() {
+      run("FunctionTypeInvocationOnAllPlatforms.kt");
     }
 
     @Test
