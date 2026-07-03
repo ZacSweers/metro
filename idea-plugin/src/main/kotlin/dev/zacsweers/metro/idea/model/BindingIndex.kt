@@ -271,7 +271,8 @@ internal class BindingIndex(
   private fun buildContext(chain: List<KaGraphNode>): GraphContext {
     val scopes = chain.flatMapToSet { it.scopeKeys }
     val excludes = chain.flatMapToSet { it.excludes }
-    val graphClassIds = chain.flatMapToSet { it.selfIds }
+    // Supertype members merge into the graph, so their classes gate membership like the graph
+    val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
     val includedDependencies = chain.flatMapToSet { it.includedDependencies }
 
     // Containers: declared on the graphs, contributed into scope, or transitively included
@@ -323,7 +324,13 @@ internal class BindingIndex(
     val originClassId = consumer.originClassId
     if (originClassId != null) {
       if (originClassId in context.excludes) return false
-      if (originClassId in replacedOrigins(context)) return false
+      // A replaced origin's consumers stay live only while it still has surviving bindings
+      if (
+        originClassId in replacedOrigins(context) &&
+          !hasOriginBindingInContext(originClassId, context)
+      ) {
+        return false
+      }
     }
 
     val graphClassId = consumer.graphClassId
@@ -353,6 +360,9 @@ internal class BindingIndex(
 
   private fun isBindingInContext(entry: KaBinding, context: GraphContext): Boolean {
     if (!isBindingCandidateInContext(entry, context)) return false
+    // Replaces removes the origin's contributions only; its own injectable type stays available
+    // (a replacing stub can inject the replaced implementation directly).
+    if (entry.contributionScopes.isEmpty()) return true
     val originClassId = entry.originClassId ?: return true
     return originClassId !in replacedOrigins(context)
   }
@@ -439,6 +449,12 @@ internal class BindingIndex(
   fun consumerEntryAt(element: KtElement): ConsumerEntry? {
     val file = element.containingFile?.virtualFile ?: return null
     return consumersByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+  }
+
+  /** All consumer entries anchored at [element]. Injector members anchor one per injected key. */
+  fun consumerEntriesAt(element: KtElement): List<ConsumerEntry> {
+    val file = element.containingFile?.virtualFile ?: return emptyList()
+    return consumersByFile[file].orEmpty().filter { it.pointer.element === element }
   }
 
   fun graphEntryAt(element: KtElement): KaGraphNode? {

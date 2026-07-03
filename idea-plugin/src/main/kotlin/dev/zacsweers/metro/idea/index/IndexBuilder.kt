@@ -22,6 +22,8 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.aggregateMultibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
@@ -38,6 +40,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -46,6 +49,7 @@ import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
@@ -128,6 +132,15 @@ internal class IndexBuilder(
     return pointerManager.createSmartPsiElementPointer(element)
   }
 
+  /** Companion members belong to the enclosing container class, mirroring the compiler. */
+  private fun KtClassOrObject.containerClassId(): ClassId? {
+    return if (this is KtObjectDeclaration && isCompanion()) {
+      containingClassOrObject?.getClassId() ?: getClassId()
+    } else {
+      getClassId()
+    }
+  }
+
   /** `@Provides`/`@Binds`/`@Multibinds` callables, including instance-binding factory params. */
   private fun processBindingCallable(declaration: KtDeclaration) {
     val target =
@@ -144,7 +157,7 @@ internal class IndexBuilder(
           val containerId =
             when (target) {
               is KtParameter -> instanceBindingContainerId(target)
-              is KtCallableDeclaration -> target.containingClassOrObject?.getClassId()
+              is KtCallableDeclaration -> target.containingClassOrObject?.containerClassId()
               else -> null
             }
           val dataEntries = bindingData(target, options)
@@ -219,11 +232,14 @@ internal class IndexBuilder(
         }
       }
       is KtNamedFunction -> {
-        // Member/function injection: parameters are consumers
         if (declaration.isLocal || !processedMemberInjects.add(declaration)) return
         analyze(declaration) {
-          val symbol = declaration.symbol as? KaNamedFunctionSymbol
-          if (symbol != null && symbol.hasAnyAnnotation(options.allInjectAnnotations)) {
+          val symbol = declaration.symbol as? KaNamedFunctionSymbol ?: return@analyze
+          if (!symbol.hasAnyAnnotation(options.allInjectAnnotations)) return@analyze
+          if (declaration.isTopLevel) {
+            processInjectFunction(declaration, symbol)
+          } else {
+            // Member injection site: parameters are consumers
             for (parameter in declaration.valueParameters) {
               addParameterConsumer(parameter)
             }
@@ -231,6 +247,36 @@ internal class IndexBuilder(
         }
       }
       else -> {}
+    }
+  }
+
+  /**
+   * Top-level function injection: `@Inject fun App(...)` generates an injectable class named after
+   * the function. Non-assisted parameters are the class's constructor dependencies; assisted
+   * parameters move to the generated class's `invoke`.
+   */
+  private fun KaSession.processInjectFunction(
+    function: KtNamedFunction,
+    symbol: KaNamedFunctionSymbol,
+  ) {
+    val name = function.name ?: return
+    val classId = ClassId(function.containingKtFile.packageFqName, Name.identifier(name))
+    val typeKey = KaTypeKey(KaTypeSnapshot(classId.asSingleFqName().asString(), name, classId))
+    val dependencies =
+      symbol.valueParameters
+        .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+        .map { dependencyKey(it, options) }
+    bindings +=
+      KaBinding.ConstructorInjected(
+        pointer = ptr(function),
+        typeKey = typeKey,
+        scope = scopeAnnotation(symbol, options),
+        implementationName = name,
+        originClassId = classId,
+        dependencies = dependencies,
+      )
+    for (parameter in function.valueParameters) {
+      addParameterConsumer(parameter, originClassId = classId)
     }
   }
 
@@ -361,6 +407,17 @@ internal class IndexBuilder(
         }
       }
 
+      // Supertype members merge into the graph, mirroring the compiler. Their accessors become
+      // this graph's consumers and their class ids gate their providers' membership.
+      val supertypeIds = mutableSetOf<ClassId>()
+      for (superType in classSymbol.defaultType.allSupertypes) {
+        if (superType.isAnyType) continue
+        val superClass = (superType as? KaClassType)?.symbol as? KaNamedClassSymbol ?: continue
+        val superClassId = superClass.classId ?: continue
+        if (!supertypeIds.add(superClassId)) continue
+        indexSupertypeMembers(superClass, graphClassId, extensionCreationIds)
+      }
+
       // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
       // explicitly declared scope annotations
       val scopingAnnotations = buildSet {
@@ -378,8 +435,52 @@ internal class IndexBuilder(
           includedDependencies = includedDependencies,
           isExtension = graphAnnotations.isEmpty(),
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
+          supertypeIds = supertypeIds,
           extensionCreationIds = extensionCreationIds,
           scopingAnnotations = scopingAnnotations,
+        )
+    }
+  }
+
+  /** Indexes a graph supertype's accessors and injectors as members of the merging graph. */
+  private fun KaSession.indexSupertypeMembers(
+    superClass: KaNamedClassSymbol,
+    graphClassId: ClassId?,
+    extensionCreationIds: MutableSet<ClassId>,
+  ) {
+    for (callable in superClass.declaredMemberScope.callables) {
+      if (callable is KaNamedFunctionSymbol && callable.valueParameters.isNotEmpty()) {
+        (callable.psi as? KtNamedFunction)?.let { processGraphInjector(it, graphClassId) }
+        continue
+      }
+      if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) continue
+      if (callable.receiverParameter != null) continue
+      val isOptionalAccessor = callable.isOptionalConsumer(options)
+      if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
+      if (callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
+      if (callable.returnType.isUnitType) continue
+      val returnClassType = callable.returnType.fullyExpandedType as? KaClassType
+      val returnClassSymbol = returnClassType?.symbol
+      if (
+        returnClassSymbol != null &&
+          returnClassSymbol.hasAnyAnnotation(
+            options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
+          )
+      ) {
+        extensionCreationIds += returnClassType.classId
+        continue
+      }
+      val psi = callable.psi as? KtElement ?: continue
+      val site = consumedSite(callable, options)
+      consumers +=
+        ConsumerEntry(
+          ptr(psi),
+          site.contextKey,
+          site.isAbstractType,
+          site.multibindingId,
+          site.typeClassId,
+          graphClassId = graphClassId,
+          isOptional = isOptionalAccessor,
         )
     }
   }

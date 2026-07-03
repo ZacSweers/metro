@@ -68,6 +68,8 @@ internal class KaGraphNode(
   val isExtension: Boolean = false,
   /** This graph's class plus nested factory classes, used for parent/extension matching. */
   val selfIds: Set<ClassId> = emptySet(),
+  /** Supertype classes whose members merge into this graph, gating their provider membership. */
+  val supertypeIds: Set<ClassId> = emptySet(),
   /** Extension or extension factory ids created by this graph's accessors. */
   val extensionCreationIds: Set<ClassId> = emptySet(),
   /**

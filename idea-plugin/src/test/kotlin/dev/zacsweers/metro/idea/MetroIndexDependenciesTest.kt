@@ -299,6 +299,71 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals(setOf("test.Consumer", "kotlin.String", "test.Tracker"), rootKeys)
   }
 
+  fun testTopLevelFunctionInjectionOriginatesAClassBinding() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject fun App(service: Service, @Assisted id: String) {
+        }
+        """,
+        fileName = "App.kt",
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+
+    // The generated class is keyed by the function's name in its package
+    val binding = index.bindings.single { it.typeKey.renderedType == "test.App" }
+    assertEquals("injected class", binding.label)
+    // Assisted parameters move to the generated invoke, not the constructor
+    assertEquals(listOf("test.Service"), binding.dependencies.map { it.typeKey.renderedType })
+
+    // Its parameters consume like constructor parameters
+    val declarations = file.declarationsIncludingNested()
+    val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
+    assertEquals("test.Service", serviceParam.key.renderedType)
+  }
+
+  fun testMultibindingAccessorResolvesItsContributions() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        abstract class Activity
+        class MainActivity : Activity()
+
+        @MapKey
+        annotation class ActivityKey(val value: KClass<out Activity>)
+
+        interface ActivityProviders {
+          @Provides
+          @IntoMap
+          @ActivityKey(MainActivity::class)
+          fun provideMainActivity(): Activity = MainActivity()
+        }
+
+        @DependencyGraph(bindingContainers = [ActivityProviders::class])
+        interface AppGraph {
+          val activityProviders: Map<KClass<out Activity>, () -> Activity>
+        }
+        """,
+        fileName = "Activities.kt",
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val consumer = index.consumerEntryAt(declarations.property("activityProviders"))!!
+    assertNotNull(consumer.multibindingId)
+    val contributions =
+      index.resolveConsumer(consumer).effective.filter { it.multibindingId != null }
+    assertEquals(1, contributions.size)
+    assertEquals(
+      "provideMainActivity",
+      (contributions.single().pointer.element as? org.jetbrains.kotlin.psi.KtNamedFunction)?.name,
+    )
+  }
+
   fun testLibraryInjectBindingsCarryConstructorDependencies() {
     module.withMetroLibFixtureLibrary {
       val file =

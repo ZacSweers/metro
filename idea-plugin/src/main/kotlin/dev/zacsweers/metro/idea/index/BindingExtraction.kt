@@ -174,16 +174,24 @@ private fun KaSession.callableBindingData(
     }
 
   // Mirrors the compiler's transformIfIntoMultibinding: a contribution keeps its element key as
-  // declared and joins its aggregate by id.
+  // declared and joins its aggregate by id. Ids canonicalize through provider wrappers so `V`,
+  // `Provider<V>`, and `() -> V` contributions join the same aggregate as any accessor spelling.
   fun multibindingId(elementKey: KaTypeKey): String? {
+    val isIntoMap = has(options.intoMapAnnotations)
+    val isElementsIntoSet = has(options.elementsIntoSetAnnotations)
+    if (!isIntoMap && !isElementsIntoSet && !has(options.intoSetAnnotations)) return null
+    val canonicalKey = contextualTypeKey(returnType, elementKey.qualifier, options).typeKey
     return when {
-      has(options.intoMapAnnotations) -> {
+      isIntoMap -> {
         val mapKeyType = mapKeyInfo?.keyTypeRender ?: return null
-        createMapBindingId(mapKeyType, elementKey)
+        createMapBindingId(mapKeyType, canonicalKey)
       }
-      has(options.intoSetAnnotations) || has(options.elementsIntoSetAnnotations) ->
-        elementKey.computeMultibindingId()
-      else -> null
+      isElementsIntoSet -> {
+        // `@ElementsIntoSet fun x(): Collection<X>` contributes X elements
+        val elementType = canonicalKey.type.typeArguments.singleOrNull() ?: return null
+        canonicalKey.copy(type = elementType).computeMultibindingId()
+      }
+      else -> canonicalKey.computeMultibindingId()
     }
   }
 
