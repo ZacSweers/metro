@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -468,6 +469,14 @@ internal fun IrFunction.addParameters(
           // SuspendProvider<T> is already a provider-like wrapper that the factory holds
           // directly — wrapping it again in Provider<…> would create the wrong field type.
           ctxKey.toIrType()
+        } else if (ctxKey.isWrappedInSuspendLazy) {
+          // SuspendLazy<T> params are held as SuspendProvider<T> fields; the invoke body
+          // memoizes per call via SuspendDoubleCheck.lazy when adapting the argument.
+          var stripped = ctxKey.stripSuspendLazy()
+          while (stripped.isWrapped || stripped.isWrappedInSuspendProvider) {
+            stripped = stripped.stripOuterProviderOrLazy()
+          }
+          stripped.wrapInSuspendProvider().toIrType()
         } else if (wrapInSuspendProvider) {
           // Strip outer Provider/Lazy/SuspendProvider layers, then wrap in a single
           // SuspendProvider so the field can be invoked from the suspend factory's body.

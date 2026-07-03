@@ -445,10 +445,16 @@ internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
  * - Parameters with [IrContextualTypeKey.hasDefault]: their defaults may differ
  */
 internal fun List<Parameter>.dedupeParameters(): List<Parameter> {
-  val seenKeys = HashSet<IrTypeKey>(size)
+  val seenKeys = HashSet<Pair<IrTypeKey, Boolean>>(size)
   return buildList {
     for (param in this@dedupeParameters) {
-      if (param.isAssisted || param.hasDefault || seenKeys.add(param.typeKey)) {
+      // Suspend-shaped params (SuspendProvider/SuspendLazy) are backed by SuspendProvider fields
+      // while everything else shares a canonical Provider field. The two field shapes can't
+      // reconstruct each other's access in a non-suspend factory, so they dedupe separately.
+      val isSuspendShaped =
+        param.contextualTypeKey.isWrappedInSuspendProvider ||
+          param.contextualTypeKey.isWrappedInSuspendLazy
+      if (param.isAssisted || param.hasDefault || seenKeys.add(param.typeKey to isSuspendShaped)) {
         add(param)
       }
     }

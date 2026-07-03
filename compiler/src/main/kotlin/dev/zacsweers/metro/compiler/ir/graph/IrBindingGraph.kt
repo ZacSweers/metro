@@ -1101,7 +1101,10 @@ internal class IrBindingGraph(
           if (
             dep.typeKey in suspendSet &&
               !dep.isWrappedInSuspendProvider &&
-              !dep.isWrappedInSuspendLazy
+              !dep.isWrappedInSuspendLazy &&
+              // Deferred-value maps (Map<K, suspend () -> V>) resolve synchronously; each value
+              // defers its own suspension
+              !dep.isMapSuspendProvider
           ) {
             suspendSet.add(binding.typeKey)
             changed = true
@@ -1190,21 +1193,52 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 3: Validate accessors
-    for ((contextKey, _) in roots) {
-      val accessor =
-        node.accessors.find { it.contextKey == contextKey }
-          ?: node.accessors.find { it.contextKey.typeKey == contextKey.typeKey }
-          ?: continue
+    // Step 3: Validate accessors. Iterate the accessors themselves (not the deduped roots map)
+    // so multiple accessors sharing a contextual key are each validated.
+    for (accessor in node.accessors) {
+      val contextKey = accessor.contextKey
+      if (contextKey.typeKey !in suspendSet) continue
       val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
-      val requiresSuspend = contextKey.typeKey in suspendSet
 
       // Suspend multibindings are reported by step 2 with a more specific message
       if (contextKey.typeKey in suspendMultibindingKeys) continue
 
-      if (requiresSuspend && !accessorIsSuspend && !contextKey.defersSuspendAtAccess) {
-        val typeRender = contextKey.typeKey.render(short = true)
-        val deferredFormRender = suspendFunctionRender(typeRender)
+      // Resolve to the property (if it's a getter) so the diagnostic lands on the
+      // property declaration, then walk fake overrides back to the original interface
+      // declaration since the accessor IR is typically the implementation graph's override.
+      val accessorDeclaration =
+        accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+
+      val typeRender = contextKey.typeKey.render(short = true)
+      val deferredFormRender = suspendFunctionRender(typeRender)
+
+      // Provider<T>/Lazy<T> roots over a suspend binding can never await the work regardless of
+      // the accessor's suspend-ness. Suspend-flavored wrappers are the fix.
+      if (contextKey.isWrappedInProvider || contextKey.isWrappedInLazy) {
+        val head =
+          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
+            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
+        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
+        val wrapper = if (contextKey.isWrappedInProvider) "Provider" else "Lazy"
+        val replacement =
+          if (contextKey.isWrappedInProvider) {
+            "`$deferredFormRender`"
+          } else {
+            "`SuspendLazy<$typeRender>`"
+          }
+        val message = buildString {
+          appendLine(
+            "[Metro/SuspendBindingWrappedIn$wrapper] Cannot access suspend binding '$typeRender' via $wrapper. Use $replacement instead."
+          )
+          appendLine()
+          appendLine("Trace:")
+          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
+        }
+        reportError(accessorDeclaration.originalDeclarationIfOverride(), message)
+        continue
+      }
+
+      if (!accessorIsSuspend && !contextKey.defersSuspendAtAccess) {
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
@@ -1223,11 +1257,6 @@ internal class IrBindingGraph(
           )
           append("  - Make the return type `$deferredFormRender`.")
         }
-        // Resolve to the property (if it's a getter) so the diagnostic lands on the
-        // property declaration, then walk fake overrides back to the original interface
-        // declaration since the accessor IR is typically the implementation graph's override.
-        val accessorDeclaration =
-          accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>()
         reportError(accessorDeclaration.originalDeclarationIfOverride(), message)
       }
     }
@@ -1244,21 +1273,24 @@ internal class IrBindingGraph(
               binding.dependencies.firstOrNull { dep ->
                 dep.typeKey in suspendSet && !dep.defersSuspendAtAccess
               } ?: return@forEachValue
-            dep to "'${binding.targetClassId.asFqNameString()}' members"
+            dep to "'${binding.targetClassId.asFqNameString()}' member injection"
           }
           is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
-            val memberInjectorDep =
-              binding.injectedMembers.firstOrNull { dep ->
+            // A member-injecting class must not be suspend at all — suspend construction routes
+            // through nested suspend factories, which do not perform member injection. The
+            // suspend-ness may come from a member OR a constructor dependency.
+            val anySuspendDep =
+              binding.dependencies.firstOrNull { dep ->
                 dep.typeKey in suspendSet && !dep.defersSuspendAtAccess
               } ?: return@forEachValue
             // Resolve through the MembersInjected binding to name the actual member's type
             // rather than the synthetic MembersInjector<T> key.
-            val memberBinding = bindings[memberInjectorDep.typeKey] as? IrBinding.MembersInjected
+            val memberBinding = bindings[anySuspendDep.typeKey] as? IrBinding.MembersInjected
             val dep =
               memberBinding?.dependencies?.firstOrNull {
                 it.typeKey in suspendSet && !it.defersSuspendAtAccess
-              } ?: memberInjectorDep
-            dep to "'${binding.type.kotlinFqName}' members"
+              } ?: anySuspendDep
+            dep to "'${binding.type.kotlinFqName}' has @Inject members and"
           }
           else -> return@forEachValue
         }
@@ -1269,7 +1301,7 @@ internal class IrBindingGraph(
       val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendDep.typeKey, head)
       val message = buildString {
         appendLine(
-          "[Metro/MemberInjectionOverSuspendBinding] $subject are injected with suspend binding '$depRender', but member injection cannot await suspend bindings. Change the member's type to `${suspendFunctionRender(depRender)}` to defer its resolution."
+          "[Metro/MemberInjectionOverSuspendBinding] $subject depends on suspend binding '$depRender', but member injection cannot combine with suspend bindings. Defer the dependency as `${suspendFunctionRender(depRender)}` (or `SuspendLazy<$depRender>`) instead."
         )
         appendLine()
         appendLine("Trace:")
@@ -1321,11 +1353,32 @@ internal class IrBindingGraph(
     }
 
     // Step 5: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
-    // its SAM as `suspend` so the generated impl can await them.
+    // its SAM as `suspend` so the generated impl can await them. Provider/Lazy-wrapped suspend
+    // deps on the target are also validated here because the target binding is not in the graph
+    // and step 4 never sees it.
     bindings.forEachValue { binding ->
       if (binding !is IrBinding.AssistedFactory) return@forEachValue
-      if (binding.function.isSuspend) return@forEachValue
       val target = binding.targetBinding
+      for (param in target.parameters.nonDispatchParameters) {
+        if (param.isAssisted) continue
+        val ctxKey = param.contextualTypeKey
+        if (ctxKey.typeKey !in suspendSet) continue
+        if (!ctxKey.isWrappedInProvider && !ctxKey.isWrappedInLazy) continue
+        val depRender = ctxKey.typeKey.render(short = true)
+        val wrapper = if (ctxKey.isWrappedInProvider) "Provider" else "Lazy"
+        val replacement =
+          if (ctxKey.isWrappedInProvider) {
+            "`${suspendFunctionRender(depRender)}`"
+          } else {
+            "`SuspendLazy<$depRender>`"
+          }
+        val element = param.ir as? IrDeclarationWithName ?: target.reportableDeclaration ?: continue
+        reportError(
+          element.originalDeclarationIfOverride(),
+          "[Metro/SuspendBindingWrappedIn$wrapper] Cannot depend on suspend binding '$depRender' via $wrapper. Use $replacement instead.",
+        )
+      }
+      if (binding.function.isSuspend) return@forEachValue
       val blockingDep =
         target.parameters.nonDispatchParameters.firstOrNull { param ->
           !param.isAssisted &&
@@ -1392,7 +1445,8 @@ internal class IrBindingGraph(
         current.dependencies.firstOrNull { dep ->
           dep.typeKey in suspendSet &&
             !dep.isWrappedInSuspendProvider &&
-            !dep.isWrappedInSuspendLazy
+            !dep.isWrappedInSuspendLazy &&
+            !dep.isMapSuspendProvider
         } ?: break
       result +=
         bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)

@@ -56,6 +56,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isSuspend
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -690,6 +691,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     // generation
     val callableId: CallableId?
       get() = getter?.callableId
+
+    /** An included graph's suspend accessor makes this dependency suspend in this graph. */
+    override val isSuspend: Boolean
+      get() = getter?.isSuspend == true
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       listOf(IrContextualTypeKey(ownerKey))

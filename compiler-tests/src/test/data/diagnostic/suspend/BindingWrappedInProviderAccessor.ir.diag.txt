@@ -1,0 +1,18 @@
+/BindingWrappedInProviderAccessor.kt:11:43: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+
+/BindingWrappedInProviderAccessor.kt:20:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+
+Trace:
+    String is requested at
+        [ExampleGraph] ExampleGraph.value // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+
+/BindingWrappedInProviderAccessor.kt:22:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' via Lazy. Use `SuspendLazy<String>` instead.
+
+Trace:
+    String is requested at
+        [ExampleGraph] ExampleGraph.lazyValue // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)

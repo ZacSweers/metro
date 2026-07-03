@@ -55,6 +55,7 @@ import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isSuspend
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
@@ -782,13 +783,12 @@ private constructor(
           val (bindingGetter, actual) =
             if (binding.token != null) {
               val propertyAccess = resolveToken(binding.token)
-              val isScalarProperty = !propertyAccess.isProviderProperty
 
               propertyAccess.accessProperty(irGet(thisReceiver)) to
-                if (isScalarProperty) {
-                  AccessType.INSTANCE
-                } else {
-                  AccessType.PROVIDER
+                when {
+                  propertyAccess.isSuspendProviderProperty -> AccessType.SUSPEND_PROVIDER
+                  propertyAccess.isProviderProperty -> AccessType.PROVIDER
+                  else -> AccessType.INSTANCE
                 }
             } else if (binding.getter != null) {
               val graphInstanceBindingProperty =
@@ -813,23 +813,26 @@ private constructor(
                   typeHint = binding.typeKey.type,
                 )
 
-              val expr =
-                if (getterContextKey.isWrappedInProvider) {
-                  // It's already a provider
-                  invokeGetter
-                } else {
-                  wrapInProviderFunction(binding.typeKey.type) {
-                    if (getterContextKey.isWrappedInProvider) {
-                      irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
-                    } else if (getterContextKey.isWrappedInLazy) {
-                      irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
-                    } else {
-                      invokeGetter
-                    }
+              if (getterContextKey.isWrappedInProvider) {
+                // It's already a provider
+                invokeGetter to AccessType.PROVIDER
+              } else if (getterContextKey.isWrappedInSuspendProvider) {
+                // Already a SuspendProvider (e.g. an included graph's `suspend () -> T` accessor)
+                invokeGetter to AccessType.SUSPEND_PROVIDER
+              } else if (binding.getter.isSuspend) {
+                // A suspend accessor on an included graph. The call must live inside a suspend
+                // lambda; a plain provider function would be invalid IR.
+                scope.wrapInSuspendProviderFunction(binding.typeKey.type) { invokeGetter } to
+                  AccessType.SUSPEND_PROVIDER
+              } else {
+                wrapInProviderFunction(binding.typeKey.type) {
+                  if (getterContextKey.isWrappedInLazy) {
+                    irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
+                  } else {
+                    invokeGetter
                   }
-                }
-              // getter case always produces a Provider
-              expr to AccessType.PROVIDER
+                } to AccessType.PROVIDER
+              }
             } else {
               reportCompilerBug("Unknown graph dependency type")
             }
@@ -1265,6 +1268,7 @@ private constructor(
       ancestorChain = ancestorChain,
       shardGraphProperty = shardContext?.graphProperty,
       isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
+      isSuspendProviderProperty = bindingProperty.storedKey.isWrappedInSuspendProvider,
     )
   }
 

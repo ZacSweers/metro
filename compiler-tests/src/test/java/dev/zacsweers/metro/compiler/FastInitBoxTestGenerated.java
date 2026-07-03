@@ -3343,6 +3343,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DeferredMapDoesNotPropagateSuspend.kt")
+    public void testDeferredMapDoesNotPropagateSuspend() {
+      run("DeferredMapDoesNotPropagateSuspend.kt");
+    }
+
+    @Test
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
@@ -3352,6 +3358,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("FunctionProvider.kt")
     public void testFunctionProvider() {
       run("FunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionParentSuspendBinding.kt")
+    public void testGraphExtensionParentSuspendBinding() {
+      run("GraphExtensionParentSuspendBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendAccessor.kt")
+    public void testIncludedGraphSuspendAccessor() {
+      run("IncludedGraphSuspendAccessor.kt");
     }
 
     @Test
@@ -3436,6 +3454,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("SuspendLazyScoped.kt")
     public void testSuspendLazyScoped() {
       run("SuspendLazyScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLazyThroughFactory.kt")
+    public void testSuspendLazyThroughFactory() {
+      run("SuspendLazyThroughFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderOfMultibinding.kt")
+    public void testSuspendProviderOfMultibinding() {
+      run("SuspendProviderOfMultibinding.kt");
     }
 
     @Test

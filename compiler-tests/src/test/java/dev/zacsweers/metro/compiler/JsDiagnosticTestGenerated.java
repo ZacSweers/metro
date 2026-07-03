@@ -1477,6 +1477,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindingWrappedInProviderAccessor.kt")
+    public void testBindingWrappedInProviderAccessor() {
+      run("BindingWrappedInProviderAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("BindsIsNotAllowed.kt")
     public void testBindsIsNotAllowed() {
       run("BindsIsNotAllowed.kt");
@@ -1486,6 +1492,24 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
     public void testDepInConstructorInjectedNonSuspendAccessor() {
       run("DepInConstructorInjectedNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateKeyAccessors.kt")
+    public void testDuplicateKeyAccessors() {
+      run("DuplicateKeyAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt")
+    public void testIncludedGraphSuspendAccessorFromNonSuspendAccessor() {
+      run("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectingClassWithSuspendCtorDep.kt")
+    public void testMemberInjectingClassWithSuspendCtorDep() {
+      run("MemberInjectingClassWithSuspendCtorDep.kt");
     }
 
     @Test

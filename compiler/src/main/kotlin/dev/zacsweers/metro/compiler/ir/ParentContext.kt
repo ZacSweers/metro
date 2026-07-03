@@ -249,6 +249,8 @@ internal class ParentContext(
     private val shardGraphProperty: IrProperty? = null,
     // TODO use AccessType
     val isProviderProperty: Boolean,
+    /** Whether the property stores a SuspendProvider (suspend binding fields). */
+    val isSuspendProviderProperty: Boolean = false,
   ) {
 
     private val ancestorPropertiesChain by memoize {

@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripIfLazy
+import dev.zacsweers.metro.compiler.ir.stripSuspendProvider
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -77,6 +78,14 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
+    if (contextualTypeKey.isWrappedInSuspendProvider) {
+      // There is no native suspend aggregate form. Build the Provider form and adapt it via
+      // the allocation-free SyncSuspendProvider conversion. Suspend elements inside the
+      // aggregate are validated/rejected separately.
+      val providerKey = contextualTypeKey.stripSuspendProvider().wrapInProvider()
+      return generateBindingCode(binding, providerKey, AccessType.PROVIDER, fieldInitKey)
+        .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+    }
     // need to change this to a Metro Provider for our generation
     val transformedContextKey =
       contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {

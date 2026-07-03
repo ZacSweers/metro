@@ -1645,6 +1645,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindingWrappedInProviderAccessor.kt")
+    public void testBindingWrappedInProviderAccessor() {
+      run("BindingWrappedInProviderAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("BindsIsNotAllowed.kt")
     public void testBindsIsNotAllowed() {
       run("BindsIsNotAllowed.kt");
@@ -1654,6 +1660,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
     public void testDepInConstructorInjectedNonSuspendAccessor() {
       run("DepInConstructorInjectedNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateKeyAccessors.kt")
+    public void testDuplicateKeyAccessors() {
+      run("DuplicateKeyAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt")
+    public void testIncludedGraphSuspendAccessorFromNonSuspendAccessor() {
+      run("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectingClassWithSuspendCtorDep.kt")
+    public void testMemberInjectingClassWithSuspendCtorDep() {
+      run("MemberInjectingClassWithSuspendCtorDep.kt");
     }
 
     @Test
