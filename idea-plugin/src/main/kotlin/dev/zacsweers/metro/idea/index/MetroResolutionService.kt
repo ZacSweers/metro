@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
@@ -66,10 +67,15 @@ class MetroResolutionService(private val project: Project) {
    * platform flows (and tests) that compute markers on the EDT.
    */
   internal fun index(element: PsiElement): BindingIndex {
+    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
+    return index(module)
+  }
+
+  /** Returns the cached binding index for [module], or [BindingIndex.EMPTY] when disabled. */
+  internal fun index(module: Module): BindingIndex {
     if (!MetroSettings.getInstance(project).state.enableBindingResolution) {
       return BindingIndex.EMPTY
     }
-    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
     val state = project.service<MetroIdeProjectService>().state(module)
     if (!state.options.enabled) return BindingIndex.EMPTY
     val options = state.options
