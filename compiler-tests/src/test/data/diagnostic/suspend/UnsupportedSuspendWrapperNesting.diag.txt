@@ -1,18 +1,18 @@
 /UnsupportedSuspendWrapperNesting.kt:10:10: warning: This is part of Metro's experimental coroutines support
 
-/UnsupportedSuspendWrapperNesting.kt:10:10: error: `suspend () -> T` cannot wrap `SuspendLazy<T>`. A suspend function wrapper already defers resolution — wrap the binding type directly.
+/UnsupportedSuspendWrapperNesting.kt:10:10: error: `suspend () -> T` cannot wrap `SuspendLazy<T>`. A suspend function wrapper already defers resolution. Wrap the binding type directly.
 
 /UnsupportedSuspendWrapperNesting.kt:10:24: warning: This is part of Metro's experimental coroutines support
 
 /UnsupportedSuspendWrapperNesting.kt:11:10: warning: This is part of Metro's experimental coroutines support
 
-/UnsupportedSuspendWrapperNesting.kt:11:10: error: `SuspendLazy<T>` cannot wrap `SuspendLazy<T>`. SuspendLazy already defers and memoizes resolution — wrap the binding type directly.
+/UnsupportedSuspendWrapperNesting.kt:11:10: error: `SuspendLazy<T>` cannot wrap `SuspendLazy<T>`. SuspendLazy already defers and memoizes resolution. Wrap the binding type directly.
 
 /UnsupportedSuspendWrapperNesting.kt:11:22: warning: This is part of Metro's experimental coroutines support
 
 /UnsupportedSuspendWrapperNesting.kt:12:10: warning: This is part of Metro's experimental coroutines support
 
-/UnsupportedSuspendWrapperNesting.kt:12:10: error: `SuspendLazy<T>` cannot wrap another `suspend () -> T`. SuspendLazy already defers and memoizes resolution — wrap the binding type directly.
+/UnsupportedSuspendWrapperNesting.kt:12:10: error: `SuspendLazy<T>` cannot wrap another `suspend () -> T`. SuspendLazy already defers and memoizes resolution. Wrap the binding type directly.
 
 /UnsupportedSuspendWrapperNesting.kt:13:10: warning: This is part of Metro's experimental coroutines support
 
@@ -26,9 +26,9 @@
 
 /UnsupportedSuspendWrapperNesting.kt:20:12: warning: This is part of Metro's experimental coroutines support
 
-/UnsupportedSuspendWrapperNesting.kt:29:20: error: `suspend () -> T` cannot wrap another `suspend () -> T`. A suspend function wrapper already defers resolution — wrap the binding type directly.
+/UnsupportedSuspendWrapperNesting.kt:29:20: error: `suspend () -> T` cannot wrap another `suspend () -> T`. A suspend function wrapper already defers resolution. Wrap the binding type directly.
 
-/UnsupportedSuspendWrapperNesting.kt:31:15: error: Map multibindings support deferred suspend values as `Map<K, suspend () -> V>` — `SuspendLazy` values are not supported.
+/UnsupportedSuspendWrapperNesting.kt:31:15: error: Map multibindings support deferred suspend values as `Map<K, suspend () -> V>`. `SuspendLazy` values are not supported.
 
 /UnsupportedSuspendWrapperNesting.kt:31:15: warning: This is part of Metro's experimental coroutines support
 

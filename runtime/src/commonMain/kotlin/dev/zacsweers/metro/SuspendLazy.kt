@@ -3,10 +3,8 @@
 package dev.zacsweers.metro
 
 /**
- * A suspend analogue to [Lazy]. Represents a value that is computed lazily in a suspend context.
- *
- * This is the suspend counterpart to [Lazy], just as [SuspendProvider] is the suspend counterpart
- * to [Provider].
+ * A suspend analogue to [Lazy]. The value is computed lazily, in a suspend context, on first
+ * [value] call.
  */
 @ExperimentalMetroCoroutinesApi
 public interface SuspendLazy<out T> {

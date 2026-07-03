@@ -117,7 +117,7 @@ internal interface GraphBindingExpressionDecorator {
   /**
    * Called by [BindingExpressionGenerator.toTargetType] after Metro has produced a
    * `SuspendProvider`-shaped expression. Unlike [decorateProviderExpression], no framework
-   * conversion follows — suspend providers have no Dagger/Javax equivalents.
+   * conversion follows. Suspend providers have no Dagger/Javax equivalents.
    */
   context(scope: IrBuilderWithScope)
   fun decorateSuspendProviderExpression(

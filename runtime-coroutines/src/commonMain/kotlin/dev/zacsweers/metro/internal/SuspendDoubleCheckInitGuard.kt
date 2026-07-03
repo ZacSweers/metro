@@ -13,8 +13,8 @@ package dev.zacsweers.metro.internal
  * Both implementations are single-flight (one caller computes, concurrent callers suspend and share
  * the result):
  * - JVM/Native guard with a coroutine Mutex.
- * - JS/Wasm are single-threaded, so the lock is a plain flag plus a FIFO continuation queue — no
- *   atomics, no parking, no kotlinx.coroutines dependency.
+ * - JS/Wasm are single-threaded, so the lock is a plain flag plus a FIFO continuation queue, with
+ *   no atomics, no parking, no kotlinx.coroutines dependency.
  */
 public expect open class SuspendDoubleCheckInitGuard()
 

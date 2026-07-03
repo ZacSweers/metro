@@ -736,7 +736,7 @@ internal class IrBindingGraph(
   // (suspend) provider wrappers for `T` rather than bindable value types. An empty multibinding
   // or a missing binding for a `Function0<T>` / `SuspendFunction0<T>` key often means either
   // (a) contributors weren't migrated from `Provider<T>` / `SuspendProvider<T>`, or
-  // (b) the author intended the function itself to be the bound value — which is no longer
+  // (b) the author intended the function itself to be the bound value, which is no longer
   // supported at the top level under this mode. Returns null when the mode is off or the type
   // isn't a zero-arg (suspend) function.
   private fun functionProviderMigrationHint(type: IrType): String? {
@@ -1060,8 +1060,8 @@ internal class IrBindingGraph(
    * Validates suspend binding propagation through the dependency graph.
    *
    * Suspension is contagious: if binding B is provided by a `suspend fun`, then any binding A that
-   * depends on B also requires a suspend context — unless A wraps B in a `SuspendProvider<T>`,
-   * which defers the suspend call.
+   * depends on B also requires a suspend context, unless A defers B behind a suspend wrapper like
+   * `suspend () -> B` or `SuspendLazy<B>`.
    */
   private fun validateSuspendBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
@@ -1092,7 +1092,7 @@ internal class IrBindingGraph(
       changed = false
       bindings.forEachValue { binding ->
         if (binding.typeKey in suspendSet) return@forEachValue // Already marked
-        // Assisted factories defer all suspension into their SAM invocation — holding/creating
+        // Assisted factories defer all suspension into their SAM invocation. Holding/creating
         // the factory itself never suspends, so target dep suspend-ness doesn't propagate to the
         // factory binding. Validated separately below.
         if (binding is IrBinding.AssistedFactory) return@forEachValue
@@ -1139,7 +1139,7 @@ internal class IrBindingGraph(
         val message = buildString {
           appendLine(
             if (binding.isSet) {
-              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is not supported — Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly."
+              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is not supported. Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly."
             } else {
               val (keyType, valueType) =
                 binding.typeKey.type.requireSimpleType().arguments.map {
@@ -1261,7 +1261,7 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 3b: Member injection has no suspend form — MembersInjector.injectMembers and injector
+    // Step 3b: Member injection has no suspend form. MembersInjector.injectMembers and injector
     // functions can't await suspend bindings, and constructor-injected classes with injected
     // members don't route through suspend factories. Error rather than silently mis-generate.
     bindings.forEachValue { binding ->
@@ -1276,7 +1276,7 @@ internal class IrBindingGraph(
             dep to "'${binding.targetClassId.asFqNameString()}' member injection"
           }
           is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
-            // A member-injecting class must not be suspend at all — suspend construction routes
+            // A member-injecting class must not be suspend at all. Suspend construction routes
             // through nested suspend factories, which do not perform member injection. The
             // suspend-ness may come from a member OR a constructor dependency.
             val anySuspendDep =
@@ -1313,7 +1313,7 @@ internal class IrBindingGraph(
       reportError(element.originalDeclarationIfOverride(), message)
     }
 
-    // Step 4: Validate wrapping conflicts — Provider<T>/Lazy<T> wrapping a suspend binding
+    // Step 4: Validate wrapping conflicts where Provider<T>/Lazy<T> wraps a suspend binding
     bindings.forEachValue { binding ->
       // Assisted factories' dependencies are synthetically Provider-wrapped for cycle detection;
       // their suspend handling is validated in step 5 below.
@@ -1391,7 +1391,7 @@ internal class IrBindingGraph(
       val trace = buildSuspendTrace(bindings, suspendSet, blockingDep.typeKey, head)
       val message = buildString {
         appendLine(
-          "[Metro/AssistedFactorySuspendRequired] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings — declare '${binding.function.name}' as a suspend function so it can await them."
+          "[Metro/AssistedFactorySuspendRequired] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings. Declare '${binding.function.name}' as a suspend function so it can await them."
         )
         appendLine()
         appendLine("Trace:")
@@ -1433,7 +1433,7 @@ internal class IrBindingGraph(
     while (currentKey != null && visited.add(currentKey)) {
       val current = bindings[currentKey] ?: break
       if (current.isSuspend) {
-        // Suspend source — emit a `providedAt` entry naming the function and stop. No
+        // For a suspend source, emit a `providedAt` entry naming the function and stop. No
         // annotation: the function is already suspend, it isn't blocking the chain.
         val fn = (current as? IrBinding.Provided)?.providerFactory?.function
         if (fn != null) {

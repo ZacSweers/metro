@@ -8,15 +8,14 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * Web doesn't do multithreading, so mutual exclusion needs no atomics or parking — just a plain
- * flag and a FIFO queue of suspended waiters. This is a genuine single-flight suspend lock (one
- * caller computes, concurrent callers suspend and share the result) implemented entirely with
- * stdlib continuations, keeping the web variants of this module free of any kotlinx.coroutines
- * dependency.
+ * Web doesn't do multithreading, so mutual exclusion needs no atomics or parking, just a plain flag
+ * and a FIFO queue of suspended waiters. One caller computes. Concurrent callers suspend and share
+ * the result. Built entirely on stdlib continuations, which keeps the web variants of this module
+ * free of any kotlinx.coroutines dependency.
  *
- * The lock is not reentrant; [SuspendDoubleCheck] detects cyclic initialization by caller identity
+ * The lock is not reentrant. [SuspendDoubleCheck] detects cyclic initialization by caller identity
  * before locking. One divergence from the JVM/Native Mutex: a waiter whose coroutine is cancelled
- * while queued isn't released early — it resumes when the lock frees and observes the cancellation
+ * while queued isn't released early. It resumes when the lock frees and observes the cancellation
  * at its next cancellable suspension point.
  */
 public actual open class SuspendDoubleCheckInitGuard actual constructor() {

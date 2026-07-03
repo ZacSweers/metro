@@ -10,9 +10,9 @@ import dev.zacsweers.metro.SuspendProvider
 
 /**
  * A [Factory] implementation used to implement `Map<K, SuspendProvider<V>>` bindings. Unlike
- * [MapProviderFactory], values are held directly as [SuspendProvider]s — suspend bindings
- * contribute their `SuspendFactory` and non-suspend bindings are adapted via [SyncSuspendProvider]
- * by the compiler, so [invoke] is allocation-free.
+ * [MapProviderFactory], values are held directly as [SuspendProvider]s. Suspend bindings contribute
+ * their `SuspendFactory` and non-suspend bindings are adapted via [SyncSuspendProvider] by the
+ * compiler, so [invoke] is allocation-free.
  */
 public class MapSuspendProviderFactory<K : Any, V : Any>
 private constructor(private val map: Map<K, SuspendProvider<V>>) :

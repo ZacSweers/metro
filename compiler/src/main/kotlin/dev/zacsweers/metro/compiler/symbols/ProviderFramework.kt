@@ -270,7 +270,7 @@ internal class MetroProviderFramework(
    *
    * On non-JS platforms, a SuspendProvider IS-A `suspend () -> T`, so no conversion is needed. On
    * JS, invocation through a function TYPE compiles to a direct JS call, and a class instance
-   * implementing the fun interface is not a callable JS function — it throws TypeError at runtime.
+   * implementing the fun interface is not a callable JS function. It throws TypeError at runtime.
    * Wrap it in a real suspend lambda so the value handed to `suspend () -> T` sites is directly
    * callable.
    */

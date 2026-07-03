@@ -466,7 +466,7 @@ internal fun IrFunction.addParameters(
         val ctxKey = param.contextualTypeKey
         if (ctxKey.isWrappedInSuspendProvider) {
           // SuspendProvider<T> is already a provider-like wrapper that the factory holds
-          // directly — wrapping it again in Provider<…> would create the wrong field type.
+          // directly. Wrapping it again in Provider<…> would create the wrong field type.
           ctxKey.toIrType()
         } else if (ctxKey.isWrappedInSuspendLazy) {
           // SuspendLazy<T> params are held as SuspendProvider<T> fields; the invoke body
@@ -477,7 +477,7 @@ internal fun IrFunction.addParameters(
           // SuspendProvider so the field can be invoked from the suspend factory's body.
           ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
         } else {
-          // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
+          // Strip all outer Provider/Lazy layers (such as Provider<Lazy<T>> to T) but preserve
           // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
           ctxKey.canonicalize().wrapInProvider().toIrType()
         }

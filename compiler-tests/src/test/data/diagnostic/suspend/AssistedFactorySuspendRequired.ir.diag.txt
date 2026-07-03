@@ -1,7 +1,8 @@
-/AssistedFactorySuspendRequired.kt:13:9: error: [Metro/AssistedFactorySuspendRequired] 'AccountCreator.Factory' creates 'AccountCreator', which depends on suspend bindings — declare 'create' as a suspend function so it can await them.
+/AssistedFactorySuspendRequired.kt:13:9: error: [Metro/AssistedFactorySuspendRequired] 'AccountCreator.Factory' creates 'AccountCreator', which depends on suspend bindings. Declare 'create' as a suspend function so it can await them.
 
 Trace:
     Int is injected at
         [ExampleGraph] AccountCreator(…, database) // ❌ needs suspend support
     Int is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
+

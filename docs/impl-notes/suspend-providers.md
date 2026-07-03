@@ -32,8 +32,8 @@ Ordered steps, all graph-level errors:
    `Map<K, V>` over suspend values errors (only the deferred value form is legal).
 3. Accessors: iterate `node.accessors` directly (NOT the deduped roots map, which collapses
    accessors sharing a contextual key). Non-suspend accessor over a suspend binding errors unless
-   the contextual key defers. `Provider<T>`/`Lazy<T>` roots over suspend bindings error here too —
-   the dependency-edge check in step 4 never sees roots.
+   the contextual key defers. `Provider<T>`/`Lazy<T>` roots over suspend bindings error here too.
+   The dependency-edge check in step 4 never sees roots.
    3b. Member injection: a `MembersInjected` binding or a constructor-injected class with
    `@Inject` members errors if transitively suspend at all (member injection has no suspend form,
    and nested suspend factories do not run member injection).
@@ -89,7 +89,7 @@ Provider form and adapts via `SyncSuspendProvider`.
 
 ### The JS function-type hazard
 
-`SuspendProvider<T> : suspend () -> T` is declared once in common code — legal on all platforms.
+`SuspendProvider<T> : suspend () -> T` is declared once in common code and is legal on all platforms.
 But on Kotlin/JS, invocation through a function *type* compiles to a direct JS call, and a class
 instance implementing the fun interface is not a callable JS function (TypeError at runtime).
 Two rules keep this safe:
@@ -115,7 +115,7 @@ re-parented into the new lambda.
 in common code; the `SuspendDoubleCheckInitGuard` expect/actual superclass provides
 synchronization. JVM/Native (`nonWebMain`): a coroutine `Mutex`, caller identity =
 `coroutineContext[Job]` falling back to context identity for Job-less coroutines. JS/Wasm
-(`webMain`): a plain flag plus a FIFO queue of stdlib continuations — single-threaded platforms
+(`webMain`): a plain flag plus a FIFO queue of stdlib continuations. Single-threaded platforms
 need no atomics or parking, and this keeps the **web klibs free of any kotlinx-coroutines
 dependency** (which is also what lets JS box tests link `runtime-coroutines` without tripping
 partial-linkage against dev test compilers; the kotlinx dependency lives only in `nonWebMain`).
@@ -133,8 +133,8 @@ suspend providers; `BindingExpressionDecorator.decorateSuspendProviderExpression
 
 ## Deliberately unsupported (for now)
 
-- Suspend member injection (`@Inject suspend fun`) — rejected at FIR; design sketch in
+- Suspend member injection (`@Inject suspend fun`) is rejected at FIR. Design sketch in
   `plans/suspend-providers.md`.
-- `Deferred<T>` as an injectable wrapper — rejected; a Deferred is a Job and leaks lifecycle
+- `Deferred<T>` as an injectable wrapper is rejected. A Deferred is a Job and leaks lifecycle
   controls to consumers (see the FAQ).
-- Graph-owned `CoroutineScope` / `warmUp()` — future work, same plan doc.
+- Graph-owned `CoroutineScope` / `warmUp()` is future work, tracked in the same plan doc.

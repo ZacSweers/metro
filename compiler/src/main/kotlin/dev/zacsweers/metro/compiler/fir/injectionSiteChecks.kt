@@ -331,8 +331,8 @@ private fun checkDesugaredProviderUse(
  *   (or a multibinding Map/Set/collection type). A suspend wrapper already defers resolution, so
  *   wrapping another wrapper is meaningless.
  * - `Provider<T>` / `Lazy<T>` / `() -> T` must not wrap suspend wrappers.
- * - Map multibinding values support the deferred form `Map<K, suspend () -> V>` only —
- *   `SuspendLazy` values are not supported.
+ * - Map multibinding values support the deferred form `Map<K, suspend () -> V>` only. `SuspendLazy`
+ *   values are not supported.
  */
 context(context: CheckerContext, reporter: DiagnosticReporter)
 private fun checkSuspendWrapperNesting(
@@ -358,7 +358,7 @@ private fun findInvalidSuspendNesting(type: WrappedType<ConeKotlinType>): String
           is WrappedType.Map -> inner
           else ->
             return "`suspend () -> T` cannot wrap ${describeWrapper(inner)}. A suspend function " +
-              "wrapper already defers resolution — wrap the binding type directly."
+              "wrapper already defers resolution. Wrap the binding type directly."
         }
       }
       is WrappedType.SuspendLazy -> {
@@ -367,7 +367,7 @@ private fun findInvalidSuspendNesting(type: WrappedType<ConeKotlinType>): String
           is WrappedType.Map -> inner
           else ->
             return "`SuspendLazy<T>` cannot wrap ${describeWrapper(inner)}. SuspendLazy already " +
-              "defers and memoizes resolution — wrap the binding type directly."
+              "defers and memoizes resolution. Wrap the binding type directly."
         }
       }
       is WrappedType.Provider -> {
@@ -392,7 +392,7 @@ private fun findInvalidSuspendNesting(type: WrappedType<ConeKotlinType>): String
         when (val value = type.valueType) {
           is WrappedType.SuspendLazy ->
             return "Map multibindings support deferred suspend values as " +
-              "`Map<K, suspend () -> V>` — `SuspendLazy` values are not supported."
+              "`Map<K, suspend () -> V>`. `SuspendLazy` values are not supported."
           else -> value
         }
       }

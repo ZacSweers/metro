@@ -238,7 +238,7 @@ internal object BindingContainerCallableChecker :
           reporter.reportOn(
             source,
             MetroDiagnostics.BINDS_ERROR,
-            "@Binds declarations cannot be suspend functions — they have no body to suspend in.",
+            "@Binds declarations cannot be suspend functions. They have no body to suspend in.",
           )
           return
         }
@@ -246,11 +246,11 @@ internal object BindingContainerCallableChecker :
           reporter.reportOn(
             source,
             MetroDiagnostics.MULTIBINDS_ERROR,
-            "@Multibinds declarations cannot be suspend functions — they have no body to suspend in.",
+            "@Multibinds declarations cannot be suspend functions. They have no body to suspend in.",
           )
           return
         }
-        // suspend @Provides is allowed — this is the new feature
+        // suspend @Provides is allowed
       }
 
       declaration

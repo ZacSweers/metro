@@ -15,7 +15,7 @@ internal interface BaseContextualTypeKey<
     get() = wrappedType.isDeferrable()
 
   /**
-   * True when the outer type is any wrapper — Provider/Lazy or their suspend analogues. Sites that
+   * True when the outer type is any wrapper (Provider/Lazy or their suspend analogues). Sites that
    * care only about the non-suspend wrappers should check [isWrappedInProvider] and
    * [isWrappedInLazy] explicitly.
    */

@@ -12,7 +12,7 @@ import kotlin.jvm.JvmInline
 /**
  * A [SuspendProvider] that resolves synchronously by delegating to a regular [Provider].
  *
- * Used by Metro-generated code to satisfy `SuspendProvider<T>` slots (e.g. suspend factory ctor
+ * Used by Metro-generated code to satisfy `SuspendProvider<T>` slots (like suspend factory ctor
  * params) when the underlying graph holds a regular [Provider]. Allocation-free thanks to
  * `@JvmInline`, so this is just a typed view over the existing provider.
  */

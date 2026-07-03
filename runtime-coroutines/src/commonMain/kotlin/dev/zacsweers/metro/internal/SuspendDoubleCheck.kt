@@ -20,18 +20,18 @@ private val UNINITIALIZED_SUSPEND = Any()
  * continuation-queue lock on JS/Wasm).
  *
  * Semantics on all platforms:
- * - Single-flight: one caller runs the initializer; concurrent callers suspend and share its
+ * - Single-flight. One caller runs the initializer and concurrent callers suspend and share its
  *   result.
- * - A failed initialization is not cached; the next caller retries.
- * - Cancellation mid-initialization leaves the cache untouched; the next caller recomputes.
+ * - A failed initialization is not cached. The next caller retries.
+ * - Cancellation mid-initialization leaves the cache untouched. The next caller recomputes.
  * - A binding that resolves itself during its own initialization fails fast with a circular
- *   dependency error, detected by caller identity ([initCallerIdentity]) — the guard is not
+ *   dependency error, detected by caller identity ([initCallerIdentity]). The guard is not
  *   reentrant, so proceeding would deadlock or recurse forever.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
   SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {
   // Stored as SuspendProvider (not `suspend () -> T`) so invocation dispatches through the
-  // interface — on Kotlin/JS a fun interface instance is not a callable JS function, so invoking
+  // interface. On Kotlin/JS a fun interface instance is not a callable JS function, so invoking
   // it through the suspend function type fails at runtime.
   private var provider: SuspendProvider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED_SUSPEND
@@ -91,7 +91,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
     /** Returns a [SuspendProvider] that caches the value from the given delegate provider. */
     public fun <P : suspend () -> T, T> provider(delegate: P): SuspendProvider<T> {
       if (delegate is SuspendDoubleCheck<*>) {
-        // Avoid double-wrapping a SuspendDoubleCheck — same pattern as DoubleCheck.provider
+        // Avoid double-wrapping a SuspendDoubleCheck, same pattern as DoubleCheck.provider
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendProvider<T>
       }
@@ -101,7 +101,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
     /** Returns a [SuspendLazy] that caches the value from the given delegate provider. */
     public fun <P : suspend () -> T, T> lazy(delegate: P): SuspendLazy<T> {
       if (delegate is SuspendDoubleCheck<*>) {
-        // Avoid double-wrapping a SuspendDoubleCheck — same pattern as DoubleCheck.lazy
+        // Avoid double-wrapping a SuspendDoubleCheck, same pattern as DoubleCheck.lazy
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendLazy<T>
       }

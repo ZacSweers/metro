@@ -1,3 +1,3 @@
-/BindsIsNotAllowed.kt:5:29: error: @Binds declarations cannot be suspend functions — they have no body to suspend in.
+/BindsIsNotAllowed.kt:5:29: error: @Binds declarations cannot be suspend functions. They have no body to suspend in.
 
-/BindsIsNotAllowed.kt:9:38: error: @Binds declarations cannot be suspend functions — they have no body to suspend in.
+/BindsIsNotAllowed.kt:9:38: error: @Binds declarations cannot be suspend functions. They have no body to suspend in.

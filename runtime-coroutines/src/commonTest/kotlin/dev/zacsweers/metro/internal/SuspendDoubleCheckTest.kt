@@ -40,7 +40,7 @@ class SuspendDoubleCheckTest {
   @Test
   fun `reentrant invocation throws IllegalStateException instead of deadlocking`() = runTest {
     // The coroutine Mutex is not reentrant, so unlike DoubleCheck we can't tolerate a reentrant
-    // call even when it would return the same instance — it must fail fast rather than suspend
+    // call even when it would return the same instance. It must fail fast rather than suspend
     // forever waiting on a lock its own coroutine holds.
     val doubleCheck =
       SuspendDoubleCheck.provider(
@@ -127,7 +127,7 @@ class SuspendDoubleCheckTest {
         }
       )
     assertFailsWith<IllegalArgumentException> { doubleCheck() }
-    // The same coroutine retries — must not be misidentified as a reentrant cycle.
+    // The same coroutine retries. It must not be misidentified as a reentrant cycle.
     assertEquals("success", doubleCheck())
   }
 

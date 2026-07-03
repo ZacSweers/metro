@@ -739,7 +739,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
       // Consumer wants a suspend-provider-shaped wrapper, but the declared shape may be the
       // `suspend () -> T` function type while the value is a SuspendProvider-classed instance.
       // Run the framework conversion: no-op for SuspendProvider -> SuspendProvider and on
-      // non-JS, but on JS it wraps the instance in a real suspend lambda — a class instance is
+      // non-JS, but on JS it wraps the instance in a real suspend lambda. A class instance is
       // not a callable JS function and would throw TypeError when invoked through the function
       // type.
       val converted = with(symbols.providerTypeConverter) { bindingCode.convertTo(contextKey) }

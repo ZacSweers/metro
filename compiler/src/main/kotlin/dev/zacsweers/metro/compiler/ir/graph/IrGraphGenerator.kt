@@ -1742,7 +1742,7 @@ internal class IrGraphGenerator(
   }
 
   /**
-   * Returns true if this binding must be resolved in a suspend context in this graph — either it's
+   * Returns true if this binding must be resolved in a suspend context in this graph. Either it's
    * directly provided by a `suspend fun` or it transitively depends on one (unwrapped). Drives all
    * suspend-flavored codegen decisions: `SuspendProvider<T>` field storage, `SuspendDoubleCheck`
    * scoping, and `SuspendDelegateFactory` cycle-breaking.

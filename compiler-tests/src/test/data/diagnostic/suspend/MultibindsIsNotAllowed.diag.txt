@@ -1,3 +1,3 @@
-/MultibindsIsNotAllowed.kt:5:27: error: @Multibinds declarations cannot be suspend functions — they have no body to suspend in.
+/MultibindsIsNotAllowed.kt:5:27: error: @Multibinds declarations cannot be suspend functions. They have no body to suspend in.
 
-/MultibindsIsNotAllowed.kt:9:36: error: @Multibinds declarations cannot be suspend functions — they have no body to suspend in.
+/MultibindsIsNotAllowed.kt:9:36: error: @Multibinds declarations cannot be suspend functions. They have no body to suspend in.

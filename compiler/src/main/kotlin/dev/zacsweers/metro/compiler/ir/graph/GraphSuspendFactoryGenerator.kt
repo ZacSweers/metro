@@ -48,13 +48,13 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 /**
  * Generates IR-only private nested `SuspendFactory<T>` classes on a graph impl for bindings that
- * are *transitively* suspend in this graph but whose source declaration is not itself suspend — a
- * non-suspend `@Provides` or a constructor-injected class whose deps resolve suspend bindings.
+ * are *transitively* suspend in this graph but whose source declaration is not itself suspend, such
+ * as a non-suspend `@Provides` or a constructor-injected class whose deps resolve suspend bindings.
  *
- * The nested class takes only the binding's dependencies (no graph reference): each dep is held as
- * a `SuspendProvider<X>` when `X` is suspend in this graph, or a `Provider<X>` otherwise (receivers
- * are held as plain instances). Its suspend `invoke()` awaits the suspend deps and calls the source
- * constructor/function directly.
+ * The nested class takes only the binding's dependencies and holds no graph reference. Each dep is
+ * held as a `SuspendProvider<X>` when `X` is suspend in this graph, or a `Provider<X>` otherwise.
+ * Receivers are held as plain instances. Its suspend `invoke()` awaits the suspend deps and calls
+ * the source constructor/function directly.
  *
  * Example:
  * ```kotlin
@@ -67,7 +67,7 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
  * }
  * ```
  *
- * These classes are generated per graph, only for bindings that need one (i.e. bindings stored in
+ * These classes are generated per graph, only for bindings that need one (bindings stored in
  * `SuspendProvider<T>` fields), so bytecode cost scales with actual usage. They are not registered
  * in metadata.
  */
@@ -85,7 +85,7 @@ internal class GraphSuspendFactoryGenerator(
   /**
    * Returns (creating if needed) the nested suspend factory for [binding].
    *
-   * @param orderedParams the source callable's parameters in call order — the same order
+   * @param orderedParams the source callable's parameters in call order, the same order
    *   `generateBindingArguments` maps args (dispatch receiver for non-object provides, context
    *   params, extension receiver, regular params; assisted excluded). The generated constructor's
    *   parameters align 1:1 with this list.
@@ -145,7 +145,7 @@ internal class GraphSuspendFactoryGenerator(
               ctxKey.isWrappedInSuspendLazy ->
                 ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
               ctxKey.isWrappedInProvider || ctxKey.isWrappedInLazy -> {
-                // Provider<X>/Lazy<X> etc. — X can't be suspend here (validated), hold a
+                // Provider<X>/Lazy<X> etc. X can't be suspend here (validated). Hold a
                 // Provider<canonical> and let typeAsProviderArgument adapt.
                 ctxKey.canonicalize().wrapInProvider().toIrType()
               }

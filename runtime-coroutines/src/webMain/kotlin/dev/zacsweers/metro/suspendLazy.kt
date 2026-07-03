@@ -13,7 +13,7 @@ public actual fun <T> suspendLazy(
 ): SuspendLazy<T> =
   when (mode) {
     // Web is single-threaded, but suspend initializers can still interleave across coroutines at
-    // suspension points — SYNCHRONIZED routes through SuspendDoubleCheck, whose publication
+    // suspension points. SYNCHRONIZED routes through SuspendDoubleCheck, whose publication
     // re-check guarantees a single observed value (first completed write wins). PUBLICATION
     // permits redundant computation by contract and NONE promises a single consumer, so both use
     // the unsafe impl.

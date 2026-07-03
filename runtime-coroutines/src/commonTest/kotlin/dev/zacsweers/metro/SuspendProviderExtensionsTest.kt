@@ -31,7 +31,7 @@ class SuspendProviderExtensionsTest {
     assertEquals(0, count.load())
     assertEquals(42, mapped())
     assertEquals(42, mapped())
-    // Not memoized — underlying provider re-invokes
+    // Not memoized, underlying provider re-invokes
     assertEquals(2, count.load())
   }
 

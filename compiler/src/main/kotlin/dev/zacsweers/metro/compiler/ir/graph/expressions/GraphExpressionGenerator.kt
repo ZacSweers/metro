@@ -239,7 +239,7 @@ private constructor(
               bindingGraph.isTransitivelySuspend(binding.typeKey)
           ) {
             // Transitively-suspend constructor-injected binding requested as a
-            // SuspendProvider<T> — its per-class factory is a plain Factory<T> and can't hold
+            // SuspendProvider<T>. Its per-class factory is a plain Factory<T> and can't hold
             // SuspendProvider deps, so generate an IR-only nested SuspendFactory in the graph.
             return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
           }
@@ -484,7 +484,7 @@ private constructor(
             accessType == AccessType.SUSPEND_PROVIDER &&
               bindingGraph.isTransitivelySuspend(binding.typeKey)
           ) {
-            // Non-suspend @Provides that transitively depends on suspend bindings — its factory
+            // Non-suspend @Provides that transitively depends on suspend bindings. Its factory
             // is a plain Factory<T> whose ctor can't hold SuspendProvider deps. Generate an
             // IR-only nested SuspendFactory in the graph instead.
             return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
@@ -817,7 +817,7 @@ private constructor(
                 // It's already a provider
                 invokeGetter to AccessType.PROVIDER
               } else if (getterContextKey.isWrappedInSuspendProvider) {
-                // Already a SuspendProvider (e.g. an included graph's `suspend () -> T` accessor)
+                // Already a SuspendProvider (like an included graph's `suspend () -> T` accessor)
                 invokeGetter to AccessType.SUSPEND_PROVIDER
               } else if (binding.getter.isSuspend) {
                 // A suspend accessor on an included graph. The call must live inside a suspend
@@ -849,7 +849,7 @@ private constructor(
 
   /**
    * Generates `NestedAssistedSuspendImpl(depProviders...)` for an assisted factory whose target
-   * consumes suspend bindings in this graph — see
+   * consumes suspend bindings in this graph. See
    * [GraphSuspendFactoryGenerator.getOrGenerateAssistedImpl].
    */
   context(scope: IrBuilderWithScope)
@@ -907,7 +907,7 @@ private constructor(
     }
 
   /**
-   * Decorates a freshly constructed nested `SuspendFactory<T>` expression (e.g. wrapping it in
+   * Decorates a freshly constructed nested `SuspendFactory<T>` expression (like wrapping it in
    * `TracedSuspendProvider` when runtime tracing is enabled).
    */
   context(scope: IrBuilderWithScope)
@@ -925,7 +925,7 @@ private constructor(
     )
 
   /**
-   * The source callable's parameters in call order — the same decomposition
+   * The source callable's parameters in call order, the same decomposition
    * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
    * params, extension receiver, regular params; assisted excluded).
    */
@@ -945,7 +945,7 @@ private constructor(
   /**
    * Generates `NestedSuspendFactory(depProviders...)` for a binding that is transitively suspend in
    * this graph but whose source declaration is not itself suspend. The nested class is an IR-only
-   * private `SuspendFactory<T>` on the graph impl — see [GraphSuspendFactoryGenerator].
+   * private `SuspendFactory<T>` on the graph impl. See [GraphSuspendFactoryGenerator].
    */
   context(scope: IrBuilderWithScope)
   private fun generateNestedSuspendFactoryCall(

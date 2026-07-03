@@ -131,7 +131,7 @@ internal class BindingPropertyContext(
 
     // Try the SuspendProvider key for non-suspend-provider requests (suspend bindings may be
     // stored with SuspendProvider wrapping) AND for suspend-provider requests spelled as the
-    // `suspend () -> T` function type — fields store metro's SuspendProvider classId, so the
+    // `suspend () -> T` function type. Fields store metro's SuspendProvider classId, so the
     // function-type spelling must normalize or scoped bindings get re-created per lookup miss.
     val tryReWrappingSuspend =
       !key.isWrappedInSuspendProvider ||
