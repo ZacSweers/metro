@@ -10,6 +10,9 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -46,6 +49,26 @@ class SuspendDoubleCheckTest {
       )
     doubleCheckReference.store(doubleCheck)
     assertFailsWith<IllegalStateException> { doubleCheck() }
+  }
+
+  @Test
+  fun `reentrant invocation without a Job still throws instead of deadlocking`() {
+    // Job-less coroutines (suspend fun main, bare startCoroutine) have no Job to identify the
+    // initializing caller by; the guard falls back to coroutine context identity.
+    var thrown: Throwable? = null
+    val doubleCheck =
+      SuspendDoubleCheck.provider(
+        SuspendProvider {
+          doubleCheckReference.load()!!.invoke()
+          Any()
+        }
+      )
+    doubleCheckReference.store(doubleCheck)
+    val block: suspend () -> Any = { doubleCheck() }
+    block.startCoroutine(
+      Continuation(EmptyCoroutineContext) { result -> thrown = result.exceptionOrNull() }
+    )
+    assertTrue(thrown is IllegalStateException, "Expected IllegalStateException, was $thrown")
   }
 
   @Test

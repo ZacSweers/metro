@@ -7,12 +7,11 @@ package dev.zacsweers.metro.internal
 import dev.zacsweers.metro.ExperimentalMetroSuspendApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
-import java.io.Serializable
 
 private val UNINITIALIZED = Any()
 
 internal class UnsafeSuspendLazy<T>(initializer: suspend () -> T) :
-  SuspendLazy<T>, SuspendProvider<T>, Serializable {
+  SuspendLazy<T>, SuspendProvider<T> {
   private var initializer: (suspend () -> T)? = initializer
   private var _value: Any? = UNINITIALIZED
 
@@ -35,8 +34,6 @@ internal class UnsafeSuspendLazy<T>(initializer: suspend () -> T) :
     } else {
       "SuspendLazy(value=<not initialized>)"
     }
-
-  private fun writeReplace(): Any = InitializedSuspendLazy(value = _value)
 
   private companion object {
     private const val serialVersionUID: Long = 1L

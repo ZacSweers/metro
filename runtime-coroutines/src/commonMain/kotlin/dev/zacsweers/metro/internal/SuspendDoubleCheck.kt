@@ -41,12 +41,14 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
   private val mutex = Mutex()
 
   /**
-   * The [Job] of the coroutine currently running the initializer, or null when no initialization is
-   * in flight. Used to detect reentrant (cyclic) invocations that would otherwise suspend forever
-   * on the non-reentrant [mutex]. Written only while holding the mutex; read on the unlocked fast
-   * path (volatile for visibility).
+   * An identity for the coroutine currently running the initializer, or null when no initialization
+   * is in flight. Used to detect reentrant (cyclic) invocations that would otherwise suspend
+   * forever on the non-reentrant [mutex]. The identity is the coroutine's [Job] when present,
+   * falling back to the coroutine context instance for Job-less coroutines (e.g. `suspend fun main`
+   * or a bare `startCoroutine`) so cycle detection doesn't silently degrade to a deadlock there.
+   * Written only while holding the mutex; read on the unlocked fast path (volatile for visibility).
    */
-  @Volatile private var initializingJob: Job? = null
+  @Volatile private var initializingCaller: Any? = null
 
   override suspend fun invoke(): T {
     val result1 = _value
@@ -55,8 +57,8 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       return result1 as T
     }
 
-    val callerJob = coroutineContext[Job]
-    check(callerJob == null || callerJob !== initializingJob) {
+    val caller: Any = coroutineContext[Job] ?: coroutineContext
+    check(caller !== initializingCaller) {
       "Scoped suspend provider was invoked recursively during its own initialization. " +
         "This is likely due to a circular dependency."
     }
@@ -66,7 +68,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
       } else {
-        initializingJob = callerJob
+        initializingCaller = caller
         try {
           val typedValue = provider!!()
           _value = typedValue
@@ -75,7 +77,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
           provider = null
           typedValue
         } finally {
-          initializingJob = null
+          initializingCaller = null
         }
       }
     }
