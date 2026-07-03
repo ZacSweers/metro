@@ -108,7 +108,7 @@ interface AppGraph {
 
 Like `Lazy<T>`, the memoization is per wrapper instance. Two injection sites each compute their own value for an unscoped binding. For a scoped binding, all `SuspendLazy` wrappers share the graph's single cached instance, so there is no double computation.
 
-The memoization is coroutine-safe with the same semantics as scoping: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. Injecting `SuspendLazy<T>` requires the `dev.zacsweers.metro:runtime-coroutines` artifact.
+The memoization is coroutine-safe with the same semantics as a regular scoped binding's single instance: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. Injecting `SuspendLazy<T>` requires the `dev.zacsweers.metro:runtime-coroutines` artifact.
 
 It also works over non-suspend bindings if you want a uniform suspend API.
 
@@ -117,6 +117,10 @@ It also works over non-suspend bindings if you want a uniform suspend API.
 `Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` or `SuspendLazy<T>` instead.
 
 ## Scoping
+
+!!! note "Scope here means Metro scope"
+
+    Throughout this page, scope refers to Metro's binding scopes (`@SingleIn`, `@DependencyGraph(scope = ...)`), not a `kotlinx.coroutines` `CoroutineScope`. Metro graphs do not own a `CoroutineScope`. Suspend providers run entirely within the calling coroutine.
 
 Scoped suspend bindings work like any other scoped binding. The value is computed once and cached:
 
@@ -141,6 +145,25 @@ The cache is coroutine-safe:
 The cache is single-flight on every platform: one caller runs the initializer, concurrent callers suspend and share its result. On JVM and Native this synchronizes with a coroutine mutex. JS and Wasm are single-threaded, so the lock is a plain waiter queue with no locking overhead.
 
 Scoped suspend bindings require the `dev.zacsweers.metro:runtime-coroutines` artifact on your compile and runtime classpath. On JVM and Native it depends on `kotlinx-coroutines-core` for the mutex. The JS and Wasm variants have no kotlinx-coroutines dependency at all. Graphs that only use unscoped suspend bindings do not need the artifact. If it's missing when needed, Metro reports a compile-time error naming it.
+
+## Dispatchers
+
+Metro never switches dispatchers. A suspend provider runs in the calling coroutine's context, on whatever dispatcher that caller happens to use.
+
+For a scoped binding this matters more than it first appears. The initializer runs on the context of whichever caller reaches it first, and every other caller shares that result. Which dispatcher actually builds the value is an accident of call order.
+
+If the work needs a particular dispatcher, switch to it explicitly inside the provider:
+
+```kotlin
+@Provides
+@SingleIn(AppScope::class)
+suspend fun provideDatabase(): Database =
+  withContext(Dispatchers.IO) {
+    openDatabase()
+  }
+```
+
+This makes the provider correct regardless of where it is called from. Treat any suspend provider that does blocking I/O or thread-affine work without an explicit `withContext` as a bug waiting for the wrong first caller.
 
 ## Multibindings
 
