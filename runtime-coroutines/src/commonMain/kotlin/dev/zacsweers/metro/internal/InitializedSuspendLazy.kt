@@ -6,8 +6,10 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.ExperimentalMetroSuspendApi
 import dev.zacsweers.metro.SuspendLazy
+import kotlin.jvm.JvmInline
 
-public class InitializedSuspendLazy<T>(private val value: T) : SuspendLazy<T> {
+@JvmInline
+public value class InitializedSuspendLazy<T>(private val value: T) : SuspendLazy<T> {
   override suspend fun value(): T = value
 
   override fun isInitialized(): Boolean = true
