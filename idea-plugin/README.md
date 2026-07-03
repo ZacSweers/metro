@@ -159,3 +159,24 @@ Run plugin tests:
 ```shell
 ./gradlew idea-plugin test --quiet
 ```
+
+## Icons
+
+Conventions: filled dots are bindings, strokes are edges, green provides, blue consumes,
+navy is structure, dashed means not held. Each icon has a `_dark` variant.
+
+| Icon                                                                     | Meaning                                                                                    | Where                                                                     |
+|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| <img src="src/main/resources/icons/metro.svg" width="16"/>               | The Metro logo                                                                             | Tool window tab                                                           |
+| <img src="src/main/resources/icons/provider.svg" width="16"/>            | A binding source. The outbound arrow: this value flows out to whatever needs it            | Gutter on `@Provides`/`@Binds`/injected classes; tool window binding rows |
+| <img src="src/main/resources/icons/consumer.svg" width="16"/>            | A dependency site. The line meets an open circle: a binding fills it                       | Gutter on constructor params, accessors, injectors                        |
+| <img src="src/main/resources/icons/consumer_unresolved.svg" width="16"/> | A dependency site with no binding found. The dashed line: nothing connects yet             | Gutter                                                                    |
+| <img src="src/main/resources/icons/consumer_assisted.svg" width="16"/>   | An assisted parameter. A dashed circle, assisted factory creates the assisted-inject class | Gutter                                                                    |
+| <img src="src/main/resources/icons/graph.svg" width="16"/>               | A dependency graph declaration                                                             | Tool window graph rows; gutter validate icon before the first run         |
+| <img src="src/main/resources/icons/contributed.svg" width="16"/>         | A contributed binding (`@ContributesBinding`, etc)                                         | Gutter contributions icon on graphs; tool window Contributed category     |
+| <img src="src/main/resources/icons/scoped.svg" width="16"/>              | A scoped binding. Solid ring, the graph holds one instance                                 | Tool window category                                                      |
+| <img src="src/main/resources/icons/unscoped.svg" width="16"/>            | An unscoped binding. Dashed ring, a new instance every time                                | Tool window category                                                      |
+| <img src="src/main/resources/icons/multibinding.svg" width="16"/>        | A multibinding                                                                             | Tool window category and aggregate rows                                   |
+| <img src="src/main/resources/icons/alias.svg" width="16"/>               | A `@Binds` alias. The hollow circle delegates to the filled one, the real binding          | Tool window binding rows                                                  |
+| <img src="src/main/resources/icons/graph_validated.svg" width="16"/>     | This graph's last validation passed                                                        | Gutter validate icon; tool window Validate button                         |
+| <img src="src/main/resources/icons/graph_problems.svg" width="16"/>      | This graph's last validation found problems                                                | Gutter validate icon                                                      |
