@@ -31,13 +31,17 @@ internal fun renderProfileFor(mode: DiagnosticsRenderMode): RenderProfile =
 internal val RenderProfile.Companion.RICH: RenderProfile
   get() = RichRenderProfile
 
-private val RichRenderProfile =
-  RenderProfile(GlyphSet.UNICODE, Styler.Rich, renderSourceSnippets = true)
-
 internal val Styler.Companion.Rich: Styler
   get() = RichStyler
 
-private val RichStyler: Styler = MordantStyler(AnsiLevel.ANSI16)
+// Lazy for two reasons: eager top-level initializers run in declaration order, which made the
+// profile read the styler's backing field before it was assigned, and plain-mode compilations
+// share this file through renderProfileFor and should never touch mordant.
+private val RichStyler: Styler by lazy { MordantStyler(AnsiLevel.ANSI16) }
+
+private val RichRenderProfile by lazy {
+  RenderProfile(GlyphSet.UNICODE, RichStyler, renderSourceSnippets = true)
+}
 
 private class MordantStyler(ansiLevel: AnsiLevel) : Styler {
   private val terminal = Terminal(ansiLevel = ansiLevel, hyperlinks = false, interactive = false)
