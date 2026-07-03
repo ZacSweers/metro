@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ SuspendDoubleCheck needs runtime-coroutines; JVM-only for now (klib linkage) + runBlocking
+// ^ runBlocking, JVM-only
 
 // A graph extension consuming a scoped suspend binding owned by its parent. The parent stores the
 // binding in a SuspendProvider<T> field; the child's property-access token must classify it as a

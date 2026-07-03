@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ SuspendDoubleCheck needs runtime-coroutines; JVM-only for now (klib linkage) + runBlocking
+// ^ runBlocking, JVM-only
 
 // SuspendLazy<T> params flowing through per-class factories (not inline bypass):
 // - Consumer is SCOPED, so the graph goes through Consumer_Factory.create(...). The factory must

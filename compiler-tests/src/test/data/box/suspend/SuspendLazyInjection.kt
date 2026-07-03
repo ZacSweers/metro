@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ SuspendDoubleCheck needs runtime-coroutines; JVM-only for now (klib linkage) + runBlocking
+// ^ runBlocking, JVM-only
 
 // SuspendLazy<T> as an injectable wrapper: it defers and memoizes a suspend binding per wrapper
 // instance. Like `suspend () -> T`, it breaks the suspend chain, so consumers are not suspend.

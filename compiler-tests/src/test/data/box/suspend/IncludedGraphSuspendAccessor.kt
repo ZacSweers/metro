@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ SuspendDoubleCheck needs runtime-coroutines; JVM-only for now (klib linkage) + runBlocking
+// ^ runBlocking, JVM-only
 
 // A suspend accessor on an @Includes-ed graph is a suspend binding in the consuming graph:
 // consumers must be suspend (or defer), and codegen must wrap the included graph's suspend getter

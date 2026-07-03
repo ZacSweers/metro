@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ SuspendDoubleCheck needs runtime-coroutines; JVM-only for now (klib linkage) + runBlocking
+// ^ runBlocking, JVM-only
 
 // SuspendLazy<T> over a SCOPED suspend binding shares the graph's cache: SuspendDoubleCheck.lazy
 // short-circuits when the delegate is already the graph's SuspendDoubleCheck, so all consumers

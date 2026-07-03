@@ -8,45 +8,39 @@ import dev.zacsweers.metro.ExperimentalMetroSuspendApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
-import kotlin.coroutines.coroutineContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 private val UNINITIALIZED_SUSPEND = Any()
 
 /**
  * A [SuspendProvider] implementation that memoizes the value returned from a delegate
- * [SuspendProvider] using coroutine-safe synchronization via [Mutex].
+ * [SuspendProvider]. The delegate is released after it's called.
  *
- * The provider instance is released after it's called.
+ * Modeled after [BaseDoubleCheck], with synchronization provided by the
+ * [SuspendDoubleCheckInitGuard] superclass (a coroutine Mutex on JVM/Native, no-op on JS/Wasm).
  *
- * Modeled after [BaseDoubleCheck] but adapted for suspend context. Key differences:
- * - Synchronization uses a coroutine [Mutex] (a thread lock can't be held across a suspension
- *   point). The mutex is **not reentrant**, so unlike [BaseDoubleCheck] a reentrant (cyclic)
- *   invocation can't be allowed to proceed into the initializer — it would deadlock instead.
- *   Reentrant calls from the *initializing coroutine itself* are detected via its [Job] identity
- *   and fail fast with an [IllegalStateException] pointing at the circular dependency.
- * - A failed initializer is NOT cached; the next caller retries (same as [BaseDoubleCheck]).
- * - If the initializing coroutine is cancelled mid-initialization, the mutex is released and the
- *   next waiter re-runs the initializer; the cache is never poisoned.
+ * Semantics on all platforms:
+ * - The first completed value wins and is the only instance ever observed. On JVM/Native one caller
+ *   computes and concurrent callers wait for it; on single-threaded JS/Wasm concurrent callers may
+ *   each run the initializer when it suspends mid-flight, but later completions return the first
+ *   published value and discard their own.
+ * - A failed initialization is not cached; the next caller retries.
+ * - Cancellation mid-initialization leaves the cache untouched; the next caller recomputes.
+ * - A binding that resolves itself during its own initialization fails fast with a circular
+ *   dependency error, detected by caller identity ([initCallerIdentity]) — the guard is not
+ *   reentrant, so proceeding would deadlock or recurse forever.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
-  SuspendProvider<T>, SuspendLazy<T> {
+  SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {
   // Stored as SuspendProvider (not `suspend () -> T`) so invocation dispatches through the
   // interface — on Kotlin/JS a fun interface instance is not a callable JS function, so invoking
   // it through the suspend function type fails at runtime.
   private var provider: SuspendProvider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED_SUSPEND
-  private val mutex = Mutex()
 
   /**
    * An identity for the coroutine currently running the initializer, or null when no initialization
-   * is in flight. Used to detect reentrant (cyclic) invocations that would otherwise suspend
-   * forever on the non-reentrant [mutex]. The identity is the coroutine's [Job] when present,
-   * falling back to the coroutine context instance for Job-less coroutines (e.g. `suspend fun main`
-   * or a bare `startCoroutine`) so cycle detection doesn't silently degrade to a deadlock there.
-   * Written only while holding the mutex; read on the unlocked fast path (volatile for visibility).
+   * is in flight. Written only inside the guard; read on the unguarded fast path (volatile for
+   * visibility).
    */
   @Volatile private var initializingCaller: Any? = null
 
@@ -57,13 +51,13 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       return result1 as T
     }
 
-    val caller: Any = coroutineContext[Job] ?: coroutineContext
+    val caller = initCallerIdentity()
     check(caller !== initializingCaller) {
       "Scoped suspend provider was invoked recursively during its own initialization. " +
         "This is likely due to a circular dependency."
     }
 
-    return mutex.withLock {
+    return guardedSuspend {
       val result2 = _value
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
@@ -71,11 +65,18 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
         initializingCaller = caller
         try {
           val typedValue = provider!!()
-          _value = typedValue
-          // Null out the reference to the provider. We are never going to need it again, so we
-          // can make it eligible for GC.
-          provider = null
-          typedValue
+          // The guard is a no-op on web, so another coroutine may have published while this one
+          // was suspended inside the initializer. First completed write wins.
+          val existing = _value
+          if (existing !== UNINITIALIZED_SUSPEND) {
+            @Suppress("UNCHECKED_CAST") (existing as T)
+          } else {
+            _value = typedValue
+            // Null out the reference to the provider. We are never going to need it again, so we
+            // can make it eligible for GC.
+            provider = null
+            typedValue
+          }
         } finally {
           initializingCaller = null
         }

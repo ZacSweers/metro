@@ -1,6 +1,5 @@
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ Scoped suspend bindings need SuspendDoubleCheck from runtime-coroutines; the
-// kotlinx-coroutines klib trips partial-linkage errors against dev test compilers on JS.
+// ^ runBlocking, JVM-only
 
 // The canonical long-chain scenario mixing suspend and non-suspend bindings:
 // - String: suspend @Provides — SuspendFactory primary factory.
