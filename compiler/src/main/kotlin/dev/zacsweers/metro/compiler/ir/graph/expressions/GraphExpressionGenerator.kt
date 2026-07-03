@@ -278,10 +278,13 @@ private constructor(
                   return@let factoryInstance
                 }
 
+                val providerType =
+                  binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
                 factoryInstance.toTargetType(
                   actual = AccessType.PROVIDER,
                   contextualTypeKey = contextualTypeKey,
                   bindingKind = bindingKind,
+                  providerType = providerType,
                 )
               }
           }

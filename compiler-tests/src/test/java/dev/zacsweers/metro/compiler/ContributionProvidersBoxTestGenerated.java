@@ -2753,6 +2753,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
         }
 
         @Test
+        @TestMetadata("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt")
+        public void testUnscopedInjectAsDaggerLazyMemberInjectionAcrossModules() {
+          run("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt");
+        }
+
+        @Test
         @TestMetadata("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt")
         public void testUnscopedParentProvidesAsDaggerLazyInChildGraph() {
           run("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt");
