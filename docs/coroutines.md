@@ -1,4 +1,4 @@
-# Suspend Support
+# Coroutines Support
 
 Metro supports `suspend` provider functions and `suspend` graph accessors. This lets you model dependencies whose creation requires suspending work, such as opening a database, reading a config file, or performing a network handshake.
 
