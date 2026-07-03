@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 import kotlin.test.assertTrue
 
 class MetroLineMarkerProviderTest : BasePlatformTestCase() {
@@ -11,6 +15,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    project.service<MetroGraphValidationService>().clearResults()
   }
 
   private fun configureAndHighlight(): List<String> {
@@ -91,6 +96,80 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         .mapNotNull { it.tooltipText }
     assertTrue("Expected an injector marker in:\n$tooltips") {
       tooltips.any { it.startsWith("Metro injector: injects 2 dependencies into Target") }
+    }
+  }
+
+  fun testValidateMarkerBadgesValidationState() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+
+        @DependencyGraph
+        interface AppGraph {
+          val missing: MissingThing
+        }
+        """
+      )
+    myFixture.doHighlighting()
+    fun validateIcons() =
+      myFixture
+        .findAllGutters()
+        .map { it.icon }
+        .filter {
+          it === MetroIcons.GRAPH ||
+            it === MetroIcons.GRAPH_VALIDATED ||
+            it === MetroIcons.GRAPH_PROBLEMS
+        }
+    // Not validated yet: plain graph icon
+    assertEquals(listOf<Any>(MetroIcons.GRAPH), validateIcons())
+
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    project.service<MetroGraphValidationService>().validate(file, graph)
+    // The file didn't change, so mimic production's post-validation daemon restart
+    DaemonCodeAnalyzer.getInstance(project).restart()
+    myFixture.doHighlighting()
+    assertEquals(listOf<Any>(MetroIcons.GRAPH_PROBLEMS), validateIcons())
+    val tooltip =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.GRAPH_PROBLEMS }
+        .mapNotNull { it.tooltipText }
+        .single()
+    assertTrue(tooltip, "last run: 1 problem" in tooltip)
+  }
+
+  fun testScopedProviderAndMultibindingConsumerTooltips() {
+    myFixture.configureMetroFile(
+      """
+      interface Api
+      interface Analytics
+
+      interface ApiProviders {
+        @Provides @SingleIn(AppScope::class) fun provideApi(): Api = object : Api {}
+      }
+
+      @Inject @ContributesIntoSet(AppScope::class) class DebugAnalytics : Analytics
+
+      @DependencyGraph(AppScope::class, bindingContainers = [ApiProviders::class])
+      interface AppGraph {
+        val api: Api
+        val analytics: Set<Analytics>
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.PROVIDER || it.icon === MetroIcons.CONSUMER }
+        .mapNotNull { it.tooltipText }
+    assertTrue(tooltips.toString()) {
+      tooltips.any { it.startsWith("Metro provides: Api · scoped to AppScope") }
+    }
+    assertTrue(tooltips.toString()) {
+      tooltips.any { it.startsWith("Metro dependency: Set<Analytics> · 1 contribution") }
     }
   }
 

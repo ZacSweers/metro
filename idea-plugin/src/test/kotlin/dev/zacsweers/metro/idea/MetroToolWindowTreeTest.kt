@@ -2,8 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.components.service
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.tree.AsyncTreeModel
+import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
@@ -142,6 +149,137 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         it.text == "Unused"
       }
     assertEquals(listOf("Boolean"), structure.children(unusedCategory).map { it.text })
+  }
+
+  fun testDumbModeProducesNoChildren() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    assertTrue(structure.children(root).isNotEmpty())
+    DumbModeTestUtils.runInDumbModeSynchronously(project) {
+      assertTrue(structure.children(root).isEmpty())
+    }
+  }
+
+  fun testRefreshedNodesReplaceStaleOnes() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+
+    val unscopedBefore =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    // Same content computes an equal node, which is what preserves tree expansion
+    val unscopedAgain =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertEquals(unscopedBefore, unscopedAgain)
+
+    // AsyncTreeModel keeps equal nodes and re-asks them for children, so a content change must
+    // make the refreshed node unequal or the tree would serve stale rows
+    filter = "String"
+    val unscopedAfter =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertFalse(unscopedBefore == unscopedAfter)
+    assertEquals(listOf("String"), structure.children(unscopedAfter).map { it.text })
+  }
+
+  fun testUnusedUnionsExtensionUsage() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Api
+
+        @Inject class ChildThing(val api: Api)
+
+        @GraphExtension
+        interface ChildGraph {
+          val childThing: ChildThing
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun provideApi(): Api = object : Api {}
+          @Provides fun provideUnused(): Int = 3
+        }
+        """
+      )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val appNode =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().single {
+        it.text == "AppGraph"
+      }
+    val service = project.service<MetroGraphValidationService>()
+    service.validateWithExtensions(file, appNode.graph)
+
+    // Api is consumed only by the child extension, so only the truly dead Int shows as unused
+    val unused =
+      structure.children(appNode).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unused"
+      }
+    assertEquals(listOf("Int"), structure.children(unused).map { it.text })
+  }
+
+  fun testSameNamedQualifiersRenderAbbreviatedPackages() {
+    myFixture.addFileToProject(
+      "alpha/Tag.kt",
+      "package alpha\n\nimport dev.zacsweers.metro.Qualifier\n\n@Qualifier annotation class Tag",
+    )
+    myFixture.addFileToProject(
+      "beta/Tag.kt",
+      "package beta\n\nimport dev.zacsweers.metro.Qualifier\n\n@Qualifier annotation class Tag",
+    )
+    myFixture.configureMetroFile(
+      """
+      interface TagProviders {
+        @Provides @alpha.Tag fun alphaUrl(): String = "a"
+
+        @Provides @beta.Tag fun betaUrl(): String = "b"
+      }
+
+      @DependencyGraph(bindingContainers = [TagProviders::class])
+      interface AppGraph
+      """
+    )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val unscoped =
+      structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    assertEquals(
+      listOf("@a.Tag String", "@b.Tag String"),
+      structure.children(unscoped).map { it.text },
+    )
+  }
+
+  fun testFilterRefreshThroughPlatformTreeModel() {
+    configure()
+    val treeStructure = structure()
+    val treeModel = StructureTreeModel(treeStructure, testRootDisposable)
+    val tree = Tree(AsyncTreeModel(treeModel, testRootDisposable))
+    tree.isRootVisible = false
+
+    fun visibleTexts(): List<String> {
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      return (0 until tree.rowCount).mapNotNull { row ->
+        (TreeUtil.getLastUserObject(NodeDescriptor::class.java, tree.getPathForRow(row))?.element
+            as? MetroTreeNode)
+          ?.text
+      }
+    }
+
+    assertTrue(visibleTexts().toString(), "Boolean" in visibleTexts())
+
+    // The expanded tree must pick up the narrowed rows, not serve stale children
+    filter = "String"
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    val after = visibleTexts()
+    assertTrue(after.toString(), "String" in after)
+    assertTrue(after.toString(), "Boolean" !in after)
   }
 
   fun testDiagnosticRowsWithNavigableStacks() {
