@@ -4,7 +4,7 @@ Metro supports `suspend` provider functions and `suspend` graph accessors. This 
 
 !!! warning "Experimental"
 
-    Suspend support is experimental. The APIs are annotated with `@ExperimentalMetroSuspendApi` and require an opt-in, either at the use site or by compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroSuspendApi`.
+    Suspend support is experimental. The APIs are annotated with `@ExperimentalMetroCoroutinesApi` and require an opt-in, either at the use site or by compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
 
 ## Declaring suspend bindings
 

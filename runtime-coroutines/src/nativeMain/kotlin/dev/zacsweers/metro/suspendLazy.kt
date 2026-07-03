@@ -7,7 +7,7 @@ import dev.zacsweers.metro.internal.SafePublicationSuspendLazy
 import dev.zacsweers.metro.internal.SuspendDoubleCheck
 import dev.zacsweers.metro.internal.UnsafeSuspendLazy
 
-@ExperimentalMetroSuspendApi
+@ExperimentalMetroCoroutinesApi
 public actual fun <T> suspendLazy(
   mode: LazyThreadSafetyMode,
   initializer: suspend () -> T,
@@ -18,5 +18,5 @@ public actual fun <T> suspendLazy(
     LazyThreadSafetyMode.NONE -> UnsafeSuspendLazy(initializer)
   }
 
-@ExperimentalMetroSuspendApi
+@ExperimentalMetroCoroutinesApi
 public actual fun <T> suspendLazyOf(value: T): SuspendLazy<T> = InitializedSuspendLazy(value)

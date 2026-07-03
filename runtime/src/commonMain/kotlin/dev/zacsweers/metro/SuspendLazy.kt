@@ -8,7 +8,7 @@ package dev.zacsweers.metro
  * This is the suspend counterpart to [Lazy], just as [SuspendProvider] is the suspend counterpart
  * to [Provider].
  */
-@ExperimentalMetroSuspendApi
+@ExperimentalMetroCoroutinesApi
 public interface SuspendLazy<out T> {
   /**
    * Returns the lazily-computed value, suspending if necessary to compute it for the first time.
