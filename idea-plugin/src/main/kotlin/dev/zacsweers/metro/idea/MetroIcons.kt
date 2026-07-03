@@ -16,4 +16,16 @@ internal object MetroIcons {
     IconLoader.getIcon("/icons/consumer_assisted.svg", MetroIcons::class.java)
   @JvmField val GRAPH: Icon = IconLoader.getIcon("/icons/graph.svg", MetroIcons::class.java)
   @JvmField val METRO: Icon = IconLoader.getIcon("/icons/metro.svg", MetroIcons::class.java)
+  @JvmField val SCOPED: Icon = IconLoader.getIcon("/icons/scoped.svg", MetroIcons::class.java)
+  @JvmField val UNSCOPED: Icon = IconLoader.getIcon("/icons/unscoped.svg", MetroIcons::class.java)
+  @JvmField
+  val MULTIBINDING: Icon = IconLoader.getIcon("/icons/multibinding.svg", MetroIcons::class.java)
+  @JvmField
+  val CONTRIBUTED: Icon = IconLoader.getIcon("/icons/contributed.svg", MetroIcons::class.java)
+  @JvmField val ALIAS: Icon = IconLoader.getIcon("/icons/alias.svg", MetroIcons::class.java)
+  @JvmField
+  val GRAPH_VALIDATED: Icon =
+    IconLoader.getIcon("/icons/graph_validated.svg", MetroIcons::class.java)
+  @JvmField
+  val GRAPH_PROBLEMS: Icon = IconLoader.getIcon("/icons/graph_problems.svg", MetroIcons::class.java)
 }
