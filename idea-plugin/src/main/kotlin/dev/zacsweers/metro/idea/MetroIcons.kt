@@ -23,6 +23,7 @@ internal object MetroIcons {
   @JvmField
   val CONTRIBUTED: Icon = IconLoader.getIcon("/icons/contributed.svg", MetroIcons::class.java)
   @JvmField val ALIAS: Icon = IconLoader.getIcon("/icons/alias.svg", MetroIcons::class.java)
+  @JvmField val UNUSED: Icon = IconLoader.getIcon("/icons/unused.svg", MetroIcons::class.java)
   @JvmField
   val GRAPH_VALIDATED: Icon =
     IconLoader.getIcon("/icons/graph_validated.svg", MetroIcons::class.java)
