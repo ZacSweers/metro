@@ -16,13 +16,12 @@ private val UNINITIALIZED_SUSPEND = Any()
  * [SuspendProvider]. The delegate is released after it's called.
  *
  * Modeled after [BaseDoubleCheck], with synchronization provided by the
- * [SuspendDoubleCheckInitGuard] superclass (a coroutine Mutex on JVM/Native, no-op on JS/Wasm).
+ * [SuspendDoubleCheckInitGuard] superclass (a coroutine Mutex on JVM/Native, a single-threaded
+ * continuation-queue lock on JS/Wasm).
  *
  * Semantics on all platforms:
- * - The first completed value wins and is the only instance ever observed. On JVM/Native one caller
- *   computes and concurrent callers wait for it; on single-threaded JS/Wasm concurrent callers may
- *   each run the initializer when it suspends mid-flight, but later completions return the first
- *   published value and discard their own.
+ * - Single-flight: one caller runs the initializer; concurrent callers suspend and share its
+ *   result.
  * - A failed initialization is not cached; the next caller retries.
  * - Cancellation mid-initialization leaves the cache untouched; the next caller recomputes.
  * - A binding that resolves itself during its own initialization fails fast with a circular
@@ -65,18 +64,11 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
         initializingCaller = caller
         try {
           val typedValue = provider!!()
-          // The guard is a no-op on web, so another coroutine may have published while this one
-          // was suspended inside the initializer. First completed write wins.
-          val existing = _value
-          if (existing !== UNINITIALIZED_SUSPEND) {
-            @Suppress("UNCHECKED_CAST") (existing as T)
-          } else {
-            _value = typedValue
-            // Null out the reference to the provider. We are never going to need it again, so we
-            // can make it eligible for GC.
-            provider = null
-            typedValue
-          }
+          _value = typedValue
+          // Null out the reference to the provider. We are never going to need it again, so we
+          // can make it eligible for GC.
+          provider = null
+          typedValue
         } finally {
           initializingCaller = null
         }

@@ -138,7 +138,7 @@ The cache is coroutine-safe:
 - If the computing coroutine is cancelled mid-initialization, the cache is untouched and the next caller recomputes.
 - A binding that resolves itself during its own initialization fails with a circular dependency error instead of deadlocking.
 
-On JVM and Native, the cache synchronizes with a coroutine mutex. JS and Wasm are single-threaded and use no lock, mirroring how Metro's regular scoping cache works there. One difference is observable on web: a suspend initializer can interleave with other coroutines at suspension points, so concurrent callers may each run the initializer. The first completed value wins and is the only instance ever observed. Later completions discard their own result.
+The cache is single-flight on every platform: one caller runs the initializer, concurrent callers suspend and share its result. On JVM and Native this synchronizes with a coroutine mutex. JS and Wasm are single-threaded, so the lock is a plain waiter queue with no locking overhead.
 
 Scoped suspend bindings require the `dev.zacsweers.metro:runtime-coroutines` artifact on your compile and runtime classpath. On JVM and Native it depends on `kotlinx-coroutines-core` for the mutex. The JS and Wasm variants have no kotlinx-coroutines dependency at all. Graphs that only use unscoped suspend bindings do not need the artifact. If it's missing when needed, Metro reports a compile-time error naming it.
 

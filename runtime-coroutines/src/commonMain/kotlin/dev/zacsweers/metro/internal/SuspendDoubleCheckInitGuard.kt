@@ -9,11 +9,12 @@ package dev.zacsweers.metro.internal
  * This is private [SuspendDoubleCheck] machinery, not a reusable lock abstraction. Implementations
  * may rely on the fact that the guard is only used until `_value` is initialized.
  *
- * Unlike [DoubleCheckInitGuard], the guarded block suspends, so thread-based guards don't apply:
- * - JVM/Native guard with a coroutine Mutex (single-flight; waiters share the winner's result).
- * - JS/Wasm are single-threaded and use no guard at all. A suspend initializer can still interleave
- *   with other coroutines, so [SuspendDoubleCheck] re-checks publication after computing (first
- *   completed write wins).
+ * Unlike [DoubleCheckInitGuard], the guarded block suspends, so thread-based guards don't apply.
+ * Both implementations are single-flight (one caller computes, concurrent callers suspend and share
+ * the result):
+ * - JVM/Native guard with a coroutine Mutex.
+ * - JS/Wasm are single-threaded, so the lock is a plain flag plus a FIFO continuation queue — no
+ *   atomics, no parking, no kotlinx.coroutines dependency.
  */
 public expect open class SuspendDoubleCheckInitGuard()
 

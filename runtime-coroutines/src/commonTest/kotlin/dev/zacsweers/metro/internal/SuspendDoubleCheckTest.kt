@@ -20,9 +20,11 @@ import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 
 @OptIn(ExperimentalAtomicApi::class)
 class SuspendDoubleCheckTest {
@@ -69,6 +71,30 @@ class SuspendDoubleCheckTest {
       Continuation(EmptyCoroutineContext) { result -> thrown = result.exceptionOrNull() }
     )
     assertTrue(thrown is IllegalStateException, "Expected IllegalStateException, was $thrown")
+  }
+
+  @Test
+  fun `concurrent callers share a single in-flight computation`() = runTest {
+    // Single-flight on ALL platforms, including single-threaded JS/Wasm where the initializer
+    // interleaves with other coroutines at suspension points: the second caller must suspend and
+    // share the first caller's result, not run the initializer again.
+    val gate = CompletableDeferred<Unit>()
+    val doubleCheck =
+      SuspendDoubleCheck.provider(
+        SuspendProvider {
+          invocationCount.incrementAndFetch()
+          gate.await()
+          Any()
+        }
+      )
+    val first = async { doubleCheck() }
+    val second = async { doubleCheck() }
+    // Let both coroutines reach the provider
+    yield()
+    yield()
+    gate.complete(Unit)
+    assertSame(first.await(), second.await())
+    assertEquals(1, invocationCount.load())
   }
 
   @Test
