@@ -8,13 +8,12 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
@@ -39,6 +38,7 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -106,7 +106,7 @@ internal class GraphSuspendFactoryGenerator(
    */
   private data class ParamField(val param: Parameter, val field: IrField)
 
-  private fun buildShell(name: String, supertype: org.jetbrains.kotlin.ir.types.IrType): IrClass =
+  private fun buildShell(name: String, supertype: IrType): IrClass =
     irFactory
       .buildClass {
         this.name = classNameAllocator.newName(name).asName()
@@ -136,22 +136,18 @@ internal class GraphSuspendFactoryGenerator(
               param.kind == IrParameterKind.DispatchReceiver ||
               param.kind == IrParameterKind.ExtensionReceiver
           val ctxKey = param.contextualTypeKey
-          val fieldType: org.jetbrains.kotlin.ir.types.IrType =
+          val fieldType: IrType =
             when {
               isReceiver -> ctxKey.toIrType()
               ctxKey.isWrappedInSuspendProvider -> ctxKey.toIrType()
               // SuspendLazy params are held as SuspendProvider fields; the invoke body memoizes
               // via SuspendDoubleCheck.lazy when adapting the arg.
               ctxKey.isWrappedInSuspendLazy ->
-                ctxKey.stripSuspendLazy().wrapInSuspendProvider().toIrType()
+                ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
               ctxKey.isWrapped -> {
                 // Provider<X>/Lazy<X> etc. — X can't be suspend here (validated), hold a
                 // Provider<canonical> and let typeAsProviderArgument adapt.
-                var stripped = ctxKey
-                while (stripped.isWrapped) {
-                  stripped = stripped.stripOuterProviderOrLazy()
-                }
-                stripped.wrapInProvider().toIrType()
+                ctxKey.canonicalize().wrapInProvider().toIrType()
               }
               bindingGraph.isTransitivelySuspend(ctxKey.typeKey) ->
                 ctxKey.wrapInSuspendProvider().toIrType()

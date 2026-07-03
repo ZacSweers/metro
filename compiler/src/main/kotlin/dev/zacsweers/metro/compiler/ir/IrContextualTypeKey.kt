@@ -315,6 +315,21 @@ internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey
   }
 }
 
+/**
+ * Strips all outer wrapper layers (Provider/Lazy/SuspendProvider/SuspendLazy, however nested) down
+ * to the canonical contextual key. Inner structure like `Map<K, Provider<V>>` is preserved.
+ */
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.canonicalize(): IrContextualTypeKey {
+  var current = this
+  while (
+    current.isWrapped || current.isWrappedInSuspendProvider || current.isWrappedInSuspendLazy
+  ) {
+    current = current.stripOuterProviderOrLazy()
+  }
+  return current
+}
+
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.wrapInProvider(
   providerType: IrClass = context.metroSymbols.metroProvider.owner

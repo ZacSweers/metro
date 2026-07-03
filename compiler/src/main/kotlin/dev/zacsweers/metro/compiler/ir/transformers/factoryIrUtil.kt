@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.canBeInlined
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -31,8 +32,6 @@ import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -472,27 +471,15 @@ internal fun IrFunction.addParameters(
         } else if (ctxKey.isWrappedInSuspendLazy) {
           // SuspendLazy<T> params are held as SuspendProvider<T> fields; the invoke body
           // memoizes per call via SuspendDoubleCheck.lazy when adapting the argument.
-          var stripped = ctxKey.stripSuspendLazy()
-          while (stripped.isWrapped || stripped.isWrappedInSuspendProvider) {
-            stripped = stripped.stripOuterProviderOrLazy()
-          }
-          stripped.wrapInSuspendProvider().toIrType()
+          ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
         } else if (wrapInSuspendProvider) {
           // Strip outer Provider/Lazy/SuspendProvider layers, then wrap in a single
           // SuspendProvider so the field can be invoked from the suspend factory's body.
-          var stripped = ctxKey
-          while (stripped.isWrapped || stripped.isWrappedInSuspendProvider) {
-            stripped = stripped.stripOuterProviderOrLazy()
-          }
-          stripped.wrapInSuspendProvider().toIrType()
+          ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
         } else {
           // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
           // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
-          var stripped = ctxKey
-          while (stripped.isWrapped) {
-            stripped = stripped.stripOuterProviderOrLazy()
-          }
-          stripped.wrapInProvider().toIrType()
+          ctxKey.canonicalize().wrapInProvider().toIrType()
         }
       } else {
         param.contextualTypeKey.toIrType()
