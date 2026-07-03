@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782930553320,
+  "lastUpdate": 1783097857759,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18424,6 +18424,62 @@ window.BENCHMARK_DATA = {
             "value": 19917.448,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.38%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d709554e~1",
+          "message": "[before] Fix member-injection of interop providers (#2511)",
+          "timestamp": "2026-07-03T16:21:35Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d709554e8709883ed0b6d9cd2e8e381c31026c29"
+        },
+        "date": 1783097857759,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21293.45,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d709554e8709883ed0b6d9cd2e8e381c31026c29",
+          "message": "[after] Fix member-injection of interop providers (#2511)",
+          "timestamp": "2026-07-03T16:21:35Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d709554e8709883ed0b6d9cd2e8e381c31026c29"
+        },
+        "date": 1783097857760,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21060.75,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.09%"
           }
         ]
       }
