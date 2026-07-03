@@ -9,6 +9,7 @@ import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.ide.util.treeView.PresentableNodeDescriptor
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.SimpleTextAttributes
@@ -63,17 +64,32 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
   ) : MetroTreeNode(parent) {
     override val icon: Icon = MetroIcons.GRAPH
     override val pointer: SmartPsiElementPointer<*> = graph.pointer
-    override val identity: Any = graph.classId ?: text
+    // ClassId alone is ambiguous: same-FQN graphs can exist in different modules' files
+    override val identity: Any = (graph.classId ?: text) to graph.pointer.virtualFile
   }
 
-  class Category(parent: MetroTreeNode, title: String, override val icon: Icon) :
-    MetroTreeNode(parent) {
-    val rows = mutableListOf<MetroTreeNode>()
+  class Category(
+    parent: MetroTreeNode,
+    title: String,
+    override val icon: Icon,
+    /** Sorted member bindings; rows build from these on each children request. */
+    val bindings: List<KaBinding>,
+    val ambiguousQualifiers: Set<Name>,
+    /** True for the Multibindings category, whose children group by aggregate id. */
+    val grouped: Boolean,
+    hint: String? = null,
+  ) : MetroTreeNode(parent) {
     override val text: String = title
-    override val grayText: String
-      get() = "${rows.size}"
+    override val grayText: String = buildString {
+      append(if (grouped) bindings.distinctBy { it.multibindingId }.size else bindings.size)
+      hint?.let {
+        append(" · ")
+        append(it)
+      }
+    }
 
-    override val identity: Any = title
+    // Content-aware so refreshed categories replace stale tree nodes instead of matching them
+    override val identity: Any = title to bindings.map { it.typeKey }
   }
 
   class BindingRow(
@@ -92,14 +108,15 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val identity: Any = text + grayText.orEmpty()
   }
 
-  class Aggregate(parent: MetroTreeNode, multibindingId: String) : MetroTreeNode(parent) {
-    val rows = mutableListOf<MetroTreeNode>()
+  class Aggregate(
+    parent: MetroTreeNode,
+    multibindingId: String,
+    val contributions: List<KaBinding>,
+  ) : MetroTreeNode(parent) {
     override val text: String = multibindingId
-    override val grayText: String
-      get() = "${rows.size} contributions"
-
+    override val grayText: String = "${contributions.size} contributions"
     override val icon: Icon = MetroIcons.MULTIBINDING
-    override val identity: Any = multibindingId
+    override val identity: Any = multibindingId to contributions.map { it.typeKey }
   }
 
   class Validation(parent: MetroTreeNode, val result: GraphValidationResult, stale: Boolean) :
@@ -197,31 +214,70 @@ internal class MetroTreeStructure(
       element is MetroTreeNode.Summary
 
   internal fun computeChildren(node: MetroTreeNode): List<MetroTreeNode> {
+    // The index needs stub indexes and Analysis API resolution; wait for smart mode
+    if (DumbService.isDumb(project)) return emptyList()
     return when (node) {
       is MetroTreeNode.Root -> graphNodes(node)
       is MetroTreeNode.Graph -> graphChildren(node)
-      is MetroTreeNode.Category -> node.rows
-      is MetroTreeNode.Aggregate -> node.rows
+      is MetroTreeNode.Category -> categoryRows(node)
+      is MetroTreeNode.Aggregate ->
+        node.contributions.map { bindingRow(node, it, inAggregate = true) }
       is MetroTreeNode.Validation -> validationChildren(node)
       is MetroTreeNode.Diagnostic -> diagnosticChildren(node)
       else -> emptyList()
     }
   }
 
-  /** The first Metro-enabled module's index. Indexes are project-wide, so any module works. */
-  private fun currentIndex(): BindingIndex? {
+  private fun categoryRows(node: MetroTreeNode.Category): List<MetroTreeNode> {
+    if (!node.grouped) {
+      return node.bindings.map {
+        bindingRow(node, it, ambiguousQualifiers = node.ambiguousQualifiers)
+      }
+    }
+    return node.bindings
+      .groupBy { it.multibindingId!! }
+      .toSortedMap()
+      .map { (id, contributions) -> MetroTreeNode.Aggregate(node, id, contributions) }
+  }
+
+  /**
+   * The distinct Metro-enabled indexes. Each index is project-wide, but modules with different
+   * option fingerprints get their own instance, so union across them.
+   */
+  private fun currentIndexes(): List<BindingIndex> {
     val resolutionService = project.service<MetroResolutionService>()
+    val indexes = mutableListOf<BindingIndex>()
     for (module in ModuleManager.getInstance(project).modules) {
       val index = resolutionService.index(module)
-      if (index !== BindingIndex.EMPTY) return index
+      if (index !== BindingIndex.EMPTY && indexes.none { it === index }) {
+        indexes += index
+      }
+    }
+    return indexes
+  }
+
+  /** [node]'s graph in the current indexes, refreshed so children never use stale entries. */
+  private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, KaGraphNode>? {
+    val classId = node.graph.classId
+    val file = node.graph.pointer.virtualFile
+    for (index in currentIndexes()) {
+      val fresh =
+        index.graphs.firstOrNull { it.classId == classId && it.pointer.virtualFile == file }
+      if (fresh != null) return index to fresh
     }
     return null
   }
 
   private fun graphNodes(root: MetroTreeNode.Root): List<MetroTreeNode> {
-    val index = currentIndex() ?: return emptyList()
     val validationService = project.service<MetroGraphValidationService>()
-    return index.graphs
+    val seen = HashSet<Pair<Any?, Any?>>()
+    val graphs =
+      currentIndexes()
+        .flatMap { index -> index.graphs }
+        .filter { graph ->
+          seen.add((graph.classId ?: graph.name) to graph.pointer.virtualFile)
+        }
+    return graphs
       .sortedBy { it.name.orEmpty() }
       .map { graph ->
         // Surface the last validation outcome on the graph row itself
@@ -243,8 +299,7 @@ internal class MetroTreeStructure(
   }
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {
-    val index = currentIndex() ?: return emptyList()
-    val graph = node.graph
+    val (index, graph) = resolveGraph(node) ?: return emptyList()
     val bindings = index.bindingsInContext(index.contextFor(graph))
     val filter = filterText().trim()
     val filtered =
@@ -281,31 +336,29 @@ internal class MetroTreeStructure(
       children += MetroTreeNode.Validation(node, cached.result, cached.stale)
     }
 
-    fun category(title: String, icon: Icon, bindings: List<KaBinding>) {
+    fun category(
+      title: String,
+      icon: Icon,
+      bindings: List<KaBinding>,
+      grouped: Boolean = false,
+      hint: String? = null,
+    ) {
       if (bindings.isEmpty()) return
-      val category = MetroTreeNode.Category(node, title, icon)
-      bindings
-        .sortedBy { it.typeKey.render(short = true) }
-        .mapTo(category.rows) {
-          bindingRow(category, it, ambiguousQualifiers = ambiguousQualifiers)
-        }
-      children += category
+      children +=
+        MetroTreeNode.Category(
+          parent = node,
+          title = title,
+          icon = icon,
+          bindings = bindings.sortedBy { it.typeKey.render(short = true) },
+          ambiguousQualifiers = ambiguousQualifiers,
+          grouped = grouped,
+          hint = hint,
+        )
     }
 
     category("Scoped", MetroIcons.SCOPED, scoped)
     category("Unscoped", MetroIcons.UNSCOPED, unscoped)
-    if (multibound.isNotEmpty()) {
-      val category = MetroTreeNode.Category(node, "Multibindings", MetroIcons.MULTIBINDING)
-      multibound
-        .groupBy { it.multibindingId!! }
-        .toSortedMap()
-        .mapTo(category.rows) { (id, contributions) ->
-          val aggregate = MetroTreeNode.Aggregate(category, id)
-          contributions.mapTo(aggregate.rows) { bindingRow(aggregate, it, inAggregate = true) }
-          aggregate
-        }
-      children += category
-    }
+    category("Multibindings", MetroIcons.MULTIBINDING, multibound, grouped = true)
     category("Contributed", MetroIcons.CONTRIBUTED, contributed)
 
     // Only meaningful once a validation ran: explicitly authored bindings nothing requested.
@@ -341,7 +394,7 @@ internal class MetroTreeStructure(
           binding.typeKey !in usedKeys &&
           binding.pointer !in usedPointers
       }
-      category("Unused", MetroIcons.UNUSED, unused)
+      category("Unused", MetroIcons.UNUSED, unused, hint = "based on validated graphs only")
     }
     return children
   }

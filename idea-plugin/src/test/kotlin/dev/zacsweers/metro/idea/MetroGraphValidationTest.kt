@@ -445,6 +445,48 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.Json" })
   }
 
+  fun testSameFqnGraphsInDifferentFilesDoNotShareResults() {
+    val source =
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      @DependencyGraph interface AppGraph
+      """
+        .trimIndent()
+    val fileA = myFixture.addFileToProject("a/Graphs.kt", source)
+    myFixture.addFileToProject("b/Graphs.kt", source)
+
+    val index = project.service<MetroResolutionService>().index(fileA)
+    val graphs = index.graphs.filter { it.classId?.asFqNameString() == "test.AppGraph" }
+    assertEquals(2, graphs.size)
+    val (graphA, graphB) = graphs
+
+    val validationService = project.service<MetroGraphValidationService>()
+    validationService.validate(fileA, graphA)
+
+    // Same ClassId, different declarations: only the validated one has a result
+    assertNotNull(validationService.cachedResult(fileA, graphA))
+    assertNull(validationService.cachedResult(fileA, graphB))
+  }
+
+  fun testBinaryGraphSupertypeMembersMerge() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibBaseGraph
+
+          @DependencyGraph
+          interface AppGraph : LibBaseGraph
+          """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "libtest.LibJson" })
+    }
+  }
+
   fun testResultsAreCachedPerIndex() {
     val file =
       myFixture.configureMetroFile(

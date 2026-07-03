@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.graph
 import androidx.collection.ScatterMap
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
@@ -169,7 +170,7 @@ internal class KaBindingGraph(
 
     // The seal's ScatterMap is handed off directly. The graph adapter is discarded after seal,
     // so nothing else can mutate it.
-    return GraphValidationResult(graph, diagnostics, topology, realGraph.bindings)
+    return GraphValidationResult(graph, diagnostics.toList(), topology, realGraph.bindings)
   }
 
   // The bindings the in-flight report is about, attached to the next reported diagnostic. The
@@ -203,6 +204,7 @@ internal class KaBindingGraph(
   /** Checks aggregates for duplicate map keys and unexpected emptiness after sealing. */
   private fun validateAggregates() {
     for (node in bindingLookup.aggregates) {
+      ProgressManager.checkCanceled()
       val aggregate = node.binding
       val contributions = node.contributions
       if (contributions.isEmpty()) {

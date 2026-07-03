@@ -12,6 +12,15 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 
+interface LibJson
+
+/** A binary graph supertype: its accessors and providers merge into graphs extending it. */
+interface LibBaseGraph {
+  val libJson: LibJson
+
+  @Provides fun provideLibJson(): LibJson = object : LibJson {}
+}
+
 interface LibService
 
 interface LibAnalytics

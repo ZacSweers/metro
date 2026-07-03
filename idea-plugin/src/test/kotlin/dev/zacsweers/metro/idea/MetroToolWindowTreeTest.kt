@@ -74,10 +74,11 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(listOf("Scoped", "Unscoped", "Multibindings"), categories.map { it.text })
 
     val scoped = categories[0] as MetroTreeNode.Category
-    assertEquals(listOf("ServiceImpl"), scoped.rows.map { it.text })
+    assertEquals(listOf("ServiceImpl"), structure.children(scoped).map { it.text })
 
     // Contributed classes also provide their own types, so they appear here too
     val unscoped = categories[1] as MetroTreeNode.Category
+    val unscopedRows = structure.children(unscoped)
     assertEquals(
       listOf(
         "Boolean",
@@ -87,16 +88,19 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         "Service -> ServiceImpl",
         "String",
       ),
-      unscoped.rows.map { it.text },
+      unscopedRows.map { it.text },
     )
     // Rows carry grayed locations for context
-    assertTrue(unscoped.rows.all { it.grayText?.startsWith("Test.kt:") == true })
+    assertTrue(unscopedRows.all { it.grayText?.startsWith("Test.kt:") == true })
 
     val multibindings = categories[2] as MetroTreeNode.Category
-    val aggregate = multibindings.rows.single() as MetroTreeNode.Aggregate
+    val aggregate = structure.children(multibindings).single() as MetroTreeNode.Aggregate
     assertEquals("test.Analytics", aggregate.text)
     // The aggregate row names the key, so contributions show just their sources
-    assertEquals(listOf("DebugAnalytics", "ProdAnalytics"), aggregate.rows.map { it.text })
+    assertEquals(
+      listOf("DebugAnalytics", "ProdAnalytics"),
+      structure.children(aggregate).map { it.text },
+    )
   }
 
   fun testFilterNarrowsRows() {
@@ -110,7 +114,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(listOf("Unscoped"), categories.map { it.text })
     assertEquals(
       listOf("String"),
-      (categories.single() as MetroTreeNode.Category).rows.map { it.text },
+      structure.children(categories.single()).map { it.text },
     )
   }
 
@@ -137,7 +141,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       structure.children(graphNode).filterIsInstance<MetroTreeNode.Category>().single {
         it.text == "Unused"
       }
-    assertEquals(listOf("Boolean"), unusedCategory.rows.map { it.text })
+    assertEquals(listOf("Boolean"), structure.children(unusedCategory).map { it.text })
   }
 
   fun testDiagnosticRowsWithNavigableStacks() {

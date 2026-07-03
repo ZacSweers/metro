@@ -28,6 +28,13 @@ import java.util.SortedSet
 import java.util.TreeSet
 import org.jetbrains.kotlin.name.FqName
 
+/**
+ * The generic binding graph contract shared by the compiler and IDE plugin.
+ *
+ * This API uses androidx.collection types, and metro-common declares that dependency as
+ * compileOnly. Consumers must provide androidx.collection (and androidx.tracing for the tracing
+ * package) on their own classpath.
+ */
 public interface BindingGraph<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, TypeKey>,

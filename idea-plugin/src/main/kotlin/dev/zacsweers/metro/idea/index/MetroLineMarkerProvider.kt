@@ -97,6 +97,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           if (GRAPH_OPTION.isEnabled) {
             result += graphMarker(element, graph, index)
           }
+          // Validation is addressed by ClassId, so graphs without one (local declarations)
+          // get no validate marker
           val classId = graph.classId
           if (VALIDATE_OPTION.isEnabled && classId != null) {
             result += validateMarker(element, declaration, graph, classId)
@@ -339,12 +341,13 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (cached.stale) append(" · code changed since")
       }
     }
+    val file = declaration.containingFile?.virtualFile
     return RelatedItemLineMarkerInfo(
       anchor,
       anchor.textRange,
       icon,
       { tooltip },
-      { _, element -> ValidateMetroGraphAction.openAndValidate(element.project, classId) },
+      { _, element -> ValidateMetroGraphAction.openAndValidate(element.project, classId, file) },
       GutterIconRenderer.Alignment.LEFT,
       { emptyList<GotoRelatedItem>() },
     )
@@ -404,13 +407,14 @@ private class GraphLineMarkerInfo(
   ) {
 
   override fun createGutterRenderer(): GutterIconRenderer {
+    val file = element?.containingFile?.virtualFile
     return object : LineMarkerGutterIconRenderer<PsiElement>(this) {
       override fun getPopupMenuActions(): ActionGroup? {
         val classId = graphClassId ?: return null
         return DefaultActionGroup(
           object : AnAction("Validate Metro Graph", null, MetroIcons.GRAPH) {
             override fun actionPerformed(e: AnActionEvent) {
-              e.project?.let { ValidateMetroGraphAction.openAndValidate(it, classId) }
+              e.project?.let { ValidateMetroGraphAction.openAndValidate(it, classId, file) }
             }
           }
         )

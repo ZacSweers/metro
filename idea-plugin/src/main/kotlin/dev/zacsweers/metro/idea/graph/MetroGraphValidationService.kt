@@ -9,6 +9,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiElement
 import dev.zacsweers.metro.compiler.MetroOptions
@@ -44,15 +45,23 @@ internal class MetroGraphValidationService(
 
   private class CachedEntry(val result: GraphValidationResult, val index: BindingIndex)
 
+  /** ClassId alone is ambiguous: same-FQN graphs can exist in different modules' files. */
+  private data class GraphCacheKey(val classId: ClassId, val file: VirtualFile?)
+
+  private fun cacheKey(graph: KaGraphNode): GraphCacheKey? {
+    val classId = graph.classId ?: return null
+    return GraphCacheKey(classId, graph.pointer.virtualFile)
+  }
+
   // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
   // browsing session from retaining every sealed graph forever. The synchronized wrapper is
   // required because async validation seals on pooled threads and access ordering mutates
   // internal links even on reads.
-  private val results: MutableMap<ClassId, CachedEntry> =
+  private val results: MutableMap<GraphCacheKey, CachedEntry> =
     Collections.synchronizedMap(
-      object : LinkedHashMap<ClassId, CachedEntry>(8, 0.75f, true) {
+      object : LinkedHashMap<GraphCacheKey, CachedEntry>(8, 0.75f, true) {
         override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<ClassId, CachedEntry>
+          eldest: MutableMap.MutableEntry<GraphCacheKey, CachedEntry>
         ): Boolean = size > 8
       }
     )
@@ -71,8 +80,8 @@ internal class MetroGraphValidationService(
    * have changed since the run.
    */
   fun cachedResult(element: PsiElement, graph: KaGraphNode): CachedValidation? {
-    val classId = graph.classId ?: return null
-    val entry = results[classId] ?: return null
+    val key = cacheKey(graph) ?: return null
+    val entry = results[key] ?: return null
     val index = project.service<MetroResolutionService>().index(element)
     return CachedValidation(entry.result, stale = entry.index !== index)
   }
@@ -84,14 +93,14 @@ internal class MetroGraphValidationService(
   fun validate(element: PsiElement, graph: KaGraphNode): GraphValidationResult {
     val index = project.service<MetroResolutionService>().index(element)
     val options = moduleOptions(element)
-    val classId = graph.classId ?: return KaBindingGraph(index, graph, options).seal()
-    results[classId]
+    val key = cacheKey(graph) ?: return KaBindingGraph(index, graph, options).seal()
+    results[key]
       ?.takeIf { it.index === index }
       ?.let {
         return it.result
       }
     val result = KaBindingGraph(index, graph, options).seal()
-    results[classId] = CachedEntry(result, index)
+    results[key] = CachedEntry(result, index)
     return result
   }
 
@@ -152,7 +161,7 @@ internal class MetroGraphValidationService(
 
   /** Launches [block] on the service scope, cancelling any in-flight run for the same graph. */
   private fun launchCoalesced(graph: KaGraphNode, block: suspend CoroutineScope.() -> Unit) {
-    val key: Any = graph.classId ?: graph
+    val key: Any = cacheKey(graph) ?: graph
     val job =
       scope.launch(start = CoroutineStart.LAZY) {
         try {

@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.util.parentOfType
 import dev.zacsweers.metro.compiler.mapToSet
@@ -30,8 +31,9 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
-    val classId = graphClassAt(e)?.getClassId() ?: return
-    openAndValidate(project, classId)
+    val ktClass = graphClassAt(e) ?: return
+    val classId = ktClass.getClassId() ?: return
+    openAndValidate(project, classId, ktClass.containingFile?.virtualFile)
   }
 
   /** The graph class at the caret, detected by annotation short names without resolution. */
@@ -56,13 +58,13 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     const val TOOL_WINDOW_ID = "Metro"
 
     /** Activates the Metro tool window, selects [classId]'s graph, and validates it. */
-    fun openAndValidate(project: Project, classId: ClassId) {
+    fun openAndValidate(project: Project, classId: ClassId, file: VirtualFile?) {
       val toolWindow =
         ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
       toolWindow.activate {
         val panel =
           toolWindow.contentManager.contents.firstOrNull()?.component as? MetroToolWindowPanel
-        panel?.selectAndValidate(classId)
+        panel?.selectAndValidate(classId, file)
       }
     }
   }

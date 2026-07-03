@@ -15,7 +15,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
+import com.intellij.psi.PsiManager
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.SearchTextField
@@ -28,6 +30,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import java.awt.BorderLayout
 import java.awt.event.MouseEvent
@@ -36,6 +39,7 @@ import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 import javax.swing.tree.TreePath
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtFile
 
 /** The Metro tool window: browse graphs and their bindings, and run on-demand validation. */
 internal class MetroToolWindowPanel(private val project: Project) :
@@ -69,8 +73,8 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
     val actionGroup =
       DefaultActionGroup(
-        object :
-          AnAction("Refresh", "Reload graphs and bindings", AllIcons.Actions.Refresh), DumbAware {
+        // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
+        object : AnAction("Refresh", "Reload graphs and bindings", AllIcons.Actions.Refresh) {
           override fun actionPerformed(e: AnActionEvent) {
             treeModel.invalidateAsync()
           }
@@ -101,18 +105,34 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   /** Expands to [classId]'s graph node, selects it, and runs validation. */
-  fun selectAndValidate(classId: ClassId) {
-    TreeUtil.promiseSelect(tree, graphVisitor(classId)).onSuccess {
-      selectedGraph()?.let(::validateGraph)
+  fun selectAndValidate(classId: ClassId, file: VirtualFile?) {
+    TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
+      // Validate even when the tree has no matching node yet (still loading, or the graph's
+      // module isn't the one the tree rendered from)
+      val graph = selectedGraph() ?: findGraph(classId, file)
+      graph?.let(::validateGraph)
     }
   }
 
-  private fun graphVisitor(classId: ClassId): TreeVisitor {
+  /** Resolves [classId]'s graph straight from its file's index, bypassing the tree. */
+  private fun findGraph(classId: ClassId, file: VirtualFile?): KaGraphNode? {
+    val psiFile =
+      file?.let { PsiManager.getInstance(project).findFile(it) } as? KtFile ?: return null
+    return project.service<MetroResolutionService>().index(psiFile).graphs.firstOrNull {
+      it.classId == classId && it.pointer.virtualFile == file
+    }
+  }
+
+  private fun MetroTreeNode.Graph.matches(classId: ClassId?, file: VirtualFile?): Boolean {
+    return graph.classId == classId && (file == null || graph.pointer.virtualFile == file)
+  }
+
+  private fun graphVisitor(classId: ClassId, file: VirtualFile?): TreeVisitor {
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
         is MetroTreeNode.Graph ->
-          if (node.graph.classId == classId) {
+          if (node.matches(classId, file)) {
             TreeVisitor.Action.INTERRUPT
           } else {
             TreeVisitor.Action.SKIP_CHILDREN
@@ -147,18 +167,19 @@ internal class MetroToolWindowPanel(private val project: Project) :
       // even when the run produced no problems.
       treeModel.invalidateAsync().thenRun {
         SwingUtilities.invokeLater {
-          TreeUtil.promiseSelect(tree, validationVisitor(graph.classId))
+          TreeUtil.promiseSelect(tree, validationVisitor(graph))
         }
       }
     }
   }
 
-  private fun validationVisitor(classId: ClassId?): TreeVisitor {
+  private fun validationVisitor(graph: KaGraphNode): TreeVisitor {
+    val file = graph.pointer.virtualFile
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
         is MetroTreeNode.Graph ->
-          if (node.graph.classId == classId) {
+          if (node.matches(graph.classId, file)) {
             TreeVisitor.Action.CONTINUE
           } else {
             TreeVisitor.Action.SKIP_CHILDREN

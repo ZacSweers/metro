@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
@@ -448,7 +449,19 @@ internal class IndexBuilder(
     graphClassId: ClassId?,
     extensionCreationIds: MutableSet<ClassId>,
   ) {
+    // The source annotation sweep never sees library files, so a library supertype's binding
+    // callables index here through their decompiled declarations
+    val isLibrary = superClass.origin == KaSymbolOrigin.LIBRARY
+    val bindingCallableIds =
+      options.providesAnnotations +
+        options.bindsAnnotations +
+        options.multibindsAnnotations +
+        bindsOptionalOfAnnotations(options)
     for (callable in superClass.declaredMemberScope.callables) {
+      if (isLibrary && callable.hasAnyAnnotation(bindingCallableIds)) {
+        (callable.psi as? KtDeclaration)?.let { processBindingCallable(it) }
+        continue
+      }
       if (callable is KaNamedFunctionSymbol && callable.valueParameters.isNotEmpty()) {
         (callable.psi as? KtNamedFunction)?.let { processGraphInjector(it, graphClassId) }
         continue
