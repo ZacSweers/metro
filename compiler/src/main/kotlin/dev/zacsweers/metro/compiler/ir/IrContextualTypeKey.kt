@@ -511,13 +511,13 @@ internal fun WrappedType<IrType>.toIrType(): IrType {
 
     is WrappedType.SuspendProvider -> {
       val innerIrType = innerType.toIrType()
-      val providerType = context.referenceClass(providerType)!!
+      val providerType = context.builtinsFinderCompat().findClass(providerType)!!
       providerType.typeWith(innerIrType)
     }
 
     is WrappedType.SuspendLazy -> {
       val innerIrType = innerType.toIrType()
-      val lazyType = context.referenceClass(lazyType)!!
+      val lazyType = context.builtinsFinderCompat().findClass(lazyType)!!
       lazyType.typeWith(innerIrType)
     }
 
