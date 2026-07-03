@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -115,6 +116,7 @@ internal fun validateInjectionSiteType(
 
   if (contextKey.wrappedType !is WrappedType.Canonical) {
     checkDesugaredProviderUse(session, contextKey, typeRef, source)
+    checkSuspendWrapperNesting(contextKey, typeRef, source)
   }
 
   val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
@@ -318,3 +320,92 @@ private fun checkDesugaredProviderUse(
     "Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.",
   )
 }
+
+/**
+ * Rejects statically-invalid combinations of suspend wrappers with other intrinsic wrappers. These
+ * are graph-independent: no binding resolution can make them meaningful, and codegen has no
+ * materialization for them.
+ *
+ * Rules:
+ * - `suspend () -> T` / `SuspendProvider<T>` / `SuspendLazy<T>` must wrap the binding type directly
+ *   (or a multibinding Map/Set/collection type). A suspend wrapper already defers resolution, so
+ *   wrapping another wrapper is meaningless.
+ * - `Provider<T>` / `Lazy<T>` / `() -> T` must not wrap suspend wrappers.
+ * - Map multibinding values support the deferred form `Map<K, suspend () -> V>` only —
+ *   `SuspendLazy` values are not supported.
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkSuspendWrapperNesting(
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+) {
+  val message = findInvalidSuspendNesting(contextKey.wrappedType) ?: return
+  reporter.reportOn(
+    typeRef.source ?: source,
+    MetroDiagnostics.UNSUPPORTED_SUSPEND_WRAPPER_NESTING,
+    message,
+  )
+}
+
+private fun findInvalidSuspendNesting(type: WrappedType<ConeKotlinType>): String? {
+  val inner =
+    when (type) {
+      is WrappedType.Canonical -> return null
+      is WrappedType.SuspendProvider -> {
+        when (val inner = type.innerType) {
+          is WrappedType.Canonical,
+          is WrappedType.Map -> inner
+          else ->
+            return "`suspend () -> T` cannot wrap ${describeWrapper(inner)}. A suspend function " +
+              "wrapper already defers resolution — wrap the binding type directly."
+        }
+      }
+      is WrappedType.SuspendLazy -> {
+        when (val inner = type.innerType) {
+          is WrappedType.Canonical,
+          is WrappedType.Map -> inner
+          else ->
+            return "`SuspendLazy<T>` cannot wrap ${describeWrapper(inner)}. SuspendLazy already " +
+              "defers and memoizes resolution — wrap the binding type directly."
+        }
+      }
+      is WrappedType.Provider -> {
+        when (val inner = type.innerType) {
+          is WrappedType.SuspendProvider,
+          is WrappedType.SuspendLazy ->
+            return "`Provider<T>`/`() -> T` cannot wrap ${describeWrapper(inner)}. Use " +
+              "`suspend () -> T` or `SuspendLazy<T>` directly instead."
+          else -> inner
+        }
+      }
+      is WrappedType.Lazy -> {
+        when (val inner = type.innerType) {
+          is WrappedType.SuspendProvider,
+          is WrappedType.SuspendLazy ->
+            return "`Lazy<T>` cannot wrap ${describeWrapper(inner)}. Use `suspend () -> T` or " +
+              "`SuspendLazy<T>` directly instead."
+          else -> inner
+        }
+      }
+      is WrappedType.Map -> {
+        when (val value = type.valueType) {
+          is WrappedType.SuspendLazy ->
+            return "Map multibindings support deferred suspend values as " +
+              "`Map<K, suspend () -> V>` — `SuspendLazy` values are not supported."
+          else -> value
+        }
+      }
+    }
+  return findInvalidSuspendNesting(inner)
+}
+
+private fun describeWrapper(type: WrappedType<ConeKotlinType>): String =
+  when (type) {
+    is WrappedType.Canonical -> "'${type.type}'"
+    is WrappedType.Provider -> "`Provider<T>`"
+    is WrappedType.SuspendProvider -> "another `suspend () -> T`"
+    is WrappedType.Lazy -> "`Lazy<T>`"
+    is WrappedType.SuspendLazy -> "`SuspendLazy<T>`"
+    is WrappedType.Map -> "`Map<K, V>`"
+  }

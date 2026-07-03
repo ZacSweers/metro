@@ -1703,5 +1703,11 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testSetMultibindingOverSuspendElements() {
       run("SetMultibindingOverSuspendElements.kt");
     }
+
+    @Test
+    @TestMetadata("UnsupportedSuspendWrapperNesting.kt")
+    public void testUnsupportedSuspendWrapperNesting() {
+      run("UnsupportedSuspendWrapperNesting.kt");
+    }
   }
 }

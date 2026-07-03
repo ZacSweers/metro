@@ -98,6 +98,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJEC
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSUPPORTED_SUSPEND_WRAPPER_NESTING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
@@ -162,6 +163,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
+  val UNSUPPORTED_SUSPEND_WRAPPER_NESTING by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
   val ASSISTED_INJECTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -339,6 +341,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           STRING,
           STRING,
         )
+        put(UNSUPPORTED_SUSPEND_WRAPPER_NESTING, "{0}", STRING)
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
         put(PROVIDES_ERROR, "{0}", STRING)
