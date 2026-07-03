@@ -58,6 +58,20 @@ JDK 24+ removes monitor pinning entirely ([JEP 491](https://openjdk.org/jeps/491
 
 If you're on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O in scoped providers (good advice in general) or initialize those bindings during startup.
 
+### **Why `SuspendLazy<T>` instead of `Deferred<T>`?**
+
+A `Deferred` is a `Job`. Injecting one hands every consumer lifecycle controls it should not own: any injection site could `cancel()` a shared scoped initialization out from under every other consumer, and the rest of the Job surface (`join()`, `invokeOnCompletion`, parenting) leaks with it. A `Deferred` also implies work already running in some scope, and Metro graphs do not own a `CoroutineScope`.
+
+`SuspendLazy<T>` exposes exactly one capability: await the value. That is the whole point.
+
+If you genuinely want a `Deferred`, provide one from a scope you own. Then the lifecycle exposure is your explicit choice:
+
+```kotlin
+@Provides
+fun deferredDb(scope: CoroutineScope, db: suspend () -> Database): Deferred<Database> =
+  scope.async(start = CoroutineStart.LAZY) { db() }
+```
+
 ### **Would you consider putting Metro into a foundation? My team has concerns about solo maintainers**
 
 I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.
