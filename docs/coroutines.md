@@ -116,6 +116,8 @@ It also works over non-suspend bindings if you want a uniform suspend API.
 
 `Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` or `SuspendLazy<T>` instead.
 
+Wrapper types also cannot nest. `suspend () -> T` and `SuspendLazy<T>` must wrap the binding type directly. Wrapping them in `Provider` or `Lazy`, or in each other, is a compile-time error. One suspend wrapper is enough. It already defers the work, and `SuspendLazy` also caches it.
+
 ## Scoping
 
 !!! note "Scope here means Metro scope"
