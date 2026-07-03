@@ -92,9 +92,10 @@ tasks.test {
 
 val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")
 
-// The compiler module's stdlib and kotlin-compiler are compileOnly (kotlinc provides them at
-// runtime), so the doc generator needs them added back for plain JavaExec. kotlin-compiler is
-// needed because MetroDiagnosticId entries reference their KtDiagnosticFactory transport.
+// The compiler module's stdlib, kotlin-compiler, and embedded dependencies are compileOnly
+// (kotlinc or the shadow jar provides them at runtime), so the doc generator needs them added
+// back for plain JavaExec. kotlin-compiler is needed because MetroDiagnosticId entries reference
+// their KtDiagnosticFactory transport, and metro-common now hosts MetroDiagnosticId itself.
 val diagnosticsDocsRuntime =
   configurations.create("diagnosticsDocsRuntime") {
     isCanBeConsumed = false
@@ -103,6 +104,8 @@ val diagnosticsDocsRuntime =
 dependencies {
   diagnosticsDocsRuntime(libs.kotlin.stdlib)
   diagnosticsDocsRuntime(libs.kotlin.compiler)
+  diagnosticsDocsRuntime(project(":metro-common"))
+  diagnosticsDocsRuntime(libs.androidx.collection)
 }
 
 val generateDiagnosticsDocs =
