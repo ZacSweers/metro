@@ -144,7 +144,7 @@ internal class GraphSuspendFactoryGenerator(
               // via SuspendDoubleCheck.lazy when adapting the arg.
               ctxKey.isWrappedInSuspendLazy ->
                 ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
-              ctxKey.isWrapped -> {
+              ctxKey.isWrappedInProvider || ctxKey.isWrappedInLazy -> {
                 // Provider<X>/Lazy<X> etc. — X can't be suspend here (validated), hold a
                 // Provider<canonical> and let typeAsProviderArgument adapt.
                 ctxKey.canonicalize().wrapInProvider().toIrType()

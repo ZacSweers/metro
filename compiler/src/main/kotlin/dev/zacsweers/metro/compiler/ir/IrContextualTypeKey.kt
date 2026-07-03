@@ -322,9 +322,7 @@ internal fun IrContextualTypeKey.stripOuterProviderOrLazy(): IrContextualTypeKey
 context(context: IrMetroContext)
 internal fun IrContextualTypeKey.canonicalize(): IrContextualTypeKey {
   var current = this
-  while (
-    current.isWrapped || current.isWrappedInSuspendProvider || current.isWrappedInSuspendLazy
-  ) {
+  while (current.isWrapped) {
     current = current.stripOuterProviderOrLazy()
   }
   return current
