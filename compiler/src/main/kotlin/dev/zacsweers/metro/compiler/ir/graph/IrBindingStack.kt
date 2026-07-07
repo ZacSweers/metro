@@ -67,7 +67,7 @@ internal interface IrBindingStack :
      * actually rendered — i.e. error reports or when logging is enabled.
      */
     graphContextProvider: (() -> String?)? = null,
-    override val annotation: String? = null,
+    override val trailingComment: String? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     private val graphContextLazy: Lazy<String?> =
@@ -82,7 +82,7 @@ internal interface IrBindingStack :
      * trace from existing entry factories and want to mark specific entries.
      */
     fun withAnnotation(annotation: String?): Entry {
-      if (annotation == this.annotation) return this
+      if (annotation == this.trailingComment) return this
       return Entry(
         contextKey = contextKey,
         usage = usage,
@@ -91,7 +91,7 @@ internal interface IrBindingStack :
         displayTypeKey = displayTypeKey,
         isSynthetic = isSynthetic,
         graphContextProvider = { graphContextLazy.value },
-        annotation = annotation,
+        trailingComment = annotation,
       )
     }
 
