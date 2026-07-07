@@ -62,7 +62,7 @@ internal interface BaseBindingStack<
      * needs suspend support`. Used by diagnostics that want to call out specific entries in a
      * trace.
      */
-    val annotation: String?
+    val trailingComment: String?
       get() = null
 
     fun render(graph: FqName, short: Boolean): String {
@@ -80,9 +80,9 @@ internal interface BaseBindingStack<
           append(']')
           append(' ')
           append(it)
-          annotation?.let { ann ->
+          trailingComment?.let { comment ->
             append(" // ")
-            append(ann)
+            append(comment)
           }
         }
       }
