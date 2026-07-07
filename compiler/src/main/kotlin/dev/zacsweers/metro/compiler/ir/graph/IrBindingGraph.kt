@@ -767,8 +767,7 @@ internal class IrBindingGraph(
         .firstOrNull { ctx ->
           val rawClassId = ctx.rawType?.rawTypeOrNull()?.classId
           ctx.typeKey == key &&
-            (rawClassId == Symbols.ClassIds.function0 ||
-              rawClassId == Symbols.ClassIds.suspendFunction0)
+            with(metroContext.metroSymbols.classIds) { rawClassId.isFunction0Like }
         }
         ?.rawType ?: return null
     return functionProviderMigrationHint(functionRawType)

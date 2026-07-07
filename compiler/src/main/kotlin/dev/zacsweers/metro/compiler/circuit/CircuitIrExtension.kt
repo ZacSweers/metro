@@ -111,6 +111,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
  */
 public class CircuitIrExtension(
   private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -124,6 +125,7 @@ public class CircuitIrExtension(
     ): CircuitIrExtension {
       return CircuitIrExtension(
         generateClassesInIr = generateClassesInIr,
+        function0Types = classIds.function0Types,
         assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
         injectAnnotations = classIds.allInjectAnnotations,
         qualifierAnnotations = classIds.qualifierAnnotations,
@@ -142,6 +144,7 @@ public class CircuitIrExtension(
         pluginContext = pluginContext,
         symbols = symbols,
         generateClassesInIr = generateClassesInIr,
+        function0Types = function0Types,
         assistedFactoryAnnotations = assistedFactoryAnnotations,
         injectAnnotations = injectAnnotations,
         qualifierAnnotations = qualifierAnnotations,
@@ -161,6 +164,7 @@ private class CircuitIrTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
   private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -796,9 +800,8 @@ private class CircuitIrTransformer(
             paramClassId != null &&
               (paramClassId in Symbols.ClassIds.commonMetroProviders ||
                 paramClassId == Symbols.ClassIds.Lazy ||
-                paramClassId == Symbols.ClassIds.function0 ||
                 paramClassId == Symbols.ClassIds.metroSuspendProvider ||
-                paramClassId == Symbols.ClassIds.suspendFunction0)
+                paramClassId in function0Types)
           arguments[ctorParam.indexInParameters] =
             if (isAlreadyWrapped) {
               fieldGet
@@ -968,9 +971,8 @@ private class CircuitIrTransformer(
           paramClassId != null &&
             (paramClassId in Symbols.ClassIds.commonMetroProviders ||
               paramClassId == Symbols.ClassIds.Lazy ||
-              paramClassId == Symbols.ClassIds.function0 ||
               paramClassId == Symbols.ClassIds.metroSuspendProvider ||
-              paramClassId == Symbols.ClassIds.suspendFunction0)
+              paramClassId in function0Types)
 
         val localVar =
           if (isAlreadyWrapped) {

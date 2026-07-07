@@ -14,7 +14,6 @@ import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isIntrinsicType
 import dev.zacsweers.metro.compiler.fir.isResolved
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.render
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.shouldCheckRuntimeTracingGraphInputs
@@ -299,11 +298,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
                 "`${param.name.asString()}` is `$rendered`. " +
                 "Remove the wrapper and let Metro handle the underlying type directly."
             val message =
-              if (
-                session.metroFirBuiltIns.options.enableFunctionProviders &&
-                  (paramClassId == Symbols.ClassIds.function0 ||
-                    paramClassId == Symbols.ClassIds.suspendFunction0)
-              ) {
+              if (with(session.classIds) { paramClassId.isFunction0Like }) {
                 base +
                   " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types " +
                   "(including `suspend () -> T`) are treated as provider types by Metro and cannot be unique bindings on the graph."

@@ -250,7 +250,6 @@ internal object BindingContainerCallableChecker :
           )
           return
         }
-        // suspend @Provides is allowed
       }
 
       declaration
@@ -388,11 +387,7 @@ internal object BindingContainerCallableChecker :
               "Remove the wrapper and let Metro provide the underlying type directly."
 
           val message =
-            if (
-              session.metroFirBuiltIns.options.enableFunctionProviders &&
-                (returnClassId == Symbols.ClassIds.function0 ||
-                  returnClassId == Symbols.ClassIds.suspendFunction0)
-            ) {
+            if (with(session.classIds) { returnClassId.isFunction0Like }) {
               base +
                 " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types " +
                 "(including `suspend () -> T`) are treated as provider types by Metro and cannot be unique bindings on the graph."

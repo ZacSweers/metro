@@ -121,6 +121,20 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
 
   internal val suspendLazyTypes = setOf(Symbols.ClassIds.metroSuspendLazy)
 
+  /**
+   * The zero-arg function types usable as provider spellings, `() -> T` and `suspend () -> T`.
+   * Empty when function providers are disabled.
+   */
+  internal val function0Types: Set<ClassId> =
+    if (options.enableFunctionProviders) {
+      setOf(Symbols.ClassIds.function0, Symbols.ClassIds.suspendFunction0)
+    } else {
+      emptySet()
+    }
+
+  internal val ClassId?.isFunction0Like: Boolean
+    get() = this != null && this in function0Types
+
   internal val nonFunctionProviderTypes by memoize { providerTypes - MetroClassIds.function0 }
 
   internal val lazyTypes = options.lazyTypes
