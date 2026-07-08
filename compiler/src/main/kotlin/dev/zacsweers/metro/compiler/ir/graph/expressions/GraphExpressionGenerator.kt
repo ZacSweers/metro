@@ -744,7 +744,7 @@ private constructor(
                     if (getterContextKey.isWrappedInProvider) {
                       irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
                     } else if (getterContextKey.isWrappedInLazy) {
-                      irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
+                      irInvoke(invokeGetter, callee = metroSymbols.lazyValue)
                     } else {
                       invokeGetter
                     }

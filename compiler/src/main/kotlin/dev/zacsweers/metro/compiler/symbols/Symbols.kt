@@ -613,7 +613,7 @@ internal class Symbols(
     builtinsFinder.findClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
   }
 
-  val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
+  val lazyValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("value")!! }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
     builtinsFinder.findFunctions(CallableId(stdlib.packageFqName, "error".asName())).first()
