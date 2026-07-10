@@ -4,9 +4,11 @@
     'config:recommended',
   ],
   ignorePresets: [
+    // Ensure we get the latest version and are not pinned to old versions.
     'workarounds:javaLTSVersions',
   ],
   customManagers: [
+    // Update .java-version file with the latest JDK version.
     {
       customType: 'regex',
       managerFilePatterns: [
@@ -17,8 +19,10 @@
       ],
       datasourceTemplate: 'java-version',
       depNameTemplate: 'java',
+      // Only write the major version.
       extractVersionTemplate: '^(?<version>\\d+)',
     },
+    // Track jdk = "..." in libs.versions.toml.
     {
       customType: 'regex',
       managerFilePatterns: [
@@ -31,6 +35,8 @@
       depNameTemplate: 'java',
       extractVersionTemplate: '^(?<version>\\d+)',
     },
+    // Track ktfmt version pinned in .kempt.toml.
+    // The `[^\\[]*?` lookahead keeps the match within the [ktfmt] section.
     {
       customType: 'regex',
       managerFilePatterns: [
@@ -43,6 +49,7 @@
       registryUrlTemplate: 'https://repo1.maven.org/maven2',
       depNameTemplate: 'com.facebook:ktfmt',
     },
+    // Track google-java-format version pinned in .kempt.toml.
     {
       customType: 'regex',
       managerFilePatterns: [
@@ -57,6 +64,7 @@
     },
   ],
   packageRules: [
+    // Group rules first; disables come after so they win on overlap.
     {
       groupName: 'JDK version',
       matchDepNames: [
