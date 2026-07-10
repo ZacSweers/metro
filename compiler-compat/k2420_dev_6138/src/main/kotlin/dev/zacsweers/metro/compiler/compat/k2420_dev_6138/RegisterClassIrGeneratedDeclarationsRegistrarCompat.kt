@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.compat.k2420_dev_6138
 
-import dev.zacsweers.metro.compiler.compat.k2420_dev_3583.IrAnnotationIrGeneratedDeclarationsRegistrarCompat
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
