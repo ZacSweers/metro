@@ -58,6 +58,7 @@ apiValidation {
     )
   nonPublicMarkers +=
     listOf(
+      "dev.zacsweers.metro.ExperimentalMetroCoroutinesApi",
       "dev.zacsweers.metro.ExperimentalMetroApi",
       "dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi",
     )
@@ -98,4 +99,5 @@ dependencies {
   dokka(project(":metrox-viewmodel"))
   dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
+  dokka(project(":runtime-coroutines"))
 }

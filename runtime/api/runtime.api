@@ -199,23 +199,6 @@ public abstract interface annotation class dev/zacsweers/metro/StringKey : java/
 	public abstract fun value ()Ljava/lang/String;
 }
 
-public abstract interface class dev/zacsweers/metro/SuspendLazy {
-	public abstract fun isInitialized ()Z
-	public abstract fun value (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-}
-
-public abstract interface class dev/zacsweers/metro/SuspendProvider : kotlin/coroutines/jvm/internal/SuspendFunction, kotlin/jvm/functions/Function1 {
-	public abstract fun invoke (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-}
-
-public final class dev/zacsweers/metro/SuspendProviderKt {
-	public static final fun flatMap (Ldev/zacsweers/metro/SuspendProvider;Lkotlin/jvm/functions/Function2;)Ldev/zacsweers/metro/SuspendProvider;
-	public static final fun map (Ldev/zacsweers/metro/SuspendProvider;Lkotlin/jvm/functions/Function2;)Ldev/zacsweers/metro/SuspendProvider;
-	public static final fun suspendProvider (Lkotlin/jvm/functions/Function1;)Ldev/zacsweers/metro/SuspendProvider;
-	public static final fun suspendProviderOf (Ljava/lang/Object;)Ldev/zacsweers/metro/SuspendProvider;
-	public static final fun zip (Ldev/zacsweers/metro/SuspendProvider;Ldev/zacsweers/metro/SuspendProvider;Lkotlin/jvm/functions/Function3;)Ldev/zacsweers/metro/SuspendProvider;
-}
-
 public abstract interface annotation class dev/zacsweers/metro/binding : java/lang/annotation/Annotation {
 }
 

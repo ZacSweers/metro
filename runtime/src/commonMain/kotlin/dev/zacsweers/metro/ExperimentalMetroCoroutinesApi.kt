@@ -9,6 +9,7 @@ package dev.zacsweers.metro
  * Opt in by either annotating the call site with `@OptIn(ExperimentalMetroCoroutinesApi::class)` or
  * compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
  */
+@MustBeDocumented
 @RequiresOptIn(
   level = RequiresOptIn.Level.WARNING,
   message = "This is part of Metro's experimental coroutines support",
