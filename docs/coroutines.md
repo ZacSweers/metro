@@ -92,7 +92,7 @@ interface AppGraph {
 }
 ```
 
-`suspend () -> T` is the suspend analog of the [`() -> T` function provider](metro-intrinsics.md). The underlying raw type is `SuspendProvider<T>`, which relates to `suspend () -> T` the same way `Provider<T>` relates to `() -> T`. Prefer the function type. Like function providers generally, this requires the `enableFunctionProviders` option, which is on by default.
+`suspend () -> T` is the suspend analog of the [`() -> T` function provider](metro-intrinsics.md). Prefer the function type at injection sites. Metro uses `SuspendProvider<T>` internally and adapts it to the function type. The runtime helper APIs below operate on `SuspendProvider<T>` directly. Like function providers generally, this requires the `enableFunctionProviders` option, which is on by default.
 
 Each invocation resolves the binding again, or returns the cached instance if the binding is scoped.
 
@@ -242,14 +242,14 @@ The `runtime` artifact includes small utilities for working with suspend provide
 
 ```kotlin
 // Wrap a lambda
-val provider: suspend () -> String = suspendProvider { fetchToken() }
+val provider: SuspendProvider<String> = suspendProvider { fetchToken() }
 
 // Wrap an existing value
-val fixed: suspend () -> String = suspendProviderOf("token")
+val fixed: SuspendProvider<String> = suspendProviderOf("token")
 
 // Transform lazily
-val mapped: suspend () -> Int = provider.map { it.length }
-val zipped: suspend () -> Pair<String, Int> = provider.zip(mapped) { a, b -> a to b }
+val mapped: SuspendProvider<Int> = provider.map { it.length }
+val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> a to b }
 ```
 
 The `runtime-coroutines` artifact adds memoization:
