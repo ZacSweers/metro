@@ -60,11 +60,14 @@ If you're on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O
 
 ### **Why `SuspendLazy<T>` instead of `Deferred<T>`?**
 
-A `Deferred` is a `Job`. Injecting one hands every consumer lifecycle controls it should not own: any injection site could `cancel()` a shared scoped initialization out from under every other consumer, and the rest of the Job surface (`join()`, `invokeOnCompletion`, parenting) leaks with it. A `Deferred` also implies work already running in some scope, and Metro graphs do not own a `CoroutineScope`.
+A `Deferred` is also a `Job`. Any consumer could cancel shared initialization, register completion
+callbacks, or otherwise control work used by other consumers. It also needs a `CoroutineScope` and
+Metro graphs do not own one.
 
-`SuspendLazy<T>` exposes exactly one capability: await the value. That is the whole point.
+`SuspendLazy<T>` lets consumers await the value and check whether it has been initialized without
+exposing cancellation or job ownership.
 
-If you genuinely want a `Deferred`, provide one from a scope you own. Then the lifecycle exposure is your explicit choice:
+If you need a `Deferred`, provide it from a scope you own:
 
 ```kotlin
 @Provides
