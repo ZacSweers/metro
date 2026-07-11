@@ -1,4 +1,4 @@
-/MixedCauseTransitiveSuspend.kt:26:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Worker bindings must be a suspend function or suspend () -> Worker because it depends on suspend bindings and requires a suspend context.
+/MixedCauseTransitiveSuspend.kt:29:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Worker bindings must be a suspend function or suspend () -> Worker because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Worker is requested at

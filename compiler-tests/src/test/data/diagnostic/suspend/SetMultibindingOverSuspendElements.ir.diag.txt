@@ -1,4 +1,4 @@
-/SetMultibindingOverSuspendElements.kt:11:15: error: [Metro/MultibindingOverSuspendBindings] Set<String> aggregates suspend bindings, which is not supported. Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly.
+/SetMultibindingOverSuspendElements.kt:13:15: error: [Metro/MultibindingOverSuspendBindings] Set<String> aggregates suspend bindings, which is not supported. Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly.
 
 Trace:
     Set<String> is requested at

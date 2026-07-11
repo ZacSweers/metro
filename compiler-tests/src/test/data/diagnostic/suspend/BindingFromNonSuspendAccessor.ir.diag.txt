@@ -1,4 +1,4 @@
-/BindingFromNonSuspendAccessor.kt:10:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] String bindings must be a suspend function or suspend () -> String because it depends on suspend bindings and requires a suspend context.
+/BindingFromNonSuspendAccessor.kt:12:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] String bindings must be a suspend function or suspend () -> String because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     String is requested at

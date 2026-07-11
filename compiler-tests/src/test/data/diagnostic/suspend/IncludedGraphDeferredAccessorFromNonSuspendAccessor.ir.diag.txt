@@ -1,4 +1,4 @@
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:13:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
+/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:16:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Int is requested at
@@ -8,9 +8,9 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:23:14: warning: This is part of Metro's experimental coroutines support
+/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:25:11: error: Scoped suspend bindings and `SuspendLazy` require the `dev.zacsweers.metro:runtime-coroutines` artifact. Add it to the compile and runtime classpath.
 
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:30:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Long bindings must be a suspend function or suspend () -> Long because it depends on suspend bindings and requires a suspend context.
+/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:33:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Long bindings must be a suspend function or suspend () -> Long because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Long is requested at

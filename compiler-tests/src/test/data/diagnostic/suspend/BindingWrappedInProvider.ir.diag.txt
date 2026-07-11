@@ -1,4 +1,4 @@
-/BindingWrappedInProvider.kt:9:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
+/BindingWrappedInProvider.kt:11:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Int is requested at
@@ -12,4 +12,4 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/BindingWrappedInProvider.kt:11:28: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+/BindingWrappedInProvider.kt:13:28: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.

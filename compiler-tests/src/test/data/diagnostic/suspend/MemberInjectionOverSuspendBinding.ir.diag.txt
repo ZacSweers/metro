@@ -1,4 +1,4 @@
-/MemberInjectionOverSuspendBinding.kt:9:24: error: [Metro/MemberInjectionOverSuspendBinding] 'Target' member injection depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
+/MemberInjectionOverSuspendBinding.kt:11:24: error: [Metro/MemberInjectionOverSuspendBinding] 'Target' member injection depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
 
 Trace:
     String is injected at
@@ -7,7 +7,7 @@ Trace:
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
 
 
-/MemberInjectionOverSuspendBinding.kt:13:7: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' has @Inject members and depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
+/MemberInjectionOverSuspendBinding.kt:15:7: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' has @Inject members and depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
 
 Trace:
     String is injected at
@@ -16,7 +16,7 @@ Trace:
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
 
 
-/MemberInjectionOverSuspendBinding.kt:14:24: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' member injection depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
+/MemberInjectionOverSuspendBinding.kt:16:24: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' member injection depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
 
 Trace:
     String is injected at

@@ -1,4 +1,4 @@
-/DepInConstructorInjectedNonSuspendAccessor.kt:14:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Foo bindings must be a suspend function or suspend () -> Foo because it depends on suspend bindings and requires a suspend context.
+/DepInConstructorInjectedNonSuspendAccessor.kt:16:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Foo bindings must be a suspend function or suspend () -> Foo because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Foo is requested at
