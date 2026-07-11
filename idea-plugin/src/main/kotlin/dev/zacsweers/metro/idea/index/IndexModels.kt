@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -62,6 +63,23 @@ internal class BindingData(
   }
 }
 
+/** Bindings synthesized from one concrete factory `@Includes` parameter type. */
+internal class FactoryInputEntry(
+  val key: KaTypeKey,
+  val kind: Kind,
+  val bindings: List<KaBinding>,
+  val consumers: List<ConsumerEntry>,
+) {
+  val id = Id(key, kind)
+
+  internal data class Id(val key: KaTypeKey, val kind: Kind)
+
+  enum class Kind {
+    BINDING_CONTAINER,
+    GRAPH_DEPENDENCY,
+  }
+}
+
 /** The Metro declarations extracted from a single file, cached against that file's PSI. */
 internal class FileShard(
   val bindings: List<KaBinding>,
@@ -70,6 +88,9 @@ internal class FileShard(
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
+  val factoryInputs: List<FactoryInputEntry>,
+  /** Referenced declaration files whose changes require this shard to be rebuilt. */
+  val cacheDependencies: Set<PsiFile>,
 ) {
   companion object {
     val EMPTY =
@@ -80,6 +101,8 @@ internal class FileShard(
         emptyList(),
         emptyList(),
         emptyList(),
+        emptyList(),
+        emptySet(),
       )
   }
 }

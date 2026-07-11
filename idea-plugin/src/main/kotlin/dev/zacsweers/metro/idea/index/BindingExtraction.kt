@@ -20,6 +20,8 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
+import org.jetbrains.kotlin.analysis.api.signatures.KaCallableSignature
+import org.jetbrains.kotlin.analysis.api.signatures.KaFunctionSignature
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
@@ -97,6 +99,46 @@ internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
  */
 internal class MapKeyInfo(val keyTypeRender: String, val annotationRender: String?)
 
+/** A callable parameter paired with its use-site-substituted type. */
+internal class CallableParameterView(val symbol: KaCallableSymbol, val returnType: KaType)
+
+/** A callable declaration paired with the types substituted for one concrete receiver type. */
+internal class CallableBindingView(
+  val symbol: KaCallableSymbol,
+  val returnType: KaType,
+  val receiver: CallableParameterView?,
+  val valueParameters: List<CallableParameterView>,
+)
+
+internal fun KaSession.callableBindingView(symbol: KaCallableSymbol): CallableBindingView {
+  val receiver = symbol.receiverParameter?.let { CallableParameterView(it, it.returnType) }
+  val valueParameters =
+    (symbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty().map {
+      CallableParameterView(it, it.returnType)
+    }
+  return CallableBindingView(symbol, symbol.returnType, receiver, valueParameters)
+}
+
+/** Unwraps fake overrides for source metadata while retaining [signature]'s substituted types. */
+internal fun KaSession.callableBindingView(
+  signature: KaCallableSignature<*>
+): CallableBindingView? {
+  val sourceSymbol = signature.symbol.fakeOverrideOriginal
+  val sourceParameters = (sourceSymbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty()
+  val signatureParameters = (signature as? KaFunctionSignature<*>)?.valueParameters.orEmpty()
+  if (sourceParameters.size != signatureParameters.size) return null
+
+  val receiver =
+    sourceSymbol.receiverParameter?.let { sourceReceiver ->
+      val receiverType = signature.receiverType ?: return@let null
+      CallableParameterView(sourceReceiver, receiverType)
+    }
+  val valueParameters = signatureParameters.mapIndexed { index, parameter ->
+    CallableParameterView(sourceParameters[index], parameter.returnType)
+  }
+  return CallableBindingView(sourceSymbol, signature.returnType, receiver, valueParameters)
+}
+
 /**
  * Resolves the map key of an `@IntoMap` contribution from its map key annotation, mirroring the
  * compiler's `mapKeyType`: the annotation's single member type when the `@MapKey` meta-annotation
@@ -153,6 +195,15 @@ private fun KaSession.callableBindingData(
   options: MetroOptions,
 ): List<BindingData> {
   val symbol = declaration.symbol as? KaCallableSymbol ?: return emptyList()
+  return bindingData(callableBindingView(symbol), options)
+}
+
+/** Computes callable binding data from declaration metadata and use-site-substituted types. */
+internal fun KaSession.bindingData(
+  callable: CallableBindingView,
+  options: MetroOptions,
+): List<BindingData> {
+  val symbol = callable.symbol
   val getterSymbol = (symbol as? KaPropertySymbol)?.getter
   val fieldSymbol = (symbol as? KaPropertySymbol)?.backingFieldSymbol
 
@@ -164,7 +215,7 @@ private fun KaSession.callableBindingData(
 
   val qualifier = qualifierAnnotation(symbol, options)
   val scope = scopeAnnotation(symbol, options)
-  val returnType = symbol.returnType
+  val returnType = callable.returnType
 
   val mapKeyInfo =
     if (has(options.intoMapAnnotations)) {
@@ -198,14 +249,14 @@ private fun KaSession.callableBindingData(
   return when {
     has(options.bindsAnnotations) -> {
       val sourceType =
-        symbol.receiverParameter?.returnType
-          ?: (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()?.returnType
+        callable.receiver?.returnType
+          ?: callable.valueParameters.singleOrNull()?.returnType
           ?: return emptyList()
-      val sourceParam = (symbol as? KaNamedFunctionSymbol)?.valueParameters?.singleOrNull()
+      val sourceParam = callable.valueParameters.singleOrNull()
       val consumedKey =
         contextualTypeKey(
           sourceType,
-          sourceParam?.let { qualifierAnnotation(it, options) },
+          sourceParam?.let { qualifierAnnotation(it.symbol, options) },
           options,
         )
       val implementationName =
@@ -267,14 +318,13 @@ private fun KaSession.callableBindingData(
       val elementKey = typeKey(elementType, qualifier)
       val multibindingId = multibindingId(elementKey)
       // Extension receivers on provider callables are dependencies, same as value parameters.
-      val receiverDependency = symbol.receiverParameter?.let { dependencyKey(it, options) }
+      val receiverDependency =
+        callable.receiver?.let { dependencyKey(it.returnType, it.symbol, options) }
       val dependencies =
         listOfNotNull(receiverDependency) +
-          (symbol as? KaNamedFunctionSymbol)
-            ?.valueParameters
-            .orEmpty()
-            .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
-            .map { dependencyKey(it, options) }
+          callable.valueParameters
+            .filterNot { it.symbol.hasAnyAnnotation(options.assistedAnnotations) }
+            .map { dependencyKey(it.returnType, it.symbol, options) }
       listOf(
         BindingData(
           elementKey,

@@ -4,10 +4,10 @@ package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.PsiTreeUtil
-import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -71,6 +71,7 @@ internal class IndexBuilder(
   private val contributions: MutableList<ContributionEntry> = mutableListOf(),
   private val assistedSites: MutableList<AssistedSite> = mutableListOf(),
   private val bindingContainerEntries: MutableList<BindingContainerEntry> = mutableListOf(),
+  private val factoryInputs: MutableList<FactoryInputEntry> = mutableListOf(),
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
 
@@ -82,6 +83,8 @@ internal class IndexBuilder(
   private val processedCircuitInjects = HashSet<KtDeclaration>()
   private val processedAssistedFactories = HashSet<KtClassOrObject>()
   private val processedContainers = HashSet<KtClassOrObject>()
+  private val processedFactoryInputs = HashSet<FactoryInputEntry.Id>()
+  private val cacheDependencies = HashSet<PsiFile>()
 
   fun buildShard(file: KtFile): FileShard {
     val bindingCallableNames =
@@ -120,6 +123,8 @@ internal class IndexBuilder(
       contributions,
       assistedSites,
       bindingContainerEntries,
+      factoryInputs,
+      cacheDependencies,
     )
   }
 
@@ -343,7 +348,8 @@ internal class IndexBuilder(
       val factoryAnnotations =
         options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
       val nestedClassIds = mutableSetOf<ClassId>()
-      val includedDependencies = mutableSetOf<ClassId>()
+      val includedBindingContainers = mutableSetOf<KaTypeKey>()
+      val includedDependencies = mutableSetOf<KaTypeKey>()
       val extensionCreationIds = mutableSetOf<ClassId>()
 
       for (member in ktClass.declarations) {
@@ -351,16 +357,15 @@ internal class IndexBuilder(
           is KtClassOrObject -> {
             val memberClassId = member.getClassId() ?: continue
             nestedClassIds += memberClassId
-            // Factory @Includes params wire graph dependencies whose accessors join the graph
             val memberSymbol = member.symbol as? KaClassSymbol ?: continue
             if (!memberSymbol.hasAnyAnnotation(factoryAnnotations)) continue
-            for (function in member.declarations.filterIsInstance<KtNamedFunction>()) {
-              for (parameter in function.valueParameters) {
-                val paramSymbol = parameter.symbol as? KaValueParameterSymbol ?: continue
-                if (!paramSymbol.hasAnyAnnotation(setOf(MetroClassIds.includes))) continue
-                val depType = paramSymbol.returnType.fullyExpandedType as? KaClassType ?: continue
-                includedDependencies += depType.classId
-                registerIncludedDependencyAccessors(depType.classId)
+            val includes = factoryIncludes(memberSymbol, options, pointerManager)
+            cacheDependencies += includes.cacheDependencies
+            includedBindingContainers += includes.bindingContainers
+            includedDependencies += includes.graphDependencies
+            for (input in includes.inputs) {
+              if (processedFactoryInputs.add(input.id)) {
+                factoryInputs += input
               }
             }
           }
@@ -433,6 +438,7 @@ internal class IndexBuilder(
           classId = graphClassId,
           excludes = excludes,
           bindingContainers = containerIds,
+          includedBindingContainers = includedBindingContainers,
           includedDependencies = includedDependencies,
           isExtension = graphAnnotations.isEmpty(),
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
@@ -520,23 +526,6 @@ internal class IndexBuilder(
           typeClassId = contextKey.typeKey.type.classId,
           graphClassId = graphClassId,
           isOptional = contextKey.hasDefault,
-        )
-    }
-  }
-
-  /** `@Includes` graph dependencies expose their accessors as bindings in the including graph. */
-  private fun KaSession.registerIncludedDependencyAccessors(depClassId: ClassId) {
-    val depSymbol = findClass(depClassId) as? KaNamedClassSymbol ?: return
-    for (callable in depSymbol.declaredMemberScope.callables) {
-      if (callable !is KaPropertySymbol && callable !is KaNamedFunctionSymbol) continue
-      if (callable is KaNamedFunctionSymbol && callable.valueParameters.isNotEmpty()) continue
-      if (callable.returnType.isUnitType) continue
-      val psi = callable.psi as? KtElement ?: continue
-      bindings +=
-        KaBinding.GraphDependency(
-          ptr(psi),
-          typeKey(callable.returnType, qualifierAnnotation(callable, options)),
-          containerId = depClassId,
         )
     }
   }

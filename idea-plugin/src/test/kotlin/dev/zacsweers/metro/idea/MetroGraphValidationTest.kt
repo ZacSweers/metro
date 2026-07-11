@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.GraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.KaBinding
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
 class MetroGraphValidationTest : BasePlatformTestCase() {
@@ -62,6 +63,39 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     // The aggregate node participates in the sealed bindings
     assertTrue(
       result.bindings.any { key, _ -> key.renderedType.startsWith("kotlin.collections.Set") }
+    )
+  }
+
+  fun testIncludedDependencyInstanceCanSatisfyContainerProvider() {
+    val result =
+      validate(
+        """
+        interface Bar {
+          val a: Int
+        }
+
+        @BindingContainer
+        object Foo {
+          @Provides fun value(bar: Bar): String = bar.a.toString()
+        }
+
+        @DependencyGraph(bindingContainers = [Foo::class])
+        interface AppGraph {
+          val value: String
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes bar: Bar): AppGraph
+          }
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, binding ->
+        key.renderedType == "test.Bar" && binding is KaBinding.BoundInstance && binding.isGraphInput
+      }
     )
   }
 

@@ -3,8 +3,10 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.KaBinding
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -1170,18 +1172,29 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
         class Client
 
-        interface NetworkDeps {
-          val client: Client
+        interface FactoryBase<G, D> {
+          fun create(@Includes deps: D): G
+        }
+
+        interface NetworkDeps<T> {
+          val client: T
         }
 
         @DependencyGraph(AppScope::class)
         interface IncludesGraph {
+          val deps: NetworkDeps<Client>
           val graphClient: Client
 
           @DependencyGraph.Factory
-          interface Factory {
-            fun create(@Includes deps: NetworkDeps): IncludesGraph
-          }
+          interface Factory : FactoryBase<IncludesGraph, NetworkDeps<Client>>
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface OtherGraph {
+          val otherClient: Client
+
+          @DependencyGraph.Factory
+          interface Factory : FactoryBase<OtherGraph, NetworkDeps<Client>>
         }
         """
           .trimIndent(),
@@ -1192,15 +1205,198 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val graph = index.graphEntryAt(declarations.klass("IncludesGraph"))!!
     val context = index.contextsFor(graph).single()
     val queryContext = index.queryContext(context)!!
-    assertEquals(1, context.includedDependencies.size)
+    assertEquals(
+      setOf("test.NetworkDeps<test.Client>"),
+      context.includedDependencies.mapTo(mutableSetOf()) { it.renderedType },
+    )
 
     val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
     val bindings = index.bindingsFor(accessor, queryContext)
     assertEquals(listOf("included dependency accessor"), bindings.map { it.label })
+    assertEquals("test.Client", bindings.single().typeKey.renderedType)
+    assertEquals(
+      listOf("test.NetworkDeps<test.Client>"),
+      bindings.single().dependencies.map { it.typeKey.renderedType },
+    )
     // Anchored at the dependency's accessor declaration
     assertEquals(
       "client",
       (bindings.single().pointer.element as? KtNamedDeclaration)?.name,
+    )
+
+    val ownerAccessor = index.consumerEntryAt(declarations.property("deps"))!!
+    assertEquals(
+      listOf("instance binding"),
+      index.bindingsFor(ownerAccessor, queryContext).map { it.label },
+    )
+
+    val otherGraph = index.graphEntryAt(declarations.klass("OtherGraph"))!!
+    val otherContext = index.queryContext(index.contextsFor(otherGraph).single())!!
+    val otherAccessor = index.consumerEntryAt(declarations.property("otherClient"))!!
+    assertEquals(
+      listOf("included dependency accessor"),
+      index.bindingsFor(otherAccessor, otherContext).map { it.label },
+    )
+
+    // The concrete factory input is shared rather than recreated once per including graph.
+    assertEquals(
+      1,
+      index.bindings.filterIsInstance<KaBinding.GraphDependency>().count {
+        it.ownerKey.renderedType == "test.NetworkDeps<test.Client>"
+      },
+    )
+    assertEquals(
+      1,
+      index.bindings.filterIsInstance<KaBinding.BoundInstance>().count {
+        it.isGraphInput && it.typeKey.renderedType == "test.NetworkDeps<test.Client>"
+      },
+    )
+  }
+
+  fun testIncludedGenericBindingContainersUseConcreteTypes() {
+    val file =
+      myFixture.configureByText(
+        "GenericIncludes.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.BindingContainer
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+        import dev.zacsweers.metro.Provides
+
+        class Box<T>(val value: T)
+
+        @BindingContainer
+        interface GenericBindings<T> {
+          @Provides fun value(): T = error("not called")
+          @Provides fun box(value: T): Box<T> = Box(value)
+
+          companion object {
+            @Provides fun count(): Long = 1L
+          }
+        }
+
+        @DependencyGraph
+        interface StringGraph {
+          val stringValue: String
+          val stringBox: Box<String>
+          val count: Long
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes bindings: GenericBindings<String>): StringGraph
+          }
+        }
+
+        @DependencyGraph
+        interface IntGraph {
+          val intValue: Int
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes bindings: GenericBindings<Int>): IntGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    val stringGraph = index.graphEntryAt(declarations.klass("StringGraph"))!!
+    val stringContext = index.contextsFor(stringGraph).single()
+    val stringQueryContext = index.queryContext(stringContext)!!
+    assertEquals(
+      setOf("test.GenericBindings<kotlin.String>"),
+      stringContext.includedBindingContainers.mapTo(mutableSetOf()) { it.renderedType },
+    )
+
+    val valueAccessor = index.consumerEntryAt(declarations.property("stringValue"))!!
+    assertEquals(
+      listOf("kotlin.String"),
+      index.bindingsFor(valueAccessor, stringQueryContext).map { it.typeKey.renderedType },
+    )
+    val boxAccessor = index.consumerEntryAt(declarations.property("stringBox"))!!
+    val boxBinding = index.bindingsFor(boxAccessor, stringQueryContext).single()
+    assertEquals("test.Box<kotlin.String>", boxBinding.typeKey.renderedType)
+    assertEquals(
+      listOf("kotlin.String"),
+      boxBinding.dependencies.map { it.typeKey.renderedType },
+    )
+    val countAccessor = index.consumerEntryAt(declarations.property("count"))!!
+    assertEquals(1, index.bindingsFor(countAccessor, stringQueryContext).size)
+
+    val intGraph = index.graphEntryAt(declarations.klass("IntGraph"))!!
+    val intQueryContext = index.queryContext(index.contextsFor(intGraph).single())!!
+    val intAccessor = index.consumerEntryAt(declarations.property("intValue"))!!
+    assertEquals(
+      listOf("kotlin.Int"),
+      index.bindingsFor(intAccessor, intQueryContext).map { it.typeKey.renderedType },
+    )
+    assertTrue(index.bindingsFor(valueAccessor, intQueryContext).isEmpty())
+  }
+
+  fun testIncludedDependencyShardTracksAccessorFileChanges() {
+    val dependencyFile =
+      myFixture.addFileToProject(
+        "test/NetworkDeps.kt",
+        """
+        package test
+
+        class First
+        class Second
+
+        interface NetworkDeps {
+          val first: First
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val graphFile =
+      myFixture.configureByText(
+        "Graph.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+
+        @DependencyGraph
+        interface AppGraph {
+          val second: Second
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes deps: NetworkDeps): AppGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val declarations = graphFile.declarationsIncludingNested()
+    val accessor = declarations.property("second")
+
+    val initialIndex = project.service<MetroResolutionService>().index(graphFile)
+    val initialGraph = initialIndex.graphEntryAt(declarations.klass("AppGraph"))!!
+    val initialContext =
+      initialIndex.queryContext(initialIndex.contextsFor(initialGraph).single())!!
+    val initialConsumer = initialIndex.consumerEntryAt(accessor)!!
+    assertTrue(initialIndex.bindingsFor(initialConsumer, initialContext).isEmpty())
+
+    myFixture.openFileInEditor(dependencyFile.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(dependencyFile.text.lastIndexOf('}'))
+    myFixture.type("  val second: Second\n")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updatedIndex = project.service<MetroResolutionService>().index(graphFile)
+    val updatedGraph = updatedIndex.graphEntryAt(declarations.klass("AppGraph"))!!
+    val updatedContext =
+      updatedIndex.queryContext(updatedIndex.contextsFor(updatedGraph).single())!!
+    val updatedConsumer = updatedIndex.consumerEntryAt(accessor)!!
+    assertEquals(
+      listOf("included dependency accessor"),
+      updatedIndex.bindingsFor(updatedConsumer, updatedContext).map { it.label },
     )
   }
 

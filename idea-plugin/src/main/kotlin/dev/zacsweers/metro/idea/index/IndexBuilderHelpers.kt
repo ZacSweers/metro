@@ -12,6 +12,7 @@ import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
@@ -38,6 +39,7 @@ internal fun shortNames(classIds: Set<ClassId>): Set<String> {
 internal fun BindingData.toKaBinding(
   pointer: SmartPsiElementPointer<out PsiElement>,
   containerId: ClassId? = null,
+  includedContainerKey: KaTypeKey? = null,
   originClassId: ClassId? = this.originClassId,
   implementationName: String? = this.implementationName,
   replaces: Set<ClassId> = this.replaces,
@@ -67,6 +69,7 @@ internal fun BindingData.toKaBinding(
         mapKeyValue = mapKeyValue,
         originClassId = originClassId,
         containerId = containerId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = dependencies,
@@ -83,6 +86,7 @@ internal fun BindingData.toKaBinding(
         mapKeyValue = mapKeyValue,
         originClassId = originClassId,
         containerId = containerId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
         isClassContribution = isClassContribution,
@@ -95,6 +99,7 @@ internal fun BindingData.toKaBinding(
         scope = scope,
         originClassId = originClassId,
         containerId = containerId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
         allowEmpty = allowEmpty,
@@ -109,6 +114,7 @@ internal fun BindingData.toKaBinding(
         implementationName = implementationName,
         originClassId = originClassId,
         containerId = containerId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
         hintAvailability = hintAvailability,

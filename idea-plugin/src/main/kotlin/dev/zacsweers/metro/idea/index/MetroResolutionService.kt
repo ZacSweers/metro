@@ -109,6 +109,7 @@ class MetroResolutionService(private val project: Project) {
     val contributions = mutableListOf<ContributionEntry>()
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
+    val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
     for (file in candidateFiles(options)) {
       ProgressManager.checkCanceled()
       val shard = shardFor(file)
@@ -118,6 +119,13 @@ class MetroResolutionService(private val project: Project) {
       contributions += shard.contributions
       assistedSites += shard.assistedSites
       bindingContainers += shard.bindingContainers
+      for (input in shard.factoryInputs) {
+        factoryInputs.putIfAbsent(input.id, input)
+      }
+    }
+    for (input in factoryInputs.values) {
+      bindings += input.bindings
+      consumers += input.consumers
     }
     if (MetroSettings.getInstance(project).state.resolveFromLibraries) {
       IndexBuilder(project, options, bindings, consumers, graphs, contributions).postProcess()
@@ -175,6 +183,7 @@ class MetroResolutionService(private val project: Project) {
         shard,
         file,
         KotlinCompilerSettingsTracker.getInstance(file.project),
+        *shard.cacheDependencies.toTypedArray(),
       )
     }
   }

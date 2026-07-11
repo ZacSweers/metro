@@ -42,6 +42,10 @@ internal sealed interface KaBinding :
   val containerId: ClassId?
     get() = null
 
+  /** Concrete binding-container factory input whose membership gates this binding. */
+  val includedContainerKey: KaTypeKey?
+    get() = null
+
   override val replaces: Set<ClassId>
     get() = emptySet()
 
@@ -122,6 +126,7 @@ internal sealed interface KaBinding :
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
@@ -145,6 +150,7 @@ internal sealed interface KaBinding :
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     /** True for `@ContributesBinding`-style class contributions, false for `@Binds` callables. */
@@ -178,6 +184,7 @@ internal sealed interface KaBinding :
     override val scope: KaAnnotationSnapshot? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     /** Whether the declaration permits an empty aggregate via `@Multibinds(allowEmpty = true)`. */
@@ -191,11 +198,13 @@ internal sealed interface KaBinding :
       get() = if (dependencies.isEmpty()) "multibinding declaration" else "multibinding"
   }
 
-  /** An instance binding from a graph factory `@Provides` parameter. */
+  /** An instance supplied by a graph factory through `@Provides` or graph-like `@Includes`. */
   class BoundInstance(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
     typeKey: KaTypeKey,
     override val containerId: ClassId?,
+    /** True for a graph dependency supplied through a factory `@Includes` parameter. */
+    val isGraphInput: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -227,10 +236,11 @@ internal sealed interface KaBinding :
   /** An accessor of an `@Includes` graph dependency. */
   class GraphDependency(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
-    typeKey: KaTypeKey,
-    override val containerId: ClassId?,
+    override val contextualTypeKey: KaContextualTypeKey,
+    /** The included graph object on which this accessor is invoked. */
+    val ownerKey: KaTypeKey,
   ) : KaBinding {
-    override val contextualTypeKey = typeKey.canonicalContextKey()
+    override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 
     override val label: String
       get() = "included dependency accessor"
@@ -257,6 +267,7 @@ internal sealed interface KaBinding :
     override val implementationName: String?,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val hintAvailability: HintAvailability? = null,

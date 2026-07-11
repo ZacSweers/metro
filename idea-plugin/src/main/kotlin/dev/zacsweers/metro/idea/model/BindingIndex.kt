@@ -292,6 +292,7 @@ internal class BindingIndex(
     val excludes = chain.flatMapToSet { it.excludes }
     // Supertype members merge into the graph, so their classes gate membership like the graph
     val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
+    val includedBindingContainers = chain.flatMapToSet { it.includedBindingContainers }
     val includedDependencies = chain.flatMapToSet { it.includedDependencies }
 
     return GraphContext(
@@ -299,6 +300,7 @@ internal class BindingIndex(
       scopes = scopes,
       scopingAnnotations = chain.flatMapToSet { it.scopingAnnotations },
       excludes = excludes,
+      includedBindingContainers = includedBindingContainers,
       includedDependencies = includedDependencies,
       graphClassIds = graphClassIds,
     )
@@ -311,6 +313,10 @@ internal class BindingIndex(
   ): Set<ClassId> {
     // Containers are declared on the graphs, contributed into scope, or transitively included.
     val containerRoots = context.chain.flatMapTo(hashSetOf()) { it.bindingContainers }
+    for (containerKey in context.includedBindingContainers) {
+      val containerId = containerKey.type.classId ?: continue
+      containersById[containerId]?.includes?.forEach(containerRoots::add)
+    }
     contributions
       .asSequence()
       .filter { it.classId != null && it.classId in containersById }
@@ -376,6 +382,11 @@ internal class BindingIndex(
     val graphClassId = consumer.graphClassId
     if (graphClassId != null) return graphClassId in context.graphClassIds
 
+    val includedContainerKey = consumer.includedContainerKey
+    if (includedContainerKey != null) {
+      return includedContainerKey in context.includedBindingContainers
+    }
+
     val containerId = consumer.containerId
     if (containerId != null) {
       return containerId in context.graphClassIds || containerId in queryContext.containers
@@ -433,13 +444,24 @@ internal class BindingIndex(
       is KaBinding.Alias,
       is KaBinding.Multibinding,
       is KaBinding.CustomWrapper -> {
-        entry.contributionScopes.isNotEmpty() ||
-          entry.containerId == null ||
-          entry.containerId in context.graphClassIds ||
-          entry.containerId in queryContext.containers
+        val includedContainerKey = entry.includedContainerKey
+        if (includedContainerKey != null) {
+          includedContainerKey in context.includedBindingContainers
+        } else {
+          entry.contributionScopes.isNotEmpty() ||
+            entry.containerId == null ||
+            entry.containerId in context.graphClassIds ||
+            entry.containerId in queryContext.containers
+        }
       }
-      is KaBinding.BoundInstance -> entry.containerId in context.graphClassIds
-      is KaBinding.GraphDependency -> entry.containerId in context.includedDependencies
+      is KaBinding.BoundInstance -> {
+        if (entry.isGraphInput) {
+          entry.typeKey in context.includedDependencies
+        } else {
+          entry.containerId in context.graphClassIds
+        }
+      }
+      is KaBinding.GraphDependency -> entry.ownerKey in context.includedDependencies
       // Injected classes and assisted factories are implicit bindings. Graph instances are
       // seal-time nodes that never appear in the index.
       is KaBinding.ConstructorInjected,

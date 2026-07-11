@@ -125,7 +125,16 @@ internal fun KaSession.consumedSite(
   symbol: KaCallableSymbol,
   options: MetroOptions,
 ): ConsumedSite {
-  val returnType = symbol.returnType.fullyExpandedType
+  return consumedSite(symbol.returnType, symbol, options)
+}
+
+/** Resolves a consuming site using [type] after use-site generic substitution. */
+internal fun KaSession.consumedSite(
+  type: KaType,
+  symbol: KaCallableSymbol,
+  options: MetroOptions,
+): ConsumedSite {
+  val returnType = type.fullyExpandedType
   val qualifier = qualifierAnnotation(symbol, options)
 
   // A consumer of Optional<X> resolves to a @BindsOptionalOf (Dagger interop) binding. Key it with
@@ -164,7 +173,16 @@ internal fun KaSession.dependencyKey(
   symbol: KaCallableSymbol,
   options: MetroOptions,
 ): KaContextualTypeKey {
-  val site = consumedSite(symbol, options)
+  return dependencyKey(symbol.returnType, symbol, options)
+}
+
+/** Resolves a dependency key using [type] after use-site generic substitution. */
+internal fun KaSession.dependencyKey(
+  type: KaType,
+  symbol: KaCallableSymbol,
+  options: MetroOptions,
+): KaContextualTypeKey {
+  val site = consumedSite(type, symbol, options)
   return site.contextKey.withDefault(symbol.isOptionalConsumer(options))
 }
 

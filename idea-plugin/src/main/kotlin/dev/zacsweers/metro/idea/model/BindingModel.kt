@@ -27,6 +27,8 @@ internal class ConsumerEntry(
   val contributionScopes: Set<ClassId> = emptySet(),
   /** Binding container or graph class whose membership gates this consumer. */
   val containerId: ClassId? = null,
+  /** Concrete binding-container factory input whose membership gates this consumer. */
+  val includedContainerKey: KaTypeKey? = null,
   /** Owning graph class for graph accessor consumers. */
   val graphClassId: ClassId? = null,
   /**
@@ -65,8 +67,10 @@ internal class KaGraphNode(
   val excludes: Set<ClassId> = emptySet(),
   /** Binding containers wired via the graph annotation's `bindingContainers`. */
   val bindingContainers: Set<ClassId> = emptySet(),
+  /** Concrete binding containers wired via factory `@Includes` parameters. */
+  val includedBindingContainers: Set<KaTypeKey> = emptySet(),
   /** Graph dependencies wired via factory `@Includes` parameters. */
-  val includedDependencies: Set<ClassId> = emptySet(),
+  val includedDependencies: Set<KaTypeKey> = emptySet(),
   /** True for `@GraphExtension` declarations, which inherit their parent graphs' bindings. */
   val isExtension: Boolean = false,
   /** This graph's class plus nested factory classes, used for parent/extension matching. */
@@ -110,7 +114,10 @@ internal class GraphContext(
   /** Declared scope annotations across the chain, gating scoped-binding membership. */
   val scopingAnnotations: Set<KaAnnotationSnapshot>,
   val excludes: Set<ClassId>,
-  val includedDependencies: Set<ClassId>,
+  /** Concrete binding-container inputs inherited across the graph chain. */
+  val includedBindingContainers: Set<KaTypeKey>,
+  /** Concrete graph-dependency inputs inherited across the graph chain. */
+  val includedDependencies: Set<KaTypeKey>,
   val graphClassIds: Set<ClassId>,
 ) {
   val graph: KaGraphNode
@@ -137,7 +144,10 @@ internal class GraphQueryContext(
   val graphModule: KaModule,
   /** The Analysis API's formal view of declarations resolvable from [graphModule]. */
   val resolutionScope: DeclarationResolutionScope,
-  /** Transitively expanded binding containers visible from [graphModule]. */
+  /**
+   * Transitively expanded class-literal containers visible from [graphModule]. Concrete factory
+   * inputs remain keyed by type in [GraphContext.includedBindingContainers].
+   */
   val containers: Set<ClassId>,
 )
 
