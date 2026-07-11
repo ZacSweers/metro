@@ -215,19 +215,20 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
     val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
     val context = index.contextsFor(graph).single()
+    val queryContext = index.queryContext(context)!!
 
     // Direct key lookup respects graph membership
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
-    val serviceBindings = index.bindingsForKey(serviceParam.key, context)
+    val serviceBindings = index.bindingsForKey(serviceParam.key, queryContext)
     assertEquals(listOf("binds"), serviceBindings.map { it.label })
 
     // Multibinding contributions resolve by aggregate id
-    val contributions = index.multibindingContributions("test.Analytics", context)
+    val contributions = index.multibindingContributions("test.Analytics", queryContext)
     assertEquals(1, contributions.size)
     assertEquals("multibinding contribution", contributions.single().label)
 
     // Context-wide listing includes the contributed + provides bindings
-    val allBindings = index.bindingsInContext(context)
+    val allBindings = index.bindingsInContext(queryContext)
     assertTrue(allBindings.any { it.label == "contributed binding" })
     assertTrue(allBindings.any { it.label == "provides" })
 

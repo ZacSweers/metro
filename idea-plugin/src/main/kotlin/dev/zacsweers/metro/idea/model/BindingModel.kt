@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
@@ -116,6 +117,10 @@ internal class GraphContext(
   val graph: KaGraphNode
     get() = chain.first()
 
+  /** The root graph whose compilation creates this concrete graph or extension instance. */
+  val rootGraph: KaGraphNode
+    get() = chain.last()
+
   /** Stable declaration identity for this exact parent path. */
   val path: GraphPath =
     GraphPath(chain.map { GraphPathSegment(it.classId, it.pointer.virtualFile) })
@@ -129,7 +134,8 @@ internal class GraphContext(
  */
 internal class GraphQueryContext(
   val graphContext: GraphContext,
-  val useSiteModule: org.jetbrains.kotlin.analysis.api.projectStructure.KaModule?,
+  /** The concrete graph's compilation module, used for every graph-scoped lookup. */
+  val graphModule: KaModule,
 )
 
 /**

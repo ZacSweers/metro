@@ -394,7 +394,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val otherGraph =
       index.contextsFor(index.graphEntryAt(declarations.klass("OtherCircuitGraph"))!!).single()
     val otherUiFactories = index.consumerEntryAt(declarations.property("otherUiFactories"))!!
-    assertTrue(index.bindingsFor(otherUiFactories, otherGraph).isEmpty())
+    assertTrue(index.bindingsFor(otherUiFactories, index.queryContext(otherGraph)!!).isEmpty())
 
     // Injected params are consumers; circuit-provided params (navigator/screen/state/modifier)
     // are assisted sites instead
@@ -699,9 +699,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
     assertEquals(listOf("optional binding"), index.bindingsFor(consumer).map { it.label })
     val context = index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
+    val queryContext = index.queryContext(context)!!
     assertEquals(
       listOf("optional binding"),
-      index.bindingsFor(consumer, context).map { it.label },
+      index.bindingsFor(consumer, queryContext).map { it.label },
     )
   }
 
@@ -1093,11 +1094,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val graph = index.graphEntryAt(declarations.klass("ExcludesGraph"))!!
     val context = index.contextsFor(graph).single()
+    val queryContext = index.queryContext(context)!!
     assertTrue(context.excludes.isNotEmpty())
 
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
-    assertTrue(index.bindingsFor(accessor, context).isEmpty())
-    assertTrue(index.contributionsFor(context).isEmpty())
+    assertTrue(index.bindingsFor(accessor, queryContext).isEmpty())
+    assertTrue(index.contributionsFor(queryContext).isEmpty())
     // Global resolution still sees it as a candidate
     assertEquals(1, index.resolveConsumer(accessor).global.size)
   }
@@ -1147,12 +1149,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // Transitive container includes are expanded
     assertEquals(2, wired.containers.size)
     val clientAccessor = index.consumerEntryAt(declarations.property("client"))!!
-    assertEquals(1, index.bindingsFor(clientAccessor, wired).size)
+    assertEquals(1, index.bindingsFor(clientAccessor, index.queryContext(wired)!!).size)
 
     val unwired =
       index.contextsFor(index.graphEntryAt(declarations.klass("UnwiredGraph"))!!).single()
     val unwiredAccessor = index.consumerEntryAt(declarations.property("unwiredClient"))!!
-    assertTrue(index.bindingsFor(unwiredAccessor, unwired).isEmpty())
+    assertTrue(index.bindingsFor(unwiredAccessor, index.queryContext(unwired)!!).isEmpty())
   }
 
   fun testIncludedDependencyAccessorsProvide() {
@@ -1189,10 +1191,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val graph = index.graphEntryAt(declarations.klass("IncludesGraph"))!!
     val context = index.contextsFor(graph).single()
+    val queryContext = index.queryContext(context)!!
     assertEquals(1, context.includedDependencies.size)
 
     val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
-    val bindings = index.bindingsFor(accessor, context)
+    val bindings = index.bindingsFor(accessor, queryContext)
     assertEquals(listOf("included dependency accessor"), bindings.map { it.label })
     // Anchored at the dependency's accessor declaration
     assertEquals(
@@ -1261,7 +1264,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     // The child's accessor resolves through every parent scope that creates it
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
     val bindings = childContexts.flatMap { childContext ->
-      index.bindingsFor(accessor, childContext)
+      index.bindingsFor(accessor, index.queryContext(childContext)!!)
     }
     assertEquals(setOf("RealThing", "OtherThing"), bindings.map { it.implementationName }.toSet())
     val resolutionByParent =
@@ -1291,12 +1294,18 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertNull(index.consumerEntryAt(declarations.property("childFactory")))
 
     // The child aggregates only its own scope; parent-scope contributions are inherited
-    assertTrue(childContexts.all { index.contributionsFor(it).isEmpty() })
-    assertEquals(listOf(1, 1), childContexts.map { index.inheritedContributionsFor(it).size })
-    assertEquals(1, index.contributionsFor(parent).size)
-    assertTrue(index.inheritedContributionsFor(parent).isEmpty())
-    assertEquals(1, index.contributionsFor(otherParent).size)
-    assertTrue(index.inheritedContributionsFor(otherParent).isEmpty())
+    val childQueryContexts = childContexts.map { index.queryContext(it)!! }
+    assertTrue(childQueryContexts.all { index.contributionsFor(it).isEmpty() })
+    assertEquals(
+      listOf(1, 1),
+      childQueryContexts.map { index.inheritedContributionsFor(it).size },
+    )
+    val parentQueryContext = index.queryContext(parent)!!
+    assertEquals(1, index.contributionsFor(parentQueryContext).size)
+    assertTrue(index.inheritedContributionsFor(parentQueryContext).isEmpty())
+    val otherParentQueryContext = index.queryContext(otherParent)!!
+    assertEquals(1, index.contributionsFor(otherParentQueryContext).size)
+    assertTrue(index.inheritedContributionsFor(otherParentQueryContext).isEmpty())
   }
 
   fun testConsumerResolutionIsScopedToOwningGraph() {
@@ -1428,7 +1437,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val appDual = index.consumerEntryAt(declarations.property("appDual"))!!
       assertEquals(
         listOf("LibDualImpl"),
-        index.bindingsFor(appDual, appContext).map { it.implementationName },
+        index.bindingsFor(appDual, index.queryContext(appContext)!!).map {
+          it.implementationName
+        },
       )
 
       val libContext =
@@ -1436,7 +1447,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val libDual = index.consumerEntryAt(declarations.property("libDual"))!!
       assertEquals(
         listOf("LibDualImpl"),
-        index.bindingsFor(libDual, libContext).map { it.implementationName },
+        index.bindingsFor(libDual, index.queryContext(libContext)!!).map {
+          it.implementationName
+        },
       )
     }
   }
@@ -1486,20 +1499,20 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
     assertEquals(
       listOf("injected class"),
-      index.bindingsFor(consumer, appContext).map { it.label },
+      index.bindingsFor(consumer, index.queryContext(appContext)!!).map { it.label },
     )
 
     // A graph with a different scope is not a home for this binding
     val otherContext =
       index.contextsFor(index.graphEntryAt(declarations.klass("OtherGraph"))!!).single()
-    assertTrue(index.bindingsFor(consumer, otherContext).isEmpty())
+    assertTrue(index.bindingsFor(consumer, index.queryContext(otherContext)!!).isEmpty())
 
     // Explicitly declared scope annotations on the graph also count
     val explicitContext =
       index.contextsFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!).single()
     assertEquals(
       listOf("injected class"),
-      index.bindingsFor(consumer, explicitContext).map { it.label },
+      index.bindingsFor(consumer, index.queryContext(explicitContext)!!).map { it.label },
     )
   }
 

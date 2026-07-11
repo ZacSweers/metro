@@ -99,13 +99,16 @@ internal class MetroGraphValidationService(
     context: GraphContext,
   ): GraphValidationResult {
     val options = moduleOptions(element)
-    val key = cacheKey(context) ?: return KaBindingGraph(index, context, options).seal()
+    val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
+    val queryContext =
+      checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
+    val key = cacheKey(context) ?: return KaBindingGraph(index, queryContext, options).seal()
     results[key]
       ?.takeIf { it.index === index }
       ?.let {
         return it.result
       }
-    val result = KaBindingGraph(index, context, options).seal()
+    val result = KaBindingGraph(index, queryContext, options).seal()
     results[key] = CachedEntry(result, index)
     return result
   }

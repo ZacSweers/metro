@@ -27,13 +27,12 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A structured diagnostic from a graph seal, with navigable stack entries. */
@@ -77,23 +76,20 @@ internal class GraphValidationResult(
  */
 internal class KaBindingGraph(
   private val index: BindingIndex,
-  private val context: GraphContext,
+  private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
 ) :
   // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
   TraceScope by TraceScope.noop(),
   ErrorReporter<KaBindingStack> {
 
+  private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
 
-  private val useSiteModule: KaModule? =
-    graph.pointer.element?.let { KaModuleProvider.getModule(it.project, it, useSiteModule = null) }
-
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
-  private var _bindingLookup: KaBindingLookup? =
-    KaBindingLookup(index, graph, context, options, useSiteModule)
+  private var _bindingLookup: KaBindingLookup? = KaBindingLookup(index, queryContext, options)
     set(value) {
       if (value == null) {
         field?.clear()

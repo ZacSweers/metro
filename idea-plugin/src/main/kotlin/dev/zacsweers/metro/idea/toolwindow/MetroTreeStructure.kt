@@ -313,8 +313,9 @@ internal class MetroTreeStructure(
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {
     val (index, context) = resolveGraph(node) ?: return emptyList()
+    val queryContext = index.queryContext(context) ?: return emptyList()
     val graph = context.graph
-    val bindings = index.bindingsInContext(context)
+    val bindings = index.bindingsInContext(queryContext)
     val filter = filterText().trim()
     val filtered =
       if (filter.isEmpty()) {

@@ -34,6 +34,7 @@ internal class BindingIndex(
   }
 
   private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
+  private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
   private val replacedOriginsByContext = ConcurrentHashMap<GraphContext, Set<ClassId>>()
   private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
 
@@ -86,15 +87,16 @@ internal class BindingIndex(
   }
 
   /**
-   * The bindings for [consumer]'s key that are members of [context]'s graph. This is a
+   * The bindings for [consumer]'s key that are members of [queryContext]'s graph. This is a
    * binding-membership query: it does not constrain by whether [consumer]'s own site belongs to the
-   * graph (that is [resolveConsumer]'s job), so a consumer can be used to probe any context.
+   * graph (that is [resolveConsumer]'s job), so a consumer can probe any query context.
    */
   fun bindingsFor(
     consumer: ConsumerEntry,
-    context: GraphContext,
+    queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    val visible = visibleBindingsFor(consumer, useSiteModule(consumer.pointer.element))
+    val visible = visibleBindingsFor(consumer, queryContext.graphModule)
+    val context = queryContext.graphContext
     return applyReplaces(visible.filter { isBindingInContext(it, context) })
   }
 
@@ -107,16 +109,20 @@ internal class BindingIndex(
   }
 
   private fun buildConsumerResolution(consumer: ConsumerEntry): ConsumerResolution {
-    val useSiteModule = useSiteModule(consumer.pointer.element)
-    // The visible candidate set is invariant across graphs/contexts, so compute it once.
-    val global = visibleBindingsFor(consumer, useSiteModule)
+    val consumerModule = moduleFor(consumer.pointer.element)
+    val global = visibleBindingsFor(consumer, consumerModule)
     if (graphs.isEmpty()) return ConsumerResolution(global, emptyMap(), hasGraphs = false)
 
     val perContext = LinkedHashMap<GraphContext, List<KaBinding>>()
+    val visibleByModule = HashMap<KaModule, List<KaBinding>>()
     for (graph in graphs) {
       for (context in contextsFor(graph)) {
-        val queryContext = GraphQueryContext(context, useSiteModule)
-        val filtered = bindingsInContext(global, consumer, queryContext)
+        val queryContext = queryContext(context) ?: continue
+        val visible =
+          visibleByModule.getOrPut(queryContext.graphModule) {
+            visibleBindingsFor(consumer, queryContext.graphModule)
+          }
+        val filtered = bindingsInContext(visible, consumer, queryContext)
         if (filtered.isNotEmpty()) {
           perContext[context] = filtered
         }
@@ -142,39 +148,40 @@ internal class BindingIndex(
   }
 
   /**
-   * The bindings for [key] that are members of [context]'s graph. Multibinding contributions are
-   * resolved separately by [multibindingContributions].
+   * The bindings for [key] that are members of [queryContext]'s graph. Multibinding contributions
+   * are resolved separately by [multibindingContributions].
    */
   fun bindingsForKey(
     key: KaTypeKey,
-    context: GraphContext,
-    useSiteModule: KaModule? = null,
+    queryContext: GraphQueryContext,
   ): List<KaBinding> {
+    val context = queryContext.graphContext
     // Membership filtering already applies context-wide excludes and replaces via the cached
     // replacedOrigins set.
     return bindingsByKey[key].orEmpty().filter {
-      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+      isVisibleFrom(it.pointer, queryContext.graphModule) && isBindingInContext(it, context)
     }
   }
 
-  /** The contributions collected into [multibindingId] that are members of [context]'s graph. */
+  /** Contributions collected into [multibindingId] in [queryContext]'s graph. */
   fun multibindingContributions(
     multibindingId: String,
-    context: GraphContext,
-    useSiteModule: KaModule? = null,
+    queryContext: GraphQueryContext,
   ): List<KaBinding> {
+    val context = queryContext.graphContext
     return contributionsByMultibindingId[multibindingId].orEmpty().filter {
-      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+      isVisibleFrom(it.pointer, queryContext.graphModule) && isBindingInContext(it, context)
     }
   }
 
   /**
-   * Every binding that is a member of [context]'s graph. Linear over all bindings, so call on
+   * Every binding that is a member of [queryContext]'s graph. Linear over all bindings, so call on
    * demand only.
    */
-  fun bindingsInContext(context: GraphContext, useSiteModule: KaModule? = null): List<KaBinding> {
+  fun bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> {
+    val context = queryContext.graphContext
     return bindings.filter {
-      isVisibleFrom(it.pointer, useSiteModule) && isBindingInContext(it, context)
+      isVisibleFrom(it.pointer, queryContext.graphModule) && isBindingInContext(it, context)
     }
   }
 
@@ -197,6 +204,17 @@ internal class BindingIndex(
     return graphContexts.computeIfAbsent(graph) { buildContexts(it) }
   }
 
+  /** Builds the module-aware query view for [context], or null if its graph disappeared. */
+  fun queryContext(context: GraphContext): GraphQueryContext? {
+    graphQueryContexts[context]?.let {
+      return it
+    }
+    val graphElement = context.rootGraph.pointer.element ?: return null
+    val graphModule = moduleFor(graphElement) ?: return null
+    val queryContext = GraphQueryContext(context, graphModule)
+    return graphQueryContexts.putIfAbsent(context, queryContext) ?: queryContext
+  }
+
   /** Finds the current index's context for a path retained across an index rebuild. */
   fun findContext(path: GraphPath): GraphContext? {
     val graphSegment = path.segments.firstOrNull() ?: return null
@@ -217,24 +235,28 @@ internal class BindingIndex(
   }
 
   /**
-   * Contributions aggregated by [context]'s graph itself: matched against the graph's own
+   * Contributions aggregated by [queryContext]'s graph itself: matched against the graph's own
    * aggregation scopes, minus excluded. Contributions a graph extension sees through its parent
    * chain are reported separately by [inheritedContributionsFor].
    */
-  fun contributionsFor(context: GraphContext): List<ContributionEntry> {
+  fun contributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
+    val context = queryContext.graphContext
     return contributionsForScopes(context.graph.scopeKeys).filter {
-      it.classId !in context.excludes
+      it.classId !in context.excludes && isVisibleFrom(it.pointer, queryContext.graphModule)
     }
   }
 
   /**
-   * Contributions [context]'s graph receives from its parent chain rather than aggregating itself:
-   * matched against ancestor scopes only, minus excluded. Empty for non-extension graphs.
+   * Contributions [queryContext]'s graph receives from its parent chain rather than aggregating
+   * itself: matched against ancestor scopes only, minus excluded. Empty for non-extension graphs.
    */
-  fun inheritedContributionsFor(context: GraphContext): List<ContributionEntry> {
+  fun inheritedContributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
+    val context = queryContext.graphContext
     val inheritedScopes = context.scopes - context.graph.scopeKeys
     return contributionsForScopes(inheritedScopes).filter {
-      it.classId !in context.excludes && it.scopeKeys.none(context.graph.scopeKeys::contains)
+      it.classId !in context.excludes &&
+        it.scopeKeys.none(context.graph.scopeKeys::contains) &&
+        isVisibleFrom(it.pointer, queryContext.graphModule)
     }
   }
 
@@ -314,7 +336,7 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): Boolean {
-    if (!isVisibleFrom(consumer.pointer, queryContext.useSiteModule)) return false
+    if (!isVisibleFrom(consumer.pointer, queryContext.graphModule)) return false
     val context = queryContext.graphContext
     val originClassId = consumer.originClassId
     if (originClassId != null) {
@@ -512,7 +534,7 @@ internal class ConsumerResolution(
   val effective: List<KaBinding> = if (hasGraphs) perContext.values.flatten().distinct() else global
 }
 
-private fun useSiteModule(element: KtElement?): KaModule? {
+private fun moduleFor(element: KtElement?): KaModule? {
   return element?.let { KaModuleProvider.getModule(it.project, it, useSiteModule = null) }
 }
 

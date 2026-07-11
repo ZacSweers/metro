@@ -5,7 +5,7 @@ package dev.zacsweers.metro.idea.graph
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
-import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -13,7 +13,6 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.aggregateMultibindingId
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -21,18 +20,17 @@ import org.jetbrains.kotlin.name.Name
  * The Analysis API analog of the compiler's `BindingLookup`. Resolves bindings for requested keys
  * on demand, so only keys reachable from the seal roots are ever looked up.
  *
- * Direct keys pull from the index's membership-gated view of [context]. That context merges the
- * extension parent chain, which is what makes parent-provided bindings resolvable. Aggregate keys
+ * Direct keys pull from the index's membership-gated view of [queryContext]. Its graph context
+ * merges the extension parent chain, while its module gates declaration visibility. Aggregate keys
  * synthesize multibinding nodes.
  */
 internal class KaBindingLookup(
   private val index: BindingIndex,
-  private val graph: KaGraphNode,
-  private val context: GraphContext,
+  private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
-  /** The graph declaration's module, gating lookups to bindings its module can see. */
-  private val useSiteModule: KaModule?,
 ) {
+  private val graph: KaGraphNode = queryContext.graphContext.graph
+
   /** One [KaBinding.Multibinding] aggregate and the contributions collected into it. */
   class AggregateNode(val binding: KaBinding.Multibinding, val contributions: List<KaBinding>)
 
@@ -70,11 +68,11 @@ internal class KaBindingLookup(
       return setOf(it)
     }
 
-    val candidates = index.bindingsForKey(typeKey, context, useSiteModule)
+    val candidates = index.bindingsForKey(typeKey, queryContext)
     val aggregateId = contextKey.aggregateMultibindingId(options)
     if (aggregateId != null) {
       val declaration = candidates.filterIsInstance<KaBinding.Multibinding>().firstOrNull()
-      val contributions = index.multibindingContributions(aggregateId, context, useSiteModule)
+      val contributions = index.multibindingContributions(aggregateId, queryContext)
       if (contributions.isNotEmpty() || declaration != null) {
         return synthesizeAggregate(contextKey, aggregateId, contributions, declaration)
       }

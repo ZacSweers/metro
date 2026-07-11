@@ -285,8 +285,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val contexts = index.contextsFor(graph)
-    val contributions = contexts.flatMap { index.contributionsFor(it) }.distinct()
-    val inherited = contexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
+    val queryContexts = contexts.mapNotNull(index::queryContext)
+    val contributions = queryContexts.flatMap { index.contributionsFor(it) }.distinct()
+    val inherited = queryContexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
     val targets = (contributions + inherited).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
