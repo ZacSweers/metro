@@ -1,4 +1,3 @@
-// RUN_PIPELINE_TILL: FIR2IR
 // RENDER_DIAGNOSTICS_FULL_TEXT
 
 @DependencyGraph(AppScope::class)
@@ -8,7 +7,15 @@ interface ParentGraph {
 
 @GraphExtension(AppScope::class)
 interface ChildGraph {
-    @DependencyGraph.Factory
+    <!GRAPH_CREATORS_ERROR!>@DependencyGraph.Factory<!>
+    interface Factory {
+        fun create(): ChildGraph
+    }
+}
+
+@GraphExtension(AppScope::class)
+interface OtherChildGraph {
+    <!GRAPH_CREATORS_ERROR!>@DependencyGraph.Factory<!>
     interface Factory {
         fun create(): ChildGraph
     }
