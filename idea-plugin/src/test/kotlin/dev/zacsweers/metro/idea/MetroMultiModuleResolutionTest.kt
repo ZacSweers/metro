@@ -26,21 +26,36 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     fixture = factory.createCodeInsightFixture(projectBuilder.fixture)
     val appBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     val libraryBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
+    val bridgeBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
+    val indirectAppBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     fixture.setUp()
 
     val appModule = appBuilder.fixture.module
     val libraryModule = libraryBuilder.fixture.module
+    val bridgeModule = bridgeBuilder.fixture.module
+    val indirectAppModule = indirectAppBuilder.fixture.module
     val appRoot = fixture.tempDirFixture.findOrCreateDir("app")
     val libraryRoot = fixture.tempDirFixture.findOrCreateDir("library")
+    val bridgeRoot = fixture.tempDirFixture.findOrCreateDir("bridge")
+    val indirectAppRoot = fixture.tempDirFixture.findOrCreateDir("indirectApp")
     ModuleRootModificationUtil.updateModel(appModule) { model ->
       model.addContentEntry(appRoot).addSourceFolder(appRoot, false)
     }
     ModuleRootModificationUtil.updateModel(libraryModule) { model ->
       model.addContentEntry(libraryRoot).addSourceFolder(libraryRoot, false)
     }
+    ModuleRootModificationUtil.updateModel(bridgeModule) { model ->
+      model.addContentEntry(bridgeRoot).addSourceFolder(bridgeRoot, false)
+    }
+    ModuleRootModificationUtil.updateModel(indirectAppModule) { model ->
+      model.addContentEntry(indirectAppRoot).addSourceFolder(indirectAppRoot, false)
+    }
     ModuleRootModificationUtil.addDependency(appModule, libraryModule)
+    ModuleRootModificationUtil.addDependency(bridgeModule, libraryModule)
+    ModuleRootModificationUtil.addDependency(indirectAppModule, bridgeModule)
     appModule.addMetroRuntimeLibrary()
     libraryModule.addMetroRuntimeLibrary()
+    indirectAppModule.addMetroRuntimeLibrary()
     fixture.project.setMetroOptions()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
   }
@@ -157,5 +172,52 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val extensionContext = extensionResolution.perContext.keys.single()
     assertEquals(listOf("LibExtension", "AppGraph"), extensionContext.chain.map { it.name })
     assertEquals(appContext.graphModule, index.queryContext(extensionContext)!!.graphModule)
+  }
+
+  fun testRegularDependenciesAreNotRecursivelyVisible() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/IndirectContribution.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        interface Service
+
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class LibService : Service
+        """
+          .trimIndent(),
+      ) as KtFile
+    val indirectGraphFile =
+      fixture.addFileToProject(
+        "indirectApp/app/IndirectGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+
+        @DependencyGraph(AppScope::class)
+        interface IndirectGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(indirectGraphFile)
+    val contribution = libraryFile.declarationsIncludingNested().klass("LibService")
+    val graph = index.graphs.single { it.name == "IndirectGraph" }
+    assertTrue(
+      index.contributionsForScopes(graph.scopeKeys).any {
+        it.pointer.element === contribution
+      }
+    )
+
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+    assertTrue(index.contributionsFor(queryContext).none { it.pointer.element === contribution })
+    assertTrue(index.bindingsInContext(queryContext).none { it.pointer.element === contribution })
   }
 }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.model
 
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.ClassId
@@ -136,7 +137,14 @@ internal class GraphQueryContext(
   val graphContext: GraphContext,
   /** The concrete graph's compilation module, used for every graph-scoped lookup. */
   val graphModule: KaModule,
+  /** The Analysis API's formal view of declarations resolvable from [graphModule]. */
+  val resolutionScope: DeclarationResolutionScope,
 )
+
+/** A session-free containment view over an Analysis API module resolution scope. */
+internal fun interface DeclarationResolutionScope {
+  fun contains(element: PsiElement): Boolean
+}
 
 /**
  * A declaration contributing to aggregation scopes: a `@Contributes*`-annotated class or a
