@@ -13,7 +13,7 @@ public actual fun <T> suspendLazy(
   initializer: suspend () -> T,
 ): SuspendLazy<T> =
   when (mode) {
-    LazyThreadSafetyMode.SYNCHRONIZED -> SuspendDoubleCheck.lazy(initializer)
+    LazyThreadSafetyMode.SYNCHRONIZED -> SuspendDoubleCheck.lazy(SuspendProvider { initializer() })
     LazyThreadSafetyMode.PUBLICATION -> SafePublicationSuspendLazy(initializer)
     LazyThreadSafetyMode.NONE -> UnsafeSuspendLazy(initializer)
   }

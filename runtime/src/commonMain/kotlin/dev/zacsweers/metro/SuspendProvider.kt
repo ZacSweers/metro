@@ -6,8 +6,8 @@ import kotlin.jvm.JvmInline
 
 /** A simple class that produces instances of [T] in a suspend context. */
 @ExperimentalMetroCoroutinesApi
-public fun interface SuspendProvider<T> : suspend () -> T {
-  public override suspend operator fun invoke(): T
+public expect fun interface SuspendProvider<T> {
+  public suspend operator fun invoke(): T
 }
 
 /** A helper function to create a new [SuspendProvider] wrapper around a given [provider] lambda. */

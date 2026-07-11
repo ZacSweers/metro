@@ -5,7 +5,7 @@ Internal notes for Metro's suspend/coroutines support. User-facing docs live in
 
 ## Model
 
-Suspend-ness is a **per-graph propagated property**, not a per-declaration annotation. A binding
+Suspend-ness is a per-graph propagated property, not a per-declaration annotation. A binding
 is suspend in a given graph if its provider is a `suspend fun`, or if it depends (unwrapped) on a
 suspend binding. The same class can be suspend in one graph and not in another depending on what
 its dependencies resolve to.
@@ -30,7 +30,7 @@ Ordered steps, all graph-level errors:
 1. Seed + fixpoint propagation (above).
 2. Multibinding aggregates: `Set<T>` cannot contain suspend contributions at all; scalar
    `Map<K, V>` over suspend values errors (only the deferred value form is legal).
-3. Accessors: iterate `node.accessors` directly (NOT the deduped roots map, which collapses
+3. Accessors: iterate `node.accessors` directly rather than the deduped roots map, which collapses
    accessors sharing a contextual key). Non-suspend accessor over a suspend binding errors unless
    the contextual key defers. `Provider<T>`/`Lazy<T>` roots over suspend bindings error here too.
    The dependency-edge check in step 4 never sees roots.
@@ -51,10 +51,10 @@ shapes meaningful.
 
 ### Factories
 
-A suspend `@Provides` gets a `SuspendFactory<T>` (suspend `invoke()`) instead of `Factory<T>`. The
-interesting case is a **non-suspend** provider/constructor that is transitively suspend in some
-graph: its source-compiled factory is a plain `Factory<T>` whose `create()` expects `Provider`
-args, but the graph holds `SuspendProvider`s for its deps. `GraphSuspendFactoryGenerator` emits
+A suspend `@Provides` gets a `SuspendFactory<T>` (suspend `invoke()`) instead of `Factory<T>`. For a
+non-suspend provider or constructor that is transitively suspend in a graph, its source-compiled
+factory is a plain `Factory<T>` whose `create()` expects `Provider` args, but the graph holds
+`SuspendProvider`s for its deps. `GraphSuspendFactoryGenerator` emits
 private IR-only nested `SuspendFactory<T>` classes per graph for these bindings (and an
 assisted-impl variant). Field types per dep: `SuspendProvider<T>` for suspend deps (including
 canonicalized `SuspendLazy` params), `Provider<T>` otherwise, plain values for receivers.
@@ -87,26 +87,26 @@ delegate is already the graph's `SuspendDoubleCheck` (scoped bindings share the 
 Whole-collection suspend access to multibindings (`suspend () -> Set<T>` etc.) generates the
 Provider form and adapts via `SyncSuspendProvider`.
 
-### The JS function-type hazard
+### JS function types
 
-`SuspendProvider<T> : suspend () -> T` is declared once in common code and is legal on all platforms.
-But on Kotlin/JS, invocation through a function *type* compiles to a direct JS call, and a class
-instance implementing the fun interface is not a callable JS function (TypeError at runtime).
-Two rules keep this safe:
+`SuspendProvider<T>` mirrors `Provider<T>`'s expect/actual shape. Its JVM, Native, and Wasm actuals
+extend `suspend () -> T`. Its JS actual does not because calling a function-typed value compiles to
+a direct JS call, while a fun-interface instance is not a callable JS function.
 
-- The function-type adaptation happens at the **consumer boundary** only, in
-  `typeAsProviderArgument`: when the consumer's contextual key is suspend-provider-shaped, the
-  expression runs through `ProviderFramework.convertTo`, which on JS wraps SuspendProvider-classed
-  values in a real suspend lambda (`toSuspendFunctionType`), and is a no-op elsewhere.
-- Do NOT convert at the `generateBindingCode`/`toTargetType` layer: those expressions also
-  initialize graph fields typed `SuspendProvider<T>`, and converting them produces type-mismatched
-  field initializers.
+`typeAsProviderArgument` performs function-type adaptation at the consumer boundary. For a
+suspend-provider-shaped contextual key, it passes the expression through
+`ProviderFramework.convertTo`. On JS, `toSuspendFunctionType` wraps `SuspendProvider` values in a
+suspend lambda. Other platforms need no conversion.
+
+The `generateBindingCode` and `toTargetType` layers do not perform this conversion because their
+expressions also initialize `SuspendProvider<T>` graph fields. Converting there would produce
+field initializers with the wrong type.
 
 `toSuspendFunctionType` must `patchDeclarationParents` on the wrapping lambda: the wrapped
 expression can itself contain lambdas parented to the enclosing declaration, and they get
 re-parented into the new lambda.
 
-`FunctionTypeInvocationOnAllPlatforms.kt` pins the end-to-end JS invocation path using stdlib
+`FunctionTypeInvocationOnAllPlatforms.kt` covers the end-to-end JS invocation path using stdlib
 `startCoroutine` (non-suspending providers complete synchronously, so no `runBlocking` needed).
 
 ## Runtime (`runtime-coroutines`)
@@ -116,13 +116,13 @@ in common code; the `SuspendDoubleCheckInitGuard` expect/actual superclass provi
 synchronization. JVM/Native (`nonWebMain`): a coroutine `Mutex`, caller identity =
 `coroutineContext[Job]` falling back to context identity for Job-less coroutines. JS/Wasm
 (`webMain`): a plain flag plus a FIFO queue of stdlib continuations. Single-threaded platforms
-need no atomics or parking, and this keeps the **web klibs free of any kotlinx-coroutines
-dependency** (which is also what lets JS box tests link `runtime-coroutines` without tripping
-partial-linkage against dev test compilers; the kotlinx dependency lives only in `nonWebMain`).
+need no atomics or parking, which keeps the web klibs free of kotlinx-coroutines. This also lets JS
+box tests link `runtime-coroutines` without partial-linkage errors against dev test compilers. The
+kotlinx dependency lives only in `nonWebMain`.
 
 Semantics on all platforms: single-flight, failures retried, cancellation mid-init leaves the
-cache untouched, reentrant cycles fail fast by caller identity. `SuspendLazy` deliberately has no
-`Serializable` support (`writeReplace` cannot force a suspend computation).
+cache untouched, reentrant cycles fail fast by caller identity. `SuspendLazy` is not serializable
+because `writeReplace` cannot force a suspend computation.
 
 ## Tracing
 
@@ -131,7 +131,7 @@ propagation-token installation through structured concurrency. `TracedSuspendPro
 suspend providers; `BindingExpressionDecorator.decorateSuspendProviderExpression` and the
 `isSuspend` flag on direct-expression requests are the hook points.
 
-## Deliberately unsupported (for now)
+## Current limitations
 
 - Suspend member injection (`@Inject suspend fun`) is rejected at FIR. Design sketch in
   `plans/suspend-providers.md`.

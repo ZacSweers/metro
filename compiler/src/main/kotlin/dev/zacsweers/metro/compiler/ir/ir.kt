@@ -1054,7 +1054,7 @@ internal fun IrExpression.suspendDoubleCheckLazy(
       dispatchReceiver = irGetObject(companionObject),
       callee = lazyFun,
       typeHint = suspendLazyType,
-      typeArgs = listOf(symbols.metroSuspendProvider.typeWith(typeKey.type), typeKey.type),
+      typeArgs = listOf(typeKey.type),
       args = listOf(this@suspendDoubleCheckLazy),
     )
   }
@@ -1077,7 +1077,7 @@ internal fun IrExpression.suspendDoubleCheck(symbols: Symbols, typeKey: IrTypeKe
       dispatchReceiver = irGetObject(companionObject),
       callee = providerFun,
       typeHint = suspendProviderType,
-      typeArgs = listOf(suspendProviderType, typeKey.type),
+      typeArgs = listOf(typeKey.type),
       args = listOf(this@suspendDoubleCheck),
     )
   }

@@ -89,28 +89,23 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
 
   public companion object {
     /** Returns a [SuspendProvider] that caches the value from the given delegate provider. */
-    public fun <P : suspend () -> T, T> provider(delegate: P): SuspendProvider<T> {
+    public fun <T> provider(delegate: SuspendProvider<T>): SuspendProvider<T> {
       if (delegate is SuspendDoubleCheck<*>) {
         // Avoid double-wrapping a SuspendDoubleCheck, same pattern as DoubleCheck.provider
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendProvider<T>
       }
-      return SuspendDoubleCheck(delegate.asSuspendProvider())
+      return SuspendDoubleCheck(delegate)
     }
 
     /** Returns a [SuspendLazy] that caches the value from the given delegate provider. */
-    public fun <P : suspend () -> T, T> lazy(delegate: P): SuspendLazy<T> {
+    public fun <T> lazy(delegate: SuspendProvider<T>): SuspendLazy<T> {
       if (delegate is SuspendDoubleCheck<*>) {
         // Avoid double-wrapping a SuspendDoubleCheck, same pattern as DoubleCheck.lazy
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendLazy<T>
       }
-      return SuspendDoubleCheck(delegate.asSuspendProvider())
-    }
-
-    private fun <T> (suspend () -> T).asSuspendProvider(): SuspendProvider<T> {
-      @Suppress("UNCHECKED_CAST")
-      return this as? SuspendProvider<T> ?: SuspendProvider { invoke() }
+      return SuspendDoubleCheck(delegate)
     }
   }
 }

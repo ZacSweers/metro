@@ -245,10 +245,6 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { //
     abstract fun injectMembers(#A) // dev.zacsweers.metro/MembersInjector.injectMembers|injectMembers(1:0){}[0]
 }
 
-abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/SuspendProvider : kotlin.coroutines/SuspendFunction0<#A> { // dev.zacsweers.metro/SuspendProvider|null[0]
-    abstract suspend fun invoke(): #A // dev.zacsweers.metro/SuspendProvider.invoke|invoke(){}[0]
-}
-
 abstract interface <#A: out kotlin/Any?> dev.zacsweers.metro/SuspendLazy { // dev.zacsweers.metro/SuspendLazy|null[0]
     abstract fun isInitialized(): kotlin/Boolean // dev.zacsweers.metro/SuspendLazy.isInitialized|isInitialized(){}[0]
     abstract suspend fun value(): #A // dev.zacsweers.metro/SuspendLazy.value|value(){}[0]
@@ -288,7 +284,17 @@ abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/Provider : kotlin/F
     abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
 }
 
+// Targets: [native, wasmJs, wasmWasi]
+abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/SuspendProvider : kotlin.coroutines/SuspendFunction0<#A> { // dev.zacsweers.metro/SuspendProvider|null[0]
+    abstract suspend fun invoke(): #A // dev.zacsweers.metro/SuspendProvider.invoke|invoke(){}[0]
+}
+
 // Targets: [js]
 abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/Provider { // dev.zacsweers.metro/Provider|null[0]
     abstract fun invoke(): #A // dev.zacsweers.metro/Provider.invoke|invoke(){}[0]
+}
+
+// Targets: [js]
+abstract fun interface <#A: kotlin/Any?> dev.zacsweers.metro/SuspendProvider { // dev.zacsweers.metro/SuspendProvider|null[0]
+    abstract suspend fun invoke(): #A // dev.zacsweers.metro/SuspendProvider.invoke|invoke(){}[0]
 }

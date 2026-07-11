@@ -17,7 +17,7 @@ public actual fun <T> suspendLazy(
     // re-check guarantees a single observed value (first completed write wins). PUBLICATION
     // permits redundant computation by contract and NONE promises a single consumer, so both use
     // the unsafe impl.
-    LazyThreadSafetyMode.SYNCHRONIZED -> SuspendDoubleCheck.lazy(initializer)
+    LazyThreadSafetyMode.SYNCHRONIZED -> SuspendDoubleCheck.lazy(SuspendProvider { initializer() })
     LazyThreadSafetyMode.PUBLICATION -> UnsafeSuspendLazy(initializer)
     LazyThreadSafetyMode.NONE -> UnsafeSuspendLazy(initializer)
   }
