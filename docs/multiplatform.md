@@ -1,6 +1,6 @@
 # Multiplatform
 
-The runtime and code gen have been implemented to be entirely platform-agnostic so far.
+Metro's runtime and generated code support the platforms listed below.
 
 ## Supported Targets for artifacts/features
 
@@ -15,6 +15,9 @@ The runtime and code gen have been implemented to be entirely platform-agnostic 
 | ---                          |           -           | -                      |           -            |           -            |           -            |           -            |           -            |           -            |
 | Multi-module aggregation     | ✅<br/>Kotlin `2.3.0`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.21`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ |
 | Top-level function injection | ✅<br/>Kotlin `2.3.0`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.21`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ |
+
+`runtime-coroutines` uses kotlinx-coroutines on JVM (including Android) and Native. Its JS and Wasm
+variants use only stdlib continuations.
 
 **Legend:**
 
