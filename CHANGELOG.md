@@ -10,6 +10,10 @@ Changelog
 - **[IR]** Fix `createGraphFactory()` calls for graph factory interfaces compiled in upstream modules with IR-only class generation.
 - **[IR/interop]** Fix a crash when member-injecting an unscoped constructor-injected binding as `dagger.Lazy<T>`.
 
+### Changes
+
+- Fold `2.4.20-dev-3583` compat into `2.4.20-dev-6138` as IntelliJ 2026.2 RCs now depend on a newer version.
+
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!

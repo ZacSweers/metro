@@ -384,8 +384,7 @@ class CompatContextTest {
   @Test
   fun `real factory matrix resolves reasonably for IDE-bundled compiler versions`() {
     // Mirrors the actual shipped compat modules. Keep in sync when adding/removing modules.
-    val realMinVersions =
-      listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-3583", "2.4.20-dev-6138")
+    val realMinVersions = listOf("2.3.0", "2.3.20", "2.4.0-dev-2124", "2.4.0", "2.4.20-dev-6138")
 
     // currentVersion -> expected factory minVersion. Current versions are the (aliased) kotlinc
     // versions bundled by IDEs we test in ide-integration-tests, plus the dev track itself.
@@ -397,12 +396,10 @@ class CompatContextTest {
         "2.4.0-dev-2124" to "2.4.0-dev-2124",
         // IJ 2026.1.2/.3 / AS Quail (2.4.0-ij261-50/-64, 2.4.255-dev-255 -> 2.4.0-dev-2633)
         "2.4.0-dev-2633" to "2.4.0-dev-2124",
-        // IJ 2026.2 (2.4.20-dev-4439)
-        "2.4.20-dev-4439" to "2.4.20-dev-3583",
-        // Current dev track
-        "2.4.20-dev-6138" to "2.4.20-dev-6138",
+        // IJ 2026.2 RC (2.4.20-dev-6724)
+        "2.4.20-dev-6724" to "2.4.20-dev-6138",
         // Unmapped future IDE build picks the lowest same-base factory
-        "2.4.20-ij262-1" to "2.4.20-dev-3583",
+        "2.4.20-ij262-1" to "2.4.20-dev-6138",
       )
 
     for ((currentVersion, expectedMinVersion) in expectations) {
