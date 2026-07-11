@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // A class mixing suspend and non-suspend deps. The non-suspend dep is adapted into the
-// suspend-flavored slot via the allocation-free SyncSuspendProvider intrinsic where needed.
+// suspend-flavored slot via SyncSuspendProvider where needed.
 
 @Inject
 class AccountCreator(val database: String, val region: Long)

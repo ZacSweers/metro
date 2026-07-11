@@ -83,7 +83,8 @@ Cycles use `SuspendDelegateFactory`.
 `AccessType` is INSTANCE / PROVIDER / SUSPEND_PROVIDER. Conversions in
 `BindingExpressionGenerator.toTargetType`:
 
-- PROVIDER → SUSPEND_PROVIDER: `SyncSuspendProvider` (`@JvmInline` view, allocation-free).
+- PROVIDER → SUSPEND_PROVIDER: `SyncSuspendProvider` (`@JvmInline` adapter that avoids a captured
+  suspend lambda).
 - INSTANCE → SUSPEND_PROVIDER: wrap in a suspend provider lambda.
 - SUSPEND_PROVIDER → INSTANCE: suspend `invoke()` (only valid in suspend contexts, which
   validation guarantees).

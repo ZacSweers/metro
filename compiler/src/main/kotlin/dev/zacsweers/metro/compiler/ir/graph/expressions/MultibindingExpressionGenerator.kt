@@ -80,7 +80,7 @@ internal class MultibindingExpressionGenerator(
   ): IrExpression {
     if (contextualTypeKey.isWrappedInSuspendProvider) {
       // There is no native suspend aggregate form. Build the Provider form and adapt it via
-      // the allocation-free SyncSuspendProvider conversion. Suspend elements inside the
+      // the SyncSuspendProvider adapter. Suspend elements inside the
       // aggregate are validated/rejected separately.
       val providerKey = contextualTypeKey.stripSuspendProvider().wrapInProvider()
       return generateBindingCode(binding, providerKey, AccessType.PROVIDER, fieldInitKey)

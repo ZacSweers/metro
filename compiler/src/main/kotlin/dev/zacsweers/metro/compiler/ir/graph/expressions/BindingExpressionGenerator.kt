@@ -134,8 +134,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
               }
             }
             PROVIDER -> {
-              // Adapt Provider<T> -> SuspendProvider<T> via SyncSuspendProvider intrinsic
-              // (allocation-free typed view; avoids a captured suspend lambda).
+              // Adapt Provider<T> -> SuspendProvider<T> via SyncSuspendProvider, avoiding a
+              // captured suspend lambda.
               with(scope) { wrapInSyncSuspendProvider(contextualTypeKey.typeKey.type) }
             }
             else -> this
@@ -254,8 +254,8 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
 
   /**
    * Wraps a `Provider<T>` expression as a `SuspendProvider<T>` via the `SyncSuspendProvider`
-   * value-class intrinsic. Allocation-free at runtime and avoids the captured-lambda allocation of
-   * [wrapInSuspendProviderFunction] for the common Provider→SuspendProvider adaption.
+   * value-class adapter. This avoids creating the captured lambda used by
+   * [wrapInSuspendProviderFunction] for the common Provider→SuspendProvider adaptation.
    */
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.wrapInSyncSuspendProvider(type: IrType): IrExpression {
