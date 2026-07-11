@@ -36,7 +36,7 @@ internal class BindingIndex(
 
   private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
   private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
-  private val replacedOriginsByContext = ConcurrentHashMap<GraphContext, Set<ClassId>>()
+  private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
 
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
@@ -84,7 +84,9 @@ internal class BindingIndex(
    * multibinding contributions collected into them.
    */
   fun bindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    return candidateBindingsFor(consumer)
+    val useSiteModule = moduleFor(consumer.pointer.element)
+    val resolutionScope = useSiteModule?.resolutionScope()
+    return visibleBindingsFor(consumer, useSiteModule, resolutionScope)
   }
 
   /**
@@ -96,9 +98,9 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    val visible = visibleBindingsFor(consumer, queryContext.resolutionScope)
-    val context = queryContext.graphContext
-    return applyReplaces(visible.filter { isBindingInContext(it, context) })
+    val visible =
+      visibleBindingsFor(consumer, queryContext.graphModule, queryContext.resolutionScope)
+    return applyReplaces(visible.filter { isBindingInContext(it, queryContext) })
   }
 
   /**
@@ -112,7 +114,7 @@ internal class BindingIndex(
   private fun buildConsumerResolution(consumer: ConsumerEntry): ConsumerResolution {
     val consumerModule = moduleFor(consumer.pointer.element)
     val consumerResolutionScope = consumerModule?.resolutionScope()
-    val global = visibleBindingsFor(consumer, consumerResolutionScope)
+    val global = visibleBindingsFor(consumer, consumerModule, consumerResolutionScope)
     if (graphs.isEmpty()) return ConsumerResolution(global, emptyMap(), hasGraphs = false)
 
     val perContext = LinkedHashMap<GraphContext, List<KaBinding>>()
@@ -122,7 +124,11 @@ internal class BindingIndex(
         val queryContext = queryContext(context) ?: continue
         val visible =
           visibleByModule.getOrPut(queryContext.graphModule) {
-            visibleBindingsFor(consumer, queryContext.resolutionScope)
+            visibleBindingsFor(
+              consumer,
+              queryContext.graphModule,
+              queryContext.resolutionScope,
+            )
           }
         val filtered = bindingsInContext(visible, consumer, queryContext)
         if (filtered.isNotEmpty()) {
@@ -145,8 +151,7 @@ internal class BindingIndex(
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
     if (!isConsumerInContext(consumer, queryContext)) return emptyList()
-    val context = queryContext.graphContext
-    return applyReplaces(visible.filter { isBindingInContext(it, context) })
+    return applyReplaces(visible.filter { isBindingInContext(it, queryContext) })
   }
 
   /**
@@ -157,12 +162,9 @@ internal class BindingIndex(
     key: KaTypeKey,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    val context = queryContext.graphContext
     // Membership filtering already applies context-wide excludes and replaces via the cached
     // replacedOrigins set.
-    return bindingsByKey[key].orEmpty().filter {
-      isVisibleFrom(it.pointer, queryContext.resolutionScope) && isBindingInContext(it, context)
-    }
+    return bindingsByKey[key].orEmpty().filter { isBindingInContext(it, queryContext) }
   }
 
   /** Contributions collected into [multibindingId] in [queryContext]'s graph. */
@@ -170,9 +172,8 @@ internal class BindingIndex(
     multibindingId: String,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    val context = queryContext.graphContext
     return contributionsByMultibindingId[multibindingId].orEmpty().filter {
-      isVisibleFrom(it.pointer, queryContext.resolutionScope) && isBindingInContext(it, context)
+      isBindingInContext(it, queryContext)
     }
   }
 
@@ -181,10 +182,7 @@ internal class BindingIndex(
    * demand only.
    */
   fun bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> {
-    val context = queryContext.graphContext
-    return bindings.filter {
-      isVisibleFrom(it.pointer, queryContext.resolutionScope) && isBindingInContext(it, context)
-    }
+    return bindings.filter { isBindingInContext(it, queryContext) }
   }
 
   /** The consumer sites declared on [graph] itself, used as seal roots. */
@@ -213,7 +211,9 @@ internal class BindingIndex(
     }
     val graphElement = context.rootGraph.pointer.element ?: return null
     val graphModule = moduleFor(graphElement) ?: return null
-    val queryContext = GraphQueryContext(context, graphModule, graphModule.resolutionScope())
+    val resolutionScope = graphModule.resolutionScope()
+    val containers = containersFor(context, graphModule, resolutionScope)
+    val queryContext = GraphQueryContext(context, graphModule, resolutionScope, containers)
     return graphQueryContexts.putIfAbsent(context, queryContext) ?: queryContext
   }
 
@@ -244,7 +244,7 @@ internal class BindingIndex(
   fun contributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
     val context = queryContext.graphContext
     return contributionsForScopes(context.graph.scopeKeys).filter {
-      it.classId !in context.excludes && isVisibleFrom(it.pointer, queryContext.resolutionScope)
+      it.classId !in context.excludes && isVisibleFrom(it, queryContext)
     }
   }
 
@@ -258,7 +258,7 @@ internal class BindingIndex(
     return contributionsForScopes(inheritedScopes).filter {
       it.classId !in context.excludes &&
         it.scopeKeys.none(context.graph.scopeKeys::contains) &&
-        isVisibleFrom(it.pointer, queryContext.resolutionScope)
+        isVisibleFrom(it, queryContext)
     }
   }
 
@@ -294,12 +294,30 @@ internal class BindingIndex(
     val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
     val includedDependencies = chain.flatMapToSet { it.includedDependencies }
 
-    // Containers: declared on the graphs, contributed into scope, or transitively included
-    val containerRoots = chain.flatMapTo(hashSetOf()) { it.bindingContainers }
+    return GraphContext(
+      chain = chain,
+      scopes = scopes,
+      scopingAnnotations = chain.flatMapToSet { it.scopingAnnotations },
+      excludes = excludes,
+      includedDependencies = includedDependencies,
+      graphClassIds = graphClassIds,
+    )
+  }
+
+  private fun containersFor(
+    context: GraphContext,
+    useSiteModule: KaModule,
+    resolutionScope: DeclarationResolutionScope,
+  ): Set<ClassId> {
+    // Containers are declared on the graphs, contributed into scope, or transitively included.
+    val containerRoots = context.chain.flatMapTo(hashSetOf()) { it.bindingContainers }
     contributions
       .asSequence()
       .filter { it.classId != null && it.classId in containersById }
-      .filter { it.scopeKeys.any(scopes::contains) && it.classId !in excludes }
+      .filter { it.scopeKeys.any(context.scopes::contains) && it.classId !in context.excludes }
+      .filter {
+        isVisibleFrom(it.pointer, it.hintAvailability, useSiteModule, resolutionScope)
+      }
       .mapTo(containerRoots) { it.classId!! }
 
     val containers = hashSetOf<ClassId>()
@@ -309,23 +327,17 @@ internal class BindingIndex(
       if (!containers.add(id)) continue
       containersById[id]?.includes?.forEach(queue::add)
     }
-
-    return GraphContext(
-      chain = chain,
-      scopes = scopes,
-      scopingAnnotations = chain.flatMapToSet { it.scopingAnnotations },
-      excludes = excludes,
-      containers = containers,
-      includedDependencies = includedDependencies,
-      graphClassIds = graphClassIds,
-    )
+    return containers
   }
 
   private fun visibleBindingsFor(
     consumer: ConsumerEntry,
+    useSiteModule: KaModule?,
     resolutionScope: DeclarationResolutionScope?,
   ): List<KaBinding> {
-    return candidateBindingsFor(consumer).filter { isVisibleFrom(it.pointer, resolutionScope) }
+    return candidateBindingsFor(consumer).filter {
+      isVisibleFrom(it.pointer, it.hintAvailability, useSiteModule, resolutionScope)
+    }
   }
 
   private fun candidateBindingsFor(consumer: ConsumerEntry): List<KaBinding> {
@@ -338,15 +350,24 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): Boolean {
-    if (!isVisibleFrom(consumer.pointer, queryContext.resolutionScope)) return false
+    if (
+      !isVisibleFrom(
+        consumer.pointer,
+        hintAvailability = null,
+        useSiteModule = queryContext.graphModule,
+        resolutionScope = queryContext.resolutionScope,
+      )
+    ) {
+      return false
+    }
     val context = queryContext.graphContext
     val originClassId = consumer.originClassId
     if (originClassId != null) {
       if (originClassId in context.excludes) return false
       // A replaced origin's consumers stay live only while it still has surviving bindings
       if (
-        originClassId in replacedOrigins(context) &&
-          !hasOriginBindingInContext(originClassId, context)
+        originClassId in replacedOrigins(queryContext) &&
+          !hasOriginBindingInContext(originClassId, queryContext)
       ) {
         return false
       }
@@ -357,7 +378,7 @@ internal class BindingIndex(
 
     val containerId = consumer.containerId
     if (containerId != null) {
-      return containerId in context.graphClassIds || containerId in context.containers
+      return containerId in context.graphClassIds || containerId in queryContext.containers
     }
 
     if (consumer.contributionScopes.isNotEmpty()) {
@@ -365,28 +386,36 @@ internal class BindingIndex(
     }
 
     if (originClassId != null) {
-      return hasOriginBindingInContext(originClassId, context)
+      return hasOriginBindingInContext(originClassId, queryContext)
     }
 
     return true
   }
 
-  private fun hasOriginBindingInContext(originClassId: ClassId, context: GraphContext): Boolean {
+  private fun hasOriginBindingInContext(
+    originClassId: ClassId,
+    queryContext: GraphQueryContext,
+  ): Boolean {
     return bindings.any { binding ->
-      binding.originClassId == originClassId && isBindingInContext(binding, context)
+      binding.originClassId == originClassId && isBindingInContext(binding, queryContext)
     }
   }
 
-  private fun isBindingInContext(entry: KaBinding, context: GraphContext): Boolean {
-    if (!isBindingCandidateInContext(entry, context)) return false
+  private fun isBindingInContext(entry: KaBinding, queryContext: GraphQueryContext): Boolean {
+    if (!isBindingCandidateInContext(entry, queryContext)) return false
     // Replaces removes the origin's contributions only; its own injectable type stays available
     // (a replacing stub can inject the replaced implementation directly).
     if (entry.contributionScopes.isEmpty()) return true
     val originClassId = entry.originClassId ?: return true
-    return originClassId !in replacedOrigins(context)
+    return originClassId !in replacedOrigins(queryContext)
   }
 
-  private fun isBindingCandidateInContext(entry: KaBinding, context: GraphContext): Boolean {
+  private fun isBindingCandidateInContext(
+    entry: KaBinding,
+    queryContext: GraphQueryContext,
+  ): Boolean {
+    if (!isVisibleFrom(entry, queryContext)) return false
+    val context = queryContext.graphContext
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
@@ -407,7 +436,7 @@ internal class BindingIndex(
         entry.contributionScopes.isNotEmpty() ||
           entry.containerId == null ||
           entry.containerId in context.graphClassIds ||
-          entry.containerId in context.containers
+          entry.containerId in queryContext.containers
       }
       is KaBinding.BoundInstance -> entry.containerId in context.graphClassIds
       is KaBinding.GraphDependency -> entry.containerId in context.includedDependencies
@@ -419,11 +448,11 @@ internal class BindingIndex(
     }
   }
 
-  private fun replacedOrigins(context: GraphContext): Set<ClassId> {
-    return replacedOriginsByContext.computeIfAbsent(context) {
+  private fun replacedOrigins(queryContext: GraphQueryContext): Set<ClassId> {
+    return replacedOriginsByContext.computeIfAbsent(queryContext) {
       bindings
         .asSequence()
-        .filter { binding -> isBindingCandidateInContext(binding, context) }
+        .filter { binding -> isBindingCandidateInContext(binding, queryContext) }
         .flatMap { binding -> binding.replaces.asSequence() }
         .toSet()
     }
@@ -526,7 +555,7 @@ private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): Scatte
 
 /** The result of resolving a consumer against every concrete graph context in the project. */
 internal class ConsumerResolution(
-  /** Unfiltered project-wide candidates. */
+  /** Candidates visible from the consumer's module. */
   val global: List<KaBinding>,
   /** Graph-filtered candidates per concrete parent path that can resolve the consumer. */
   val perContext: Map<GraphContext, List<KaBinding>>,
@@ -542,11 +571,34 @@ private fun moduleFor(element: KtElement?): KaModule? {
 
 private fun isVisibleFrom(
   pointer: SmartPsiElementPointer<*>,
+  hintAvailability: HintAvailability?,
+  useSiteModule: KaModule?,
   resolutionScope: DeclarationResolutionScope?,
 ): Boolean {
+  if (hintAvailability != null) {
+    if (useSiteModule == null || !hintAvailability.isVisibleFrom(useSiteModule)) return false
+  }
   if (resolutionScope == null) return true
   val element = pointer.element ?: return true
   return resolutionScope.contains(element)
+}
+
+private fun isVisibleFrom(entry: KaBinding, queryContext: GraphQueryContext): Boolean {
+  return isVisibleFrom(
+    entry.pointer,
+    entry.hintAvailability,
+    queryContext.graphModule,
+    queryContext.resolutionScope,
+  )
+}
+
+private fun isVisibleFrom(entry: ContributionEntry, queryContext: GraphQueryContext): Boolean {
+  return isVisibleFrom(
+    entry.pointer,
+    entry.hintAvailability,
+    queryContext.graphModule,
+    queryContext.resolutionScope,
+  )
 }
 
 @OptIn(KaPlatformInterface::class)

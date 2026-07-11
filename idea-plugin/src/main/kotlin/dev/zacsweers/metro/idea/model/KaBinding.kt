@@ -49,6 +49,10 @@ internal sealed interface KaBinding :
   val contributionScopes: Set<ClassId>
     get() = emptySet()
 
+  /** Module restriction inherited from a non-public compiled contribution hint. */
+  val hintAvailability: HintAvailability?
+    get() = null
+
   override val dependencies: List<KaContextualTypeKey>
     get() = emptyList()
 
@@ -100,6 +104,7 @@ internal sealed interface KaBinding :
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -120,6 +125,7 @@ internal sealed interface KaBinding :
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -143,6 +149,7 @@ internal sealed interface KaBinding :
     override val contributionScopes: Set<ClassId> = emptySet(),
     /** True for `@ContributesBinding`-style class contributions, false for `@Binds` callables. */
     val isClassContribution: Boolean = false,
+    override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -176,6 +183,7 @@ internal sealed interface KaBinding :
     /** Whether the declaration permits an empty aggregate via `@Multibinds(allowEmpty = true)`. */
     val allowEmpty: Boolean = false,
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -251,6 +259,7 @@ internal sealed interface KaBinding :
     override val containerId: ClassId? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
+    override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 

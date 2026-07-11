@@ -17,13 +17,15 @@ import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.scopeAnnotation
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -68,15 +70,10 @@ internal class LibraryIndexPostProcessor(
       contributions.forEach { addAll(it.scopeKeys) }
     }
     if (scopeIds.isEmpty()) return
-    // Analyze from a project-source use site: library-use-site sessions deserialize annotation
-    // values differently, like unresolved class literal ids.
-    val context =
-      graphs.firstNotNullOfOrNull { it.pointer.element }
-        ?: contributions.firstNotNullOfOrNull { it.pointer.element }
-        ?: return
-    val useSiteModulesByScope = useSiteModulesByScope()
+    val useSites = useSitesByModule()
     val fileIndex = ProjectFileIndex.getInstance(project)
     val allScope = GlobalSearchScope.allScope(project)
+    val hints = mutableListOf<LibraryHint>()
     for (scopeId in scopeIds) {
       ProgressManager.checkCanceled()
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
@@ -85,32 +82,36 @@ internal class LibraryIndexPostProcessor(
         // Project-source contributions are already covered by the annotation sweeps; hints only
         // exist as generated declarations in binaries.
         if (fileIndex.isInContent(virtualFile)) continue
-        // Mirrors the compiler's visibility filtering: internal hints are visible only from their
-        // own module and formal friend/associated compilations.
-        if (
-          hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) &&
-            !isVisibleInternalHint(hintFunction, useSiteModulesByScope[scopeId].orEmpty())
-        ) {
-          continue
-        }
-        processLibraryHint(hintFunction, scopeId, context)
+        hints += LibraryHint(scopeId, hintFunction)
       }
+    }
+    if (hints.isEmpty()) return
+
+    val visibleModulesByHint = visibleModulesByHint(hints, useSites)
+    for (hint in hints) {
+      val visibleModules = visibleModulesByHint.getValue(hint.function)
+      if (visibleModules.isEmpty()) continue
+      val isNonPublic =
+        hint.function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
+          hint.function.hasModifier(KtTokens.PRIVATE_KEYWORD)
+      val hintAvailability = if (isNonPublic) HintAvailability(visibleModules) else null
+      val context = useSites.getValue(visibleModules.first())
+      processLibraryHint(hint.function, hint.scopeId, context, hintAvailability)
     }
   }
 
-  private fun useSiteModulesByScope(): Map<ClassId, Set<KaModule>> {
-    val result = mutableMapOf<ClassId, MutableSet<KaModule>>()
+  private fun useSitesByModule(): Map<KaModule, KtElement> {
+    val result = linkedMapOf<KaModule, KtElement>()
 
-    fun addUseSite(element: PsiElement?, scopeKeys: Set<ClassId>) {
+    fun addUseSite(element: PsiElement?) {
       if (element !is KtElement) return
       val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
-      for (scopeKey in scopeKeys) {
-        result.getOrPut(scopeKey) { mutableSetOf() } += module
-      }
+      result.putIfAbsent(module, element)
     }
 
-    graphs.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
-    contributions.forEach { addUseSite(it.pointer.element, it.scopeKeys) }
+    graphs.forEach { addUseSite(it.pointer.element) }
+    contributions.forEach { addUseSite(it.pointer.element) }
+    consumers.forEach { addUseSite(it.pointer.element) }
     return result
   }
 
@@ -118,6 +119,7 @@ internal class LibraryIndexPostProcessor(
     hintFunction: KtNamedFunction,
     scopeId: ClassId,
     context: KtElement,
+    hintAvailability: HintAvailability?,
   ) {
     analyze(context) {
       val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze
@@ -145,6 +147,7 @@ internal class LibraryIndexPostProcessor(
           pointerManager.createSmartPsiElementPointer(contributionAnchor),
           setOf(scopeId),
           contributedClassId,
+          hintAvailability,
         )
       val classReplaces =
         classSymbol.annotations
@@ -157,6 +160,7 @@ internal class LibraryIndexPostProcessor(
             originClassId = data.originClassId ?: contributedClassId,
             replaces = data.replaces + classReplaces,
             contributionScopes = data.contributionScopes.ifEmpty { setOf(scopeId) },
+            hintAvailability = hintAvailability,
           )
       }
       // Generated members hold the machine-readable binding declarations that annotation
@@ -175,6 +179,7 @@ internal class LibraryIndexPostProcessor(
                   data.implementationName ?: originClassId?.shortClassName?.asString(),
                 replaces = classReplaces,
                 contributionScopes = setOf(scopeId),
+                hintAvailability = hintAvailability,
               )
           }
         }
@@ -182,19 +187,31 @@ internal class LibraryIndexPostProcessor(
     }
   }
 
-  /** Whether an internal [hintFunction] is visible from a formal friend/associated use site. */
-  private fun isVisibleInternalHint(
-    hintFunction: KtNamedFunction,
-    useSiteModules: Set<KaModule>,
-  ): Boolean {
-    for (useSiteModule in useSiteModules) {
-      val hintModule = KaModuleProvider.getModule(project, hintFunction, useSiteModule)
-      if (hintModule == useSiteModule) return true
-      if (useSiteModule is KaSourceModule && hintModule in useSiteModule.directFriendDependencies) {
-        return true
+  /** Modules from which Kotlin considers each [LibraryHint] visible. */
+  @OptIn(KaExperimentalApi::class)
+  private fun visibleModulesByHint(
+    hints: List<LibraryHint>,
+    useSites: Map<KaModule, KtElement>,
+  ): Map<KtNamedFunction, Set<KaModule>> {
+    val result = hints.associateTo(linkedMapOf()) { it.function to linkedSetOf<KaModule>() }
+    for ((module, useSite) in useSites) {
+      ProgressManager.checkCanceled()
+      analyze(useSite) {
+        val checker =
+          createUseSiteVisibilityChecker(
+            useSiteFile = useSite.containingKtFile.symbol,
+            receiverExpression = null,
+            position = useSite,
+          )
+        for (hint in hints) {
+          val hintSymbol = hint.function.symbol as? KaNamedFunctionSymbol ?: continue
+          if (checker.isVisible(hintSymbol)) {
+            result.getValue(hint.function) += module
+          }
+        }
       }
     }
-    return false
+    return result
   }
 
   /**
@@ -253,4 +270,6 @@ internal class LibraryIndexPostProcessor(
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
     return pointerManager.createSmartPsiElementPointer(element)
   }
+
+  private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction)
 }

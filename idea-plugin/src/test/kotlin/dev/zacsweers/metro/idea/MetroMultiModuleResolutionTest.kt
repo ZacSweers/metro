@@ -5,14 +5,20 @@ package dev.zacsweers.metro.idea
 import com.intellij.openapi.components.service
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.HintAvailability
+import dev.zacsweers.metro.idea.model.KaBinding
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 
 /** Exercises module-sensitive resolution with real source modules and Analysis API module data. */
 class MetroMultiModuleResolutionTest : UsefulTestCase() {
@@ -55,6 +61,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     ModuleRootModificationUtil.addDependency(indirectAppModule, bridgeModule)
     appModule.addMetroRuntimeLibrary()
     libraryModule.addMetroRuntimeLibrary()
+    bridgeModule.addMetroRuntimeLibrary()
     indirectAppModule.addMetroRuntimeLibrary()
     fixture.project.setMetroOptions()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
@@ -219,5 +226,162 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val queryContext = index.queryContext(index.contextsFor(graph).single())!!
     assertTrue(index.contributionsFor(queryContext).none { it.pointer.element === contribution })
     assertTrue(index.bindingsInContext(queryContext).none { it.pointer.element === contribution })
+  }
+
+  fun testInternalHintAvailabilityDoesNotLeakAcrossGraphModules() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/HintAvailabilityBindings.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        interface Service
+
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class RealService : Service
+
+        class HiddenService : Service
+
+        class ContainerService
+
+        @BindingContainer
+        object HiddenContainer {
+          @Provides fun containerService(): ContainerService = ContainerService()
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val friendFile =
+      fixture.addFileToProject(
+        "app/app/FriendGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import lib.ContainerService
+        import lib.Service
+
+        @DependencyGraph(AppScope::class)
+        interface FriendGraph {
+          val service: Service
+          val containerService: ContainerService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val unrelatedFile =
+      fixture.addFileToProject(
+        "bridge/bridge/UnrelatedGraph.kt",
+        """
+        package bridge
+
+        import dev.zacsweers.metro.*
+        import lib.ContainerService
+        import lib.Service
+
+        @DependencyGraph(AppScope::class)
+        interface UnrelatedGraph {
+          val service: Service
+          val containerService: ContainerService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val baseIndex = fixture.project.service<MetroResolutionService>().index(friendFile)
+    val declarations = libraryFile.declarationsIncludingNested()
+    val hiddenService = declarations.klass("HiddenService")
+    val hiddenContainer =
+      declarations.filterIsInstance<KtObjectDeclaration>().single { it.name == "HiddenContainer" }
+    val realServiceId = checkNotNull(declarations.klass("RealService").getClassId())
+    val hiddenServiceId = checkNotNull(hiddenService.getClassId())
+    val hiddenContainerId = checkNotNull(hiddenContainer.getClassId())
+    val friendGraph = baseIndex.graphs.single { it.name == "FriendGraph" }
+    val friendModule =
+      baseIndex.queryContext(baseIndex.contextsFor(friendGraph).single())!!.graphModule
+    // LibraryIndexPostProcessor computes this set with Kotlin's visibility checker. Construct it
+    // directly here to isolate the query behavior after one module admits an internal hint.
+    val availability = HintAvailability(setOf(friendModule))
+    val pointerManager = SmartPointerManager.getInstance(fixture.project)
+    val friendService =
+      baseIndex.consumerEntryAt(friendFile.declarationsIncludingNested().property("service"))!!
+    val hiddenBinding =
+      KaBinding.Alias(
+        pointer = pointerManager.createSmartPsiElementPointer(hiddenService),
+        typeKey = friendService.key,
+        consumedKey = null,
+        implementationName = "HiddenService",
+        originClassId = hiddenServiceId,
+        replaces = setOf(realServiceId),
+        contributionScopes = friendGraph.scopeKeys,
+        isClassContribution = true,
+        hintAvailability = availability,
+      )
+    val restrictedIndex =
+      BindingIndex(
+        bindings = baseIndex.bindings + hiddenBinding,
+        consumers = baseIndex.consumers,
+        graphs = baseIndex.graphs,
+        contributions =
+          baseIndex.contributions +
+            ContributionEntry(
+              pointerManager.createSmartPsiElementPointer(hiddenService),
+              friendGraph.scopeKeys,
+              hiddenServiceId,
+              availability,
+            ) +
+            ContributionEntry(
+              pointerManager.createSmartPsiElementPointer(hiddenContainer),
+              friendGraph.scopeKeys,
+              hiddenContainerId,
+              availability,
+            ),
+        assistedSites = baseIndex.assistedSites,
+        bindingContainers = baseIndex.bindingContainers,
+      )
+
+    val unrelatedGraph = restrictedIndex.graphs.single { it.name == "UnrelatedGraph" }
+    val friendContext =
+      restrictedIndex.queryContext(restrictedIndex.contextsFor(friendGraph).single())!!
+    val unrelatedContext =
+      restrictedIndex.queryContext(restrictedIndex.contextsFor(unrelatedGraph).single())!!
+    val unrelatedService =
+      restrictedIndex.consumerEntryAt(
+        unrelatedFile.declarationsIncludingNested().property("service")
+      )!!
+    assertEquals(
+      listOf("HiddenService"),
+      restrictedIndex.bindingsFor(friendService, friendContext).map { it.implementationName },
+    )
+    assertEquals(
+      listOf("RealService"),
+      restrictedIndex.bindingsFor(unrelatedService, unrelatedContext).map { it.implementationName },
+    )
+
+    val friendContainerService =
+      restrictedIndex.consumerEntryAt(
+        friendFile.declarationsIncludingNested().property("containerService")
+      )!!
+    val unrelatedContainerService =
+      restrictedIndex.consumerEntryAt(
+        unrelatedFile.declarationsIncludingNested().property("containerService")
+      )!!
+    assertEquals(1, restrictedIndex.bindingsFor(friendContainerService, friendContext).size)
+    assertTrue(restrictedIndex.bindingsFor(unrelatedContainerService, unrelatedContext).isEmpty())
+    assertTrue(
+      restrictedIndex.contributionsFor(friendContext).any {
+        it.classId == hiddenContainerId
+      }
+    )
+    assertTrue(
+      restrictedIndex.contributionsFor(unrelatedContext).none {
+        it.classId == hiddenContainerId || it.classId == hiddenServiceId
+      }
+    )
   }
 }

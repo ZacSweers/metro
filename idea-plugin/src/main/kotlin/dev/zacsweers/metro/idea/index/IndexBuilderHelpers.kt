@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
@@ -41,6 +42,7 @@ internal fun BindingData.toKaBinding(
   implementationName: String? = this.implementationName,
   replaces: Set<ClassId> = this.replaces,
   contributionScopes: Set<ClassId> = this.contributionScopes,
+  hintAvailability: HintAvailability? = null,
 ): KaBinding {
   return when (kind) {
     BindingData.Kind.CONSTRUCTOR_INJECTED ->
@@ -53,6 +55,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = dependencies,
+        hintAvailability = hintAvailability,
       )
     BindingData.Kind.PROVIDED ->
       KaBinding.Provided(
@@ -67,6 +70,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = dependencies,
+        hintAvailability = hintAvailability,
       )
     BindingData.Kind.ALIAS ->
       KaBinding.Alias(
@@ -82,6 +86,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         isClassContribution = isClassContribution,
+        hintAvailability = hintAvailability,
       )
     BindingData.Kind.MULTIBINDING ->
       KaBinding.Multibinding(
@@ -93,6 +98,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         allowEmpty = allowEmpty,
+        hintAvailability = hintAvailability,
       )
     BindingData.Kind.BOUND_INSTANCE ->
       KaBinding.BoundInstance(pointer = pointer, typeKey = key, containerId = containerId)
@@ -105,6 +111,7 @@ internal fun BindingData.toKaBinding(
         containerId = containerId,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        hintAvailability = hintAvailability,
       )
   }
 }

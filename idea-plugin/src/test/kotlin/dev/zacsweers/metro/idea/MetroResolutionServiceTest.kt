@@ -1147,7 +1147,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val wired = index.contextsFor(index.graphEntryAt(declarations.klass("WiredGraph"))!!).single()
     // Transitive container includes are expanded
-    assertEquals(2, wired.containers.size)
+    assertEquals(2, index.queryContext(wired)!!.containers.size)
     val clientAccessor = index.consumerEntryAt(declarations.property("client"))!!
     assertEquals(1, index.bindingsFor(clientAccessor, index.queryContext(wired)!!).size)
 

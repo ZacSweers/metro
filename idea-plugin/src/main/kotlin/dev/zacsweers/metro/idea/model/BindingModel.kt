@@ -110,8 +110,6 @@ internal class GraphContext(
   /** Declared scope annotations across the chain, gating scoped-binding membership. */
   val scopingAnnotations: Set<KaAnnotationSnapshot>,
   val excludes: Set<ClassId>,
-  /** Transitively expanded binding containers, including contributed ones. */
-  val containers: Set<ClassId>,
   val includedDependencies: Set<ClassId>,
   val graphClassIds: Set<ClassId>,
 ) {
@@ -139,11 +137,20 @@ internal class GraphQueryContext(
   val graphModule: KaModule,
   /** The Analysis API's formal view of declarations resolvable from [graphModule]. */
   val resolutionScope: DeclarationResolutionScope,
+  /** Transitively expanded binding containers visible from [graphModule]. */
+  val containers: Set<ClassId>,
 )
 
 /** A session-free containment view over an Analysis API module resolution scope. */
 internal fun interface DeclarationResolutionScope {
   fun contains(element: PsiElement): Boolean
+}
+
+/** Modules from which declarations synthesized from a non-public contribution hint are visible. */
+internal class HintAvailability(modules: Set<KaModule>) {
+  private val modules = modules.toSet()
+
+  fun isVisibleFrom(module: KaModule): Boolean = module in modules
 }
 
 /**
@@ -154,4 +161,5 @@ internal class ContributionEntry(
   val pointer: SmartPsiElementPointer<out KtElement>,
   val scopeKeys: Set<ClassId>,
   val classId: ClassId? = null,
+  val hintAvailability: HintAvailability? = null,
 )
