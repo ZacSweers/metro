@@ -20,7 +20,9 @@ internal actual suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
   block: suspend () -> T
 ): T = mutex.withLock { block() }
 
-internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any =
+internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any {
+  val callerContext = coroutineContext.minusKey(SuspendDoubleCheckInitialization)
   // The coroutine's Job when present; the context instance for Job-less coroutines (like
-  // `suspend fun main` or a bare `startCoroutine`) so cycle detection still works there.
-  coroutineContext[Job] ?: coroutineContext
+  // `suspend fun main` or a bare `startCoroutine`).
+  return callerContext[Job] ?: callerContext
+}

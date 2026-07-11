@@ -40,4 +40,5 @@ internal actual suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
   }
 }
 
-internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any = coroutineContext
+internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any =
+  coroutineContext.minusKey(SuspendDoubleCheckInitialization)

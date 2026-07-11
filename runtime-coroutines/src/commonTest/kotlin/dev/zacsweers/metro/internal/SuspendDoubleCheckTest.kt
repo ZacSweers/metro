@@ -12,6 +12,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,7 +34,7 @@ class SuspendDoubleCheckTest {
 
   @Test
   fun `double wrapping provider`() {
-    val provider = SuspendDoubleCheck.provider(SuspendProvider { Any() })
+    val provider = SuspendDoubleCheck.provider { Any() }
     assertSame(provider, SuspendDoubleCheck.provider(provider))
   }
 
@@ -42,29 +43,21 @@ class SuspendDoubleCheckTest {
     // The coroutine Mutex is not reentrant, so unlike DoubleCheck we can't tolerate a reentrant
     // call even when it would return the same instance. It must fail fast rather than suspend
     // forever waiting on a lock its own coroutine holds.
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          doubleCheckReference.load()!!.invoke()
-          Any()
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      doubleCheckReference.load()!!.invoke()
+      Any()
+    }
     doubleCheckReference.store(doubleCheck)
     assertFailsWith<IllegalStateException> { doubleCheck() }
   }
 
   @Test
   fun `reentrant invocation without a Job still throws instead of deadlocking`() {
-    // Job-less coroutines (suspend fun main, bare startCoroutine) have no Job to identify the
-    // initializing caller by; the guard falls back to coroutine context identity.
     var thrown: Throwable? = null
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          doubleCheckReference.load()!!.invoke()
-          Any()
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      doubleCheckReference.load()!!.invoke()
+      Any()
+    }
     doubleCheckReference.store(doubleCheck)
     val block: suspend () -> Any = { doubleCheck() }
     block.startCoroutine(
@@ -74,19 +67,41 @@ class SuspendDoubleCheckTest {
   }
 
   @Test
+  fun `concurrent callers sharing a coroutine context are not treated as reentrant`() = runTest {
+    val initializerEntered = CompletableDeferred<Unit>()
+    val releaseInitializer = CompletableDeferred<Unit>()
+    val value = Any()
+    val doubleCheck = SuspendDoubleCheck.provider {
+      initializerEntered.complete(Unit)
+      releaseInitializer.await()
+      value
+    }
+    val firstResult = CompletableDeferred<Result<Any>>()
+    val secondResult = CompletableDeferred<Result<Any>>()
+    val block: suspend () -> Any = { doubleCheck() }
+    val sharedContext = coroutineContext
+
+    block.startCoroutine(Continuation(sharedContext) { result -> firstResult.complete(result) })
+    initializerEntered.await()
+    block.startCoroutine(Continuation(sharedContext) { result -> secondResult.complete(result) })
+    yield()
+    releaseInitializer.complete(Unit)
+
+    assertSame(value, firstResult.await().getOrThrow())
+    assertSame(value, secondResult.await().getOrThrow())
+  }
+
+  @Test
   fun `concurrent callers share a single in-flight computation`() = runTest {
     // Single-flight on ALL platforms, including single-threaded JS/Wasm where the initializer
     // interleaves with other coroutines at suspension points: the second caller must suspend and
     // share the first caller's result, not run the initializer again.
     val gate = CompletableDeferred<Unit>()
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          invocationCount.incrementAndFetch()
-          gate.await()
-          Any()
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      invocationCount.incrementAndFetch()
+      gate.await()
+      Any()
+    }
     val first = async { doubleCheck() }
     val second = async { doubleCheck() }
     // Let both coroutines reach the provider
@@ -99,15 +114,12 @@ class SuspendDoubleCheckTest {
 
   @Test
   fun `failed initializer is not cached and is retried`() = runTest {
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          if (invocationCount.incrementAndFetch() == 1) {
-            throw IllegalArgumentException("first attempt fails")
-          }
-          "success"
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      if (invocationCount.incrementAndFetch() == 1) {
+        throw IllegalArgumentException("first attempt fails")
+      }
+      "success"
+    }
     assertFailsWith<IllegalArgumentException> { doubleCheck() }
     assertFalse((doubleCheck as SuspendDoubleCheck<*>).isInitialized())
     assertEquals("success", doubleCheck())
@@ -117,15 +129,12 @@ class SuspendDoubleCheckTest {
 
   @Test
   fun `reentrancy detection resets after a failed initialization`() = runTest {
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          if (invocationCount.incrementAndFetch() == 1) {
-            throw IllegalArgumentException("first attempt fails")
-          }
-          "success"
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      if (invocationCount.incrementAndFetch() == 1) {
+        throw IllegalArgumentException("first attempt fails")
+      }
+      "success"
+    }
     assertFailsWith<IllegalArgumentException> { doubleCheck() }
     // The same coroutine retries. It must not be misidentified as a reentrant cycle.
     assertEquals("success", doubleCheck())
@@ -135,17 +144,14 @@ class SuspendDoubleCheckTest {
   fun `cancelled initializer does not poison the cache`() = runTest {
     val winnerEntered = CompletableDeferred<Unit>()
     val winnerGate = CompletableDeferred<Unit>()
-    val doubleCheck =
-      SuspendDoubleCheck.provider(
-        SuspendProvider {
-          if (invocationCount.incrementAndFetch() == 1) {
-            winnerEntered.complete(Unit)
-            // Suspends until cancelled
-            winnerGate.await()
-          }
-          "value"
-        }
-      )
+    val doubleCheck = SuspendDoubleCheck.provider {
+      if (invocationCount.incrementAndFetch() == 1) {
+        winnerEntered.complete(Unit)
+        // Suspends until cancelled
+        winnerGate.await()
+      }
+      "value"
+    }
 
     val winner = launch { doubleCheck() }
     winnerEntered.await()
@@ -159,7 +165,7 @@ class SuspendDoubleCheckTest {
 
   @Test
   fun `isInitialized works`() = runTest {
-    val doubleCheck = SuspendDoubleCheck.provider(SuspendProvider { Any() })
+    val doubleCheck = SuspendDoubleCheck.provider { Any() }
     assertFalse((doubleCheck as SuspendDoubleCheck<*>).isInitialized())
 
     doubleCheck()

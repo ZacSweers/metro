@@ -114,15 +114,20 @@ re-parented into the new lambda.
 
 `SuspendDoubleCheck` follows the `DoubleCheckInitGuard` pattern: the memoization algorithm lives
 in common code; the `SuspendDoubleCheckInitGuard` expect/actual superclass provides
-synchronization. JVM/Native (`nonWebMain`): a coroutine `Mutex`, caller identity =
-`coroutineContext[Job]` falling back to context identity for Job-less coroutines. JS/Wasm
-(`webMain`): a plain flag plus a FIFO queue of stdlib continuations. Single-threaded platforms
-need no atomics or parking, which keeps the web klibs free of kotlinx-coroutines. This also lets JS
-box tests link `runtime-coroutines` without partial-linkage errors against dev test compilers. The
-kotlinx dependency lives only in `nonWebMain`.
+synchronization. JVM/Native (`nonWebMain`) use a coroutine `Mutex`. JS/Wasm (`webMain`) use a plain
+flag plus a FIFO queue of stdlib continuations. Single-threaded platforms need no atomics or
+parking, which keeps the web klibs free of kotlinx-coroutines. This also lets JS box tests link
+`runtime-coroutines` without partial-linkage errors against dev test compilers. The kotlinx
+dependency lives only in `nonWebMain`.
+
+The delegate runs with a context marker containing the `SuspendDoubleCheck` and caller identity.
+A recursive call sees its marker and fails before trying to reacquire the non-reentrant guard. An
+independent coroutine with the same `Job` or coroutine context has no marker, so it waits for the
+in-flight value instead of being reported as a cycle. Markers retain their parent so indirect
+cycles are detected too.
 
 Semantics on all platforms: single-flight, failures retried, cancellation mid-init leaves the
-cache untouched, reentrant cycles fail fast by caller identity. `SuspendLazy` is not serializable
+cache untouched, reentrant cycles fail fast. `SuspendLazy` is not serializable
 because `writeReplace` cannot force a suspend computation.
 
 ## Tracing

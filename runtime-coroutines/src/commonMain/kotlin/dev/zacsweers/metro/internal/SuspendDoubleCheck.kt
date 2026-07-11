@@ -8,6 +8,7 @@ import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.coroutineContext
 
 private val UNINITIALIZED_SUSPEND = Any()
 
@@ -25,8 +26,8 @@ private val UNINITIALIZED_SUSPEND = Any()
  * - A failed initialization is not cached. The next caller retries.
  * - Cancellation mid-initialization leaves the cache untouched. The next caller recomputes.
  * - A binding that resolves itself during its own initialization fails fast with a circular
- *   dependency error, detected by caller identity ([initCallerIdentity]). The guard is not
- *   reentrant, so proceeding would deadlock or recurse forever.
+ *   dependency error. The delegate runs with a context marker so independent coroutines that share
+ *   a `Job` or coroutine context are not mistaken for recursive calls.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
   SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {
@@ -36,13 +37,6 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
   private var provider: SuspendProvider<T>? = provider
   @Volatile private var _value: Any? = UNINITIALIZED_SUSPEND
 
-  /**
-   * An identity for the coroutine currently running the initializer, or null when no initialization
-   * is in flight. Written only inside the guard; read on the unguarded fast path (volatile for
-   * visibility).
-   */
-  @Volatile private var initializingCaller: Any? = null
-
   override suspend fun invoke(): T {
     val result1 = _value
     if (result1 !== UNINITIALIZED_SUSPEND) {
@@ -51,7 +45,8 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
     }
 
     val caller = initCallerIdentity()
-    check(caller !== initializingCaller) {
+    val initialization = coroutineContext[SuspendDoubleCheckInitialization]
+    check(initialization?.contains(this, caller) != true) {
       "Scoped suspend provider was invoked recursively during its own initialization. " +
         "This is likely due to a circular dependency."
     }
@@ -61,17 +56,12 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
       } else {
-        initializingCaller = caller
-        try {
-          val typedValue = provider!!()
-          _value = typedValue
-          // Null out the reference to the provider. We are never going to need it again, so we
-          // can make it eligible for GC.
-          provider = null
-          typedValue
-        } finally {
-          initializingCaller = null
-        }
+        val typedValue = withSuspendDoubleCheckInitialization(this, caller) { provider!!.invoke() }
+        _value = typedValue
+        // Null out the reference to the provider. We are never going to need it again, so we
+        // can make it eligible for GC.
+        provider = null
+        typedValue
       }
     }
   }
