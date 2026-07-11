@@ -20,6 +20,7 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@bnorm](https://github.com/bnorm)
+- [@kevinguitar](https://github.com/kevinguitar)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
