@@ -7120,6 +7120,7 @@
 <ul>
 <li><strong>[FIR]</strong> Report a diagnostic error when <code>@DependencyGraph.Factory</code> is used for a graph extension, instead of crashing.</li>
 <li><strong>[IR]</strong> Fix <code>createGraphFactory()</code> calls for graph factory interfaces compiled in upstream modules with IR-only class generation.</li>
+<li><strong>[IR/interop]</strong> Fix graph dependency accessors that return supported <code>Lazy&lt;T&gt;</code> or <code>Provider&lt;T&gt;</code> wrapper types.</li>
 <li><strong>[IR/interop]</strong> Fix a crash when member-injecting an unscoped constructor-injected binding as <code>dagger.Lazy&lt;T&gt;</code>.</li>
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
@@ -7130,6 +7131,7 @@
 <p>Special thanks to the following contributors for contributing to this release!</p>
 <ul>
 <li><a href="https://github.com/bnorm">@bnorm</a></li>
+<li><a href="https://github.com/kevinguitar">@kevinguitar</a></li>
 </ul>
 <h3 id="consider-sponsoring-metros-development"><a href="https://www.zacsweers.dev/sponsoring-metro/">Consider sponsoring Metro&rsquo;s development</a><a class="headerlink" href="#consider-sponsoring-metros-development" title="Permanent link">&para;</a></h3>
 <h2 id="130">1.3.0<a class="headerlink" href="#130" title="Permanent link">&para;</a></h2>
