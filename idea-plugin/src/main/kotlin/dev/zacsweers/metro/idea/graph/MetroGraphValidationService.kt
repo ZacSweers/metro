@@ -45,6 +45,12 @@ internal class MetroGraphValidationService(
 
   private class CachedEntry(val result: GraphValidationResult, val index: BindingIndex)
 
+  private class ValidationInput(
+    val graphElement: PsiElement,
+    val index: BindingIndex,
+    val context: GraphContext,
+  )
+
   private fun cacheKey(context: GraphContext): GraphPath? {
     val hasLocalGraph = context.path.segments.any { it.classId == null }
     return context.path.takeUnless { hasLocalGraph }
@@ -79,8 +85,8 @@ internal class MetroGraphValidationService(
   fun cachedResult(element: PsiElement, context: GraphContext): CachedValidation? {
     val key = cacheKey(context) ?: return null
     val entry = results[key] ?: return null
-    val index = project.service<MetroResolutionService>().index(element)
-    return CachedValidation(entry.result, stale = entry.index !== index)
+    val input = validationInput(element, context)
+    return CachedValidation(entry.result, stale = entry.index !== input.index)
   }
 
   /**
@@ -88,17 +94,13 @@ internal class MetroGraphValidationService(
    * Must be called under a read action.
    */
   fun validate(element: PsiElement, context: GraphContext): GraphValidationResult {
-    val index = project.service<MetroResolutionService>().index(element)
-    val currentContext = index.findContext(context.path) ?: context
-    return validate(index, element, currentContext)
+    return validate(validationInput(element, context))
   }
 
-  private fun validate(
-    index: BindingIndex,
-    element: PsiElement,
-    context: GraphContext,
-  ): GraphValidationResult {
-    val options = moduleOptions(element)
+  private fun validate(input: ValidationInput): GraphValidationResult {
+    val options = moduleOptions(input.graphElement)
+    val index = input.index
+    val context = input.context
     val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
     val queryContext =
       checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
@@ -119,9 +121,10 @@ internal class MetroGraphValidationService(
    * [graph]'s own result last. Must be called under a read action.
    */
   fun validateWithExtensions(element: PsiElement, graph: KaGraphNode): List<GraphValidationResult> {
-    val index = project.service<MetroResolutionService>().index(element)
+    val graphElement = graph.pointer.element ?: element
+    val index = project.service<MetroResolutionService>().index(graphElement)
     val currentGraph = index.graphFor(graph) ?: graph
-    return validateWithExtensions(index, element, index.contextsFor(currentGraph))
+    return validateWithExtensions(graphElement, index.contextsFor(currentGraph))
   }
 
   /** Validates one concrete graph path and the extension paths it creates. */
@@ -129,29 +132,37 @@ internal class MetroGraphValidationService(
     element: PsiElement,
     context: GraphContext,
   ): List<GraphValidationResult> {
-    val index = project.service<MetroResolutionService>().index(element)
-    val currentContext = index.findContext(context.path) ?: context
-    return validateWithExtensions(index, element, listOf(currentContext))
+    return validateWithExtensions(element, listOf(context))
   }
 
   private fun validateWithExtensions(
-    index: BindingIndex,
-    element: PsiElement,
+    fallbackElement: PsiElement,
     roots: List<GraphContext>,
   ): List<GraphValidationResult> {
     val results = mutableListOf<GraphValidationResult>()
     val visited = mutableSetOf<GraphPath>()
 
     fun visit(context: GraphContext) {
-      if (!visited.add(context.path)) return
-      for (extension in index.extensionContextsOf(context)) {
+      val input = validationInput(fallbackElement, context)
+      if (!visited.add(input.context.path)) return
+      for (extension in input.index.extensionContextsOf(input.context)) {
         visit(extension)
       }
-      results += validate(index, element, context)
+      results += validate(input)
     }
 
     roots.forEach(::visit)
     return results
+  }
+
+  private fun validationInput(
+    fallbackElement: PsiElement,
+    context: GraphContext,
+  ): ValidationInput {
+    val graphElement = context.graph.pointer.element ?: fallbackElement
+    val index = project.service<MetroResolutionService>().index(graphElement)
+    val currentContext = index.findContext(context.path) ?: context
+    return ValidationInput(graphElement, index, currentContext)
   }
 
   /** Runs [validate] for one context in a smart-mode read action and delivers it on the EDT. */

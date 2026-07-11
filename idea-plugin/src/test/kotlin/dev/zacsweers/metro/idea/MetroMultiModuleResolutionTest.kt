@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.facet.FacetManager
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.SmartPointerManager
@@ -11,12 +15,18 @@ import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
+import com.intellij.testFramework.runInEdtAndWait
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
+import org.jetbrains.kotlin.idea.serialization.updateCompilerArguments
+import org.jetbrains.kotlin.idea.workspaceModel.KotlinFacetBridgeFactory
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -448,4 +458,76 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       bridgeResult.diagnostics.isEmpty(),
     )
   }
+
+  fun testExtensionsUseTheirDeclarationModuleOptions() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibExtension.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        @Inject class ChildValue
+
+        @GraphExtension
+        interface LibExtension {
+          val childProvider: () -> ChildValue
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import lib.LibExtension
+
+        @DependencyGraph
+        interface AppGraph {
+          val extension: LibExtension
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    appModule.setModuleMetroOptions("enable-function-providers" to "true")
+    libraryModule.setModuleMetroOptions("enable-function-providers" to "false")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val resolutionService = fixture.project.service<MetroResolutionService>()
+    val appIndex = resolutionService.index(appFile)
+    assertNotSame(appIndex, resolutionService.index(libraryFile))
+    val appGraph = appIndex.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph"))!!
+    val results =
+      fixture.project
+        .service<MetroGraphValidationService>()
+        .validateWithExtensions(appFile, appGraph)
+
+    assertEquals(listOf("LibExtension", "AppGraph"), results.map { it.graph.name })
+    assertEquals(
+      listOf(MetroDiagnosticId.MISSING_BINDING),
+      results.first().diagnostics.map { it.id },
+    )
+    assertTrue(results.last().diagnostics.isEmpty())
+  }
+}
+
+private fun Module.setModuleMetroOptions(vararg options: Pair<String, String>) {
+  val facetManager = FacetManager.getInstance(this)
+  val facetModel = facetManager.createModifiableModel()
+  val configuration = KotlinFacetBridgeFactory.createFacetConfiguration()
+  configuration.settings.initializeIfNeeded(this, null)
+  configuration.settings.useProjectSettings = false
+  configuration.settings.updateCompilerArguments {
+    pluginOptions = options.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
+  }
+  val facet = facetManager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", configuration, null)
+  facetModel.addFacet(facet)
+  runInEdtAndWait { runWriteAction { facetModel.commit() } }
 }
