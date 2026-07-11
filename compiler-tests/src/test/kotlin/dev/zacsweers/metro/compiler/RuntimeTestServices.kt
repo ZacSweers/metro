@@ -52,15 +52,14 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
     for (file in metroRuntimeClasspath) {
       configuration.addJvmClasspathRoot(file)
     }
-    if (MetroDirectives.WITH_RUNTIME_COROUTINES in module.directives) {
+    val withMetroRuntimeCoroutines =
+      MetroDirectives.includeMetroRuntimeCoroutines(module.directives)
+    if (withMetroRuntimeCoroutines) {
       for (file in metroRuntimeCoroutinesClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
     }
-    if (
-      MetroDirectives.WITH_COROUTINES in module.directives ||
-        MetroDirectives.WITH_RUNTIME_COROUTINES in module.directives
-    ) {
+    if (MetroDirectives.WITH_COROUTINES in module.directives || withMetroRuntimeCoroutines) {
       for (file in coroutinesClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -76,9 +75,10 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
 class MetroRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    val withRuntimeCoroutines = MetroDirectives.WITH_RUNTIME_COROUTINES in module.directives
+    val withMetroRuntimeCoroutines =
+      MetroDirectives.includeMetroRuntimeCoroutines(module.directives)
     if (testServices.isJsBackend()) {
-      return if (withRuntimeCoroutines) {
+      return if (withMetroRuntimeCoroutines) {
         metroRuntimeKlibClasspath + metroRuntimeCoroutinesKlibClasspath
       } else {
         metroRuntimeKlibClasspath
@@ -86,10 +86,10 @@ class MetroRuntimeClassPathProvider(testServices: TestServices) :
     }
     return buildList {
       addAll(metroRuntimeClasspath)
-      if (withRuntimeCoroutines) {
+      if (withMetroRuntimeCoroutines) {
         addAll(metroRuntimeCoroutinesClasspath)
       }
-      if (MetroDirectives.WITH_COROUTINES in module.directives || withRuntimeCoroutines) {
+      if (MetroDirectives.WITH_COROUTINES in module.directives || withMetroRuntimeCoroutines) {
         addAll(coroutinesClasspath)
       }
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {

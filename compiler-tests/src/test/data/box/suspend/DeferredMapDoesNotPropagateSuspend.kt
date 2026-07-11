@@ -1,8 +1,9 @@
 // ENABLE_SUSPEND_PROVIDERS
+// WITHOUT_RUNTIME_COROUTINES
 
-// WITH_COROUTINES
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 // A class injecting Map<K, suspend () -> V> resolves the map synchronously — each value defers
 // its own suspension. The class must NOT be marked transitively suspend, so a non-suspend
@@ -23,9 +24,12 @@ interface ExampleGraph {
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val registry = graph.registry
-  return kotlinx.coroutines.runBlocking {
+  val block: suspend () -> String = {
     assertEquals(1, registry.handlers.getValue("suspend").invoke())
     assertEquals(2, registry.handlers.getValue("plain").invoke())
     "OK"
   }
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }

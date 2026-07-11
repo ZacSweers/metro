@@ -1,7 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// WITH_RUNTIME_COROUTINES
-
 // Invoking graph-provided suspend values through the `suspend () -> T` FUNCTION TYPE, on all
 // platforms including JS. On Kotlin/JS a class instance implementing a function type is not a
 // callable JS function — invocation through the function type compiles to a direct JS call and

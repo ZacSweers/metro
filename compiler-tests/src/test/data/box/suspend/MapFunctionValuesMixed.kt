@@ -1,8 +1,9 @@
 // ENABLE_SUSPEND_PROVIDERS
+// WITHOUT_RUNTIME_COROUTINES
 
-// WITH_COROUTINES
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 // The documented map multibinding form: Map<K, suspend () -> V> with mixed suspend and
 // non-suspend contributions, invoked end to end.
@@ -18,11 +19,14 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  val block: suspend () -> String = {
     val handlers = graph.handlers
     assertEquals(setOf("suspend", "plain"), handlers.keys)
     assertEquals(1, handlers.getValue("suspend").invoke())
     assertEquals(2, handlers.getValue("plain").invoke())
     "OK"
   }
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
