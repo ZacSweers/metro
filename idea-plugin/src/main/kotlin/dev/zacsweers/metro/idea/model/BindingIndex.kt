@@ -59,6 +59,10 @@ internal class BindingIndex(
     consumers.groupToScatter { it.multibindingId }
   }
 
+  private val accessorsByGraph: ScatterMap<GraphDeclarationId, List<ConsumerEntry>> by lazy {
+    consumers.groupToScatter { it.graphId }
+  }
+
   // PSI-identity lookups for editor features classifying the element under the caret/pass.
   // Bucketed by the pointers' virtual files (no PSI dereference) so the index never pins PSI
   // project-wide; only the queried file's bucket dereferences its pointers. Must be accessed in
@@ -182,8 +186,7 @@ internal class BindingIndex(
 
   /** The consumer sites declared on [graph] itself, used as seal roots. */
   fun accessorsFor(graph: KaGraphNode): List<ConsumerEntry> {
-    val graphClassId = graph.classId ?: return emptyList()
-    return consumers.filter { it.graphClassId == graphClassId }
+    return accessorsByGraph[graph.declarationId].orEmpty()
   }
 
   /** The extension graphs created by [graph]'s accessors. */
@@ -217,9 +220,7 @@ internal class BindingIndex(
     val graphSegment = path.segments.firstOrNull() ?: return null
     return graphs
       .asSequence()
-      .filter {
-        it.classId == graphSegment.classId && it.pointer.virtualFile == graphSegment.file
-      }
+      .filter { it.declarationId == graphSegment }
       .flatMap { contextsFor(it).asSequence() }
       .firstOrNull { it.path == path }
   }
@@ -289,6 +290,7 @@ internal class BindingIndex(
     val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
     val includedBindingContainers = chain.flatMapToSet { it.includedBindingContainers }
     val includedDependencies = chain.flatMapToSet { it.includedDependencies }
+    val graphIds = chain.mapTo(mutableSetOf()) { it.declarationId }
 
     return GraphContext(
       chain = chain,
@@ -297,6 +299,7 @@ internal class BindingIndex(
       excludes = excludes,
       includedBindingContainers = includedBindingContainers,
       includedDependencies = includedDependencies,
+      graphIds = graphIds,
       graphClassIds = graphClassIds,
     )
   }
@@ -374,8 +377,8 @@ internal class BindingIndex(
       }
     }
 
-    val graphClassId = consumer.graphClassId
-    if (graphClassId != null) return graphClassId in context.graphClassIds
+    val graphId = consumer.graphId
+    if (graphId != null) return graphId in context.graphIds
 
     val includedContainerKey = consumer.includedContainerKey
     if (includedContainerKey != null) {
@@ -531,9 +534,7 @@ internal class BindingIndex(
 
   /** Refreshes a retained graph declaration against this index. */
   fun graphFor(graph: KaGraphNode): KaGraphNode? {
-    val classId = graph.classId ?: return graphs.firstOrNull { it === graph }
-    val file = graph.pointer.virtualFile
-    return graphs.firstOrNull { it.classId == classId && it.pointer.virtualFile == file }
+    return graphs.firstOrNull { it.declarationId == graph.declarationId }
   }
 
   fun assistedSiteAt(element: KtElement): AssistedSite? {

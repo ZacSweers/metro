@@ -29,8 +29,8 @@ internal class ConsumerEntry(
   val containerId: ClassId? = null,
   /** Concrete binding-container factory input whose membership gates this consumer. */
   val includedContainerKey: KaTypeKey? = null,
-  /** Owning graph class for graph accessor consumers. */
-  val graphClassId: ClassId? = null,
+  /** Exact owning graph declaration for graph accessor consumers. */
+  val graphId: GraphDeclarationId? = null,
   /**
    * Whether absence is allowed: a native `@OptionalBinding`/`@OptionalDependency` site, or a
    * defaulted parameter under `DEFAULT` optional-binding behavior. An unresolved optional site is
@@ -87,6 +87,8 @@ internal class KaGraphNode(
    */
   val scopingAnnotations: Set<KaAnnotationSnapshot> = emptySet(),
 ) {
+  val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
+
   val name: String?
     get() = classId?.shortClassName?.asString()
 }
@@ -94,14 +96,20 @@ internal class KaGraphNode(
 /** A `@BindingContainer`-annotated class and the containers it transitively includes. */
 internal class BindingContainerEntry(val classId: ClassId, val includes: Set<ClassId>)
 
-/** Stable identity for one graph declaration across index rebuilds. */
-internal data class GraphPathSegment(
+/**
+ * Stable identity for one graph declaration across index rebuilds.
+ *
+ * The IDE index spans the whole project, where unrelated modules or separate KMP platform
+ * compilations can each declare the same graph FQN. Pairing [classId] with [file] keeps their
+ * accessors and validation roots isolated.
+ */
+internal data class GraphDeclarationId(
   val classId: ClassId?,
   val file: VirtualFile?,
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */
-internal data class GraphPath(val segments: List<GraphPathSegment>)
+internal data class GraphPath(val segments: List<GraphDeclarationId>)
 
 /**
  * The aggregated view a single graph (plus its parent chain, for extensions) has of the project:
@@ -118,6 +126,8 @@ internal class GraphContext(
   val includedBindingContainers: Set<KaTypeKey>,
   /** Concrete graph-dependency inputs inherited across the graph chain. */
   val includedDependencies: Set<KaTypeKey>,
+  /** Exact declarations in this graph path, used for graph-owned consumers. */
+  val graphIds: Set<GraphDeclarationId>,
   val graphClassIds: Set<ClassId>,
 ) {
   val graph: KaGraphNode
@@ -128,8 +138,7 @@ internal class GraphContext(
     get() = chain.last()
 
   /** Stable declaration identity for this exact parent path. */
-  val path: GraphPath =
-    GraphPath(chain.map { GraphPathSegment(it.classId, it.pointer.virtualFile) })
+  val path: GraphPath = GraphPath(chain.map { it.declarationId })
 }
 
 /**

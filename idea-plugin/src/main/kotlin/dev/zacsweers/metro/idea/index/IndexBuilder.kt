@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
@@ -345,6 +346,8 @@ internal class IndexBuilder(
       val excludes = annotations.flatMapToSet { classListArgument(it, "excludes") }
       val containerIds = annotations.flatMapToSet { classListArgument(it, "bindingContainers") }
       val graphClassId = ktClass.getClassId()
+      val graphPointer = pointerManager.createSmartPsiElementPointer(ktClass)
+      val graphId = GraphDeclarationId(graphClassId, graphPointer.virtualFile)
       val factoryAnnotations =
         options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
       val nestedClassIds = mutableSetOf<ClassId>()
@@ -372,7 +375,7 @@ internal class IndexBuilder(
           is KtCallableDeclaration -> {
             // Members with parameters are injector candidates, not accessors.
             if (member is KtNamedFunction && member.valueParameters.isNotEmpty()) {
-              processGraphInjector(member, graphClassId)
+              processGraphInjector(member, graphId)
               continue
             }
             if (member !is KtNamedFunction && member !is KtProperty) continue
@@ -405,7 +408,7 @@ internal class IndexBuilder(
                 site.isAbstractType,
                 site.multibindingId,
                 site.typeClassId,
-                graphClassId = graphClassId,
+                graphId = graphId,
                 isOptional = isOptionalAccessor,
               )
           }
@@ -421,7 +424,7 @@ internal class IndexBuilder(
         val superClass = (superType as? KaClassType)?.symbol as? KaNamedClassSymbol ?: continue
         val superClassId = superClass.classId ?: continue
         if (!supertypeIds.add(superClassId)) continue
-        indexSupertypeMembers(superClass, graphClassId, extensionCreationIds)
+        indexSupertypeMembers(superClass, graphId, extensionCreationIds)
       }
 
       // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
@@ -433,7 +436,7 @@ internal class IndexBuilder(
 
       graphs +=
         KaGraphNode(
-          pointerManager.createSmartPsiElementPointer(ktClass),
+          graphPointer,
           scopeKeys,
           classId = graphClassId,
           excludes = excludes,
@@ -452,7 +455,7 @@ internal class IndexBuilder(
   /** Indexes a graph supertype's accessors and injectors as members of the merging graph. */
   private fun KaSession.indexSupertypeMembers(
     superClass: KaNamedClassSymbol,
-    graphClassId: ClassId?,
+    graphId: GraphDeclarationId,
     extensionCreationIds: MutableSet<ClassId>,
   ) {
     // The source annotation sweep never sees library files, so a library supertype's binding
@@ -469,7 +472,7 @@ internal class IndexBuilder(
         continue
       }
       if (callable is KaNamedFunctionSymbol && callable.valueParameters.isNotEmpty()) {
-        (callable.psi as? KtNamedFunction)?.let { processGraphInjector(it, graphClassId) }
+        (callable.psi as? KtNamedFunction)?.let { processGraphInjector(it, graphId) }
         continue
       }
       if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) continue
@@ -498,7 +501,7 @@ internal class IndexBuilder(
           site.isAbstractType,
           site.multibindingId,
           site.typeClassId,
-          graphClassId = graphClassId,
+          graphId = graphId,
           isOptional = isOptionalAccessor,
         )
     }
@@ -508,7 +511,7 @@ internal class IndexBuilder(
    * Indexes a graph injector member such as `fun inject(target: Foo)`. Each of the target's
    * member-inject keys becomes a consumer anchored at the injector.
    */
-  private fun KaSession.processGraphInjector(member: KtNamedFunction, graphClassId: ClassId?) {
+  private fun KaSession.processGraphInjector(member: KtNamedFunction, graphId: GraphDeclarationId) {
     if (member.valueParameters.size != 1) return
     val symbol = member.symbol as? KaNamedFunctionSymbol ?: return
     if (symbol.modality != KaSymbolModality.ABSTRACT) return
@@ -524,7 +527,7 @@ internal class IndexBuilder(
           contextKey,
           multibindingId = contextKey.aggregateMultibindingId(options),
           typeClassId = contextKey.typeKey.type.classId,
-          graphClassId = graphClassId,
+          graphId = graphId,
           isOptional = contextKey.hasDefault,
         )
     }

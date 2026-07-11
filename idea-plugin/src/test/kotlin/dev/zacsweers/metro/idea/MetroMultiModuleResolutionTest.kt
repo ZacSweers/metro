@@ -11,6 +11,7 @@ import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ContributionEntry
@@ -383,6 +384,68 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       restrictedIndex.contributionsFor(unrelatedContext).none {
         it.classId == hiddenContainerId || it.classId == hiddenServiceId
       }
+    )
+  }
+
+  fun testSameFqnGraphsInUnrelatedModulesKeepTheirOwnAccessors() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/AppGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @Inject class AppValue
+
+        @DependencyGraph
+        interface SharedGraph {
+          val appValue: AppValue
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/AppGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @Inject class BridgeValue
+
+        @DependencyGraph
+        interface SharedGraph {
+          val bridgeValue: BridgeValue
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val appGraph = index.graphEntryAt(appFile.declarationsIncludingNested().klass("SharedGraph"))!!
+    val bridgeGraph =
+      index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("SharedGraph"))!!
+    assertEquals(
+      listOf("appValue"),
+      index.accessorsFor(appGraph).map { (it.pointer.element as KtNamedDeclaration).name },
+    )
+    assertEquals(
+      listOf("bridgeValue"),
+      index.accessorsFor(bridgeGraph).map { (it.pointer.element as KtNamedDeclaration).name },
+    )
+
+    val validationService = fixture.project.service<MetroGraphValidationService>()
+    val appResult = validationService.validate(appFile, index.contextsFor(appGraph).single())
+    assertTrue(appResult.diagnostics.joinToString { it.render() }, appResult.diagnostics.isEmpty())
+    val bridgeResult =
+      validationService.validate(bridgeFile, index.contextsFor(bridgeGraph).single())
+    assertTrue(
+      bridgeResult.diagnostics.joinToString { it.render() },
+      bridgeResult.diagnostics.isEmpty(),
     )
   }
 }
