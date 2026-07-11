@@ -1,5 +1,4 @@
-/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt:7:7: error: 
-[Metro/MissingBinding] No binding found for Any
+/SimilarBindingsNotReportedWhenMissingBindingTypeIsAny.kt:7:7: error: [Metro/MissingBinding] No binding found for Any
 
   trace (in AppGraph):
       Any is requested at AppGraph.any

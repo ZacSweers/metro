@@ -1,5 +1,4 @@
-/module_main_UsefulHintsForMissingImplDeps.kt:21:11: error: 
-[Metro/MissingBinding] No binding found for FooImpl
+/module_main_UsefulHintsForMissingImplDeps.kt:21:11: error: [Metro/MissingBinding] No binding found for FooImpl
 
   AppGraph.base -> Base -> FooImpl
 

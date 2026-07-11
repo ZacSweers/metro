@@ -1,5 +1,4 @@
-/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:19:3: error: 
-[Metro/DuplicateBinding] Multiple bindings found for String
+/DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:19:3: error: [Metro/DuplicateBinding] Multiple bindings found for String
 
       DuplicateBindingsInDynamicGraphReportTheCallLocation.kt:13:13
         @Provides fun provideString(): String
