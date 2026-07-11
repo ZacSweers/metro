@@ -334,14 +334,12 @@ private fun checkDesugaredProviderUse(
 }
 
 /**
- * Rejects statically-invalid combinations of suspend wrappers with other intrinsic wrappers. These
- * are graph-independent: no binding resolution can make them meaningful, and codegen has no
- * materialization for them.
+ * Rejects unsupported combinations of suspend wrappers with other intrinsic wrappers. These are
+ * graph-independent checks, and codegen has no materialization for these forms.
  *
  * Rules:
  * - `suspend () -> T` / `SuspendProvider<T>` / `SuspendLazy<T>` must wrap the binding type directly
- *   (or a multibinding Map/Set/collection type). A suspend wrapper already defers resolution, so
- *   wrapping another wrapper is meaningless.
+ *   (or a multibinding Map/Set/collection type). Nested wrapper forms are unsupported.
  * - `Provider<T>` / `Lazy<T>` / `() -> T` must not wrap suspend wrappers.
  * - Map multibinding values support the deferred form `Map<K, suspend () -> V>` only. `SuspendLazy`
  *   values are not supported.

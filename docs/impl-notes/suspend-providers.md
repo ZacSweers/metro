@@ -50,10 +50,9 @@ Ordered steps, all graph-level errors:
    unwrapped. Provider/Lazy-wrapped suspend deps of the target are checked here as well because
    the target binding is not in the graph and step 4 never visits it.
 
-Statically-invalid wrapper *nesting* (suspend wrapper around any other wrapper, Provider/Lazy
-around a suspend wrapper, `Map<K, SuspendLazy<V>>`) is rejected earlier, at FIR
-(`UNSUPPORTED_SUSPEND_WRAPPER_NESTING` in `injectionSiteChecks.kt`), since no graph can make those
-shapes meaningful.
+Unsupported wrapper *nesting* (suspend wrapper around any other wrapper, Provider/Lazy around a
+suspend wrapper, `Map<K, SuspendLazy<V>>`) is rejected earlier, at FIR
+(`UNSUPPORTED_SUSPEND_WRAPPER_NESTING` in `injectionSiteChecks.kt`).
 
 ## Codegen
 

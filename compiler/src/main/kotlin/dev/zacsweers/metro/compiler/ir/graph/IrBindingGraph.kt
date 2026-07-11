@@ -1148,7 +1148,8 @@ internal class IrBindingGraph(
     // Step 2: Multibinding aggregates over suspend elements. Aggregation code (buildSet/buildMap
     // getters, Map*Factory invokes) is non-suspend and can't await element resolutions, so the
     // only supported consumption of a suspend multibinding is the deferred-value map form
-    // `Map<K, suspend () -> V>`. Sets have no deferred-value form and always error.
+    // `Map<K, suspend () -> V>`. Provider-valued set forms are unsupported, as they are for
+    // ordinary Provider bindings.
     val suspendMultibindingKeys = mutableSetOf<IrTypeKey>()
     bindings.forEachValue { binding ->
       if (
@@ -1172,7 +1173,7 @@ internal class IrBindingGraph(
         val message = buildString {
           appendLine(
             if (binding.isSet) {
-              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is not supported. Set aggregation cannot defer suspend element resolution. Remove the suspend contribution(s) or provide them eagerly."
+              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly."
             } else {
               val (keyType, valueType) =
                 binding.typeKey.type.requireSimpleType().arguments.map {
