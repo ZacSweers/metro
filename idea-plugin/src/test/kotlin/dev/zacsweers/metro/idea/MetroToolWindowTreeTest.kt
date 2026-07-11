@@ -134,7 +134,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     // No validation node before a run
     assertTrue(structure.children(graphNode).none { it is MetroTreeNode.Validation })
 
-    project.service<MetroGraphValidationService>().validate(file, graphNode.graph)
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
 
     val validation =
       structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()
@@ -222,6 +222,53 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(listOf("Int"), structure.children(unused).map { it.text })
   }
 
+  fun testMultiParentExtensionsHaveSeparateContextRows() {
+    myFixture.configureMetroFile(
+      """
+      interface LeftOnly
+      interface RightOnly
+
+      @GraphExtension
+      interface ChildGraph
+
+      @DependencyGraph
+      interface LeftParent {
+        val child: ChildGraph
+
+        @Provides fun provideLeft(): LeftOnly = object : LeftOnly {}
+      }
+
+      @DependencyGraph
+      interface RightParent {
+        val child: ChildGraph
+
+        @Provides fun provideRight(): RightOnly = object : RightOnly {}
+      }
+      """
+    )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val childRows =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().filter {
+        it.text == "ChildGraph"
+      }
+    assertEquals(2, childRows.size)
+
+    val rowsByParent = childRows.associateBy { it.context.chain[1].name }
+    val left = rowsByParent.getValue("LeftParent")
+    val right = rowsByParent.getValue("RightParent")
+    assertTrue(left.grayText.orEmpty(), "via LeftParent" in left.grayText.orEmpty())
+    assertTrue(right.grayText.orEmpty(), "via RightParent" in right.grayText.orEmpty())
+
+    fun bindingRows(graph: MetroTreeNode.Graph): List<String> {
+      val category = structure.children(graph).single() as MetroTreeNode.Category
+      return structure.children(category).map { it.text }
+    }
+
+    assertEquals(listOf("LeftOnly"), bindingRows(left))
+    assertEquals(listOf("RightOnly"), bindingRows(right))
+  }
+
   fun testSameNamedQualifiersRenderAbbreviatedPackages() {
     myFixture.addFileToProject(
       "alpha/Tag.kt",
@@ -297,7 +344,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
     val graphNode = structure.children(root).single() as MetroTreeNode.Graph
-    project.service<MetroGraphValidationService>().validate(file, graphNode.graph)
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
 
     val validation =
       structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()

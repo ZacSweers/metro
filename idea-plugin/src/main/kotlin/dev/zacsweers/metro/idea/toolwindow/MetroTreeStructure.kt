@@ -20,6 +20,8 @@ import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphNode
@@ -58,14 +60,16 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
 
   class Graph(
     parent: MetroTreeNode,
-    val graph: KaGraphNode,
+    val context: GraphContext,
     override val text: String,
     override val grayText: String?,
   ) : MetroTreeNode(parent) {
+    val graph: KaGraphNode
+      get() = context.graph
+
     override val icon: Icon = MetroIcons.GRAPH
     override val pointer: SmartPsiElementPointer<*> = graph.pointer
-    // ClassId alone is ambiguous: same-FQN graphs can exist in different modules' files
-    override val identity: Any = (graph.classId ?: text) to graph.pointer.virtualFile
+    override val identity: Any = context.path
   }
 
   class Category(
@@ -256,13 +260,10 @@ internal class MetroTreeStructure(
     return indexes
   }
 
-  /** [node]'s graph in the current indexes, refreshed so children never use stale entries. */
-  private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, KaGraphNode>? {
-    val classId = node.graph.classId
-    val file = node.graph.pointer.virtualFile
+  /** [node]'s context in the current indexes, refreshed so children never use stale entries. */
+  private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, GraphContext>? {
     for (index in currentIndexes()) {
-      val fresh =
-        index.graphs.firstOrNull { it.classId == classId && it.pointer.virtualFile == file }
+      val fresh = index.findContext(node.context.path)
       if (fresh != null) return index to fresh
     }
     return null
@@ -270,20 +271,32 @@ internal class MetroTreeStructure(
 
   private fun graphNodes(root: MetroTreeNode.Root): List<MetroTreeNode> {
     val validationService = project.service<MetroGraphValidationService>()
-    val seen = HashSet<Pair<Any?, Any?>>()
-    val graphs =
+    val seen = HashSet<GraphPath>()
+    val contexts =
       currentIndexes()
-        .flatMap { index -> index.graphs }
-        .filter { graph ->
-          seen.add((graph.classId ?: graph.name) to graph.pointer.virtualFile)
+        .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
+        .filter { context ->
+          seen.add(context.path)
         }
-    return graphs
-      .sortedBy { it.name.orEmpty() }
-      .map { graph ->
+    return contexts
+      .sortedWith(
+        compareBy(
+          { it.graph.name.orEmpty() },
+          { it.chain.drop(1).joinToString { parent -> parent.name.orEmpty() } },
+        )
+      )
+      .map { context ->
+        val graph = context.graph
         // Surface the last validation outcome on the graph row itself
-        val cached = graph.pointer.element?.let { validationService.cachedResult(it, graph) }
+        val cached = graph.pointer.element?.let { validationService.cachedResult(it, context) }
         val grayText = buildString {
           graph.pointer.virtualFile?.name?.let(::append)
+          val parents = context.chain.drop(1)
+          if (parents.isNotEmpty()) {
+            if (isNotEmpty()) append(" · ")
+            append("via ")
+            append(parents.joinToString(" > ") { it.name ?: "<unknown>" })
+          }
           if (cached != null) {
             append(" · ")
             append(validationSummary(cached.result))
@@ -291,7 +304,7 @@ internal class MetroTreeStructure(
         }
         MetroTreeNode.Graph(
           parent = root,
-          graph = graph,
+          context = context,
           text = graph.name ?: "<unknown>",
           grayText = grayText.takeIf { it.isNotEmpty() },
         )
@@ -299,8 +312,9 @@ internal class MetroTreeStructure(
   }
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {
-    val (index, graph) = resolveGraph(node) ?: return emptyList()
-    val bindings = index.bindingsInContext(index.contextFor(graph))
+    val (index, context) = resolveGraph(node) ?: return emptyList()
+    val graph = context.graph
+    val bindings = index.bindingsInContext(context)
     val filter = filterText().trim()
     val filtered =
       if (filter.isEmpty()) {
@@ -331,7 +345,7 @@ internal class MetroTreeStructure(
 
     val validationService = project.service<MetroGraphValidationService>()
     val element = graph.pointer.element
-    val cached = element?.let { validationService.cachedResult(it, graph) }
+    val cached = element?.let { validationService.cachedResult(it, context) }
     if (cached != null) {
       children += MetroTreeNode.Validation(node, cached.result, cached.stale)
     }
@@ -377,17 +391,17 @@ internal class MetroTreeStructure(
         }
       }
       collectUsage(cached.result)
-      val visited = mutableSetOf<KaGraphNode>()
-      fun visitExtensions(parent: KaGraphNode) {
-        for (extension in index.extensionsOf(parent)) {
-          if (!visited.add(extension)) continue
-          extension.pointer.element
+      val visited = mutableSetOf<GraphPath>()
+      fun visitExtensions(parent: GraphContext) {
+        for (extension in index.extensionContextsOf(parent)) {
+          if (!visited.add(extension.path)) continue
+          extension.graph.pointer.element
             ?.let { validationService.cachedResult(it, extension) }
             ?.let { collectUsage(it.result) }
           visitExtensions(extension)
         }
       }
-      visitExtensions(graph)
+      visitExtensions(context)
 
       val unused = filtered.filter { binding ->
         (binding is KaBinding.Provided || binding is KaBinding.Alias) &&

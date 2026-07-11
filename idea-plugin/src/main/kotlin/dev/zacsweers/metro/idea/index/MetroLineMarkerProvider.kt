@@ -101,7 +101,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           // get no validate marker
           val classId = graph.classId
           if (VALIDATE_OPTION.isEnabled && classId != null) {
-            result += validateMarker(element, declaration, graph, classId)
+            result += validateMarker(element, declaration, graph, classId, index)
           }
         }
     }
@@ -237,7 +237,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
             append(" · provided by ")
             append(it)
           }
-        resolution.perGraph.keys.singleOrNull()?.name?.let {
+        resolution.perContext.keys.singleOrNull()?.graph?.name?.let {
           append(" in ")
           append(it)
         }
@@ -246,10 +246,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         append(" · ")
         append(bindings.size)
         append(" bindings")
-        if (resolution.perGraph.size > 1) {
+        if (resolution.perContext.size > 1) {
           append(" across ")
-          append(resolution.perGraph.size)
-          append(" graphs")
+          append(resolution.perContext.size)
+          append(" graph contexts")
         }
       }
       if (bindings.isEmpty()) {
@@ -320,25 +320,37 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     declaration: KtNamedDeclaration,
     graph: KaGraphNode,
     classId: ClassId,
+    index: BindingIndex,
   ): RelatedItemLineMarkerInfo<PsiElement> {
-    val cached =
-      declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, graph)
+    val contexts = index.contextsFor(graph)
+    val cached = contexts.mapNotNull { context ->
+      declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, context)
+    }
+    val problemCount = cached.sumOf { it.result.diagnostics.size }
+    val allContextsValidated = cached.size == contexts.size
     val icon =
       when {
-        cached == null -> MetroIcons.GRAPH
-        cached.result.diagnostics.isEmpty() -> MetroIcons.GRAPH_VALIDATED
-        else -> MetroIcons.GRAPH_PROBLEMS
+        problemCount > 0 -> MetroIcons.GRAPH_PROBLEMS
+        allContextsValidated -> MetroIcons.GRAPH_VALIDATED
+        else -> MetroIcons.GRAPH
       }
     val tooltip = buildString {
       append("Validate Metro graph")
-      if (cached != null) {
+      if (cached.isNotEmpty()) {
         append(" · last run: ")
-        when (val count = cached.result.diagnostics.size) {
+        when (problemCount) {
           0 -> append("no problems found")
           1 -> append("1 problem")
-          else -> append("$count problems")
+          else -> append("$problemCount problems")
         }
-        if (cached.stale) append(" · code changed since")
+        if (!allContextsValidated) {
+          append(" in ")
+          append(cached.size)
+          append(" of ")
+          append(contexts.size)
+          append(" contexts")
+        }
+        if (cached.any { it.stale }) append(" · code changed since")
       }
     }
     val file = declaration.containingFile?.virtualFile

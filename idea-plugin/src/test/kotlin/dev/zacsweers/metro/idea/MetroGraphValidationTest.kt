@@ -26,7 +26,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val file = myFixture.configureMetroFile(source)
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single { it.name == graphName }
-    return project.service<MetroGraphValidationService>().validate(file, graph)
+    return project
+      .service<MetroGraphValidationService>()
+      .validate(file, index.contextsFor(graph).single())
   }
 
   fun testCleanGraphHasNoDiagnostics() {
@@ -299,6 +301,62 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.ChildThing" })
   }
 
+  fun testMultiParentExtensionSealsEachParentPathIndependently() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface LeftOnly
+        interface RightOnly
+
+        @Inject class ChildThing(val left: LeftOnly, val right: RightOnly)
+
+        @GraphExtension
+        interface ChildGraph {
+          val childThing: ChildThing
+        }
+
+        @DependencyGraph
+        interface LeftParent {
+          val child: ChildGraph
+
+          @Provides fun provideLeft(): LeftOnly = object : LeftOnly {}
+        }
+
+        @DependencyGraph
+        interface RightParent {
+          val child: ChildGraph
+
+          @Provides fun provideRight(): RightOnly = object : RightOnly {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contextsByParent = index.contextsFor(child).associateBy { it.chain[1].name }
+    val leftContext = contextsByParent.getValue("LeftParent")
+    val rightContext = contextsByParent.getValue("RightParent")
+    val validationService = project.service<MetroGraphValidationService>()
+
+    val leftResult = validationService.validate(file, leftContext)
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), leftResult.diagnostics.map { it.id })
+    val leftDiagnostic = leftResult.diagnostics.single().render()
+    assertTrue(leftDiagnostic, "RightOnly" in leftDiagnostic)
+    assertNotNull(validationService.cachedResult(file, leftContext))
+    assertNull(validationService.cachedResult(file, rightContext))
+
+    val rightResult = validationService.validate(file, rightContext)
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), rightResult.diagnostics.map { it.id })
+    val rightDiagnostic = rightResult.diagnostics.single().render()
+    assertTrue(rightDiagnostic, "LeftOnly" in rightDiagnostic)
+
+    validationService.clearResults()
+    val leftParent = index.graphs.single { it.name == "LeftParent" }
+    val traversal = validationService.validateWithExtensions(file, leftParent)
+    assertEquals(listOf("ChildGraph", "LeftParent"), traversal.map { it.graph.name })
+    assertEquals("LeftParent", traversal.first().context.chain[1].name)
+    assertNull(validationService.cachedResult(file, rightContext))
+  }
+
   fun testGraphInstanceIsInjectable() {
     val result =
       validate(
@@ -464,11 +522,13 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val (graphA, graphB) = graphs
 
     val validationService = project.service<MetroGraphValidationService>()
-    validationService.validate(fileA, graphA)
+    val contextA = index.contextsFor(graphA).single()
+    val contextB = index.contextsFor(graphB).single()
+    validationService.validate(fileA, contextA)
 
     // Same ClassId, different declarations: only the validated one has a result
-    assertNotNull(validationService.cachedResult(fileA, graphA))
-    assertNull(validationService.cachedResult(fileA, graphB))
+    assertNotNull(validationService.cachedResult(fileA, contextA))
+    assertNull(validationService.cachedResult(fileA, contextB))
   }
 
   fun testBinaryGraphSupertypeMembersMerge() {
@@ -497,9 +557,10 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
-    val first = validationService.validate(file, graph)
-    val second = validationService.validate(file, graph)
+    val first = validationService.validate(file, context)
+    val second = validationService.validate(file, context)
     assertSame(first, second)
   }
 
@@ -513,15 +574,16 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
-    val result = validationService.validate(file, graph)
-    assertFalse(validationService.cachedResult(file, graph)!!.stale)
+    val result = validationService.validate(file, context)
+    assertFalse(validationService.cachedResult(file, context)!!.stale)
 
     // Any PSI change invalidates the index; the result must stay visible, flagged stale
     myFixture.openFileInEditor(file.virtualFile)
     myFixture.type(" ")
     PsiDocumentManager.getInstance(project).commitAllDocuments()
-    val cached = validationService.cachedResult(file, graph)!!
+    val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)
   }

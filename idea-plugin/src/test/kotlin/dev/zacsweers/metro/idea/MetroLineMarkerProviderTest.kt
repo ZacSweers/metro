@@ -126,7 +126,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single()
-    project.service<MetroGraphValidationService>().validate(file, graph)
+    project.service<MetroGraphValidationService>().validate(file, index.contextsFor(graph).single())
     // The file didn't change, so mimic production's post-validation daemon restart
     DaemonCodeAnalyzer.getInstance(project).restart()
     myFixture.doHighlighting()
@@ -138,6 +138,52 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         .mapNotNull { it.tooltipText }
         .single()
     assertTrue(tooltip, "last run: 1 problem" in tooltip)
+  }
+
+  fun testMultiParentExtensionBadgeRequiresEveryContextToPass() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph
+
+        @DependencyGraph
+        interface LeftParent {
+          val child: ChildGraph
+        }
+
+        @DependencyGraph
+        interface RightParent {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child)
+    assertEquals(2, contexts.size)
+    val validationService = project.service<MetroGraphValidationService>()
+
+    validationService.validate(file, contexts.first())
+    DaemonCodeAnalyzer.getInstance(project).restart()
+    myFixture.doHighlighting()
+    val partialTooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.GRAPH }
+        .mapNotNull { it.tooltipText }
+    assertTrue(partialTooltips.toString()) {
+      partialTooltips.any { "no problems found in 1 of 2 contexts" in it }
+    }
+    assertTrue(myFixture.findAllGutters().none { it.icon === MetroIcons.GRAPH_VALIDATED })
+
+    validationService.validate(file, contexts.last())
+    DaemonCodeAnalyzer.getInstance(project).restart()
+    myFixture.doHighlighting()
+    assertEquals(
+      1,
+      myFixture.findAllGutters().count { it.icon === MetroIcons.GRAPH_VALIDATED },
+    )
   }
 
   fun testScopedProviderAndMultibindingConsumerTooltips() {

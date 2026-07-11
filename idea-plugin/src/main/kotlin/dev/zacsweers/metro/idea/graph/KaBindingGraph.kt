@@ -59,12 +59,15 @@ internal class KaGraphDiagnostic(
 
 /** The outcome of sealing one graph. */
 internal class GraphValidationResult(
-  val graph: KaGraphNode,
+  val context: GraphContext,
   val diagnostics: List<KaGraphDiagnostic>,
   /** Null when a fatal error aborted the seal before sorting. */
   val topology: GraphTopology<KaTypeKey>?,
   val bindings: ScatterMap<KaTypeKey, KaBinding>,
-)
+) {
+  val graph: KaGraphNode
+    get() = context.graph
+}
 
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
@@ -74,15 +77,15 @@ internal class GraphValidationResult(
  */
 internal class KaBindingGraph(
   private val index: BindingIndex,
-  private val graph: KaGraphNode,
+  private val context: GraphContext,
   private val options: MetroOptions,
 ) :
   // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
   TraceScope by TraceScope.noop(),
   ErrorReporter<KaBindingStack> {
 
+  private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
-  private val context: GraphContext = index.contextFor(graph)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
 
   private val useSiteModule: KaModule? =
@@ -170,7 +173,7 @@ internal class KaBindingGraph(
 
     // The seal's ScatterMap is handed off directly. The graph adapter is discarded after seal,
     // so nothing else can mutate it.
-    return GraphValidationResult(graph, diagnostics.toList(), topology, realGraph.bindings)
+    return GraphValidationResult(context, diagnostics.toList(), topology, realGraph.bindings)
   }
 
   // The bindings the in-flight report is about, attached to the next reported diagnostic. The

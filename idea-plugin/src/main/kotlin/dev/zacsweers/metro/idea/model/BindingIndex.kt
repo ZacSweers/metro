@@ -99,8 +99,8 @@ internal class BindingIndex(
   }
 
   /**
-   * Per-graph resolution of [consumer]: which bindings satisfy it in each graph that can resolve
-   * it, plus the use-site-visible candidates as a fallback for files/projects without graphs.
+   * Per-context resolution of [consumer]: which bindings satisfy it in each concrete graph path,
+   * plus the use-site-visible candidates as a fallback for files/projects without graphs.
    */
   fun resolveConsumer(consumer: ConsumerEntry): ConsumerResolution {
     return consumerResolutions.computeIfAbsent(consumer, ::buildConsumerResolution)
@@ -112,24 +112,24 @@ internal class BindingIndex(
     val global = visibleBindingsFor(consumer, useSiteModule)
     if (graphs.isEmpty()) return ConsumerResolution(global, emptyMap(), hasGraphs = false)
 
-    val perGraph = LinkedHashMap<KaGraphNode, List<KaBinding>>()
+    val perContext = LinkedHashMap<GraphContext, List<KaBinding>>()
     for (graph in graphs) {
-      val filtered =
-        contextsFor(graph)
-          .map { GraphQueryContext(it, useSiteModule) }
-          .flatMap { queryContext -> bindingsInContext(global, consumer, queryContext) }
-          .distinct()
-      if (filtered.isNotEmpty()) {
-        perGraph[graph] = filtered
+      for (context in contextsFor(graph)) {
+        val queryContext = GraphQueryContext(context, useSiteModule)
+        val filtered = bindingsInContext(global, consumer, queryContext)
+        if (filtered.isNotEmpty()) {
+          perContext[context] = filtered
+        }
       }
     }
-    return ConsumerResolution(global, perGraph, hasGraphs = true)
+    return ConsumerResolution(global, perContext, hasGraphs = true)
   }
 
   /**
    * Filters precomputed [visible] candidates to those live in [queryContext]'s graph, gating on
-   * whether [consumer]'s site itself resolves in that graph. Used by [resolveConsumer]'s per-graph
-   * pass; the binding-membership probe [bindingsFor] deliberately skips the consumer-site gate.
+   * whether [consumer]'s site itself resolves in that graph. Used by [resolveConsumer]'s
+   * per-context pass; the binding-membership probe [bindingsFor] deliberately skips the
+   * consumer-site gate.
    */
   private fun bindingsInContext(
     visible: List<KaBinding>,
@@ -192,33 +192,28 @@ internal class BindingIndex(
     }
   }
 
-  /** The aggregated context of [graph], following extension parent chains. */
-  fun contextFor(graph: KaGraphNode): GraphContext {
-    val contexts = contextsFor(graph)
-    if (contexts.size == 1) return contexts.single()
-
-    val orderedChain = contexts.flatMap { it.chain }.distinct()
-    val chain =
-      if (orderedChain.firstOrNull() == graph) {
-        orderedChain
-      } else {
-        listOf(graph) + orderedChain.filter { it != graph }
-      }
-
-    return GraphContext(
-      chain = chain,
-      scopes = contexts.flatMapToSet { it.scopes },
-      scopingAnnotations = contexts.flatMapToSet { it.scopingAnnotations },
-      excludes = contexts.flatMapToSet { it.excludes },
-      containers = contexts.flatMapToSet { it.containers },
-      includedDependencies = contexts.flatMapToSet { it.includedDependencies },
-      graphClassIds = contexts.flatMapToSet { it.graphClassIds },
-    )
-  }
-
   /** Every valid aggregation context for [graph]. Extensions can have multiple parent paths. */
   fun contextsFor(graph: KaGraphNode): List<GraphContext> {
     return graphContexts.computeIfAbsent(graph) { buildContexts(it) }
+  }
+
+  /** Finds the current index's context for a path retained across an index rebuild. */
+  fun findContext(path: GraphPath): GraphContext? {
+    val graphSegment = path.segments.firstOrNull() ?: return null
+    return graphs
+      .asSequence()
+      .filter {
+        it.classId == graphSegment.classId && it.pointer.virtualFile == graphSegment.file
+      }
+      .flatMap { contextsFor(it).asSequence() }
+      .firstOrNull { it.path == path }
+  }
+
+  /** Concrete child contexts created directly from [parent]'s exact graph path. */
+  fun extensionContextsOf(parent: GraphContext): List<GraphContext> {
+    return extensionsOf(parent.graph).flatMap { extension ->
+      contextsFor(extension).filter { child -> child.chain.drop(1) == parent.chain }
+    }
   }
 
   /**
@@ -433,7 +428,9 @@ internal class BindingIndex(
     for (consumer in candidates) {
       val resolution = resolveConsumer(consumer)
       val resolvesToEntry =
-        resolution.perGraph.values.any { graphBindings -> graphBindings.any { it in bindingSet } }
+        resolution.perContext.values.any { contextBindings ->
+          contextBindings.any { it in bindingSet }
+        }
       if (resolvesToEntry) {
         result += consumer
       }
@@ -460,6 +457,13 @@ internal class BindingIndex(
   fun graphEntryAt(element: KtElement): KaGraphNode? {
     val file = element.containingFile?.virtualFile ?: return null
     return graphsByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+  }
+
+  /** Refreshes a retained graph declaration against this index. */
+  fun graphFor(graph: KaGraphNode): KaGraphNode? {
+    val classId = graph.classId ?: return graphs.firstOrNull { it === graph }
+    val file = graph.pointer.virtualFile
+    return graphs.firstOrNull { it.classId == classId && it.pointer.virtualFile == file }
   }
 
   fun assistedSiteAt(element: KtElement): AssistedSite? {
@@ -496,16 +500,16 @@ private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): Scatte
   return result as ScatterMap<K, List<T>>
 }
 
-/** The result of resolving a consumer against every graph in the project. */
+/** The result of resolving a consumer against every concrete graph context in the project. */
 internal class ConsumerResolution(
   /** Unfiltered project-wide candidates. */
   val global: List<KaBinding>,
-  /** Graph-filtered candidates per graph that can resolve the consumer. */
-  val perGraph: Map<KaGraphNode, List<KaBinding>>,
+  /** Graph-filtered candidates per concrete parent path that can resolve the consumer. */
+  val perContext: Map<GraphContext, List<KaBinding>>,
   private val hasGraphs: Boolean,
 ) {
-  /** The deduplicated union of per-graph results, or [global] for graphless files/projects. */
-  val effective: List<KaBinding> = if (hasGraphs) perGraph.values.flatten().distinct() else global
+  /** The deduplicated union of context results, or [global] for graphless files/projects. */
+  val effective: List<KaBinding> = if (hasGraphs) perContext.values.flatten().distinct() else global
 }
 
 private fun useSiteModule(element: KtElement?): KaModule? {

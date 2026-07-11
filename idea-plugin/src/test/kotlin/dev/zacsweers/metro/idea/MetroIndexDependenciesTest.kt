@@ -214,7 +214,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
-    val context = index.contextFor(graph)
+    val context = index.contextsFor(graph).single()
 
     // Direct key lookup respects graph membership
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!

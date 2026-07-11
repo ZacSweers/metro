@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.SmartPsiElementPointer
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -87,6 +88,15 @@ internal class KaGraphNode(
 /** A `@BindingContainer`-annotated class and the containers it transitively includes. */
 internal class BindingContainerEntry(val classId: ClassId, val includes: Set<ClassId>)
 
+/** Stable identity for one graph declaration across index rebuilds. */
+internal data class GraphPathSegment(
+  val classId: ClassId?,
+  val file: VirtualFile?,
+)
+
+/** A concrete graph path, ordered from the graph itself through its ancestors. */
+internal data class GraphPath(val segments: List<GraphPathSegment>)
+
 /**
  * The aggregated view a single graph (plus its parent chain, for extensions) has of the project:
  * the inputs to per-graph binding membership.
@@ -105,6 +115,10 @@ internal class GraphContext(
 ) {
   val graph: KaGraphNode
     get() = chain.first()
+
+  /** Stable declaration identity for this exact parent path. */
+  val path: GraphPath =
+    GraphPath(chain.map { GraphPathSegment(it.classId, it.pointer.virtualFile) })
 }
 
 /**

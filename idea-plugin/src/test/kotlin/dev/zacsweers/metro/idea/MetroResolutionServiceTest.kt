@@ -391,7 +391,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       },
     )
 
-    val otherGraph = index.contextFor(index.graphEntryAt(declarations.klass("OtherCircuitGraph"))!!)
+    val otherGraph =
+      index.contextsFor(index.graphEntryAt(declarations.klass("OtherCircuitGraph"))!!).single()
     val otherUiFactories = index.consumerEntryAt(declarations.property("otherUiFactories"))!!
     assertTrue(index.bindingsFor(otherUiFactories, otherGraph).isEmpty())
 
@@ -697,7 +698,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val consumer = index.consumerEntryAt(declarations.property("service"))!!
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
     assertEquals(listOf("optional binding"), index.bindingsFor(consumer).map { it.label })
-    val context = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+    val context = index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
     assertEquals(
       listOf("optional binding"),
       index.bindingsFor(consumer, context).map { it.label },
@@ -1091,7 +1092,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("ExcludesGraph"))!!
-    val context = index.contextFor(graph)
+    val context = index.contextsFor(graph).single()
     assertTrue(context.excludes.isNotEmpty())
 
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
@@ -1142,13 +1143,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
 
-    val wired = index.contextFor(index.graphEntryAt(declarations.klass("WiredGraph"))!!)
+    val wired = index.contextsFor(index.graphEntryAt(declarations.klass("WiredGraph"))!!).single()
     // Transitive container includes are expanded
     assertEquals(2, wired.containers.size)
     val clientAccessor = index.consumerEntryAt(declarations.property("client"))!!
     assertEquals(1, index.bindingsFor(clientAccessor, wired).size)
 
-    val unwired = index.contextFor(index.graphEntryAt(declarations.klass("UnwiredGraph"))!!)
+    val unwired =
+      index.contextsFor(index.graphEntryAt(declarations.klass("UnwiredGraph"))!!).single()
     val unwiredAccessor = index.consumerEntryAt(declarations.property("unwiredClient"))!!
     assertTrue(index.bindingsFor(unwiredAccessor, unwired).isEmpty())
   }
@@ -1186,7 +1188,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("IncludesGraph"))!!
-    val context = index.contextFor(graph)
+    val context = index.contextsFor(graph).single()
     assertEquals(1, context.includedDependencies.size)
 
     val accessor = index.consumerEntryAt(declarations.property("graphClient"))!!
@@ -1255,7 +1257,6 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(child.isExtension)
     val childContexts = index.contextsFor(child)
     assertEquals(2, childContexts.size)
-    val context = index.contextFor(child)
 
     // The child's accessor resolves through every parent scope that creates it
     val accessor = index.consumerEntryAt(declarations.property("thing"))!!
@@ -1263,11 +1264,23 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       index.bindingsFor(accessor, childContext)
     }
     assertEquals(setOf("RealThing", "OtherThing"), bindings.map { it.implementationName }.toSet())
+    val resolutionByParent =
+      index.resolveConsumer(accessor).perContext.mapKeys { (context, _) -> context.chain[1].name }
+    assertEquals(
+      mapOf(
+        "ParentGraph" to listOf("RealThing"),
+        "OtherParentGraph" to listOf("OtherThing"),
+      ),
+      resolutionByParent.mapValues { (_, parentBindings) ->
+        parentBindings.map { it.implementationName }
+      },
+    )
 
     // But parent contexts do not include child-scoped bindings beyond their own scope
-    val parent = index.contextFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!)
+    val parent = index.contextsFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!).single()
     assertEquals(1, parent.chain.size)
-    val otherParent = index.contextFor(index.graphEntryAt(declarations.klass("OtherParentGraph"))!!)
+    val otherParent =
+      index.contextsFor(index.graphEntryAt(declarations.klass("OtherParentGraph"))!!).single()
     assertEquals(1, otherParent.chain.size)
 
     // Extension (and extension factory) accessors are creation points, not consumers
@@ -1278,8 +1291,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertNull(index.consumerEntryAt(declarations.property("childFactory")))
 
     // The child aggregates only its own scope; parent-scope contributions are inherited
-    assertTrue(index.contributionsFor(context).isEmpty())
-    assertEquals(2, index.inheritedContributionsFor(context).size)
+    assertTrue(childContexts.all { index.contributionsFor(it).isEmpty() })
+    assertEquals(listOf(1, 1), childContexts.map { index.inheritedContributionsFor(it).size })
     assertEquals(1, index.contributionsFor(parent).size)
     assertTrue(index.inheritedContributionsFor(parent).isEmpty())
     assertEquals(1, index.contributionsFor(otherParent).size)
@@ -1328,12 +1341,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val appRepo = index.consumerEntryAt(declarations.property("appRepo"))!!
     val appResolution = index.resolveConsumer(appRepo)
     assertEquals(listOf("AppRepo"), appResolution.effective.map { it.implementationName })
-    assertEquals(listOf("AppGraph"), appResolution.perGraph.keys.map { it.name })
+    assertEquals(listOf("AppGraph"), appResolution.perContext.keys.map { it.graph.name })
 
     val otherRepo = index.consumerEntryAt(declarations.property("otherRepo"))!!
     val otherResolution = index.resolveConsumer(otherRepo)
     assertEquals(listOf("OtherRepo"), otherResolution.effective.map { it.implementationName })
-    assertEquals(listOf("OtherGraph"), otherResolution.perGraph.keys.map { it.name })
+    assertEquals(listOf("OtherGraph"), otherResolution.perContext.keys.map { it.graph.name })
   }
 
   fun testGraphExtensionParentsOnlyComeFromExtensionCreationAccessors() {
@@ -1410,14 +1423,16 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val index = project.service<MetroResolutionService>().index(file)
       val declarations = file.declarationsIncludingNested()
 
-      val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+      val appContext =
+        index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
       val appDual = index.consumerEntryAt(declarations.property("appDual"))!!
       assertEquals(
         listOf("LibDualImpl"),
         index.bindingsFor(appDual, appContext).map { it.implementationName },
       )
 
-      val libContext = index.contextFor(index.graphEntryAt(declarations.klass("LibGraph"))!!)
+      val libContext =
+        index.contextsFor(index.graphEntryAt(declarations.klass("LibGraph"))!!).single()
       val libDual = index.consumerEntryAt(declarations.property("libDual"))!!
       assertEquals(
         listOf("LibDualImpl"),
@@ -1467,19 +1482,21 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val consumer = index.consumerEntryAt(declarations.property("appRepo"))!!
 
     // @DependencyGraph(AppScope::class) implicitly conveys @SingleIn(AppScope::class)
-    val appContext = index.contextFor(index.graphEntryAt(declarations.klass("AppGraph"))!!)
+    val appContext =
+      index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
     assertEquals(
       listOf("injected class"),
       index.bindingsFor(consumer, appContext).map { it.label },
     )
 
     // A graph with a different scope is not a home for this binding
-    val otherContext = index.contextFor(index.graphEntryAt(declarations.klass("OtherGraph"))!!)
+    val otherContext =
+      index.contextsFor(index.graphEntryAt(declarations.klass("OtherGraph"))!!).single()
     assertTrue(index.bindingsFor(consumer, otherContext).isEmpty())
 
     // Explicitly declared scope annotations on the graph also count
     val explicitContext =
-      index.contextFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!)
+      index.contextsFor(index.graphEntryAt(declarations.klass("ExplicitGraph"))!!).single()
     assertEquals(
       listOf("injected class"),
       index.bindingsFor(consumer, explicitContext).map { it.label },
