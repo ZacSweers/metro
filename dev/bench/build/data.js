@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783751860624,
+  "lastUpdate": 1783763960319,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18592,6 +18592,62 @@ window.BENCHMARK_DATA = {
             "value": 20606.04,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +6.23%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2d335587~1",
+          "message": "[before] Fix graph dependency getter expression when it's w",
+          "timestamp": "2026-07-11T05:25:29-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2d335587e3f42a7d3290a4ba74ce94fb81c023e5"
+        },
+        "date": 1783763960319,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19043.23,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2d335587e3f42a7d3290a4ba74ce94fb81c023e5",
+          "message": "[after] Fix graph dependency getter expression when it's w",
+          "timestamp": "2026-07-11T05:25:29-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2d335587e3f42a7d3290a4ba74ce94fb81c023e5"
+        },
+        "date": 1783763960320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19104.61,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.32%"
           }
         ]
       }
