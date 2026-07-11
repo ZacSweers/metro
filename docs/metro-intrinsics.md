@@ -35,7 +35,8 @@ Provider functions can be freely mixed with `Lazy<T>`, and also work with multib
 !!! tip "Opting out"
     Function provider support is enabled by default and can be disabled via the `enableFunctionProviders` compiler option. Disabling it reverts to using `Provider<T>` exclusively.
 
-For suspending bindings, `suspend () -> T` is the equivalent deferred form. See [Coroutines Support](coroutines.md).
+For suspend bindings, use `suspend () -> T` to defer resolution. See
+[Suspend Providers](coroutines.md).
 
 ## `Lazy`
 
@@ -79,4 +80,5 @@ When the function provider feature is enabled (the default), Metro emits a diagn
 
 ## Providers of Lazy
 
-Metro supports combining functions and `Lazy` to inject `() -> Lazy<T>` (or `Provider<Lazy<T>>`). On unscoped bindings this means the provider will return a new deferrable computable value (i.e. a new `Lazy`). Meanwhile `Lazy<() -> T>` / `Lazy<Provider<T>>` is meaningless and not supported.
+Metro supports `() -> Lazy<T>` and `Provider<Lazy<T>>`. For an unscoped binding, each provider call
+returns a new `Lazy`. `Lazy<() -> T>` and `Lazy<Provider<T>>` are unsupported.
