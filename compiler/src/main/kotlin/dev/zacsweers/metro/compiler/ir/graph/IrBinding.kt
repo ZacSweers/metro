@@ -692,9 +692,13 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val callableId: CallableId?
       get() = getter?.callableId
 
-    /** An included graph's suspend accessor makes this dependency suspend in this graph. */
+    /** Whether resolving this graph dependency requires a suspend context. */
     override val isSuspend: Boolean
-      get() = getter?.isSuspend == true
+      get() =
+        getter?.isSuspend == true ||
+          contextualTypeKey.isWrappedInSuspendProvider ||
+          contextualTypeKey.isWrappedInSuspendLazy ||
+          token?.isSuspend == true
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       listOf(IrContextualTypeKey(ownerKey))

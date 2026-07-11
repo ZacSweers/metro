@@ -2587,6 +2587,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("IncludedGraphSuspendLazyAccessor.kt")
+    public void testIncludedGraphSuspendLazyAccessor() {
+      run("IncludedGraphSuspendLazyAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("MapFunctionValuesMixed.kt")
     public void testMapFunctionValuesMixed() {
       run("MapFunctionValuesMixed.kt");

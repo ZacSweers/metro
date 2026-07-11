@@ -819,6 +819,14 @@ private constructor(
               } else if (getterContextKey.isWrappedInSuspendProvider) {
                 // Already a SuspendProvider (like an included graph's `suspend () -> T` accessor)
                 invokeGetter to AccessType.SUSPEND_PROVIDER
+              } else if (getterContextKey.isWrappedInSuspendLazy) {
+                scope.wrapInSuspendProviderFunction(binding.typeKey.type) {
+                  irInvoke(
+                    invokeGetter,
+                    callee = metroSymbols.suspendLazyValue,
+                    typeHint = binding.typeKey.type,
+                  )
+                } to AccessType.SUSPEND_PROVIDER
               } else if (binding.getter.isSuspend) {
                 // A suspend accessor on an included graph. The call must live inside a suspend
                 // lambda; a plain provider function would be invalid IR.

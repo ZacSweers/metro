@@ -590,6 +590,10 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.metroSuspendLazy)!!
   }
 
+  val suspendLazyValue: IrSimpleFunctionSymbol by lazy {
+    metroSuspendLazy.requireSimpleFunction("value")
+  }
+
   val metroSuspendProviderFunction: IrSimpleFunctionSymbol by lazy {
     pluginContext
       .referenceFunctions(CallableId(metroRuntime.packageFqName, "suspendProvider".asName()))

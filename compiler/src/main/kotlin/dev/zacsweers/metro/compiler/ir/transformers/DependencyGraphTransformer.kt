@@ -457,7 +457,7 @@ internal class DependencyGraphTransformer(
 
       // Transform the contributed graphs
       // Push the parent graph for all contributed graph processing
-      localParentContext.pushParentGraph(node)
+      localParentContext.pushParentGraph(node, bindingGraph::isTransitivelySuspendForChild)
 
       // Pre-build all extension graph impl classes sequentially before parallel validation.
       // This adds nested classes to the parent graph's declarations list, which must not

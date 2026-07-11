@@ -20,8 +20,9 @@ suspend context:
 - `Map<K, suspend () -> V>` (the map resolves synchronously; each value defers itself)
 
 `BaseContextualTypeKey.defersSuspendAtAccess` is the predicate. `GraphDependency` bindings derive
-`isSuspend` from their accessor (`getter?.isSuspend`), which is how suspend-ness crosses
-`@Includes` boundaries.
+`isSuspend` from suspend accessors, deferred-suspend accessor return types, or parent-context
+tokens. Parent tokens query the owning graph's bindings before it is sealed so graph extensions
+validate against the same suspend propagation that the parent will use during codegen.
 
 ## Validation (`validateSuspendBindings`)
 

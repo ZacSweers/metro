@@ -1669,6 +1669,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt")
+    public void testGraphExtensionParentSuspendBindingFromNonSuspendAccessor() {
+      run("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt")
+    public void testIncludedGraphDeferredAccessorFromNonSuspendAccessor() {
+      run("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt");
+    }
+
+    @Test
     @TestMetadata("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt")
     public void testIncludedGraphSuspendAccessorFromNonSuspendAccessor() {
       run("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt");

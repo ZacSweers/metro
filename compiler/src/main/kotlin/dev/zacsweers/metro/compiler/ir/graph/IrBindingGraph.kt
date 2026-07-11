@@ -115,9 +115,66 @@ internal class IrBindingGraph(
    */
   private var transitivelySuspendKeys: Set<IrTypeKey> = emptySet()
 
+  /**
+   * Memoized suspend-resolution results used while validating child graph extensions. Children are
+   * validated before this graph is sealed, so [transitivelySuspendKeys] has not been populated yet.
+   * These lookups walk the parent's binding lookup on demand and are discarded with the graph.
+   * Access is guarded by [parentSuspendResolutionLock] because sibling extensions may be validated
+   * concurrently.
+   *
+   * `computeIfAbsent` is also awkward for recursive lookups.
+   */
+  private val parentSuspendResolutionCache = mutableMapOf<IrTypeKey, Boolean>()
+
+  /**
+   * Guards [parentSuspendResolutionCache] and the binding lookups performed while populating it.
+   */
+  private val parentSuspendResolutionLock = Any()
+
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
     typeKey in transitivelySuspendKeys
+
+  /**
+   * Resolves whether [typeKey] requires a suspend context before this graph is sealed. Child graph
+   * extensions are validated first, so they cannot use [transitivelySuspendKeys] yet.
+   */
+  internal fun isTransitivelySuspendForChild(typeKey: IrTypeKey): Boolean =
+    synchronized(parentSuspendResolutionLock) {
+      if (_bindingLookup == null) {
+        return@synchronized isTransitivelySuspend(typeKey)
+      }
+      resolveSuspendForChild(typeKey, mutableSetOf())
+    }
+
+  private fun resolveSuspendForChild(
+    typeKey: IrTypeKey,
+    visiting: MutableSet<IrTypeKey>,
+  ): Boolean {
+    parentSuspendResolutionCache[typeKey]?.let {
+      return it
+    }
+    if (!visiting.add(typeKey)) return false
+
+    val binding = findBinding(typeKey, allowLookup = true)
+    val result =
+      when {
+        binding == null -> false
+        binding.isSuspend -> true
+        binding is IrBinding.AssistedFactory -> false
+        else ->
+          binding.dependencies.any { dependency ->
+            !dependency.isWrappedInSuspendProvider &&
+              !dependency.isWrappedInSuspendLazy &&
+              !dependency.isMapSuspendProvider &&
+              resolveSuspendForChild(dependency.typeKey, visiting)
+          }
+      }
+
+    visiting.remove(typeKey)
+    parentSuspendResolutionCache[typeKey] = result
+    return result
+  }
 
   private sealed interface PendingDiagnostic {
     val factory: KtDiagnosticFactory1<String>
