@@ -66,6 +66,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TRACE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_RUNTIME_COROUTINES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_EXPOSED_IMPL_TYPE
@@ -240,6 +241,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val MISSING_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val DUPLICATE_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val INCOMPATIBLE_SCOPE by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MISSING_RUNTIME_COROUTINES by error1<KtElement, String>(NAME_IDENTIFIER)
   val DUPLICATE_MAP_KEY by error1<KtElement, String>(NAME_IDENTIFIER)
   val INVALID_ASSISTED_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -430,6 +432,7 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(MISSING_BINDING, "{0}", TO_STRING)
         put(DUPLICATE_BINDING, "{0}", TO_STRING)
         put(INCOMPATIBLE_SCOPE, "{0}", TO_STRING)
+        put(MISSING_RUNTIME_COROUTINES, "{0}", TO_STRING)
         put(DUPLICATE_MAP_KEY, "{0}", TO_STRING)
         put(INVALID_ASSISTED_BINDING, "{0}", TO_STRING)
         put(EMPTY_MULTIBINDING, "{0}", TO_STRING)

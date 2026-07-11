@@ -827,7 +827,6 @@ internal class DependencyGraphTransformer(
     trace("[${metroGraph.kotlinFqName.shortName().asString()}] Generate graph") {
       try {
         reportRuntimeTracingUnavailableOnce(metroGraph)
-        reportRuntimeCoroutinesUnavailable(metroGraph, validationResult.sealResult)
         // Generate this graph's implementation. The generator's constructor does non-trivial
         // work (name-allocator preallocation over graph properties/nested classes), so trace it
         // separately from generate() to keep that cost visible instead of an opaque leading gap.
@@ -923,20 +922,6 @@ internal class DependencyGraphTransformer(
       reportCompat(metroGraph, MetroDiagnostics.METRO_TRACE_ERROR, reason)
       reportedRuntimeTracingUnavailable = true
     }
-    exitProcessing()
-  }
-
-  private fun reportRuntimeCoroutinesUnavailable(
-    metroGraph: IrClass,
-    sealResult: IrBindingGraph.BindingGraphResult,
-  ) {
-    if (!sealResult.requiresRuntimeCoroutines) return
-    if (metroSymbols.suspendDoubleCheckCompanionObject != null) return
-    reportCompat(
-      metroGraph,
-      MetroDiagnostics.METRO_ERROR,
-      "Scoped suspend bindings and `SuspendLazy` require the `dev.zacsweers.metro:runtime-coroutines` artifact. Add it to the compile and runtime classpath.",
-    )
     exitProcessing()
   }
 

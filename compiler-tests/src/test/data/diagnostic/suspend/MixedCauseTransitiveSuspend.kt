@@ -1,5 +1,4 @@
 // ENABLE_SUSPEND_PROVIDERS
-// WITH_RUNTIME_COROUTINES
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
@@ -24,7 +23,7 @@ class Worker(
 @Inject class Dashboard(val worker: suspend () -> Worker)
 
 @DependencyGraph
-interface ExampleGraph {
+interface <!MISSING_RUNTIME_COROUTINES!>ExampleGraph<!> {
   val <!METRO_ERROR!>worker<!>: Worker
 
   // Deferring the same suspend class is fine

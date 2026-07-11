@@ -378,7 +378,6 @@ internal class IrBindingGraph(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
-    val requiresRuntimeCoroutines: Boolean,
     val shardGroups: List<List<IrTypeKey>>?,
     // Map of unused keys to graph inputs, if available
     val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?>,
@@ -390,7 +389,6 @@ internal class IrBindingGraph(
           sortedKeys = emptyList(),
           deferredTypes = emptySet(),
           reachableKeys = emptySet(),
-          requiresRuntimeCoroutines = false,
           shardGroups = emptyList(),
           unusedKeys = emptyMap(),
           hasErrors = true,
@@ -445,6 +443,8 @@ internal class IrBindingGraph(
     val sortedKeys = topologyResult.sortedKeys
     val deferredTypes = topologyResult.deferredTypes
     val reachableKeys = topologyResult.reachableKeys
+
+    validateRuntimeCoroutinesAvailability()
 
     if (hasErrors) {
       // Flush any collected errors before returning
@@ -626,7 +626,6 @@ internal class IrBindingGraph(
       sortedKeys = sortedKeys,
       deferredTypes = deferredTypes,
       reachableKeys = reachableKeys,
-      requiresRuntimeCoroutines = requiresRuntimeCoroutines,
       shardGroups = shardGroups,
       unusedKeys = unusedKeys,
       hasErrors = hasErrors,
@@ -1489,6 +1488,16 @@ internal class IrBindingGraph(
 
   private companion object {
     private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
+  }
+
+  private fun validateRuntimeCoroutinesAvailability() {
+    if (!requiresRuntimeCoroutines) return
+    if (metroSymbols.suspendDoubleCheckCompanionObject != null) return
+    reportError(
+      node.sourceGraph,
+      "Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.",
+      MetroDiagnostics.MISSING_RUNTIME_COROUTINES,
+    )
   }
 
   private fun reportError(

@@ -6,7 +6,7 @@
 abstract class AppScope private constructor()
 
 @DependencyGraph(scope = AppScope::class)
-interface <!METRO_ERROR!>ExampleGraph<!> {
+interface <!MISSING_RUNTIME_COROUTINES!>ExampleGraph<!> {
   suspend fun value(): String
 
   @Provides @SingleIn(AppScope::class) suspend fun provideValue(): String = "value"

@@ -21,7 +21,7 @@ interface ProviderConsumerGraph {
 }
 
 @DependencyGraph
-interface <!METRO_ERROR!>LazyGraph<!> {
+interface <!MISSING_RUNTIME_COROUTINES!>LazyGraph<!> {
   val value: <!OPT_IN_USAGE!>SuspendLazy<Long><!>
 
   @Provides suspend fun provideLong(): Long = 1L
