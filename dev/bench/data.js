@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783675486569,
+  "lastUpdate": 1783751860491,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -18536,6 +18536,62 @@ window.BENCHMARK_DATA = {
             "value": 0.17047368220810438,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.07%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89f45901~1",
+          "message": "[before] Fix crash when wrong annotation is used for graph ",
+          "timestamp": "2026-07-11T06:02:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89f45901c4e17bb8e5924bfcd4be9d4c641098fb"
+        },
+        "date": 1783751860491,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.17214251817607829,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89f45901c4e17bb8e5924bfcd4be9d4c641098fb",
+          "message": "[after] Fix crash when wrong annotation is used for graph ",
+          "timestamp": "2026-07-11T06:02:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89f45901c4e17bb8e5924bfcd4be9d4c641098fb"
+        },
+        "date": 1783751860492,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.173350075966512,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.70%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783675486727,
+  "lastUpdate": 1783751860624,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18536,6 +18536,62 @@ window.BENCHMARK_DATA = {
             "value": 19154.038,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -6.13%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89f45901~1",
+          "message": "[before] Fix crash when wrong annotation is used for graph ",
+          "timestamp": "2026-07-11T06:02:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89f45901c4e17bb8e5924bfcd4be9d4c641098fb"
+        },
+        "date": 1783751860624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19398.352000000003,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Brian Norman",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "89f45901c4e17bb8e5924bfcd4be9d4c641098fb",
+          "message": "[after] Fix crash when wrong annotation is used for graph ",
+          "timestamp": "2026-07-11T06:02:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/89f45901c4e17bb8e5924bfcd4be9d4c641098fb"
+        },
+        "date": 1783751860625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20606.04,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +6.23%"
           }
         ]
       }
