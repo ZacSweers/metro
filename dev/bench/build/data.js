@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783763960319,
+  "lastUpdate": 1783769947235,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18648,6 +18648,62 @@ window.BENCHMARK_DATA = {
             "value": 19104.61,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.32%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5b6ef24~1",
+          "message": "[before] Fix missing IC lookup on compose-processed assiste",
+          "timestamp": "2026-07-11T11:03:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5b6ef24d2598809078f57db013d483b2b392790"
+        },
+        "date": 1783769947235,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19282.53,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5b6ef24d2598809078f57db013d483b2b392790",
+          "message": "[after] Fix missing IC lookup on compose-processed assiste",
+          "timestamp": "2026-07-11T11:03:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5b6ef24d2598809078f57db013d483b2b392790"
+        },
+        "date": 1783769947236,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19673.19,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.03%"
           }
         ]
       }

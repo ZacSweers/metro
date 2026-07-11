@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783763960176,
+  "lastUpdate": 1783769947095,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -18648,6 +18648,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2307125138570389,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -2.08%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5b6ef24~1",
+          "message": "[before] Fix missing IC lookup on compose-processed assiste",
+          "timestamp": "2026-07-11T11:03:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5b6ef24d2598809078f57db013d483b2b392790"
+        },
+        "date": 1783769947095,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.26536208843106934,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c5b6ef24d2598809078f57db013d483b2b392790",
+          "message": "[after] Fix missing IC lookup on compose-processed assiste",
+          "timestamp": "2026-07-11T11:03:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c5b6ef24d2598809078f57db013d483b2b392790"
+        },
+        "date": 1783769947096,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.26677129202828415,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.53%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
