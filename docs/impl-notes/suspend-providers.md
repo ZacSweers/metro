@@ -149,8 +149,7 @@ suspend providers; `BindingExpressionDecorator.decorateSuspendProviderExpression
 
 ## Current limitations
 
-- Suspend member injection (`@Inject suspend fun`) is rejected at FIR. Design sketch in
-  `plans/suspend-providers.md`.
+- Suspend member injection (`@Inject suspend fun`) is rejected at FIR.
 - `Deferred<T>` as an injectable wrapper is rejected. A Deferred is a Job and leaks lifecycle
   controls to consumers (see the FAQ).
-- Graph-owned `CoroutineScope` / `warmUp()` is future work, tracked in the same plan doc.
+- Graph-owned `CoroutineScope` / `warmUp()` is future work.
