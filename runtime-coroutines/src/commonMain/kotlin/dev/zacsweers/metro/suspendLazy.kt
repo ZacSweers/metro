@@ -3,10 +3,11 @@
 package dev.zacsweers.metro
 
 /**
- * Creates a new [SuspendLazy] instance that uses the specified [mode] for thread safety and the
- * given [initializer] to compute the value on first access.
+ * Creates a [SuspendLazy] that runs [initializer] on first access.
  *
- * This is the suspend analogue to [lazy].
+ * [LazyThreadSafetyMode.SYNCHRONIZED] runs one initializer while other callers wait.
+ * [LazyThreadSafetyMode.PUBLICATION] allows initializers to overlap and caches one result.
+ * [LazyThreadSafetyMode.NONE] does not coordinate concurrent callers.
  */
 @ExperimentalMetroCoroutinesApi
 public expect fun <T> suspendLazy(
@@ -14,5 +15,5 @@ public expect fun <T> suspendLazy(
   initializer: suspend () -> T,
 ): SuspendLazy<T>
 
-/** Returns an already-initialized [SuspendLazy] wrapping the given [value]. */
+/** Returns an initialized [SuspendLazy] containing [value]. */
 @ExperimentalMetroCoroutinesApi public expect fun <T> suspendLazyOf(value: T): SuspendLazy<T>

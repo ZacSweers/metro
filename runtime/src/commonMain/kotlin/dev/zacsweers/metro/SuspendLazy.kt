@@ -2,17 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro
 
-/**
- * A suspend analogue to [Lazy]. The value is computed lazily, in a suspend context, on first
- * [value] call.
- */
+/** A value computed on demand in a suspend context and cached for later calls. */
 @ExperimentalMetroCoroutinesApi
 public interface SuspendLazy<out T> {
   /**
-   * Returns the lazily-computed value, suspending if necessary to compute it for the first time.
+   * Returns the cached value, suspending to compute it when necessary. A failed or cancelled
+   * computation is not cached.
    */
   public suspend fun value(): T
 
-  /** Returns `true` if the value has been computed. */
+  /** Returns `true` after a value has been computed and cached. */
   public fun isInitialized(): Boolean
 }

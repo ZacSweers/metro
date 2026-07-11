@@ -929,7 +929,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "enable-suspend-providers",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Enable experimental suspend providers and suspend-aware graph resolution.",
+      description = "Enable experimental suspend bindings, graph accessors, and provider types.",
       required = false,
       allowMultipleOccurrences = false,
     )

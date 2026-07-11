@@ -200,7 +200,7 @@ internal sealed interface WrappedType<T : Any> {
       is Map -> type()
     }
 
-  /** Returns true if this type is wrapped in a Provider, SuspendProvider, or Lazy at any level. */
+  /** Returns true if this type is wrapped in Provider, Lazy, or a suspend counterpart. */
   fun isDeferrable(): Boolean =
     when (this) {
       is Canonical -> false

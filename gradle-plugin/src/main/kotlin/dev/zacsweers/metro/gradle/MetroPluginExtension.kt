@@ -426,7 +426,7 @@ constructor(
     objects.booleanProperty("metro.enableRuntimeTracing", false)
 
   /**
-   * Enables experimental suspend providers and suspend-aware graph validation.
+   * Enables experimental suspend `@Provides` functions, graph accessors, and provider types.
    *
    * When automatic runtime dependencies are enabled, this also adds Metro's `runtime-coroutines`
    * artifact.

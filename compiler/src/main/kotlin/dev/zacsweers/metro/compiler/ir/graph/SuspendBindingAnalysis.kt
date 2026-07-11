@@ -83,8 +83,8 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
 
 /**
  * Whether this request resolves without making its consumer suspend. Ordinary Provider/Lazy
- * wrappers are deliberately excluded: they are invalid over suspend bindings and are diagnosed
- * after propagation.
+ * wrappers are excluded because they are invalid over suspend bindings and diagnosed after
+ * propagation.
  */
 private val IrContextualTypeKey.stopsSuspendPropagation: Boolean
   get() = isWrappedInSuspendProvider || isWrappedInSuspendLazy || isMapSuspendProvider

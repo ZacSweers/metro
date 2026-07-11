@@ -102,7 +102,7 @@ internal class GraphSuspendFactoryGenerator(
   /**
    * One field per source parameter. Receivers (graph/container instances) are held as plain
    * instances; deps are held as SuspendProvider<X> when suspend in this graph, Provider<X>
-   * otherwise. Params already declared as deferred wrappers keep their declared shape.
+   * otherwise. Parameters already declared as deferred wrappers keep that wrapper type.
    */
   private data class ParamField(val param: Parameter, val field: IrField)
 
@@ -231,8 +231,8 @@ internal class GraphSuspendFactoryGenerator(
    * Returns (creating if needed) an IR-only private nested impl of [binding]'s assisted factory
    * interface for graphs where the target consumes suspend bindings. Unlike the shared per-class
    * `*_Impl` (which delegates to the target's plain `Factory<T>`), this impl holds the target's
-   * non-assisted deps directly (as `SuspendProvider<X>`/`Provider<X>` per graph suspend-ness) and
-   * its suspend SAM override awaits them before calling the target constructor.
+   * non-assisted deps directly as `SuspendProvider<X>` or `Provider<X>`, based on graph resolution.
+   * Its suspend SAM override awaits them before calling the target constructor.
    *
    * @param buildTargetCall builds the target constructor call given resolved args aligned with the
    *   target constructor's full parameter list (assisted + non-assisted, in declaration order).

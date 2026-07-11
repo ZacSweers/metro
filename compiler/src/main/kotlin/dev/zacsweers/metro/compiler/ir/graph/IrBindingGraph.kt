@@ -1122,9 +1122,8 @@ internal class IrBindingGraph(
   /**
    * Validates suspend binding propagation through the dependency graph.
    *
-   * Suspension is contagious: if binding B is provided by a `suspend fun`, then any binding A that
-   * depends on B also requires a suspend context, unless A defers B behind a suspend wrapper like
-   * `suspend () -> B` or `SuspendLazy<B>`.
+   * Suspension propagates from a binding provided by a `suspend fun` to bindings that depend on it,
+   * unless the dependency is deferred behind `suspend () -> T` or `SuspendLazy<T>`.
    */
   private fun validateSuspendBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
@@ -1242,7 +1241,7 @@ internal class IrBindingGraph(
       val deferredFormRender = suspendFunctionRender(typeRender)
 
       // Provider<T>/Lazy<T> roots over a suspend binding can never await the work regardless of
-      // the accessor's suspend-ness. Suspend-flavored wrappers are the fix.
+      // whether the accessor is suspend. A suspend provider wrapper is required instead.
       if (contextKey.isWrappedInProvider || contextKey.isWrappedInLazy) {
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
@@ -1290,9 +1289,9 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 3b: Member injection has no suspend form. MembersInjector.injectMembers and injector
-    // functions can't await suspend bindings, and constructor-injected classes with injected
-    // members don't route through suspend factories. Error rather than silently mis-generate.
+    // Step 4: Suspend member injection is unsupported. MembersInjector.injectMembers and injector
+    // functions cannot await suspend bindings, and graph-local suspend factories do not run
+    // ordinary member injection after construction.
     bindings.forEachValue { binding ->
       if (binding.typeKey !in suspendSet) return@forEachValue
       val (firstSuspendDep, subject) =
@@ -1307,7 +1306,7 @@ internal class IrBindingGraph(
           is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
             // A member-injecting class must not be suspend at all. Suspend construction routes
             // through nested suspend factories, which do not perform member injection. The
-            // suspend-ness may come from a member OR a constructor dependency.
+            // Suspend resolution may be required by a member or constructor dependency.
             val anySuspendDep =
               binding.dependencies.firstOrNull { dep ->
                 dep.typeKey in suspendSet && !dep.defersSuspendAtAccess
@@ -1343,10 +1342,10 @@ internal class IrBindingGraph(
       reportError(element.originalDeclarationIfOverride(), message)
     }
 
-    // Step 4: Validate wrapping conflicts where Provider<T>/Lazy<T> wraps a suspend binding
+    // Step 5: Validate wrapping conflicts where Provider<T>/Lazy<T> wraps a suspend binding
     bindings.forEachValue { binding ->
       // Assisted factories' dependencies are synthetically Provider-wrapped for cycle detection;
-      // their suspend handling is validated in step 5 below.
+      // their suspend handling is validated in step 6 below.
       if (binding is IrBinding.AssistedFactory) return@forEachValue
       for (dep in binding.dependencies) {
         if (dep.typeKey !in suspendSet) continue
@@ -1382,7 +1381,7 @@ internal class IrBindingGraph(
       }
     }
 
-    // Step 5: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
+    // Step 6: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
     // its SAM as `suspend` so the generated impl can await them. Provider/Lazy-wrapped suspend
     // deps on the target are also validated here because the target binding is not in the graph
     // and step 4 never sees it.
