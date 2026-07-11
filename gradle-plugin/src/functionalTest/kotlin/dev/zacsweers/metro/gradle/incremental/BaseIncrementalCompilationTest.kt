@@ -227,9 +227,10 @@ abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
     source: Source,
     @Language("kotlin") content: String,
     includeDefaultImports: Boolean = true,
+    sourceSet: String = "commonMain",
   ) {
     val newSource = source.copy(content, includeDefaultImports)
-    val filePath = "src/commonMain/kotlin/${newSource.path}/${newSource.name}.kt"
+    val filePath = "src/$sourceSet/kotlin/${newSource.path}/${newSource.name}.kt"
     val projectPath = rootDir.resolve(this.name.removePrefix(":").replace(":", "/"))
     projectPath.resolve(filePath).writeText(newSource.source)
   }
