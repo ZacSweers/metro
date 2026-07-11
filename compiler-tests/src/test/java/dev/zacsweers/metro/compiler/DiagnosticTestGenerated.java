@@ -1699,6 +1699,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingRuntimeCoroutinesForScopedBinding.kt")
+    public void testMissingRuntimeCoroutinesForScopedBinding() {
+      run("MissingRuntimeCoroutinesForScopedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("MixedCauseTransitiveSuspend.kt")
     public void testMixedCauseTransitiveSuspend() {
       run("MixedCauseTransitiveSuspend.kt");

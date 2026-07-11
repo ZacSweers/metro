@@ -1,4 +1,5 @@
 // ENABLE_RUNTIME_TRACING
+// WITH_RUNTIME_COROUTINES
 // IGNORE_BACKEND: JS_IR
 
 import androidx.tracing.Tracer

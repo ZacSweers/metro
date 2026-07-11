@@ -88,6 +88,10 @@ delegate is already the graph's `SuspendDoubleCheck` (scoped bindings share the 
 Whole-collection suspend access to multibindings (`suspend () -> Set<T>` etc.) generates the
 Provider form and adapts via `SyncSuspendProvider`.
 
+Graph sealing records whether reachable bindings need `runtime-coroutines`: either a scoped
+suspend binding or a `SuspendLazy` request. Codegen checks that bit before constructing the graph
+generator and reports the missing artifact as a normal Metro error.
+
 ### JS function types
 
 `SuspendProvider<T>` mirrors `Provider<T>`'s expect/actual shape. Its JVM, Native, and Wasm actuals

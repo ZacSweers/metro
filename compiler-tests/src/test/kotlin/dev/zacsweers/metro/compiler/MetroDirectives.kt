@@ -108,6 +108,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
       it.toBoolean()
     }
   // Dependency directives.
+  val WITH_COROUTINES by directive("Add kotlinx-coroutines to the test classpath.")
+  val WITH_RUNTIME_COROUTINES by
+    directive("Add Metro's runtime-coroutines artifact to the test classpath.")
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
   val WITH_KI_ANVIL by
     directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")

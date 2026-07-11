@@ -1531,6 +1531,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingRuntimeCoroutinesForScopedBinding.kt")
+    public void testMissingRuntimeCoroutinesForScopedBinding() {
+      run("MissingRuntimeCoroutinesForScopedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("MixedCauseTransitiveSuspend.kt")
     public void testMixedCauseTransitiveSuspend() {
       run("MixedCauseTransitiveSuspend.kt");

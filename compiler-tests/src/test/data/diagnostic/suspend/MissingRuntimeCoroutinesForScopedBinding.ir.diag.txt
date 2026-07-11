@@ -1,0 +1,3 @@
+/MissingRuntimeCoroutinesForScopedBinding.kt:8:11: error: Scoped suspend bindings and `SuspendLazy` require the `dev.zacsweers.metro:runtime-coroutines` artifact. Add it to the compile and runtime classpath.
+interface ExampleGraph {
+          ^^^^^^^^^^^^

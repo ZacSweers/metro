@@ -115,6 +115,9 @@ internal class IrBindingGraph(
    */
   private var transitivelySuspendKeys: Set<IrTypeKey> = emptySet()
 
+  /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
+  private var requiresRuntimeCoroutines = false
+
   /**
    * Memoized suspend-resolution results used while validating child graph extensions. Children are
    * validated before this graph is sealed, so [transitivelySuspendKeys] has not been populated yet.
@@ -134,6 +137,12 @@ internal class IrBindingGraph(
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
     typeKey in transitivelySuspendKeys
+
+  private fun recordRuntimeCoroutinesUse(contextKey: IrContextualTypeKey) {
+    if (contextKey.isWrappedInSuspendLazy) {
+      requiresRuntimeCoroutines = true
+    }
+  }
 
   /**
    * Resolves whether [typeKey] requires a suspend context before this graph is sealed. Child graph
@@ -316,10 +325,12 @@ internal class IrBindingGraph(
   fun keeps(): Set<IrContextualTypeKey> = extraKeeps.keys
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+    recordRuntimeCoroutinesUse(key)
     accessors[key] = entry
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+    recordRuntimeCoroutinesUse(key)
     injectors[key] = entry
   }
 
@@ -328,6 +339,7 @@ internal class IrBindingGraph(
   }
 
   fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
+    recordRuntimeCoroutinesUse(key)
     extraKeeps[key] = entry
   }
 
@@ -336,6 +348,7 @@ internal class IrBindingGraph(
    * seal() and informs BindingPropertyCollector about child usage.
    */
   fun reserveContextKey(contextKey: IrContextualTypeKey) {
+    recordRuntimeCoroutinesUse(contextKey)
     reservedContextKeys.add(contextKey)
   }
 
@@ -397,6 +410,7 @@ internal class IrBindingGraph(
     val sortedKeys: List<IrTypeKey>,
     val deferredTypes: Set<IrTypeKey>,
     val reachableKeys: Set<IrTypeKey>,
+    val requiresRuntimeCoroutines: Boolean,
     val shardGroups: List<List<IrTypeKey>>?,
     // Map of unused keys to graph inputs, if available
     val unusedKeys: Map<IrTypeKey, IrBinding.BoundInstance?>,
@@ -408,6 +422,7 @@ internal class IrBindingGraph(
           sortedKeys = emptyList(),
           deferredTypes = emptySet(),
           reachableKeys = emptySet(),
+          requiresRuntimeCoroutines = false,
           shardGroups = emptyList(),
           unusedKeys = emptyMap(),
           hasErrors = true,
@@ -643,6 +658,7 @@ internal class IrBindingGraph(
       sortedKeys = sortedKeys,
       deferredTypes = deferredTypes,
       reachableKeys = reachableKeys,
+      requiresRuntimeCoroutines = requiresRuntimeCoroutines,
       shardGroups = shardGroups,
       unusedKeys = unusedKeys,
       hasErrors = hasErrors,
@@ -1105,6 +1121,16 @@ internal class IrBindingGraph(
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     bindings.forEachValue { binding ->
+      if (binding.typeKey in adjacency.forward) {
+        val hasSuspendLazyDependency =
+          binding.contextualTypeKey.isWrappedInSuspendLazy ||
+            binding.dependencies.any { it.isWrappedInSuspendLazy } ||
+            (binding is IrBinding.AssistedFactory &&
+              binding.targetBinding.dependencies.any { it.isWrappedInSuspendLazy })
+        if (hasSuspendLazyDependency) {
+          requiresRuntimeCoroutines = true
+        }
+      }
       checkScope(binding, stack, roots, adjacency.forward)
       validateMultibindings(binding, bindings, roots, adjacency.forward)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
@@ -1178,6 +1204,11 @@ internal class IrBindingGraph(
     // `Map<K, suspend () -> V>`. Sets have no deferred-value form and always error.
     val suspendMultibindingKeys = mutableSetOf<IrTypeKey>()
     bindings.forEachValue { binding ->
+      if (
+        binding.typeKey in adjacency.forward && binding.isScoped() && binding.typeKey in suspendSet
+      ) {
+        requiresRuntimeCoroutines = true
+      }
       if (binding !is IrBinding.Multibinding) return@forEachValue
       if (binding.typeKey !in suspendSet) return@forEachValue
       suspendMultibindingKeys += binding.typeKey

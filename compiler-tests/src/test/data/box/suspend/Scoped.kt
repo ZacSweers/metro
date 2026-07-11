@@ -1,3 +1,5 @@
+// WITH_RUNTIME_COROUTINES
+
 // A scoped constructor-injected class with a suspend dep. The graph stores it in a
 // SuspendProvider<T> field backed by an IR-only nested SuspendFactory, wrapped in
 // SuspendDoubleCheck so both accessors share one instance.
