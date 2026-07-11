@@ -49,4 +49,41 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       MetroInjectedImplementationInlayProvider(),
     )
   }
+
+  fun testContextDependentResolutionHasNoImplementationInlay() {
+    doTestProvider(
+      "ContextDependent.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      abstract class OtherScope
+
+      interface Repo
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class AppRepo : Repo
+
+      @Inject
+      @ContributesBinding(OtherScope::class)
+      class OtherRepo : Repo
+
+      @Inject class Consumer(val repo: Repo)
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val consumer: Consumer
+      }
+
+      @DependencyGraph(OtherScope::class)
+      interface OtherGraph {
+        val consumer: Consumer
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
 }

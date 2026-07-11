@@ -71,7 +71,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
         return
       }
       val consumer = index.consumerEntryAt(element) ?: return
-      val bindings = index.resolveConsumer(consumer).effective
+      val bindings = index.resolveConsumer(consumer).uniformBindings ?: return
       if (bindings.isEmpty()) return
 
       val contributions = bindings.count { it.multibindingId != null }

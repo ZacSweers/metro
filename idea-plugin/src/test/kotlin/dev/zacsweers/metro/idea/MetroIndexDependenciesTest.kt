@@ -357,7 +357,9 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val consumer = index.consumerEntryAt(declarations.property("activityProviders"))!!
     assertNotNull(consumer.multibindingId)
     val contributions =
-      index.resolveConsumer(consumer).effective.filter { it.multibindingId != null }
+      index.resolveConsumer(consumer).uniformBindings.orEmpty().filter {
+        it.multibindingId != null
+      }
     assertEquals(1, contributions.size)
     assertEquals(
       "provideMainActivity",

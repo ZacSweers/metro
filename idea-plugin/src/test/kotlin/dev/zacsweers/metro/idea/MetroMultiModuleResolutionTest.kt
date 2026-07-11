@@ -132,15 +132,16 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       index.consumerEntryAt(libraryFile.declarationsIncludingNested().parameter("service"))!!
     val resolution = index.resolveConsumer(serviceConsumer)
 
+    assertNull(resolution.uniformBindings)
     assertEquals(
       listOf("provideService"),
-      resolution.effective.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+      resolution.candidateBindings.map { (it.pointer.element as? KtNamedDeclaration)?.name },
     )
     assertEquals(
-      setOf("AppGraph", "LibExtension"),
+      setOf("AppGraph", "LibExtension", "LibGraph"),
       resolution.perContext.keys.mapTo(mutableSetOf()) { it.graph.name },
     )
-    assertTrue(resolution.perContext.keys.none { it.graph.name == "LibGraph" })
+    assertEquals(listOf("LibGraph"), resolution.emptyContexts.map { it.graph.name })
 
     val graphsByName = index.graphs.associateBy { it.name }
     val appContext =
@@ -172,7 +173,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val extensionResolution = index.resolveConsumer(extensionConsumer)
     assertEquals(
       listOf("provideService"),
-      extensionResolution.effective.map {
+      extensionResolution.uniformBindings.orEmpty().map {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
     )

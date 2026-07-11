@@ -6,6 +6,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -1047,7 +1048,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val resolution = index.resolveConsumer(accessor)
     assertEquals(2, resolution.global.size)
     // In the graph, the replacement wins
-    assertEquals(listOf("FakeRepo"), resolution.effective.map { it.implementationName })
+    assertEquals(
+      listOf("FakeRepo"),
+      resolution.uniformBindings.orEmpty().map { it.implementationName },
+    )
 
     val realEntry =
       index.bindingEntriesAt(declarations.klass("RealRepo")).single {
@@ -1474,6 +1478,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         parentBindings.map { it.implementationName }
       },
     )
+    val resolution = index.resolveConsumer(accessor)
+    assertNull(resolution.uniformBindings)
+    assertEquals(
+      setOf("RealThing", "OtherThing"),
+      resolution.candidateBindings.mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertTrue(resolution.emptyContexts.isEmpty())
 
     // But parent contexts do not include child-scoped bindings beyond their own scope
     val parent = index.contextsFor(index.graphEntryAt(declarations.klass("ParentGraph"))!!).single()
@@ -1545,13 +1556,119 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val appRepo = index.consumerEntryAt(declarations.property("appRepo"))!!
     val appResolution = index.resolveConsumer(appRepo)
-    assertEquals(listOf("AppRepo"), appResolution.effective.map { it.implementationName })
+    assertEquals(
+      listOf("AppRepo"),
+      appResolution.uniformBindings.orEmpty().map { it.implementationName },
+    )
     assertEquals(listOf("AppGraph"), appResolution.perContext.keys.map { it.graph.name })
 
     val otherRepo = index.consumerEntryAt(declarations.property("otherRepo"))!!
     val otherResolution = index.resolveConsumer(otherRepo)
-    assertEquals(listOf("OtherRepo"), otherResolution.effective.map { it.implementationName })
+    assertEquals(
+      listOf("OtherRepo"),
+      otherResolution.uniformBindings.orEmpty().map { it.implementationName },
+    )
     assertEquals(listOf("OtherGraph"), otherResolution.perContext.keys.map { it.graph.name })
+  }
+
+  fun testConsumerResolutionDistinguishesUniformAndContextDependentBindings() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class OtherScope
+
+        interface PartialRepo
+        interface DifferentRepo
+        interface StableRepo
+        interface MissingRepo
+
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class PartialAppRepo : PartialRepo
+
+        @Inject
+        @ContributesBinding(AppScope::class)
+        class DifferentAppRepo : DifferentRepo
+
+        @Inject
+        @ContributesBinding(OtherScope::class)
+        class DifferentOtherRepo : DifferentRepo
+
+        @Inject class StableRepoImpl : StableRepo
+
+        @BindingContainer
+        interface StableBindings {
+          @Binds fun bindStable(impl: StableRepoImpl): StableRepo
+        }
+
+        @Inject
+        class Consumer(
+          val partialRepo: PartialRepo,
+          val differentRepo: DifferentRepo,
+          val stableRepo: StableRepo,
+          val missingRepo: MissingRepo,
+        )
+
+        @DependencyGraph(AppScope::class, bindingContainers = [StableBindings::class])
+        interface AppGraph {
+          val consumer: Consumer
+        }
+
+        @DependencyGraph(OtherScope::class, bindingContainers = [StableBindings::class])
+        interface OtherGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    fun resolution(parameterName: String): ConsumerResolution {
+      return index.resolveConsumer(index.consumerEntryAt(declarations.parameter(parameterName))!!)
+    }
+
+    fun implementationsByGraph(resolution: ConsumerResolution): Map<String?, List<String?>> {
+      return resolution.perContext.entries.associate { (context, bindings) ->
+        context.graph.name to bindings.map { it.implementationName }
+      }
+    }
+
+    val partial = resolution("partialRepo")
+    assertNull(partial.uniformBindings)
+    assertEquals(
+      listOf("PartialAppRepo"),
+      partial.candidateBindings.map { it.implementationName },
+    )
+    assertEquals(setOf("OtherGraph"), partial.emptyContexts.mapTo(mutableSetOf()) { it.graph.name })
+    assertEquals(
+      mapOf(
+        "AppGraph" to listOf("PartialAppRepo"),
+        "OtherGraph" to emptyList(),
+      ),
+      implementationsByGraph(partial),
+    )
+
+    val different = resolution("differentRepo")
+    assertNull(different.uniformBindings)
+    assertEquals(
+      setOf("DifferentAppRepo", "DifferentOtherRepo"),
+      different.candidateBindings.mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertTrue(different.emptyContexts.isEmpty())
+
+    val stable = resolution("stableRepo")
+    assertEquals(
+      listOf("StableRepoImpl"),
+      stable.uniformBindings.orEmpty().map { it.implementationName },
+    )
+    assertEquals(2, stable.perContext.size)
+    assertTrue(stable.emptyContexts.isEmpty())
+
+    val missing = resolution("missingRepo")
+    assertTrue(missing.uniformBindings.orEmpty().isEmpty())
+    assertTrue(missing.candidateBindings.isEmpty())
+    assertEquals(2, missing.perContext.size)
+    assertEquals(2, missing.emptyContexts.size)
   }
 
   fun testGraphExtensionParentsOnlyComeFromExtensionCreationAccessors() {
@@ -1597,7 +1714,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(1, childContexts.single().chain.size)
 
     val thing = index.consumerEntryAt(declarations.property("thing"))!!
-    assertTrue(index.resolveConsumer(thing).effective.isEmpty())
+    assertTrue(index.resolveConsumer(thing).uniformBindings.orEmpty().isEmpty())
   }
 
   fun testLibraryContributionHintsCanContributeSameProviderToMultipleScopes() {

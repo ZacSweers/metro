@@ -132,8 +132,16 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     entries: List<ConsumerEntry>,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val unresolved = entries.count { entry ->
-      !entry.isOptional && index.resolveConsumer(entry).effective.isEmpty()
+    var missingInSomeContexts = 0
+    var unresolved = 0
+    for (entry in entries) {
+      if (entry.isOptional) continue
+      val resolution = index.resolveConsumer(entry)
+      when {
+        resolution.uniformBindings == null && resolution.emptyContexts.isNotEmpty() ->
+          missingInSomeContexts++
+        resolution.uniformBindings?.isEmpty() == true -> unresolved++
+      }
     }
     val typeReference =
       (declaration as? KtNamedFunction)?.valueParameters?.singleOrNull()?.typeReference
@@ -144,6 +152,11 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       append(entries.size)
       append(" dependencies into ")
       append(targetName)
+      if (missingInSomeContexts > 0) {
+        append(" · ")
+        append(missingInSomeContexts)
+        append(" missing in some graph contexts")
+      }
       if (unresolved > 0) {
         append(" · ")
         append(unresolved)
@@ -152,7 +165,12 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
     return navMarker(
       anchor = anchor,
-      icon = if (unresolved > 0) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
+      icon =
+        if (missingInSomeContexts > 0 || unresolved > 0) {
+          MetroIcons.CONSUMER_UNRESOLVED
+        } else {
+          MetroIcons.CONSUMER
+        },
       tooltip = tooltip,
       popupTitle = "Injected members of $targetName",
       emptyText = "No injected members found in $targetName",
@@ -218,61 +236,90 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val resolution = index.resolveConsumer(consumer)
-    val bindings = resolution.effective
-    val targets = bindings.map { it.pointer }
+    val uniformBindings = resolution.uniformBindings
+    val isContextDependent = uniformBindings == null
+    val bindings = uniformBindings.orEmpty()
+    val navigationBindings = uniformBindings ?: resolution.candidateBindings
+    val targets = navigationBindings.map { it.pointer }
     val contributions = bindings.count { it.multibindingId != null }
     val tooltip = buildString {
       append("Metro dependency: ")
       append(consumer.key.render(short = true))
-      if (contributions > 0) {
-        append(" · ")
-        append(contributions)
-        append(if (contributions == 1) " contribution" else " contributions")
-      }
-      bindings.singleOrNull()?.let { binding ->
-        binding.implementationName
-          // An implementation matching the declared type adds nothing
-          ?.takeIf { it != consumer.key.render(short = true, includeQualifier = false) }
-          ?.let {
-            append(" · provided by ")
-            append(it)
-          }
-        resolution.perContext.keys.singleOrNull()?.graph?.name?.let {
-          append(" in ")
-          append(it)
-        }
-      }
-      if (bindings.size > 1 && contributions == 0) {
-        append(" · ")
-        append(bindings.size)
-        append(" bindings")
-        if (resolution.perContext.size > 1) {
-          append(" across ")
+      if (isContextDependent) {
+        val emptyContextCount = resolution.emptyContexts.size
+        if (emptyContextCount > 0) {
+          append(" · binding found in ")
+          append(resolution.perContext.size - emptyContextCount)
+          append(" of ")
+          append(resolution.perContext.size)
+          append(" graph contexts")
+        } else {
+          append(" · bindings differ across ")
           append(resolution.perContext.size)
           append(" graph contexts")
         }
-      }
-      if (bindings.isEmpty()) {
-        if (consumer.isOptional) {
-          // An absent optional binding is by design, not a missing-binding error.
-          append(" · optional, uses its default")
-        } else {
-          append(" · no binding found in project sources (may be in a library or generated)")
+        if (resolution.candidateBindings.size > 1) {
+          append(" · ")
+          append(resolution.candidateBindings.size)
+          append(" candidates")
+        }
+      } else {
+        if (contributions > 0) {
+          append(" · ")
+          append(contributions)
+          append(if (contributions == 1) " contribution" else " contributions")
+        }
+        bindings.singleOrNull()?.let { binding ->
+          binding.implementationName
+            // An implementation matching the declared type adds nothing
+            ?.takeIf { it != consumer.key.render(short = true, includeQualifier = false) }
+            ?.let {
+              append(" · provided by ")
+              append(it)
+            }
+          resolution.perContext.keys.singleOrNull()?.graph?.name?.let {
+            append(" in ")
+            append(it)
+          }
+        }
+        if (bindings.size > 1 && contributions == 0) {
+          append(" · ")
+          append(bindings.size)
+          append(" bindings")
+          if (resolution.perContext.size > 1) {
+            append(" across ")
+            append(resolution.perContext.size)
+            append(" graph contexts")
+          }
+        }
+        if (bindings.isEmpty()) {
+          if (consumer.isOptional) {
+            // An absent optional binding is by design, not a missing-binding error.
+            append(" · optional, uses its default")
+          } else {
+            append(" · no binding found in project sources (may be in a library or generated)")
+          }
         }
       }
     }
-    // An absent optional dependency is legitimate, so don't flag it with the unresolved icon.
-    val unresolvedIcon =
-      if (consumer.isOptional) MetroIcons.CONSUMER else MetroIcons.CONSUMER_UNRESOLVED
+    val missingRequiredContext = !consumer.isOptional && resolution.emptyContexts.isNotEmpty()
+    val unresolvedEverywhere = !consumer.isOptional && uniformBindings?.isEmpty() == true
+    val icon =
+      if (missingRequiredContext || unresolvedEverywhere) {
+        MetroIcons.CONSUMER_UNRESOLVED
+      } else {
+        MetroIcons.CONSUMER
+      }
     return navMarker(
       anchor = anchor,
-      icon = if (bindings.isEmpty()) unresolvedIcon else MetroIcons.CONSUMER,
+      icon = icon,
       tooltip = tooltip,
       popupTitle =
-        if (contributions > 0) {
-          "Contributions to ${consumer.key.render(short = true)}"
-        } else {
-          "Bindings for ${consumer.key.render(short = true)}"
+        when {
+          isContextDependent ->
+            "Bindings for ${consumer.key.render(short = true)} across graph contexts"
+          contributions > 0 -> "Contributions to ${consumer.key.render(short = true)}"
+          else -> "Bindings for ${consumer.key.render(short = true)}"
         },
       emptyText = "No Metro binding found for ${consumer.key.render(short = true)}",
       targets = targets,

@@ -247,6 +247,84 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testBindingMissingFromSomeContextsUsesAttentionMarker() {
+    myFixture.configureMetroFile(
+      """
+      abstract class OtherScope
+
+      interface Repo
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class AppRepo : Repo
+
+      @Inject class Consumer(val repo: Repo)
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val consumer: Consumer
+      }
+
+      @DependencyGraph(OtherScope::class)
+      interface OtherGraph {
+        val consumer: Consumer
+      }
+      """
+    )
+    myFixture.doHighlighting()
+
+    val marker =
+      myFixture.findAllGutters().single {
+        it.icon === MetroIcons.CONSUMER_UNRESOLVED &&
+          it.tooltipText?.startsWith("Metro dependency: Repo · binding found") == true
+      }
+    assertSame(MetroIcons.CONSUMER_UNRESOLVED, marker.icon)
+    assertTrue(marker.tooltipText.orEmpty()) {
+      "binding found in 1 of 2 graph contexts" in marker.tooltipText.orEmpty()
+    }
+  }
+
+  fun testContextDependentBindingsDoNotUseAttentionMarker() {
+    myFixture.configureMetroFile(
+      """
+      abstract class OtherScope
+
+      interface Repo
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class AppRepo : Repo
+
+      @Inject
+      @ContributesBinding(OtherScope::class)
+      class OtherRepo : Repo
+
+      @Inject class Consumer(val repo: Repo)
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val consumer: Consumer
+      }
+
+      @DependencyGraph(OtherScope::class)
+      interface OtherGraph {
+        val consumer: Consumer
+      }
+      """
+    )
+    myFixture.doHighlighting()
+
+    val marker =
+      myFixture.findAllGutters().single {
+        it.icon === MetroIcons.CONSUMER &&
+          it.tooltipText?.startsWith("Metro dependency: Repo · bindings differ") == true
+      }
+    assertSame(MetroIcons.CONSUMER, marker.icon)
+    assertTrue(marker.tooltipText.orEmpty()) {
+      "bindings differ across 2 graph contexts · 2 candidates" in marker.tooltipText.orEmpty()
+    }
+  }
+
   fun testNoMarkersWhenMetroDisabled() {
     project.setMetroOptions("enabled" to "false")
     val tooltips = configureAndHighlight()

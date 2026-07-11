@@ -122,6 +122,7 @@ internal class BindingIndex(
     for (graph in graphs) {
       for (context in contextsFor(graph)) {
         val queryContext = queryContext(context) ?: continue
+        if (!isConsumerInContext(consumer, queryContext)) continue
         val visible =
           visibleByModule.getOrPut(queryContext.graphModule) {
             visibleBindingsFor(
@@ -130,27 +131,21 @@ internal class BindingIndex(
               queryContext.resolutionScope,
             )
           }
-        val filtered = bindingsInContext(visible, consumer, queryContext)
-        if (filtered.isNotEmpty()) {
-          perContext[context] = filtered
-        }
+        perContext[context] = filterBindingsInContext(visible, queryContext)
       }
     }
     return ConsumerResolution(global, perContext, hasGraphs = true)
   }
 
   /**
-   * Filters precomputed [visible] candidates to those live in [queryContext]'s graph, gating on
-   * whether [consumer]'s site itself resolves in that graph. Used by [resolveConsumer]'s
-   * per-context pass; the binding-membership probe [bindingsFor] deliberately skips the
-   * consumer-site gate.
+   * Filters precomputed [visible] candidates to those live in [queryContext]'s graph. Consumer-site
+   * membership is checked separately so applicable contexts remain represented when this returns an
+   * empty binding list.
    */
-  private fun bindingsInContext(
+  private fun filterBindingsInContext(
     visible: List<KaBinding>,
-    consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    if (!isConsumerInContext(consumer, queryContext)) return emptyList()
     return applyReplaces(visible.filter { isBindingInContext(it, queryContext) })
   }
 
@@ -579,12 +574,38 @@ private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): Scatte
 internal class ConsumerResolution(
   /** Candidates visible from the consumer's module. */
   val global: List<KaBinding>,
-  /** Graph-filtered candidates per concrete parent path that can resolve the consumer. */
+  /** Graph-filtered candidates for every concrete parent path containing the consumer. */
   val perContext: Map<GraphContext, List<KaBinding>>,
-  private val hasGraphs: Boolean,
+  hasGraphs: Boolean,
 ) {
-  /** The deduplicated union of context results, or [global] for graphless files/projects. */
-  val effective: List<KaBinding> = if (hasGraphs) perContext.values.flatten().distinct() else global
+  /** Bindings available in at least one applicable context, retained for navigation. */
+  val candidateBindings: List<KaBinding>
+
+  /**
+   * Bindings shared by every applicable graph context, or [global] when the index has no graphs.
+   * `null` means the contexts produce different binding sets; an empty list means no binding was
+   * found in any applicable context.
+   */
+  val uniformBindings: List<KaBinding>?
+
+  /** Applicable graph contexts where no binding was found. */
+  val emptyContexts: Set<GraphContext>
+
+  init {
+    if (!hasGraphs) {
+      candidateBindings = global
+      uniformBindings = global
+      emptyContexts = emptySet()
+    } else {
+      candidateBindings = perContext.values.flatten().distinct()
+      emptyContexts = perContext.filterValues { it.isEmpty() }.keys
+      val firstBindings = perContext.values.firstOrNull()?.distinct().orEmpty()
+      val firstBindingSet = firstBindings.toSet()
+      val contextsAgree =
+        perContext.isNotEmpty() && perContext.values.all { it.toSet() == firstBindingSet }
+      uniformBindings = if (perContext.isEmpty() || contextsAgree) firstBindings else null
+    }
+  }
 }
 
 private fun moduleFor(element: KtElement?): KaModule? {
