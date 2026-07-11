@@ -261,6 +261,85 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
 
+  fun testAnyMultibindsDeclarationCanAllowEmpty() {
+    val result =
+      validate(
+        """
+
+        interface Service
+
+        @BindingContainer
+        interface StrictDeclarations {
+          @Multibinds fun services(): Set<Service>
+        }
+
+        @BindingContainer
+        interface EmptyDeclarations {
+          @Multibinds(allowEmpty = true) fun services(): Set<Service>
+        }
+
+        @DependencyGraph(
+          bindingContainers = [StrictDeclarations::class, EmptyDeclarations::class]
+        )
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testOptionalBindingTraversesPresentDependencyAndAllowsAbsentDependency() {
+    project.setMetroOptions("enable-dagger-runtime-interop" to "true")
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      """
+      package dagger
+
+      annotation class BindsOptionalOf
+      """
+        .trimIndent(),
+    )
+    // The light test fixture's mock JDK lacks java.util.Optional.
+    myFixture.addFileToProject(
+      "java/util/Optional.kt",
+      """
+      package java.util
+
+      class Optional<T>
+      """
+        .trimIndent(),
+    )
+    val result =
+      validate(
+        """
+        import dagger.BindsOptionalOf
+        import java.util.Optional
+
+        interface PresentService
+        interface MissingService
+
+        @Inject class RealPresentService : PresentService
+
+        @BindingContainer
+        interface OptionalBindings {
+          @Binds fun bindPresent(impl: RealPresentService): PresentService
+          @BindsOptionalOf fun optionalPresent(): PresentService
+          @BindsOptionalOf fun optionalMissing(): MissingService
+        }
+
+        @DependencyGraph(bindingContainers = [OptionalBindings::class])
+        interface AppGraph {
+          val present: Optional<PresentService>
+          val missing: Optional<MissingService>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.PresentService" })
+  }
+
   fun testScopeFilteredCandidateIsHinted() {
     val result =
       validate(

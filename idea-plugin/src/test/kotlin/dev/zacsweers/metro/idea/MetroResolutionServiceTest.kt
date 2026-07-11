@@ -697,6 +697,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val optionalBinding = index.bindingEntriesAt(declarations.function("optionalService")).single()
     assertEquals("optional binding", optionalBinding.label)
     assertEquals("java.util.Optional<test.Service>", optionalBinding.typeKey.renderedType)
+    val wrappedDependency = optionalBinding.dependencies.single()
+    assertEquals("test.Service", wrappedDependency.typeKey.renderedType)
+    assertTrue(wrappedDependency.hasDefault)
 
     val consumer = index.consumerEntryAt(declarations.property("service"))!!
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)

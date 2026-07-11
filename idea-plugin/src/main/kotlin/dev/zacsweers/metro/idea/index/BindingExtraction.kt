@@ -280,12 +280,14 @@ internal fun KaSession.bindingData(
       // absent otherwise. Mirrors the compiler's IrBinding.CustomWrapper. Wrappers carry no scope.
       val implementationName =
         (returnType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
+      val wrappedContextKey = contextualTypeKey(returnType, qualifier, options).withDefault(true)
       listOf(
         BindingData(
           optionalTypeKey(returnType, qualifier),
           BindingData.Kind.CUSTOM_WRAPPER,
           null,
           implementationName,
+          dependencies = listOf(wrappedContextKey),
         )
       )
     }

@@ -264,6 +264,8 @@ internal sealed interface KaBinding :
   class CustomWrapper(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
     typeKey: KaTypeKey,
+    /** The wrapped `T`, marked as defaulted so the wrapper remains valid when `T` is absent. */
+    val wrappedContextKey: KaContextualTypeKey,
     override val implementationName: String?,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
@@ -273,6 +275,8 @@ internal sealed interface KaBinding :
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
+
+    override val dependencies: List<KaContextualTypeKey> = listOf(wrappedContextKey)
 
     override val label: String
       get() = "optional binding"

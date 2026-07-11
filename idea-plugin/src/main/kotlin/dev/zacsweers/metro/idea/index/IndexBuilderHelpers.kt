@@ -111,6 +111,7 @@ internal fun BindingData.toKaBinding(
       KaBinding.CustomWrapper(
         pointer = pointer,
         typeKey = key,
+        wrappedContextKey = dependencies.single(),
         implementationName = implementationName,
         originClassId = originClassId,
         containerId = containerId,

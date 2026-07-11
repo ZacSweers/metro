@@ -71,10 +71,10 @@ internal class KaBindingLookup(
     val candidates = index.bindingsForKey(typeKey, queryContext)
     val aggregateId = contextKey.aggregateMultibindingId(options)
     if (aggregateId != null) {
-      val declaration = candidates.filterIsInstance<KaBinding.Multibinding>().firstOrNull()
+      val declarations = candidates.filterIsInstance<KaBinding.Multibinding>()
       val contributions = index.multibindingContributions(aggregateId, queryContext)
-      if (contributions.isNotEmpty() || declaration != null) {
-        return synthesizeAggregate(contextKey, aggregateId, contributions, declaration)
+      if (contributions.isNotEmpty() || declarations.isNotEmpty()) {
+        return synthesizeAggregate(contextKey, aggregateId, contributions, declarations)
       }
     }
 
@@ -98,7 +98,7 @@ internal class KaBindingLookup(
     contextKey: KaContextualTypeKey,
     aggregateId: String,
     contributions: List<KaBinding>,
-    declaration: KaBinding.Multibinding?,
+    declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
     val elements = contributions.mapIndexed { i, contribution ->
       val elementId = "${contribution.originClassId?.asFqNameString() ?: "element"}#$i"
@@ -118,12 +118,12 @@ internal class KaBindingLookup(
       syntheticElements.putIfAbsent(element.typeKey, element)
     }
 
-    val anchor = declaration ?: contributions.firstOrNull()
+    val anchor = declarations.firstOrNull() ?: contributions.firstOrNull()
     val aggregate =
       KaBinding.Multibinding(
         pointer = anchor?.pointer ?: graph.pointer,
         typeKey = contextKey.typeKey,
-        allowEmpty = declaration?.allowEmpty == true,
+        allowEmpty = declarations.any { it.allowEmpty },
         dependencies = elements.map { it.contextualTypeKey },
       )
     mutableAggregates += AggregateNode(aggregate, contributions)
