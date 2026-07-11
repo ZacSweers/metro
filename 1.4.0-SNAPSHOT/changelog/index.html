@@ -7120,6 +7120,7 @@
 <ul>
 <li><strong>[FIR]</strong> Report a diagnostic error when <code>@DependencyGraph.Factory</code> is used for a graph extension, instead of crashing.</li>
 <li><strong>[IR]</strong> Fix <code>createGraphFactory()</code> calls for graph factory interfaces compiled in upstream modules with IR-only class generation.</li>
+<li><strong>[IC]</strong> Fix stale graph callsites after non-assisted constructor parameters change on an assisted-injected type when the Compose compiler plugin is applied.</li>
 <li><strong>[IR/interop]</strong> Fix graph dependency accessors that return supported <code>Lazy&lt;T&gt;</code> or <code>Provider&lt;T&gt;</code> wrapper types.</li>
 <li><strong>[IR/interop]</strong> Fix a crash when member-injecting an unscoped constructor-injected binding as <code>dagger.Lazy&lt;T&gt;</code>.</li>
 </ul>
