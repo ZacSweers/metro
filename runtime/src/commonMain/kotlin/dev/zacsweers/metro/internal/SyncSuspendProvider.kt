@@ -17,7 +17,6 @@ import kotlin.jvm.JvmInline
  * `@JvmInline`, so this is just a typed view over the existing provider.
  */
 @JvmInline
-public value class SyncSuspendProvider<T : Any>(private val delegate: Provider<T>) :
-  SuspendProvider<T> {
+public value class SyncSuspendProvider<T>(private val delegate: Provider<T>) : SuspendProvider<T> {
   override suspend fun invoke(): T = delegate()
 }

@@ -11,7 +11,7 @@ import dev.zacsweers.metro.SuspendProvider
  * A [SuspendFactory] used to stitch SuspendProvider-indirection based dependency cycles, mirroring
  * [DelegateFactory] for non-suspend bindings.
  */
-public class SuspendDelegateFactory<T : Any> : SuspendFactory<T> {
+public class SuspendDelegateFactory<T> : SuspendFactory<T> {
   private var delegate: SuspendProvider<T>? = null
 
   override suspend fun invoke(): T {
@@ -34,7 +34,7 @@ public class SuspendDelegateFactory<T : Any> : SuspendFactory<T> {
      * [delegateFactory] must be an instance of [SuspendDelegateFactory], otherwise this method will
      * throw a [ClassCastException].
      */
-    public fun <T : Any> setDelegate(
+    public fun <T> setDelegate(
       delegateFactory: SuspendProvider<T>,
       delegate: SuspendProvider<T>,
     ) {
@@ -42,7 +42,7 @@ public class SuspendDelegateFactory<T : Any> : SuspendFactory<T> {
       setDelegateInternal(asDelegateFactory, delegate)
     }
 
-    private fun <T : Any> setDelegateInternal(
+    private fun <T> setDelegateInternal(
       delegateFactory: SuspendDelegateFactory<T>,
       delegate: SuspendProvider<T>,
     ) {

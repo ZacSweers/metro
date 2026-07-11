@@ -21,11 +21,24 @@ class SuspendPrimitivesTest {
   }
 
   @Test
+  fun `SyncSuspendProvider supports nullable values`() = runTest {
+    val provider = Provider<String?> { null }
+    assertEquals(null, SyncSuspendProvider(provider).invoke())
+  }
+
+  @Test
   fun `SuspendDelegateFactory resolves through its delegate`() = runTest {
     val factory = SuspendDelegateFactory<String>()
     SuspendDelegateFactory.setDelegate(factory, SuspendProvider { "value" })
     assertEquals("value", factory())
     assertEquals("value", factory.getDelegate()())
+  }
+
+  @Test
+  fun `SuspendDelegateFactory supports nullable values`() = runTest {
+    val factory = SuspendDelegateFactory<String?>()
+    SuspendDelegateFactory.setDelegate(factory, SuspendProvider { null })
+    assertEquals(null, factory())
   }
 
   @Test
