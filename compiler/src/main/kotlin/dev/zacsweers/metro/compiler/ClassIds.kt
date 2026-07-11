@@ -115,7 +115,9 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
   internal val suspendProviderTypes = buildSet {
     add(Symbols.ClassIds.metroSuspendProvider)
     if (options.enableFunctionProviders) {
-      add(Symbols.ClassIds.suspendFunction0)
+      if (options.enableSuspendProviders) {
+        add(Symbols.ClassIds.suspendFunction0)
+      }
     }
   }
 

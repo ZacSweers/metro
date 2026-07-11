@@ -20,7 +20,9 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 
@@ -108,11 +110,12 @@ internal fun validateInjectionSiteType(
   val type = typeRef.coneTypeOrNull ?: return true
   val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
 
+  val options = session.metroFirBuiltIns.options
   val usesSuspendWrapper =
     contextKey.wrappedType.innerTypesSequence.any {
       it is WrappedType.SuspendProvider || it is WrappedType.SuspendLazy
-    }
-  if (!session.metroFirBuiltIns.options.enableSuspendProviders && usesSuspendWrapper) {
+    } || (options.enableFunctionProviders && type.containsSuspendFunctionProviderType())
+  if (!options.enableSuspendProviders && usesSuspendWrapper) {
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
@@ -254,6 +257,14 @@ internal fun validateInjectionSiteType(
   // Future injection site checks can be added here
 
   return false
+}
+
+private fun ConeKotlinType.containsSuspendFunctionProviderType(): Boolean {
+  if (classId == Symbols.ClassIds.suspendFunction0) return true
+  return typeArguments.any { projection ->
+    val innerType = (projection as? ConeKotlinTypeProjection)?.type ?: return@any false
+    innerType.containsSuspendFunctionProviderType()
+  }
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
