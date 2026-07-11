@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
-import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -18,6 +17,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.IrBindingContainerResolver
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
@@ -75,6 +75,7 @@ import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
+import dev.zacsweers.metro.compiler.ir.toUnknownLocationContext
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -731,6 +732,15 @@ internal class DependencyGraphTransformer(
       val sourceLocationAvailable =
         unusedBinding.irElement != null ||
           unusedBinding.reportableDeclaration?.toDiagnosticSpan() != null
+      val unknownLocationContext =
+        if (sourceLocationAvailable) {
+          null
+        } else {
+          (unusedBinding.reportableDeclaration ?: graphDeclaration).toUnknownLocationContext(
+            unusedBinding.typeKey,
+            subject = "graph input",
+          )
+        }
       val notes = buildList {
         // Show a hint of what direct node is including this, if any
         unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
@@ -755,6 +765,7 @@ internal class DependencyGraphTransformer(
             )
           }
         }
+        unknownLocationContext?.notes?.let(::addAll)
       }
       val diagnostic =
         MetroDiagnostic(
@@ -767,7 +778,7 @@ internal class DependencyGraphTransformer(
               append(" is unused and can be removed")
             },
           sections =
-            if (sourceLocationAvailable) {
+            if (unknownLocationContext == null) {
               emptyList()
             } else {
               listOf(
@@ -775,10 +786,13 @@ internal class DependencyGraphTransformer(
                   header = null,
                   items =
                     listOf(
-                      LocatedItem(
-                        location = "No source location available",
-                        code = null,
-                      )
+                      LocationDiagnostic(
+                          location = LocationDiagnostic.NO_SOURCE_LOCATION,
+                          description = null,
+                          locationContext = unknownLocationContext.description,
+                          notes = unknownLocationContext.notes,
+                        )
+                        .toLocatedItem()
                     ),
                 )
               )
@@ -823,6 +837,7 @@ internal class DependencyGraphTransformer(
             irDeclarations = sequenceOf(reportableDecl, graphDeclarationSource),
             factory = diagnosticFactory,
             a = combinedMessage,
+            includeDeclarationContext = false,
           )
         }
     }

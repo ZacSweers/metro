@@ -81,9 +81,9 @@ internal class BindsCallable(
   ): LocationDiagnostic {
     val (sourceDeclaration, isContributed) = resolveSourceDeclaration()
 
-    val location =
-      sourceDeclaration.renderSourceLocation(short = shortLocation)
-        ?: "<unknown location, likely a separate compilation>"
+    val location = sourceDeclaration.renderSourceLocation(short = shortLocation)
+    val unknownLocationContext =
+      if (location == null) sourceDeclaration.toUnknownLocationContext(typeKey) else null
 
     val description = buildString {
       if (isContributed) {
@@ -120,7 +120,13 @@ internal class BindsCallable(
       } else {
         null
       }
-    return LocationDiagnostic(location, description, span)
+    return LocationDiagnostic(
+      location = location ?: LocationDiagnostic.NO_SOURCE_LOCATION,
+      description = description,
+      span = span,
+      locationContext = unknownLocationContext?.description,
+      notes = unknownLocationContext?.notes.orEmpty(),
+    )
   }
 }
 
