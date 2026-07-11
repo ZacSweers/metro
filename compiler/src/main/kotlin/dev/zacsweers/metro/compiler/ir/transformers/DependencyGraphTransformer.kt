@@ -7,6 +7,8 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -72,6 +74,7 @@ import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.supportsTracing
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -725,6 +728,9 @@ internal class DependencyGraphTransformer(
     )
 
     val reports = unusedGraphInputs.map { unusedBinding ->
+      val sourceLocationAvailable =
+        unusedBinding.irElement != null ||
+          unusedBinding.reportableDeclaration?.toDiagnosticSpan() != null
       val notes = buildList {
         // Show a hint of what direct node is including this, if any
         unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
@@ -759,6 +765,23 @@ internal class DependencyGraphTransformer(
               append("Graph input ")
               append(unusedBinding.typeKey.toText())
               append(" is unused and can be removed")
+            },
+          sections =
+            if (sourceLocationAvailable) {
+              emptyList()
+            } else {
+              listOf(
+                DiagnosticSection.Locations(
+                  header = null,
+                  items =
+                    listOf(
+                      LocatedItem(
+                        location = "No source location available",
+                        code = null,
+                      )
+                    ),
+                )
+              )
             },
           notes = notes,
         )
