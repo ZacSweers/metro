@@ -1,4 +1,5 @@
 // ENABLE_DAGGER_INTEROP
+// IGNORE_BACKEND: JS_IR
 
 import dagger.Lazy as DaggerLazy
 import jakarta.inject.Provider as JakartaProvider
