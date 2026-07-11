@@ -11,8 +11,8 @@
     // Update .java-version file with the latest JDK version.
     {
       customType: 'regex',
-      fileMatch: [
-        '\\.java-version$',
+      managerFilePatterns: [
+        '/\\.java-version$/',
       ],
       matchStrings: [
         '(?<currentValue>.*)\\n',
@@ -25,8 +25,12 @@
     // Track jdk = "..." in libs.versions.toml.
     {
       customType: 'regex',
-      fileMatch: ['gradle/libs\\.versions\\.toml'],
-      matchStrings: ['^jdk\\s*=\\s*"(?<currentValue>\\d+)"'],
+      managerFilePatterns: [
+        '/gradle/libs\\.versions\\.toml/',
+      ],
+      matchStrings: [
+        '^jdk\\s*=\\s*"(?<currentValue>\\d+)"',
+      ],
       datasourceTemplate: 'java-version',
       depNameTemplate: 'java',
       extractVersionTemplate: '^(?<version>\\d+)',
@@ -35,7 +39,9 @@
     // The `[^\\[]*?` lookahead keeps the match within the [ktfmt] section.
     {
       customType: 'regex',
-      fileMatch: ['(^|/)\\.kempt\\.toml$'],
+      managerFilePatterns: [
+        '/(^|/)\\.kempt\\.toml$/',
+      ],
       matchStrings: [
         '\\[ktfmt\\][^\\[]*?version\\s*=\\s*"(?<currentValue>[^"]+)"',
       ],
@@ -46,7 +52,9 @@
     // Track google-java-format version pinned in .kempt.toml.
     {
       customType: 'regex',
-      fileMatch: ['(^|/)\\.kempt\\.toml$'],
+      managerFilePatterns: [
+        '/(^|/)\\.kempt\\.toml$/',
+      ],
       matchStrings: [
         '\\[gjf\\][^\\[]*?version\\s*=\\s*"(?<currentValue>[^"]+)"',
       ],
@@ -59,8 +67,12 @@
     // Group rules first; disables come after so they win on overlap.
     {
       groupName: 'JDK version',
-      matchDepNames: ['java'],
-      matchDatasources: ['java-version'],
+      matchDepNames: [
+        'java',
+      ],
+      matchDatasources: [
+        'java-version',
+      ],
     },
     {
       groupName: 'AGP',
@@ -80,7 +92,9 @@
         'dev.zacsweers.metro',
         'dev.zacsweers.metro:compiler',
       ],
-      matchDatasources: ['maven'],
+      matchDatasources: [
+        'maven',
+      ],
       minimumGroupSize: 2,
     },
     {

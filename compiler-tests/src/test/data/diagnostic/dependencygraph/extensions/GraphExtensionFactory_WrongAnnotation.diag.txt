@@ -1,0 +1,5 @@
+/GraphExtensionFactory_WrongAnnotation.kt:11:5: error: `@DependencyGraph.Factory` cannot create a graph extension.
+
+  help: use `@GraphExtension.Factory` instead since ChildGraph is a graph extension.
+
+/GraphExtensionFactory_WrongAnnotation.kt:19:5: error: `@DependencyGraph.Factory` cannot create a graph extension.
