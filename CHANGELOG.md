@@ -8,6 +8,7 @@ Changelog
 
 - **[FIR]** Report a diagnostic error when `@DependencyGraph.Factory` is used for a graph extension, instead of crashing.
 - **[IR]** Fix `createGraphFactory()` calls for graph factory interfaces compiled in upstream modules with IR-only class generation.
+- **[IC]** Fix stale graph callsites after non-assisted constructor parameters change on an assisted-injected type when the Compose compiler plugin is applied.
 - **[IR/interop]** Fix graph dependency accessors that return supported `Lazy<T>` or `Provider<T>` wrapper types.
 - **[IR/interop]** Fix a crash when member-injecting an unscoped constructor-injected binding as `dagger.Lazy<T>`.
 
