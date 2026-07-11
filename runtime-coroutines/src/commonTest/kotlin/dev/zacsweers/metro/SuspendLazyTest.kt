@@ -11,9 +11,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
-@OptIn(ExperimentalAtomicApi::class)
+@OptIn(ExperimentalAtomicApi::class, ExperimentalCoroutinesApi::class)
 class SuspendLazyTest {
   @Test fun `synchronized mode computes once`() = computesOnce(LazyThreadSafetyMode.SYNCHRONIZED)
 
@@ -22,6 +26,26 @@ class SuspendLazyTest {
     computesOnce(LazyThreadSafetyMode.PUBLICATION)
 
   @Test fun `none mode computes once when sequential`() = computesOnce(LazyThreadSafetyMode.NONE)
+
+  @Test
+  fun `publication mode publishes one value when initializers overlap`() = runTest {
+    val count = AtomicInt(0)
+    val releaseInitializers = CompletableDeferred<Unit>()
+    val lazy =
+      suspendLazy(LazyThreadSafetyMode.PUBLICATION) {
+        val value = count.incrementAndFetch()
+        releaseInitializers.await()
+        value
+      }
+
+    val first = async { lazy.value() }
+    val second = async { lazy.value() }
+    runCurrent()
+    releaseInitializers.complete(Unit)
+
+    assertEquals(first.await(), second.await())
+    assertTrue(lazy.isInitialized())
+  }
 
   private fun computesOnce(mode: LazyThreadSafetyMode) = runTest {
     val count = AtomicInt(0)
