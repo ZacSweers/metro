@@ -3,7 +3,7 @@
 package dev.zacsweers.metro
 
 /**
- * Marks Metro coroutine APIs that may change while suspend-provider support is experimental.
+ * Marks APIs that are part of Metro's experimental coroutines support.
  *
  * Opt in by either annotating the call site with `@OptIn(ExperimentalMetroCoroutinesApi::class)` or
  * compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
@@ -11,7 +11,7 @@ package dev.zacsweers.metro
 @MustBeDocumented
 @RequiresOptIn(
   level = RequiresOptIn.Level.WARNING,
-  message = "This is part of Metro's experimental suspend-provider support",
+  message = "This is part of Metro's experimental coroutines support",
 )
 @Retention(AnnotationRetention.BINARY)
 @Target(
