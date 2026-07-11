@@ -315,7 +315,10 @@ With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Gr
       }
     ```
 
-Suspend bindings are traced too. Their spans use the tracer's coroutine-aware sections, so a span stays attached to its coroutine across suspension points and thread changes instead of being split into per-thread fragments. Suspend accessors emit the same instant events as other accessors. A scoped suspend binding only produces a span when its value is actually computed. Cache hits produce no span. See [Coroutines Support](coroutines.md).
+Suspend bindings use coroutine-aware trace sections, so their spans remain connected across
+suspension points and thread changes. Suspend accessors emit the same instant events as other
+accessors. A scoped suspend binding emits a span only when it computes the value; cache hits emit
+none. See [Coroutines Support](coroutines.md).
 
 Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Requested `MembersInjector<T>` values also emit instant events named like `MembersInjector<T>` when `injectMembers(...)` is called. Metro also attaches string metadata for filtering and grouping:
 
