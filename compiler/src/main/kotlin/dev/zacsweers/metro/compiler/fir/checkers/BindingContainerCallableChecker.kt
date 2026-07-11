@@ -234,6 +234,13 @@ internal object BindingContainerCallableChecker :
 
       // Suspend checks: @Binds and @Multibinds cannot be suspend (no body to suspend in)
       if (declaration is FirFunction && declaration.isSuspend) {
+        if (annotations.isProvides && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+          )
+          return
+        }
         if (annotations.isBinds) {
           reporter.reportOn(
             source,
@@ -389,8 +396,7 @@ internal object BindingContainerCallableChecker :
           val message =
             if (with(session.classIds) { returnClassId.isFunction0Like }) {
               base +
-                " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types " +
-                "(including `suspend () -> T`) are treated as provider types by Metro and cannot be unique bindings on the graph."
+                " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types are treated as provider types by Metro and cannot be unique bindings on the graph."
             } else {
               base
             }

@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A constructor-injected class with several suspend deps, resolved sequentially.
 
 @Inject

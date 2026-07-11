@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A transitively-suspend, UNSCOPED binding consumed as a scalar by multiple suspend accessors.
 // The property collector must not give it a (non-suspend) GETTER property — it needs a
 // SuspendProvider<T> field so each consumer awaits it in its own suspend context.

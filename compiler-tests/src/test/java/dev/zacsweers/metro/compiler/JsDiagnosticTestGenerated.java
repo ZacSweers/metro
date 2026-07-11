@@ -1561,6 +1561,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("SuspendProvidersDisabled.kt")
+    public void testSuspendProvidersDisabled() {
+      run("SuspendProvidersDisabled.kt");
+    }
+
+    @Test
     @TestMetadata("UnsupportedSuspendWrapperNesting.kt")
     public void testUnsupportedSuspendWrapperNesting() {
       run("UnsupportedSuspendWrapperNesting.kt");

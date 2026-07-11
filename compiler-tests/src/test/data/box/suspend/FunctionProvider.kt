@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // ENABLE_FUNCTION_PROVIDERS
 // Test that suspend () -> T works as an injection type (parallel to () -> T)
 @DependencyGraph

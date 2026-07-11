@@ -108,6 +108,18 @@ internal fun validateInjectionSiteType(
   val type = typeRef.coneTypeOrNull ?: return true
   val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
 
+  val usesSuspendWrapper =
+    contextKey.wrappedType.innerTypesSequence.any {
+      it is WrappedType.SuspendProvider || it is WrappedType.SuspendLazy
+    }
+  if (!session.metroFirBuiltIns.options.enableSuspendProviders && usesSuspendWrapper) {
+    reporter.reportOn(
+      typeRef.source ?: source,
+      MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+    )
+    return true
+  }
+
   if (contextKey.isWrappedInLazy) {
     checkLazyAssistedFactory(session, contextKey, typeRef, source)
   } else if (contextKey.isLazyWrappedInProvider) {

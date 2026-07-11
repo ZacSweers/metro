@@ -924,6 +924,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_SUSPEND_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-suspend-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable experimental suspend providers and suspend-aware graph resolution.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   DESUGARED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "desugared-provider-severity",
@@ -1192,6 +1202,8 @@ public class MetroOptions(
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableSuspendProviders: Boolean =
+    MetroOption.ENABLE_SUSPEND_PROVIDERS.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
     MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1503,6 +1515,7 @@ public class MetroOptions(
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var enableSuspendProviders: Boolean = base.enableSuspendProviders
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
@@ -1551,6 +1564,10 @@ public class MetroOptions(
 
     public fun enableFunctionProviders(enableFunctionProviders: Boolean): Builder = apply {
       this.enableFunctionProviders = enableFunctionProviders
+    }
+
+    public fun enableSuspendProviders(enableSuspendProviders: Boolean): Builder = apply {
+      this.enableSuspendProviders = enableSuspendProviders
     }
 
     public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
@@ -1852,6 +1869,7 @@ public class MetroOptions(
         MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
+        MetroOption.ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = value.expectAs()
         MetroOption.DESUGARED_PROVIDER_SEVERITY ->
           desugaredProviderSeverity = value.diagnosticSeverity()
         MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP -> enableKClassToClassInterop = value.expectAs()
@@ -1939,6 +1957,7 @@ public class MetroOptions(
         bufferedIcTracking = bufferedIcTracking,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
+        enableSuspendProviders = enableSuspendProviders,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
             desugaredProviderSeverity

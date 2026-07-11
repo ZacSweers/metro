@@ -95,6 +95,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_PROVIDER_INLINING by
     valueDirective("Enable/disable provider body inlining.") { it.toBoolean() }
+  val ENABLE_SUSPEND_PROVIDERS by directive("Enable experimental suspend provider support.")
   val DESUGARED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead."

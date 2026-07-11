@@ -300,8 +300,7 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
             val message =
               if (with(session.classIds) { paramClassId.isFunction0Like }) {
                 base +
-                  " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types " +
-                  "(including `suspend () -> T`) are treated as provider types by Metro and cannot be unique bindings on the graph."
+                  " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function literal types are treated as provider types by Metro and cannot be unique bindings on the graph."
               } else {
                 base
               }

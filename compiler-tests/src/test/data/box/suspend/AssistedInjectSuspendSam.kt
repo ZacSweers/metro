@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // An @AssistedInject class whose non-assisted dep is a suspend binding in this graph. The
 // assisted factory's SAM must be declared `suspend` so the impl can await the suspend deps.
 

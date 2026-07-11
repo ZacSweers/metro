@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A suspend @Provides may take an unwrapped suspend binding as a parameter. The factory's
 // ctor field is `SuspendProvider<…>` so the graph can pass the suspend dep directly, and the
 // suspend factory's invoke body awaits each field before calling the function.

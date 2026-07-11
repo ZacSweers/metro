@@ -92,6 +92,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
@@ -163,6 +164,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
+  val SUSPEND_PROVIDERS_NOT_ENABLED by error0<KtElement>(NAME_IDENTIFIER)
   val UNSUPPORTED_SUSPEND_WRAPPER_NESTING by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
@@ -340,6 +342,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           "Cannot mix intrinsic types across libraries for Provider<Lazy<T>> types. They must be dev.zacsweers.metro.Provider and kotlin.Lazy but found {0} and {1}.",
           STRING,
           STRING,
+        )
+        put(
+          SUSPEND_PROVIDERS_NOT_ENABLED,
+          "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
         )
         put(UNSUPPORTED_SUSPEND_WRAPPER_NESTING, "{0}", STRING)
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)

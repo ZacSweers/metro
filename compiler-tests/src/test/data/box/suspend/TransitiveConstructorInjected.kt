@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // Suspend-ness propagates through constructor-injected chains: Database depends on a suspend
 // @Provides, AccountCreator depends on Database. Both are transitively suspend and must be
 // accessed from a suspend context.

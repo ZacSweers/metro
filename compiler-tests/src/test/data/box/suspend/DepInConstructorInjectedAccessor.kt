@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A constructor-injected class with an unwrapped suspend dep, accessed via a suspend graph
 // accessor. The graph inlines construction in suspend context and resolves the suspend dep
 // inline.

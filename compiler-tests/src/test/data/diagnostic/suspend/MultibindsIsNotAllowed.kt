@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // RENDER_DIAGNOSTICS_FULL_TEXT
 
 interface SuspendMultibindsInterface {

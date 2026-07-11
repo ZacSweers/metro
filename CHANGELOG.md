@@ -4,6 +4,14 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR/IR/runtime]** Add experimental multiplatform support for suspend providers. Enable it with `metro.enableSuspendProviders`. See the [coroutines documentation](https://zacsweers.github.io/metro/latest/coroutines/) for usage and current limitations.
+  - `@Provides` functions and graph accessors can be `suspend`. Metro propagates suspension through dependent bindings and reports non-suspend access paths with a dependency trace.
+  - Inject `suspend () -> T` to defer resolution or `SuspendLazy<T>` to defer and memoize it. Deferred map values are supported as `Map<K, suspend () -> V>`.
+  - Scoped suspend bindings are single-flight and retry after failures or cancellation.
+  - Suspend provider support is disabled by default. When enabled, the Gradle plugin automatically adds the new `runtime-coroutines` artifact unless automatic runtime dependency management is disabled.
+
 ### Fixes
 
 - **[IR]** Fix `createGraphFactory()` calls for graph factory interfaces compiled in upstream modules with IR-only class generation.

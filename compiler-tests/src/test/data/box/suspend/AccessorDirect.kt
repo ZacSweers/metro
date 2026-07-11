@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // Tests that a suspend accessor can directly return T from a suspend @Provides.
 // We can't invoke the accessor from box() since it's not suspend,
 // but graph creation validates the binding graph.

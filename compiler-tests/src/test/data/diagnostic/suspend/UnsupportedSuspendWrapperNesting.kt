@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // RENDER_DIAGNOSTICS_FULL_TEXT
 
 // Suspend wrappers must wrap the binding type directly (or a multibinding collection). Nesting

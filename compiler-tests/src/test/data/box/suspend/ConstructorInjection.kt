@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // Tests the wasmo-style pattern: a constructor-injected class with multiple suspend dependencies
 // accessed via a suspend graph accessor. The graph's accessor inlines construction (canBypassFactory)
 // in a suspend context, awaiting each suspend @Provides directly.

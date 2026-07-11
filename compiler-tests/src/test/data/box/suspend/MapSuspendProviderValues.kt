@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // Test for Map<K, SuspendProvider<V>> multibindings
 @DependencyGraph
 interface ExampleGraph {

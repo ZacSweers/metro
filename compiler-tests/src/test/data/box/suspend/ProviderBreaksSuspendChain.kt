@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A non-suspend accessor can request SuspendProvider<T> even though
 // T is provided by a suspend function. SuspendProvider defers the call.
 

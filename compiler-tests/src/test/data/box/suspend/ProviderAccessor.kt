@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 @DependencyGraph
 interface ExampleGraph {
   val provider: SuspendProvider<String>

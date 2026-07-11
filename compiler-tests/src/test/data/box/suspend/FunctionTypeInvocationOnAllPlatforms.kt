@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // WITH_RUNTIME_COROUTINES
 
 // Invoking graph-provided suspend values through the `suspend () -> T` FUNCTION TYPE, on all

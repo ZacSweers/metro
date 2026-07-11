@@ -139,6 +139,7 @@ internal fun Project.metroCompilerPluginOptions(
       )
     )
     add(metroOption(MetroOption.ENABLE_FUNCTION_PROVIDERS, extension.enableFunctionProviders))
+    add(metroOption(MetroOption.ENABLE_SUSPEND_PROVIDERS, extension.enableSuspendProviders))
     add(metroOption(MetroOption.DESUGARED_PROVIDER_SEVERITY, extension.desugaredProviderSeverity))
     add(
       metroOption(

@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A transitively-suspend constructor-injected class accessed as SuspendProvider<T> — exercises
 // the graph's IR-only nested SuspendFactory (not the inline canBypassFactory path). The nested
 // factory holds each suspend dep as a SuspendProvider<…> field and awaits them in its suspend

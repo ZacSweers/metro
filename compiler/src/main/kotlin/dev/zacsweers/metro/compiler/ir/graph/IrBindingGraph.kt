@@ -118,19 +118,14 @@ internal class IrBindingGraph(
   /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
   private var requiresRuntimeCoroutines = false
 
-  /**
-   * Memoized suspend-resolution results used while validating child graph extensions. Children are
-   * validated before this graph is sealed, so [transitivelySuspendKeys] has not been populated yet.
-   * These lookups walk the parent's binding lookup on demand and are discarded with the graph.
-   * Access is guarded by [parentSuspendResolutionLock] because sibling extensions may be validated
-   * concurrently.
-   *
-   * `computeIfAbsent` is also awkward for recursive lookups.
-   */
-  private val parentSuspendResolutionCache = mutableMapOf<IrTypeKey, Boolean>()
+  /** Resolves parent suspend bindings before this graph is sealed. */
+  private val parentSuspendBindingAnalysis = SuspendBindingAnalysis { typeKey ->
+    findBinding(typeKey, allowLookup = true)
+  }
 
   /**
-   * Guards [parentSuspendResolutionCache] and the binding lookups performed while populating it.
+   * Guards [parentSuspendBindingAnalysis] and the binding lookups it performs. Sibling extensions
+   * may be validated concurrently, while the underlying binding lookup is not thread-safe.
    */
   private val parentSuspendResolutionLock = Any()
 
@@ -139,7 +134,7 @@ internal class IrBindingGraph(
     typeKey in transitivelySuspendKeys
 
   private fun recordRuntimeCoroutinesUse(contextKey: IrContextualTypeKey) {
-    if (contextKey.isWrappedInSuspendLazy) {
+    if (metroContext.options.enableSuspendProviders && contextKey.isWrappedInSuspendLazy) {
       requiresRuntimeCoroutines = true
     }
   }
@@ -148,41 +143,14 @@ internal class IrBindingGraph(
    * Resolves whether [typeKey] requires a suspend context before this graph is sealed. Child graph
    * extensions are validated first, so they cannot use [transitivelySuspendKeys] yet.
    */
-  internal fun isTransitivelySuspendForChild(typeKey: IrTypeKey): Boolean =
-    synchronized(parentSuspendResolutionLock) {
+  internal fun isTransitivelySuspendForChild(typeKey: IrTypeKey): Boolean {
+    if (!metroContext.options.enableSuspendProviders) return false
+    return synchronized(parentSuspendResolutionLock) {
       if (_bindingLookup == null) {
         return@synchronized isTransitivelySuspend(typeKey)
       }
-      resolveSuspendForChild(typeKey, mutableSetOf())
+      parentSuspendBindingAnalysis.isSuspend(typeKey)
     }
-
-  private fun resolveSuspendForChild(
-    typeKey: IrTypeKey,
-    visiting: MutableSet<IrTypeKey>,
-  ): Boolean {
-    parentSuspendResolutionCache[typeKey]?.let {
-      return it
-    }
-    if (!visiting.add(typeKey)) return false
-
-    val binding = findBinding(typeKey, allowLookup = true)
-    val result =
-      when {
-        binding == null -> false
-        binding.isSuspend -> true
-        binding is IrBinding.AssistedFactory -> false
-        else ->
-          binding.dependencies.any { dependency ->
-            !dependency.isWrappedInSuspendProvider &&
-              !dependency.isWrappedInSuspendLazy &&
-              !dependency.isMapSuspendProvider &&
-              resolveSuspendForChild(dependency.typeKey, visiting)
-          }
-      }
-
-    visiting.remove(typeKey)
-    parentSuspendResolutionCache[typeKey] = result
-    return result
   }
 
   private sealed interface PendingDiagnostic {
@@ -1120,8 +1088,20 @@ internal class IrBindingGraph(
     adjacency: GraphAdjacency<IrTypeKey>,
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
+    var hasDirectSuspendBinding = false
     bindings.forEachValue { binding ->
-      if (binding.typeKey in adjacency.forward) {
+      if (binding.isSuspend) {
+        if (metroContext.options.enableSuspendProviders) {
+          hasDirectSuspendBinding = true
+        } else {
+          val element = binding.reportableDeclaration ?: node.sourceGraph
+          reportError(
+            element,
+            "[Metro/SuspendProvidersNotEnabled] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
+          )
+        }
+      }
+      if (metroContext.options.enableSuspendProviders && binding.typeKey in adjacency.forward) {
         val hasSuspendLazyDependency =
           binding.contextualTypeKey.isWrappedInSuspendLazy ||
             binding.dependencies.any { it.isWrappedInSuspendLazy } ||
@@ -1135,7 +1115,9 @@ internal class IrBindingGraph(
       validateMultibindings(binding, bindings, roots, adjacency.forward)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
-    validateSuspendBindings(bindings, roots, adjacency)
+    if (metroContext.options.enableSuspendProviders && hasDirectSuspendBinding) {
+      validateSuspendBindings(bindings, roots, adjacency)
+    }
   }
 
   /**
@@ -1150,15 +1132,10 @@ internal class IrBindingGraph(
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: GraphAdjacency<IrTypeKey>,
   ) {
-    // Step 1: Compute the set of type keys that transitively require a suspend context
-    val suspendSet = mutableSetOf<IrTypeKey>()
-
-    // Seed with directly suspend bindings
-    bindings.forEachValue { binding ->
-      if (binding.isSuspend) {
-        suspendSet.add(binding.typeKey)
-      }
-    }
+    // Step 1: Compute the set of type keys that transitively require a suspend context.
+    val allKeys = mutableSetOf<IrTypeKey>()
+    bindings.forEachKey(allKeys::add)
+    val suspendSet = SuspendBindingAnalysis(bindings::get).analyze(allKeys)
 
     // If no suspend bindings, nothing to validate
     if (suspendSet.isEmpty()) {
@@ -1166,37 +1143,7 @@ internal class IrBindingGraph(
       return
     }
 
-    // Propagate suspend requirement through the dependency graph
-    // Walk the reverse adjacency: for each binding that depends on a suspend binding,
-    // if the dependency is NOT wrapped in SuspendProvider, the binding also requires suspend
-    var changed = true
-    while (changed) {
-      changed = false
-      bindings.forEachValue { binding ->
-        if (binding.typeKey in suspendSet) return@forEachValue // Already marked
-        // Assisted factories defer all suspension into their SAM invocation. Holding/creating
-        // the factory itself never suspends, so target dep suspend-ness doesn't propagate to the
-        // factory binding. Validated separately below.
-        if (binding is IrBinding.AssistedFactory) return@forEachValue
-
-        for (dep in binding.dependencies) {
-          if (
-            dep.typeKey in suspendSet &&
-              !dep.isWrappedInSuspendProvider &&
-              !dep.isWrappedInSuspendLazy &&
-              // Deferred-value maps (Map<K, suspend () -> V>) resolve synchronously; each value
-              // defers its own suspension
-              !dep.isMapSuspendProvider
-          ) {
-            suspendSet.add(binding.typeKey)
-            changed = true
-            break
-          }
-        }
-      }
-    }
-
-    transitivelySuspendKeys = suspendSet.toSet()
+    transitivelySuspendKeys = suspendSet
 
     // Step 2: Multibinding aggregates over suspend elements. Aggregation code (buildSet/buildMap
     // getters, Map*Factory invokes) is non-suspend and can't await element resolutions, so the
@@ -1217,7 +1164,6 @@ internal class IrBindingGraph(
         binding.dependencies.firstOrNull { it.typeKey in suspendSet } ?: return@forEachValue
 
       fun reportUnsupportedConsumption(
-        consumptionKey: IrContextualTypeKey,
         element: IrDeclarationWithName,
         head: IrBindingStack.Entry,
       ) {
@@ -1254,7 +1200,6 @@ internal class IrBindingGraph(
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
         reportUnsupportedConsumption(
-          contextKey,
           accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>(),
           head,
         )
@@ -1268,14 +1213,11 @@ internal class IrBindingGraph(
           if (!binding.isSet && dep.isMapSuspendProvider) continue
           val parameterDeclaration =
             consumer.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
-          val element =
-            parameterDeclaration as? IrDeclarationWithName
-              ?: consumer.reportableDeclaration
-              ?: continue
+          val element = parameterDeclaration ?: consumer.reportableDeclaration ?: continue
           val head =
             bindingStackEntryForDependency(consumer, dep, dep.typeKey)
               .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-          reportUnsupportedConsumption(dep, element, head)
+          reportUnsupportedConsumption(element, head)
         }
       }
     }
@@ -1396,7 +1338,8 @@ internal class IrBindingGraph(
       }
       val element =
         (binding as? IrBinding.MembersInjected)?.parameterFor(firstSuspendDep.typeKey)?.ir
-          as? IrDeclarationWithName ?: binding.reportableDeclaration ?: return@forEachValue
+          ?: binding.reportableDeclaration
+          ?: return@forEachValue
       reportError(element.originalDeclarationIfOverride(), message)
     }
 
@@ -1459,7 +1402,7 @@ internal class IrBindingGraph(
           } else {
             "`SuspendLazy<$depRender>`"
           }
-        val element = param.ir as? IrDeclarationWithName ?: target.reportableDeclaration ?: continue
+        val element = param.ir ?: target.reportableDeclaration
         reportError(
           element.originalDeclarationIfOverride(),
           "[Metro/SuspendBindingWrappedIn$wrapper] Cannot depend on suspend binding '$depRender' via $wrapper. Use $replacement instead.",
@@ -1563,9 +1506,8 @@ internal class IrBindingGraph(
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
-    val bindingScope = binding.scope
+    val bindingScope = binding.scope ?: return
     // Our binding doesn't have a scope... so we don't care about scopes
-    if (bindingScope == null) return
     // Our binding does have a scope... and it's compatible with our node yay
     if (bindingScope in node.scopes) return
 

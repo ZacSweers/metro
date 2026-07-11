@@ -5,13 +5,20 @@ Internal notes for Metro's suspend/coroutines support. User-facing docs live in
 
 ## Model
 
+Suspend providers are gated by the `enable-suspend-providers` compiler option, exposed as
+`metro.enableSuspendProviders` in the Gradle plugin. It is false by default. The Gradle plugin adds
+`runtime-coroutines` to the compilation when the option is enabled and automatic runtime
+dependencies are on.
+
 Suspend-ness is a per-graph propagated property, not a per-declaration annotation. A binding
 is suspend in a given graph if its provider is a `suspend fun`, or if it depends (unwrapped) on a
 suspend binding. The same class can be suspend in one graph and not in another depending on what
 its dependencies resolve to.
 
-Propagation runs as a fixpoint in `IrBindingGraph.validateSuspendBindings`, producing a
-`suspendSet` of type keys. Codegen consumes it via `isTransitivelySuspend(typeKey)`. Three
+`SuspendBindingAnalysis` computes the propagation fixpoint only when suspend providers are
+enabled. Final validation analyzes the complete graph, while child graph validation incrementally
+analyzes the unsealed parent's bindings. Both paths use the same rules and produce a `suspendSet`
+of type keys. Codegen consumes the final set via `isTransitivelySuspend(typeKey)`. Three
 consumption shapes stop propagation because they defer the suspension to the consumer's own
 suspend context:
 
@@ -19,10 +26,10 @@ suspend context:
 - `SuspendLazy<T>` (defers + memoizes per wrapper instance)
 - `Map<K, suspend () -> V>` (the map resolves synchronously; each value defers itself)
 
-`BaseContextualTypeKey.defersSuspendAtAccess` is the predicate. `GraphDependency` bindings derive
-`isSuspend` from suspend accessors, deferred-suspend accessor return types, or parent-context
-tokens. Parent tokens query the owning graph's bindings before it is sealed so graph extensions
-validate against the same suspend propagation that the parent will use during codegen.
+`GraphDependency` bindings derive `isSuspend` from suspend accessors, deferred-suspend accessor
+return types, or parent-context tokens. Parent tokens query the owning graph's analysis before it
+is sealed so graph extensions validate against the same suspend propagation that the parent will
+use during codegen.
 
 ## Validation (`validateSuspendBindings`)
 

@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // Tests that SuspendProvider<T> properly breaks the suspend chain.
 // ServiceB wraps its suspend dependency in SuspendProvider, so
 // ServiceB itself does not require a suspend context.

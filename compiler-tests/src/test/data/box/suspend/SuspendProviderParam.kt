@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // A class whose ctor param is already SuspendProvider<String> — the wrapper breaks the suspend
 // chain, so the class itself is NOT in the suspend set and uses a plain factory. The graph passes
 // the suspend binding through as a SuspendProvider.

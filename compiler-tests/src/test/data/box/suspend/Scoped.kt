@@ -1,3 +1,5 @@
+// ENABLE_SUSPEND_PROVIDERS
+
 // WITH_RUNTIME_COROUTINES
 
 // A scoped constructor-injected class with a suspend dep. The graph stores it in a

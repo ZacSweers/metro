@@ -4,7 +4,17 @@ Metro supports `suspend` provider functions and `suspend` graph accessors. This 
 
 !!! warning "Experimental"
 
-    Suspend support is experimental. The APIs are annotated with `@ExperimentalMetroCoroutinesApi` and require an opt-in, either at the use site or by compiling with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
+    Suspend provider support is experimental and disabled by default. Enable it in the Metro Gradle configuration:
+
+    ```kotlin
+    metro {
+      enableSuspendProviders.set(true)
+    }
+    ```
+
+    The Gradle plugin then adds `dev.zacsweers.metro:runtime-coroutines` automatically. If `automaticallyAddRuntimeDependencies` is disabled, add that artifact yourself.
+
+    `SuspendProvider`, `SuspendLazy`, and their helper APIs are also annotated with `@ExperimentalMetroCoroutinesApi`. Using those APIs directly requires a Kotlin opt-in, either at the use site or with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
 
 ## Declaring suspend bindings
 
@@ -108,7 +118,7 @@ interface AppGraph {
 
 Like `Lazy<T>`, the memoization is per wrapper instance. Two injection sites each compute their own value for an unscoped binding. For a scoped binding, all `SuspendLazy` wrappers share the graph's single cached instance, so there is no double computation.
 
-The memoization is coroutine-safe with the same semantics as a regular scoped binding's single instance: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. Injecting `SuspendLazy<T>` requires the `dev.zacsweers.metro:runtime-coroutines` artifact.
+The memoization is coroutine-safe with the same semantics as a regular scoped binding's single instance: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. The `runtime-coroutines` artifact added when suspend providers are enabled supplies this implementation.
 
 It also works over non-suspend bindings if you want a uniform suspend API.
 
@@ -146,7 +156,7 @@ The cache is coroutine-safe:
 
 The cache is single-flight on every platform: one caller runs the initializer, concurrent callers suspend and share its result. On JVM and Native this synchronizes with a coroutine mutex. JS and Wasm are single-threaded, so the lock is a plain waiter queue with no locking overhead.
 
-Scoped suspend bindings require the `dev.zacsweers.metro:runtime-coroutines` artifact on your compile and runtime classpath. On JVM and Native it depends on `kotlinx-coroutines-core` for the mutex. The JS and Wasm variants have no kotlinx-coroutines dependency at all. Graphs that only use unscoped suspend bindings do not need the artifact. If it's missing when needed, Metro reports a compile-time error naming it.
+Scoped suspend bindings require `dev.zacsweers.metro:runtime-coroutines` on the compile and runtime classpath. The Gradle plugin adds it when `enableSuspendProviders` is true. On JVM and Native it depends on `kotlinx-coroutines-core` for the mutex. The JS and Wasm variants have no kotlinx-coroutines dependency. If automatic runtime dependencies are disabled and the artifact is missing, Metro reports a compile-time error naming it.
 
 ## Dispatchers
 
