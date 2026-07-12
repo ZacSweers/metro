@@ -181,6 +181,7 @@ internal sealed interface KaBinding :
   class Multibinding(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
     typeKey: KaTypeKey,
+    override val contextualTypeKey: KaContextualTypeKey = typeKey.canonicalContextKey(),
     override val scope: KaAnnotationSnapshot? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
@@ -192,8 +193,6 @@ internal sealed interface KaBinding :
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
-    override val contextualTypeKey = typeKey.canonicalContextKey()
-
     override val label: String
       get() = if (dependencies.isEmpty()) "multibinding declaration" else "multibinding"
   }
@@ -205,6 +204,8 @@ internal sealed interface KaBinding :
     override val containerId: ClassId?,
     /** True for a graph dependency supplied through a factory `@Includes` parameter. */
     val isGraphInput: Boolean = false,
+    /** True for a concrete binding container supplied through a factory `@Includes` parameter. */
+    val isBindingContainerInput: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -260,6 +261,20 @@ internal sealed interface KaBinding :
       get() = "graph instance"
   }
 
+  /** A child graph created by an accessor on [ownerKey]. Seal-time node. */
+  class GraphExtension(
+    override val pointer: SmartPsiElementPointer<out PsiElement>,
+    typeKey: KaTypeKey,
+    val ownerKey: KaTypeKey,
+  ) : KaBinding {
+    override val contextualTypeKey = typeKey.canonicalContextKey()
+
+    override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
+
+    override val label: String
+      get() = "graph extension"
+  }
+
   /** A `@BindsOptionalOf` (Dagger interop) binding exposing `Optional<T>`. */
   class CustomWrapper(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
@@ -283,6 +298,6 @@ internal sealed interface KaBinding :
   }
 }
 
-private fun KaTypeKey.canonicalContextKey(): KaContextualTypeKey {
+internal fun KaTypeKey.canonicalContextKey(): KaContextualTypeKey {
   return KaContextualTypeKey(this, WrappedType.Canonical(type))
 }

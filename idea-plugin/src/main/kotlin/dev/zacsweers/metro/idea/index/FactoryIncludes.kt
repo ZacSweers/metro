@@ -11,6 +11,7 @@ import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.signatures.KaFunctionSignature
@@ -76,6 +77,7 @@ internal fun KaSession.factoryIncludes(
           includedBindingContainer(
             parameterType,
             parameterKey,
+            parameter,
             options,
             pointerManager,
             cacheDependencies,
@@ -105,7 +107,7 @@ private fun KaSession.includedGraphDependency(
   cacheDependencies: MutableSet<PsiFile>,
 ): FactoryInputEntry {
   val bindings = mutableListOf<KaBinding>()
-  val ownerElement = dependencyType.symbol.psi ?: parameter.symbol.psi
+  val ownerElement = parameter.symbol.psi ?: dependencyType.symbol.psi
   if (ownerElement != null) {
     bindings +=
       KaBinding.BoundInstance(
@@ -151,12 +153,23 @@ private fun KaSession.includedGraphDependency(
 private fun KaSession.includedBindingContainer(
   containerType: KaClassType,
   containerKey: KaTypeKey,
+  parameter: CallableParameterView,
   options: MetroOptions,
   pointerManager: SmartPointerManager,
   cacheDependencies: MutableSet<PsiFile>,
 ): FactoryInputEntry {
   val bindings = mutableListOf<KaBinding>()
   val consumers = mutableListOf<ConsumerEntry>()
+  val ownerElement = parameter.symbol.psi ?: containerType.symbol.psi
+  if (ownerElement != null) {
+    bindings +=
+      KaBinding.BoundInstance(
+        pointerManager.createSmartPsiElementPointer(ownerElement),
+        containerKey,
+        containerId = null,
+        isBindingContainerInput = true,
+      )
+  }
   val containerScope = containerType.scope
   if (containerScope != null) {
     for (signature in containerScope.getCallableSignatures()) {
@@ -169,6 +182,7 @@ private fun KaSession.includedBindingContainer(
         bindings,
         consumers,
         cacheDependencies,
+        requiresContainerInstance = true,
       )
     }
   }
@@ -191,6 +205,7 @@ private fun KaSession.includedBindingContainer(
         bindings,
         consumers,
         cacheDependencies,
+        requiresContainerInstance = false,
       )
     }
   }
@@ -211,14 +226,21 @@ private fun KaSession.addIncludedContainerCallable(
   bindings: MutableList<KaBinding>,
   consumers: MutableList<ConsumerEntry>,
   cacheDependencies: MutableSet<PsiFile>,
+  requiresContainerInstance: Boolean,
 ) {
   val source = callable.symbol.psi ?: return
   source.containingFile?.let(cacheDependencies::add)
   val dataEntries = bindingData(callable, options)
   if (dataEntries.isEmpty()) return
   val pointer = pointerManager.createSmartPsiElementPointer(source)
+  val ownerDependency = containerKey.canonicalContextKey().takeIf { requiresContainerInstance }
   for (data in dataEntries) {
-    bindings += data.toKaBinding(pointer, includedContainerKey = containerKey)
+    bindings +=
+      data.toKaBinding(
+        pointer,
+        includedContainerKey = containerKey,
+        ownerDependency = ownerDependency,
+      )
   }
 
   val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }

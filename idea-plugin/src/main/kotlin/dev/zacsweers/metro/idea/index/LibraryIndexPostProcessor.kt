@@ -12,7 +12,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.flatMapToSet
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -20,6 +19,7 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.scopeAnnotation
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -217,52 +217,62 @@ internal class LibraryIndexPostProcessor(
   /**
    * Demand-driven resolution of constructor-injected classes from compiled dependencies: the
    * annotation sweeps only cover project sources, but inject annotations survive in library
-   * metadata. For each consumer key with no project-source binding, checks whether the consumed
-   * class itself is injectable and synthesizes a binding entry targeting the library declaration.
+   * metadata. Starting from consumer keys with no project-source binding, transitively checks
+   * whether each consumed class is injectable and synthesizes entries targeting the library
+   * declarations.
    */
   private fun resolveLibraryInjectBindings() {
-    val bindingKeys = bindings.mapToSet { it.typeKey }
-    val unresolved =
-      consumers
-        .filter {
-          it.multibindingId == null &&
-            it.typeClassId != null &&
-            it.key.qualifier == null &&
-            it.key !in bindingKeys
-        }
-        .groupBy { it.key }
-    if (unresolved.isEmpty()) return
+    val bindingKeys = bindings.mapTo(mutableSetOf()) { it.typeKey }
+    val queue = ArrayDeque<LibraryInjectRequest>()
+    for (consumer in consumers) {
+      val classId = consumer.typeClassId ?: continue
+      if (consumer.multibindingId != null || consumer.key.qualifier != null) continue
+      if (consumer.key in bindingKeys) continue
+      val context = consumer.pointer.element ?: continue
+      queue += LibraryInjectRequest(consumer.key, classId, context)
+    }
+    if (queue.isEmpty()) return
 
+    val visited = mutableSetOf<KaTypeKey>()
     val fileIndex = ProjectFileIndex.getInstance(project)
-    for ((key, sites) in unresolved) {
+    while (queue.isNotEmpty()) {
       ProgressManager.checkCanceled()
-      val context = sites.firstNotNullOfOrNull { it.pointer.element } ?: continue
-      analyze(context) {
-        val classSymbol =
-          findClass(sites.first().typeClassId!!) as? KaNamedClassSymbol ?: return@analyze
-        val psi = classSymbol.psi ?: return@analyze
-        // Project sources were already swept; finding nothing there was authoritative
-        val virtualFile = psi.containingFile?.virtualFile ?: return@analyze
-        if (fileIndex.isInContent(virtualFile)) return@analyze
-        if (classSymbol.classKind != KaClassKind.CLASS) return@analyze
+      val request = queue.removeFirst()
+      if (!visited.add(request.key) || request.key in bindingKeys) continue
+      val binding =
+        analyze(request.context) {
+          val classSymbol = findClass(request.classId) as? KaNamedClassSymbol ?: return@analyze null
+          val psi = classSymbol.psi ?: return@analyze null
+          // Project sources were already swept; finding nothing there was authoritative
+          val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
+          if (fileIndex.isInContent(virtualFile)) return@analyze null
+          if (classSymbol.classKind != KaClassKind.CLASS) return@analyze null
 
-        val constructors = classSymbol.memberScope.constructors.toList()
-        val hasInject =
-          classSymbol.hasAnyAnnotation(options.injectAnnotations) ||
-            constructors.any { it.hasAnyAnnotation(options.injectAnnotations) }
-        val isAssisted =
-          classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
-            constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
-        if (!hasInject || isAssisted) return@analyze
+          val constructors = classSymbol.memberScope.constructors.toList()
+          val hasInject =
+            classSymbol.hasAnyAnnotation(options.injectAnnotations) ||
+              constructors.any { it.hasAnyAnnotation(options.injectAnnotations) }
+          val isAssisted =
+            classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
+              constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
+          if (!hasInject || isAssisted) return@analyze null
 
-        bindings +=
           KaBinding.ConstructorInjected(
             pointerManager.createSmartPsiElementPointer(psi),
-            key,
+            request.key,
             scopeAnnotation(classSymbol, options),
             classSymbol.name.asString(),
             dependencies = injectClassDependencyKeys(classSymbol, options),
           )
+        }
+      if (binding == null) continue
+      bindings += binding
+      bindingKeys += binding.typeKey
+      for (dependency in binding.dependencies) {
+        val key = dependency.typeKey
+        val classId = key.type.classId ?: continue
+        if (key.qualifier != null || key in bindingKeys) continue
+        queue += LibraryInjectRequest(key, classId, request.context)
       }
     }
   }
@@ -270,6 +280,12 @@ internal class LibraryIndexPostProcessor(
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
     return pointerManager.createSmartPsiElementPointer(element)
   }
+
+  private data class LibraryInjectRequest(
+    val key: KaTypeKey,
+    val classId: ClassId,
+    val context: KtElement,
+  )
 
   private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction)
 }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.graph
 
 import com.intellij.openapi.progress.ProgressManager
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphQueryContext
@@ -13,7 +14,6 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.aggregateMultibindingId
-import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -67,6 +67,9 @@ internal class KaBindingLookup(
     syntheticElements[typeKey]?.let {
       return setOf(it)
     }
+    graphInstance(typeKey)?.let {
+      return setOf(it)
+    }
 
     val candidates = index.bindingsForKey(typeKey, queryContext)
     val aggregateId = contextKey.aggregateMultibindingId(options)
@@ -87,6 +90,13 @@ internal class KaBindingLookup(
         setOf(direct.first())
       }
     }
+  }
+
+  private fun graphInstance(typeKey: KaTypeKey): KaBinding.GraphInstance? {
+    if (typeKey.qualifier != null) return null
+    val classId = typeKey.type.classId ?: return null
+    val graph = queryContext.graphContext.chain.firstOrNull { it.classId == classId } ?: return null
+    return KaBinding.GraphInstance(graph.pointer, typeKey)
   }
 
   /**
@@ -123,6 +133,7 @@ internal class KaBindingLookup(
       KaBinding.Multibinding(
         pointer = anchor?.pointer ?: graph.pointer,
         typeKey = contextKey.typeKey,
+        contextualTypeKey = contextKey,
         allowEmpty = declarations.any { it.allowEmpty },
         dependencies = elements.map { it.contextualTypeKey },
       )
@@ -131,8 +142,7 @@ internal class KaBindingLookup(
   }
 
   private companion object {
-    private val MULTIBINDING_ELEMENT_CLASS_ID =
-      ClassId.fromString("dev/zacsweers/metro/MultibindingElement")
+    private val MULTIBINDING_ELEMENT_CLASS_ID = MetroClassIds.multibindingElement
   }
 }
 

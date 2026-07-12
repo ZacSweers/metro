@@ -391,7 +391,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.PresentService" })
   }
 
-  fun testScopeFilteredCandidateIsHinted() {
+  fun testScopeFilteredCandidateReportsIncompatibleScope() {
     val result =
       validate(
         """
@@ -409,8 +409,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
     val diagnostic = result.diagnostics.single()
-    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
-    assertTrue(diagnostic.render(), "not a member of this graph" in diagnostic.render())
+    assertEquals(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS, diagnostic.id)
+    assertTrue(diagnostic.render(), "may not reference scoped bindings" in diagnostic.render())
   }
 
   fun testAssistedClassInjectionIsHinted() {

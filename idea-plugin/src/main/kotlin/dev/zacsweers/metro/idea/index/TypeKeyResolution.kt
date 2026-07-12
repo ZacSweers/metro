@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
@@ -67,10 +68,11 @@ internal fun KaSession.optionalTypeKey(
 internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
   val expanded = type.fullyExpandedType
   val classType = expanded as? KaClassType
+  val classId = classType?.classId ?: (expanded.expandedSymbol as? KaNamedClassSymbol)?.classId
   return KaTypeSnapshot(
     renderKeyType(expanded),
     renderShortKeyType(expanded),
-    classType?.classId,
+    classId,
     classType
       ?.typeArguments
       ?.mapNotNull { argument -> argument.type?.let { typeSnapshot(it) } }
@@ -110,7 +112,10 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
       mapClassId = StandardClassIds.Map,
       providerTypes = options.providerTypes,
       lazyTypes = options.lazyTypes,
-      classIdOf = { (it as? KaClassType)?.classId },
+      classIdOf = { type ->
+        (type as? KaClassType)?.classId
+          ?: (with(session) { type.expandedSymbol } as? KaNamedClassSymbol)?.classId
+      },
       argumentsOf = { type ->
         (type as? KaClassType)
           ?.typeArguments

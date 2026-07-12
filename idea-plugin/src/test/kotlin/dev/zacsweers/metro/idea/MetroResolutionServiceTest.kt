@@ -1328,7 +1328,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val boxBinding = index.bindingsFor(boxAccessor, stringQueryContext).single()
     assertEquals("test.Box<kotlin.String>", boxBinding.typeKey.renderedType)
     assertEquals(
-      listOf("kotlin.String"),
+      listOf("test.GenericBindings<kotlin.String>", "kotlin.String"),
       boxBinding.dependencies.map { it.typeKey.renderedType },
     )
     val countAccessor = index.consumerEntryAt(declarations.property("count"))!!

@@ -12,6 +12,7 @@ import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
@@ -45,6 +46,7 @@ internal fun BindingData.toKaBinding(
   replaces: Set<ClassId> = this.replaces,
   contributionScopes: Set<ClassId> = this.contributionScopes,
   hintAvailability: HintAvailability? = null,
+  ownerDependency: KaContextualTypeKey? = null,
 ): KaBinding {
   return when (kind) {
     BindingData.Kind.CONSTRUCTOR_INJECTED ->
@@ -72,7 +74,7 @@ internal fun BindingData.toKaBinding(
         includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
-        dependencies = dependencies,
+        dependencies = listOfNotNull(ownerDependency) + dependencies,
         hintAvailability = hintAvailability,
       )
     BindingData.Kind.ALIAS ->

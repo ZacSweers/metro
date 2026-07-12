@@ -37,6 +37,8 @@ internal class BindingIndex(
   private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
   private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
   private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
+  private val validationReplacedOriginsByContext =
+    ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
 
   // Contributions are keyed solely by multibindingId, mirroring the compiler's
@@ -163,7 +165,9 @@ internal class BindingIndex(
   ): List<KaBinding> {
     // Membership filtering already applies context-wide excludes and replaces via the cached
     // replacedOrigins set.
-    return bindingsByKey[key].orEmpty().filter { isBindingInContext(it, queryContext) }
+    return bindingsByKey[key].orEmpty().filter {
+      isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
+    }
   }
 
   /** Contributions collected into [multibindingId] in [queryContext]'s graph. */
@@ -172,7 +176,7 @@ internal class BindingIndex(
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
     return contributionsByMultibindingId[multibindingId].orEmpty().filter {
-      isBindingInContext(it, queryContext)
+      isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
     }
   }
 
@@ -410,25 +414,36 @@ internal class BindingIndex(
     }
   }
 
-  private fun isBindingInContext(entry: KaBinding, queryContext: GraphQueryContext): Boolean {
-    if (!isBindingCandidateInContext(entry, queryContext)) return false
+  private fun isBindingInContext(
+    entry: KaBinding,
+    queryContext: GraphQueryContext,
+    includeIncompatibleScopes: Boolean = false,
+  ): Boolean {
+    if (!isBindingCandidateInContext(entry, queryContext, includeIncompatibleScopes)) return false
     // Replaces removes the origin's contributions only; its own injectable type stays available
     // (a replacing stub can inject the replaced implementation directly).
     if (entry.contributionScopes.isEmpty()) return true
     val originClassId = entry.originClassId ?: return true
-    return originClassId !in replacedOrigins(queryContext)
+    return originClassId !in replacedOrigins(queryContext, includeIncompatibleScopes)
   }
 
   private fun isBindingCandidateInContext(
     entry: KaBinding,
     queryContext: GraphQueryContext,
+    includeIncompatibleScopes: Boolean = false,
   ): Boolean {
     if (!isVisibleFrom(entry, queryContext)) return false
     val context = queryContext.graphContext
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
-    if (entry.scope != null && entry.scope !in context.scopingAnnotations) return false
+    if (
+      !includeIncompatibleScopes &&
+        entry.scope != null &&
+        entry.scope !in context.scopingAnnotations
+    ) {
+      return false
+    }
     if (
       entry.contributionScopes.isNotEmpty() &&
         entry.contributionScopes.none { it in context.scopes }
@@ -453,10 +468,10 @@ internal class BindingIndex(
         }
       }
       is KaBinding.BoundInstance -> {
-        if (entry.isGraphInput) {
-          entry.typeKey in context.includedDependencies
-        } else {
-          entry.containerId in context.graphClassIds
+        when {
+          entry.isGraphInput -> entry.typeKey in context.includedDependencies
+          entry.isBindingContainerInput -> entry.typeKey in context.includedBindingContainers
+          else -> entry.containerId in context.graphClassIds
         }
       }
       is KaBinding.GraphDependency -> entry.ownerKey in context.includedDependencies
@@ -464,15 +479,27 @@ internal class BindingIndex(
       // seal-time nodes that never appear in the index.
       is KaBinding.ConstructorInjected,
       is KaBinding.AssistedFactory,
-      is KaBinding.GraphInstance -> true
+      is KaBinding.GraphInstance,
+      is KaBinding.GraphExtension -> true
     }
   }
 
-  private fun replacedOrigins(queryContext: GraphQueryContext): Set<ClassId> {
-    return replacedOriginsByContext.computeIfAbsent(queryContext) {
+  private fun replacedOrigins(
+    queryContext: GraphQueryContext,
+    includeIncompatibleScopes: Boolean = false,
+  ): Set<ClassId> {
+    val cache =
+      if (includeIncompatibleScopes) {
+        validationReplacedOriginsByContext
+      } else {
+        replacedOriginsByContext
+      }
+    return cache.computeIfAbsent(queryContext) {
       bindings
         .asSequence()
-        .filter { binding -> isBindingCandidateInContext(binding, queryContext) }
+        .filter { binding ->
+          isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes)
+        }
         .flatMap { binding -> binding.replaces.asSequence() }
         .toSet()
     }
