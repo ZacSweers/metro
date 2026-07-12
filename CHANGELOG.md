@@ -12,7 +12,7 @@ This release introduces experimental support for suspend providers. This is disa
 
 - `@Provides` functions and graph accessors can be `suspend`. Suspension propagates through dependent bindings. Metro reports a dependency trace when a non-suspend path reaches one.
 - Inject `suspend () -> T` to defer resolution, or `SuspendLazy<T>` to defer and memoize it. Maps can defer individual values with `Map<K, suspend () -> V>`.
-- Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutineContext they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
+- Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutine context they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
 - When enabled, the Gradle plugin adds the new `runtime-coroutines` artifact automatically. Projects that manage runtime dependencies themselves need it for scoped suspend bindings, injected `SuspendLazy`, and the `suspendLazy`, `suspendLazyOf`, and memoization helpers.
   - Its JS and Wasm variants do _not_ depend on kotlinx-coroutines.
 
