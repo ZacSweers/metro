@@ -1,0 +1,11 @@
+parity.aggregation.RealRepo
+parity.aggregation.TestRepo
+parity.aggregation.Repo
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin.String_parity.aggregation.Handler", "-678079832") parity.aggregation.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin.String_parity.aggregation.Handler", "42302901") parity.aggregation.Handler
+kotlin.collections.Map<kotlin.String, parity.aggregation.Handler>
+kotlin.collections.Set<parity.aggregation.EmptyElement>
+parity.aggregation.AppHandler
+@dev.zacsweers.metro.internal.MultibindingElement("parity.aggregation.Handler", "2113724328") parity.aggregation.Handler
+kotlin.collections.Set<parity.aggregation.Handler>
+parity.aggregation.ScopedValue

@@ -1,0 +1,21 @@
+/DuplicateMapKey.kt:25:7: error: 
+[Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, Handler>
+
+  The following bindings contribute the same map key '@dev.zacsweers.metro.StringKey("same")'
+      DuplicateMapKey.kt:20:41
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("same")
+        fun second(): parity.failures.mapkey.Handler
+
+      DuplicateMapKey.kt:18:41
+        @Provides
+        @IntoMap
+        @dev.zacsweers.metro.StringKey("same")
+        fun first(): parity.failures.mapkey.Handler
+
+  trace (in parity.failures.mapkey.AppGraph):
+      Map<String, Handler> is requested at parity.failures.mapkey.AppGraph.handlers
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+

@@ -1,0 +1,10 @@
+/MissingBinding.kt:14:7: error: 
+[Metro/MissingBinding] No binding found for Missing
+
+  trace (in parity.failures.missing.AppGraph):
+      Missing is requested at parity.failures.missing.AppGraph.missing
+
+  help: ensure Missing has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+

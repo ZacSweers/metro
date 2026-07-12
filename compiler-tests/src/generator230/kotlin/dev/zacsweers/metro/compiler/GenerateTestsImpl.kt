@@ -35,6 +35,20 @@ inline fun <
           excludeDirsRecursively = listOf("interop", "circuit"),
         )
       }
+      val diagnosticModel: TestGroup.TestClass.(name: String) -> Unit = { name ->
+        model(
+          name,
+          excludedPattern = exclusionPattern,
+          excludeDirsRecursively = listOf("_reports"),
+        )
+      }
+      val nonJvmDiagnosticModel: TestGroup.TestClass.(name: String) -> Unit = { name ->
+        model(
+          name,
+          excludedPattern = exclusionPattern,
+          excludeDirsRecursively = listOf("interop", "circuit", "_reports"),
+        )
+      }
       testClass<Box> { commonModel("box") }
       testClass<FastInitBox> { commonModel("box") }
       testClass<ContributionProvidersBox> { commonModel("box") }
@@ -42,8 +56,8 @@ inline fun <
       testClass<JsFastInitBox> { nonJvmModel("box") }
       testClass<JsContributionProvidersBox> { nonJvmModel("box") }
       testClass<IrOnlyClassesBox> { commonModel("box") }
-      testClass<Diagnostic> { commonModel("diagnostic") }
-      testClass<JsDiagnostic> { nonJvmModel("diagnostic") }
+      testClass<Diagnostic> { diagnosticModel("diagnostic") }
+      testClass<JsDiagnostic> { nonJvmDiagnosticModel("diagnostic") }
       testClass<FirDump> { commonModel("dump/fir") }
       testClass<IrDump> { commonModel("dump/ir") }
       testClass<Reports> { commonModel("dump/reports") }

@@ -1,0 +1,3 @@
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin.String_parity.failures.mapkey.Handler", "502863479") parity.failures.mapkey.Handler
+@dev.zacsweers.metro.internal.MultibindingElement("kotlin.String_parity.failures.mapkey.Handler", "770576059") parity.failures.mapkey.Handler
+kotlin.collections.Map<kotlin.String, parity.failures.mapkey.Handler>

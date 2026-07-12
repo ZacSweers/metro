@@ -20,9 +20,10 @@ import org.opentest4j.AssertionFailedError
  * 1. Find the specified report files in the reports destination
  * 2. Compare each report file against an expected file alongside the test data
  *
- * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. If the
- * report name includes an explicit extension, the expected file appends `.txt` to avoid treating
- * generated `.kt` reports as test inputs.
+ * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. A sibling
+ * `_reports` directory changes that root to `_reports/<testFile>/...`, which keeps report goldens
+ * out of generated-test discovery. If the report name includes an explicit extension, the expected
+ * file appends `.txt` to avoid treating generated `.kt` reports as test inputs.
  *
  * Example usage:
  * ```
@@ -52,11 +53,13 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     get() = listOf(MetroDirectives)
 
   override fun checkMetroReports(thereWereFailures: Boolean) {
-    if (thereWereFailures) return
-
     val allDirectives = testServices.moduleStructure.allDirectives
 
-    checkReports(allDirectives)
+    if (allDirectives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+      checkReports(allDirectives)
+    }
+    if (thereWereFailures) return
+
     if (MetroDirectives.CHECK_TRACES in allDirectives) {
       checkTraces(allDirectives)
     }
@@ -75,13 +78,21 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
       File(testServices.temporaryDirectoryManager.rootDir.absolutePath, reportsDestination)
 
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
+    val legacyExpectedRoot = testDataFile.withoutExtension()
+    val sharedReportsRoot = testDataFile.parentFile.resolve("_reports")
+    val expectedRoot =
+      if (sharedReportsRoot.isDirectory) {
+        sharedReportsRoot.resolve(legacyExpectedRoot.name)
+      } else {
+        legacyExpectedRoot
+      }
 
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
       val baseFileName = reportFileName(reportName)
       val reportFile = File(reportsDir, baseFileName)
-      val expectedFile = File(testDataFile.withoutExtension(), expectedReportFileName(reportName))
+      val expectedFile = File(expectedRoot, expectedReportFileName(reportName))
 
       if (!reportFile.exists()) {
         testServices.assertions.fail {

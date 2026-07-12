@@ -1,0 +1,17 @@
+/DependencyCycle.kt:16:11: error: 
+[Metro/DependencyCycle] Found a dependency cycle while processing parity.failures.cycle.AppGraph
+
+  cycle:
+      +-> Second -> First --+
+      +---------------------+
+
+  trace (in parity.failures.cycle.AppGraph):
+      Second is injected at parity.failures.cycle.First(…, second)
+      First is injected at parity.failures.cycle.Second(…, first)
+      Second is injected at parity.failures.cycle.First(…, second)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Second` or
+        `Lazy<Second>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+

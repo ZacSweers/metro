@@ -1,0 +1,309 @@
+{
+  "graph": "parity.aggregation.AppGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "parity.aggregation.Repo",
+        "isDeferrable": false
+      },
+      {
+        "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "isDeferrable": false
+      },
+      {
+        "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "isDeferrable": false
+      },
+      {
+        "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "isDeferrable": false
+      },
+      {
+        "key": "parity.aggregation.ScopedValue",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE"
+  },
+  "stats": {
+    "providerFactories": 2,
+    "bindsCallables": 2,
+    "multibindsCallables": 1,
+    "optionalBindings": 0,
+    "accessors": 5,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 11,
+    "validatedKeys": 11,
+    "reachableKeys": 11,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 4,
+    "scopedProviderProperties": 1,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 3,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 2,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "primaryHandler",
+      "dependencies": [
+        {
+          "key": "parity.aggregation.Repo",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:55:46",
+      "declaration": "primaryHandler"
+    },
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "secondaryHandler",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:58:48",
+      "declaration": "secondaryHandler"
+    },
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindIntoSetAsHandler",
+      "dependencies": [
+        {
+          "key": "parity.aggregation.AppHandler",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:36:1",
+      "declaration": "AppHandler",
+      "aliasTarget": "parity.aggregation.AppHandler"
+    },
+    {
+      "key": "Map<kotlin.String, parity.aggregation.Handler>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "mapOfStringToHandler",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+          "hasDefault": false
+        },
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "MAP",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler"
+        ]
+      }
+    },
+    {
+      "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfEmptyElement",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:52:34",
+      "declaration": "emptyElements4205200196",
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": true,
+        "sources": []
+      }
+    },
+    {
+      "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfHandler",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler"
+        ]
+      }
+    },
+    {
+      "key": "parity.aggregation.AppHandler",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "AppHandler",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:36:1",
+      "declaration": "AppHandler"
+    },
+    {
+      "key": "parity.aggregation.RealRepo",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "RealRepo",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:26:1",
+      "declaration": "RealRepo"
+    },
+    {
+      "key": "parity.aggregation.Repo",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindsAsRepo",
+      "dependencies": [
+        {
+          "key": "parity.aggregation.TestRepo",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:30:1",
+      "declaration": "TestRepo",
+      "aliasTarget": "parity.aggregation.TestRepo"
+    },
+    {
+      "key": "parity.aggregation.ScopedValue",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "ScopedValue",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:63:1",
+      "declaration": "ScopedValue"
+    },
+    {
+      "key": "parity.aggregation.TestRepo",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "TestRepo",
+      "dependencies": [
+        {
+          "key": "parity.aggregation.RealRepo",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "origin": "AggregationGraph.kt:30:1",
+      "declaration": "TestRepo"
+    }
+  ]
+}
