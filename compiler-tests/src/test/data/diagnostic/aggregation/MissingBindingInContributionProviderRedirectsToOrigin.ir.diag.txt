@@ -1,5 +1,4 @@
-/MissingBindingInContributionProviderRedirectsToOrigin.kt:19:7: error: 
-[Metro/MissingBinding] No binding found for ChangelogRepositoryImpl
+/MissingBindingInContributionProviderRedirectsToOrigin.kt:19:7: error: [Metro/MissingBinding] No binding found for ChangelogRepositoryImpl
 
   AppGraph.repo -> ChangelogRepository -> ChangelogRepositoryImpl
 

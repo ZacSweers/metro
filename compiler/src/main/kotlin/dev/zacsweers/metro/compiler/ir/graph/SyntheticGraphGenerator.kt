@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
-import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -374,6 +373,7 @@ internal class SyntheticGraphGenerator(
   private data class OverrideClash(
     val summary: Text,
     val section: DiagnosticSection.Locations,
+    val notes: List<Note>,
   )
 
   /** Validates that fake overrides in this class are compatible across supertypes. */
@@ -416,6 +416,7 @@ internal class SyntheticGraphGenerator(
             } else {
               typeClashes.map { it.section.copy(header = it.summary) }
             },
+          notes = typeClashes.flatMap { it.notes }.distinct(),
         )
       metroContext.reportCompat(
         originDeclaration,
@@ -444,17 +445,18 @@ internal class SyntheticGraphGenerator(
               annotationClashes.map { it.section.copy(header = it.summary) }
             },
           notes =
-            listOf(
-              Note.note(
-                "declarations with the same name and compatible return types must have compatible " +
-                  "DI annotations too, otherwise these can lead to ambiguous/undefined behavior " +
-                  "at runtime"
+            annotationClashes.flatMap { it.notes }.distinct() +
+              listOf(
+                Note.note(
+                  "declarations with the same name and compatible return types must have compatible " +
+                    "DI annotations too, otherwise these can lead to ambiguous/undefined behavior " +
+                    "at runtime"
+                ),
+                Note.help(
+                  "either align these annotations if they are meant to represent the same thing or " +
+                    "rename one of the declarations to disambiguate them"
+                ),
               ),
-              Note.help(
-                "either align these annotations if they are meant to represent the same thing or " +
-                  "rename one of the declarations to disambiguate them"
-              ),
-            ),
         )
       metroContext.reportCompat(
         originDeclaration,
@@ -588,18 +590,11 @@ internal class SyntheticGraphGenerator(
           header = null,
           items =
             listOf(
-              LocatedItem(
-                location = loc1.location,
-                code = loc1.description?.let { "$it (defined in '$parent1')" },
-                span = loc1.span,
-              ),
-              LocatedItem(
-                location = loc2.location,
-                code = loc2.description?.let { "$it (defined in '$parent2')" },
-                span = loc2.span,
-              ),
+              loc1.toLocatedItem(code = loc1.description?.let { "$it (defined in '$parent1')" }),
+              loc2.toLocatedItem(code = loc2.description?.let { "$it (defined in '$parent2')" }),
             ),
         ),
+      notes = (loc1.notes + loc2.notes).distinct(),
     )
   }
 
@@ -640,18 +635,11 @@ internal class SyntheticGraphGenerator(
           header = null,
           items =
             listOf(
-              LocatedItem(
-                location = loc1.location,
-                code = underlinedCode(loc1, parent1, type1Str),
-                span = loc1.span,
-              ),
-              LocatedItem(
-                location = loc2.location,
-                code = underlinedCode(loc2, parent2, type2Str),
-                span = loc2.span,
-              ),
+              loc1.toLocatedItem(code = underlinedCode(loc1, parent1, type1Str)),
+              loc2.toLocatedItem(code = underlinedCode(loc2, parent2, type2Str)),
             ),
         ),
+      notes = (loc1.notes + loc2.notes).distinct(),
     )
   }
 

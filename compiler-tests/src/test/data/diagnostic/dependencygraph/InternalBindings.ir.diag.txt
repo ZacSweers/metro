@@ -1,5 +1,4 @@
-/module_main_InternalBindings.kt:32:11: error: 
-[Metro/MissingBinding] No binding found for SomeRepository
+/module_main_InternalBindings.kt:32:11: error: [Metro/MissingBinding] No binding found for SomeRepository
 
   trace (in AppGraph.Impl.LoggedInGraphImpl):
       SomeRepository is requested at LoggedInGraph.someRepository

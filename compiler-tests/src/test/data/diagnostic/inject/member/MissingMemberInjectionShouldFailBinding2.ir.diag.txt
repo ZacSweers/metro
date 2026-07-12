@@ -1,5 +1,4 @@
-/MissingMemberInjectionShouldFailBinding2.kt:22:39: error: 
-[Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
+/MissingMemberInjectionShouldFailBinding2.kt:22:39: error: [Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
 
   trace (in TestGraph.Impl.SubscopeGraphImpl):
       MembersInjector<ClassWithoutMembersInjector> is injected at

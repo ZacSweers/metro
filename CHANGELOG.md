@@ -4,6 +4,13 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Improve CLI diagnostic formatting by keeping messages on the compiler severity line.
+- **[IR]** Improve CLI diagnostic formatting by preserving generated-code metadata.
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
+
 1.3.1
 -----
 

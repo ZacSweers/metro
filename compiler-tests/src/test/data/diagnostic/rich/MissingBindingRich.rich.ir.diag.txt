@@ -1,5 +1,4 @@
-/MissingBindingRich.kt:14:22: error: 
-<dim>   ╭─ </intensity><b>[Metro/MissingBinding] No binding found for Dependency</intensity>
+/MissingBindingRich.kt:14:22: error: <dim>   ╭─ </intensity><b>[Metro/MissingBinding] No binding found for Dependency</intensity>
 <dim>   │ → </intensity>MissingBindingRich.kt:14:22
 <dim>   │</intensity>
 <dim>   │ </intensity><red>⌄⌄⌄⌄⌄⌄⌄</fg>
