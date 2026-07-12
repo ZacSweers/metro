@@ -1,5 +1,4 @@
-/module_main_CrossModuleContributionProviderHidesImplHint.kt:23:45: error: 
-[Metro/MissingBinding] No binding found for ChangelogRepositoryImpl
+/module_main_CrossModuleContributionProviderHidesImplHint.kt:23:45: error: [Metro/MissingBinding] No binding found for ChangelogRepositoryImpl
 
   AppGraph.repo -> ChangelogRepository -> ChangelogRepositoryImpl
 

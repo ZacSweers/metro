@@ -1,5 +1,4 @@
-/IncompatibleMapValueType.kt:11:28: error: 
-[Metro/MissingBinding] No binding found for Map<String, String>
+/IncompatibleMapValueType.kt:11:28: error: [Metro/MissingBinding] No binding found for Map<String, String>
 
   FooComponent.value -> Int -> Map<String, String>
 

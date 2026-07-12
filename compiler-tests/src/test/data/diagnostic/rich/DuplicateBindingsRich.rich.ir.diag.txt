@@ -1,5 +1,4 @@
-/DuplicateBindingsRich.kt:12:11: error: 
-<dim>   ╭─ </intensity><b>[Metro/DuplicateBinding] Multiple bindings found for String</intensity>
+/DuplicateBindingsRich.kt:12:11: error: <dim>   ╭─ </intensity><b>[Metro/DuplicateBinding] Multiple bindings found for String</intensity>
 <dim>   │ → </intensity>DuplicateBindingsRich.kt:15:13
 <dim>   │</intensity>
 <dim>15 │ </intensity>@Provides fun provideString1(): <red>String</fg>

@@ -1,5 +1,4 @@
-/SuspiciousUnusedMultibinding.kt:12:11: warning: 
-[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Map<KClass<*>, BaseViewModel> is unused
+/SuspiciousUnusedMultibinding.kt:12:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Map<KClass<*>, BaseViewModel> is unused
     but has 4 source binding(s)
 
       SuspiciousUnusedMultibinding.kt:21:1

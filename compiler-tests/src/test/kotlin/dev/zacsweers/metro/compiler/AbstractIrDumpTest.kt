@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirective
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_PIPELINE
 import org.jetbrains.kotlin.test.directives.model.SimpleDirective
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerWithTargetBackendTest
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
@@ -37,7 +38,7 @@ import org.jetbrains.kotlin.test.services.TestPhase
  */
 open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(TargetBackend.JVM_IR) {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-    return ClasspathBasedStandardLibrariesPathProvider
+    return EnvironmentBasedStandardLibrariesPathProvider
   }
 
   override fun configure(builder: TestConfigurationBuilder) =

@@ -1,5 +1,4 @@
-/module_main_ContributionProviderMissingBindingShowsOriginInternal.kt:21:11: error: 
-[Metro/MissingBinding] No binding found for Dependency
+/module_main_ContributionProviderMissingBindingShowsOriginInternal.kt:21:11: error: [Metro/MissingBinding] No binding found for Dependency
 
   AppGraph.repo -> Repository -> Dependency
 

@@ -920,7 +920,9 @@ internal class BindingLookup(
               return@getOrPut emptySet()
             }
 
-        // Record a lookup of the target's factory function in case its constructor params change
+        // Record lookups of the target's generated factory class and function in case its
+        // constructor params change.
+        trackClassLookup(sourceGraph, targetClassFactory.factoryClass)
         trackFunctionCall(sourceGraph, targetClassFactory.function)
 
         val targetKey = IrTypeKey(targetType)

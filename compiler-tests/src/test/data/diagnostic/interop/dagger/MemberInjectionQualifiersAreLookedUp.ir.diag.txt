@@ -1,5 +1,4 @@
-/ExampleGraph.kt:31:11: error: 
-[Metro/MissingBinding] No binding found for @Named("qualified") Dependency
+/ExampleGraph.kt:31:11: error: [Metro/MissingBinding] No binding found for @Named("qualified") Dependency
 
   ExampleClass -> @Named("qualified") Dependency
 

@@ -4,7 +4,9 @@ package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Text
 
 internal interface BaseBinding<
   Type : Any,
@@ -55,4 +57,26 @@ internal data class LocationDiagnostic(
   val description: String?,
   /** Resolved source span when available; enables source-frame rendering in rich console mode. */
   val span: DiagnosticSpan? = null,
-)
+  /** Additional context rendered beside [location], primarily for source-less declarations. */
+  val locationContext: Text? = null,
+  /** Supporting context discovered while resolving the source declaration. */
+  val notes: List<Note> = emptyList(),
+) {
+  fun toLocatedItem(
+    code: String? = description,
+    preferSourceSnippet: Boolean = false,
+    includeLeadingAnnotations: Boolean = true,
+  ): LocatedItem =
+    LocatedItem(
+      location = location,
+      code = code,
+      description = locationContext,
+      preferSourceSnippet = preferSourceSnippet,
+      includeLeadingAnnotations = includeLeadingAnnotations,
+      span = span,
+    )
+
+  companion object {
+    const val NO_SOURCE_LOCATION: String = "No source location available"
+  }
+}

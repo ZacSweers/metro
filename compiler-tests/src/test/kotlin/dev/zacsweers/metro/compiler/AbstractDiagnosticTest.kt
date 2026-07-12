@@ -30,12 +30,13 @@ import org.jetbrains.kotlin.test.frontend.fir.handlers.FirVFirDumpHandler
 import org.jetbrains.kotlin.test.frontend.fir.handlers.NonSourceErrorMessagesHandler
 import org.jetbrains.kotlin.test.frontend.fir.handlers.PsiLightTreeMetaInfoProcessor
 import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTest
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
 open class AbstractDiagnosticTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-    return ClasspathBasedStandardLibrariesPathProvider
+    return EnvironmentBasedStandardLibrariesPathProvider
   }
 
   override fun configure(builder: TestConfigurationBuilder) {

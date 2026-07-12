@@ -1,5 +1,4 @@
-/module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: 
-[Metro/MissingBinding] No binding found for Long?
+/module_main_DisabledResultsInMissingBindingMultiModule.kt:19:11: error: [Metro/MissingBinding] No binding found for Long?
 
   AppGraph.int -> Int -> Long?
 

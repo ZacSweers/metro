@@ -7,6 +7,7 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
 import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.ParentGraph
 import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
@@ -119,6 +120,59 @@ class ContributedGraphExtensionTest : MetroCompilerTest() {
       val exampleGraph = ExampleGraph.generatedImpl().createGraphWithNoArgs()
       val loggedInGraph = exampleGraph.callFunction<Any>("createLoggedInGraph")
       assertThat(loggedInGraph.callProperty<Int>("int")).isEqualTo(0)
+    }
+  }
+
+  @Test
+  fun `unused graph input from previous compilation reports callable context`() {
+    val firstCompilation =
+      compile(
+        source(
+          """
+          abstract class LoggedInScope
+          class Prefix
+          class Suffix
+          class Value
+
+          @GraphExtension(LoggedInScope::class)
+          interface LoggedInGraph {
+            val value: Value
+
+            @Provides
+            fun provideValue(prefix: Prefix, suffix: Suffix): Value = Value()
+
+            @GraphExtension.Factory @ContributesTo(AppScope::class)
+            interface Factory {
+              fun createLoggedInGraph(
+                @Provides prefix: Prefix,
+                @Provides unused: Int,
+                @Provides suffix: Suffix,
+              ): LoggedInGraph
+            }
+          }
+          """
+            .trimIndent()
+        )
+      )
+
+    compile(
+      source(
+        """
+        @DependencyGraph(AppScope::class)
+        interface ExampleGraph
+        """
+          .trimIndent()
+      ),
+      previousCompilationResult = firstCompilation,
+      options =
+        metroOptions
+          .toBuilder()
+          .unusedGraphInputsSeverity(MetroOptions.DiagnosticSeverity.WARN)
+          .build(),
+    ) {
+      assertContains("No source location available - graph input declared at")
+      assertContains("test.LoggedInGraph.Factory.createLoggedInGraph(…, Int, …)")
+      assertThat(messages).doesNotContain("(context)")
     }
   }
 
