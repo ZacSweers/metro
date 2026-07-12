@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalWasmDsl::class)
 
-import org.gradle.api.attributes.Attribute
-import org.gradle.api.attributes.Category
-import org.gradle.api.attributes.Usage
-import org.gradle.kotlin.dsl.sourceSets
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinUsages
@@ -19,7 +15,6 @@ import org.jetbrains.kotlin.tooling.core.toKotlinVersion
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.buildConfig)
-  alias(libs.plugins.gradleTestRetry)
   java
 }
 
@@ -304,8 +299,6 @@ val generateTests =
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
-val jsBoxTestRetries =
-  providers.gradleProperty("metro.jsBoxTestRetries").map(String::toInt).orElse(0)
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
@@ -370,12 +363,6 @@ tasks.withType<Test> {
 
   useJUnitPlatform()
 
-  retry {
-    maxRetries.set(jsBoxTestRetries)
-    failOnPassedAfterRetry.set(false)
-    failOnSkippedAfterRetry.set(true)
-  }
-
   if (largeTestMode) {
     filter { includeTestsMatching("*StressTest*") }
   } else {
@@ -390,55 +377,26 @@ tasks.withType<Test> {
   }
 
   val testRuntimeClasspath = project.configurations.testRuntimeClasspath.get()
-  setLibraryProperty("kotlin.minimal.stdlib.path", "kotlin-stdlib", "jar", testRuntimeClasspath)
-  setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8", "jar", testRuntimeClasspath)
-  setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect", "jar", testRuntimeClasspath)
-  setLibraryProperty("kotlin.test.jar.path", "kotlin-test", "jar", testRuntimeClasspath)
+  // Extra property names are used by e.g. JavaCompilerFacade (thru
+  // CodegenTestUtil.prepareJavacOptions) unconditionally
+  setLibraryProperty("kotlin-stdlib", testRuntimeClasspath)
+  setLibraryProperty("kotlin.full.stdlib.path", "kotlin-stdlib-jdk8", testRuntimeClasspath)
+  setLibraryProperty("kotlin.reflect.jar.path", "kotlin-reflect", testRuntimeClasspath)
+  setLibraryProperty("kotlin-test", testRuntimeClasspath)
+  setLibraryProperty("kotlin-script-runtime", testRuntimeClasspath)
   setLibraryProperty(
-    "kotlin.script.runtime.path",
-    "kotlin-script-runtime",
-    "jar",
-    testRuntimeClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.annotations.path",
+    "kotlin.mockJDK.annotations.path",
     "kotlin-annotations-jvm",
-    "jar",
     testRuntimeClasspath,
   )
-  setLibraryProperty("kotlin.js.stdlib.path", "kotlin-stdlib-js", "klib", jsKlibClasspath)
-  setLibraryProperty("kotlin.js.test.path", "kotlin-test-js", "klib", jsKlibClasspath)
-  setLibraryProperty(
-    "kotlin.wasm.stdlib.wasm-js.path",
-    "kotlin-stdlib-wasm-js",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.stdlib.wasm-wasi.path",
-    "kotlin-stdlib-wasm-wasi",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.test.wasm-js.path",
-    "kotlin-test-wasm-js",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.wasm.test.wasm-wasi.path",
-    "kotlin-test-wasm-wasi",
-    "klib",
-    wasmKlibClasspath,
-  )
-  setLibraryProperty(
-    "kotlin.common.stdlib.path",
-    "kotlin-common-stdlib",
-    "jar",
-    testRuntimeClasspath,
-  )
-  setLibraryProperty("kotlin.web.stdlib.path", "kotlin-stdlib-web", "jar", testRuntimeClasspath)
+  setLibraryProperty("kotlin-stdlib-js", jsKlibClasspath)
+  setLibraryProperty("kotlin-test-js", jsKlibClasspath)
+  setLibraryProperty("kotlin-stdlib-wasm-js", wasmKlibClasspath)
+  setLibraryProperty("kotlin-stdlib-wasm-wasi", wasmKlibClasspath)
+  setLibraryProperty("kotlin-test-wasm-js", wasmKlibClasspath)
+  setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
+  setLibraryProperty("kotlin-common-stdlib", testRuntimeClasspath)
+  setLibraryProperty("kotlin-stdlib-web", testRuntimeClasspath)
 
   val d8EnvSpec = project.the<D8EnvSpec>()
   dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
@@ -477,12 +435,17 @@ tasks.withType<Test> {
 }
 
 fun Test.setLibraryProperty(
-  propName: String,
+  extraPropName: String,
   jarName: String,
-  extension: String,
   configuration: Configuration,
 ) {
-  val regex = "$jarName-\\d.*$extension".toRegex()
+  val regex = """$jarName-\d.*""".toRegex()
   val path = configuration.files.find { regex.matches(it.name) }?.absolutePath ?: return
-  systemProperty(propName, path)
+  systemProperty("org.jetbrains.kotlin.test.$jarName", path)
+  if (extraPropName.isNotEmpty()) systemProperty(extraPropName, path)
 }
+
+fun Test.setLibraryProperty(
+  jarName: String,
+  configuration: Configuration,
+) = setLibraryProperty("", jarName, configuration)

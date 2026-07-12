@@ -1,5 +1,4 @@
-/OverridesAreTypeChecked.kt:38:11: error: 
-[Metro/IncompatibleReturnTypes] 2 incompatible return type clashes found
+/OverridesAreTypeChecked.kt:38:11: error: [Metro/IncompatibleReturnTypes] 2 incompatible return type clashes found
 
   Incompatible return types: Int vs String
       OverridesAreTypeChecked.kt:30:3

@@ -1,5 +1,4 @@
-/module_main_InternalContributionMissingHint.kt:17:7: error: 
-[Metro/MissingBinding] No binding found for Foo
+/module_main_InternalContributionMissingHint.kt:17:7: error: [Metro/MissingBinding] No binding found for Foo
 
   trace (in AppGraph):
       Foo is requested at AppGraph.foo

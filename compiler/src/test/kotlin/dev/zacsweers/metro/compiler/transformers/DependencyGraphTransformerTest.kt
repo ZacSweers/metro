@@ -2086,11 +2086,11 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         e: ExampleGraph.kt:8:11
         [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
-              <unknown location, likely a separate compilation>
+              No source location available - declared at other.ExampleClass
                 other.ExampleClass contributes a binding of OtherClass
                 ~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
-              <unknown location, likely a separate compilation>
+              No source location available - declared at other.ExampleClass2
                 other.ExampleClass2 contributes a binding of OtherClass
                 ~~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 
@@ -2148,7 +2148,7 @@ class DependencyGraphTransformerTest : MetroCompilerTest() {
         """
         e: ExampleGraph.kt:8:11 [Metro/DuplicateBinding] Multiple bindings found for OtherClass
 
-              <unknown location, likely a separate compilation>
+              No source location available - declared at other.ExampleClass
                 other.ExampleClass contributes a binding of OtherClass
                 ~~~~~~~~~~~~~~~~~~                          ~~~~~~~~~~
 

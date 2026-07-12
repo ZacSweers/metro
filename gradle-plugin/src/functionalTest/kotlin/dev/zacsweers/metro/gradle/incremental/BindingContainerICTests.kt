@@ -1573,8 +1573,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        Target.kt:6:14
-        [Metro/MissingBinding] No binding found for Set<String>
+        e: Target.kt:6:14 [Metro/MissingBinding] No binding found for Set<String>
 
           test.AppGraph.target -> Target -> Set<String>
 
@@ -1746,8 +1745,7 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
-        MyBindingContainer.kt:8:3
-        [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
+        e: MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
           help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
                 empty

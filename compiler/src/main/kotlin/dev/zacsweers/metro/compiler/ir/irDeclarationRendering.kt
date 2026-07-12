@@ -7,8 +7,13 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.Text
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -25,6 +30,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
@@ -34,6 +40,7 @@ import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyField
 import org.jetbrains.kotlin.ir.util.kotlinFqName
+import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
@@ -43,6 +50,8 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtDeclaration
 
 internal data class DiagnosticMetadata(val fullPath: String, val metadata: List<String>)
+
+internal data class UnknownLocationContext(val description: Text, val notes: List<Note>)
 
 internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata {
   val fullPath =
@@ -106,6 +115,61 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
   }
 
   return DiagnosticMetadata(fullPath, metadata)
+}
+
+/**
+ * Renders useful structured context for a declaration whose source location is unavailable.
+ * Source-less value parameters retain their position in a compact containing-callable shape while
+ * unrelated parameters collapse to `…`.
+ */
+internal fun IrDeclarationWithName.toUnknownLocationContext(
+  typeKey: IrTypeKey? = null,
+  subject: String? = null,
+): UnknownLocationContext {
+  val containingFunction = (this as? IrValueParameter)?.parent as? IrFunction
+  val metadataDeclaration = containingFunction ?: this
+  val diagnosticMetadata =
+    if (metadataDeclaration.parentClassOrNull?.parent is IrClass) {
+      metadataDeclaration.humanReadableDiagnosticMetadata()
+    } else {
+      val fullPath =
+        if (metadataDeclaration is IrDeclarationParent) {
+          metadataDeclaration.kotlinFqName.asString()
+        } else {
+          metadataDeclaration.fqNameWhenAvailable?.asString() ?: metadataDeclaration.name.asString()
+        }
+      DiagnosticMetadata(fullPath, emptyList())
+    }
+  val (fullPath, metadata) = diagnosticMetadata
+  val declarationText =
+    if (this is IrValueParameter && containingFunction != null) {
+      val parameters = containingFunction.nonDispatchParameters
+      val parameterIndex = parameters.indexOf(this)
+      if (parameterIndex >= 0) {
+        buildText {
+          append(fullPath, Style.EMPHASIS)
+          append("(")
+          if (parameterIndex > 0) append("…, ")
+          append(typeKey?.toText() ?: IrTypeKey(type).toText())
+          if (parameterIndex < parameters.lastIndex) append(", …")
+          append(")")
+        }
+      } else {
+        buildText { append(fullPath, Style.EMPHASIS) }
+      }
+    } else {
+      buildText { append(fullPath, Style.EMPHASIS) }
+    }
+
+  return UnknownLocationContext(
+    description =
+      buildText {
+        if (subject != null) append("$subject ")
+        append("declared at ")
+        append(declarationText)
+      },
+    notes = metadata.map { Note.note(it) },
+  )
 }
 
 context(builder: StringBuilder)
@@ -347,9 +411,9 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
 ): LocationDiagnostic {
   val sourceDeclaration = sourceDeclarationForDiagnostic()
 
-  val location =
-    sourceDeclaration.renderSourceLocation(short = shortLocation)
-      ?: parentAsClass.kotlinFqName.asString()
+  val location = sourceDeclaration.renderSourceLocation(short = shortLocation)
+  val unknownLocationContext =
+    if (location == null) sourceDeclaration.toUnknownLocationContext() else null
 
   val description = buildString {
     renderForDiagnostic(
@@ -360,9 +424,11 @@ internal fun IrOverridableDeclaration<*>.renderLocationDiagnostic(
   }
 
   return LocationDiagnostic(
-    location,
-    description,
-    sourceDeclaration.toDiagnosticSpan(shortDisplayPath = shortLocation),
+    location = location ?: LocationDiagnostic.NO_SOURCE_LOCATION,
+    description = description,
+    span = sourceDeclaration.toDiagnosticSpan(shortDisplayPath = shortLocation),
+    locationContext = unknownLocationContext?.description,
+    notes = unknownLocationContext?.notes.orEmpty(),
   )
 }
 
@@ -430,11 +496,11 @@ private fun IrDeclaration.toDiagnosticSpan(
   )
 }
 
-private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDeclaration {
+private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDeclarationWithName {
   val parentClass = parentAsClass
-  if (!parentClass.hasAnnotation(Symbols.FqNames.MetroContribution)) return this as IrDeclaration
+  if (!parentClass.hasAnnotation(Symbols.FqNames.MetroContribution)) return this
 
-  val sourceClass = parentClass.parent as? IrClass ?: return this as IrDeclaration
+  val sourceClass = parentClass.parent as? IrClass ?: return this
   return when (this) {
     is IrProperty -> sourceClass.properties.firstOrNull { it.name == name }
     is IrSimpleFunction -> {
@@ -448,7 +514,7 @@ private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDecl
       }
     }
     else -> null
-  } ?: this as IrDeclaration
+  } ?: this
 }
 
 private fun StringBuilder.renderAnnotations(

@@ -1,5 +1,4 @@
-/MissingBindingFunctionType.kt:13:7: error: 
-[Metro/MissingBinding] No binding found for String
+/MissingBindingFunctionType.kt:13:7: error: [Metro/MissingBinding] No binding found for String
 
   trace (in AppGraph):
       String is requested at AppGraph.initializer

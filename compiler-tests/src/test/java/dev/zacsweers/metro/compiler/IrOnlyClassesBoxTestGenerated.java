@@ -1071,6 +1071,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ContributedAccessorsCanBeLazy.kt")
+    public void testContributedAccessorsCanBeLazy() {
+      run("ContributedAccessorsCanBeLazy.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesCanBeInject.kt")
     public void testContributesCanBeInject() {
       run("ContributesCanBeInject.kt");

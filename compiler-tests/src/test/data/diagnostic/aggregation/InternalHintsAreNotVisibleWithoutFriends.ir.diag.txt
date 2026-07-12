@@ -1,5 +1,4 @@
-/module_main_InternalHintsAreNotVisibleWithoutFriends.kt:17:7: error: 
-[Metro/MissingBinding] No binding found for ContributedInterface
+/module_main_InternalHintsAreNotVisibleWithoutFriends.kt:17:7: error: [Metro/MissingBinding] No binding found for ContributedInterface
 
   trace (in AppGraph):
       ContributedInterface is requested at AppGraph.contributed
