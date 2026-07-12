@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783824769624,
+  "lastUpdate": 1783897566746,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -18760,6 +18760,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22906739206986043,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.32%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b7589a13~1",
+          "message": "[before] Update ksp monorepo to v2.3.10 (#2520)",
+          "timestamp": "2026-07-12T22:27:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b7589a137ff7e78413b75023f04456b19fe67e22"
+        },
+        "date": 1783897566746,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21668475428529846,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b7589a137ff7e78413b75023f04456b19fe67e22",
+          "message": "[after] Update ksp monorepo to v2.3.10 (#2520)",
+          "timestamp": "2026-07-12T22:27:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b7589a137ff7e78413b75023f04456b19fe67e22"
+        },
+        "date": 1783897566747,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22387593486928026,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +3.32%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783824769765,
+  "lastUpdate": 1783897567093,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18760,6 +18760,62 @@ window.BENCHMARK_DATA = {
             "value": 21415.074,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.15%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b7589a13~1",
+          "message": "[before] Update ksp monorepo to v2.3.10 (#2520)",
+          "timestamp": "2026-07-12T22:27:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b7589a137ff7e78413b75023f04456b19fe67e22"
+        },
+        "date": 1783897567093,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20722.266,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "renovate[bot]",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b7589a137ff7e78413b75023f04456b19fe67e22",
+          "message": "[after] Update ksp monorepo to v2.3.10 (#2520)",
+          "timestamp": "2026-07-12T22:27:53Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b7589a137ff7e78413b75023f04456b19fe67e22"
+        },
+        "date": 1783897567094,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20984.144,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.26%"
           }
         ]
       }
