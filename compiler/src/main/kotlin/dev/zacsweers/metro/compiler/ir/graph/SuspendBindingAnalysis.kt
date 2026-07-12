@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /**
- * Computes which bindings transitively require suspend resolution.
+ * Computes which bindings transitively require suspend evaluation.
  *
  * Bindings can be added incrementally because child graphs query their parent before the parent is
  * sealed. Whenever a query discovers new bindings, the fixpoint is recomputed over everything
@@ -40,7 +40,7 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
       if (binding is IrBinding.AssistedFactory) continue
 
       for (dependency in binding.dependencies) {
-        if (!dependency.stopsSuspendPropagation) {
+        if (!stopsSuspendPropagation(dependency)) {
           pending += dependency.typeKey
         }
       }
@@ -69,7 +69,7 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
         if (binding.typeKey in result || binding is IrBinding.AssistedFactory) continue
         if (
           binding.dependencies.any { dependency ->
-            !dependency.stopsSuspendPropagation && dependency.typeKey in result
+            !stopsSuspendPropagation(dependency) && dependency.typeKey in result
           }
         ) {
           result += binding.typeKey
@@ -79,12 +79,19 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
     }
     return result
   }
+
+  private fun stopsSuspendPropagation(dependency: IrContextualTypeKey): Boolean {
+    if (dependency.stopsSuspendPropagation) return true
+    val dependencyBinding =
+      discoveredBindings[dependency.typeKey] ?: findBinding(dependency.typeKey)
+    return (dependencyBinding as? IrBinding.GraphDependency)?.canPassThrough(dependency) == true
+  }
 }
 
 /**
- * Whether this request resolves without making its consumer suspend. Ordinary Provider/Lazy
- * wrappers are excluded because they are invalid over suspend bindings and diagnosed after
- * propagation.
+ * Whether this request evaluates without making its consumer suspend. The innermost scalar wrapper
+ * controls this: outer wrappers only defer creation of the inner wrapper, while a suspend-capable
+ * wrapper nearest the bound value defers the value's evaluation.
  */
-private val IrContextualTypeKey.stopsSuspendPropagation: Boolean
-  get() = isWrappedInSuspendProvider || isWrappedInSuspendLazy || isMapSuspendProvider
+internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
+  get() = wrappedType.usesSuspendProvider() == true || isMapSuspendProvider
