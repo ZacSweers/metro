@@ -53,17 +53,12 @@ internal interface BaseContextualTypeKey<
     get() = wrappedType.findMapValueType() is WrappedType.SuspendProvider
 
   /**
-   * Whether this contextual type defers suspend resolution at access time, meaning an accessor
-   * returning it does not itself need to be `suspend`. Provider/Lazy wrappings defer; an improper
-   * Provider/Lazy wrapping a suspend leaf is reported separately.
+   * Whether this contextual type defers suspend evaluation at access time, meaning an accessor
+   * returning it does not itself need to be `suspend`. The wrapper nearest the bound value must be
+   * suspend-capable; outer scalar wrappers only defer creation of that inner wrapper.
    */
   val defersSuspendAtAccess: Boolean
-    get() =
-      isWrappedInSuspendProvider ||
-        isWrappedInSuspendLazy ||
-        isMapSuspendProvider ||
-        isWrappedInProvider ||
-        isWrappedInLazy
+    get() = wrappedType.usesSuspendProvider() == true || isMapSuspendProvider
 
   val isMapProviderLazy: Boolean
     get() {
