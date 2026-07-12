@@ -168,6 +168,17 @@ val metroRuntimeClasspath =
     resolutionStrategy.useGlobalDependencySubstitutionRules = false
   }
 
+val kotlinStdlib = configurations.dependencyScope("kotlinStdlib")
+
+val kotlinStdlibClasspath =
+  configurations.resolvable("kotlinStdlibClasspath") {
+    extendsFrom(kotlinStdlib)
+    isTransitive = false
+  }
+
+val compilerTestData = layout.projectDirectory.dir("../compiler-tests/src/test/data")
+val compilerParityTestData = compilerTestData.dir("diagnostic/ideaParity")
+
 // A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
 // used by tests covering resolution from binary dependencies.
 val libFixture =
@@ -215,6 +226,7 @@ dependencies {
   }
 
   add(metroRuntime.name, "dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  add(kotlinStdlib.name, libs.kotlin.stdlib)
   add(
     libFixture.get().compileOnlyConfigurationName,
     "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
@@ -287,12 +299,16 @@ tasks.withType<VerifyPluginTask>().configureEach {
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)
+  dependsOn(kotlinStdlibClasspath)
   dependsOn(libFixtureJar)
+  inputs.dir(compilerParityTestData).withPathSensitivity(PathSensitivity.RELATIVE)
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
         "-DmetroRuntime.classpath=${metroRuntimeClasspath.get().asPath}",
+        "-DkotlinStdlib.classpath=${kotlinStdlibClasspath.get().asPath}",
         "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
+        "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
       )
     }
   )

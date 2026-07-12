@@ -38,6 +38,15 @@ internal fun Module.addMetroRuntimeLibrary() {
   )
 }
 
+internal fun Module.addKotlinStdlibLibrary() {
+  ModuleRootModificationUtil.addModuleLibrary(
+    this,
+    "kotlin-stdlib",
+    listOf(VfsUtil.getUrlForLibraryRoot(kotlinStdlibJar().toFile())),
+    emptyList(),
+  )
+}
+
 private fun metroRuntimeJar(): Path {
   return System.getProperty("metroRuntime.classpath")
     ?.split(File.pathSeparator)
@@ -46,6 +55,11 @@ private fun metroRuntimeJar(): Path {
       val fileName = it.fileName.toString()
       fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
     } ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
+}
+
+private fun kotlinStdlibJar(): Path {
+  return System.getProperty("kotlinStdlib.classpath")?.let(Path::of)
+    ?: error("Unable to get a valid path from 'kotlinStdlib.classpath' property")
 }
 
 private const val LIB_FIXTURE_NAME = "metro-lib-fixture"
