@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.test.directives.FirDiagnosticsDirectives.DISABLE_GEN
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.FULL_JDK
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives.JVM_TARGET
 import org.jetbrains.kotlin.test.runners.AbstractPhasedJvmDiagnosticLightTreeTest
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 /**
@@ -32,7 +33,7 @@ import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
  */
 open class AbstractReportsTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-    return ClasspathBasedStandardLibrariesPathProvider
+    return EnvironmentBasedStandardLibrariesPathProvider
   }
 
   override fun configure(builder: TestConfigurationBuilder) {

@@ -1,5 +1,4 @@
-/MissingMemberInjectionShouldFailBinding1.kt:31:26: error: 
-[Metro/MissingBinding] No binding found for Implementation
+/MissingMemberInjectionShouldFailBinding1.kt:31:26: error: [Metro/MissingBinding] No binding found for Implementation
 
   SubscopeGraph.base -> Base -> Implementation
 

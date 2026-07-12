@@ -1,5 +1,4 @@
-/GraphPrivateSourceNotLeakedViaBindsAlias.kt:22:7: error: 
-[Metro/MissingBinding] No binding found for String
+/GraphPrivateSourceNotLeakedViaBindsAlias.kt:22:7: error: [Metro/MissingBinding] No binding found for String
 
   trace (in ParentGraph.Impl.ChildGraphImpl):
       String is requested at ChildGraph.directString

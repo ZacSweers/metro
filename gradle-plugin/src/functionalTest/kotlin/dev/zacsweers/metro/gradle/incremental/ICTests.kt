@@ -9,6 +9,7 @@ import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.autonomousapps.kit.gradle.Dependency
 import com.autonomousapps.kit.gradle.Dependency.Companion.implementation
+import com.autonomousapps.kit.gradle.Plugin
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.KmpTarget
@@ -18,6 +19,7 @@ import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
+import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -141,8 +143,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
-        FeatureScreen.kt:7:18
-        [Metro/MissingBinding] No binding found for Dependency
+        e: FeatureScreen.kt:7:18 [Metro/MissingBinding] No binding found for Dependency
 
           FeatureScreen -> Dependency
 
@@ -1112,8 +1113,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:8:11
-        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
+        e: LoggedInScope.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
             '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes
 
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
@@ -1401,8 +1401,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:9:7
-        [Metro/MissingBinding] No binding found for Foo
+        e: LoggedInScope.kt:9:7 [Metro/MissingBinding] No binding found for Foo
 
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
               Foo is requested at test.LoggedInGraph.childDependency
@@ -2920,6 +2919,177 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     ifJvmTarget { assertThat(project.invokeMain<Int>()).isEqualTo(1) }
+  }
+
+  /**
+   * Regression test for https://github.com/ZacSweers/metro/issues/2531. With the Compose compiler
+   * plugin applied, IC reports the assisted target and generated factory as changed classes rather
+   * than changed members. Metro must record a class lookup to invalidate the consuming graph.
+   */
+  @Test
+  fun `removing assisted inject dependency updates graph extension with Compose plugin in IC`() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        private val composePlugin =
+          Plugin("org.jetbrains.kotlin.plugin.compose", getTestCompilerVersion())
+        private val composeRuntimeDependency =
+          """
+          dependencies {
+            implementation("org.jetbrains.compose.runtime:runtime:1.10.3")
+          }
+          """
+            .trimIndent()
+
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(graphAndMain)
+            plugins(GradlePlugins.Kotlin.jvm(), composePlugin, GradlePlugins.metro)
+            dependencies(implementation(":feature"))
+            buildScript { withKotlin(composeRuntimeDependency) }
+          }
+          subproject("feature") {
+            sources(featureTypes, assistedViewModel)
+            plugins(GradlePlugins.Kotlin.jvm(), composePlugin, GradlePlugins.metro)
+            buildScript { withKotlin(composeRuntimeDependency) }
+          }
+        }
+
+        private val featureTypes =
+          source(
+            """
+            abstract class ActivityRetainedScope private constructor()
+
+            interface FirstRepository {
+              val name: String
+            }
+
+            interface SecondRepository {
+              val name: String
+            }
+
+            @Inject
+            class DefaultFirstRepository : FirstRepository {
+              override val name = "first"
+            }
+
+            @Inject
+            class DefaultSecondRepository : SecondRepository {
+              override val name = "second"
+            }
+
+            @BindingContainer
+            @ContributesTo(AppScope::class)
+            interface RepositoryModule {
+              @Binds fun bindFirst(impl: DefaultFirstRepository): FirstRepository
+              @Binds fun bindSecond(impl: DefaultSecondRepository): SecondRepository
+            }
+
+            interface ManualFactory {
+              fun create(screenName: String): Any
+            }
+
+            @MapKey(implicitClassKey = true)
+            annotation class ManualFactoryKey(
+              val value: kotlin.reflect.KClass<out ManualFactory> = Nothing::class
+            )
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "FeatureTypes",
+          )
+
+        val assistedViewModel =
+          source(
+            """
+            @AssistedInject
+            class SampleViewModel(
+              @param:Assisted private val screenName: String,
+              firstRepository: FirstRepository,
+              secondRepository: SecondRepository,
+            ) {
+              private val message =
+                "${'$'}screenName:${'$'}{firstRepository.name}:${'$'}{secondRepository.name}"
+
+              override fun toString(): String = message
+
+              @AssistedFactory
+              @ManualFactoryKey
+              @ContributesIntoMap(ActivityRetainedScope::class)
+              interface Factory : ManualFactory {
+                override fun create(screenName: String): SampleViewModel
+              }
+            }
+            """
+              .trimIndent()
+          )
+
+        private val graphAndMain =
+          source(
+            """
+            @DependencyGraph(AppScope::class)
+            interface AppGraph
+
+            @GraphExtension(ActivityRetainedScope::class)
+            interface ActivityRetainedGraph {
+              val factories: Map<kotlin.reflect.KClass<out ManualFactory>, () -> ManualFactory>
+
+              @ContributesTo(AppScope::class)
+              @GraphExtension.Factory
+              fun interface Factory {
+                fun createActivityRetainedGraph(): ActivityRetainedGraph
+              }
+            }
+
+            fun main(): String {
+              val appGraph = createGraph<AppGraph>()
+              val retainedGraph =
+                appGraph
+                  .asContribution<ActivityRetainedGraph.Factory>()
+                  .createActivityRetainedGraph()
+              return retainedGraph.factories.values.single().invoke().create("home").toString()
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val featureProject = project.subprojects.first { it.name == "feature" }
+
+    val firstBuildResult = build(project.rootDir, ":compileKotlin")
+    assertThat(firstBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("home:first:second")
+
+    featureProject.modify(
+      project.rootDir,
+      fixture.assistedViewModel,
+      """
+      @AssistedInject
+      class SampleViewModel(
+        @param:Assisted private val screenName: String,
+        firstRepository: FirstRepository,
+      ) {
+        private val message = "${'$'}screenName:${'$'}{firstRepository.name}"
+
+        override fun toString(): String = message
+
+        @AssistedFactory
+        @ManualFactoryKey
+        @ContributesIntoMap(ActivityRetainedScope::class)
+        interface Factory : ManualFactory {
+          override fun create(screenName: String): SampleViewModel
+        }
+      }
+      """
+        .trimIndent(),
+      sourceSet = "main",
+    )
+
+    val secondBuildResult = build(project.rootDir, ":compileKotlin")
+    assertThat(secondBuildResult.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>(target = null)).isEqualTo("home:first")
   }
 
   /**

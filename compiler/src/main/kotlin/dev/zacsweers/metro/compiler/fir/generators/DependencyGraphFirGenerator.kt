@@ -44,6 +44,7 @@ import org.jetbrains.kotlin.fir.plugin.createCompanionObject
 import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -223,7 +224,10 @@ internal class DependencyGraphFirGenerator(session: FirSession, compatContext: C
         // Generate a companion for us to generate these functions on to
         names += SpecialNames.DEFAULT_NAME_FOR_COMPANION_OBJECT
       }
-    } else if (classSymbol.isGraphFactory(session)) {
+    } else if (
+      classSymbol.isGraphFactory(session) &&
+        classSymbol.getContainingClassSymbol()?.isDependencyGraph(session) == true
+    ) {
       log("Found graph factory ${classSymbol.classId}")
       if (!session.metroFirBuiltIns.options.generateClassesInIr) {
         val classId = classSymbol.classId.createNestedClassId(Symbols.Names.Impl)

@@ -1,5 +1,4 @@
-/SuspiciousUnusedMultibindingInChildScope.kt:8:11: warning: 
-[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<Base> is unused but has 2 source
+/SuspiciousUnusedMultibindingInChildScope.kt:8:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<Base> is unused but has 2 source
     binding(s)
 
       SuspiciousUnusedMultibindingInChildScope.kt:14:1

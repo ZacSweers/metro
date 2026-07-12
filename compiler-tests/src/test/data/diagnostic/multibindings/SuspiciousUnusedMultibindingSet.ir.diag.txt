@@ -1,5 +1,4 @@
-/SuspiciousUnusedMultibindingSet.kt:12:11: warning: 
-[Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<BaseViewModel> is unused but has 4
+/SuspiciousUnusedMultibindingSet.kt:12:11: warning: [Metro/SuspiciousUnusedMultibinding] Synthetic multibinding Set<BaseViewModel> is unused but has 4
     source binding(s)
 
       SuspiciousUnusedMultibindingSet.kt:20:1

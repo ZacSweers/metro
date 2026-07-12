@@ -1,5 +1,4 @@
-/GraphPrivateBindingNotVisibleToChild.kt:15:7: error: 
-[Metro/MissingBinding] No binding found for String
+/GraphPrivateBindingNotVisibleToChild.kt:15:7: error: [Metro/MissingBinding] No binding found for String
 
   trace (in ParentGraph.Impl.ChildGraphImpl):
       String is requested at ChildGraph.text

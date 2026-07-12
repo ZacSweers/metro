@@ -263,12 +263,11 @@ internal fun IrMetroContext.render(diagnostic: MetroDiagnostic): String {
 }
 
 /**
- * Pads a rendered diagnostic for console reporting: the leading newline left-aligns the body
- * (instead of trailing kotlinc's `file:line:col: severity:` prefix) and the trailing newline adds
- * breathing room between consecutive diagnostics. Apply exactly once, at the point a rendered
- * message is handed to the diagnostic reporter — never in machine-readable outputs.
+ * Pads a rendered diagnostic for console reporting: the trailing newline adds breathing room
+ * between consecutive diagnostics. Apply exactly once, at the point a rendered message is handed to
+ * the diagnostic reporter — never in machine-readable outputs.
  */
-internal fun String.padForConsole(): String = "\n$this\n"
+internal fun String.padForConsole(): String = "$this\n"
 
 /** See the other [writeDiagnostic] */
 context(context: IrMetroContext)
