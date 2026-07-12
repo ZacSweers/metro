@@ -8,7 +8,7 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -24,8 +24,8 @@ import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 
-internal fun GraphValidationResult.requireCompleted(): GraphValidationResult.Completed {
-  return this as? GraphValidationResult.Completed
+internal fun KaGraphValidationResult.requireCompleted(): KaGraphValidationResult.Completed {
+  return this as? KaGraphValidationResult.Completed
     ?: error("Expected completed validation, got ${javaClass.simpleName}")
 }
 

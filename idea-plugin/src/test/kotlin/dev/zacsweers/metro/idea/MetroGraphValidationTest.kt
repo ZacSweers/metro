@@ -6,7 +6,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -28,7 +28,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
   private fun validate(
     source: String,
     graphName: String = "AppGraph",
-  ): GraphValidationResult.Completed {
+  ): KaGraphValidationResult.Completed {
     val file = myFixture.configureMetroFile(source)
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single { it.name == graphName }
@@ -54,8 +54,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         throw failure
       }
 
-    assertTrue(result is GraphValidationResult.InternalError)
-    result as GraphValidationResult.InternalError
+    assertTrue(result is KaGraphValidationResult.InternalError)
+    result as KaGraphValidationResult.InternalError
     assertSame(context, result.context)
     assertSame(failure, result.cause)
     assertSame(failure, reported)

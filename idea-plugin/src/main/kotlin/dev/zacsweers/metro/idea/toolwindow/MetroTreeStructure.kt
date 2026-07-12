@@ -15,8 +15,8 @@ import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.SimpleTextAttributes
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.idea.MetroIcons
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -123,7 +123,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val identity: Any = multibindingId to contributions.map { it.typeKey }
   }
 
-  class Validation(parent: MetroTreeNode, val result: GraphValidationResult, stale: Boolean) :
+  class Validation(parent: MetroTreeNode, val result: KaGraphValidationResult, stale: Boolean) :
     MetroTreeNode(parent) {
     override val text: String = "Validation"
     override val grayText: String = buildString {
@@ -132,13 +132,13 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     }
     override val icon: Icon =
       when (result) {
-        is GraphValidationResult.Completed ->
+        is KaGraphValidationResult.Completed ->
           if (result.diagnostics.isEmpty()) {
             AllIcons.General.InspectionsOK
           } else {
             AllIcons.General.Error
           }
-        is GraphValidationResult.InternalError -> AllIcons.General.Error
+        is KaGraphValidationResult.InternalError -> AllIcons.General.Error
       }
     override val identity: Any = Unit
   }
@@ -183,15 +183,15 @@ private fun KaAnnotationSnapshot.renderAbbreviated(): String {
   return render(short = false).replaceFirst("@${classId.asFqNameString()}", abbreviatedPrefix)
 }
 
-private fun validationSummary(result: GraphValidationResult): String {
+private fun validationSummary(result: KaGraphValidationResult): String {
   return when (result) {
-    is GraphValidationResult.Completed ->
+    is KaGraphValidationResult.Completed ->
       when (val count = result.diagnostics.size) {
         0 -> "no problems found"
         1 -> "1 problem"
         else -> "$count problems"
       }
-    is GraphValidationResult.InternalError -> "internal Metro plugin error"
+    is KaGraphValidationResult.InternalError -> "internal Metro plugin error"
   }
 }
 
@@ -391,14 +391,14 @@ internal class MetroTreeStructure(
     // Only meaningful once a validation ran: explicitly authored bindings nothing requested.
     // Usage unions this graph's seal with any cached extension seals, since a binding declared
     // here is often consumed only by a child graph.
-    val validated = cached?.result as? GraphValidationResult.Completed
+    val validated = cached?.result as? KaGraphValidationResult.Completed
     if (validated != null) {
       val usedKeys = HashSet<KaTypeKey>()
       // Re-keyed multibinding elements are copies of their index entries, so match by pointer
       val usedPointers =
         Collections.newSetFromMap(IdentityHashMap<SmartPsiElementPointer<*>, Boolean>())
 
-      fun collectUsage(result: GraphValidationResult.Completed) {
+      fun collectUsage(result: KaGraphValidationResult.Completed) {
         result.bindings.forEach { key, binding ->
           usedKeys += key
           usedPointers += binding.pointer
@@ -413,7 +413,7 @@ internal class MetroTreeStructure(
             ?.let { validationService.cachedResult(it, extension) }
             ?.result
             ?.let { result ->
-              if (result is GraphValidationResult.Completed) collectUsage(result)
+              if (result is KaGraphValidationResult.Completed) collectUsage(result)
             }
           visitExtensions(extension)
         }
@@ -461,12 +461,12 @@ internal class MetroTreeStructure(
 
   private fun validationChildren(node: MetroTreeNode.Validation): List<MetroTreeNode> {
     val result = node.result
-    if (result is GraphValidationResult.InternalError) {
+    if (result is KaGraphValidationResult.InternalError) {
       return listOf(
         MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
       )
     }
-    result as GraphValidationResult.Completed
+    result as KaGraphValidationResult.Completed
 
     val children = mutableListOf<MetroTreeNode>()
     val topology = result.topology

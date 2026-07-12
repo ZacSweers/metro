@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -208,7 +208,7 @@ internal class CompilerContractReader(
 internal fun ValidationContract.Companion.fromIdea(
   context: GraphContext,
   index: BindingIndex,
-  result: GraphValidationResult.Completed,
+  result: KaGraphValidationResult.Completed,
 ): ValidationContract {
   val rawBindings = mutableListOf<RawIdeaBinding>()
   result.bindings.forEach { key, binding -> rawBindings += RawIdeaBinding(key, binding) }

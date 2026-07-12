@@ -13,11 +13,8 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
-import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
-import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
-import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
@@ -26,7 +23,6 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
-import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -34,48 +30,6 @@ import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import org.jetbrains.kotlin.name.StandardClassIds
-
-/** A structured diagnostic from a graph seal, with navigable stack entries. */
-internal class KaGraphDiagnostic(
-  val diagnostic: MetroDiagnostic,
-  val stack: List<KaBindingStack.Entry>,
-  /** The bindings this diagnostic is about, such as the sources of a duplicate. */
-  val related: List<KaBinding> = emptyList(),
-) {
-  val id: MetroDiagnosticId
-    get() = diagnostic.id
-
-  val severity: MetroSeverity
-    get() = diagnostic.severity
-
-  /** Renders the full diagnostic with the compiler's plain console renderer. */
-  fun render(): String = PLAIN_RENDERER.render(diagnostic)
-
-  private companion object {
-    private val PLAIN_RENDERER = DiagnosticRenderer(RenderProfile.PLAIN)
-  }
-}
-
-/** The outcome of attempting to seal one graph. */
-internal sealed interface GraphValidationResult {
-  val context: GraphContext
-
-  val graph: KaGraphNode
-    get() = context.graph
-
-  /** Validation produced a normal Metro result, including any diagnostics it found. */
-  class Completed(
-    override val context: GraphContext,
-    val diagnostics: List<KaGraphDiagnostic>,
-    /** Null when a fatal Metro diagnostic aborted the seal before sorting. */
-    val topology: GraphTopology<KaTypeKey>?,
-    val bindings: ScatterMap<KaTypeKey, KaBinding>,
-  ) : GraphValidationResult
-
-  /** Validation stopped because the IDE plugin itself failed unexpectedly. */
-  class InternalError(override val context: GraphContext, val cause: Throwable) :
-    GraphValidationResult
-}
 
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
@@ -85,7 +39,7 @@ internal sealed interface GraphValidationResult {
  */
 internal class KaBindingGraph(
   private val index: BindingIndex,
-  private val queryContext: GraphQueryContext,
+  queryContext: GraphQueryContext,
   private val options: MetroOptions,
 ) :
   // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
@@ -136,7 +90,7 @@ internal class KaBindingGraph(
       missingBindingHints = ::missingBindingHints,
     )
 
-  fun seal(): GraphValidationResult.Completed {
+  fun seal(): KaGraphValidationResult.Completed {
     val setupStack = KaBindingStack(graph)
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     for (extension in index.extensionsOf(graph)) {
@@ -179,7 +133,7 @@ internal class KaBindingGraph(
 
     // The seal's ScatterMap is handed off directly. The graph adapter is discarded after seal,
     // so nothing else can mutate it.
-    return GraphValidationResult.Completed(
+    return KaGraphValidationResult.Completed(
       context,
       diagnostics.toList(),
       topology,

@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** A retained validation result plus whether the index changed since it was produced. */
-internal class CachedValidation(val result: GraphValidationResult, val stale: Boolean)
+internal class CachedValidation(val result: KaGraphValidationResult, val stale: Boolean)
 
 /**
  * On-demand graph validation. Seals one graph context at a time via [KaBindingGraph]. Results are
@@ -44,7 +44,7 @@ internal class MetroGraphValidationService(
   private val scope: CoroutineScope,
 ) {
 
-  private class CachedEntry(val result: GraphValidationResult, val index: BindingIndex)
+  private class CachedEntry(val result: KaGraphValidationResult, val index: BindingIndex)
 
   private class ValidationInput(
     val graphElement: PsiElement,
@@ -94,11 +94,11 @@ internal class MetroGraphValidationService(
    * Validates one concrete [context], reusing the cached result only when the index is unchanged.
    * Must be called under a read action.
    */
-  fun validate(element: PsiElement, context: GraphContext): GraphValidationResult {
+  fun validate(element: PsiElement, context: GraphContext): KaGraphValidationResult {
     return validate(validationInput(element, context))
   }
 
-  private fun validate(input: ValidationInput): GraphValidationResult {
+  private fun validate(input: ValidationInput): KaGraphValidationResult {
     val index = input.index
     val context = input.context
     val key = cacheKey(context)
@@ -127,7 +127,10 @@ internal class MetroGraphValidationService(
    * parents, mirroring the compiler's traversal, and the returned results keep that order with
    * [graph]'s own result last. Must be called under a read action.
    */
-  fun validateWithExtensions(element: PsiElement, graph: KaGraphNode): List<GraphValidationResult> {
+  fun validateWithExtensions(
+    element: PsiElement,
+    graph: KaGraphNode,
+  ): List<KaGraphValidationResult> {
     val graphElement = graph.pointer.element ?: element
     val index = project.service<MetroResolutionService>().index(graphElement)
     val currentGraph = index.graphFor(graph) ?: graph
@@ -138,15 +141,15 @@ internal class MetroGraphValidationService(
   fun validateWithExtensions(
     element: PsiElement,
     context: GraphContext,
-  ): List<GraphValidationResult> {
+  ): List<KaGraphValidationResult> {
     return validateWithExtensions(element, listOf(context))
   }
 
   private fun validateWithExtensions(
     fallbackElement: PsiElement,
     roots: List<GraphContext>,
-  ): List<GraphValidationResult> {
-    val results = mutableListOf<GraphValidationResult>()
+  ): List<KaGraphValidationResult> {
+    val results = mutableListOf<KaGraphValidationResult>()
     val visited = mutableSetOf<GraphPath>()
 
     fun visit(context: GraphContext) {
@@ -176,7 +179,7 @@ internal class MetroGraphValidationService(
   fun validateAsync(
     element: PsiElement,
     context: GraphContext,
-    onDone: Consumer<GraphValidationResult>,
+    onDone: Consumer<KaGraphValidationResult>,
   ) {
     launchCoalesced(context.path) {
       val result =
@@ -191,7 +194,7 @@ internal class MetroGraphValidationService(
   fun validateWithExtensionsAsync(
     element: PsiElement,
     graph: KaGraphNode,
-    onDone: Consumer<List<GraphValidationResult>>,
+    onDone: Consumer<List<KaGraphValidationResult>>,
   ) {
     launchCoalesced(graph) {
       val results =
@@ -236,8 +239,8 @@ internal fun runGraphValidation(
     logger<MetroGraphValidationService>()
       .error("Metro graph validation failed for $graphName", cause)
   },
-  validate: () -> GraphValidationResult.Completed,
-): GraphValidationResult {
+  validate: () -> KaGraphValidationResult.Completed,
+): KaGraphValidationResult {
   return try {
     validate()
   } catch (e: ProcessCanceledException) {
@@ -246,6 +249,6 @@ internal fun runGraphValidation(
     throw e
   } catch (e: Exception) {
     onInternalError(e)
-    GraphValidationResult.InternalError(context, e)
+    KaGraphValidationResult.InternalError(context, e)
   }
 }

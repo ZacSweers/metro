@@ -12,7 +12,7 @@ import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
@@ -158,7 +158,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val structure = structure()
     val root = structure.rootElement as MetroTreeNode
     val graphNode = structure.children(root).single() as MetroTreeNode.Graph
-    val result = GraphValidationResult.InternalError(graphNode.context, IllegalStateException())
+    val result = KaGraphValidationResult.InternalError(graphNode.context, IllegalStateException())
     val validation = MetroTreeNode.Validation(graphNode, result, stale = false)
 
     assertEquals("internal Metro plugin error", validation.grayText)

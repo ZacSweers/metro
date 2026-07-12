@@ -29,7 +29,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.awt.RelativePoint
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroSettings
-import dev.zacsweers.metro.idea.graph.GraphValidationResult
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -375,9 +375,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val cached = contexts.mapNotNull { context ->
       declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, context)
     }
-    val internalErrorCount = cached.count { it.result is GraphValidationResult.InternalError }
+    val internalErrorCount = cached.count { it.result is KaGraphValidationResult.InternalError }
     val problemCount = cached.sumOf {
-      (it.result as? GraphValidationResult.Completed)?.diagnostics?.size ?: 0
+      (it.result as? KaGraphValidationResult.Completed)?.diagnostics?.size ?: 0
     }
     val allContextsValidated = cached.size == contexts.size
     val icon =
