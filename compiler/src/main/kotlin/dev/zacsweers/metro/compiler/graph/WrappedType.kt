@@ -222,6 +222,67 @@ internal sealed interface WrappedType<T : Any> {
     }
   }
 
+  /** Returns the type directly inside this scalar wrapper, or null at a scalar boundary. */
+  fun immediateInnerType(): WrappedType<T>? {
+    return when (this) {
+      is Canonical,
+      is Map -> null
+      is Provider -> innerType
+      is SuspendProvider -> innerType
+      is Lazy -> innerType
+      is SuspendLazy -> innerType
+    }
+  }
+
+  /** Returns the canonical type or Map at the end of this scalar wrapper stack. */
+  fun scalarLeaf(): WrappedType<T> {
+    return immediateInnerType()?.scalarLeaf() ?: this
+  }
+
+  /** Returns true if this type is a canonical type or Map rather than a scalar wrapper. */
+  fun isScalarLeaf(): Boolean = immediateInnerType() == null
+
+  /** Whether this type uses SuspendProvider storage, or null if it has no scalar wrapper. */
+  fun usesSuspendProvider(): Boolean? {
+    return when (this) {
+      is Canonical,
+      is Map -> null
+      is Provider -> innerType.usesSuspendProvider() ?: false
+      is Lazy -> innerType.usesSuspendProvider() ?: false
+      is SuspendProvider -> innerType.usesSuspendProvider() ?: true
+      is SuspendLazy -> innerType.usesSuspendProvider() ?: true
+    }
+  }
+
+  /** Whether this type uses SuspendProvider storage, falling back when it has no scalar wrapper. */
+  fun usesSuspendProvider(default: Boolean): Boolean {
+    return usesSuspendProvider() ?: default
+  }
+
+  /** Returns true if any wrapper layer, including a Map value, is a SuspendLazy. */
+  fun containsSuspendLazy(): Boolean {
+    return when (this) {
+      is Canonical -> false
+      is Provider -> innerType.containsSuspendLazy()
+      is SuspendProvider -> innerType.containsSuspendLazy()
+      is Lazy -> innerType.containsSuspendLazy()
+      is SuspendLazy -> true
+      is Map -> valueType.containsSuspendLazy()
+    }
+  }
+
+  /** Whether unwrapping this scalar stack to its canonical value crosses a suspend wrapper. */
+  fun requiresSuspendToUnwrap(): Boolean {
+    return when (this) {
+      is Canonical,
+      is Map -> false
+      is Provider -> innerType.requiresSuspendToUnwrap()
+      is Lazy -> innerType.requiresSuspendToUnwrap()
+      is SuspendProvider,
+      is SuspendLazy -> true
+    }
+  }
+
   fun render(renderType: (T) -> String): String =
     when (this) {
       is Canonical -> renderType(type)
