@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.Coordinates
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -16,31 +16,47 @@ repositories {
   intellijPlatform { defaultRepositories() }
 }
 
+val intellijVersion =
+  providers.fileContents(layout.projectDirectory.file("ide-versions.txt")).asText.map { text ->
+    text
+      .lineSequence()
+      .firstOrNull { it.startsWith("IU") }
+      ?.removePrefix("IU:")
+      // Strip build type or inline comment, keep just the version/build number
+      ?.substringBefore(":")
+      ?.substringBefore("#")
+      ?.trim()
+      // Just cover for CI where we may run with only one IDE in the file
+      ?: "2025.3.2"
+  }
+
+val starterVersion = intellijVersion.map { version ->
+  val is253 = version.startsWith("2025.3") || version.startsWith("253.")
+  if (is253) "253.30387.90" else "261.23567.138"
+}
+
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate(
       // Source this from the first IU version in ide-versions.txt.
       // Stable entries use marketing version (e.g., 2025.3.2), resolved from releases repo.
       // Prerelease entries use build number (e.g., 261.22158.182), resolved from snapshots repo.
-      providers.fileContents(layout.projectDirectory.file("ide-versions.txt")).asText.map { text ->
-        text
-          .lineSequence()
-          .firstOrNull { it.startsWith("IU") }
-          ?.removePrefix("IU:")
-          // Strip build type or inline comment, keep just the version/build number
-          ?.substringBefore(":")
-          ?.substringBefore("#")
-          ?.trim()
-          // Just cover for CI where we may run with only one IDE in the file
-          ?: "2025.3.2"
-      }
+      intellijVersion
     )
     bundledPlugin("org.jetbrains.kotlin")
-    // Pin the Starter framework rather than tracking the IDE-under-test's version. The 262+
-    // (2026.2) Starter deleted IdeProductProvider in favor of a ServiceLoader-based product
-    // registry and is compiled with JVM target 25, so per-IDE resolution would require
-    // version-specific test sources. The Starter client is tolerant of driving newer/older IDEs.
-    testFramework(TestFrameworkType.Starter, "261.23567.138")
+    // Starter embeds platform classes, so keep 253 hosts on Starter 253. Cap newer hosts at 261
+    // because Starter 262 deleted IdeProductProvider and is compiled with JVM target 25. Declare
+    // the pre-2.18 dependency set because its new 262 product artifacts do not exist at version
+    // 261.
+    listOf(
+        Coordinates("com.jetbrains.intellij.tools", "ide-starter-squashed"),
+        Coordinates("com.jetbrains.intellij.tools", "ide-starter-junit5"),
+        Coordinates("com.jetbrains.intellij.tools", "ide-starter-driver"),
+        Coordinates("com.jetbrains.intellij.driver", "driver-client"),
+        Coordinates("com.jetbrains.intellij.driver", "driver-sdk"),
+        Coordinates("com.jetbrains.intellij.driver", "driver-model"),
+      )
+      .forEach { testPlatformDependency(it, starterVersion) }
   }
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.testJunit5)
