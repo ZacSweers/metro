@@ -1,5 +1,4 @@
-/DuplicateBinding.kt:11:11: error: 
-[Metro/DuplicateBinding] Multiple bindings found for String
+/DuplicateBinding.kt:11:11: error: [Metro/DuplicateBinding] Multiple bindings found for String
 
       DuplicateBinding.kt:14:13
         @Provides fun first(): String

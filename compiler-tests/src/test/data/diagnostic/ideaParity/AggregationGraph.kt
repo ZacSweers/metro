@@ -1,5 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
 // CHECK_REPORTS: graph-metadata/graph-parity-aggregation-AppGraph.json
+// NORMALIZE_REPORT_SOURCE_LOCATIONS
 // CHECK_REPORTS: keys-populated/parity/aggregation/AppGraph/Impl
 // CHECK_REPORTS: keys-validated/parity/aggregation/AppGraph/Impl
 // CHECK_REPORTS: keys-deferred/parity/aggregation/AppGraph/Impl

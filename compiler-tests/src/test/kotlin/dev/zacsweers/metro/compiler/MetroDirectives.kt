@@ -164,6 +164,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
         "Expected files should be named '<testFile>/<diagnosticKey>/<path>/<reportName>.txt'. " +
         "For report names with explicit extensions, append '.txt' to the expected file."
     )
+  val NORMALIZE_REPORT_SOURCE_LOCATIONS by
+    directive("Removes source-location fields from JSON reports before comparison.")
   val TRACE_DESTINATION by
     stringDirective(
       "Relative path to a directory to dump Metro trace files. Example: 'metro/traces'."

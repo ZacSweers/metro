@@ -1,5 +1,4 @@
-/IncompatibleScope.kt:19:11: error: 
-[Metro/IncompatiblyScopedBindings] parity.failures.scope.AppGraph (unscoped) may not reference
+/IncompatibleScope.kt:19:11: error: [Metro/IncompatiblyScopedBindings] parity.failures.scope.AppGraph (unscoped) may not reference
     scoped bindings
 
   trace (in parity.failures.scope.AppGraph):

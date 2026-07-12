@@ -3,6 +3,11 @@
 package dev.zacsweers.metro.compiler
 
 import java.io.File
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -47,6 +52,11 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
     private val TRACE_FILENAME_PATTERN = Regex("""^(\d{6}-\d{6})-(fir|ir)-(.+)\.perfetto-trace$""")
+    private val REPORT_JSON = Json {
+      prettyPrint = true
+      @OptIn(ExperimentalSerializationApi::class)
+      prettyPrintIndent = "  "
+    }
   }
 
   override val directiveContainers: List<DirectivesContainer>
@@ -100,7 +110,17 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
             "Report file not found: ${reportFile.absolutePath}"
         }
       } else {
-        val actualContent = reportFile.readText()
+        val actualContent =
+          reportFile.readText().let { content ->
+            if (
+              MetroDirectives.NORMALIZE_REPORT_SOURCE_LOCATIONS in allDirectives &&
+                reportName.endsWith(".json")
+            ) {
+              normalizeReportSourceLocations(content)
+            } else {
+              content
+            }
+          }
         try {
           testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
         } catch (e: AssertionFailedError) {
@@ -128,6 +148,21 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     return if (File(reportName).extension.isEmpty()) reportFileName(reportName)
     else "${reportName}.txt"
   }
+
+  private fun normalizeReportSourceLocations(content: String): String {
+    val report = REPORT_JSON.parseToJsonElement(content).withoutSourceLocations()
+    return REPORT_JSON.encodeToString(JsonElement.serializer(), report)
+  }
+
+  private fun JsonElement.withoutSourceLocations(): JsonElement =
+    when (this) {
+      is JsonObject ->
+        JsonObject(
+          filterKeys { it != "origin" }.mapValues { (_, value) -> value.withoutSourceLocations() }
+        )
+      is JsonArray -> JsonArray(map { it.withoutSourceLocations() })
+      else -> this
+    }
 
   private fun checkTraces(allDirectives: RegisteredDirectives) {
     val destination =

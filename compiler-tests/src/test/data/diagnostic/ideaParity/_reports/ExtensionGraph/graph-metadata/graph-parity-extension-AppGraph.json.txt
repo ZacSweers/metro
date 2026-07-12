@@ -128,7 +128,6 @@
       "nameHint": "AppGraphProvider",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "ExtensionGraph.kt:27:1",
       "declaration": "AppGraph"
     },
     {
@@ -143,7 +142,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "ExtensionGraph.kt:27:1",
       "declaration": "<get-childGraph>"
     }
   ]

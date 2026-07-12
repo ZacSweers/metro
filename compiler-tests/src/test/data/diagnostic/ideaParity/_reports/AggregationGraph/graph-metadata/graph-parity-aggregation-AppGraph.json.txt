@@ -154,7 +154,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:55:46",
       "declaration": "primaryHandler"
     },
     {
@@ -164,7 +163,6 @@
       "nameHint": "secondaryHandler",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:58:48",
       "declaration": "secondaryHandler"
     },
     {
@@ -179,7 +177,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:36:1",
       "declaration": "AppHandler",
       "aliasTarget": "parity.aggregation.AppHandler"
     },
@@ -215,7 +212,6 @@
       "nameHint": "setOfEmptyElement",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:52:34",
       "declaration": "emptyElements4205200196",
       "multibinding": {
         "type": "SET",
@@ -250,7 +246,6 @@
       "nameHint": "AppHandler",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:36:1",
       "declaration": "AppHandler"
     },
     {
@@ -260,7 +255,6 @@
       "nameHint": "RealRepo",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:26:1",
       "declaration": "RealRepo"
     },
     {
@@ -275,7 +269,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:30:1",
       "declaration": "TestRepo",
       "aliasTarget": "parity.aggregation.TestRepo"
     },
@@ -287,7 +280,6 @@
       "nameHint": "ScopedValue",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:63:1",
       "declaration": "ScopedValue"
     },
     {
@@ -302,7 +294,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "AggregationGraph.kt:30:1",
       "declaration": "TestRepo"
     }
   ]

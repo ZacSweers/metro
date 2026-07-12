@@ -138,7 +138,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CompositionGraph.kt:23:13",
       "declaration": "value"
     },
     {
@@ -153,7 +152,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CompositionGraph.kt:16:3",
       "declaration": "endpoint"
     },
     {
@@ -172,7 +170,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CompositionGraph.kt:25:13",
       "declaration": "box"
     },
     {
@@ -182,7 +179,6 @@
       "nameHint": "ExternalDependenciesProvider",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "CompositionGraph.kt:36:7",
       "declaration": "dependencies"
     },
     {
@@ -192,7 +188,6 @@
       "nameHint": "bindingsInstance",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "CompositionGraph.kt:37:7",
       "declaration": "bindings"
     }
   ]

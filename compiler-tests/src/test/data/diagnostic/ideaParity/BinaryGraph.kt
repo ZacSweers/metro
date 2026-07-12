@@ -2,6 +2,7 @@
 // GENERATE_CONTRIBUTION_HINTS: true
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
 // CHECK_REPORTS: graph-metadata/graph-parity-binary-BinaryGraph.json
+// NORMALIZE_REPORT_SOURCE_LOCATIONS
 // CHECK_REPORTS: keys-populated/parity/binary/BinaryGraph/Impl
 // CHECK_REPORTS: keys-validated/parity/binary/BinaryGraph/Impl
 // CHECK_REPORTS: keys-deferred/parity/binary/BinaryGraph/Impl

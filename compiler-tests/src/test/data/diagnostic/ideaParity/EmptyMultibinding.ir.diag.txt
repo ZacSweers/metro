@@ -1,5 +1,4 @@
-/EmptyMultibinding.kt:16:15: error: 
-[Metro/EmptyMultibinding] Multibinding Set<Element> was unexpectedly empty
+/EmptyMultibinding.kt:16:15: error: [Metro/EmptyMultibinding] Multibinding Set<Element> was unexpectedly empty
 
   help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
         empty

@@ -129,7 +129,6 @@
       "nameHint": "name",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:34:30",
       "declaration": "name"
     },
     {
@@ -144,7 +143,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:31:10",
       "declaration": "bindApi",
       "aliasTarget": "parity.core.RealApi"
     },
@@ -178,7 +176,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:41:1",
       "declaration": "Consumer"
     },
     {
@@ -188,7 +185,6 @@
       "nameHint": "Engine",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:23:1",
       "declaration": "Engine"
     },
     {
@@ -203,7 +199,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:36:15",
       "declaration": "optionalValue"
     },
     {
@@ -218,7 +213,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "CoreGraph.kt:25:1",
       "declaration": "RealApi"
     }
   ]

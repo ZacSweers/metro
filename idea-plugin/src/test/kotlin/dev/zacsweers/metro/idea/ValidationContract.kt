@@ -443,7 +443,7 @@ private val dependencyComparator = compareBy<DependencyContract>({ it.key }, { i
 private val MODULE_DIRECTIVE = Regex("""// MODULE: ([^(]+).*$""")
 private val FILE_DIRECTIVE = Regex("""// FILE: (.+)$""")
 private val DIAGNOSTIC_MARKUP_OPEN = Regex("""<![^>]*!>""")
-private val DIAGNOSTIC_HEADER = Regex("""\[Metro/([^]]+)] (.*)""")
+private val DIAGNOSTIC_HEADER = Regex(""".*\[Metro/([^]]+)] (.*)""")
 private val ANNOTATION_ARGUMENT_NAME = Regex("""([,(]\s*)[A-Za-z_][A-Za-z0-9_]*\s*=\s*""")
 private val MULTIBINDING_ELEMENT =
   Regex("""@dev\.zacsweers\.metro(?:\.internal)?\.MultibindingElement\("([^"]+)", "[^"]+"\) (.+)""")

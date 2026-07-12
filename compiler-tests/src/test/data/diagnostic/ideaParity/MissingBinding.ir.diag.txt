@@ -1,5 +1,4 @@
-/MissingBinding.kt:14:7: error: 
-[Metro/MissingBinding] No binding found for Missing
+/MissingBinding.kt:14:7: error: [Metro/MissingBinding] No binding found for Missing
 
   trace (in parity.failures.missing.AppGraph):
       Missing is requested at parity.failures.missing.AppGraph.missing

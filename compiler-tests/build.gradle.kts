@@ -211,6 +211,7 @@ dependencies {
   testImplementation(project(":compiler-compat"))
   testCompileOnly(project(":metro-common"))
 
+  testImplementation(libs.kotlinx.serialization.json)
   testImplementation(libs.kotlin.testJunit5)
 
   testRuntimeOnly(libs.ksp.symbolProcessing)

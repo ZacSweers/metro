@@ -5,6 +5,9 @@ These fixtures are compiled by the Metro compiler tests and loaded as source by
 diagnostics define the expected compiler behavior for IDEA graph validation. Report goldens live
 under `_reports/<fixture name>` so generated test discovery ignores them.
 
+Graph-metadata fixtures use `NORMALIZE_REPORT_SOURCE_LOCATIONS` because source locations are outside
+the parity contract and generated IR offsets vary across supported Kotlin compiler versions.
+
 Regenerate compiler goldens after an intentional compiler behavior change:
 
 ```shell

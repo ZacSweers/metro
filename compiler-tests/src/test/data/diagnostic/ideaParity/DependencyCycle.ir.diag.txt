@@ -1,5 +1,4 @@
-/DependencyCycle.kt:16:11: error: 
-[Metro/DependencyCycle] Found a dependency cycle while processing parity.failures.cycle.AppGraph
+/DependencyCycle.kt:16:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing parity.failures.cycle.AppGraph
 
   cycle:
       +-> Second -> First --+

@@ -1,5 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
 // CHECK_REPORTS: graph-metadata/graph-parity-core-AppGraph.json
+// NORMALIZE_REPORT_SOURCE_LOCATIONS
 // CHECK_REPORTS: keys-populated/parity/core/AppGraph/Impl
 // CHECK_REPORTS: keys-validated/parity/core/AppGraph/Impl
 // CHECK_REPORTS: keys-deferred/parity/core/AppGraph/Impl
@@ -40,7 +41,7 @@ interface CoreBindings {
 @Inject
 class Consumer(
   val api: Api,
-  @Named("base") val name: String,
+  @param:Named("base") val name: String,
   val engineProvider: Provider<Engine>,
   val engineLazy: Lazy<Engine>,
   val optionalValue: OptionalValue,
