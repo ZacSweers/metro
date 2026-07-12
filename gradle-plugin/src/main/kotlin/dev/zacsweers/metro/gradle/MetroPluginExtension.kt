@@ -431,8 +431,7 @@ constructor(
    * When automatic runtime dependencies are enabled, this also adds Metro's `runtime-coroutines`
    * artifact.
    */
-  @RequiresIdeSupport
-  @DelicateMetroGradleApi("Suspend provider support is experimental.")
+  @ExperimentalMetroGradleApi
   public val enableSuspendProviders: Property<Boolean> =
     objects.booleanProperty("metro.enableSuspendProviders", false)
 
