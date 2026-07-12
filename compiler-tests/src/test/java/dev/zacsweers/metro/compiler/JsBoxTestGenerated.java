@@ -809,6 +809,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedAccessorsCanBeLazy.kt")
+    public void testContributedAccessorsCanBeLazy() {
+      run("ContributedAccessorsCanBeLazy.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesCanBeInject.kt")
     public void testContributesCanBeInject() {
       run("ContributesCanBeInject.kt");

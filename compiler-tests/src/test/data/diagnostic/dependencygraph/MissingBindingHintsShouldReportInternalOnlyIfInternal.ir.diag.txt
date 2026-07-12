@@ -1,5 +1,4 @@
-/module_main_MissingBindingHintsShouldReportInternalOnlyIfInternal.kt:18:7: error: 
-[Metro/MissingBinding] No binding found for Base
+/module_main_MissingBindingHintsShouldReportInternalOnlyIfInternal.kt:18:7: error: [Metro/MissingBinding] No binding found for Base
 
   trace (in AppGraph):
       Base is requested at AppGraph.base

@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.allParameters
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -278,10 +279,13 @@ private constructor(
                   return@let factoryInstance
                 }
 
+                val providerType =
+                  binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
                 factoryInstance.toTargetType(
                   actual = AccessType.PROVIDER,
                   contextualTypeKey = contextualTypeKey,
                   bindingKind = bindingKind,
+                  providerType = providerType,
                 )
               }
           }
@@ -732,18 +736,30 @@ private constructor(
                   typeHint = binding.typeKey.type,
                 )
 
+              val getterRawClassId = getterContextKey.rawType?.rawTypeOrNull()?.classId
+              val isCanonicalProvider =
+                getterRawClassId == Symbols.ClassIds.metroProvider ||
+                  getterRawClassId == Symbols.ClassIds.function0
+              val canUseProviderDirectly =
+                getterContextKey.isWrappedInProvider && isCanonicalProvider
+
               val expr =
-                if (getterContextKey.isWrappedInProvider) {
-                  // It's already a provider
+                if (canUseProviderDirectly) {
                   invokeGetter
                 } else {
                   wrapInProviderFunction(binding.typeKey.type) {
-                    if (getterContextKey.isWrappedInProvider) {
-                      irInvoke(invokeGetter, callee = metroSymbols.providerInvoke)
-                    } else if (getterContextKey.isWrappedInLazy) {
-                      irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
-                    } else {
-                      invokeGetter
+                    when {
+                      getterContextKey.isWrappedInProvider -> {
+                        val providerType = getterContextKey.rawType ?: invokeGetter.type
+                        irInvoke(invokeGetter, callee = metroSymbols.providerValue(providerType))
+                      }
+
+                      getterContextKey.isWrappedInLazy -> {
+                        val lazyType = getterContextKey.rawType ?: invokeGetter.type
+                        irInvoke(invokeGetter, callee = metroSymbols.lazyValue(lazyType))
+                      }
+
+                      else -> invokeGetter
                     }
                   }
                 }

@@ -112,6 +112,7 @@ public fun duplicateMapKeysDiagnostic(
   mapKeyRender: String,
   locations: List<LocatedItem>,
   trace: DiagnosticSection.BindingTrace? = null,
+  extraNotes: List<Note> = emptyList(),
 ): MetroDiagnostic {
   return MetroDiagnostic(
     id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
@@ -131,5 +132,6 @@ public fun duplicateMapKeysDiagnostic(
         )
         trace?.let(::add)
       },
+    notes = extraNotes,
   )
 }

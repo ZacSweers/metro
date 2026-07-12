@@ -20,13 +20,14 @@ import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.LATEST_PHASE_IN_
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
 import org.jetbrains.kotlin.test.directives.configureFirParser
 import org.jetbrains.kotlin.test.runners.AbstractKotlinCompilerTest
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.LibraryProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
 open class AbstractJsDiagnosticTest : AbstractKotlinCompilerTest() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-    return ClasspathBasedStandardLibrariesPathProvider
+    return EnvironmentBasedStandardLibrariesPathProvider
   }
 
   override fun configure(builder: TestConfigurationBuilder) =

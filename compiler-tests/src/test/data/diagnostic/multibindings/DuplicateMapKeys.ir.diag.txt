@@ -1,5 +1,4 @@
-/DuplicateMapKeys.kt:9:7: error: 
-[Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, String>
+/DuplicateMapKeys.kt:9:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, String>
 
   The following bindings contribute the same map key '@dev.zacsweers.metro.StringKey("key")'
       DuplicateMapKeys.kt:23:3

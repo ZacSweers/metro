@@ -1,5 +1,4 @@
-/DoNotSuggestSimilarBindingsForMultibindingElements.kt:9:7: error: 
-[Metro/MissingBinding] No binding found for Int
+/DoNotSuggestSimilarBindingsForMultibindingElements.kt:9:7: error: [Metro/MissingBinding] No binding found for Int
 
   trace (in AppGraph):
       Int is requested at AppGraph.int

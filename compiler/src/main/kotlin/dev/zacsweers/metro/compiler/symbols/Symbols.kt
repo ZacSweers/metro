@@ -613,7 +613,26 @@ internal class Symbols(
     builtinsFinder.findClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
   }
 
-  val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
+  private val kotlinLazyValue: IrFunctionSymbol by lazy {
+    stdlibLazy.getPropertyGetter("value")!!
+  }
+
+  fun providerValue(type: IrType): IrFunctionSymbol {
+    val providerType = type.classOrNull ?: reportCompilerBug("No provider class found for $type")
+    val classId = providerType.owner.classId
+    val usesInvoke = classId == ClassIds.metroProvider || classId == ClassIds.function0
+    val functionName = if (usesInvoke) StringNames.INVOKE else StringNames.GET
+    return providerType.requireSimpleFunction(functionName)
+  }
+
+  fun lazyValue(type: IrType): IrFunctionSymbol {
+    val lazyType = type.classOrNull ?: reportCompilerBug("No lazy class found for $type")
+    return if (lazyType == stdlibLazy) {
+      kotlinLazyValue
+    } else {
+      lazyType.requireSimpleFunction(StringNames.GET)
+    }
+  }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
     builtinsFinder.findFunctions(CallableId(stdlib.packageFqName, "error".asName())).first()

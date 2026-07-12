@@ -1,5 +1,4 @@
-/SomeUnusedAndSomeUsed.kt:10:14: error: 
-[Metro/MissingBinding] No binding found for Int
+/SomeUnusedAndSomeUsed.kt:10:14: error: [Metro/MissingBinding] No binding found for Int
 
   AppGraph.number -> Number -> Int
 

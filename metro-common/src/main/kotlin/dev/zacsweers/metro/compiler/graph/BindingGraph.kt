@@ -9,7 +9,6 @@ import dev.zacsweers.metro.compiler.allElementsAreEqual
 import dev.zacsweers.metro.compiler.diagnostics.CycleNode
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
-import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -470,8 +469,10 @@ public open class MutableBindingGraph<
     bindings: List<Binding>,
     bindingStack: BindingStack,
   ) {
+    val locations = bindings.map { it.renderLocationDiagnostic(short = true) }
     val notes = buildList {
       addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
+      addAll(locations.flatMap { it.notes }.distinct())
       if (bindings.distinctBy { System.identityHashCode(it) }.size == 1) {
         add(Note.note("the duplicate bindings are all the same instance"))
       } else if (bindings.allElementsAreEqual()) {
@@ -480,7 +481,7 @@ public open class MutableBindingGraph<
     }
     reportDuplicateBindings(
       key,
-      bindings.map { it.renderLocationDiagnostic(short = true) },
+      locations,
       bindingStack,
       notes,
     )
@@ -509,10 +510,7 @@ public open class MutableBindingGraph<
             add(
               DiagnosticSection.Locations(
                 header = null,
-                items =
-                  locations.map {
-                    LocatedItem(location = it.location, code = it.description, span = it.span)
-                  },
+                items = locations.map { it.toLocatedItem() },
               )
             )
             bindingStack.toTraceSection()?.let(::add)
