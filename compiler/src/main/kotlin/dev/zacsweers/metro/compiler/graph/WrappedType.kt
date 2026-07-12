@@ -242,7 +242,7 @@ internal sealed interface WrappedType<T : Any> {
   /** Returns true if this type is a canonical type or Map rather than a scalar wrapper. */
   fun isScalarLeaf(): Boolean = immediateInnerType() == null
 
-  /** Whether this type uses SuspendProvider storage, or null if it has no scalar wrapper. */
+  /** Whether this type requires SuspendProvider, or null if it has no scalar wrapper. */
   fun usesSuspendProvider(): Boolean? {
     return when (this) {
       is Canonical,
@@ -254,7 +254,7 @@ internal sealed interface WrappedType<T : Any> {
     }
   }
 
-  /** Whether this type uses SuspendProvider storage, falling back when it has no scalar wrapper. */
+  /** Whether this type requires SuspendProvider, falling back when it has no scalar wrapper. */
   fun usesSuspendProvider(default: Boolean): Boolean {
     return usesSuspendProvider() ?: default
   }
