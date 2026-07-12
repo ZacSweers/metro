@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
@@ -438,23 +439,36 @@ internal fun IrFunction.memberInjectParameters(
 internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
   copy(contextualTypeKey = contextualTypeKey.remapType(remapper))
 
+context(context: IrMetroContext)
+internal fun Parameter.toCanonicalProviderKey(
+  defaultUsesSuspendProvider: Boolean = false
+): IrContextualTypeKey {
+  val usesSuspendProvider =
+    contextualTypeKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)
+  return contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider)
+}
+
 /**
- * Deduplicates parameters by [IrTypeKey], keeping one parameter per unique key. Parameters that are
- * always kept (never deduped):
+ * Deduplicates parameters by their normalized provider contextual key, keeping one parameter per
+ * unique key. Parameters that are always kept (never deduped):
  * - Assisted parameters: each is a distinct caller-provided value
  * - Parameters with [IrContextualTypeKey.hasDefault]: their defaults may differ
  */
-internal fun List<Parameter>.dedupeParameters(): List<Parameter> {
-  val seenKeys = HashSet<Pair<IrTypeKey, Boolean>>(size)
+context(context: IrMetroContext)
+internal fun List<Parameter>.dedupeParameters(
+  defaultUsesSuspendProvider: Boolean = false
+): List<Parameter> {
+  val seenKeys = HashSet<IrContextualTypeKey>(size)
   return buildList {
     for (param in this@dedupeParameters) {
-      // Suspend-shaped params (SuspendProvider/SuspendLazy) are backed by SuspendProvider fields
-      // while everything else shares a canonical Provider field. The two field shapes can't
-      // reconstruct each other's access in a non-suspend factory, so they dedupe separately.
-      val isSuspendShaped =
-        param.contextualTypeKey.isWrappedInSuspendProvider ||
-          param.contextualTypeKey.isWrappedInSuspendLazy
-      if (param.isAssisted || param.hasDefault || seenKeys.add(param.typeKey to isSuspendShaped)) {
+      // A scalar wrapper stack is reconstructed from a canonical Provider or SuspendProvider
+      // field. The innermost wrapper determines which field type is required. Unwrapped parameters
+      // use the factory's default field type.
+      if (
+        param.isAssisted ||
+          param.hasDefault ||
+          seenKeys.add(param.toCanonicalProviderKey(defaultUsesSuspendProvider))
+      ) {
         add(param)
       }
     }
