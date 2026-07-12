@@ -449,10 +449,13 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
 
     val validationService = fixture.project.service<MetroGraphValidationService>()
-    val appResult = validationService.validate(appFile, index.contextsFor(appGraph).single())
+    val appResult =
+      validationService.validate(appFile, index.contextsFor(appGraph).single()).requireCompleted()
     assertTrue(appResult.diagnostics.joinToString { it.render() }, appResult.diagnostics.isEmpty())
     val bridgeResult =
-      validationService.validate(bridgeFile, index.contextsFor(bridgeGraph).single())
+      validationService
+        .validate(bridgeFile, index.contextsFor(bridgeGraph).single())
+        .requireCompleted()
     assertTrue(
       bridgeResult.diagnostics.joinToString { it.render() },
       bridgeResult.diagnostics.isEmpty(),
@@ -512,9 +515,9 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertEquals(listOf("LibExtension", "AppGraph"), results.map { it.graph.name })
     assertEquals(
       listOf(MetroDiagnosticId.MISSING_BINDING),
-      results.first().diagnostics.map { it.id },
+      results.first().requireCompleted().diagnostics.map { it.id },
     )
-    assertTrue(results.last().diagnostics.isEmpty())
+    assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
   }
 }
 

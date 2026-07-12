@@ -8,6 +8,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.psi.PsiElement
@@ -98,20 +99,26 @@ internal class MetroGraphValidationService(
   }
 
   private fun validate(input: ValidationInput): GraphValidationResult {
-    val options = moduleOptions(input.graphElement)
     val index = input.index
     val context = input.context
+    val key = cacheKey(context)
+    if (key != null) {
+      results[key]
+        ?.takeIf { it.index === index }
+        ?.let {
+          return it.result
+        }
+    }
+
     val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
-    val queryContext =
-      checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
-    val key = cacheKey(context) ?: return KaBindingGraph(index, queryContext, options).seal()
-    results[key]
-      ?.takeIf { it.index === index }
-      ?.let {
-        return it.result
+    val result =
+      runGraphValidation(context, graphName) {
+        val options = moduleOptions(input.graphElement)
+        val queryContext =
+          checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
+        KaBindingGraph(index, queryContext, options).seal()
       }
-    val result = KaBindingGraph(index, queryContext, options).seal()
-    results[key] = CachedEntry(result, index)
+    if (key != null) results[key] = CachedEntry(result, index)
     return result
   }
 
@@ -218,5 +225,27 @@ internal class MetroGraphValidationService(
   private fun moduleOptions(element: PsiElement): MetroOptions {
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return MetroOptions()
     return project.service<MetroIdeProjectService>().state(module).options
+  }
+}
+
+/** Runs one graph seal while keeping plugin failures separate from Metro graph diagnostics. */
+internal fun runGraphValidation(
+  context: GraphContext,
+  graphName: String,
+  onInternalError: (Throwable) -> Unit = { cause ->
+    logger<MetroGraphValidationService>()
+      .error("Metro graph validation failed for $graphName", cause)
+  },
+  validate: () -> GraphValidationResult.Completed,
+): GraphValidationResult {
+  return try {
+    validate()
+  } catch (e: ProcessCanceledException) {
+    throw e
+  } catch (e: CancellationException) {
+    throw e
+  } catch (e: Exception) {
+    onInternalError(e)
+    GraphValidationResult.InternalError(context, e)
   }
 }

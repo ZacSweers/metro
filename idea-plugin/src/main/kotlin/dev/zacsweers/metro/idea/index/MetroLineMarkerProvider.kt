@@ -29,6 +29,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.awt.RelativePoint
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.graph.GraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -374,10 +375,14 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val cached = contexts.mapNotNull { context ->
       declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, context)
     }
-    val problemCount = cached.sumOf { it.result.diagnostics.size }
+    val internalErrorCount = cached.count { it.result is GraphValidationResult.InternalError }
+    val problemCount = cached.sumOf {
+      (it.result as? GraphValidationResult.Completed)?.diagnostics?.size ?: 0
+    }
     val allContextsValidated = cached.size == contexts.size
     val icon =
       when {
+        internalErrorCount > 0 -> MetroIcons.GRAPH_PROBLEMS
         problemCount > 0 -> MetroIcons.GRAPH_PROBLEMS
         allContextsValidated -> MetroIcons.GRAPH_VALIDATED
         else -> MetroIcons.GRAPH
@@ -386,10 +391,22 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       append("Validate Metro graph")
       if (cached.isNotEmpty()) {
         append(" · last run: ")
-        when (problemCount) {
-          0 -> append("no problems found")
-          1 -> append("1 problem")
-          else -> append("$problemCount problems")
+        if (internalErrorCount > 0) {
+          append(internalErrorCount)
+          append(
+            if (internalErrorCount == 1) {
+              " internal Metro plugin error"
+            } else {
+              " internal Metro plugin errors"
+            }
+          )
+          if (problemCount > 0) append(" · ")
+        }
+        if (problemCount > 0) {
+          append(problemCount)
+          append(if (problemCount == 1) " problem" else " problems")
+        } else if (internalErrorCount == 0) {
+          append("no problems found")
         }
         if (!allContextsValidated) {
           append(" in ")

@@ -131,7 +131,15 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
       if (stale) append(" · code changed since this run, revalidate")
     }
     override val icon: Icon =
-      if (result.diagnostics.isEmpty()) AllIcons.General.InspectionsOK else AllIcons.General.Error
+      when (result) {
+        is GraphValidationResult.Completed ->
+          if (result.diagnostics.isEmpty()) {
+            AllIcons.General.InspectionsOK
+          } else {
+            AllIcons.General.Error
+          }
+        is GraphValidationResult.InternalError -> AllIcons.General.Error
+      }
     override val identity: Any = Unit
   }
 
@@ -176,10 +184,14 @@ private fun KaAnnotationSnapshot.renderAbbreviated(): String {
 }
 
 private fun validationSummary(result: GraphValidationResult): String {
-  return when (val count = result.diagnostics.size) {
-    0 -> "no problems found"
-    1 -> "1 problem"
-    else -> "$count problems"
+  return when (result) {
+    is GraphValidationResult.Completed ->
+      when (val count = result.diagnostics.size) {
+        0 -> "no problems found"
+        1 -> "1 problem"
+        else -> "$count problems"
+      }
+    is GraphValidationResult.InternalError -> "internal Metro plugin error"
   }
 }
 
@@ -379,26 +391,30 @@ internal class MetroTreeStructure(
     // Only meaningful once a validation ran: explicitly authored bindings nothing requested.
     // Usage unions this graph's seal with any cached extension seals, since a binding declared
     // here is often consumed only by a child graph.
-    if (cached != null) {
+    val validated = cached?.result as? GraphValidationResult.Completed
+    if (validated != null) {
       val usedKeys = HashSet<KaTypeKey>()
       // Re-keyed multibinding elements are copies of their index entries, so match by pointer
       val usedPointers =
         Collections.newSetFromMap(IdentityHashMap<SmartPsiElementPointer<*>, Boolean>())
 
-      fun collectUsage(result: GraphValidationResult) {
+      fun collectUsage(result: GraphValidationResult.Completed) {
         result.bindings.forEach { key, binding ->
           usedKeys += key
           usedPointers += binding.pointer
         }
       }
-      collectUsage(cached.result)
+      collectUsage(validated)
       val visited = mutableSetOf<GraphPath>()
       fun visitExtensions(parent: GraphContext) {
         for (extension in index.extensionContextsOf(parent)) {
           if (!visited.add(extension.path)) continue
           extension.graph.pointer.element
             ?.let { validationService.cachedResult(it, extension) }
-            ?.let { collectUsage(it.result) }
+            ?.result
+            ?.let { result ->
+              if (result is GraphValidationResult.Completed) collectUsage(result)
+            }
           visitExtensions(extension)
         }
       }
@@ -445,6 +461,13 @@ internal class MetroTreeStructure(
 
   private fun validationChildren(node: MetroTreeNode.Validation): List<MetroTreeNode> {
     val result = node.result
+    if (result is GraphValidationResult.InternalError) {
+      return listOf(
+        MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
+      )
+    }
+    result as GraphValidationResult.Completed
+
     val children = mutableListOf<MetroTreeNode>()
     val topology = result.topology
     children +=

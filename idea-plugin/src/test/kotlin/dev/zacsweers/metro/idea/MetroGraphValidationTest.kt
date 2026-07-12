@@ -8,8 +8,10 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.GraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.KaBinding
+import kotlinx.coroutines.CancellationException
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
 class MetroGraphValidationTest : BasePlatformTestCase() {
@@ -23,13 +25,62 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     project.service<MetroGraphValidationService>().clearResults()
   }
 
-  private fun validate(source: String, graphName: String = "AppGraph"): GraphValidationResult {
+  private fun validate(
+    source: String,
+    graphName: String = "AppGraph",
+  ): GraphValidationResult.Completed {
     val file = myFixture.configureMetroFile(source)
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single { it.name == graphName }
     return project
       .service<MetroGraphValidationService>()
       .validate(file, index.contextsFor(graph).single())
+      .requireCompleted()
+  }
+
+  fun testUnexpectedFailureReturnsInternalError() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val failure = IllegalStateException("broken model")
+    var reported: Throwable? = null
+
+    val result =
+      runGraphValidation(
+        context = context,
+        graphName = "test.AppGraph",
+        onInternalError = { reported = it },
+      ) {
+        throw failure
+      }
+
+    assertTrue(result is GraphValidationResult.InternalError)
+    result as GraphValidationResult.InternalError
+    assertSame(context, result.context)
+    assertSame(failure, result.cause)
+    assertSame(failure, reported)
+  }
+
+  fun testCancellationEscapesInternalErrorBoundary() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val cancellation = CancellationException("cancelled")
+    var reported: Throwable? = null
+
+    try {
+      runGraphValidation(
+        context = context,
+        graphName = "test.AppGraph",
+        onInternalError = { reported = it },
+      ) {
+        throw cancellation
+      }
+      fail("Expected cancellation")
+    } catch (e: CancellationException) {
+      assertSame(cancellation, e)
+    }
+    assertNull(reported)
   }
 
   fun testCleanGraphHasNoDiagnostics() {
@@ -450,14 +501,14 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val rightContext = contextsByParent.getValue("RightParent")
     val validationService = project.service<MetroGraphValidationService>()
 
-    val leftResult = validationService.validate(file, leftContext)
+    val leftResult = validationService.validate(file, leftContext).requireCompleted()
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), leftResult.diagnostics.map { it.id })
     val leftDiagnostic = leftResult.diagnostics.single().render()
     assertTrue(leftDiagnostic, "RightOnly" in leftDiagnostic)
     assertNotNull(validationService.cachedResult(file, leftContext))
     assertNull(validationService.cachedResult(file, rightContext))
 
-    val rightResult = validationService.validate(file, rightContext)
+    val rightResult = validationService.validate(file, rightContext).requireCompleted()
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), rightResult.diagnostics.map { it.id })
     val rightDiagnostic = rightResult.diagnostics.single().render()
     assertTrue(rightDiagnostic, "LeftOnly" in rightDiagnostic)
@@ -540,12 +591,12 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     // Extensions seal first, the requested graph last
     assertEquals(listOf("ChildGraph", "AppGraph"), results.map { it.graph.name })
-    val childResult = results.first()
+    val childResult = results.first().requireCompleted()
     assertEquals(
       listOf(MetroDiagnosticId.MISSING_BINDING),
       childResult.diagnostics.map { it.id },
     )
-    assertTrue(results.last().diagnostics.isEmpty())
+    assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
   }
 
   fun testReplacedContributionKeepsItsOwnInjectableType() {

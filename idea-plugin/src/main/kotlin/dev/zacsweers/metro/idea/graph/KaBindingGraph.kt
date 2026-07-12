@@ -3,8 +3,6 @@
 package dev.zacsweers.metro.idea.graph
 
 import androidx.collection.ScatterMap
-import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
@@ -16,7 +14,6 @@ import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
-import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
@@ -56,16 +53,25 @@ internal class KaGraphDiagnostic(
   }
 }
 
-/** The outcome of sealing one graph. */
-internal class GraphValidationResult(
-  val context: GraphContext,
-  val diagnostics: List<KaGraphDiagnostic>,
-  /** Null when a fatal error aborted the seal before sorting. */
-  val topology: GraphTopology<KaTypeKey>?,
-  val bindings: ScatterMap<KaTypeKey, KaBinding>,
-) {
+/** The outcome of attempting to seal one graph. */
+internal sealed interface GraphValidationResult {
+  val context: GraphContext
+
   val graph: KaGraphNode
     get() = context.graph
+
+  /** Validation produced a normal Metro result, including any diagnostics it found. */
+  class Completed(
+    override val context: GraphContext,
+    val diagnostics: List<KaGraphDiagnostic>,
+    /** Null when a fatal Metro diagnostic aborted the seal before sorting. */
+    val topology: GraphTopology<KaTypeKey>?,
+    val bindings: ScatterMap<KaTypeKey, KaBinding>,
+  ) : GraphValidationResult
+
+  /** Validation stopped because the IDE plugin itself failed unexpectedly. */
+  class InternalError(override val context: GraphContext, val cause: Throwable) :
+    GraphValidationResult
 }
 
 /**
@@ -127,7 +133,7 @@ internal class KaBindingGraph(
       missingBindingHints = ::missingBindingHints,
     )
 
-  fun seal(): GraphValidationResult {
+  fun seal(): GraphValidationResult.Completed {
     val setupStack = KaBindingStack(graph)
     for (chainGraph in context.chain) {
       realGraph.tryPut(graphInstanceBinding(chainGraph) ?: continue, setupStack)
@@ -146,21 +152,7 @@ internal class KaBindingGraph(
           realGraph.seal(roots = roots, shrinkUnusedBindings = options.shrinkUnusedBindings)
         validateAggregates()
         topo
-      } catch (e: ProcessCanceledException) {
-        throw e
       } catch (_: SealAborted) {
-        null
-      } catch (e: Exception) {
-        // Covers reportCompilerBug and unexpected model states. Report instead of crashing.
-        logger<KaBindingGraph>().warn("Sealing $graphName failed", e)
-        report(
-          MetroDiagnostic(
-            id = MetroDiagnosticId.GENERIC,
-            severity = MetroSeverity.ERROR,
-            title = textOf(e.message ?: "Unknown graph validation error"),
-          ),
-          KaBindingStack(graph),
-        )
         null
       } finally {
         // Clear out the binding lookup now that we're done
@@ -169,7 +161,12 @@ internal class KaBindingGraph(
 
     // The seal's ScatterMap is handed off directly. The graph adapter is discarded after seal,
     // so nothing else can mutate it.
-    return GraphValidationResult(context, diagnostics.toList(), topology, realGraph.bindings)
+    return GraphValidationResult.Completed(
+      context,
+      diagnostics.toList(),
+      topology,
+      realGraph.bindings,
+    )
   }
 
   // The bindings the in-flight report is about, attached to the next reported diagnostic. The

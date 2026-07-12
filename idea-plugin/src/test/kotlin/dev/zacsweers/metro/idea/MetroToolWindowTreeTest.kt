@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.DumbModeTestUtils
@@ -11,6 +12,7 @@ import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.idea.graph.GraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
@@ -149,6 +151,22 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         it.text == "Unused"
       }
     assertEquals(listOf("Boolean"), structure.children(unusedCategory).map { it.text })
+  }
+
+  fun testInternalValidationErrorIsPresentedAsAPluginFailure() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    val result = GraphValidationResult.InternalError(graphNode.context, IllegalStateException())
+    val validation = MetroTreeNode.Validation(graphNode, result, stale = false)
+
+    assertEquals("internal Metro plugin error", validation.grayText)
+    assertSame(AllIcons.General.Error, validation.icon)
+    assertEquals(
+      listOf("Validation failed due to an internal Metro plugin error"),
+      structure.children(validation).map { it.text },
+    )
   }
 
   fun testDumbModeProducesNoChildren() {
