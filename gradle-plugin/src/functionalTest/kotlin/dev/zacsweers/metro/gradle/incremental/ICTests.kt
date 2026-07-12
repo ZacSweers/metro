@@ -143,8 +143,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
-        FeatureScreen.kt:7:18
-        [Metro/MissingBinding] No binding found for Dependency
+        e: FeatureScreen.kt:7:18 [Metro/MissingBinding] No binding found for Dependency
 
           FeatureScreen -> Dependency
 
@@ -1114,8 +1113,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:8:11
-        [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
+        e: LoggedInScope.kt:8:11 [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
             '@SingleIn(LoggedInScope::class)') may not reference bindings from different scopes
 
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
@@ -1403,8 +1401,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     assertThat(firstBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: LoggedInScope.kt:9:7
-        [Metro/MissingBinding] No binding found for Foo
+        e: LoggedInScope.kt:9:7 [Metro/MissingBinding] No binding found for Foo
 
           trace (in test.ExampleGraph.Impl.LoggedInGraphImpl):
               Foo is requested at test.LoggedInGraph.childDependency
