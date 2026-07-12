@@ -12,14 +12,14 @@ build a project-wide binding index for editor features.
 
 ### Unused Declaration Suppression
 
-Metro-generated code can be the only caller of providers, injected classes, etc. The plugin marks those 
+Metro-generated code can be the only caller of providers, injected classes, etc. The plugin marks those
 declarations as implicitly used so IntelliJ's unused declaration inspection does not report false positives.
 
 Covered declarations include:
 
 - `@Binds`, `@Provides`, and `@Multibinds` members.
-- `@Inject` constructors and injectable classes.
-- `@AssistedInject` classes.
+- Classes with `@Inject` constructors.
+- `@AssistedInject` classes and constructors.
 - `@ContributesBinding`, `@ContributesIntoSet`, and `@ContributesIntoMap` classes.
 - Graph factory `@Provides` parameters.
 - Metro-native Circuit `@CircuitInject` declarations when `enable-circuit-codegen` is enabled.
@@ -41,8 +41,8 @@ or show an unresolved marker when the IDE index has no binding for the key.
 
 Optional dependencies are handled two ways:
 
-- An injection site is treated as optional when it carries `@OptionalBinding`/`@OptionalDependency` 
-  or when it is a parameter with a default value under the default optional-binding behavior. An 
+- An injection site is treated as optional when it carries `@OptionalBinding`/`@OptionalDependency`
+  or when it is a parameter with a default value under the default optional-binding behavior. An
   optional site with no binding reads as optional rather than unresolved.
 - `@BindsOptionalOf` (Dagger interop) exposes an `Optional<T>` binding, so a site injecting
   `Optional<T>` resolves to it.
@@ -86,6 +86,37 @@ read as assisted in source, so they get no inlay).
 
 > TODO: Add a GIF showing an implementation inlay and click-through navigation.
 
+### Metro Tool Window
+
+Open `View > Tool Windows > Metro` to browse every graph context in the project. Graph extensions
+with different parent chains appear as separate rows rather than being merged together.
+
+Expanding a graph groups its bindings into scoped, unscoped, multibinding, and contributed
+categories. The search field filters by binding key or implementation name, and double-clicking a
+binding navigates to its declaration. After validation, an Unused category lists authored
+`@Provides` and `@Binds` bindings that were not reached by that graph or its validated extensions.
+
+> TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
+
+### On-Demand Graph Validation
+
+Graphs can be validated from their gutter icon, the editor context menu, or the Validate action in
+the Metro tool window. Validation runs in the background and seals every concrete extension context
+before its parent graph.
+
+The IDE adapter uses Metro's shared binding-graph implementation to report:
+
+- Missing bindings with navigable request traces.
+- Dependency cycles.
+- Duplicate bindings and duplicate map keys.
+- Empty multibindings that do not allow emptiness.
+
+The last result remains visible in the tool window and on the graph's gutter badge. Results are
+marked stale after relevant code changes until validation runs again. Unexpected plugin failures
+are reported as internal plugin errors rather than Metro graph diagnostics.
+
+> TODO: Add a GIF showing a graph validation run and navigation through a missing-binding trace.
+
 ## Settings
 
 Project settings live under `Settings > Tools > Metro`.
@@ -122,9 +153,11 @@ fall back to the global view otherwise.
 
 Not yet modeled:
 
-- Pinnable graph context (results are unioned across graphs rather than scoped to a chosen one).
-- Exact compiler graph validation parity.
-- Tool window and graph diagram views.
+- A pinnable graph context for editor navigation and inlays. Inlays currently appear only when all
+  applicable graph contexts agree; gutter popups summarize context-dependent candidates.
+- Exact parity with every compiler validation and diagnostic.
+- Validation-backed editor inspections and quick fixes.
+- Graph diagram views.
 
 ## Known Issues
 
@@ -136,28 +169,30 @@ Not yet modeled:
 
 ## Development
 
+The IDE plugin is a standalone Gradle build. Run these commands from the repository root.
+
 Run a sandboxed IDE with the plugin installed:
 
 ```shell
-./gradlew idea-plugin runLocalIde
+./idea-plugin/gradlew -p idea-plugin runLocalIde
 ```
 
 To use a locally installed IDE:
 
 ```shell
-./gradlew idea-plugin runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
+./idea-plugin/gradlew -p idea-plugin runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
 ```
 
 Compile the plugin:
 
 ```shell
-./gradlew idea-plugin compileKotlin --quiet
+./idea-plugin/gradlew -p idea-plugin compileKotlin --quiet
 ```
 
 Run plugin tests:
 
 ```shell
-./gradlew idea-plugin test --quiet
+./idea-plugin/gradlew -p idea-plugin test --quiet
 ```
 
 ## Icons
