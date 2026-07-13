@@ -48,7 +48,9 @@ import org.jetbrains.kotlin.fir.declarations.result
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpressionEvaluator
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.PrivateConstantEvaluatorAPI
+import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -191,6 +193,21 @@ public class CompatContextImpl : CompatContext {
 
   override fun FirFunction.isNamedFunction(): Boolean {
     return this is FirSimpleFunction
+  }
+
+  override fun buildResolvedQualifierCompat(
+    classId: ClassId,
+    classSymbol: FirClassLikeSymbol<*>,
+    classType: ConeKotlinType,
+  ): FirResolvedQualifier {
+    return buildResolvedQualifier {
+      packageFqName = classId.packageFqName
+      relativeClassFqName = classId.relativeClassName
+      symbol = classSymbol
+      resolvedToCompanionObject = false
+      isFullyQualified = true
+      coneTypeOrNull = classType
+    }
   }
 
   override fun FirDeclarationGenerationExtension.buildMemberFunction(

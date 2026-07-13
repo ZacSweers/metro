@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -338,6 +339,18 @@ public interface CompatContext {
       "We use FirFunction instead of FirSimpleFunction or FirNamedFunction to better interop and occasionally need to check for certain that this is a named function",
   )
   public fun FirFunction.isNamedFunction(): Boolean
+
+  /** Builds a fully qualified resolved qualifier for [classSymbol]. */
+  @CompatApi(
+    since = "2.5.0-dev-498",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.5 renamed FirResolvedQualifier.symbol and removed its isFullyQualified property",
+  )
+  public fun buildResolvedQualifierCompat(
+    classId: ClassId,
+    classSymbol: FirClassLikeSymbol<*>,
+    classType: ConeKotlinType,
+  ): FirResolvedQualifier
 
   /**
    * Builds a member function using the version-appropriate builder.
