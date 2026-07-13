@@ -746,7 +746,7 @@ internal object BindingContainerCallableChecker :
     targetKey: FirTypeKey,
   ): Boolean {
     return declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { symbol ->
-      val declaration = symbol.fir as? FirCallableDeclaration ?: return@any false
+      val declaration = symbol.fir ?: return@any false
       val annotations = symbol.metroAnnotations(session)
       if (!declaration.isParameterlessBinds(annotations)) return@any false
 

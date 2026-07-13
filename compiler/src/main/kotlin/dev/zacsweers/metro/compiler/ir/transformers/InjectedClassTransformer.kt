@@ -127,6 +127,7 @@ internal class InjectedClassTransformer(
     return true
   }
 
+  @IgnorableReturnValue
   fun getOrGenerateFactory(
     declaration: IrClass,
     previouslyFoundConstructor: IrConstructor?,

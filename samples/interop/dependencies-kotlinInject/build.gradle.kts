@@ -7,7 +7,7 @@ plugins {
 }
 
 dependencies {
-  ksp(libs.kotlinInject.compiler)
+  kspTest(libs.kotlinInject.compiler)
   implementation(libs.kotlinInject.runtime)
   testImplementation(libs.kotlin.test)
 }
