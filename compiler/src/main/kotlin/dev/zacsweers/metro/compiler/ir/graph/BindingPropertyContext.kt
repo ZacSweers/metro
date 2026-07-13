@@ -116,14 +116,14 @@ internal class BindingPropertyContext(
     val canonicalKey = key.canonicalize()
     val providerKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = false)
     val suspendProviderKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = true)
-    val storageKeys =
+    val providerLookupKeys =
       if (key.wrappedType.usesSuspendProvider() == true) {
         listOf(suspendProviderKey, providerKey)
       } else {
         listOf(providerKey, suspendProviderKey)
       }
-    for (storageKey in storageKeys) {
-      localProperty(storageKey)?.let {
+    for (providerLookupKey in providerLookupKeys) {
+      localProperty(providerLookupKey)?.let {
         return it
       }
     }
