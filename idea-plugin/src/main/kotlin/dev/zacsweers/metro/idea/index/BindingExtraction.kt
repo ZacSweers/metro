@@ -94,7 +94,7 @@ internal fun KaNamedClassSymbol.isInjectableKind(): Boolean {
 }
 
 /**
- * The map key of an `@IntoMap` contribution. [keyTypeRender] identifies the aggregate binding and
+ * The map key of an `@IntoMap` contribution. [keyTypeRender] identifies the multibinding and
  * [annotationRender] carries the key value for duplicate detection.
  */
 internal class MapKeyInfo(val keyTypeRender: String, val annotationRender: String?)
@@ -225,8 +225,8 @@ internal fun KaSession.bindingData(
     }
 
   // Mirrors the compiler's transformIfIntoMultibinding: a contribution keeps its element key as
-  // declared and joins its aggregate by id. Ids canonicalize through provider wrappers so `V`,
-  // `Provider<V>`, and `() -> V` contributions join the same aggregate as any accessor spelling.
+  // declared and joins its multibinding by id. Ids canonicalize through provider wrappers so `V`,
+  // `Provider<V>`, and `() -> V` contributions join the same multibinding as any accessor spelling.
   fun multibindingId(elementKey: KaTypeKey): String? {
     val isIntoMap = has(options.intoMapAnnotations)
     val isElementsIntoSet = has(options.elementsIntoSetAnnotations)

@@ -103,12 +103,12 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertTrue(unscopedRows.all { it.grayText?.startsWith("Test.kt:") == true })
 
     val multibindings = categories[2] as MetroTreeNode.Category
-    val aggregate = structure.children(multibindings).single() as MetroTreeNode.Aggregate
-    assertEquals("test.Analytics", aggregate.text)
-    // The aggregate row names the key, so contributions show just their sources
+    val multibinding = structure.children(multibindings).single() as MetroTreeNode.Multibinding
+    assertEquals("test.Analytics", multibinding.text)
+    // The multibinding row names the key, so contributions show just their sources
     assertEquals(
       listOf("DebugAnalytics", "ProdAnalytics"),
-      structure.children(aggregate).map { it.text },
+      structure.children(multibinding).map { it.text },
     )
   }
 

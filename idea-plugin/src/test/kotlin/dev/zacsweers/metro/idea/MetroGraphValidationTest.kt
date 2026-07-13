@@ -112,7 +112,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val topology = result.topology!!
     assertTrue(topology.sortedKeys.any { it.renderedType == "test.Consumer" })
     assertTrue(topology.deferredTypes.isEmpty())
-    // The aggregate node participates in the sealed bindings
+    // The multibinding node participates in the sealed bindings
     assertTrue(
       result.bindings.any { key, _ -> key.renderedType.startsWith("kotlin.collections.Set") }
     )
@@ -271,6 +271,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val diagnostic = result.diagnostics.single()
     assertTrue(diagnostic.render(), "same map key" in diagnostic.render())
     assertEquals(2, diagnostic.related.size)
+    assertTrue(diagnostic.stack.isNotEmpty())
   }
 
   fun testEmptyMultibindingIsReported() {

@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.name.ClassId
 internal class ConsumedSite(
   val contextKey: KaContextualTypeKey,
   val isAbstractType: Boolean,
-  /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
+  /** For `Set`/`Map` multibinding sites, the id collecting contributed elements. */
   val multibindingId: String? = null,
   /** The consumed type's class, when it is a class type. */
   val typeClassId: ClassId? = null,
@@ -35,7 +35,7 @@ internal class BindingData(
   val implementationName: String?,
   /** For alias bindings, the key of the source/impl binding this delegates to. */
   val consumedKey: KaContextualTypeKey? = null,
-  /** For multibinding contributions, the aggregate binding id. See [KaBinding]. */
+  /** For multibinding contributions, the multibinding id. See [KaBinding]. */
   val multibindingId: String? = null,
   /** See [KaBinding.originClassId]. */
   val originClassId: ClassId? = null,

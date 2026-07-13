@@ -86,8 +86,8 @@ internal class BindingIndex(
   }
 
   /**
-   * Bindings satisfying [consumer]: direct key matches plus, for `Set`/`Map` aggregate sites, the
-   * multibinding contributions collected into them.
+   * Bindings satisfying [consumer]: direct key matches plus, for `Set`/`Map` multibinding sites,
+   * the multibinding contributions collected into them.
    */
   fun bindingsFor(consumer: ConsumerEntry): List<KaBinding> {
     val useSiteModule = moduleFor(consumer.pointer.element)

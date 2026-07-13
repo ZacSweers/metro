@@ -15,8 +15,8 @@ import org.jetbrains.kotlin.name.ClassId
  * `IrBinding`, with subtypes named after their IR counterparts. The pointer usually targets a
  * source declaration, but may target a decompiled library declaration.
  *
- * Most subtypes are built by the index sweep. [Multibinding] aggregates, re-keyed multibinding
- * elements, and [GraphInstance] nodes are also synthesized during graph sealing.
+ * Most subtypes are built by the index sweep. [Multibinding] nodes, re-keyed multibinding elements,
+ * and [GraphInstance] nodes are also synthesized during graph sealing.
  */
 internal sealed interface KaBinding :
   BaseBinding<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey>, MergeContribution {
@@ -30,7 +30,7 @@ internal sealed interface KaBinding :
   val implementationName: String?
     get() = null
 
-  /** The aggregate id this binding contributes to, or null for non-multibinding bindings. */
+  /** The multibinding id this binding contributes to, or null for regular bindings. */
   val multibindingId: String?
     get() = null
 
@@ -175,8 +175,8 @@ internal sealed interface KaBinding :
   }
 
   /**
-   * A `Set`/`Map` aggregate. Index entries anchor `@Multibinds` declarations. Graph sealing
-   * synthesizes aggregate nodes whose [dependencies] are the collected element keys.
+   * A `Set`/`Map` multibinding. Index entries anchor `@Multibinds` declarations. Graph sealing
+   * synthesizes nodes whose [sourceBindings] are the collected element keys.
    */
   class Multibinding(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
@@ -188,13 +188,17 @@ internal sealed interface KaBinding :
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
-    /** Whether the declaration permits an empty aggregate via `@Multibinds(allowEmpty = true)`. */
+    /** Whether the declaration permits an empty multibinding. */
     val allowEmpty: Boolean = false,
-    override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    val sourceBindings: List<KaTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
+    override val dependencies: List<KaContextualTypeKey> = sourceBindings.map {
+      it.canonicalContextKey()
+    }
+
     override val label: String
-      get() = if (dependencies.isEmpty()) "multibinding declaration" else "multibinding"
+      get() = if (sourceBindings.isEmpty()) "multibinding declaration" else "multibinding"
   }
 
   /** An instance supplied by a graph factory through `@Provides` or graph-like `@Includes`. */

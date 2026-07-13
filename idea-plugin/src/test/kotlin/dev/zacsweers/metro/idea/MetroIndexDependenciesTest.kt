@@ -7,7 +7,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
-import dev.zacsweers.metro.idea.model.aggregateMultibindingId
+import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -142,10 +142,10 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertTrue(providerDep.wrappedType is WrappedType.Provider)
     assertTrue(providerDep.isDeferrable)
 
-    // Aggregate dependency ids are deduced from the key itself
+    // Multibinding ids are deduced from the requested key itself
     val setDep = entry.dependencies[1]
     assertEquals("kotlin.collections.Set<test.Analytics>", setDep.typeKey.renderedType)
-    assertEquals("test.Analytics", setDep.aggregateMultibindingId(MetroOptions()))
+    assertEquals("test.Analytics", setDep.multibindingId(MetroOptions()))
   }
 
   fun testContributedBindingAliasesItsOwnInjectBinding() {
@@ -204,7 +204,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test.Analytics", setParam.multibindingId)
     assertEquals(
       setParam.multibindingId,
-      setParam.contextKey.aggregateMultibindingId(MetroOptions()),
+      setParam.contextKey.multibindingId(MetroOptions()),
     )
   }
 
@@ -222,7 +222,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val serviceBindings = index.bindingsForKey(serviceParam.key, queryContext)
     assertEquals(listOf("binds"), serviceBindings.map { it.label })
 
-    // Multibinding contributions resolve by aggregate id
+    // Multibinding contributions resolve by multibinding id
     val contributions = index.multibindingContributions("test.Analytics", queryContext)
     assertEquals(1, contributions.size)
     assertEquals("multibinding contribution", contributions.single().label)

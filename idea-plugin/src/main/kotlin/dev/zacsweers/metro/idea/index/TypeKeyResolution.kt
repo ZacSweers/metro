@@ -10,7 +10,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
-import dev.zacsweers.metro.idea.model.aggregateMultibindingId
+import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
@@ -165,7 +165,7 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
-    contextKey.aggregateMultibindingId(options),
+    contextKey.multibindingId(options),
     contextKey.typeKey.type.classId,
   )
 }

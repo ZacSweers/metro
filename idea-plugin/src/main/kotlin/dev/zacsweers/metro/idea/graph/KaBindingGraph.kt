@@ -5,7 +5,6 @@ package dev.zacsweers.metro.idea.graph
 import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -34,8 +33,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
  * shared [MutableBindingGraph] and runs its validation via [seal]. Missing bindings, duplicates,
- * and cycles come from the shared core. Multibinding aggregate checks run after. One instance per
- * seal.
+ * and cycles come from the shared core. One instance per seal.
  */
 internal class KaBindingGraph(
   private val index: BindingIndex,
@@ -118,11 +116,9 @@ internal class KaBindingGraph(
             roots = roots,
             keep = keeps,
             shrinkUnusedBindings = options.shrinkUnusedBindings,
-            validateBindings = { bindings, stack, sealRoots, adjacency ->
-              validateBindingScopes(bindings, stack, sealRoots, adjacency)
-            },
+            validateBindings = ::validateBindings,
           )
-        validateAggregates()
+        checkEmptyMultibindings()
         topo
       } catch (_: SealAborted) {
         null
@@ -169,84 +165,102 @@ internal class KaBindingGraph(
     }
   }
 
-  /** Checks aggregates for duplicate map keys and unexpected emptiness after sealing. */
-  private fun validateAggregates() {
-    for (node in bindingLookup.aggregates) {
-      ProgressManager.checkCanceled()
-      val aggregate = node.binding
-      val contributions = node.contributions
-      if (contributions.isEmpty()) {
-        if (!aggregate.allowEmpty) {
-          report(emptyMultibindingDiagnostic(aggregate.typeKey), KaBindingStack(graph))
-        }
-        continue
-      }
-
-      val isMap = aggregate.typeKey.type.classId == StandardClassIds.Map
-      if (!isMap) continue
-      val duplicates =
-        contributions
-          .filter { it.mapKeyValue != null }
-          .groupBy { it.mapKeyValue }
-          .filterValues { it.size > 1 }
-      for ((mapKey, dupes) in duplicates) {
-        val locations = dupes.map { dupe ->
-          val locationDiagnostic = dupe.renderLocationDiagnostic(short = true)
-          LocatedItem(
-            location = locationDiagnostic.location,
-            code = locationDiagnostic.description,
-          )
-        }
-        pendingRelated = dupes
-        try {
-          report(
-            duplicateMapKeysDiagnostic(aggregate.typeKey, mapKey.orEmpty(), locations),
-            KaBindingStack(graph),
-          )
-        } finally {
-          pendingRelated = emptyList()
-        }
+  private fun checkEmptyMultibindings() {
+    realGraph.bindings.forEachValue { binding ->
+      if (binding !is KaBinding.Multibinding) return@forEachValue
+      if (!binding.allowEmpty && binding.sourceBindings.isEmpty()) {
+        report(emptyMultibindingDiagnostic(binding.typeKey), KaBindingStack(graph))
       }
     }
   }
 
-  private fun validateBindingScopes(
+  private fun validateBindings(
     bindings: ScatterMap<KaTypeKey, KaBinding>,
     stack: KaBindingStack,
     roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
     bindings.forEachValue { binding ->
-      val bindingScope = binding.scope ?: return@forEachValue
-      if (bindingScope in context.scopingAnnotations) return@forEachValue
+      ProgressManager.checkCanceled()
+      validateBindingScope(binding, stack, roots, adjacency)
+      validateMultibindings(binding, bindings, stack, roots, adjacency)
+    }
+  }
+
+  private fun validateMultibindings(
+    binding: KaBinding,
+    bindings: ScatterMap<KaTypeKey, KaBinding>,
+    stack: KaBindingStack,
+    roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
+    adjacency: GraphAdjacency<KaTypeKey>,
+  ) {
+    if (binding !is KaBinding.Multibinding) return
+    if (binding.typeKey.type.classId != StandardClassIds.Map) return
+    val keysWithDupes =
+      binding.sourceBindings
+        .mapNotNull { bindings[it] }
+        .groupBy { it.mapKeyValue }
+        .filterValues { it.size > 1 }
+
+    for ((mapKey, dupes) in keysWithDupes) {
+      checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
 
       val diagnosticStack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
-      diagnosticStack.push(
-        KaBindingStack.Entry(
-          contextKey = binding.contextualTypeKey,
-          usage = "(scoped to '${bindingScope.render(short = true)}')",
-          pointer = binding.pointer,
+      val locationDiagnostics = dupes.map { it.renderLocationDiagnostic(short = true) }
+      val locations = locationDiagnostics.map { it.toLocatedItem() }
+      pendingRelated = dupes
+      try {
+        report(
+          duplicateMapKeysDiagnostic(
+            typeKey = binding.typeKey,
+            mapKeyRender = mapKey,
+            locations = locations,
+            trace = diagnosticStack.toTraceSection(),
+            extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+          ),
+          diagnosticStack,
         )
-      )
-      val title = buildText {
-        append(graphName, Style.EMPHASIS)
-        if (context.scopingAnnotations.isEmpty()) {
-          append(" (unscoped) may not reference scoped bindings")
-        } else {
-          val scopes = context.scopingAnnotations.joinToString { "'${it.render(short = true)}'" }
-          append(" (scopes $scopes) may not reference bindings from different scopes")
-        }
+      } finally {
+        pendingRelated = emptyList()
       }
-      report(
-        MetroDiagnostic(
-          id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
-          severity = MetroSeverity.ERROR,
-          title = title,
-          sections = listOfNotNull(diagnosticStack.toTraceSection()),
-        ),
-        diagnosticStack,
-      )
     }
+  }
+
+  private fun validateBindingScope(
+    binding: KaBinding,
+    stack: KaBindingStack,
+    roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
+    adjacency: GraphAdjacency<KaTypeKey>,
+  ) {
+    val bindingScope = binding.scope ?: return
+    if (bindingScope in context.scopingAnnotations) return
+
+    val diagnosticStack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
+    diagnosticStack.push(
+      KaBindingStack.Entry(
+        contextKey = binding.contextualTypeKey,
+        usage = "(scoped to '${bindingScope.render(short = true)}')",
+        pointer = binding.pointer,
+      )
+    )
+    val title = buildText {
+      append(graphName, Style.EMPHASIS)
+      if (context.scopingAnnotations.isEmpty()) {
+        append(" (unscoped) may not reference scoped bindings")
+      } else {
+        val scopes = context.scopingAnnotations.joinToString { "'${it.render(short = true)}'" }
+        append(" (scopes $scopes) may not reference bindings from different scopes")
+      }
+    }
+    report(
+      MetroDiagnostic(
+        id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
+        severity = MetroSeverity.ERROR,
+        title = title,
+        sections = listOfNotNull(diagnosticStack.toTraceSection()),
+      ),
+      diagnosticStack,
+    )
   }
 
   private fun buildStackToRoot(

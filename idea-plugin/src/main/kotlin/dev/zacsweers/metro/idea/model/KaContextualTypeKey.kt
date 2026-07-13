@@ -50,10 +50,10 @@ internal class KaContextualTypeKey(
 }
 
 /**
- * The multibinding id a `Set` or `Map` aggregate key collects, or null for non-aggregate keys.
- * Deduced from the key itself, mirroring how the compiler derives ids from `IrTypeKey`.
+ * The multibinding id collected by a requested `Set` or `Map`, or null for regular keys. Deduced
+ * from the key itself, mirroring how the compiler derives ids from `IrTypeKey`.
  */
-internal fun KaContextualTypeKey.aggregateMultibindingId(options: MetroOptions): String? {
+internal fun KaContextualTypeKey.multibindingId(options: MetroOptions): String? {
   val mapNode =
     wrappedType.innerTypesSequence.filterIsInstance<WrappedType.Map<KaTypeSnapshot>>().firstOrNull()
   if (mapNode != null) {

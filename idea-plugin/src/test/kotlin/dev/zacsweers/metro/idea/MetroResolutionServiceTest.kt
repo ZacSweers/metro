@@ -133,7 +133,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(listOf("RealHttpApi"), index.bindingsFor(apiParam).map { it.implementationName })
   }
 
-  fun testSetMultibindingContributionsJoinTheirAggregateConsumer() {
+  fun testSetMultibindingContributionsJoinTheirMultibindingConsumer() {
     val file = configure()
     val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
@@ -148,13 +148,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(contributors.all { it.label == "multibinding contribution" })
     assertTrue(contributors.all { it.typeKey.renderedType == "test.Analytics" })
 
-    // And the reverse direction: a contribution's consumers include the aggregate site
+    // And the reverse direction: a contribution's consumers include the multibinding site
     val debugAnalytics = index.bindingEntriesAt(declarations.klass("DebugAnalytics"))
     val consumers = index.consumersFor(debugAnalytics)
     assertTrue(consumers.any { it.pointer.element === declarations.parameter("analytics") })
   }
 
-  fun testMapMultibindingContributionsJoinTheirAggregateConsumer() {
+  fun testMapMultibindingContributionsJoinTheirMultibindingConsumer() {
     val file = configure()
     val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()

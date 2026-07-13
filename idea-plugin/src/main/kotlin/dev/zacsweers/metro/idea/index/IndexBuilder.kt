@@ -25,8 +25,8 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
-import dev.zacsweers.metro.idea.model.aggregateMultibindingId
 import dev.zacsweers.metro.idea.model.canonicalContextKey
+import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotations
@@ -542,7 +542,7 @@ internal class IndexBuilder(
         ConsumerEntry(
           ptr(member),
           contextKey,
-          multibindingId = contextKey.aggregateMultibindingId(options),
+          multibindingId = contextKey.multibindingId(options),
           typeClassId = contextKey.typeKey.type.classId,
           graphId = graphId,
           isOptional = contextKey.hasDefault,

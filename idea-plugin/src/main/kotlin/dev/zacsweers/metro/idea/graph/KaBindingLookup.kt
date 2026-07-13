@@ -13,7 +13,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.model.aggregateMultibindingId
+import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -21,8 +21,8 @@ import org.jetbrains.kotlin.name.Name
  * on demand, so only keys reachable from the seal roots are ever looked up.
  *
  * Direct keys pull from the index's membership-gated view of [queryContext]. Its graph context
- * merges the extension parent chain, while its module gates declaration visibility. Aggregate keys
- * synthesize multibinding nodes.
+ * merges the extension parent chain, while its module gates declaration visibility. Multibinding
+ * keys synthesize multibinding nodes.
  */
 internal class KaBindingLookup(
   private val index: BindingIndex,
@@ -31,27 +31,16 @@ internal class KaBindingLookup(
 ) {
   private val graph: KaGraphNode = queryContext.graphContext.graph
 
-  /** One [KaBinding.Multibinding] aggregate and the contributions collected into it. */
-  class AggregateNode(val binding: KaBinding.Multibinding, val contributions: List<KaBinding>)
-
   /**
-   * Element bindings by their synthetic qualifier-swapped keys. An aggregate's dependencies use
-   * these keys, so the graph core requests them right after populating the aggregate. This map
+   * Element bindings by their synthetic qualifier-swapped keys. A multibinding's dependencies use
+   * these keys, so the graph core requests them right after populating the multibinding. This map
    * answers those requests.
    */
   private val syntheticElements = HashMap<KaTypeKey, KaBinding>()
 
-  /** Every aggregate synthesized during this seal, kept for the post-seal multibinding checks. */
-  private val mutableAggregates = mutableListOf<AggregateNode>()
-
-  /** Aggregates synthesized so far, for post-seal multibinding validation. */
-  val aggregates: List<AggregateNode>
-    get() = mutableAggregates
-
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
     syntheticElements.clear()
-    mutableAggregates.clear()
   }
 
   /**
@@ -72,12 +61,12 @@ internal class KaBindingLookup(
     }
 
     val candidates = index.bindingsForKey(typeKey, queryContext)
-    val aggregateId = contextKey.aggregateMultibindingId(options)
-    if (aggregateId != null) {
+    val multibindingId = contextKey.multibindingId(options)
+    if (multibindingId != null) {
       val declarations = candidates.filterIsInstance<KaBinding.Multibinding>()
-      val contributions = index.multibindingContributions(aggregateId, queryContext)
+      val contributions = index.multibindingContributions(multibindingId, queryContext)
       if (contributions.isNotEmpty() || declarations.isNotEmpty()) {
-        return synthesizeAggregate(contextKey, aggregateId, contributions, declarations)
+        return synthesizeMultibinding(contextKey, multibindingId, contributions, declarations)
       }
     }
 
@@ -100,13 +89,13 @@ internal class KaBindingLookup(
   }
 
   /**
-   * Builds the aggregate node plus one element binding per contribution. Each element is the
+   * Builds the multibinding plus one element binding per contribution. Each element is the
    * contribution re-keyed under a synthetic qualifier, matching the compiler's
    * `@MultibindingElement` key swap.
    */
-  private fun synthesizeAggregate(
+  private fun synthesizeMultibinding(
     contextKey: KaContextualTypeKey,
-    aggregateId: String,
+    multibindingId: String,
     contributions: List<KaBinding>,
     declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
@@ -116,29 +105,28 @@ internal class KaBindingLookup(
         KaAnnotationSnapshot(
           MULTIBINDING_ELEMENT_CLASS_ID,
           listOf(
-            Name.identifier("bindingId") to KaAnnotationValueSnapshot.Literal(aggregateId),
+            Name.identifier("bindingId") to KaAnnotationValueSnapshot.Literal(multibindingId),
             Name.identifier("elementId") to KaAnnotationValueSnapshot.Literal(elementId),
           ),
         )
       contribution.withElementKey(contribution.typeKey.copy(qualifier = qualifier))
     }
-    // Aggregates can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
-    // wins so both aggregates reference the same element nodes.
+    // Multibindings can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
+    // wins so both multibindings reference the same element nodes.
     for (element in elements) {
       syntheticElements.putIfAbsent(element.typeKey, element)
     }
 
     val anchor = declarations.firstOrNull() ?: contributions.firstOrNull()
-    val aggregate =
+    val multibinding =
       KaBinding.Multibinding(
         pointer = anchor?.pointer ?: graph.pointer,
         typeKey = contextKey.typeKey,
         contextualTypeKey = contextKey,
         allowEmpty = declarations.any { it.allowEmpty },
-        dependencies = elements.map { it.contextualTypeKey },
+        sourceBindings = elements.map { it.typeKey },
       )
-    mutableAggregates += AggregateNode(aggregate, contributions)
-    return setOf(aggregate) + elements
+    return setOf(multibinding) + elements
   }
 
   private companion object {

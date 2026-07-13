@@ -36,7 +36,7 @@ import org.jetbrains.kotlin.psi.KtProperty
  * ```
  *
  * Single resolved implementations navigate to the binding on click; multibindings show the
- * contribution count and navigate to the aggregate's contributors via the consumer gutter icon.
+ * contribution count and navigate to the multibinding's contributors via the consumer gutter icon.
  */
 class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
 

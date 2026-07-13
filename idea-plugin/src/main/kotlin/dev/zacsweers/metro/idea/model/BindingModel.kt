@@ -17,7 +17,7 @@ internal class ConsumerEntry(
   val contextKey: KaContextualTypeKey,
   /** Whether the declared type is an interface or abstract class (drives implementation inlays). */
   val isAbstractType: Boolean = false,
-  /** For `Set`/`Map` aggregate sites, the multibinding id collecting contributed elements. */
+  /** For `Set`/`Map` multibinding sites, the id collecting contributed elements. */
   val multibindingId: String? = null,
   /** The consumed type's class, when it is a class type. Used to resolve library inject classes. */
   val typeClassId: ClassId? = null,

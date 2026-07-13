@@ -79,7 +79,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     /** Sorted member bindings; rows build from these on each children request. */
     val bindings: List<KaBinding>,
     val ambiguousQualifiers: Set<Name>,
-    /** True for the Multibindings category, whose children group by aggregate id. */
+    /** True for the Multibindings category, whose children group by multibinding id. */
     val grouped: Boolean,
     hint: String? = null,
   ) : MetroTreeNode(parent) {
@@ -112,7 +112,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val identity: Any = text + grayText.orEmpty()
   }
 
-  class Aggregate(
+  class Multibinding(
     parent: MetroTreeNode,
     multibindingId: String,
     val contributions: List<KaBinding>,
@@ -236,8 +236,8 @@ internal class MetroTreeStructure(
       is MetroTreeNode.Root -> graphNodes(node)
       is MetroTreeNode.Graph -> graphChildren(node)
       is MetroTreeNode.Category -> categoryRows(node)
-      is MetroTreeNode.Aggregate ->
-        node.contributions.map { bindingRow(node, it, inAggregate = true) }
+      is MetroTreeNode.Multibinding ->
+        node.contributions.map { bindingRow(node, it, inMultibinding = true) }
       is MetroTreeNode.Validation -> validationChildren(node)
       is MetroTreeNode.Diagnostic -> diagnosticChildren(node)
       else -> emptyList()
@@ -253,7 +253,7 @@ internal class MetroTreeStructure(
     return node.bindings
       .groupBy { it.multibindingId!! }
       .toSortedMap()
-      .map { (id, contributions) -> MetroTreeNode.Aggregate(node, id, contributions) }
+      .map { (id, contributions) -> MetroTreeNode.Multibinding(node, id, contributions) }
   }
 
   /**
@@ -433,7 +433,7 @@ internal class MetroTreeStructure(
   private fun bindingRow(
     parent: MetroTreeNode,
     binding: KaBinding,
-    inAggregate: Boolean = false,
+    inMultibinding: Boolean = false,
     ambiguousQualifiers: Set<Name> = emptySet(),
   ): MetroTreeNode.BindingRow {
     val qualifier = binding.typeKey.qualifier
@@ -446,8 +446,8 @@ internal class MetroTreeStructure(
     val implementation = binding.implementationName?.takeIf { it != binding.typeKey.type.shortType }
     val text =
       when {
-        // The aggregate row already names the key, so contributions show just their source
-        inAggregate -> implementation ?: shortKey
+        // The multibinding row already names the key, so contributions show just their source
+        inMultibinding -> implementation ?: shortKey
         implementation != null -> "$shortKey -> $implementation"
         else -> shortKey
       }
@@ -473,7 +473,7 @@ internal class MetroTreeStructure(
     children +=
       if (topology != null) {
         // Count real bindings only: skip the seal's bookkeeping nodes (graph instances,
-        // multibinding aggregates). Re-keyed multibinding elements count, one per contribution.
+        // multibinding nodes). Re-keyed multibinding elements count, one per contribution.
         var used = 0
         result.bindings.forEach { _, binding ->
           if (binding !is KaBinding.GraphInstance && binding !is KaBinding.Multibinding) used++
