@@ -8,7 +8,11 @@ import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
+import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment as createEmptyExternalPackageFragmentNative
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 public class CompatContextImpl : CompatContext by DelegateType() {
   override fun buildResolvedQualifierCompat(
@@ -27,6 +31,12 @@ public class CompatContextImpl : CompatContext by DelegateType() {
       }
       coneTypeOrNull = classType
     }
+  }
+
+  override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
+    packageName: String
+  ): IrPackageFragment {
+    return createEmptyExternalPackageFragmentNative(this, FqName(packageName))
   }
 
   public class Factory : CompatContext.Factory {

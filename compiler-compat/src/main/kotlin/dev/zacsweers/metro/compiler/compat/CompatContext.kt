@@ -49,6 +49,8 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
@@ -351,6 +353,17 @@ public interface CompatContext {
     classSymbol: FirClassLikeSymbol<*>,
     classType: ConeKotlinType,
   ): FirResolvedQualifier
+
+  /** Creates an empty external package fragment using this module. */
+  @CompatApi(
+    since = "2.5.0-dev-498",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "createEmptyExternalPackageFragment now takes IrModuleFragment instead of ModuleDescriptor",
+  )
+  public fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
+    packageName: String
+  ): IrPackageFragment
 
   /**
    * Builds a member function using the version-appropriate builder.
