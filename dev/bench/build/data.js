@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783923225978,
+  "lastUpdate": 1783983466353,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18872,6 +18872,62 @@ window.BENCHMARK_DATA = {
             "value": 19385.917999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.54%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "df32573b~1",
+          "message": "[before] Support IR class gen in circuit (#2542)",
+          "timestamp": "2026-07-13T22:20:17Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/df32573b14fe3765168fe1eda685196a7e9553c5"
+        },
+        "date": 1783983466353,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 23198.788,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "df32573b14fe3765168fe1eda685196a7e9553c5",
+          "message": "[after] Support IR class gen in circuit (#2542)",
+          "timestamp": "2026-07-13T22:20:17Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/df32573b14fe3765168fe1eda685196a7e9553c5"
+        },
+        "date": 1783983466354,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19757.322,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -14.83%"
           }
         ]
       }
