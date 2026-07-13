@@ -83,12 +83,14 @@ import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment as createEmptyExternalPackageFragmentNative
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.util.getValueArgument as getValueArgumentNative
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -197,27 +199,6 @@ public class CompatContextImpl : CompatContext {
 
   override fun FirFunction.isNamedFunction(): Boolean {
     return this is FirSimpleFunction
-  }
-
-  override fun buildResolvedQualifierCompat(
-    classId: ClassId,
-    classSymbol: FirClassLikeSymbol<*>,
-    classType: ConeKotlinType,
-  ): FirResolvedQualifier {
-    return buildResolvedQualifier {
-      packageFqName = classId.packageFqName
-      relativeClassFqName = classId.relativeClassName
-      symbol = classSymbol
-      resolvedToCompanionObject = false
-      isFullyQualified = true
-      coneTypeOrNull = classType
-    }
-  }
-
-  override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
-    packageName: String
-  ): IrPackageFragment {
-    return createEmptyExternalPackageFragmentNative(descriptor, FqName(packageName))
   }
 
   override fun FirDeclarationGenerationExtension.buildMemberFunction(
@@ -356,6 +337,31 @@ public class CompatContextImpl : CompatContext {
     // NoClassDefFoundError when the IDE's KtCompilerPluginsCache loads Metro's registrar and
     // no collector is configured (the IDE never configures one).
     return get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY) ?: SystemErrMessageCollector()
+  }
+
+  override fun buildResolvedQualifierCompat(
+    classId: ClassId,
+    classSymbol: FirClassLikeSymbol<*>,
+    classType: ConeKotlinType,
+  ): FirResolvedQualifier {
+    return buildResolvedQualifier {
+      packageFqName = classId.packageFqName
+      relativeClassFqName = classId.relativeClassName
+      symbol = classSymbol
+      resolvedToCompanionObject = false
+      isFullyQualified = true
+      coneTypeOrNull = classType
+    }
+  }
+
+  override fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
+    packageName: String
+  ): IrPackageFragment {
+    return createEmptyExternalPackageFragmentNative(descriptor, FqName(packageName))
+  }
+
+  override fun IrConstructorCall.getAnnotationArgumentCompat(name: Name): IrExpression? {
+    return getValueArgumentNative(name)
   }
 
   /** A non-silent fallback collector that avoids CLI-only printing classes. */

@@ -161,7 +161,6 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
-import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.hasEqualFqName
 import org.jetbrains.kotlin.ir.util.hasShape
@@ -278,6 +277,12 @@ private val irAnnotationCompatContext: CompatContext by lazy { CompatContext.cre
 
 internal fun IrAnnotationContainer.annotationsCompat(): List<IrConstructorCall> {
   return with(irAnnotationCompatContext) { this@annotationsCompat.annotationsCompat() }
+}
+
+internal fun IrConstructorCall.getAnnotationArgument(name: Name): IrExpression? {
+  return with(irAnnotationCompatContext) {
+    this@getAnnotationArgument.getAnnotationArgumentCompat(name)
+  }
 }
 
 // Compat copies because of IrAnnotation in 2.4.0
@@ -1044,10 +1049,10 @@ internal fun IrConstructorCall.getSingleConstBooleanArgumentOrNull(): Boolean? {
 }
 
 internal fun IrConstructorCall.getConstBooleanArgumentOrNull(name: Name): Boolean? =
-  (getValueArgument(name) as IrConst?)?.value as Boolean?
+  (getAnnotationArgument(name) as IrConst?)?.value as Boolean?
 
 internal fun IrConstructorCall.replacesArgument() =
-  (getValueArgument(Symbols.Names.replaces) ?: arguments.getOrNull(replacesArgumentIndex()))
+  (getAnnotationArgument(Symbols.Names.replaces) ?: arguments.getOrNull(replacesArgumentIndex()))
     ?.expectAsOrNull<IrVararg>()
 
 private fun IrConstructorCall.replacesArgumentIndex(): Int {
@@ -1062,14 +1067,14 @@ internal fun IrConstructorCall.replacedClasses(): Set<IrClassReference> {
 }
 
 internal fun IrConstructorCall.subcomponentsArgument() =
-  getValueArgument(Symbols.Names.subcomponents)?.expectAsOrNull<IrVararg>()
+  getAnnotationArgument(Symbols.Names.subcomponents)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.excludesArgument() =
-  (getValueArgument(Symbols.Names.excludes) ?: getValueArgument(Symbols.Names.exclude))
+  (getAnnotationArgument(Symbols.Names.excludes) ?: getAnnotationArgument(Symbols.Names.exclude))
     ?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.additionalScopesArgument() =
-  getValueArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
+  getAnnotationArgument(Symbols.Names.additionalScopes)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.excludedClasses(): Set<IrClassReference> {
   return excludesArgument().toClassReferences()
@@ -1084,17 +1089,17 @@ internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
 }
 
 internal fun IrConstructorCall.includesArgument() =
-  getValueArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
+  getAnnotationArgument(Symbols.Names.includes)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.includedClasses(): Set<IrClassReference> {
   return includesArgument().toClassReferences()
 }
 
 internal fun IrConstructorCall.bindingContainersArgument() =
-  getValueArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
+  getAnnotationArgument(Symbols.Names.bindingContainers)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.modulesArgument() =
-  getValueArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
+  getAnnotationArgument(Symbols.Names.modules)?.expectAsOrNull<IrVararg>()
 
 internal fun IrConstructorCall.bindingContainerClasses(
   includeModulesArg: Boolean
@@ -1118,7 +1123,7 @@ internal fun IrConstructorCall.scopeOrNull(): ClassId? {
 }
 
 internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
-  return getValueArgument(Symbols.Names.scope)
+  return getAnnotationArgument(Symbols.Names.scope)
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
@@ -1141,7 +1146,7 @@ internal fun IrConstructorCall.originOrNull(): ClassId? {
 }
 
 internal fun IrConstructorCall.originClassOrNull(): IrClass? {
-  return getValueArgument(StandardNames.DEFAULT_VALUE_PARAMETER)
+  return getAnnotationArgument(StandardNames.DEFAULT_VALUE_PARAMETER)
     ?.expectAsOrNull<IrClassReference>()
     ?.classType
     ?.rawTypeOrNull()
@@ -1149,7 +1154,7 @@ internal fun IrConstructorCall.originClassOrNull(): IrClass? {
 
 /** Reads the `context` argument of an `@Origin` annotation, or `null` if unset. */
 internal fun IrConstructorCall.originContextOrNull(): String? {
-  return (getValueArgument(Symbols.Names.context) as? IrConst)?.value as? String
+  return (getAnnotationArgument(Symbols.Names.context) as? IrConst)?.value as? String
 }
 
 internal fun IrBuilderWithScope.kClassReference(symbol: IrClassSymbol): IrClassReference {
@@ -1831,7 +1836,7 @@ internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
 internal fun IrConstructorCall.rankValue(): Long {
   // Although the parameter is defined as an Int, the value we receive here may end up being
   // an Int or a Long so we need to handle both
-  return getValueArgument(Symbols.Names.rank)?.let { arg ->
+  return getAnnotationArgument(Symbols.Names.rank)?.let { arg ->
     when (arg) {
       is IrConst -> {
         when (val value = arg.value) {
@@ -2199,7 +2204,7 @@ internal fun IrConstructorCall.bindingTypeOrNull(
 
 context(context: IrMetroContext)
 internal fun IrConstructorCall.bindingTypeArgument(): IrTypeKey? {
-  return getValueArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let {
+  return getAnnotationArgument(Symbols.Names.binding)?.expectAsOrNull<IrConstructorCall>()?.let {
     bindingType ->
     val type =
       bindingType.typeArguments.getOrNull(0)?.takeUnless { it == context.irBuiltIns.nothingType }
@@ -2208,7 +2213,9 @@ internal fun IrConstructorCall.bindingTypeArgument(): IrTypeKey? {
 }
 
 internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
-  return getValueArgument(Symbols.Names.boundType)?.expectAsOrNull<IrClassReference>()?.classType
+  return getAnnotationArgument(Symbols.Names.boundType)
+    ?.expectAsOrNull<IrClassReference>()
+    ?.classType
 }
 
 internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {

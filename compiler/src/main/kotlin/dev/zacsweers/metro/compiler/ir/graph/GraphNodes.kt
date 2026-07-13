@@ -45,6 +45,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.getAnnotationArgument
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -109,7 +110,6 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
-import org.jetbrains.kotlin.ir.util.getValueArgument
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
@@ -242,7 +242,7 @@ internal class GraphNodes(
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
         val implicitScope =
-          dependencyGraphAnno?.getValueArgument(Symbols.Names.scope)?.let { scopeArg ->
+          dependencyGraphAnno?.getAnnotationArgument(Symbols.Names.scope)?.let { scopeArg ->
             scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
               aggregationScopes += it.classIdOrFail
             }
@@ -255,7 +255,7 @@ internal class GraphNodes(
         if (implicitScope != null) {
           add(IrAnnotation(implicitScope))
           dependencyGraphAnno
-            .getValueArgument(Symbols.Names.additionalScopes)
+            .getAnnotationArgument(Symbols.Names.additionalScopes)
             ?.expectAs<IrVararg>()
             ?.elements
             ?.forEach { scopeArg ->
