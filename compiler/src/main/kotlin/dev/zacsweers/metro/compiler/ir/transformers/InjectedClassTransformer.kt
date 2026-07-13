@@ -53,6 +53,7 @@ import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -613,6 +614,7 @@ internal class InjectedClassTransformer(
         body =
           pluginContext.createIrBuilder(symbol).run {
             val sourceParameters = targetCallable.owner.parameters()
+            val functionTypeRemapper = targetCallable.owner.typeRemapperFor(declaration.defaultType)
             if (invokeFunction.origin == Origins.TopLevelInjectFunctionClassFunction) {
               // If this is a top-level function, we need to patch up the parameters
               copyParameterDefaultValues(
@@ -648,7 +650,7 @@ internal class InjectedClassTransformer(
                         irGet(functionReceiver),
                         constructorParametersToFields.getValue(constructorParam),
                       )
-                    val contextKey = targetParam.contextualTypeKey
+                    val contextKey = targetParam.contextualTypeKey.remapType(functionTypeRemapper)
                     typeAsProviderArgument(
                       contextKey = contextKey,
                       bindingCode = providerInstance,
@@ -681,7 +683,7 @@ internal class InjectedClassTransformer(
                         irGet(functionReceiver),
                         constructorParametersToFields.getValue(constructorParam),
                       )
-                    val contextKey = targetParam.contextualTypeKey
+                    val contextKey = targetParam.contextualTypeKey.remapType(functionTypeRemapper)
                     typeAsProviderArgument(
                       contextKey = contextKey,
                       bindingCode = providerInstance,
@@ -704,8 +706,11 @@ internal class InjectedClassTransformer(
                 callee = targetCallable,
                 dispatchReceiver = null,
                 extensionReceiver = null,
-                typeHint = targetCallable.owner.returnType,
-                // TODO type params
+                typeHint = functionTypeRemapper.remapType(targetCallable.owner.returnType),
+                typeArgs =
+                  targetCallable.owner.typeParameters.map {
+                    functionTypeRemapper.remapType(it.defaultType)
+                  },
                 contextArgs = contextArgs,
                 args = args,
               )

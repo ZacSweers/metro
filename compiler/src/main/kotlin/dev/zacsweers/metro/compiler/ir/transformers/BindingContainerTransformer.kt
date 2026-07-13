@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
+import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.ProviderFactory.Companion.lookupRealDeclaration
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
@@ -35,7 +36,6 @@ import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
-import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.dispatchReceiverFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findAnnotations
@@ -71,6 +71,7 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toClassReferences
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.transformIfIntoMultibinding
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isPlatformType
 import dev.zacsweers.metro.compiler.mapNotNullToSet
@@ -111,6 +112,7 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
@@ -373,15 +375,24 @@ internal class BindingContainerTransformer(
           }
       }
 
+    val sourceTypeParameters = reference.parent.owner.typeParameters
+    val factoryTypeRemapper =
+      if (sourceTypeParameters.isEmpty()) {
+        NOOP_TYPE_REMAPPER
+      } else {
+        typeRemapperFor(factoryCls.typeParameters.map { it.defaultType }, reference.parent.owner)
+      }
+    val factoryTargetType = factoryTypeRemapper.remapType(reference.typeKey.type)
+
     val invokeFunction =
       trace("Add factory supertype + invoke shell") {
         // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to
         // read directly since we'll read the mirror function to get the target type
-        factoryCls.superTypes += metroSymbols.metroFactory.typeWith(reference.typeKey.type)
+        factoryCls.superTypes += metroSymbols.metroFactory.typeWith(factoryTargetType)
         // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
         // the invoke override directly later
         factoryCls
-          .addFunction(Symbols.StringNames.INVOKE, reference.typeKey.type, isFakeOverride = true)
+          .addFunction(Symbols.StringNames.INVOKE, factoryTargetType, isFakeOverride = true)
           .apply {
             overriddenSymbols = listOf(metroSymbols.providerInvoke)
             isOperator = true
@@ -447,14 +458,12 @@ internal class BindingContainerTransformer(
 
       trace("Build factory constructor") {
         ctor.apply {
-          val ownerClass = reference.parent.owner
-          val typeRemapper = ownerClass.deepRemapperFor(factoryCls.defaultType)
           val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
           addParameters(
             params = dedupedSourceParameters.allParameters,
             wrapInProvider = true,
             stubDefaults = false,
-            typeRemapper = { type -> typeRemapper.remapType(type) },
+            typeRemapper = { type -> factoryTypeRemapper.remapType(type) },
           ) { typeKey, irParam ->
             val fieldName =
               fieldNameAllocator.allocateName(memberNamer, MemberNamer.Kind.PROVIDER) {
@@ -486,12 +495,15 @@ internal class BindingContainerTransformer(
             irInvoke(
               dispatchReceiver = dispatchReceiverFor(bytecodeFunction),
               callee = bytecodeFunction.symbol,
+              typeHint = invokeFunction.returnType,
+              typeArgs = factoryCls.typeParameters.map { it.defaultType },
               args =
                 parametersAsProviderArguments(
                   parameters = sourceParameters,
                   receiver = invokeFunction.dispatchReceiverParameter!!,
                   fields = typeKeyToField,
                   nameToField = nameToField,
+                  typeRemapper = factoryTypeRemapper,
                 ),
             )
           )
@@ -702,7 +714,15 @@ internal class BindingContainerTransformer(
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
         sourceTypeParameters = reference.parent.owner,
-        returnTypeProvider = { reference.typeKey.type },
+        returnTypeProvider = { typeParameters ->
+          val sourceClass = reference.parent.owner
+          val typeRemapper =
+            typeRemapperFor(
+              typeParameters.map { it.defaultType },
+              sourceClass,
+            )
+          typeRemapper.remapType(reference.typeKey.type)
+        },
         functionName = reference.name.asString(),
       ) { function ->
         val parameters = function.regularParameters
@@ -732,6 +752,7 @@ internal class BindingContainerTransformer(
             dispatchReceiver = dispatchReceiver,
             extensionReceiver = extensionReceiver,
             callee = reference.callee!!,
+            typeHint = function.returnType,
             contextArgs = contextArgs,
             args = args,
           )

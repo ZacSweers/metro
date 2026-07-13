@@ -1785,6 +1785,9 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
             val classifier = type.classifier
             if (classifier is IrTypeParameterSymbol) {
               substitutionMap[classifier]?.let { substitutedType ->
+                if (substitutedType is IrSimpleType && substitutedType.classifier == classifier) {
+                  return type
+                }
                 // Preserve nullability
                 when (val remapped = remapType(substitutedType)) {
                   // Java type args always come with @FlexibleNullability, which we choose to
@@ -1817,6 +1820,23 @@ internal fun typeRemapperFor(substitutionMap: Map<IrTypeParameterSymbol, IrType>
     }
 
   return remapper
+}
+
+internal fun typeRemapperFor(
+  concreteTypes: List<IrType>,
+  vararg typeParameterOwners: IrTypeParametersContainer,
+): TypeRemapper {
+  if (concreteTypes.isEmpty()) return NOOP_TYPE_REMAPPER
+
+  return typeRemapperFor(
+    buildMap {
+      typeParameterOwners.forEach { owner ->
+        owner.typeParameters.zip(concreteTypes).forEach { (parameter, concreteType) ->
+          put(parameter.symbol, concreteType)
+        }
+      }
+    }
+  )
 }
 
 /**

@@ -789,7 +789,7 @@ internal class ContributionIrTransformer(
 
     val factoryProvider =
       with(assistedFactoryTransformer.getOrGenerateImplClass(originClass)) {
-        scope.invokeCreate(delegateFactory)
+        scope.invokeCreate(delegateFactory, function.returnType)
       }
     return scope.irInvoke(
       dispatchReceiver = factoryProvider,

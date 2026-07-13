@@ -338,7 +338,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         this.isInline = target?.canBeInlined() == true
       }
       .apply {
-        val constructorTypeSubstitution =
+        val typeSubstitution =
           if (target is IrConstructor) {
             val sourceClass = factoryClass.parentAsClass
             val scopeAndQualifierAnnotations = buildList {
@@ -356,7 +356,7 @@ internal fun generateMetadataVisibleMirrorFunction(
             }
           } else {
             // Copy type parameters from the factory class (e.g., generic binding containers)
-            copyTypeParametersFrom(factoryClass)
+            val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
 
             // If it's a regular (provides) function or backing field, just always copy its
             // annotations
@@ -369,20 +369,33 @@ internal fun generateMetadataVisibleMirrorFunction(
                 }
                 .map { it.deepCopyWithSymbols() }
             )
-            null
+            buildMap {
+              factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
+                put(source.symbol, copied.defaultType)
+              }
+              factoryClass.parentAsClass.typeParameters.zip(copiedTypeParameters).forEach {
+                (source, copied) ->
+                put(source.symbol, copied.defaultType)
+              }
+            }
           }
         if (target != null) {
-          if (constructorTypeSubstitution != null) {
-            copyParametersFrom(target, constructorTypeSubstitution)
+          if (typeSubstitution.isNotEmpty()) {
+            copyParametersFrom(target, typeSubstitution)
           } else {
             copyParametersFrom(target)
           }
-          target.extensionReceiverParameterCompat?.let { setExtensionReceiver(it.copyTo(this)) }
+          target.extensionReceiverParameterCompat?.let { receiver ->
+            val receiverType = IrTypeSubstitutor(typeSubstitution).substitute(receiver.type)
+            setExtensionReceiver(receiver.copyTo(this, type = receiverType))
+          }
         }
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
-        constructorTypeSubstitution?.let {
-          this.returnType = IrTypeSubstitutor(it).substitute(returnType)
-        }
+        typeSubstitution
+          .takeIf { it.isNotEmpty() }
+          ?.let {
+            this.returnType = IrTypeSubstitutor(it).substitute(returnType)
+          }
 
         regularParameters.forEach {
           // If it has a default value expression, just replace it with a stub. We don't need it to

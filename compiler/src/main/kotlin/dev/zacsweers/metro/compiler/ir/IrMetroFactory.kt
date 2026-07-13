@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.remapTypes as remapParameterTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -18,11 +19,14 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.Name
@@ -43,6 +47,9 @@ internal sealed interface IrMetroFactory {
     get() = setOf(Symbols.Names.create)
 
   val isDaggerFactory: Boolean
+
+  val creatorTypeArguments: List<IrType>?
+    get() = null
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
   fun invokeCreateExpression(
@@ -115,20 +122,27 @@ internal sealed interface IrMetroFactory {
             "No matching creator function for '$expectedCreatorDescription' found in ${factoryClass.classId} with typeKey $typeKey. Available are ${creatorClass.simpleFunctions().joinToString { it.name.asString() }}"
           )
 
-      val remapper = createFunction.typeRemapperFor(typeKey.type)
       val finalFunction =
-        createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).also {
-          it.parent = createFunction.parent
-          it.remapTypes(remapper)
+        createFunction.deepCopyWithSymbols(initialParent = createFunction.parent).apply {
+          parent = createFunction.parent
+        }
+      val remapper =
+        creatorTypeArguments?.let { concreteTypes ->
+          typeRemapperFor(concreteTypes, finalFunction)
+        } ?: finalFunction.typeRemapperFor(typeKey.type)
+      finalFunction.remapTypes(remapper)
+      val typeArguments =
+        finalFunction.typeParameters.map { typeParameter ->
+          remapper.remapType(typeParameter.defaultType)
         }
 
       val parameters =
         if (isDaggerFactory) {
           // Dagger factories don't copy over qualifiers, so we wanna copy them over here
           val qualifiers = function.parameters.map { it.qualifierAnnotation() }
-          createFunction.parameters(remapper).overlayQualifiers(qualifiers)
+          finalFunction.parameters().overlayQualifiers(qualifiers)
         } else {
-          createFunction.parameters(remapper)
+          finalFunction.parameters()
         }
 
       val args = computeArgs(finalFunction, parameters)
@@ -136,6 +150,7 @@ internal sealed interface IrMetroFactory {
         callee = createFunction.symbol,
         args = args,
         typeHint = finalFunction.returnType,
+        typeArgs = typeArguments,
       )
     }
 }
@@ -186,10 +201,17 @@ internal sealed class ClassFactory : IrMetroFactory {
     override fun remapTypes(typeRemapper: TypeRemapper): MetroFactory {
       if (factoryClass.typeParameters.isEmpty()) return this
 
-      // TODO can we pass the remapper in?
-      val newFunction =
-        function.deepCopyWithSymbols(factoryClass).also { it.remapTypes(typeRemapper) }
-      return MetroFactory(factoryClass, newFunction.parameters(), targetConstructor)
+      val sourceClass = factoryClass.parentAsClass
+      val concreteTypes = sourceClass.typeParameters.map { typeRemapper.remapType(it.defaultType) }
+      val functionTypeRemapper =
+        typeRemapperFor(
+          concreteTypes,
+          sourceClass,
+          factoryClass,
+          function,
+        )
+      val remappedParameters = targetFunctionParameters.remapParameterTypes(functionTypeRemapper)
+      return MetroFactory(factoryClass, remappedParameters, targetConstructor)
     }
   }
 

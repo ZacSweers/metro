@@ -15,10 +15,13 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
@@ -89,6 +92,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     private val callableMetadata: IrCallableMetadata,
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
+    override val creatorTypeArguments: List<IrType>? = null,
   ) : ProviderFactory() {
     val mirrorFunction: IrSimpleFunction
       get() = callableMetadata.mirrorFunction
@@ -117,15 +121,26 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val isDaggerFactory: Boolean = false
 
     fun withRemappedTypes(remapper: TypeRemapper): Metro {
+      val sourceClass = factoryClass.parentAsClass
+      val concreteTypes = sourceClass.typeParameters.map { remapper.remapType(it.defaultType) }
+      val factoryRemapper =
+        typeRemapperFor(
+          concreteTypes,
+          sourceClass,
+          factoryClass,
+          mirrorFunction,
+          function,
+        )
       return Metro(
         factoryClass = factoryClass,
-        typeKey = typeKey.remapTypes(remapper),
-        rawTypeKey = rawTypeKey.remapTypes(remapper),
-        contextualTypeKey = contextualTypeKey.remapType(remapper),
+        typeKey = typeKey.remapTypes(factoryRemapper),
+        rawTypeKey = rawTypeKey.remapTypes(factoryRemapper),
+        contextualTypeKey = contextualTypeKey.remapType(factoryRemapper),
         realDeclaration = realDeclaration,
         callableMetadata = callableMetadata,
-        parametersLazy = lazy { parameters.remapTypes(remapper) },
+        parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
+        creatorTypeArguments = concreteTypes,
       )
     }
   }

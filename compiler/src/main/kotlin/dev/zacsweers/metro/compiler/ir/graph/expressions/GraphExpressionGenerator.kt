@@ -43,7 +43,10 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -216,12 +219,18 @@ private constructor(
               codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
+              val targetType = binding.typeKey.type
+              val typeArguments =
+                targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                  it.typeOrFail
+                }
               val directExpr =
                 irCallConstructor(
                     targetConstructor.symbol,
-                    binding.type.typeParameters.map { it.defaultType },
+                    typeArguments,
                   )
                   .apply {
+                    type = targetType
                     val args =
                       generateBindingArguments(
                         targetParams = classFactory.targetFunctionParameters,
@@ -484,7 +493,8 @@ private constructor(
               fieldInitKey = effectiveFieldInitKey,
             )
 
-          val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
+          val factoryProvider =
+            with(factoryImpl) { invokeCreate(delegateFactory, binding.typeKey.type) }
 
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
@@ -504,7 +514,12 @@ private constructor(
 
         is MembersInjected -> {
           val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
-          val injectedType = injectedClass.defaultType
+          val injectedType =
+            binding.typeKey.type
+              .expectAsOrNull<IrSimpleType>()
+              ?.arguments
+              ?.firstOrNull()
+              ?.typeOrFail ?: injectedClass.defaultType
           val targetTypeKey =
             IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
 
@@ -552,7 +567,17 @@ private constructor(
 
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
-            val membersInjector = irInvoke(callee = createFunction, args = args)
+            val typeArguments =
+              injectedType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                it.typeOrFail
+              }
+            val membersInjector =
+              irInvoke(
+                callee = createFunction,
+                typeHint = metroSymbols.metroMembersInjector.typeWith(injectedType),
+                typeArgs = typeArguments,
+                args = args,
+              )
             expressionDecorator
               .decorateMembersInjectorExpression(
                 membersInjector,
@@ -751,12 +776,20 @@ private constructor(
                     when {
                       getterContextKey.isWrappedInProvider -> {
                         val providerType = getterContextKey.rawType ?: invokeGetter.type
-                        irInvoke(invokeGetter, callee = metroSymbols.providerValue(providerType))
+                        irInvoke(
+                          invokeGetter,
+                          callee = metroSymbols.providerValue(providerType),
+                          typeHint = binding.typeKey.type,
+                        )
                       }
 
                       getterContextKey.isWrappedInLazy -> {
                         val lazyType = getterContextKey.rawType ?: invokeGetter.type
-                        irInvoke(invokeGetter, callee = metroSymbols.lazyValue(lazyType))
+                        irInvoke(
+                          invokeGetter,
+                          callee = metroSymbols.lazyValue(lazyType),
+                          typeHint = binding.typeKey.type,
+                        )
                       }
 
                       else -> invokeGetter
