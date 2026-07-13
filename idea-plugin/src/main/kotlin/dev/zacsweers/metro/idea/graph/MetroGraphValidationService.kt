@@ -46,8 +46,12 @@ internal class MetroGraphValidationService(
 
   private class CachedEntry(val result: KaGraphValidationResult, val index: BindingIndex)
 
+  /**
+   * A current graph declaration and context interpreted using the declaration module's Metro
+   * options. [BindingIndex.queryContext] separately uses the root graph module for visibility.
+   */
   private class ValidationInput(
-    val graphElement: PsiElement,
+    val declarationElement: PsiElement,
     val index: BindingIndex,
     val context: GraphContext,
   )
@@ -86,8 +90,9 @@ internal class MetroGraphValidationService(
   fun cachedResult(element: PsiElement, context: GraphContext): CachedValidation? {
     val key = cacheKey(context) ?: return null
     val entry = results[key] ?: return null
-    val input = validationInput(element, context)
-    return CachedValidation(entry.result, stale = entry.index !== input.index)
+    val declarationElement = context.graph.pointer.element ?: element
+    val currentIndex = project.service<MetroResolutionService>().index(declarationElement)
+    return CachedValidation(entry.result, stale = entry.index !== currentIndex)
   }
 
   /**
@@ -113,7 +118,7 @@ internal class MetroGraphValidationService(
     val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
     val result =
       runGraphValidation(context, graphName) {
-        val options = moduleOptions(input.graphElement)
+        val options = moduleOptions(input.declarationElement)
         val queryContext =
           checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
         KaBindingGraph(index, queryContext, options).seal()
@@ -131,10 +136,12 @@ internal class MetroGraphValidationService(
     element: PsiElement,
     graph: KaGraphNode,
   ): List<KaGraphValidationResult> {
-    val graphElement = graph.pointer.element ?: element
-    val index = project.service<MetroResolutionService>().index(graphElement)
-    val currentGraph = index.graphFor(graph) ?: graph
-    return validateWithExtensions(graphElement, index.contextsFor(currentGraph))
+    val declarationElement = graph.pointer.element ?: element
+    val index = project.service<MetroResolutionService>().index(declarationElement)
+    val currentGraph =
+      index.graphFor(graph)
+        ?: throw CancellationException("Metro graph declaration is no longer current")
+    return validateWithExtensions(declarationElement, index.contextsFor(currentGraph))
   }
 
   /** Validates one concrete graph path and the extension paths it creates. */
@@ -146,14 +153,14 @@ internal class MetroGraphValidationService(
   }
 
   private fun validateWithExtensions(
-    fallbackElement: PsiElement,
-    roots: List<GraphContext>,
+    declarationFallback: PsiElement,
+    rootContexts: List<GraphContext>,
   ): List<KaGraphValidationResult> {
     val results = mutableListOf<KaGraphValidationResult>()
     val visited = mutableSetOf<GraphPath>()
 
     fun visit(context: GraphContext) {
-      val input = validationInput(fallbackElement, context)
+      val input = validationInput(declarationFallback, context)
       if (!visited.add(input.context.path)) return
       for (extension in input.index.extensionContextsOf(input.context)) {
         visit(extension)
@@ -161,18 +168,25 @@ internal class MetroGraphValidationService(
       results += validate(input)
     }
 
-    roots.forEach(::visit)
+    rootContexts.forEach(::visit)
     return results
   }
 
   private fun validationInput(
-    fallbackElement: PsiElement,
+    declarationFallback: PsiElement,
     context: GraphContext,
   ): ValidationInput {
-    val graphElement = context.graph.pointer.element ?: fallbackElement
-    val index = project.service<MetroResolutionService>().index(graphElement)
-    val currentContext = index.findContext(context.path) ?: context
-    return ValidationInput(graphElement, index, currentContext)
+    // Options follow the concrete graph declaration's module. Visibility still follows the root
+    // graph's compilation module through BindingIndex.queryContext().
+    val declarationElement = context.graph.pointer.element ?: declarationFallback
+    val index = project.service<MetroResolutionService>().index(declarationElement)
+    val currentContext =
+      index.findContext(context.path)
+        ?: throw CancellationException("Metro graph context is no longer current")
+    val currentDeclarationElement =
+      currentContext.graph.pointer.element
+        ?: throw CancellationException("Metro graph declaration is no longer available")
+    return ValidationInput(currentDeclarationElement, index, currentContext)
   }
 
   /** Runs [validate] for one context in a smart-mode read action and delivers it on the EDT. */
@@ -225,8 +239,8 @@ internal class MetroGraphValidationService(
     job.start()
   }
 
-  private fun moduleOptions(element: PsiElement): MetroOptions {
-    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return MetroOptions()
+  private fun moduleOptions(declarationElement: PsiElement): MetroOptions {
+    val module = ModuleUtilCore.findModuleForPsiElement(declarationElement) ?: return MetroOptions()
     return project.service<MetroIdeProjectService>().state(module).options
   }
 }

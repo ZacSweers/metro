@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -750,5 +751,49 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)
+  }
+
+  fun testValidationCancelsWhenRetainedGraphDisappears() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val result = validationService.validate(file, context)
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val graphNameOffset = document.text.indexOf("AppGraph")
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.replaceString(
+        graphNameOffset,
+        graphNameOffset + "AppGraph".length,
+        "RenamedGraph",
+      )
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val cached = validationService.cachedResult(file, context)!!
+    assertSame(result, cached.result)
+    assertTrue(cached.stale)
+
+    try {
+      validationService.validate(file, context)
+      fail("Expected stale graph context validation to be cancelled")
+    } catch (e: CancellationException) {
+      assertEquals("Metro graph context is no longer current", e.message)
+    }
+
+    try {
+      validationService.validateWithExtensions(file, graph)
+      fail("Expected stale graph declaration validation to be cancelled")
+    } catch (e: CancellationException) {
+      assertEquals("Metro graph declaration is no longer current", e.message)
+    }
   }
 }
