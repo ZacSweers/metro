@@ -1,10 +1,16 @@
 # Coroutines Support
 
-Metro supports `suspend` provider functions and `suspend` graph accessors. This lets you model dependencies whose creation requires suspending work, such as opening a database, reading a config file, or performing a network handshake.
+Metro's coroutine support currently includes `suspend` provider functions and graph accessors. Use
+them for dependencies whose creation suspends, such as opening a database, reading configuration,
+or performing a network handshake.
 
 !!! warning "Experimental"
 
-    Suspend provider support is experimental and disabled by default. Enable it in the Metro Gradle configuration:
+    Suspend provider support is experimental and disabled by default. The
+    `metro.enableSuspendProviders` option is required for any suspend binding, suspend graph
+    accessor, and injection request containing `suspend () -> T`, `SuspendProvider<T>`,
+    `SuspendLazy<T>`, or `Map<K, suspend () -> V>`, including nested uses. This includes unscoped
+    forms that do not need `runtime-coroutines`. Enable it in the Metro Gradle configuration:
 
     ```kotlin
     metro {
@@ -12,9 +18,17 @@ Metro supports `suspend` provider functions and `suspend` graph accessors. This 
     }
     ```
 
-    The Gradle plugin then adds `dev.zacsweers.metro:runtime-coroutines` automatically. If `automaticallyAddRuntimeDependencies` is disabled, add that artifact yourself.
+    The feature flag and runtime dependency are separate. The Gradle plugin adds
+    `dev.zacsweers.metro:runtime-coroutines` automatically when `metro.enableSuspendProviders` is
+    enabled. If `automaticallyAddRuntimeDependencies` is disabled, add that artifact when using
+    scoped suspend bindings, a requested `SuspendLazy` at any nesting level, or the `suspendLazy`,
+    `suspendLazyOf`, and memoization helpers. Unscoped suspend bindings do not need the artifact,
+    but still require `metro.enableSuspendProviders`.
 
-    `SuspendProvider`, `SuspendLazy`, and their helper APIs are also annotated with `@ExperimentalMetroCoroutinesApi`. Using those APIs directly requires a Kotlin opt-in, either at the use site or with `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
+    The compiler feature flag is also separate from Kotlin's API opt-in. `SuspendProvider`,
+    `SuspendLazy`, and their helper APIs are annotated with `@ExperimentalMetroCoroutinesApi`.
+    Using them directly additionally requires a Kotlin opt-in at the use site or
+    `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
 
 ## Declaring suspend bindings
 
@@ -30,18 +44,21 @@ interface AppGraph {
 }
 ```
 
-Because creating a `Database` suspends, the graph accessor for it must also be a `suspend` function. Metro validates this at compile time.
+Because creating `Database` suspends, its graph accessor must also be `suspend`. Metro checks this
+at compile time.
 
-`@Binds` and `@Multibinds` declarations cannot be `suspend`. They have no body to suspend in.
+`@Binds` and `@Multibinds` only declare graph relationships, so Metro does not allow them to be
+`suspend`.
 
-## How suspend-ness spreads through the graph
+## How suspension propagates
 
-Suspend-ness is contagious. A binding is suspend if either:
+A binding requires initialization in a suspend context when either:
 
 1. Its provider is a `suspend` function, or
 2. It depends on a suspend binding directly, without a deferring wrapper.
 
-This applies per graph and requires no annotations on consuming classes. In this example, `Repository` never mentions suspension, but it depends on `Database`, which is suspend. That makes `Repository` suspend too, so its accessor must be a `suspend` function:
+This is computed separately for each graph and requires no annotation on consuming classes. Here,
+constructing `Repository` requires `Database`, so the `Repository` accessor must be `suspend` too:
 
 ```kotlin
 @Inject
@@ -56,13 +73,15 @@ interface AppGraph {
 }
 ```
 
-The chain can be arbitrarily long. Any binding that transitively reaches a suspend binding through unwrapped dependencies becomes suspend itself. If you expose such a binding through a non-suspend accessor, Metro reports an error with a trace showing the full path to the suspend source.
+Suspension propagates through any number of unwrapped dependencies. A non-suspend accessor for one
+of those bindings produces an error with the full dependency path to the suspend provider.
 
-The reverse direction is always fine. Suspend providers can depend on non-suspend bindings freely.
+Suspend providers may depend on ordinary bindings without restriction.
 
 ## Deferring with `suspend () -> T`
 
-Injecting `suspend () -> T` instead of `T` defers the suspending work to whenever you invoke the function. This breaks the suspend chain: the consuming class is not itself suspend, because constructing it doesn't suspend. Only calling the function does.
+Injecting `suspend () -> T` instead of `T` defers initialization until the function is called. The
+consumer can then be constructed synchronously; only invoking the function suspends.
 
 ```kotlin
 @Inject
@@ -92,13 +111,20 @@ interface AppGraph {
 }
 ```
 
-`suspend () -> T` is the suspend analog of the [`() -> T` function provider](metro-intrinsics.md). Prefer the function type at injection sites. Metro uses `SuspendProvider<T>` internally and adapts it to the function type. The runtime helper APIs below operate on `SuspendProvider<T>` directly. Like function providers generally, this requires the `enableFunctionProviders` option, which is on by default.
+`suspend () -> T` is the suspend form of the [`() -> T` function provider](metro-intrinsics.md).
+Prefer it at injection sites. It requires `enableFunctionProviders`, which is enabled by default.
 
-Each invocation resolves the binding again, or returns the cached instance if the binding is scoped.
+Metro uses `SuspendProvider<T>` as the runtime type and converts it to the function type where
+needed. The [runtime helpers](#runtime-helpers) operate on `SuspendProvider<T>` directly.
+
+Each invocation initializes the binding again, or returns the cached instance if the binding is
+scoped.
 
 ## Deferring and memoizing with `SuspendLazy<T>`
 
-`SuspendLazy<T>` is the suspend analog of Kotlin's `Lazy<T>`. Injecting it defers the work like `suspend () -> T` does, and additionally memoizes the result per injected instance. Since a suspending computation can't back a plain `val`, it exposes a `suspend fun value()` instead of a property.
+`SuspendLazy<T>` is a suspend form of Kotlin's `Lazy<T>`. It defers initialization and caches the
+first successful result for that wrapper instance. Call its `suspend fun value()` to obtain the
+value.
 
 ```kotlin
 @Inject
@@ -116,25 +142,45 @@ interface AppGraph {
 }
 ```
 
-Like `Lazy<T>`, the memoization is per wrapper instance. Two injection sites each compute their own value for an unscoped binding. For a scoped binding, all `SuspendLazy` wrappers share the graph's single cached instance, so there is no double computation.
+Like `Lazy<T>`, an unscoped `SuspendLazy<T>` caches per wrapper. Two injection sites therefore have
+separate caches. For a scoped binding, every wrapper uses the graph's shared cached value.
 
-The memoization is coroutine-safe with the same semantics as a regular scoped binding's single instance: one caller computes, concurrent callers share the result, failures are retried, and cancellation doesn't poison the cache. The `runtime-coroutines` artifact added when suspend providers are enabled supplies this implementation.
+Injected `SuspendLazy` values are single-flight: one caller computes the value, concurrent callers
+wait for it, and a failed or cancelled computation can be retried (i.e. unlike `Deferred`).
 
-It also works over non-suspend bindings if you want a uniform suspend API.
+`SuspendLazy` can also wrap an ordinary binding when a uniform suspend API is useful.
 
-### What you can't do
+`suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` all support nullable `T`.
 
-`Provider<T>` and `Lazy<T>` cannot wrap a suspend binding. Their accessors are not suspend functions, so they have no way to await the work. Metro reports an error and suggests `suspend () -> T` or `SuspendLazy<T>` instead.
+### Nested wrappers
 
-Nested suspend wrapper types are unsupported. `suspend () -> T` and `SuspendLazy<T>` must wrap the binding type directly. Wrapping them in `Provider` or `Lazy`, or in each other, is a compile-time error.
+`Provider`, function providers, `Lazy`, `SuspendProvider`, suspend functions, and `SuspendLazy` can
+be nested to any depth in a scalar wrapper stack. Each wrapper applies to its immediate inner value.
+For example:
+
+- `Provider<SuspendLazy<T>>` creates a `SuspendLazy<T>` when the provider is invoked.
+- `() -> suspend () -> T` creates the suspend function when the outer function is invoked.
+- `SuspendLazy<suspend () -> T>` caches the suspend function, not the `T` returned by that
+  function.
+
+Once a wrapper stack contains a suspending wrapper, the wrapper closest to the binding must also
+support suspension. `Provider<T>`, `() -> T`, and `Lazy<T>` cannot fill that role. For example,
+`suspend () -> Lazy<T>` is unsupported: use `suspend () -> SuspendLazy<T>`, or remove the outer
+suspend function if `T` is not suspending.
+
+Every nested type containing `suspend () -> T`, `SuspendProvider<T>`, or `SuspendLazy<T>` is behind
+`metro.enableSuspendProviders`. A `SuspendLazy` at any nesting level also needs
+`runtime-coroutines` when runtime dependencies are managed manually.
 
 ## Scoping
 
 !!! note "Scope here means Metro scope"
 
-    Throughout this page, scope refers to Metro's binding scopes (`@SingleIn`, `@DependencyGraph(scope = ...)`), not a `kotlinx.coroutines` `CoroutineScope`. Metro graphs do not own a `CoroutineScope`. Suspend providers run entirely within the calling coroutine.
+    Here, scope means a Metro binding scope (`@SingleIn`, `@DependencyGraph(scope = ...)`), not a
+    `kotlinx.coroutines.CoroutineScope`. Metro graphs do not own a `CoroutineScope`; suspend
+    providers run in the calling coroutine.
 
-Scoped suspend bindings work like any other scoped binding. The value is computed once and cached:
+Scoped suspend bindings work like other scoped bindings. The first successful result is cached:
 
 ```kotlin
 @DependencyGraph(scope = AppScope::class)
@@ -147,24 +193,32 @@ interface AppGraph {
 }
 ```
 
-The cache is coroutine-safe:
+The cache has these semantics on every platform:
 
-- Only one caller computes the value. Concurrent callers wait for it and share the result.
-- A failed initialization is not cached. The next caller retries.
-- If the computing coroutine is cancelled mid-initialization, the cache is untouched and the next caller recomputes.
-- A binding that resolves itself during its own initialization fails with a circular dependency error instead of deadlocking.
+- At most one caller computes at a time. Concurrent callers wait and share a successful result.
+- A failed initialization is not cached. A later caller retries.
+- Cancellation during initialization leaves the cache empty. A later caller retries.
+- A binding that requests itself during initialization fails with a circular dependency error
+  instead of deadlocking.
 
-The cache is single-flight on every platform: one caller runs the initializer, concurrent callers suspend and share its result. On JVM and Native this synchronizes with a coroutine mutex. JS and Wasm are single-threaded, so the lock is a plain waiter queue with no locking overhead.
+JVM and Native use a coroutine mutex. JS and Wasm use a queue of waiting continuations and do not
+depend on kotlinx-coroutines.
 
-Scoped suspend bindings require `dev.zacsweers.metro:runtime-coroutines` on the compile and runtime classpath. The Gradle plugin adds it when `enableSuspendProviders` is true. On JVM and Native it depends on `kotlinx-coroutines-core` for the mutex. The JS and Wasm variants have no kotlinx-coroutines dependency. If automatic runtime dependencies are disabled and the artifact is missing, Metro reports a compile-time error naming it.
+Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must be available at
+compile time and runtime. The Gradle plugin adds it automatically. If automatic runtime dependencies
+are disabled and the artifact is missing, Metro reports a compile-time error with the dependency to
+add.
 
-## Dispatchers
+Metro caches the value but does not close it. The application remains responsible for releasing
+resources when they are no longer needed.
 
-Metro never switches dispatchers. A suspend provider runs in the calling coroutine's context, on whatever dispatcher that caller happens to use.
+## Execution context
 
-For a scoped binding this matters more than it first appears. The initializer runs on the context of whichever caller reaches it first, and every other caller shares that result. Which dispatcher actually builds the value is an accident of call order.
+Metro does not switch dispatchers or launch independent dependencies concurrently. Provider code
+runs in the calling coroutine's context, and dependency arguments are initialized sequentially.
 
-If the work needs a particular dispatcher, switch to it explicitly inside the provider:
+For a scoped binding, the first caller runs the initializer and other callers share its result. If
+initialization needs a specific dispatcher, switch inside the provider:
 
 ```kotlin
 @Provides
@@ -175,7 +229,8 @@ suspend fun provideDatabase(): Database =
   }
 ```
 
-This makes the provider correct regardless of where it is called from. Treat any suspend provider that does blocking I/O or thread-affine work without an explicit `withContext` as a bug waiting for the wrong first caller.
+Use the same approach for blocking I/O or thread-confined work. Metro does not choose an execution
+context for the provider.
 
 ## Multibindings
 
@@ -194,16 +249,22 @@ interface AppGraph {
 }
 ```
 
-Suspend and non-suspend contributions can be mixed. Each value resolves when you invoke it.
+Suspend and non-suspend contributions can be mixed. Each provider is initialized when its function
+is invoked.
 
-Scalar multibindings over suspend bindings are errors:
+Other collection forms are unsupported:
 
-- `Set<T>` multibindings cannot contain suspend contributions. Provider-valued set forms such as `Set<suspend () -> T>` are unsupported, matching `Set<Provider<T>>`.
-- `Map<K, V>` over suspend values must be consumed as `Map<K, suspend () -> V>` instead.
+- `Set<T>` multibindings cannot contain suspend contributions. Provider-valued set forms such as
+  `Set<suspend () -> T>` are unsupported, matching `Set<Provider<T>>`.
+- `Map<K, V>` over suspend values must be consumed as `Map<K, suspend () -> V>` or
+  `Map<K, SuspendProvider<V>>` instead.
+- `SuspendLazy` and additional suspend-wrapper layers in map value position, such as
+  `Map<K, SuspendLazy<V>>`, are unsupported.
 
 ## Assisted injection
 
-If an `@AssistedInject` class consumes suspend bindings, its `@AssistedFactory` function must be declared `suspend`:
+If an `@AssistedInject` class consumes suspend bindings, its `@AssistedFactory` function must be
+declared `suspend`:
 
 ```kotlin
 class AccountCreator
@@ -224,17 +285,24 @@ interface AppGraph {
 }
 ```
 
-The factory itself is not suspend to hold or create. Suspension happens when you call `create(...)`. Metro reports an error if the factory function is not suspend but the target needs it.
+Obtaining the factory does not suspend. Calling `create(...)` does. Metro reports an error when the
+factory function is not `suspend` but constructing its target requires suspension.
 
 ## Member injection
 
-Member injection does not support suspend bindings. Injector functions and `MembersInjector` are not suspend and cannot await anything. Metro reports an error. Change the member's type to `suspend () -> T` (or `SuspendLazy<T>`) to defer the resolution instead:
+Member injection cannot initialize suspend bindings because injector functions and `MembersInjector`
+are synchronous. Change the member type to `suspend () -> T` or `SuspendLazy<T>` to defer
+initialization:
 
 ```kotlin
 class ProfileActivity {
   @Inject lateinit var database: suspend () -> Database
 }
 ```
+
+Metro also rejects a constructor-injected class with injected members when constructing the class
+requires suspension. Generated suspend factories do not run the usual post-construction member
+injection yet.
 
 ## Runtime helpers
 
@@ -255,7 +323,7 @@ val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> 
 The `runtime-coroutines` artifact adds memoization:
 
 ```kotlin
-// Compute once, cache, and share across concurrent callers
+// Cache the first successful result and share it across concurrent callers
 val memoized: SuspendProvider<String> = provider.memoize()
 
 // Same, exposed as SuspendLazy
@@ -271,8 +339,12 @@ val config: SuspendLazy<Config> = suspendLazy { loadConfig() }
 val fixedConfig: SuspendLazy<Config> = suspendLazyOf(Config())
 ```
 
-`suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`.
+`suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`:
+
+- `SYNCHRONIZED` runs one initializer while other callers wait.
+- `PUBLICATION` allows initializers to overlap and caches one result.
+- `NONE` does not coordinate concurrent callers.
 
 ## Multiplatform
 
-All of the above is common code and works on JVM, Android, JS, Native, and Wasm targets.
+Suspend providers are available on JVM, Android, JS, Native, and Wasm.

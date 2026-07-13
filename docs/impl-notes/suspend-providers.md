@@ -1,156 +1,234 @@
-# Suspend Provider Notes
+# Coroutines Support Implementation Notes
 
-Internal notes for Metro's suspend/coroutines support. User-facing docs live in
-[`docs/coroutines.md`](../coroutines.md).
+Internal notes for Metro's coroutine support, which currently centers on suspend providers.
+User-facing documentation lives in [`docs/coroutines.md`](../coroutines.md).
 
 ## Model
 
 Suspend providers are gated by the `enable-suspend-providers` compiler option, exposed as
-`metro.enableSuspendProviders` in the Gradle plugin. It is false by default. The Gradle plugin adds
-`runtime-coroutines` to the compilation when the option is enabled and automatic runtime
-dependencies are on.
+`metro.enableSuspendProviders` in the Gradle plugin. It is disabled by default. The gate applies to
+every suspend binding, graph accessor, and request using a suspend provider wrapper, including
+unscoped forms whose generated code only needs the core `runtime` artifact.
 
-Suspend-ness is a per-graph propagated property, not a per-declaration annotation. A binding
-is suspend in a given graph if its provider is a `suspend fun`, or if it depends (unwrapped) on a
-suspend binding. The same class can be suspend in one graph and not in another depending on what
-its dependencies resolve to.
+The feature gate and runtime dependency are separate. When automatic runtime dependencies are
+enabled, the Gradle plugin adds `runtime-coroutines` whenever this option is enabled; it does not
+inspect source signatures to decide whether to add it.
 
-`SuspendBindingAnalysis` computes the propagation fixpoint only when suspend providers are
-enabled. Final validation analyzes the complete graph, while child graph validation incrementally
-analyzes the unsealed parent's bindings. Both paths use the same rules and produce a `suspendSet`
-of type keys. Codegen consumes the final set via `isTransitivelySuspend(typeKey)`. Three
-consumption shapes stop propagation because they defer the suspension to the consumer's own
-suspend context:
+The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, and the adapters used by
+generated code. An unscoped suspend binding needs only this artifact. `runtime-coroutines` contains
+the scoped suspend cache and the implementations used for injected `SuspendLazy`, the standalone
+`SuspendLazy` factories, and the `SuspendProvider` memoization helpers. Projects that manage runtime
+dependencies themselves need it only when they use those behaviors or APIs.
 
-- `suspend () -> T` / `SuspendProvider<T>` (raw type; users write the function type)
-- `SuspendLazy<T>` (defers + memoizes per wrapper instance)
-- `Map<K, suspend () -> V>` (the map resolves synchronously; each value defers itself)
+Whether a binding requires suspension is determined separately for each graph. A binding requires
+suspension when its provider is a `suspend fun`, or when it directly consumes another suspend
+binding. The same class can therefore require suspension in one graph but not another.
 
-`GraphDependency` bindings derive `isSuspend` from suspend accessors, deferred-suspend accessor
-return types, or parent-context tokens. Parent tokens query the owning graph's analysis before it
-is sealed so graph extensions validate against the same suspend propagation that the parent will
-use during codegen.
+`SuspendBindingAnalysis` starts with directly suspend bindings, follows their consumers, and repeats
+until no more bindings require suspension. It runs only when suspend providers are enabled. Final
+validation analyzes the complete graph. A child graph may query the same analysis on its parent
+before the parent is sealed, so validation and code generation use the same answer.
 
-## Validation (`validateSuspendBindings`)
+`Provider`, function providers, `Lazy`, `SuspendProvider`, suspend functions, and `SuspendLazy`
+compose recursively at any depth in a scalar wrapper stack. The innermost wrapper determines the
+stored provider type and whether a suspend binding can be initialized:
 
-Ordered steps, all graph-level errors:
+- An innermost `suspend () -> T`, `SuspendProvider<T>`, or `SuspendLazy<T>` uses
+  `SuspendProvider<T>` storage and stops suspend propagation.
+- An innermost `Provider<T>`, `() -> T`, or `Lazy<T>` uses `Provider<T>` storage. It cannot have a
+  suspending wrapper outside it. FIR rejects that wrapper order and suggests either using a
+  suspending innermost wrapper or removing the outer suspending wrapper if `T` is not suspending.
+  Graph validation separately rejects it when `T` resolves to a suspending binding.
 
-1. Seed + fixpoint propagation (above).
-2. Multibinding aggregates: `Set<T>` cannot contain suspend contributions at all; scalar
-   `Map<K, V>` over suspend values errors (only the deferred value form is legal).
-3. Accessors: iterate `node.accessors` directly rather than the deduped roots map, which collapses
-   accessors sharing a contextual key). Non-suspend accessor over a suspend binding errors unless
-   the contextual key defers. `Provider<T>`/`Lazy<T>` roots over suspend bindings error here too.
-   The dependency-edge check in step 4 never sees roots.
-   3b. Member injection: a `MembersInjected` binding or a constructor-injected class with
-   `@Inject` members errors if transitively suspend at all (member injection has no suspend form,
-   and nested suspend factories do not run member injection).
-4. Wrapping conflicts on dependency edges: `Provider<T>`/`Lazy<T>` wrapping a suspend binding.
-5. Assisted factories: the SAM must be `suspend` if the target consumes suspend bindings
-   unwrapped. Provider/Lazy-wrapped suspend deps of the target are checked here as well because
-   the target binding is not in the graph and step 4 never visits it.
+Outer wrappers only control how the immediate inner value is produced or cached. For example,
+`SuspendLazy<suspend () -> T>` caches the suspend function rather than its result.
 
-Unsupported wrapper *nesting* (suspend wrapper around any other wrapper, Provider/Lazy around a
-suspend wrapper, `Map<K, SuspendLazy<V>>`) is rejected earlier, at FIR
-(`UNSUPPORTED_SUSPEND_WRAPPER_NESTING` in `injectionSiteChecks.kt`).
+`Map<K, suspend () -> V>` and `Map<K, SuspendProvider<V>>` remain the supported suspend map-value
+forms. The map is built synchronously and each provider is initialized when invoked.
 
-## Codegen
+Bindings from parent graphs keep the parent's suspend requirement. Child graphs query the graph that
+owns the binding rather than recomputing a different result.
+
+## Validation
+
+Validation runs in this order:
+
+1. Compute the complete set of bindings that require suspension.
+2. Reject unsupported multibindings. `Set<T>` cannot contain suspend contributions, and a
+   `Map<K, V>` with suspend values must be requested as `Map<K, suspend () -> V>` or
+   `Map<K, SuspendProvider<V>>`.
+3. Check every graph accessor. An accessor for a suspend binding must be `suspend` or return a
+   supported deferring wrapper. `Provider<T>` and `Lazy<T>` accessors cannot expose suspend
+   bindings.
+4. Reject member-injection paths that require suspension. A class with `@Inject` members is also
+   rejected when its construction requires suspension because graph-local suspend factories do not
+   run ordinary member injection afterward.
+5. Reject dependency edges where `Provider<T>`, `() -> T`, or `Lazy<T>` wraps a suspend binding.
+6. Require an assisted factory's SAM function to be `suspend` when constructing its target requires
+   suspension.
+
+FIR handles checks that do not require graph resolution: the feature gate, suspend `@Binds` and
+`@Multibinds`, unsupported suspend wrappers in map value position, and a suspending outer wrapper
+with a synchronous innermost wrapper. Graph validation separately checks whether an otherwise valid
+`Provider<T>`, `() -> T`, or `Lazy<T>` resolves to a suspending `T` in that graph.
+
+## Code generation
 
 ### Factories
 
-A suspend `@Provides` gets a `SuspendFactory<T>` (suspend `invoke()`) instead of `Factory<T>`. For a
-non-suspend provider or constructor that is transitively suspend in a graph, its source-compiled
-factory is a plain `Factory<T>` whose `create()` expects `Provider` args, but the graph holds
-`SuspendProvider`s for its deps. `GraphSuspendFactoryGenerator` emits
-private IR-only nested `SuspendFactory<T>` classes per graph for these bindings (and an
-assisted-impl variant). Field types per dep: `SuspendProvider<T>` for suspend deps (including
-canonicalized `SuspendLazy` params), `Provider<T>` otherwise, plain values for receivers.
+A suspend `@Provides` function gets a source-level `SuspendFactory<T>` with a suspend `invoke()`.
 
-Per-class factory parameter dedup (`dedupeParameters`) keys on `(typeKey, suspend-shape)`:
-suspend-shaped params (SuspendProvider/SuspendLazy) are backed by `SuspendProvider` fields while
-other shapes share a canonical `Provider` field, and the two cannot reconstruct each other's
-access in a non-suspend factory.
+Ordinary providers and injected constructors can require suspension only in a particular graph, so
+their source-level factories remain synchronous. `GraphSuspendFactoryGenerator` creates private,
+IR-only `SuspendFactory<T>` classes inside the generated graph for those bindings. The same approach
+is used for assisted-factory implementations.
 
-### Properties
+Each generated factory stores:
 
-`BindingPropertyCollector` forces suspend bindings to `FIELD` properties (a non-suspend `GETTER`
-over a suspend binding would be invalid IR) typed `SuspendProvider<T>`, and excludes suspend
-bindings from fastInit's SwitchingProvider. Scoped suspend bindings wrap in `SuspendDoubleCheck`.
-Cycles use `SuspendDelegateFactory`.
+- `SuspendProvider<T>` for dependencies that require suspension in that graph.
+- `Provider<T>` for ordinary dependencies.
+- Plain values for graph or binding-container receivers.
+
+Parameters that resolve the same key share a field when their innermost wrappers both use
+`Provider<T>` or both use `SuspendProvider<T>`. An innermost suspend provider or `SuspendLazy` uses
+a canonical `SuspendProvider<T>` field; an innermost ordinary provider or `Lazy` uses
+`Provider<T>`.
+
+### Graph fields
+
+Suspend bindings are always stored in `SuspendProvider<T>` fields. A generated non-suspend getter
+could not invoke them, and they cannot participate in fastInit's `SwitchingProvider`.
+
+Scoped suspend fields are wrapped in `SuspendDoubleCheck`. Dependency cycles that pass through a
+suspend provider use `SuspendDelegateFactory`.
 
 ### Access types and conversions
 
-`AccessType` is INSTANCE / PROVIDER / SUSPEND_PROVIDER. Conversions in
-`BindingExpressionGenerator.toTargetType`:
+Generated expressions use three access types: instance, provider, and suspend provider.
+`BindingExpressionGenerator.toTargetType` performs these conversions:
 
-- PROVIDER → SUSPEND_PROVIDER: `SyncSuspendProvider` (`@JvmInline` adapter that avoids a captured
-  suspend lambda).
-- INSTANCE → SUSPEND_PROVIDER: wrap in a suspend provider lambda.
-- SUSPEND_PROVIDER → INSTANCE: suspend `invoke()` (only valid in suspend contexts, which
-  validation guarantees).
+- `Provider<T>` to `SuspendProvider<T>`: wrap with `SyncSuspendProvider`.
+- `T` to `SuspendProvider<T>`: wrap with a suspend provider lambda.
+- `SuspendProvider<T>` to `T`: invoke it from a suspend context.
 
-`SuspendLazy<T>` requests are intercepted at the top of `generateBindingCode`: generate the
-`SuspendProvider` form and wrap in `SuspendDoubleCheck.lazy`, which short-circuits when the
-delegate is already the graph's `SuspendDoubleCheck` (scoped bindings share the graph cache).
-Whole-collection suspend access to multibindings (`suspend () -> Set<T>` etc.) generates the
-Provider form and adapts via `SyncSuspendProvider`.
+These types and adapters support nullable `T`.
 
-Graph sealing records whether reachable bindings need `runtime-coroutines`: either a scoped
-suspend binding or a `SuspendLazy` request. Codegen checks that bit before constructing the graph
-generator and reports the missing artifact as a normal Metro error.
+Consumer boundaries recursively rebuild the requested wrapper stack from a canonical `Provider<T>`
+or `SuspendProvider<T>`. Ordinary lazy layers use `DoubleCheck.lazy`; suspend lazy layers use
+`SuspendDoubleCheck.lazy`. Provider layers return the recursively built inner value. This preserves
+each wrapper's own initialization and caching boundary. The existing `ProviderOfLazy` path remains an
+optimization for the exact `Provider<Lazy<T>>` form.
+
+An included graph accessor is also a source of wrappers. When the consuming graph requests the same
+wrapper stack, generated code passes it through unchanged. For another request shape, generated code
+unwraps the accessor to a canonical provider first; crossing any suspend wrapper produces a
+`SuspendProvider<T>`.
+
+If a suspend provider is already the scoped graph cache, `SuspendDoubleCheck.lazy` reuses that cache
+instead of adding another memoization layer. A deferred request for an entire collection, such as
+`suspend () -> Set<T>`, generates the ordinary provider form and adapts it with
+`SyncSuspendProvider`.
+
+Graph validation records whether generated graph code needs `runtime-coroutines`: either for a
+scoped suspend binding or a `SuspendLazy` anywhere in a requested wrapper stack. If the artifact is
+missing, Metro reports a located `MISSING_RUNTIME_COROUTINES` diagnostic on the graph before code
+generation begins. The diagnostic can therefore appear alongside other graph validation errors.
 
 ### JS function types
 
-`SuspendProvider<T>` mirrors `Provider<T>`'s expect/actual shape. Its JVM, Native, and Wasm actuals
-extend `suspend () -> T`. Its JS actual does not because calling a function-typed value compiles to
-a direct JS call, while a fun-interface instance is not a callable JS function.
+The JVM, Native, and Wasm `SuspendProvider<T>` implementations also implement `suspend () -> T`.
+The JS implementation does not: invoking a function-typed value compiles to a direct JS call, while
+a fun-interface instance is not a callable JS function.
 
-`typeAsProviderArgument` performs function-type adaptation at the consumer boundary. For a
-suspend-provider-shaped contextual key, it passes the expression through
-`ProviderFramework.convertTo`. On JS, `toSuspendFunctionType` wraps `SuspendProvider` values in a
-suspend lambda. Other platforms need no conversion.
+Provider-framework conversion runs at each wrapper layer. On JS it wraps every function-provider
+and suspend-function-provider layer in a real lambda; other platforms can use the provider object
+directly. The conversion is not performed earlier because the same expression may also initialize a
+graph field whose required type is `Provider<T>` or `SuspendProvider<T>`.
 
-The `generateBindingCode` and `toTargetType` layers do not perform this conversion because their
-expressions also initialize `SuspendProvider<T>` graph fields. Converting there would produce
-field initializers with the wrong type.
+`FunctionTypeInvocationOnAllPlatforms.kt` covers this path with the standard-library
+`startCoroutine` API.
 
-`toSuspendFunctionType` must `patchDeclarationParents` on the wrapping lambda: the wrapped
-expression can itself contain lambdas parented to the enclosing declaration, and they get
-re-parented into the new lambda.
+## Runtime behavior
 
-`FunctionTypeInvocationOnAllPlatforms.kt` covers the end-to-end JS invocation path using stdlib
-`startCoroutine` (non-suspending providers complete synchronously, so no `runBlocking` needed).
+`SuspendDoubleCheck` allows one initializer to run at a time. Other callers wait. The first
+successful result is cached; failure or cancellation leaves the cache empty so a later caller can
+retry. Recursive initialization fails with a cycle error instead of waiting on itself.
 
-## Runtime (`runtime-coroutines`)
+JVM and Native use a coroutine `Mutex`. JS and Wasm use a queue of standard-library continuations,
+so their `runtime-coroutines` variants do not depend on kotlinx-coroutines.
 
-`SuspendDoubleCheck` follows the `DoubleCheckInitGuard` pattern: the memoization algorithm lives
-in common code; the `SuspendDoubleCheckInitGuard` expect/actual superclass provides
-synchronization. JVM/Native (`nonWebMain`) use a coroutine `Mutex`. JS/Wasm (`webMain`) use a plain
-flag plus a FIFO queue of stdlib continuations. Single-threaded platforms need no atomics or
-parking, which keeps the web klibs free of kotlinx-coroutines. This also lets JS box tests link
-`runtime-coroutines` without partial-linkage errors against dev test compilers. The kotlinx
-dependency lives only in `nonWebMain`.
+Cycle detection uses a coroutine-context marker that identifies the active `SuspendDoubleCheck` and
+the caller. A recursive call sees its marker before attempting to reacquire the guard. Independent
+coroutines wait for the in-flight value instead of being treated as cycles. Markers retain their
+parent so indirect cycles are detected as well.
 
-The delegate runs with a context marker containing the `SuspendDoubleCheck` and caller identity.
-A recursive call sees its marker and fails before trying to reacquire the non-reentrant guard. An
-independent coroutine with the same `Job` or coroutine context has no marker, so it waits for the
-in-flight value instead of being reported as a cycle. Markers retain their parent so indirect
-cycles are detected too.
-
-Semantics on all platforms: single-flight, failures retried, cancellation mid-init leaves the
-cache untouched, reentrant cycles fail fast. `SuspendLazy` is not serializable
-because `writeReplace` cannot force a suspend computation.
+Injected `SuspendLazy` and the `memoize` helpers use the same single-flight behavior. The standalone
+`suspendLazy` factory follows its `LazyThreadSafetyMode`: `SYNCHRONIZED` is single-flight,
+`PUBLICATION` allows initializers to overlap and caches one result, and `NONE` does not coordinate
+callers.
 
 ## Tracing
 
-Suspend spans use `Tracer.traceCoroutine` (`MetroTraceContext.traceSuspend`), which handles
-propagation-token installation through structured concurrency. `TracedSuspendProvider` decorates
-suspend providers; `BindingExpressionDecorator.decorateSuspendProviderExpression` and the
-`isSuspend` flag on direct-expression requests are the hook points.
+Suspend traces use `Tracer.traceCoroutine` through `MetroTraceContext.traceSuspend`, so a trace
+follows its coroutine across suspension and thread changes. `TracedSuspendProvider` applies the
+runtime wrapper. `BindingExpressionDecorator.decorateSuspendProviderExpression` and the
+direct-expression `isSuspend` flag are the compiler hook points.
 
-## Current limitations
+## Limitations and future work
 
-- Suspend member injection (`@Inject suspend fun`) is rejected at FIR.
-- `Deferred<T>` as an injectable wrapper is rejected. A Deferred is a Job and leaks lifecycle
-  controls to consumers (see the FAQ).
-- Graph-owned `CoroutineScope` / `warmUp()` is future work.
+Metro currently initializes constructor and provider arguments sequentially in the caller's coroutine
+context. Graphs cache scoped values but do not own a `CoroutineScope`, a `Job`, or resource cleanup.
+
+The possible additions below are independent and do not need to be designed or shipped together.
+
+### Member injection
+
+The smallest extension is to let a graph-local suspend factory construct an instance and then run
+its existing synchronous member injection. Suspend graph injector functions could similarly await
+their arguments before calling the existing setter functions.
+
+Supporting actual `@Inject suspend fun` members is a separate feature. It would need rules for
+inherited members, cross-module metadata, a possible `SuspendMembersInjector` API, and Dagger
+interop, whose `MembersInjector` has no suspend form.
+
+### Warm-up
+
+Applications can warm selected graph roots today by calling their accessors concurrently from an
+application-owned `coroutineScope`. This keeps the caller's dispatcher, cancellation, and trace
+context.
+
+If Metro adds a warm-up API, roots should be selected explicitly. Warming every scoped binding could
+run unused side effects and retain values the application never requests. Calling selected roots
+concurrently already lets `SuspendDoubleCheck` initialize shared dependencies once.
+
+Metro will continue initializing arguments sequentially during ordinary graph access. Parallel work
+belongs at an explicit application warm-up boundary rather than each construction site.
+
+### Graph lifecycle and resource cleanup
+
+Warm-up does not require a graph-owned scope. A graph lifecycle would be a separate change to the
+execution model.
+
+Initialization currently runs in the caller. Adding a `Job` field would not make that work a child
+of the graph job; Metro would have to launch it in a graph-owned scope. A design would need to define
+caller cancellation, dispatchers, tracing, parent and child graph ownership, and behavior after the
+graph is closed.
+
+Cancelling in-flight work is not resource cleanup. Closing an initialized database or other cached
+value needs a separate ownership and disposal contract.
+
+### Unsupported APIs and shapes
+
+`Deferred<T>` is not an injectable wrapper. It exposes job lifecycle operations such as `cancel()`
+to every consumer and requires an owning `CoroutineScope`. Applications that need a `Deferred` can
+provide one from a scope they own.
+
+Provider-valued sets, including `Set<suspend () -> T>`, are unsupported in the same way as
+`Set<Provider<T>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position,
+including `Map<K, SuspendLazy<V>>`, are also unsupported.
+
+### Multiplatform test coverage
+
+Several suspend box fixtures are JVM-only because they use `runBlocking`. Suitable fixtures should
+use the standard-library `startCoroutine` pattern from `FunctionTypeInvocationOnAllPlatforms` so the
+same coverage can run on JS and other supported targets.
