@@ -11,14 +11,15 @@ Changelog
 This release introduces experimental support for suspend providers. This is disabled by default and can be enabled by the `metro.enableSuspendProviders` option. See the [coroutines documentation](https://zacsweers.github.io/metro/latest/coroutines/) for details.
 
 - `@Provides` functions and graph accessors can be `suspend`. Suspension propagates through dependent bindings. Metro reports a dependency trace when a non-suspend path reaches one.
-- Inject `suspend () -> T` to defer resolution, or `SuspendLazy<T>` to defer and memoize it. Maps can defer individual values with `Map<K, suspend () -> V>`.
+- Inject `suspend () -> T` to defer evaluation until invocation, or `SuspendLazy<T>` to also cache the first successful result. `Provider`, function providers, `Lazy`, `SuspendProvider`, suspend functions, and `SuspendLazy` can be nested to any depth in a scalar wrapper stack; the wrapper closest to a suspend binding must itself support suspension. Maps can defer evaluation of individual values with `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`.
 - Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutine context they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
-- When enabled, the Gradle plugin adds the new `runtime-coroutines` artifact automatically. Projects that manage runtime dependencies themselves need it for scoped suspend bindings, injected `SuspendLazy`, and the `suspendLazy`, `suspendLazyOf`, and memoization helpers.
+- When enabled, the Gradle plugin adds the new `runtime-coroutines` artifact automatically. Projects that manage runtime dependencies themselves need it for scoped suspend bindings, `SuspendLazy` at any nesting level, and the `suspendLazy`, `suspendLazyOf`, and memoization helpers.
   - Its JS and Wasm variants do _not_ depend on kotlinx-coroutines.
 
 ### Fixes
 
 - **[IR]** Fix `createGraphFactory()` calls for graph factory interfaces compiled in upstream modules with IR-only class generation.
+- **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
