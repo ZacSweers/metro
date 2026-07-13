@@ -7,11 +7,13 @@ import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.resolve.isContextParameter
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames.UNDERSCORE_FOR_UNUSED_VAR
 
@@ -29,6 +31,7 @@ internal interface MetroFirValueParameter {
       name: Name? = null,
       memberKey: Name? = null,
       wrapInProvider: Boolean = false,
+      providerClassId: ClassId = Symbols.ClassIds.metroProvider,
       stripLazyIfWrappedInProvider: Boolean = false,
       /**
        * Optional source for qualifier resolution, e.g. a property symbol for setter-based
@@ -68,6 +71,7 @@ internal interface MetroFirValueParameter {
             session,
             symbol,
             wrapInProvider = wrapInProvider,
+            providerClassId = providerClassId,
             stripLazyIfWrappedInProvider = stripLazyIfWrappedInProvider,
             qualifierSource = qualifierSource,
             hasDefault = hasDefault,
