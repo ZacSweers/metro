@@ -35,8 +35,8 @@ Provider functions can be freely mixed with `Lazy<T>`, and also work with multib
 !!! tip "Opting out"
     Function provider support is enabled by default and can be disabled via the `enableFunctionProviders` compiler option. Disabling it reverts to using `Provider<T>` exclusively.
 
-For suspend bindings, use `suspend () -> T` to defer resolution. See
-[Suspend Providers](coroutines.md).
+For suspend bindings, use `suspend () -> T` to defer initialization. See
+[Coroutines Support](coroutines.md).
 
 ## `Lazy`
 
