@@ -1,19 +1,36 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A non-suspend accessor can request SuspendProvider<T> even though
-// T is provided by a suspend function. SuspendProvider defers the call.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
+var valueComputations = 0
 
 @DependencyGraph
 interface ExampleGraph {
-  // Non-suspend accessor returning SuspendProvider — this breaks the suspend chain
   val provider: SuspendProvider<String>
 
-  @Provides suspend fun provideValue(): String = "Hello, suspend!"
+  @Provides
+  suspend fun provideValue(): String {
+    valueComputations++
+    return "Hello, suspend!"
+  }
+}
+
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
 
 fun box(): String {
+  valueComputations = 0
   val graph = createGraph<ExampleGraph>()
   val provider = graph.provider
-  assertNotNull(provider)
-  return "OK"
+  assertEquals(0, valueComputations)
+  return runSuspending {
+    assertEquals("Hello, suspend!", provider())
+    assertEquals(1, valueComputations)
+    "OK"
+  }
 }

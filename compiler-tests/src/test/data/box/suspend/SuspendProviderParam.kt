@@ -1,21 +1,39 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A class whose ctor param is already SuspendProvider<String> — the wrapper breaks the suspend
-// chain, so the class itself is NOT in the suspend set and uses a plain factory. The graph passes
-// the suspend binding through as a SuspendProvider.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
+var databaseComputations = 0
 
 @Inject
 class AccountCreator(val database: SuspendProvider<String>)
 
 @DependencyGraph
 interface ExampleGraph {
-  suspend fun accountCreator(): AccountCreator
+  val accountCreator: AccountCreator
 
-  @Provides suspend fun provideDatabase(): String = "db"
+  @Provides
+  suspend fun provideDatabase(): String {
+    databaseComputations++
+    return "db"
+  }
+}
+
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
 
 fun box(): String {
+  databaseComputations = 0
   val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+  val accountCreator = graph.accountCreator
+  assertEquals(0, databaseComputations)
+  return runSuspending {
+    assertEquals("db", accountCreator.database())
+    assertEquals(1, databaseComputations)
+    "OK"
+  }
 }

@@ -1,22 +1,38 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// Tests that SuspendProvider<T> properly breaks the suspend chain.
-// ServiceB wraps its suspend dependency in SuspendProvider, so
-// ServiceB itself does not require a suspend context.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
+var stringComputations = 0
 
 @Inject class ServiceB(val valueProvider: SuspendProvider<String>)
 
 @DependencyGraph
 interface ExampleGraph {
-  // Non-suspend accessor — ServiceB's suspend dep is wrapped in SuspendProvider
   val service: ServiceB
 
-  @Provides suspend fun provideString(): String = "transitive suspend"
+  @Provides
+  suspend fun provideString(): String {
+    stringComputations++
+    return "transitive suspend"
+  }
+}
+
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
 
 fun box(): String {
+  stringComputations = 0
   val graph = createGraph<ExampleGraph>()
   val service = graph.service
-  assertNotNull(service.valueProvider)
-  return "OK"
+  assertEquals(0, stringComputations)
+  return runSuspending {
+    assertEquals("transitive suspend", service.valueProvider())
+    assertEquals(1, stringComputations)
+    "OK"
+  }
 }

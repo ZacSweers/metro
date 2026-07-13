@@ -1,5 +1,9 @@
 // ENABLE_SUSPEND_PROVIDERS
 
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
 // A class mixing suspend and non-suspend deps. The non-suspend dep is adapted into the
 // suspend-flavored slot via SyncSuspendProvider where needed.
 
@@ -17,8 +21,16 @@ interface ExampleGraph {
   @Provides fun provideRegion(): Long = 42L
 }
 
-fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
+
+fun box(): String =
+  runSuspending {
+    val accountCreator = createGraph<ExampleGraph>().accountCreator()
+    assertEquals("db", accountCreator.database)
+    assertEquals(42L, accountCreator.region)
+    "OK"
+  }

@@ -1,10 +1,17 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A transitively-suspend, UNSCOPED binding consumed as a scalar by multiple suspend accessors.
-// The property collector must not give it a (non-suspend) GETTER property — it needs a
-// SuspendProvider<T> field so each consumer awaits it in its own suspend context.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
-@Inject class Database(val url: String, val port: Int)
+var databaseComputations = 0
+
+@Inject
+class Database(val url: String, val port: Int) {
+  init {
+    databaseComputations++
+  }
+}
 
 @Inject class ReadClient(val database: Database)
 
@@ -21,8 +28,24 @@ interface ExampleGraph {
   @Provides fun providePort(): Int = 5432
 }
 
-fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
+
+fun box(): String =
+  runSuspending {
+    databaseComputations = 0
+    val graph = createGraph<ExampleGraph>()
+    val readDatabase = graph.readClient().database
+    val writeDatabase = graph.writeClient().database
+
+    assertEquals("db://localhost", readDatabase.url)
+    assertEquals(5432, readDatabase.port)
+    assertEquals("db://localhost", writeDatabase.url)
+    assertEquals(5432, writeDatabase.port)
+    assertNotSame(readDatabase, writeDatabase)
+    assertEquals(2, databaseComputations)
+    "OK"
+  }

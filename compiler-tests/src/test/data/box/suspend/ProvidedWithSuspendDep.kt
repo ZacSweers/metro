@@ -1,8 +1,8 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A suspend @Provides may take an unwrapped suspend binding as a parameter. The factory's
-// ctor field is `SuspendProvider<…>` so the graph can pass the suspend dep directly, and the
-// suspend factory's invoke body awaits each field before calling the function.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 @DependencyGraph
 interface ExampleGraph {
@@ -13,8 +13,16 @@ interface ExampleGraph {
   @Provides suspend fun provideString(): String = "hello"
 }
 
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
+}
+
 fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph.provider)
-  return "OK"
+  val provider = createGraph<ExampleGraph>().provider
+  return runSuspending {
+    assertEquals(5, provider())
+    "OK"
+  }
 }

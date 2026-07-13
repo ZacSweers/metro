@@ -1,9 +1,8 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A transitively-suspend constructor-injected class accessed as SuspendProvider<T> — exercises
-// the graph's IR-only nested SuspendFactory (not the inline canBypassFactory path). The nested
-// factory holds each suspend dep as a SuspendProvider<…> field and awaits them in its suspend
-// invoke().
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 @Inject
 class AccountCreator(val database: String, val tlsConnection: Int)
@@ -17,8 +16,16 @@ interface ExampleGraph {
   @Provides suspend fun provideTls(): Int = 7
 }
 
-fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph.creatorProvider)
-  return "OK"
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
+
+fun box(): String =
+  runSuspending {
+    val creator = createGraph<ExampleGraph>().creatorProvider()
+    assertEquals("db", creator.database)
+    assertEquals(7, creator.tlsConnection)
+    "OK"
+  }

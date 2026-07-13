@@ -1,8 +1,8 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// Suspend-ness propagates through constructor-injected chains: Database depends on a suspend
-// @Provides, AccountCreator depends on Database. Both are transitively suspend and must be
-// accessed from a suspend context.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 @Inject
 class Database(val region: String)
@@ -17,8 +17,15 @@ interface ExampleGraph {
   @Provides suspend fun provideRegion(): String = "us-east-1"
 }
 
-fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
+
+fun box(): String =
+  runSuspending {
+    val graph = createGraph<ExampleGraph>()
+    assertEquals("us-east-1", graph.accountCreator().database.region)
+    "OK"
+  }

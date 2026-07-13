@@ -1,8 +1,10 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A scoped constructor-injected class with a suspend dep. The graph stores it in a
-// SuspendProvider<T> field backed by an IR-only nested SuspendFactory, wrapped in
-// SuspendDoubleCheck so both accessors share one instance.
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
+var databaseComputations = 0
 
 abstract class AppScope private constructor()
 
@@ -16,11 +18,28 @@ interface ExampleGraph {
 
   suspend fun otherCreator(): AccountCreator
 
-  @Provides suspend fun provideDatabase(): String = "db"
+  @Provides
+  suspend fun provideDatabase(): String {
+    databaseComputations++
+    return "db"
+  }
 }
 
-fun box(): String {
-  val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
-  return "OK"
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
 }
+
+fun box(): String =
+  runSuspending {
+    databaseComputations = 0
+    val graph = createGraph<ExampleGraph>()
+    val accountCreator = graph.accountCreator()
+    val otherCreator = graph.otherCreator()
+
+    assertEquals("db", accountCreator.database)
+    assertSame(accountCreator, otherCreator)
+    assertEquals(1, databaseComputations)
+    "OK"
+  }

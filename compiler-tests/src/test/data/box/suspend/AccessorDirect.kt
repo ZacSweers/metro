@@ -1,8 +1,10 @@
 // ENABLE_SUSPEND_PROVIDERS
 
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
+
 // Tests that a suspend accessor can directly return T from a suspend @Provides.
-// We can't invoke the accessor from box() since it's not suspend,
-// but graph creation validates the binding graph.
 
 @DependencyGraph
 interface ExampleGraph {
@@ -11,8 +13,14 @@ interface ExampleGraph {
   @Provides suspend fun provideValue(): String = "suspend direct"
 }
 
+private fun <T> runSuspending(block: suspend () -> T): T {
+  var result: Result<T>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
+}
+
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  assertNotNull(graph)
+  assertEquals("suspend direct", runSuspending { graph.getValue() })
   return "OK"
 }
