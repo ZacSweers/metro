@@ -123,14 +123,18 @@ class MetroExtensionRegistrarConfigurator(
         MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
       generateContributionHints =
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
-      generateContributionHintsInFir =
-        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
-          testServices.shouldGenerateContributionHintsInFirForBackend()
       generateClassesInIr =
         module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
           .lastOrNull()
           ?.toString()
           ?.toBoolean() ?: false
+
+      val shouldGenerateContributionHintsInFir =
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
+          testServices.shouldGenerateContributionHintsInFirForBackend()
+
+      generateContributionHintsInFir = shouldGenerateContributionHintsInFir && !generateClassesInIr
+
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
       }
