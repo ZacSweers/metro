@@ -6,7 +6,6 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
 
-
 /MemberInjectionOverSuspendBinding.kt:15:7: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' has @Inject members and depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
 
 Trace:
@@ -15,7 +14,6 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
 
-
 /MemberInjectionOverSuspendBinding.kt:16:24: error: [Metro/MemberInjectionOverSuspendBinding] 'ConstructedTarget' member injection depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
 
 Trace:
@@ -23,4 +21,3 @@ Trace:
         [ExampleGraph] ConstructedTarget.database // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideDatabase(…)
-

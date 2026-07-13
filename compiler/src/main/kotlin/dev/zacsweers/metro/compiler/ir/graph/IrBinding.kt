@@ -195,9 +195,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      */
     fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
-    fun parameterFor(typeKey: IrTypeKey) =
+    fun parameterFor(contextualTypeKey: IrContextualTypeKey) =
       classFactory.function.regularParameters.getOrNull(
-        parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }
+        parameters.regularParameters.indexOfFirst {
+          !it.isAssisted && it.contextualTypeKey == contextualTypeKey
+        }
       )
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String =

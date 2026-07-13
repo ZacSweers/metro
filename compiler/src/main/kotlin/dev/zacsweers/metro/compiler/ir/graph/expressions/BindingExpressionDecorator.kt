@@ -319,6 +319,7 @@ private class TraceExpressionDecorator(
           listOf(valueContextKey.toIrType()),
         )
         .apply {
+          this.type = tracedSuspendProvider.typeWith(valueContextKey.toIrType())
           // traceContext
           arguments[0] = traceContext
           // qualifier

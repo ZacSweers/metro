@@ -515,7 +515,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
-        callingBinding.parameterFor(targetKey),
+        callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isMirrorFunction = true,
         diagnosticNotes = callingBinding.diagnosticNotes,

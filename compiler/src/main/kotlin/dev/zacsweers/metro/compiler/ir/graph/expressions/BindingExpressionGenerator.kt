@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
@@ -260,6 +261,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     val provider = this
     return with(scope) {
       irCallConstructor(metroSymbols.metroSyncSuspendProviderConstructor, listOf(type)).apply {
+        this.type = metroSymbols.metroSyncSuspendProvider.typeWith(type)
         arguments[0] = provider
       }
     }

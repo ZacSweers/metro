@@ -1585,7 +1585,7 @@ internal class IrBindingGraph(
     factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
   ) {
     hasErrors = true
-    metroContext.reportCompat(element, factory, message)
+    metroContext.reportCompat(element, factory, message.trimEnd())
   }
 
   // Check scoping compatibility

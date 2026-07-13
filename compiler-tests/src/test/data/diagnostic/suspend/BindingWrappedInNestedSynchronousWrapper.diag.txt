@@ -1,40 +1,40 @@
-/BindingWrappedInNestedSynchronousWrapper.kt:10:36: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:11:36: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
 
 Either:
 - Replace `Provider<String>` with `suspend () -> String`, or
 - Remove the outer suspending wrapper if `String` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:12:45: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:13:45: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
 
 Either:
 - Replace `Provider<String>` with `suspend () -> String`, or
 - Remove the outer suspending wrapper if `String` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:14:32: error: Suspending wrapper chains require the wrapper nearest `Int` to be suspending, but found `Lazy<Int>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:15:32: error: Suspending wrapper chains require the wrapper nearest `Int` to be suspending, but found `Lazy<Int>`.
 
 Either:
 - Replace `Lazy<Int>` with `SuspendLazy<Int>`, or
 - Remove the outer suspending wrapper if `Int` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:16:36: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `() -> String`.
+/BindingWrappedInNestedSynchronousWrapper.kt:17:36: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `() -> String`.
 
 Either:
 - Replace `() -> String` with `suspend () -> String`, or
 - Remove the outer suspending wrapper if `String` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:18:39: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:19:39: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
 
 Either:
 - Replace `Provider<String>` with `suspend () -> String`, or
 - Remove the outer suspending wrapper if `String` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:22:29: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:23:29: error: Suspending wrapper chains require the wrapper nearest `String` to be suspending, but found `Provider<String>`.
 
 Either:
 - Replace `Provider<String>` with `suspend () -> String`, or
 - Remove the outer suspending wrapper if `String` is not suspending.
 
-/BindingWrappedInNestedSynchronousWrapper.kt:23:25: error: Suspending wrapper chains require the wrapper nearest `Int` to be suspending, but found `Lazy<Int>`.
+/BindingWrappedInNestedSynchronousWrapper.kt:24:25: error: Suspending wrapper chains require the wrapper nearest `Int` to be suspending, but found `Lazy<Int>`.
 
 Either:
 - Replace `Lazy<Int>` with `SuspendLazy<Int>`, or

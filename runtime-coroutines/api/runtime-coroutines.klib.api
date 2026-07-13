@@ -6,7 +6,3 @@
 // - Show declarations: true
 
 // Library unique name: <dev.zacsweers.metro:runtime-coroutines>
-final fun <#A: kotlin/Any?> (dev.zacsweers.metro/SuspendProvider<#A>).dev.zacsweers.metro/memoize(): dev.zacsweers.metro/SuspendProvider<#A> // dev.zacsweers.metro/memoize|memoize@dev.zacsweers.metro.SuspendProvider<0:0>(){0§<kotlin.Any?>}[0]
-final fun <#A: kotlin/Any?> (dev.zacsweers.metro/SuspendProvider<#A>).dev.zacsweers.metro/memoizeAsLazy(): dev.zacsweers.metro/SuspendLazy<#A> // dev.zacsweers.metro/memoizeAsLazy|memoizeAsLazy@dev.zacsweers.metro.SuspendProvider<0:0>(){0§<kotlin.Any?>}[0]
-final fun <#A: kotlin/Any?> dev.zacsweers.metro/suspendLazy(kotlin/LazyThreadSafetyMode = ..., kotlin.coroutines/SuspendFunction0<#A>): dev.zacsweers.metro/SuspendLazy<#A> // dev.zacsweers.metro/suspendLazy|suspendLazy(kotlin.LazyThreadSafetyMode;kotlin.coroutines.SuspendFunction0<0:0>){0§<kotlin.Any?>}[0]
-final fun <#A: kotlin/Any?> dev.zacsweers.metro/suspendLazyOf(#A): dev.zacsweers.metro/SuspendLazy<#A> // dev.zacsweers.metro/suspendLazyOf|suspendLazyOf(0:0){0§<kotlin.Any?>}[0]

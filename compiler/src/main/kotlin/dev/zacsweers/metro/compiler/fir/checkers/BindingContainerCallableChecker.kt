@@ -724,7 +724,7 @@ internal object BindingContainerCallableChecker :
                 hasDefault = parameter.symbol.hasDefaultValue,
               )
             ) {
-              return
+              continue
             }
           }
         }

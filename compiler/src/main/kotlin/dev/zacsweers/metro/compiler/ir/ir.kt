@@ -823,6 +823,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   val materializationProvider =
     if (!resolvedIsSuspendProvider && requestedUsesSuspendProvider) {
       irCallConstructor(symbols.metroSyncSuspendProviderConstructor, listOf(leafIrType)).apply {
+        type = symbols.metroSyncSuspendProvider.typeWith(leafIrType)
         arguments[0] = canonicalProvider
       }
     } else {
