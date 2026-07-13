@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
-import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -59,9 +58,14 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
     val targetClass = owner.getContainingClassSymbol() as? FirClassSymbol<*>
     val substitutionMap =
       if (targetClass != null) {
+        val directMappings =
+          targetClass.typeParameterSymbols.zip(owner.typeParameterSymbols).associate {
+            (source, generated) ->
+            source to generated.constructType()
+          }
         buildFullSubstitutionMap(
           targetClass,
-          targetClass.typeParameterSymbols.associateWith { it.toConeType() },
+          directMappings,
           session,
         )
       } else {

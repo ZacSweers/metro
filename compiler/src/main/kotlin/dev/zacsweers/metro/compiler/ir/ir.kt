@@ -67,6 +67,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.buildFun
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
+import org.jetbrains.kotlin.ir.builders.irCallWithSubstitutedType
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -144,6 +145,7 @@ import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.allParameters
@@ -422,8 +424,13 @@ internal fun IrBuilderWithScope.irInvoke(
       }
     }
 
-  val returnType = typeHint ?: callee.owner.returnType
-  val call = irCall(callee, type = returnType)
+  val call =
+    when {
+      typeHint != null -> irCall(callee, type = typeHint)
+      typeArgs != null -> irCallWithSubstitutedType(callee, typeArgs)
+      else -> irCall(callee, type = callee.owner.returnType)
+    }
+
   typeArgs?.let {
     for ((i, typeArg) in typeArgs.withIndex()) {
       if (i >= call.typeArguments.size) {
@@ -635,10 +642,11 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
   constructor: IrConstructorSymbol,
 ): IrConstructorCall {
   val constructedClass = constructor.owner.parentAsClass
+  val constructedType = constructedClass.symbol.typeWithParameters(source.typeParameters)
   return IrConstructorCallImplWithShape(
       startOffset = startOffset,
       endOffset = endOffset,
-      type = constructor.owner.returnType,
+      type = constructedType,
       symbol = constructor,
       typeArgumentsCount =
         constructor.owner.typeParameters.size + constructedClass.typeParameters.size,
@@ -655,7 +663,8 @@ internal fun IrBuilderWithScope.irCallConstructorWithSameParameters(
     }
     .apply {
       for (typeParameter in source.typeParameters) {
-        typeArguments[typeParameter.index] = typeParameter.defaultType
+        val index = constructor.owner.typeParameters.size + typeParameter.index
+        typeArguments[index] = typeParameter.defaultType
       }
     }
 }
@@ -668,6 +677,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
   receiver: IrValueParameter,
   parametersToFields: Map<Parameter, IrField>,
+  typeRemapper: TypeRemapper? = null,
 ): List<IrExpression?> {
   return buildList {
     addAll(
@@ -677,7 +687,9 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
           // When calling value getter on Provider<T>, make sure the dispatch
           // receiver is the Provider instance itself
           val providerInstance = irGetField(irGet(receiver), parametersToFields.getValue(parameter))
-          val typeMetadata = parameter.contextualTypeKey
+          val typeMetadata =
+            typeRemapper?.let { parameter.contextualTypeKey.remapType(it) }
+              ?: parameter.contextualTypeKey
           typeAsProviderArgument(
             typeMetadata,
             providerInstance,
@@ -697,6 +709,7 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   fields: Map<IrTypeKey, IrField>,
   nameToField: Map<Name, IrField>? = null,
   calleeParameters: Parameters = parameters,
+  typeRemapper: TypeRemapper? = null,
 ): List<IrExpression?> {
   return buildList {
     addAll(
@@ -709,8 +722,11 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
           // fall back to type key (handles deduped params where name was removed)
           val field = nameToField?.get(parameter.name) ?: fields.getValue(parameter.typeKey)
           val providerInstance = irGetField(irGet(receiver), field)
+          val contextKey =
+            typeRemapper?.let { parameter.contextualTypeKey.remapType(it) }
+              ?: parameter.contextualTypeKey
           typeAsProviderArgument(
-            parameter.contextualTypeKey,
+            contextKey,
             providerInstance,
             isAssisted = parameter.isAssisted,
             isGraphInstance = parameter.isGraphInstance,

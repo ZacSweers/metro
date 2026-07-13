@@ -4,10 +4,18 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR/IR]** Fix generated type parameter references and generic call result types rejected by Kotlin 2.5's stricter IR validation.
+
 ### Enhancements
 
 - **[IR]** Improve CLI diagnostic formatting by keeping messages on the compiler severity line.
 - **[IR]** Improve CLI diagnostic formatting by preserving generated-code metadata.
+
+### Changes
+
+- Support Kotlin `2.5.0-dev-498`.
 
 ### Contributors
 

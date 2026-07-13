@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -940,14 +941,31 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
   instanceReceiver: IrValueParameter,
   injectorReceiver: IrValueParameter,
 ) {
+  val sourceClass = instanceReceiver.type.classOrNull!!.owner
+  val typeRemapper = sourceClass.deepRemapperFor(instanceReceiver.type)
   for ((function, parameters) in injectFunctions) {
     trackFunctionCall(callingFunction, function)
+    val typeArgs =
+      if (function.typeParameters.isNotEmpty()) {
+        val injectedSourceClass = function.regularParameters[0].type.classOrNull!!.owner
+        injectedSourceClass.typeParameters.map { typeRemapper.remapType(it.defaultType) }
+      } else {
+        null
+      }
     +irInvoke(
       callee = function.symbol,
+      typeArgs = typeArgs,
       args =
         buildList {
           add(irGet(instanceReceiver))
-          addAll(parametersAsProviderArguments(parameters, injectorReceiver, parametersToFields))
+          addAll(
+            parametersAsProviderArguments(
+              parameters,
+              injectorReceiver,
+              parametersToFields,
+              typeRemapper,
+            )
+          )
         },
     )
   }

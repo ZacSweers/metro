@@ -1437,6 +1437,10 @@ internal class IrGraphGenerator(
         val init: PropertyInitializer = { _, _ ->
           irInvoke(
             callee = metroSymbols.metroDelegateFactoryConstructor,
+            typeHint =
+              metroSymbols.metroDelegateFactoryConstructor.owner.returnType
+                .rawType()
+                .typeWith(deferredType),
             typeArgs = listOf(deferredType),
           )
         }
