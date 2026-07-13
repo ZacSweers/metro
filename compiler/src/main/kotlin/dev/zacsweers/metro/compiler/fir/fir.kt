@@ -79,7 +79,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.unexpandedClassId
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
@@ -450,7 +449,7 @@ private fun renderAnnotationArgument(
           ?: run {
             val argument = arg.argument
             if (argument is FirResolvedQualifier) {
-              argument.classId
+              argument.classIdCompat
             } else {
               argument.resolvedType.classId
             }
@@ -1232,7 +1231,10 @@ internal fun FirGetClassCall.resolveClassId(typeResolver: MetroFirTypeResolver):
   return typeResolver.resolveType(reference).classId
 }
 
-internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classId
+internal val FirResolvedQualifier.classIdCompat: ClassId?
+  get() = relativeClassFqName?.let { ClassId(packageFqName, it, isLocal = false) }
+
+internal fun FirGetClassCall.resolvedClassId() = (argument as? FirResolvedQualifier)?.classIdCompat
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService
@@ -1819,14 +1821,10 @@ internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetC
   val classType = classSymbol.defaultType()
   return buildGetClassCall {
     argumentList = buildArgumentList {
-      arguments += buildResolvedQualifier {
-        packageFqName = classId.packageFqName
-        relativeClassFqName = classId.relativeClassName
-        symbol = classSymbol
-        resolvedToCompanionObject = false
-        isFullyQualified = true
-        coneTypeOrNull = classType
-      }
+      arguments +=
+        with(session.compatContext) {
+          buildResolvedQualifierCompat(classId, classSymbol, classType)
+        }
     }
     coneTypeOrNull =
       ConeClassLikeTypeImpl(
