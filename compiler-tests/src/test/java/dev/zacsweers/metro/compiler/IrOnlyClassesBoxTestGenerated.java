@@ -2644,6 +2644,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("NestedSuspendWrapperInterop.kt")
+      public void testNestedSuspendWrapperInterop() {
+        run("NestedSuspendWrapperInterop.kt");
+      }
+
+      @Test
       @TestMetadata("OptionalInACycle.kt")
       public void testOptionalInACycle() {
         run("OptionalInACycle.kt");
@@ -3424,6 +3430,30 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("MultipleSuspendDeps.kt")
     public void testMultipleSuspendDeps() {
       run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendFunctionWrappersWithoutRuntime.kt")
+    public void testNestedSuspendFunctionWrappersWithoutRuntime() {
+      run("NestedSuspendFunctionWrappersWithoutRuntime.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrapperInjectionPaths.kt")
+    public void testNestedSuspendWrapperInjectionPaths() {
+      run("NestedSuspendWrapperInjectionPaths.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrappers.kt")
+    public void testNestedSuspendWrappers() {
+      run("NestedSuspendWrappers.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableSynchronousDependency.kt")
+    public void testNullableSynchronousDependency() {
+      run("NullableSynchronousDependency.kt");
     }
 
     @Test

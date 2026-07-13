@@ -1,1 +1,1 @@
-/MissingRuntimeCoroutinesForScopedBinding.kt:10:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MissingRuntimeCoroutinesForScopedBinding.kt:11:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.

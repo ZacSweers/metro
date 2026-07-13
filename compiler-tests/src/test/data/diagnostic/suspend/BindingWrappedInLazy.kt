@@ -7,7 +7,7 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  val <!METRO_ERROR!>value<!>: Int
+  val value: Int
 
   @Provides fun provideInt(<!METRO_ERROR!>dep: Lazy<String><!>): Int = 1
 

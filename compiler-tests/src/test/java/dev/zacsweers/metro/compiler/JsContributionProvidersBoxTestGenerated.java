@@ -2629,6 +2629,30 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("NestedSuspendFunctionWrappersWithoutRuntime.kt")
+    public void testNestedSuspendFunctionWrappersWithoutRuntime() {
+      run("NestedSuspendFunctionWrappersWithoutRuntime.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrapperInjectionPaths.kt")
+    public void testNestedSuspendWrapperInjectionPaths() {
+      run("NestedSuspendWrapperInjectionPaths.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrappers.kt")
+    public void testNestedSuspendWrappers() {
+      run("NestedSuspendWrappers.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableSynchronousDependency.kt")
+    public void testNullableSynchronousDependency() {
+      run("NullableSynchronousDependency.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidedWithSuspendDep.kt")
     public void testProvidedWithSuspendDep() {
       run("ProvidedWithSuspendDep.kt");

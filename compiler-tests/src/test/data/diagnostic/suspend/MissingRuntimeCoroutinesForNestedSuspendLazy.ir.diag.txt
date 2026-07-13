@@ -1,0 +1,1 @@
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:15:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.

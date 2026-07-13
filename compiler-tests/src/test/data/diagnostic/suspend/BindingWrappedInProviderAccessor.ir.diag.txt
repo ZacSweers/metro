@@ -1,5 +1,11 @@
 /BindingWrappedInProviderAccessor.kt:13:43: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
 
+Trace:
+    String is injected at
+        [ExampleGraph] Creator(…, db) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
 /BindingWrappedInProviderAccessor.kt:22:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' via Provider. Use `suspend () -> String` instead.
 
 Trace:
@@ -16,4 +22,3 @@ Trace:
         [ExampleGraph] ExampleGraph.lazyValue // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
-

@@ -14,7 +14,7 @@ class Port(val value: Int)
 interface IncludedGraph {
   val value: Provider<SuspendLazy<String>>
 
-  val port: SuspendLazy<Provider<Port>>
+  val port: Provider<SuspendLazy<Port>>
 
   val count: suspend () -> Int
 
@@ -40,7 +40,7 @@ interface IncludingGraph {
 
   val nestedValue: Provider<SuspendLazy<String>>
 
-  val port: SuspendLazy<Provider<Port>>
+  val port: Provider<SuspendLazy<Port>>
 
   suspend fun portValue(): Port
 
@@ -66,7 +66,7 @@ fun box(): String {
     assertEquals(1, graph.consumer().count)
     assertEquals("value", graph.value())
     assertEquals("value", graph.nestedValue().value())
-    assertEquals(8080, graph.port.value().invoke().value)
+    assertEquals(8080, graph.port().value().value)
     assertEquals(8080, graph.portValue().value)
     assertEquals(1, graph.count())
     assertEquals(1, includedLazyComputations)

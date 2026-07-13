@@ -1471,6 +1471,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("BindingWrappedInNestedSynchronousWrapper.kt")
+    public void testBindingWrappedInNestedSynchronousWrapper() {
+      run("BindingWrappedInNestedSynchronousWrapper.kt");
+    }
+
+    @Test
     @TestMetadata("BindingWrappedInProvider.kt")
     public void testBindingWrappedInProvider() {
       run("BindingWrappedInProvider.kt");
@@ -1531,6 +1537,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MissingRuntimeCoroutinesForNestedSuspendLazy.kt")
+    public void testMissingRuntimeCoroutinesForNestedSuspendLazy() {
+      run("MissingRuntimeCoroutinesForNestedSuspendLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction.kt")
+    public void testMissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction() {
+      run("MissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction.kt");
+    }
+
+    @Test
     @TestMetadata("MissingRuntimeCoroutinesForScopedBinding.kt")
     public void testMissingRuntimeCoroutinesForScopedBinding() {
       run("MissingRuntimeCoroutinesForScopedBinding.kt");
@@ -1567,9 +1585,9 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("UnsupportedSuspendWrapperNesting.kt")
-    public void testUnsupportedSuspendWrapperNesting() {
-      run("UnsupportedSuspendWrapperNesting.kt");
+    @TestMetadata("UnsupportedSuspendMapValue.kt")
+    public void testUnsupportedSuspendMapValue() {
+      run("UnsupportedSuspendMapValue.kt");
     }
   }
 }
