@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.createEmptyExternalPackageFragment
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
@@ -45,6 +44,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 internal class Symbols(
   private val moduleFragment: IrModuleFragment,
   val pluginContext: IrPluginContext,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   val classIds: dev.zacsweers.metro.compiler.ClassIds,
   val options: MetroOptions,
@@ -284,16 +284,16 @@ internal class Symbols(
   }
 
   private val metroRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage(StringNames.METRO_RUNTIME_PACKAGE)
+    moduleFragment.createPackage(StringNames.METRO_RUNTIME_PACKAGE, compatContext)
   }
   private val metroRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE)
+    moduleFragment.createPackage(StringNames.METRO_RUNTIME_INTERNAL_PACKAGE, compatContext)
   }
   private val stdlib: IrPackageFragment by lazy {
-    moduleFragment.createPackage(kotlinPackageFqn.asString())
+    moduleFragment.createPackage(kotlinPackageFqn.asString(), compatContext)
   }
   private val stdlibCollections: IrPackageFragment by lazy {
-    moduleFragment.createPackage(kotlinCollectionsPackageFqn.asString())
+    moduleFragment.createPackage(kotlinCollectionsPackageFqn.asString(), compatContext)
   }
 
   /** Getter for the `kotlin.jvm.java` extension property on `KClass<T>` -> `Class<T>`. */
@@ -354,9 +354,11 @@ internal class Symbols(
 
     daggerSymbols =
       if (options.enableDaggerRuntimeInterop) {
-        DaggerSymbols(moduleFragment, builtinsFinder).also { daggerSymbols ->
-          val javaxSymbols = JavaxSymbols(moduleFragment, builtinsFinder, daggerSymbols)
-          val jakartaSymbols = JakartaSymbols(moduleFragment, builtinsFinder, daggerSymbols)
+        DaggerSymbols(moduleFragment, compatContext, builtinsFinder).also { daggerSymbols ->
+          val javaxSymbols =
+            JavaxSymbols(moduleFragment, compatContext, builtinsFinder, daggerSymbols)
+          val jakartaSymbols =
+            JakartaSymbols(moduleFragment, compatContext, builtinsFinder, daggerSymbols)
           val javaxFramework = JavaxProviderFramework(javaxSymbols).also { frameworks += it }
           val jakartaFramework = JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
           frameworks +=
@@ -370,11 +372,13 @@ internal class Symbols(
 
     guiceSymbols =
       if (options.enableGuiceRuntimeInterop) {
-        GuiceSymbols(moduleFragment, builtinsFinder, metroFrameworkSymbols).also { guiceSymbols ->
+        GuiceSymbols(moduleFragment, compatContext, builtinsFinder, metroFrameworkSymbols).also {
+          guiceSymbols ->
           // Guice dropped javax in 7.x, so we only need jakarta
           val jakartaFramework =
             if (!jakartaSymbolsAdded) {
-              val jakartaSymbols = JakartaSymbols(moduleFragment, builtinsFinder, guiceSymbols)
+              val jakartaSymbols =
+                JakartaSymbols(moduleFragment, compatContext, builtinsFinder, guiceSymbols)
               JakartaProviderFramework(jakartaSymbols).also { frameworks += it }
             } else {
               // Reuse the already-added jakarta framework (from Dagger)
@@ -708,7 +712,26 @@ internal class Symbols(
     builtinsFinder.findClass(ClassId(stdlib.packageFqName, "Lazy".asName()))!!
   }
 
-  val lazyGetValue: IrFunctionSymbol by lazy { stdlibLazy.getPropertyGetter("get")!! }
+  private val kotlinLazyValue: IrFunctionSymbol by lazy {
+    stdlibLazy.getPropertyGetter("value")!!
+  }
+
+  fun providerValue(type: IrType): IrFunctionSymbol {
+    val providerType = type.classOrNull ?: reportCompilerBug("No provider class found for $type")
+    val classId = providerType.owner.classId
+    val usesInvoke = classId == ClassIds.metroProvider || classId == ClassIds.function0
+    val functionName = if (usesInvoke) StringNames.INVOKE else StringNames.GET
+    return providerType.requireSimpleFunction(functionName)
+  }
+
+  fun lazyValue(type: IrType): IrFunctionSymbol {
+    val lazyType = type.classOrNull ?: reportCompilerBug("No lazy class found for $type")
+    return if (lazyType == stdlibLazy) {
+      kotlinLazyValue
+    } else {
+      lazyType.requireSimpleFunction(StringNames.GET)
+    }
+  }
 
   val stdlibErrorFunction: IrFunctionSymbol by lazy {
     builtinsFinder.findFunctions(CallableId(stdlib.packageFqName, "error".asName())).first()
@@ -913,8 +936,10 @@ internal class Symbols(
     get() = classIds.lazyTypes
 }
 
-internal fun IrModuleFragment.createPackage(packageName: String): IrPackageFragment =
-  createEmptyExternalPackageFragment(descriptor, FqName(packageName))
+internal fun IrModuleFragment.createPackage(
+  packageName: String,
+  compatContext: CompatContext,
+): IrPackageFragment = with(compatContext) { createEmptyExternalPackageFragmentCompat(packageName) }
 
 internal val FqName.classId
   get() = ClassId.topLevel(this)

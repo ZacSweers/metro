@@ -1071,6 +1071,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributedAccessorsCanBeLazy.kt")
+    public void testContributedAccessorsCanBeLazy() {
+      run("ContributedAccessorsCanBeLazy.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesCanBeInject.kt")
     public void testContributesCanBeInject() {
       run("ContributesCanBeInject.kt");
@@ -2756,6 +2762,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
         @TestMetadata("InheritedBindingsDoNotCauseDuplicates2.kt")
         public void testInheritedBindingsDoNotCauseDuplicates2() {
           run("InheritedBindingsDoNotCauseDuplicates2.kt");
+        }
+
+        @Test
+        @TestMetadata("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt")
+        public void testUnscopedInjectAsDaggerLazyMemberInjectionAcrossModules() {
+          run("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt");
         }
 
         @Test

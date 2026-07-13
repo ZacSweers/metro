@@ -1,5 +1,4 @@
-/ClassBindingsCannotSatisfyNullable.kt:11:12: error: 
-[Metro/MissingBinding] No binding found for Foo?
+/ClassBindingsCannotSatisfyNullable.kt:11:12: error: [Metro/MissingBinding] No binding found for Foo?
 
   AppGraph.view -> View -> Foo?
 

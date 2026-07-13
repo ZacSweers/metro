@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMappi
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
-import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate
@@ -81,8 +80,13 @@ private val PROVIDES_CLASS_ID = ClassId(FqName("dev.zacsweers.metro"), Name.iden
  * which requires the fix in `ProvidesFactoryFirGenerator` to eagerly set the `Factory<T>` supertype
  * (since `FirSupertypeGenerationExtension` is not called for deeply nested generated classes).
  */
-internal class GenerateProvidesContributionExtension(session: FirSession) :
-  MetroFirDeclarationGenerationExtension(session), MetroContributionHintExtension {
+internal class GenerateProvidesContributionExtension(
+  session: FirSession,
+  compatContext: CompatContext,
+) :
+  MetroFirDeclarationGenerationExtension(session),
+  MetroContributionHintExtension,
+  CompatContext by compatContext {
 
   companion object {
     val ANNOTATION_FQ_NAME = FqName("test.GenerateProvidesContribution")
@@ -202,14 +206,7 @@ internal class GenerateProvidesContributionExtension(session: FirSession) :
       argumentMapping = buildAnnotationArgumentMapping {
         mapping[Name.identifier("scope")] = buildGetClassCall {
           argumentList = buildArgumentList {
-            arguments += buildResolvedQualifier {
-              packageFqName = scopeClassId.packageFqName
-              relativeClassFqName = scopeClassId.relativeClassName
-              symbol = scopeSymbol
-              resolvedToCompanionObject = false
-              isFullyQualified = true
-              coneTypeOrNull = scopeType
-            }
+            arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
           }
           coneTypeOrNull =
             ConeClassLikeTypeImpl(
@@ -240,7 +237,8 @@ internal class GenerateProvidesContributionExtension(session: FirSession) :
       session: FirSession,
       options: MetroOptions,
       compatContext: CompatContext,
-    ): MetroFirDeclarationGenerationExtension = GenerateProvidesContributionExtension(session)
+    ): MetroFirDeclarationGenerationExtension =
+      GenerateProvidesContributionExtension(session, compatContext)
   }
 }
 

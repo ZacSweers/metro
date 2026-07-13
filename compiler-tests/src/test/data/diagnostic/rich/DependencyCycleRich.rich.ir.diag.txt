@@ -1,5 +1,4 @@
-/DependencyCycleRich.kt:18:11: error: 
-<red>[Metro/DependencyCycle]</fg> Found a dependency cycle while processing <b>CycleGraph</intensity>
+/DependencyCycleRich.kt:18:11: error: <red>[Metro/DependencyCycle]</fg> Found a dependency cycle while processing <b>CycleGraph</intensity>
 
   cycle:
       <dim>╭─▶ </intensity><b>C</intensity><dim> → </intensity><b>A</intensity><dim> → </intensity><b>B</intensity><dim> ─╮</intensity>

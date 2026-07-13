@@ -1459,7 +1459,11 @@ internal class IrGraphGenerator(
             metroSymbols.metroDelegateFactoryConstructor
           }
         val init: PropertyInitializer = { _, _ ->
-          irInvoke(callee = delegateCtor, typeArgs = listOf(deferredType))
+          irInvoke(
+            callee = delegateCtor,
+            typeHint = delegateCtor.owner.returnType.rawType().typeWith(deferredType),
+            typeArgs = listOf(deferredType),
+          )
         }
         shardPropertyInitializers += property to init
       } else {

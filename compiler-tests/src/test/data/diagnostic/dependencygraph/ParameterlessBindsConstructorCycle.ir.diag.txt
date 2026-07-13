@@ -1,5 +1,4 @@
-/ParameterlessBindsConstructorCycle.kt:6:11: error: 
-[Metro/DependencyCycle] Found a dependency cycle while processing AppGraph
+/ParameterlessBindsConstructorCycle.kt:6:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing AppGraph
 
   cycle:
       +-> Dependency -> Target --+

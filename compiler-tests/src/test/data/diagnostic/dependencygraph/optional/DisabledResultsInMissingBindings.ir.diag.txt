@@ -1,5 +1,4 @@
-/DisabledResultsInMissingBindings.kt:7:15: error: 
-[Metro/MissingBinding] No binding found for String?
+/DisabledResultsInMissingBindings.kt:7:15: error: [Metro/MissingBinding] No binding found for String?
 
   AppGraph.example -> Example -> String?
 
@@ -12,8 +11,7 @@
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
 
-/DisabledResultsInMissingBindings.kt:15:18: error: 
-[Metro/MissingBinding] No binding found for Long?
+/DisabledResultsInMissingBindings.kt:15:18: error: [Metro/MissingBinding] No binding found for Long?
 
   AppGraph.int -> Int -> Long?
 

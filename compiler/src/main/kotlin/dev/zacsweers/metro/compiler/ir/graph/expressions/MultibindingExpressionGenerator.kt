@@ -44,6 +44,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -436,6 +437,7 @@ internal class MultibindingExpressionGenerator(
                 +irInvoke(
                   dispatchReceiver = irGet(functionReceiver),
                   callee = metroSymbols.mutableMapPut.symbol,
+                  typeHint = valueType.makeNullable(),
                   args = listOf(generateMapKeyLiteral(binding), valueExpr),
                 )
               }

@@ -37,6 +37,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   irDeclarations: Sequence<IrDeclaration?>,
   factory: KtDiagnosticFactory1<A>,
   a: A,
+  includeDeclarationContext: Boolean = true,
 ) {
   val toReport =
     irDeclarations.filterNotNull().firstOrNull {
@@ -45,7 +46,7 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   if (toReport == null) {
     reportCompilerBug("No non-null declarations to report on!")
   }
-  reportCompat(toReport, factory, a)
+  reportCompat(toReport, factory, a, includeDeclarationContext = includeDeclarationContext)
 }
 
 // AnalyzerWithCompilerReport removed this API in 2.3.20, so we copy it in
@@ -63,11 +64,14 @@ internal fun <A : Any> IrMetroContext.reportCompat(
   factory: KtDiagnosticFactory1<A>,
   a: A,
   extraContext: StringBuilder.() -> Unit = {},
+  includeDeclarationContext: Boolean = true,
 ) {
   if (options.parallelThreads > 0) {
-    REPORT_LOCK.withLock { reportCompatImpl(irDeclaration, factory, a, extraContext) }
+    REPORT_LOCK.withLock {
+      reportCompatImpl(irDeclaration, factory, a, extraContext, includeDeclarationContext)
+    }
   } else {
-    reportCompatImpl(irDeclaration, factory, a, extraContext)
+    reportCompatImpl(irDeclaration, factory, a, extraContext, includeDeclarationContext)
   }
 }
 
@@ -76,6 +80,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
   factory: KtDiagnosticFactory1<A>,
   a: A,
   extraContext: StringBuilder.() -> Unit,
+  includeDeclarationContext: Boolean,
 ) {
   // If the declaration has no source (e.g. a generated contribution provider or other
   // generated declaration carrying @Origin/MetroOriginData), redirect to the origin class
@@ -125,7 +130,8 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
     val location = effectiveDeclaration?.locationOrNull()
     val message =
       if (
-        location == null &&
+        includeDeclarationContext &&
+          location == null &&
           effectiveDeclaration != null &&
           // Java stubs have nothing useful for us here
           effectiveDeclaration.origin != Origins.FirstParty.IR_EXTERNAL_JAVA_DECLARATION_STUB

@@ -49,8 +49,11 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -262,20 +265,30 @@ private constructor(
               codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
-              val typeArgs = binding.type.typeParameters.map { it.defaultType }
-              val rawArgs =
-                generateBindingArguments(
-                  targetParams = classFactory.targetFunctionParameters,
-                  function = targetConstructor,
-                  binding = binding,
-                  fieldInitKey = fieldInitKey,
-                )
-              val directExpr =
-                irCallConstructor(targetConstructor.symbol, typeArgs).apply {
-                  for ((i, expr) in rawArgs.withIndex()) {
-                    if (expr != null) arguments[i] = expr
-                  }
+              val targetType = binding.typeKey.type
+              val typeArguments =
+                targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                  it.typeOrFail
                 }
+              val directExpr =
+                irCallConstructor(
+                    targetConstructor.symbol,
+                    typeArguments,
+                  )
+                  .apply {
+                    type = targetType
+                    val args =
+                      generateBindingArguments(
+                        targetParams = classFactory.targetFunctionParameters,
+                        function = targetConstructor,
+                        binding = binding,
+                        fieldInitKey = fieldInitKey,
+                      )
+                    for ((i, arg) in args.withIndex()) {
+                      if (arg == null) continue
+                      arguments[i] = arg
+                    }
+                  }
               maybeTraceDirectExpression(
                   directExpr,
                   contextualTypeKey,
@@ -331,10 +344,13 @@ private constructor(
                   return@let factoryInstance
                 }
 
+                val providerType =
+                  binding.typeKey.type.wrapTypeInProvider(metroSymbols.metroProvider)
                 factoryInstance.toTargetType(
                   actual = AccessType.PROVIDER,
                   contextualTypeKey = contextualTypeKey,
                   bindingKind = bindingKind,
+                  providerType = providerType,
                 )
               }
           }
@@ -580,7 +596,8 @@ private constructor(
               fieldInitKey = effectiveFieldInitKey,
             )
 
-          val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
+          val factoryProvider =
+            with(factoryImpl) { invokeCreate(delegateFactory, binding.typeKey.type) }
 
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
@@ -600,7 +617,12 @@ private constructor(
 
         is MembersInjected -> {
           val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
-          val injectedType = injectedClass.defaultType
+          val injectedType =
+            binding.typeKey.type
+              .expectAsOrNull<IrSimpleType>()
+              ?.arguments
+              ?.firstOrNull()
+              ?.typeOrFail ?: injectedClass.defaultType
           val targetTypeKey =
             IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
 
@@ -648,7 +670,17 @@ private constructor(
 
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
-            val membersInjector = irInvoke(callee = createFunction, args = args)
+            val typeArguments =
+              injectedType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                it.typeOrFail
+              }
+            val membersInjector =
+              irInvoke(
+                callee = createFunction,
+                typeHint = metroSymbols.metroMembersInjector.typeWith(injectedType),
+                typeArgs = typeArguments,
+                args = args,
+              )
             expressionDecorator
               .decorateMembersInjectorExpression(
                 membersInjector,
@@ -960,15 +992,7 @@ private constructor(
                 )
               }
               is WrappedType.Lazy -> {
-                val getter =
-                  if (wrappedType.lazyType == metroSymbols.stdlibLazy.owner.classId) {
-                    metroSymbols.lazyGetValue
-                  } else {
-                    val lazyClass =
-                      referenceClass(wrappedType.lazyType)
-                        ?: reportCompilerBug("No lazy class found for ${wrappedType.lazyType}")
-                    lazyClass.requireSimpleFunction(Symbols.StringNames.GET)
-                  }
+                val getter = metroSymbols.lazyValue(expression.type)
                 irInvoke(dispatchReceiver = expression, callee = getter, typeHint = innerIrType)
               }
               is WrappedType.SuspendLazy ->
@@ -1024,9 +1048,12 @@ private constructor(
       val buildTargetCall: IrBuilderWithScope.(List<IrExpression?>) -> IrExpression
       if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
         val targetConstructor = classFactory.targetConstructor!!
-        val typeArgs = targetBinding.type.typeParameters.map { it.defaultType }
+        val targetType = targetBinding.typeKey.type
+        val typeArguments =
+          targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail }
         buildTargetCall = { resolved ->
-          irCallConstructor(targetConstructor.symbol, typeArgs).apply {
+          irCallConstructor(targetConstructor.symbol, typeArguments).apply {
+            type = targetType
             for ((i, expr) in resolved.withIndex()) {
               if (expr != null) arguments[i] = expr
             }
@@ -1122,9 +1149,12 @@ private constructor(
           targetParams = classFactory.targetFunctionParameters
           if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
             val targetConstructor = classFactory.targetConstructor!!
-            val typeArgs = binding.type.typeParameters.map { it.defaultType }
+            val targetType = binding.typeKey.type
+            val typeArguments =
+              targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail }
             buildSourceCall = { resolved ->
-              irCallConstructor(targetConstructor.symbol, typeArgs).apply {
+              irCallConstructor(targetConstructor.symbol, typeArguments).apply {
+                type = targetType
                 for ((i, expr) in resolved.withIndex()) {
                   if (expr != null) arguments[i] = expr
                 }

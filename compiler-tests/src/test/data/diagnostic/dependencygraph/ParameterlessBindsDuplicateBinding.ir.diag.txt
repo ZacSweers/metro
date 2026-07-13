@@ -1,5 +1,4 @@
-/ParameterlessBindsDuplicateBinding.kt:6:11: error: 
-[Metro/DuplicateBinding] Multiple bindings found for Target
+/ParameterlessBindsDuplicateBinding.kt:6:11: error: [Metro/DuplicateBinding] Multiple bindings found for Target
 
       ParameterlessBindsDuplicateBinding.kt:11:13
         @Provides fun provideTarget(): Target

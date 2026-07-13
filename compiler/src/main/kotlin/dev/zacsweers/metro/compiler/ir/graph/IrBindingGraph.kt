@@ -518,12 +518,9 @@ internal class IrBindingGraph(
             val locationItems = buildList {
               for (example in examples.take(MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT)) {
                 add(
-                  LocatedItem(
-                    location = example.location,
-                    code = example.description,
+                  example.toLocatedItem(
                     preferSourceSnippet = true,
                     includeLeadingAnnotations = false,
-                    span = example.span,
                   )
                 )
               }
@@ -546,6 +543,7 @@ internal class IrBindingGraph(
                 )
               )
               similarMultibindingsNote(binding, allMultibindings)?.let(::add)
+              addAll(examples.flatMap { it.notes }.distinct())
 
               // Check if this multibinding type is used in any child graph extension
               val childScopesUsingThis =
@@ -844,6 +842,7 @@ internal class IrBindingGraph(
       }
     }
 
+    var locationNotes = emptyList<Note>()
     val sections = buildList {
       bindingLookup.skippedDirectMapRequests[key]?.let { requestedContextKey ->
         bindingLookup.getAvailableBindings()[key]?.let { directBinding ->
@@ -855,6 +854,7 @@ internal class IrBindingGraph(
             requestedContextKey.rawType?.render(short = true)
               ?: requestedContextKey.render(short = true, includeQualifier = false)
           val locationDiagnostic = directBinding.renderLocationDiagnostic(underlineTypeKey = true)
+          locationNotes = locationDiagnostic.notes
           add(
             DiagnosticSection.Locations(
               header =
@@ -864,14 +864,7 @@ internal class IrBindingGraph(
                     "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
                     "multibinding created with `@IntoMap` or `@Multibinds`."
                 ),
-              items =
-                listOf(
-                  LocatedItem(
-                    location = locationDiagnostic.location,
-                    code = locationDiagnostic.description,
-                    span = locationDiagnostic.span,
-                  )
-                ),
+              items = listOf(locationDiagnostic.toLocatedItem()),
             )
           )
         }
@@ -879,7 +872,7 @@ internal class IrBindingGraph(
     }
 
     return MissingBindingHints(
-      notes = notes,
+      notes = notes + locationNotes,
       sections = sections,
       similarBindings = findSimilarBindings(key).values.map { it.toItem() },
     )
@@ -1704,18 +1697,13 @@ internal class IrBindingGraph(
 
       val stack = buildStackToRoot(binding.typeKey, roots, adjacency)
 
-      val locationItems = dupes.map { dupe ->
-        val locationDiagnostic =
-          dupe.renderLocationDiagnostic(
-            shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-            underlineTypeKey = false,
-          )
-        LocatedItem(
-          location = locationDiagnostic.location,
-          code = locationDiagnostic.description,
-          span = locationDiagnostic.span,
+      val locationDiagnostics = dupes.map { dupe ->
+        dupe.renderLocationDiagnostic(
+          shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+          underlineTypeKey = false,
         )
       }
+      val locationItems = locationDiagnostics.map { it.toLocatedItem() }
 
       val diagnostic =
         MetroDiagnostic(
@@ -1739,6 +1727,7 @@ internal class IrBindingGraph(
               )
               stack.toTraceSection()?.let(::add)
             },
+          notes = locationDiagnostics.flatMap { it.notes }.distinct(),
         )
       report(diagnostic, stack)
     }

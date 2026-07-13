@@ -1,5 +1,4 @@
-/MembersInjectorParameterWithNoDefaultShouldError.kt:15:5: error: 
-[Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
+/MembersInjectorParameterWithNoDefaultShouldError.kt:15:5: error: [Metro/MissingBinding] No binding found for MembersInjector<ClassWithoutMembersInjector>
 
   TestGraph.injector -> MembersInjector<*> -> MembersInjector<ClassWithoutMembersInjector>
 

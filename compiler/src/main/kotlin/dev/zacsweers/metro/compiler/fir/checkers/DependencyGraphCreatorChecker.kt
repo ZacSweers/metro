@@ -112,12 +112,36 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
         ?.resolvedCompilerAnnotationsWithClassIds
         ?.annotationsIn(session, classIds.graphLikeAnnotations)
         ?.singleOrNull()
+    val isDependencyGraphFactory = annotationClassId in classIds.dependencyGraphFactoryAnnotations
+    val createsGraphExtension =
+      targetGraphAnnotation?.toAnnotationClassId(session) in classIds.graphExtensionAnnotations
     targetGraph?.let {
       if (targetGraphAnnotation == null) {
         reporter.reportOn(
           createFunction.resolvedReturnTypeRef.source ?: declaration.source,
           MetroDiagnostics.GRAPH_CREATORS_ERROR,
           "@${annotationClassId.relativeClassName.asString()} abstract function '${createFunction.name}' must return a dependency graph but found ${it.classId.asSingleFqName()}.",
+        )
+        return
+      }
+
+      if (isDependencyGraphFactory && createsGraphExtension) {
+        val containingGraphClassId = declaration.getContainingClassSymbol()?.classId
+        val isNestedInTargetGraphExtension = containingGraphClassId == targetGraph.classId
+        val message = buildString {
+          append(
+            "`@${annotationClassId.relativeClassName.asString()}` cannot create a graph extension."
+          )
+          if (isNestedInTargetGraphExtension) {
+            append(
+              "\n\n  help: use `@GraphExtension.Factory` instead since ${targetGraph.classId.asSingleFqName()} is a graph extension."
+            )
+          }
+        }
+        reporter.reportOn(
+          graphFactoryAnnotation.source ?: declaration.source,
+          MetroDiagnostics.GRAPH_CREATORS_ERROR,
+          message,
         )
         return
       }
@@ -148,7 +172,6 @@ internal object DependencyGraphCreatorChecker : FirClassChecker(MppCheckerKind.C
     }
 
     val targetGraphScopes = targetGraphAnnotation?.allScopeClassIds(session).orEmpty()
-    val isDependencyGraphFactory = annotationClassId in classIds.dependencyGraphFactoryAnnotations
     val createsDependencyGraph =
       targetGraphAnnotation?.toAnnotationClassId(session) in classIds.dependencyGraphAnnotations
     val checksRuntimeTracingInputs = session.shouldCheckRuntimeTracingGraphInputs()

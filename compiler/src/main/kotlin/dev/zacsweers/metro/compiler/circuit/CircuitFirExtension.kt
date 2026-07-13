@@ -46,7 +46,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
-import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -566,14 +565,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       argumentMapping = buildAnnotationArgumentMapping {
         mapping[Name.identifier("scope")] = buildGetClassCall {
           argumentList = buildArgumentList {
-            arguments += buildResolvedQualifier {
-              packageFqName = scopeClassId.packageFqName
-              relativeClassFqName = scopeClassId.relativeClassName
-              symbol = scopeSymbol
-              resolvedToCompanionObject = false
-              isFullyQualified = true
-              coneTypeOrNull = scopeType
-            }
+            arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
           }
           coneTypeOrNull =
             ConeClassLikeTypeImpl(

@@ -672,6 +672,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("GraphExtensionFactory_WrongAnnotation.kt")
+      public void testGraphExtensionFactory_WrongAnnotation() {
+        run("GraphExtensionFactory_WrongAnnotation.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateBindingNotVisibleToChild.kt")
       public void testGraphPrivateBindingNotVisibleToChild() {
         run("GraphPrivateBindingNotVisibleToChild.kt");

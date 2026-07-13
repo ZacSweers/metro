@@ -5,11 +5,12 @@ package dev.zacsweers.metro.compiler
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
 open class AbstractJsBoxTest : KotlinJsBoxTestBase() {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
-    return ClasspathBasedStandardLibrariesPathProvider
+    return EnvironmentBasedStandardLibrariesPathProvider
   }
 
   override fun configure(builder: TestConfigurationBuilder) {

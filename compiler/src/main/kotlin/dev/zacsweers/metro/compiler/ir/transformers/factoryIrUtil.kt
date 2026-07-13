@@ -52,6 +52,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeSubstitutor
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
@@ -338,38 +340,64 @@ internal fun generateMetadataVisibleMirrorFunction(
         this.isInline = target?.canBeInlined() == true
       }
       .apply {
-        if (target is IrConstructor) {
-          val sourceClass = factoryClass.parentAsClass
-          val scopeAndQualifierAnnotations = buildList {
-            val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
-            classMetroAnnotations.scope?.ir?.let(::add)
-            classMetroAnnotations.qualifier?.ir?.let(::add)
-          }
-          if (scopeAndQualifierAnnotations.isNotEmpty()) {
-            addAnnotationsCompat(scopeAndQualifierAnnotations)
-          }
-          copyTypeParametersFrom(sourceClass)
-        } else {
-          // Copy type parameters from the factory class (e.g., generic binding containers)
-          copyTypeParametersFrom(factoryClass)
+        val typeSubstitution =
+          if (target is IrConstructor) {
+            val sourceClass = factoryClass.parentAsClass
+            val scopeAndQualifierAnnotations = buildList {
+              val classMetroAnnotations =
+                sourceClass.metroAnnotations(context.metroSymbols.classIds)
+              classMetroAnnotations.scope?.ir?.let(::add)
+              classMetroAnnotations.qualifier?.ir?.let(::add)
+            }
+            if (scopeAndQualifierAnnotations.isNotEmpty()) {
+              addAnnotationsCompat(scopeAndQualifierAnnotations)
+            }
+            val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
+            sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
+              source.symbol to copied.defaultType
+            }
+          } else {
+            // Copy type parameters from the factory class (e.g., generic binding containers)
+            val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
 
-          // If it's a regular (provides) function or backing field, just always copy its
-          // annotations
-          replaceAnnotationsCompat(
-            annotations
-              .mirrorIrConstructorCalls(symbol)
-              .filterNot {
-                // Exclude @Provides to avoid reentrant factory gen
-                it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+            // If it's a regular (provides) function or backing field, just always copy its
+            // annotations
+            replaceAnnotationsCompat(
+              annotations
+                .mirrorIrConstructorCalls(symbol)
+                .filterNot {
+                  // Exclude @Provides to avoid reentrant factory gen
+                  it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+                }
+                .map { it.deepCopyWithSymbols() }
+            )
+            buildMap {
+              factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
+                put(source.symbol, copied.defaultType)
               }
-              .map { it.deepCopyWithSymbols() }
-          )
-        }
+              factoryClass.parentAsClass.typeParameters.zip(copiedTypeParameters).forEach {
+                (source, copied) ->
+                put(source.symbol, copied.defaultType)
+              }
+            }
+          }
         if (target != null) {
-          copyParametersFrom(target)
-          target.extensionReceiverParameterCompat?.let { setExtensionReceiver(it.copyTo(this)) }
+          if (typeSubstitution.isNotEmpty()) {
+            copyParametersFrom(target, typeSubstitution)
+          } else {
+            copyParametersFrom(target)
+          }
+          target.extensionReceiverParameterCompat?.let { receiver ->
+            val receiverType = IrTypeSubstitutor(typeSubstitution).substitute(receiver.type)
+            setExtensionReceiver(receiver.copyTo(this, type = receiverType))
+          }
         }
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+        typeSubstitution
+          .takeIf { it.isNotEmpty() }
+          ?.let {
+            this.returnType = IrTypeSubstitutor(it).substitute(returnType)
+          }
 
         regularParameters.forEach {
           // If it has a default value expression, just replace it with a stub. We don't need it to

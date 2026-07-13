@@ -45,11 +45,13 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
+import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -73,9 +75,11 @@ import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithParameters
+import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
@@ -123,6 +127,7 @@ internal class InjectedClassTransformer(
     return true
   }
 
+  @IgnorableReturnValue
   fun getOrGenerateFactory(
     declaration: IrClass,
     previouslyFoundConstructor: IrConstructor?,
@@ -278,11 +283,13 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
+    val factoryTargetType = declaration.symbol.typeWithParameters(factoryCls.typeParameters)
+    val factoryTypeRemapper = declaration.deepRemapperFor(factoryTargetType)
 
     if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
       // directly since we'll read the mirror function to get the target type
-      factoryCls.superTypes += metroSymbols.metroFactory.typeWith(declaration.defaultType)
+      factoryCls.superTypes += metroSymbols.metroFactory.typeWith(factoryTargetType)
     }
 
     // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add the
@@ -291,7 +298,7 @@ internal class InjectedClassTransformer(
       factoryCls
         .addFunction(
           Symbols.StringNames.INVOKE,
-          declaration.defaultType,
+          factoryTargetType,
           isFakeOverride = !isAssistedInject,
         )
         .apply {
@@ -299,12 +306,10 @@ internal class InjectedClassTransformer(
           if (!isAssistedInject) {
             overriddenSymbols = listOf(metroSymbols.providerInvoke)
           } else {
-            val assistedInvokeParamTypeRemapper =
-              declaration.deepRemapperFor(factoryCls.defaultType)
             // Add assisted params
             for (param in constructorParameters.allParameters.filter { it.isAssisted }) {
               val assistedParamType =
-                assistedInvokeParamTypeRemapper.remapType(param.contextualTypeKey.toIrType())
+                factoryTypeRemapper.remapType(param.contextualTypeKey.toIrType())
               addValueParameter(param.name, assistedParamType)
             }
           }
@@ -345,12 +350,11 @@ internal class InjectedClassTransformer(
             isPrimary = true
           }
           .apply {
-            val typeRemapper = declaration.deepRemapperFor(factoryCls.defaultType)
             addParameters(
               params = dedupedParameters,
               wrapInProvider = true,
               stubDefaults = false,
-              typeRemapper = { type -> typeRemapper.remapType(type) },
+              typeRemapper = { type -> factoryTypeRemapper.remapType(type) },
             ) { parameter, irParam ->
               val field = irParam.addBackingFieldTo(factoryCls)
               nameToField[irParam.name] = field
@@ -398,6 +402,8 @@ internal class InjectedClassTransformer(
       injectors,
       nameToField,
       providerFieldsByKey,
+      factoryTypeRemapper,
+      factoryCls.typeParameters.map { it.defaultType },
     )
 
     possiblyImplementInvoke(declaration, constructorParameters)
@@ -460,6 +466,8 @@ internal class InjectedClassTransformer(
     injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     nameToField: Map<Name, IrField>,
     providerFieldsByKey: Map<IrContextualTypeKey, IrField>,
+    typeRemapper: TypeRemapper,
+    factoryTypeArguments: List<IrType>,
   ) {
     if (invokeFunction.isFakeOverride) {
       invokeFunction.finalizeFakeOverride(thisReceiver)
@@ -489,7 +497,7 @@ internal class InjectedClassTransformer(
                     nameToField[constructorParam.name]
                       ?: providerFieldsByKey.getValue(constructorParam.toCanonicalProviderKey()),
                   )
-                val contextKey = targetParam.contextualTypeKey
+                val contextKey = targetParam.contextualTypeKey.remapType(typeRemapper)
                 typeAsProviderArgument(
                   contextKey = contextKey,
                   bindingCode = providerInstance,
@@ -511,7 +519,7 @@ internal class InjectedClassTransformer(
 
         val typeArgs =
           if (newInstanceFunction.typeParameters.isNotEmpty()) {
-            listOf(invokeFunction.returnType)
+            factoryTypeArguments
           } else {
             null
           }
@@ -541,6 +549,7 @@ internal class InjectedClassTransformer(
                         parameters = parameters,
                         receiver = invokeFunction.dispatchReceiverParameter!!,
                         providerFieldsByKey = providerFieldsByKey,
+                        typeRemapper = typeRemapper,
                       )
                     )
                   },
@@ -590,6 +599,7 @@ internal class InjectedClassTransformer(
             .symbol
       }
       val sourceParameters = targetCallable.owner.parameters()
+      val functionTypeRemapper = targetCallable.owner.typeRemapperFor(declaration.defaultType)
 
       invokeFunction.apply {
         val functionReceiver = dispatchReceiverParameter!!
@@ -630,7 +640,7 @@ internal class InjectedClassTransformer(
                         irGet(functionReceiver),
                         constructorParametersToFields.getValue(constructorParam),
                       )
-                    val contextKey = targetParam.contextualTypeKey
+                    val contextKey = targetParam.contextualTypeKey.remapType(functionTypeRemapper)
                     typeAsProviderArgument(
                       contextKey = contextKey,
                       bindingCode = providerInstance,
@@ -663,7 +673,7 @@ internal class InjectedClassTransformer(
                         irGet(functionReceiver),
                         constructorParametersToFields.getValue(constructorParam),
                       )
-                    val contextKey = targetParam.contextualTypeKey
+                    val contextKey = targetParam.contextualTypeKey.remapType(functionTypeRemapper)
                     typeAsProviderArgument(
                       contextKey = contextKey,
                       bindingCode = providerInstance,
@@ -686,8 +696,11 @@ internal class InjectedClassTransformer(
                 callee = targetCallable,
                 dispatchReceiver = null,
                 extensionReceiver = null,
-                typeHint = targetCallable.owner.returnType,
-                // TODO type params
+                typeHint = functionTypeRemapper.remapType(targetCallable.owner.returnType),
+                typeArgs =
+                  targetCallable.owner.typeParameters.map {
+                    functionTypeRemapper.remapType(it.defaultType)
+                  },
                 contextArgs = contextArgs,
                 args = args,
               )
@@ -755,6 +768,7 @@ internal class InjectedClassTransformer(
             typeArguments = function.typeParameters.map { it.defaultType },
           )
           .apply {
+            type = function.returnType
             val functionParameters = function.nonDispatchParameters
             for ((i, param) in constructorParameters.allParameters.withIndex()) {
               arguments[param.asValueParameter.indexInParameters] = irGet(functionParameters[i])

@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
+import dev.zacsweers.metro.compiler.fir.classIdCompat
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.metro.compiler.fir.resolveClassId
@@ -160,7 +161,7 @@ private inline fun FirAnnotation.installInComponentsImpl(
     }
   return classCalls.mapNotNull { call ->
     call.coneTypeIfResolved()?.classId
-      ?: (call.argument as? FirResolvedQualifier)?.classId
+      ?: (call.argument as? FirResolvedQualifier)?.classIdCompat
       ?: resolveFallback(call)
   }
 }

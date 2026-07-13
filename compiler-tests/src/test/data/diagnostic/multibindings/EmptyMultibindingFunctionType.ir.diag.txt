@@ -1,5 +1,4 @@
-/EmptyMultibindingFunctionType.kt:11:19: error: 
-[Metro/EmptyMultibinding] Multibinding Set<Function0<Unit>> was unexpectedly empty
+/EmptyMultibindingFunctionType.kt:11:19: error: [Metro/EmptyMultibinding] Multibinding Set<Function0<Unit>> was unexpectedly empty
 
   help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
         empty

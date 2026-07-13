@@ -1002,18 +1002,21 @@ private class CircuitIrTransformer(
         when (factoryType) {
           FactoryType.PRESENTER -> {
             val stateType = originalFunction.returnType
-            irCall(symbols.presenterOfFun).apply {
-              typeArguments[0] = stateType
-              arguments[0] =
-                buildComposableLambda(
-                  createFunction = createFunction,
-                  originalFunction = originalFunction,
-                  originalFunctionSymbol = originalFunctionSymbol,
-                  returnType = stateType,
-                  lambdaParamTypes = emptyList(),
-                  capturedParams = allAvailableParams,
-                )
-            }
+            irInvoke(
+              callee = symbols.presenterOfFun,
+              typeArgs = listOf(stateType),
+              args =
+                listOf(
+                  buildComposableLambda(
+                    createFunction = createFunction,
+                    originalFunction = originalFunction,
+                    originalFunctionSymbol = originalFunctionSymbol,
+                    returnType = stateType,
+                    lambdaParamTypes = emptyList(),
+                    capturedParams = allAvailableParams,
+                  )
+                ),
+            )
           }
           FactoryType.UI -> {
             val stateType =
@@ -1025,22 +1028,25 @@ private class CircuitIrTransformer(
                 }
                 ?.type ?: pluginContext.irBuiltIns.anyNType
 
-            irCall(symbols.uiFun).apply {
-              typeArguments[0] = stateType
-              arguments[0] =
-                buildComposableLambda(
-                  createFunction = createFunction,
-                  originalFunction = originalFunction,
-                  originalFunctionSymbol = originalFunctionSymbol,
-                  returnType = pluginContext.irBuiltIns.unitType,
-                  lambdaParamTypes =
-                    listOf(
-                      CircuitNames.state to stateType,
-                      CircuitNames.modifier to symbols.modifier.defaultType,
-                    ),
-                  capturedParams = allAvailableParams,
-                )
-            }
+            irInvoke(
+              callee = symbols.uiFun,
+              typeArgs = listOf(stateType),
+              args =
+                listOf(
+                  buildComposableLambda(
+                    createFunction = createFunction,
+                    originalFunction = originalFunction,
+                    originalFunctionSymbol = originalFunctionSymbol,
+                    returnType = pluginContext.irBuiltIns.unitType,
+                    lambdaParamTypes =
+                      listOf(
+                        CircuitNames.state to stateType,
+                        CircuitNames.modifier to symbols.modifier.defaultType,
+                      ),
+                    capturedParams = allAvailableParams,
+                  )
+                ),
+            )
           }
         }
       +factoryCall

@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.FirValueParameterBuilder
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
@@ -48,8 +49,11 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.declarations.IrPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
@@ -652,6 +656,37 @@ public interface CompatContext {
     message = "MessageCollector access is being phased out in favor of diagnostic reporters",
   )
   public fun CompilerConfiguration.messageCollectorCompat(): MessageCollector
+
+  /** Builds a fully qualified resolved qualifier for [classSymbol]. */
+  @CompatApi(
+    since = "2.5.0-dev-498",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "2.5 renamed FirResolvedQualifier.symbol and removed its isFullyQualified property",
+  )
+  public fun buildResolvedQualifierCompat(
+    classId: ClassId,
+    classSymbol: FirClassLikeSymbol<*>,
+    classType: ConeKotlinType,
+  ): FirResolvedQualifier
+
+  /** Creates an empty external package fragment using this module. */
+  @CompatApi(
+    since = "2.5.0-dev-498",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "createEmptyExternalPackageFragment now takes IrModuleFragment instead of ModuleDescriptor",
+  )
+  public fun IrModuleFragment.createEmptyExternalPackageFragmentCompat(
+    packageName: String
+  ): IrPackageFragment
+
+  @CompatApi(
+    since = "2.5.0-dev-498",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message =
+      "2.5 replaced IrConstructorCall.getValueArgument(Name) with IrAnnotation.argumentMapping",
+  )
+  public fun IrConstructorCall.getAnnotationArgumentCompat(name: Name): IrExpression?
 }
 
 private data class FactoryData(

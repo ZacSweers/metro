@@ -1,5 +1,4 @@
-/module_main_RequiredAnnotationResultsInMissingBindingMultiModule.kt:19:11: error: 
-[Metro/MissingBinding] No binding found for String?
+/module_main_RequiredAnnotationResultsInMissingBindingMultiModule.kt:19:11: error: [Metro/MissingBinding] No binding found for String?
 
   AppGraph.example -> Example -> String?
 

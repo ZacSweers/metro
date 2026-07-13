@@ -370,11 +370,15 @@ internal class MetroFrameworkSymbols(
 
 internal class JavaxSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val javaxInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax",
+      compatContext,
+    )
   }
 
   val javaxProvider: IrClassSymbol by lazy {
@@ -414,11 +418,15 @@ internal class JavaxSymbols(
 
 internal class JakartaSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val jakartaInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta",
+      compatContext,
+    )
   }
 
   val jakartaProvider: IrClassSymbol by lazy {
@@ -458,16 +466,21 @@ internal class JakartaSymbols(
 
 internal class GuiceSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   metroFrameworkSymbols: MetroFrameworkSymbols,
 ) : FrameworkSymbols by metroFrameworkSymbols {
   private val guiceInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice",
+      compatContext,
+    )
   }
 
   private val guiceInteropRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage(
-      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal"
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal",
+      compatContext,
     )
   }
 
@@ -548,21 +561,26 @@ internal class GuiceSymbols(
 
 internal class DaggerSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
 ) : BaseFrameworkSymbols() {
   lateinit var jakartaSymbols: JakartaSymbols
 
   private val daggerRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dagger.internal")
+    moduleFragment.createPackage("dagger.internal", compatContext)
   }
 
   private val daggerInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger",
+      compatContext,
+    )
   }
 
   private val daggerInteropRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage(
-      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal"
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal",
+      compatContext,
     )
   }
 

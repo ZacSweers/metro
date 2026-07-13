@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.constructors
 
 /**
@@ -435,6 +436,7 @@ private class TraceExpressionDecorator(
           listOf(providerValueType),
         )
         .apply {
+          this.type = tracedProvider.typeWith(providerValueType)
           // traceContext
           arguments[0] = traceContext
           // qualifier
@@ -464,6 +466,7 @@ private class TraceExpressionDecorator(
           listOf(targetType),
         )
         .apply {
+          this.type = tracedMembersInjector.typeWith(targetType)
           // traceContext
           arguments[0] = traceContext
           // qualifier

@@ -138,7 +138,7 @@ jobs:
       - name: Run JS box tests
         if: github.ref == 'refs/heads/main'
         run: |
-          ./gradlew :compiler-tests:test --continue --quiet -Pmetro.jsBoxTestRetries=3 \
+          ./gradlew :compiler-tests:test --continue --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
             --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
