@@ -13,3 +13,15 @@ interface AccessorGraph {
 
   @Provides fun provideValue(): String = "value"
 }
+
+@Inject
+class NestedConsumer(
+  val value: <!SUSPEND_PROVIDERS_NOT_ENABLED!>() -> suspend () -> String<!>
+)
+
+@DependencyGraph
+interface NestedAccessorGraph {
+  val value: <!SUSPEND_PROVIDERS_NOT_ENABLED!>() -> suspend () -> String<!>
+
+  @Provides fun provideValue(): String = "value"
+}
