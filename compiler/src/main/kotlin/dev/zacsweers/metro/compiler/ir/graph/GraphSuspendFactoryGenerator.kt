@@ -7,8 +7,8 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
-import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
@@ -17,8 +17,6 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -137,21 +135,13 @@ internal class GraphSuspendFactoryGenerator(
               param.kind == IrParameterKind.ExtensionReceiver
           val ctxKey = param.contextualTypeKey
           val fieldType: IrType =
-            when {
-              isReceiver -> ctxKey.toIrType()
-              ctxKey.isWrappedInSuspendProvider -> ctxKey.toIrType()
-              // SuspendLazy params are held as SuspendProvider fields; the invoke body memoizes
-              // via SuspendDoubleCheck.lazy when adapting the arg.
-              ctxKey.isWrappedInSuspendLazy ->
-                ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
-              ctxKey.isWrappedInProvider || ctxKey.isWrappedInLazy -> {
-                // Provider<X>/Lazy<X> etc. X can't be suspend here (validated). Hold a
-                // Provider<canonical> and let typeAsProviderArgument adapt.
-                ctxKey.canonicalize().wrapInProvider().toIrType()
-              }
-              bindingGraph.isTransitivelySuspend(ctxKey.typeKey) ->
-                ctxKey.wrapInSuspendProvider().toIrType()
-              else -> ctxKey.wrapInProvider().toIrType()
+            if (isReceiver) {
+              ctxKey.toIrType()
+            } else {
+              val defaultUsesSuspendProvider = bindingGraph.isTransitivelySuspend(ctxKey.typeKey)
+              val usesSuspendProvider =
+                ctxKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)
+              ctxKey.asCanonicalProviderKey(usesSuspendProvider).toIrType()
             }
           val valueParam =
             addValueParameter(

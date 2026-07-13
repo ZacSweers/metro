@@ -371,6 +371,19 @@ internal fun IrContextualTypeKey.wrapInSuspendProvider(): IrContextualTypeKey {
   }
 }
 
+/** Normalizes the outer scalar stack to a canonical Metro Provider or SuspendProvider key. */
+context(context: IrMetroContext)
+internal fun IrContextualTypeKey.asCanonicalProviderKey(
+  usesSuspendProvider: Boolean
+): IrContextualTypeKey {
+  val canonicalKey = canonicalize()
+  return if (usesSuspendProvider) {
+    canonicalKey.wrapInSuspendProvider()
+  } else {
+    canonicalKey.wrapInProvider()
+  }
+}
+
 context(context: IrMetroContext)
 internal fun IrType.implementsProviderType(): Boolean {
   val rawType = rawTypeOrNull() ?: return false

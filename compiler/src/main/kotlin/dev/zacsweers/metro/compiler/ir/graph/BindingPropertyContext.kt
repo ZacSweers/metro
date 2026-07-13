@@ -3,14 +3,11 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.MutableObjectIntMap
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
-import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 /**
@@ -99,53 +96,35 @@ internal class BindingPropertyContext(
    */
   context(metroContext: IrMetroContext)
   fun get(key: IrContextualTypeKey, searchParents: Boolean = false): BindingProperty? {
-    // Direct match in current context
-    properties[key]?.let { property ->
+    fun localProperty(storedKey: IrContextualTypeKey): BindingProperty? {
+      val property = properties[storedKey] ?: return null
       return BindingProperty(
         property = property,
-        storedKey = key,
-        shardProperty = shardProperties[key],
-        shardIndex = shardIndices.getOrDefault(key, -1).takeUnless { it == -1 },
+        storedKey = storedKey,
+        shardProperty = shardProperties[storedKey],
+        shardIndex = shardIndices.getOrDefault(storedKey, -1).takeUnless { it == -1 },
       )
     }
 
-    // For non-provider requests, try provider key (a provider can satisfy an instance request)
-    // - if it's a scalar (non-provider/lazy type)
-    // - if it's a provider but _not_ a metro provider
-    val tryReWrapping =
-      !key.isWrappedInProvider ||
-        key.isWrappedInLazy ||
-        (key.wrappedType is WrappedType.Provider &&
-          key.wrappedType.providerType != Symbols.ClassIds.metroProvider)
-    if (tryReWrapping) {
-      val providerKey = key.stripOuterProviderOrLazy().wrapInProvider()
-      properties[providerKey]?.let {
-        return BindingProperty(
-          property = it,
-          storedKey = providerKey,
-          shardProperty = shardProperties[providerKey],
-          shardIndex = shardIndices.getOrDefault(providerKey, -1).takeUnless { it == -1 },
-        )
-      }
+    localProperty(key)?.let {
+      return it
     }
 
-    // Try the SuspendProvider key for non-suspend-provider requests (suspend bindings may be
-    // stored with SuspendProvider wrapping) AND for suspend-provider requests spelled as the
-    // `suspend () -> T` function type. Fields store metro's SuspendProvider classId, so the
-    // function-type spelling must normalize or scoped bindings get re-created per lookup miss.
-    val tryReWrappingSuspend =
-      !key.isWrappedInSuspendProvider ||
-        (key.wrappedType is WrappedType.SuspendProvider &&
-          key.wrappedType.providerType != Symbols.ClassIds.metroSuspendProvider)
-    if (tryReWrappingSuspend) {
-      val suspendProviderKey = key.stripOuterProviderOrLazy().wrapInSuspendProvider()
-      properties[suspendProviderKey]?.let {
-        return BindingProperty(
-          property = it,
-          storedKey = suspendProviderKey,
-          shardProperty = shardProperties[suspendProviderKey],
-          shardIndex = shardIndices.getOrDefault(suspendProviderKey, -1).takeUnless { it == -1 },
-        )
+    // Properties use one canonical Metro Provider/SuspendProvider layer regardless of how many
+    // scalar wrappers the consumer requested. Preserve map value structure while normalizing the
+    // outer stack, and prefer the provider kind required by the innermost scalar wrapper.
+    val canonicalKey = key.canonicalize()
+    val providerKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = false)
+    val suspendProviderKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = true)
+    val storageKeys =
+      if (key.wrappedType.usesSuspendProvider() == true) {
+        listOf(suspendProviderKey, providerKey)
+      } else {
+        listOf(providerKey, suspendProviderKey)
+      }
+    for (storageKey in storageKeys) {
+      localProperty(storageKey)?.let {
+        return it
       }
     }
 

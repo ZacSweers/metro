@@ -757,6 +757,36 @@ internal class MultibindingExpressionGenerator(
       val sourceBindings =
         binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
+      val useInlineSuspendFunctionProvider =
+        platform.isJs() &&
+          accessType == AccessType.PROVIDER &&
+          valueWrappedType is WrappedType.SuspendProvider &&
+          valueWrappedType.providerType == Symbols.ClassIds.suspendFunction0
+
+      if (useInlineSuspendFunctionProvider) {
+        val mapType = irBuiltIns.mapClass.typeWith(keyType, originalValueType)
+        val mapProvider =
+          scope.wrapInProviderFunction(mapType) {
+            generateMapBuilderExpression(
+              sourceBindings = sourceBindings,
+              keyType = keyType,
+              valueType = originalValueType,
+              canonicalValueContextKey = originalValueContextKey,
+              valueAccessType = AccessType.SUSPEND_PROVIDER,
+              wrapInLazy = false,
+              wrapInProviderLazy = false,
+              valueFrameworkSymbols = valueProviderSymbols,
+              fieldInitKey = fieldInitKey,
+            )
+          }
+
+        return mapProvider.toTargetType(
+          actual = AccessType.PROVIDER,
+          contextualTypeKey = contextualTypeKey,
+          bindingKind = binding.diagnosticTypeName,
+        )
+      }
+
       val instance =
         if (accessType == AccessType.INSTANCE) {
           // Multiple elements but only needs a Map<Key, Value> type
@@ -785,8 +815,7 @@ internal class MultibindingExpressionGenerator(
                   // For any lazy maps, we need Provider<canonical> to wrap
                   needsAnyLazyWrap -> AccessType.PROVIDER
                   valueIsWrappedInProvider -> AccessType.PROVIDER
-                  // SuspendProvider maps use INSTANCE - factory handles wrapping
-                  valueIsWrappedInSuspendProvider -> AccessType.INSTANCE
+                  valueIsWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
                   else -> AccessType.INSTANCE
                 },
               wrapInLazy = needsManualLazyWrap,
@@ -1127,13 +1156,15 @@ internal class MultibindingExpressionGenerator(
           accessType = accessType,
           fieldInitKey = fieldInitKey,
         )
-        .letIf(accessType == AccessType.PROVIDER) {
-          // If it's a provider, we need to handle the type of provider including interop
+        .letIf(accessType != AccessType.INSTANCE) {
+          // Rebuild the requested provider spelling at the map value boundary. This is required
+          // for suspend function values on JS, where SuspendProvider is not itself callable.
           typeAsProviderArgument(
             contextKey = contextKey,
             bindingCode = it,
             isAssisted = false,
             isGraphInstance = false,
+            actualIsSuspendProvider = accessType.isSuspendProvider,
           )
         }
     }

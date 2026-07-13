@@ -7,16 +7,15 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.canBeInlined
-import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -34,8 +33,6 @@ import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -429,7 +426,12 @@ internal fun generateStubCreatorFunctions(
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(params, wrapInProvider = true, copyQualifiers = true)
+    addParameters(
+      params,
+      wrapInProvider = true,
+      copyQualifiers = true,
+      wrapInSuspendProvider = sourceFunction.isSuspend,
+    )
     addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
@@ -457,30 +459,15 @@ internal fun IrFunction.addParameters(
    * `SuspendProvider<…>` directly when the dep is itself suspend.
    */
   wrapInSuspendProvider: Boolean = false,
-  onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
+  onParam: (Parameter, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
         val ctxKey = param.contextualTypeKey
-        if (ctxKey.isWrappedInSuspendProvider) {
-          // SuspendProvider<T> is already a provider-like wrapper that the factory holds
-          // directly. Wrapping it again in Provider<…> would create the wrong field type.
-          ctxKey.toIrType()
-        } else if (ctxKey.isWrappedInSuspendLazy) {
-          // SuspendLazy<T> params are held as SuspendProvider<T> fields; the invoke body
-          // memoizes per call via SuspendDoubleCheck.lazy when adapting the argument.
-          ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
-        } else if (wrapInSuspendProvider) {
-          // Strip outer Provider/Lazy/SuspendProvider layers, then wrap in a single
-          // SuspendProvider so the field can be invoked from the suspend factory's body.
-          ctxKey.canonicalize().wrapInSuspendProvider().toIrType()
-        } else {
-          // Strip all outer Provider/Lazy layers (such as Provider<Lazy<T>> to T) but preserve
-          // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
-          ctxKey.canonicalize().wrapInProvider().toIrType()
-        }
+        val usesSuspendProvider = ctxKey.wrappedType.usesSuspendProvider(wrapInSuspendProvider)
+        ctxKey.asCanonicalProviderKey(usesSuspendProvider).toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }
@@ -517,6 +504,6 @@ internal fun IrFunction.addParameters(
           param.typeKey.qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }
       }
-      .also { onParam(param.typeKey, it) }
+      .also { onParam(param, it) }
   }
 }

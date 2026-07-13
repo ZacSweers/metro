@@ -60,6 +60,7 @@ import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -430,18 +431,22 @@ internal class BindingContainerTransformer(
       }
 
     // De-duped source params used by the constructor and create() function
+    val defaultUsesSuspendProvider = reference.isSuspend
     val dedupedSourceParameters =
       trace("Dedupe parameters") {
         sourceParameters.copy(
-          regularParameters = sourceParameters.regularParameters.dedupeParameters()
+          regularParameters =
+            sourceParameters.regularParameters.dedupeParameters(
+              defaultUsesSuspendProvider = defaultUsesSuspendProvider
+            )
         )
       }
 
     // Use parameter name as the primary field key to correctly handle multiple parameters
     // with the same type key (e.g., two String params with different defaults).
-    // The typeKey map is kept as a fallback for dedup cases.
+    // The contextual-key map is kept as a fallback for dedup cases.
     val nameToField = mutableMapOf<Name, IrField>()
-    val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
+    val providerFieldsByKey = mutableMapOf<IrContextualTypeKey, IrField>()
     val ctor: IrConstructor
     if (factoryCls.isObject) {
       // If it's got no parameters we'll generate it in FIR as an object
@@ -465,14 +470,15 @@ internal class BindingContainerTransformer(
             stubDefaults = false,
             typeRemapper = { type -> typeRemapper.remapType(type) },
             wrapInSuspendProvider = reference.isSuspend,
-          ) { typeKey, irParam ->
+          ) { parameter, irParam ->
             val fieldName =
               fieldNameAllocator.allocateName(memberNamer, MemberNamer.Kind.PROVIDER) {
                 irParam.name.asString()
               }
             val field = irParam.addBackingFieldTo(factoryCls, fieldName)
             nameToField[irParam.name] = field
-            typeKeyToField[typeKey] = field
+            providerFieldsByKey[parameter.toCanonicalProviderKey(defaultUsesSuspendProvider)] =
+              field
           }
           addHiddenFromObjCAnnotation(this)
           body = generateDefaultConstructorBody()
@@ -500,8 +506,9 @@ internal class BindingContainerTransformer(
                 parametersAsProviderArguments(
                   parameters = sourceParameters,
                   receiver = invokeFunction.dispatchReceiverParameter!!,
-                  fields = typeKeyToField,
+                  providerFieldsByKey = providerFieldsByKey,
                   nameToField = nameToField,
+                  defaultUsesSuspendProvider = defaultUsesSuspendProvider,
                 ),
             )
           )

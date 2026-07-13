@@ -18,7 +18,9 @@ import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.allocateName
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -52,7 +54,6 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.suspendDoubleCheck
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
@@ -924,7 +925,7 @@ internal class IrGraphGenerator(
 
     // Expose the graph dep as a provider property only if it was reserved by a child graph.
     val graphDepProviderContextKey =
-      param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider()
+      param.contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
     // Only create the provider property if it was reserved (requested by a child graph)
     if (bindingGraph.isContextKeyReserved(graphDepProviderContextKey)) {
       val providerInitializer =
@@ -973,7 +974,7 @@ internal class IrGraphGenerator(
 
       // Link both the graph typekey and the (possibly-impl type)
       bindingPropertyContext.put(
-        param.contextualTypeKey.stripOuterProviderOrLazy(),
+        param.contextualTypeKey.canonicalize(),
         providerWrapperProperty.initFinal(providerInitializer),
       )
       bindingPropertyContext.put(IrContextualTypeKey(graphDep.typeKey), providerWrapperProperty)
@@ -1938,6 +1939,8 @@ internal class IrGraphGenerator(
                     .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
                   isAssisted = false,
                   isGraphInstance = false,
+                  actualIsSuspendProvider =
+                    BindingExpressionGenerator.AccessType.of(contextualTypeKey).isSuspendProvider,
                 )
               }
             )
@@ -2028,6 +2031,9 @@ internal class IrGraphGenerator(
                               ),
                             isAssisted = false,
                             isGraphInstance = false,
+                            actualIsSuspendProvider =
+                              BindingExpressionGenerator.AccessType.of(parameter.contextualTypeKey)
+                                .isSuspendProvider,
                           )
                         )
                       }
@@ -2112,9 +2118,16 @@ internal class IrGraphGenerator(
                     kind = TRACE_KIND_ACCESSOR,
                     returnType = irFunction.returnType,
                   ) {
-                    expressionGeneratorFactory
-                      .create(irFunction.dispatchReceiverParameter!!)
-                      .generateBindingCode(binding = binding, contextualTypeKey = contextKey)
+                    typeAsProviderArgument(
+                      contextKey,
+                      expressionGeneratorFactory
+                        .create(irFunction.dispatchReceiverParameter!!)
+                        .generateBindingCode(binding = binding, contextualTypeKey = contextKey),
+                      isAssisted = false,
+                      isGraphInstance = false,
+                      actualIsSuspendProvider =
+                        BindingExpressionGenerator.AccessType.of(contextKey).isSuspendProvider,
+                    )
                   }
                 )
               }

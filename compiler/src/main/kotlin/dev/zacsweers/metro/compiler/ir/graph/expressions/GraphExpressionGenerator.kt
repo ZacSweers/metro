@@ -3,12 +3,15 @@
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
@@ -29,11 +32,8 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
-import dev.zacsweers.metro.compiler.ir.stripSuspendLazy
-import dev.zacsweers.metro.compiler.ir.suspendDoubleCheckLazy
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -49,8 +49,10 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.allParameters
+import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
@@ -183,20 +185,31 @@ private constructor(
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
-      if (contextualTypeKey.isWrappedInSuspendLazy) {
-        // SuspendLazy<T> materializes as SuspendDoubleCheck.lazy over the binding's
-        // SuspendProvider form. For scoped bindings the runtime lazy() short-circuits when the
-        // delegate is already the graph's SuspendDoubleCheck, so the graph cache is shared.
-        val providerKey = contextualTypeKey.stripSuspendLazy().wrapInSuspendProvider()
-        return generateBindingCode(binding, providerKey, AccessType.SUSPEND_PROVIDER, fieldInitKey)
-          .suspendDoubleCheckLazy(metroSymbols, contextualTypeKey.typeKey)
+      val exactGraphDependencyRequest =
+        binding is IrBinding.GraphDependency && binding.canPassThrough(contextualTypeKey)
+      if (!exactGraphDependencyRequest) {
+        // Graph expressions operate on one canonical Metro Provider/SuspendProvider layer. The
+        // complete consumer wrapper stack is reconstructed by typeAsProviderArgument.
+        val storageContextKey =
+          when (accessType) {
+            AccessType.INSTANCE -> contextualTypeKey.canonicalize()
+            AccessType.PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
+            AccessType.SUSPEND_PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = true)
+          }
+        if (storageContextKey != contextualTypeKey) {
+          return generateBindingCode(binding, storageContextKey, accessType, fieldInitKey)
+        }
       }
 
       val bindingKind = binding.diagnosticTypeName
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
-      if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
+      if (
+        !exactGraphDependencyRequest && (fieldInitKey == null || fieldInitKey != binding.typeKey)
+      ) {
         bindingPropertyContext.get(contextualTypeKey)?.let { bindingProperty ->
           val (property, storedKey, shardProperty, shardIndex) = bindingProperty
           val actual =
@@ -524,8 +537,14 @@ private constructor(
 
           val targetConsumesSuspend =
             targetBinding.parameters.nonDispatchParameters.any { param ->
+              val dependencyBinding = bindingGraph.findBinding(param.contextualTypeKey.typeKey)
+              val exactGraphDependency =
+                (dependencyBinding as? IrBinding.GraphDependency)?.canPassThrough(
+                  param.contextualTypeKey
+                ) == true
               !param.isAssisted &&
-                !param.contextualTypeKey.defersSuspendAtAccess &&
+                !param.contextualTypeKey.isDeferrable &&
+                !exactGraphDependency &&
                 bindingGraph.isTransitivelySuspend(param.contextualTypeKey.typeKey)
             }
           if (targetConsumesSuspend) {
@@ -810,35 +829,48 @@ private constructor(
                 irInvoke(
                   dispatchReceiver = graphInstanceAccess,
                   callee = binding.getter.symbol,
-                  typeHint = binding.typeKey.type,
+                  typeHint = getterContextKey.toIrType(),
                 )
 
-              if (getterContextKey.isWrappedInProvider) {
-                // It's already a provider
-                invokeGetter to AccessType.PROVIDER
-              } else if (getterContextKey.isWrappedInSuspendProvider) {
-                // Already a SuspendProvider (like an included graph's `suspend () -> T` accessor)
-                invokeGetter to AccessType.SUSPEND_PROVIDER
-              } else if (getterContextKey.isWrappedInSuspendLazy) {
+              if (binding.canPassThrough(contextualTypeKey)) {
+                return invokeGetter
+              }
+
+              val sourceWrapper = getterContextKey.wrappedType
+              val targetWrapper = contextualTypeKey.wrappedType
+              val sourceIsDirectProvider =
+                sourceWrapper is WrappedType.Provider ||
+                  sourceWrapper is WrappedType.SuspendProvider
+              val targetIsDirectProvider =
+                targetWrapper is WrappedType.Provider ||
+                  targetWrapper is WrappedType.SuspendProvider
+              val wrappersUseSameProviderType =
+                sourceWrapper.usesSuspendProvider() == targetWrapper.usesSuspendProvider()
+              val wrappersHaveSameValue =
+                sourceWrapper.immediateInnerType()?.isScalarLeaf() == true &&
+                  targetWrapper.immediateInnerType()?.isScalarLeaf() == true
+              if (
+                sourceIsDirectProvider &&
+                  targetIsDirectProvider &&
+                  wrappersUseSameProviderType &&
+                  wrappersHaveSameValue
+              ) {
+                return convertGraphDependencyProvider(
+                  invokeGetter,
+                  sourceWrapper,
+                  contextualTypeKey,
+                )
+              }
+
+              val sourceRequiresSuspend =
+                binding.getter.isSuspend || getterContextKey.wrappedType.requiresSuspendToUnwrap()
+              if (sourceRequiresSuspend) {
                 scope.wrapInSuspendProviderFunction(binding.typeKey.type) {
-                  irInvoke(
-                    invokeGetter,
-                    callee = metroSymbols.suspendLazyValue,
-                    typeHint = binding.typeKey.type,
-                  )
+                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
                 } to AccessType.SUSPEND_PROVIDER
-              } else if (binding.getter.isSuspend) {
-                // A suspend accessor on an included graph. The call must live inside a suspend
-                // lambda; a plain provider function would be invalid IR.
-                scope.wrapInSuspendProviderFunction(binding.typeKey.type) { invokeGetter } to
-                  AccessType.SUSPEND_PROVIDER
               } else {
-                wrapInProviderFunction(binding.typeKey.type) {
-                  if (getterContextKey.isWrappedInLazy) {
-                    irInvoke(invokeGetter, callee = metroSymbols.lazyGetValue)
-                  } else {
-                    invokeGetter
-                  }
+                scope.wrapInProviderFunction(binding.typeKey.type) {
+                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
                 } to AccessType.PROVIDER
               }
             } else {
@@ -854,6 +886,126 @@ private constructor(
         }
       }
     }
+
+  /** Flattens an included graph accessor's wrapper value to its canonical bound value. */
+  context(scope: IrBuilderWithScope)
+  private fun unwrapGraphDependencySource(
+    expression: IrExpression,
+    contextKey: IrContextualTypeKey,
+  ): IrExpression = unwrapGraphDependencySource(expression, contextKey, contextKey.wrappedType)
+
+  context(scope: IrBuilderWithScope)
+  private fun unwrapGraphDependencySource(
+    expression: IrExpression,
+    contextKey: IrContextualTypeKey,
+    wrappedType: WrappedType<IrType>,
+  ): IrExpression =
+    with(scope) {
+      when (wrappedType) {
+        is WrappedType.Canonical,
+        is WrappedType.Map -> expression
+        else -> {
+          val innerType =
+            when (wrappedType) {
+              is WrappedType.Provider -> wrappedType.innerType
+              is WrappedType.SuspendProvider -> wrappedType.innerType
+              is WrappedType.Lazy -> wrappedType.innerType
+              is WrappedType.SuspendLazy -> wrappedType.innerType
+              is WrappedType.Canonical,
+              is WrappedType.Map -> error("Handled above")
+            }
+          val innerContextKey =
+            IrContextualTypeKey(
+              typeKey = contextKey.typeKey,
+              wrappedType = innerType,
+              hasDefault = contextKey.hasDefault,
+            )
+          val innerIrType = innerContextKey.toIrType()
+          val innerExpression =
+            when (wrappedType) {
+              is WrappedType.Provider -> {
+                val metroProviderKey =
+                  IrContextualTypeKey(
+                    typeKey = contextKey.typeKey,
+                    wrappedType = WrappedType.Provider(innerType, Symbols.ClassIds.metroProvider),
+                    hasDefault = contextKey.hasDefault,
+                  )
+                val metroProvider =
+                  with(metroSymbols.providerTypeConverter) {
+                    expression.convertTo(metroProviderKey)
+                  }
+                irInvoke(
+                  dispatchReceiver = metroProvider,
+                  callee = metroSymbols.providerInvoke,
+                  typeHint = innerIrType,
+                )
+              }
+              is WrappedType.SuspendProvider -> {
+                val metroProviderKey =
+                  IrContextualTypeKey(
+                    typeKey = contextKey.typeKey,
+                    wrappedType =
+                      WrappedType.SuspendProvider(
+                        innerType,
+                        Symbols.ClassIds.metroSuspendProvider,
+                      ),
+                    hasDefault = contextKey.hasDefault,
+                  )
+                val metroProvider =
+                  convertGraphDependencyProvider(expression, wrappedType, metroProviderKey)
+                irInvoke(
+                  dispatchReceiver = metroProvider,
+                  callee = metroSymbols.suspendProviderInvoke,
+                  typeHint = innerIrType,
+                )
+              }
+              is WrappedType.Lazy -> {
+                val getter =
+                  if (wrappedType.lazyType == metroSymbols.stdlibLazy.owner.classId) {
+                    metroSymbols.lazyGetValue
+                  } else {
+                    val lazyClass =
+                      referenceClass(wrappedType.lazyType)
+                        ?: reportCompilerBug("No lazy class found for ${wrappedType.lazyType}")
+                    lazyClass.requireSimpleFunction(Symbols.StringNames.GET)
+                  }
+                irInvoke(dispatchReceiver = expression, callee = getter, typeHint = innerIrType)
+              }
+              is WrappedType.SuspendLazy ->
+                irInvoke(
+                  dispatchReceiver = expression,
+                  callee = metroSymbols.suspendLazyValue,
+                  typeHint = innerIrType,
+                )
+              is WrappedType.Canonical,
+              is WrappedType.Map -> error("Handled above")
+            }
+          unwrapGraphDependencySource(innerExpression, contextKey, innerType)
+        }
+      }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun convertGraphDependencyProvider(
+    expression: IrExpression,
+    sourceWrapper: WrappedType<IrType>,
+    targetKey: IrContextualTypeKey,
+  ): IrExpression {
+    if (
+      sourceWrapper is WrappedType.SuspendProvider &&
+        sourceWrapper.providerType == Symbols.ClassIds.suspendFunction0
+    ) {
+      return scope.irInvoke(
+        callee = metroSymbols.metroSuspendProviderFunction,
+        typeHint = targetKey.toIrType(),
+        typeArgs = listOf(sourceWrapper.innerType.toIrType()),
+        args = listOf(expression),
+      )
+    }
+    return with(scope) {
+      with(metroSymbols.providerTypeConverter) { expression.convertTo(targetKey) }
+    }
+  }
 
   /**
    * Generates `NestedAssistedSuspendImpl(depProviders...)` for an assisted factory whose target
@@ -1131,13 +1283,7 @@ private constructor(
 
       return paramsForCall.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
-        val accessType =
-          when {
-            param.contextualTypeKey.isWrappedInSuspendProvider ||
-              param.contextualTypeKey.isWrappedInSuspendLazy -> AccessType.SUSPEND_PROVIDER
-            param.contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
-            else -> AccessType.INSTANCE
-          }
+        val accessType = AccessType.of(param.contextualTypeKey)
 
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
@@ -1165,32 +1311,22 @@ private constructor(
         // (e.g., longInstance).
         val lookupKey =
           when (accessType) {
-            AccessType.PROVIDER -> contextualTypeKey.wrapInProvider()
+            AccessType.PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
             AccessType.SUSPEND_PROVIDER ->
-              when {
-                contextualTypeKey.isWrappedInSuspendProvider -> contextualTypeKey
-                contextualTypeKey.isWrappedInSuspendLazy ->
-                  contextualTypeKey.stripSuspendLazy().wrapInSuspendProvider()
-                else -> contextualTypeKey.wrapInSuspendProvider()
-              }
-            else -> contextualTypeKey
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = true)
+            else -> contextualTypeKey.canonicalize()
           }
         val providerInstance =
           bindingPropertyContext.get(lookupKey)?.let { bindingProperty ->
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
-            // If it's in provider fields, invoke that field
             val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
-
-            // If we wanted an instance but got a provider/suspendProvider property, invoke it
-            if (accessType == AccessType.INSTANCE && storedKey.isWrappedInProvider) {
+            val actualAccessType = AccessType.of(storedKey)
+            if (actualAccessType != accessType) {
               propertyAccess.toTargetType(
-                actual = AccessType.PROVIDER,
-                contextualTypeKey = contextualTypeKey,
-              )
-            } else if (accessType == AccessType.INSTANCE && storedKey.isWrappedInSuspendProvider) {
-              propertyAccess.toTargetType(
-                actual = AccessType.SUSPEND_PROVIDER,
-                contextualTypeKey = contextualTypeKey,
+                actual = actualAccessType,
+                requested = accessType,
+                contextualTypeKey = lookupKey,
               )
             } else {
               propertyAccess
@@ -1218,6 +1354,7 @@ private constructor(
           providerInstance,
           isAssisted = param.isAssisted,
           isGraphInstance = param.isGraphInstance,
+          actualIsSuspendProvider = accessType.isSuspendProvider,
         )
       }
     }

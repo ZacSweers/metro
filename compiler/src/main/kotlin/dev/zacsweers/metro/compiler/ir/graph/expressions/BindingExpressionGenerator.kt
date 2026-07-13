@@ -39,12 +39,20 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     PROVIDER,
     SUSPEND_PROVIDER;
 
+    val isSuspendProvider: Boolean?
+      get() =
+        when (this) {
+          INSTANCE -> null
+          PROVIDER -> false
+          SUSPEND_PROVIDER -> true
+        }
+
     companion object {
       fun of(contextKey: IrContextualTypeKey): AccessType {
-        return when {
-          contextKey.isWrappedInSuspendProvider -> SUSPEND_PROVIDER
-          contextKey.isWrappedInProvider -> PROVIDER
-          else -> INSTANCE
+        return when (contextKey.wrappedType.usesSuspendProvider()) {
+          true -> SUSPEND_PROVIDER
+          false -> PROVIDER
+          null -> INSTANCE
         }
       }
     }
@@ -54,12 +62,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
   abstract fun generateBindingCode(
     binding: T,
     contextualTypeKey: IrContextualTypeKey,
-    accessType: AccessType =
-      when {
-        contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
-        contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
-        else -> AccessType.INSTANCE
-      },
+    accessType: AccessType = AccessType.of(contextualTypeKey),
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression
 
@@ -98,12 +101,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
         else -> AccessType.INSTANCE
       }
     },
-    requested: AccessType =
-      when {
-        contextualTypeKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
-        contextualTypeKey.requiresProviderInstance -> AccessType.PROVIDER
-        else -> AccessType.INSTANCE
-      },
+    requested: AccessType = AccessType.of(contextualTypeKey),
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
     bindingKind: String? = null,

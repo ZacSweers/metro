@@ -125,13 +125,14 @@ internal fun validateInjectionSiteType(
 
   if (contextKey.isWrappedInLazy) {
     checkLazyAssistedFactory(session, contextKey, typeRef, source)
-  } else if (contextKey.isLazyWrappedInProvider) {
+  }
+  if (contextKey.wrappedType.containsProviderOfLazy()) {
     checkProviderOfLazy(session, contextKey, typeRef, source)
   }
 
   if (contextKey.wrappedType !is WrappedType.Canonical) {
     checkDesugaredProviderUse(session, contextKey, typeRef, source)
-    checkSuspendWrapperNesting(contextKey, typeRef, source)
+    checkUnsupportedSuspendMapValue(contextKey, typeRef, source)
   }
 
   val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
@@ -297,23 +298,30 @@ private fun checkProviderOfLazy(
   typeRef: FirTypeRef,
   source: KtSourceElement?,
 ) {
-  // Check if this is a non-metro provider + kotlin lazy. We only support either all dagger or all
-  // metro
-  val providerType = contextKey.wrappedType as WrappedType.Provider
-  val lazyType = providerType.innerType as WrappedType.Lazy
-  val providerIsMetroOrFunction =
-    providerType.providerType == Symbols.ClassIds.metroProvider ||
-      (session.metroFirBuiltIns.options.enableFunctionProviders &&
-        providerType.providerType == Symbols.ClassIds.function0)
-  val lazyIsStdLib = lazyType.lazyType == Symbols.ClassIds.Lazy
-  if (!providerIsMetroOrFunction || !lazyIsStdLib) {
-    reporter.reportOn(
-      typeRef.source ?: source,
-      MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,
-      providerType.providerType.asString(),
-      lazyType.lazyType.asString(),
-    )
+  // Provider<Lazy<T>> is the one provider/lazy combination that requires both layers to use
+  // Metro's intrinsic types. Apply that rule to every adjacent pair in a recursive scalar stack.
+  val scalarTypes = generateSequence(contextKey.wrappedType) { it.immediateInnerType() }
+  val providerLazyPairs = scalarTypes.mapNotNull { wrappedType ->
+    val providerType = wrappedType as? WrappedType.Provider ?: return@mapNotNull null
+    val lazyType = providerType.innerType as? WrappedType.Lazy ?: return@mapNotNull null
+    providerType to lazyType
   }
+  val invalidPair =
+    providerLazyPairs.firstOrNull { (providerType, lazyType) ->
+      val providerIsMetroOrFunction =
+        providerType.providerType == Symbols.ClassIds.metroProvider ||
+          (session.metroFirBuiltIns.options.enableFunctionProviders &&
+            providerType.providerType == Symbols.ClassIds.function0)
+      val lazyIsStdLib = lazyType.lazyType == Symbols.ClassIds.Lazy
+      !providerIsMetroOrFunction || !lazyIsStdLib
+    } ?: return
+  val (providerType, lazyType) = invalidPair
+  reporter.reportOn(
+    typeRef.source ?: source,
+    MetroDiagnostics.PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY,
+    providerType.providerType.asString(),
+    lazyType.lazyType.asString(),
+  )
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -344,89 +352,52 @@ private fun checkDesugaredProviderUse(
   )
 }
 
-/**
- * Rejects unsupported combinations of suspend wrappers with other intrinsic wrappers. These are
- * graph-independent checks, and codegen has no materialization for these forms.
- *
- * Rules:
- * - `suspend () -> T` / `SuspendProvider<T>` / `SuspendLazy<T>` must wrap the binding type directly
- *   (or a multibinding Map/Set/collection type). Nested wrapper forms are unsupported.
- * - `Provider<T>` / `Lazy<T>` / `() -> T` must not wrap suspend wrappers.
- * - Map multibinding values support the deferred form `Map<K, suspend () -> V>` only. `SuspendLazy`
- *   values are not supported.
- */
+/** Rejects suspend map value forms that the multibinding factories cannot materialize. */
 context(context: CheckerContext, reporter: DiagnosticReporter)
-private fun checkSuspendWrapperNesting(
+private fun checkUnsupportedSuspendMapValue(
   contextKey: FirContextualTypeKey,
   typeRef: FirTypeRef,
   source: KtSourceElement?,
 ) {
-  val message = findInvalidSuspendNesting(contextKey.wrappedType) ?: return
+  if (!contextKey.wrappedType.hasUnsupportedSuspendMapValue()) return
   reporter.reportOn(
     typeRef.source ?: source,
-    MetroDiagnostics.UNSUPPORTED_SUSPEND_WRAPPER_NESTING,
-    message,
+    MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE,
   )
 }
 
-private fun findInvalidSuspendNesting(type: WrappedType<ConeKotlinType>): String? {
-  val inner =
-    when (type) {
-      is WrappedType.Canonical -> return null
-      is WrappedType.SuspendProvider -> {
-        when (val inner = type.innerType) {
-          is WrappedType.Canonical,
-          is WrappedType.Map -> inner
-          else ->
-            return "`suspend () -> T` cannot wrap ${describeWrapper(inner)}. A suspend function " +
-              "wrapper already defers resolution. Wrap the binding type directly."
-        }
-      }
-      is WrappedType.SuspendLazy -> {
-        when (val inner = type.innerType) {
-          is WrappedType.Canonical,
-          is WrappedType.Map -> inner
-          else ->
-            return "`SuspendLazy<T>` cannot wrap ${describeWrapper(inner)}. SuspendLazy already " +
-              "defers and memoizes resolution. Wrap the binding type directly."
-        }
-      }
-      is WrappedType.Provider -> {
-        when (val inner = type.innerType) {
-          is WrappedType.SuspendProvider,
-          is WrappedType.SuspendLazy ->
-            return "`Provider<T>`/`() -> T` cannot wrap ${describeWrapper(inner)}. Use " +
-              "`suspend () -> T` or `SuspendLazy<T>` directly instead."
-          else -> inner
-        }
-      }
-      is WrappedType.Lazy -> {
-        when (val inner = type.innerType) {
-          is WrappedType.SuspendProvider,
-          is WrappedType.SuspendLazy ->
-            return "`Lazy<T>` cannot wrap ${describeWrapper(inner)}. Use `suspend () -> T` or " +
-              "`SuspendLazy<T>` directly instead."
-          else -> inner
-        }
-      }
-      is WrappedType.Map -> {
-        when (val value = type.valueType) {
-          is WrappedType.SuspendLazy ->
-            return "Map multibindings support deferred suspend values as " +
-              "`Map<K, suspend () -> V>`. `SuspendLazy` values are not supported."
-          else -> value
-        }
-      }
-    }
-  return findInvalidSuspendNesting(inner)
+private fun WrappedType<ConeKotlinType>.hasUnsupportedSuspendMapValue(): Boolean {
+  return when (this) {
+    is WrappedType.Canonical -> false
+    is WrappedType.Provider -> innerType.hasUnsupportedSuspendMapValue()
+    is WrappedType.SuspendProvider -> innerType.hasUnsupportedSuspendMapValue()
+    is WrappedType.Lazy -> innerType.hasUnsupportedSuspendMapValue()
+    is WrappedType.SuspendLazy -> innerType.hasUnsupportedSuspendMapValue()
+    is WrappedType.Map -> valueType.hasUnsupportedSuspendWrapperInMapValue()
+  }
 }
 
-private fun describeWrapper(type: WrappedType<ConeKotlinType>): String =
-  when (type) {
-    is WrappedType.Canonical -> "'${type.type}'"
-    is WrappedType.Provider -> "`Provider<T>`"
-    is WrappedType.SuspendProvider -> "another `suspend () -> T`"
-    is WrappedType.Lazy -> "`Lazy<T>`"
-    is WrappedType.SuspendLazy -> "`SuspendLazy<T>`"
-    is WrappedType.Map -> "`Map<K, V>`"
+private fun WrappedType<ConeKotlinType>.hasUnsupportedSuspendWrapperInMapValue(): Boolean {
+  return when (this) {
+    is WrappedType.Canonical -> false
+    is WrappedType.Provider -> {
+      val wrapsSuspendType =
+        innerType is WrappedType.SuspendProvider || innerType is WrappedType.SuspendLazy
+      wrapsSuspendType || innerType.hasUnsupportedSuspendWrapperInMapValue()
+    }
+    is WrappedType.SuspendProvider -> {
+      when (innerType) {
+        is WrappedType.Canonical -> false
+        is WrappedType.Map -> innerType.hasUnsupportedSuspendMapValue()
+        else -> true
+      }
+    }
+    is WrappedType.Lazy -> {
+      val wrapsSuspendType =
+        innerType is WrappedType.SuspendProvider || innerType is WrappedType.SuspendLazy
+      wrapsSuspendType || innerType.hasUnsupportedSuspendWrapperInMapValue()
+    }
+    is WrappedType.SuspendLazy -> true
+    is WrappedType.Map -> hasUnsupportedSuspendMapValue()
   }
+}

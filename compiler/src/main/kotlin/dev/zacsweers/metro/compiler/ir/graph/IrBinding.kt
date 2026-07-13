@@ -696,9 +696,12 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val isSuspend: Boolean
       get() =
         getter?.isSuspend == true ||
-          contextualTypeKey.isWrappedInSuspendProvider ||
-          contextualTypeKey.isWrappedInSuspendLazy ||
+          contextualTypeKey.wrappedType.requiresSuspendToUnwrap() ||
           token?.isSuspend == true
+
+    /** Whether this dependency can return the accessor's wrapper value without unwrapping it. */
+    fun canPassThrough(contextKey: IrContextualTypeKey): Boolean =
+      getter?.isSuspend == false && contextualTypeKey == contextKey
 
     override val dependencies: List<IrContextualTypeKey> by memoize {
       listOf(IrContextualTypeKey(ownerKey))

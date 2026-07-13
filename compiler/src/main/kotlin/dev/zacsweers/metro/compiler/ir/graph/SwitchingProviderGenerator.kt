@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.graph.expressions.BindingExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.GraphExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
@@ -17,7 +18,6 @@ import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.newName
@@ -419,10 +419,10 @@ internal class SwitchingProviderGenerator(
     // We pass the SwitchingProvider's dispatch receiver and a ShardExpressionContext configured
     // with isSwitchingProvider=true so that all property access goes through this.graph
     //
-    // Strip outer provider wrapping from contextKey since the property stores Provider<T> but
+    // Strip outer scalar wrapping from contextKey since the property stores Provider<T> but
     // we want to generate the T instance (the SwitchingProvider itself provides the Provider
     // wrapper)
-    val instanceContextKey = switchingBinding.contextKey.stripOuterProviderOrLazy()
+    val instanceContextKey = switchingBinding.contextKey.canonicalize()
     return expressionGeneratorFactory
       .create(thisReceiver = switchingProviderThisReceiver, shardContext = switchingProviderContext)
       .generateBindingCode(

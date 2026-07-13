@@ -89,9 +89,9 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
 }
 
 /**
- * Whether this request evaluates without making its consumer suspend. The innermost scalar wrapper
- * controls this: outer wrappers only defer creation of the inner wrapper, while a suspend-capable
- * wrapper nearest the bound value defers the value's evaluation.
+ * Whether this request defers evaluation of its binding and therefore stops suspend propagation.
+ * Validation separately rejects synchronous Provider or Lazy wrappers over a suspend binding; that
+ * invalid edge must not also make its consumer transitively suspend.
  */
 internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
-  get() = wrappedType.usesSuspendProvider() == true || isMapSuspendProvider
+  get() = isDeferrable

@@ -271,6 +271,18 @@ internal sealed interface WrappedType<T : Any> {
     }
   }
 
+  /** Returns true if the scalar wrapper chain contains an adjacent Provider<Lazy<…>> pair. */
+  fun containsProviderOfLazy(): Boolean {
+    return when (this) {
+      is Canonical,
+      is Map -> false
+      is Provider -> innerType is Lazy || innerType.containsProviderOfLazy()
+      is SuspendProvider -> innerType.containsProviderOfLazy()
+      is Lazy -> innerType.containsProviderOfLazy()
+      is SuspendLazy -> innerType.containsProviderOfLazy()
+    }
+  }
+
   /** Whether unwrapping this scalar stack to its canonical value crosses a suspend wrapper. */
   fun requiresSuspendToUnwrap(): Boolean {
     return when (this) {

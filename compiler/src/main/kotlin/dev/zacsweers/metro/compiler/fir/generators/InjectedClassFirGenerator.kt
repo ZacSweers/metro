@@ -438,15 +438,18 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val injectedClass =
         if (classSymbol.hasOrigin(Keys.TopLevelInjectFunctionClass)) {
           val function = functionFor(classSymbol.classId)
+          val defaultUsesSuspendProvider = function.isSuspend
           val params =
             function.contextParameterSymbols
               .plus(function.valueParameterSymbols)
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
-              .map {
+              .map { symbol ->
+                val parameter = MetroFirValueParameter(session, symbol)
                 MetroFirValueParameter(
                   session,
-                  it,
+                  symbol,
                   wrapInProvider = true,
+                  providerClassId = parameter.canonicalProviderClassId(defaultUsesSuspendProvider),
                   stripLazyIfWrappedInProvider = true,
                 )
               }
@@ -630,6 +633,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
           .map { MetroFirValueParameter(session, it) }
       val typeParamSubstitutor = typeParameterSubstitutor(function, context.owner)
+      val defaultUsesSuspendProvider = function.isSuspend
       return createConstructor(
           context.owner,
           Keys.Default,
@@ -643,7 +647,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               typeProvider = {
                 typeParamSubstitutor
                   .substituteOrSelf(param.contextKey.typeKey.type)
-                  .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+                  .wrapInProviderIfNecessary(
+                    session,
+                    param.canonicalProviderClassId(defaultUsesSuspendProvider),
+                  )
               },
               key = Keys.RegularParameter,
             )
