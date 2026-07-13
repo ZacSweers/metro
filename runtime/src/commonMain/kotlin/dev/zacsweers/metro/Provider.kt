@@ -13,12 +13,20 @@ public expect fun interface Provider<T> {
 
 /** A helper function to create a new [Provider] wrapper around a given [provider] lambda. */
 @Suppress("NOTHING_TO_INLINE")
-public inline fun <T> provider(noinline provider: () -> T): Provider<T> = LambdaProvider(provider)
+public inline fun <T> provider(noinline provider: () -> T): Provider<T> {
+  return when (provider) {
+    is Provider<*> -> {
+      @Suppress("UNCHECKED_CAST")
+      provider as Provider<T>
+    }
+    else -> FunctionProvider(provider)
+  }
+}
 
 @PublishedApi
 @JvmInline
-internal value class LambdaProvider<T>(private val lambda: () -> T) : Provider<T> {
-  override fun invoke(): T = lambda()
+internal value class FunctionProvider<T>(private val function: () -> T) : Provider<T> {
+  override fun invoke(): T = function()
 }
 
 /** Returns a [Provider] wrapper around the given [value]. */

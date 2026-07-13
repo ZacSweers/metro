@@ -13,10 +13,23 @@ public expect fun interface SuspendProvider<T> {
 /** Creates a [SuspendProvider] that delegates to [provider]. */
 @ExperimentalMetroCoroutinesApi
 @Suppress("NOTHING_TO_INLINE")
-public inline fun <T> suspendProvider(noinline provider: suspend () -> T): SuspendProvider<T> =
-  SuspendProvider {
-    provider()
+public inline fun <T> suspendProvider(noinline provider: suspend () -> T): SuspendProvider<T> {
+  return when (provider) {
+    is SuspendProvider<*> -> {
+      @Suppress("UNCHECKED_CAST")
+      provider as SuspendProvider<T>
+    }
+    else -> SuspendFunctionProvider(provider)
   }
+}
+
+@ExperimentalMetroCoroutinesApi
+@PublishedApi
+@JvmInline
+internal value class SuspendFunctionProvider<T>(private val function: suspend () -> T) :
+  SuspendProvider<T> {
+  override suspend fun invoke(): T = function()
+}
 
 /** Returns a [SuspendProvider] that always returns [value]. */
 @ExperimentalMetroCoroutinesApi
