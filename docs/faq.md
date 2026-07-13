@@ -36,7 +36,7 @@ This allows some dynamism with keys but has some downsides. A few different reas
 
 !!! tip "Some technical context"
 
-    Metro supports use of function types like `() -> T` for deferred initialization of injected dependencies. Another idea in the same vein is to support function syntax for _assisted_ injection, such that `(String) -> T` could be an implicit assisted factory type for assisted-inject type `T`.
+    Metro supports use of function types like `() -> T` for deferred evaluation of injected dependencies. Another idea in the same vein is to support function syntax for _assisted_ injection, such that `(String) -> T` could be an implicit assisted factory type for assisted-inject type `T`.
 
 There's a few reasons! Mainly, this is harder to maintain in codebases.
 
