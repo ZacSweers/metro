@@ -81,7 +81,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     injectionPathComputations = 0
     val graph = createGraph<ExampleGraph>()
 

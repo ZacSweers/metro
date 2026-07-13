@@ -73,7 +73,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     val graph = createGraph<ExampleGraph>()
 
     unscopedComputations = 0

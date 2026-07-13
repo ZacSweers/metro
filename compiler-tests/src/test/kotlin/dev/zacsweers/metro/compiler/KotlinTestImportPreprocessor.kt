@@ -16,6 +16,9 @@ class KotlinTestImportPreprocessor(testServices: TestServices) : ImportsPreproce
    *
    * Tests of actual suspension, scheduling, or delays should use kotlinx.coroutines.test.runTest
    * instead.
+   *
+   * Note we use this helper runBlocking since there's no standard runBlocking for web. It's a
+   * simple helper good enough for box tests.
    */
-  override val additionalImports = setOf("helpers.runBlocking as runSuspending", "kotlin.test.*")
+  override val additionalImports = setOf("helpers.runBlocking", "kotlin.test.*")
 }

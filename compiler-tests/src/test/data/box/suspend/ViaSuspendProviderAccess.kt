@@ -13,7 +13,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     val creator = createGraph<ExampleGraph>().creatorProvider()
     assertEquals("db", creator.database)
     assertEquals(7, creator.tlsConnection)

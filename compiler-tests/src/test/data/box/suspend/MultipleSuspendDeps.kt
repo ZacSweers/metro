@@ -32,7 +32,7 @@ interface ExampleGraph {
 
 fun box(): String {
   dependencyEvaluationOrder.clear()
-  return runSuspending {
+  return runBlocking {
     val accountCreator = createGraph<ExampleGraph>().accountCreator()
     assertEquals("db", accountCreator.database)
     assertEquals(7, accountCreator.tlsConnection)

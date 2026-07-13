@@ -30,5 +30,5 @@ fun box(): String {
     assertEquals(2, handlers.getValue("plain").invoke())
     "OK"
   }
-  return runSuspending(block)
+  return runBlocking(block)
 }

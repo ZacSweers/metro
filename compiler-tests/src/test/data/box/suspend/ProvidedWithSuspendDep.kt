@@ -11,7 +11,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val provider = createGraph<ExampleGraph>().provider
-  return runSuspending {
+  return runBlocking {
     assertEquals(5, provider())
     "OK"
   }

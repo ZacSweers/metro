@@ -51,7 +51,7 @@ interface IncludingGraph {
 fun box(): String {
   val included = createGraph<IncludedGraph>()
   val graph = createGraphFactory<IncludingGraph.Factory>().create(included)
-  return runSuspending {
+  return runBlocking {
     assertEquals("value", graph.consumer().value)
     assertEquals(1, graph.consumer().count)
     assertEquals("value", graph.value())

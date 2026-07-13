@@ -21,7 +21,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  val accountCreator = runSuspending { graph.factory.create("us-east-1") }
+  val accountCreator = runBlocking { graph.factory.create("us-east-1") }
   assertEquals("us-east-1", accountCreator.region)
   assertEquals(7, accountCreator.database)
   return "OK"

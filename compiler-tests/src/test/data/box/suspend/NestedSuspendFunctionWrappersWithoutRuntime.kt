@@ -24,7 +24,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     functionComputations = 0
     val graph = createGraph<ExampleGraph>()
 

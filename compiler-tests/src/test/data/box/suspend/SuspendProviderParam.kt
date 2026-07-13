@@ -21,7 +21,7 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val accountCreator = graph.accountCreator
   assertEquals(0, databaseComputations)
-  return runSuspending {
+  return runBlocking {
     assertEquals("db", accountCreator.database())
     assertEquals(1, databaseComputations)
     "OK"

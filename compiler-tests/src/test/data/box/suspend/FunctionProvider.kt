@@ -13,6 +13,6 @@ interface ExampleGraph {
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val provider = graph.suspendStringProvider
-  assertEquals("suspend function provider", runSuspending { provider() })
+  assertEquals("suspend function provider", runBlocking { provider() })
   return "OK"
 }

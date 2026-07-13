@@ -20,7 +20,7 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val service = graph.service
   assertEquals(0, stringComputations)
-  return runSuspending {
+  return runBlocking {
     assertEquals("transitive suspend", service.valueProvider())
     assertEquals(1, stringComputations)
     "OK"

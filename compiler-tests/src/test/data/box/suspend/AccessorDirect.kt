@@ -11,6 +11,6 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  assertEquals("suspend direct", runSuspending { graph.getValue() })
+  assertEquals("suspend direct", runBlocking { graph.getValue() })
   return "OK"
 }

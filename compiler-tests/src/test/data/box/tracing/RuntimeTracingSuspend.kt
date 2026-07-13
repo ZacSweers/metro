@@ -10,7 +10,6 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.SuspendProvider
 import dev.zacsweers.metro.trace.internal.testMetroTrace
-import kotlinx.coroutines.runBlocking
 
 abstract class AppScope private constructor()
 
@@ -37,7 +36,7 @@ interface AppGraph {
 fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
-    runBlocking {
+    kotlinx.coroutines.runBlocking {
       // Suspend accessor inlines Repository construction; Database resolves through its traced
       // SuspendProvider field; the scoped suspend String is computed once under its own span.
       assertEquals("db://localhost", graph.repository().database.url)
@@ -72,7 +71,7 @@ fun box(): String {
       kind = "Provided",
     )
 
-    runBlocking {
+    kotlinx.coroutines.runBlocking {
       // Second resolution: Database recomputes (unscoped) under its span; the scoped String is
       // cached by SuspendDoubleCheck, so no new String span.
       assertEquals("db://localhost", graph.databaseProvider().url)

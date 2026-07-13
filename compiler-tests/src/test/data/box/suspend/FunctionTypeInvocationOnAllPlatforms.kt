@@ -27,14 +27,14 @@ fun box(): String {
 
   // Accessor value invoked through the suspend function type
   val fn: suspend () -> String = graph.message
-  assertEquals("hello", runSuspending { fn() })
+  assertEquals("hello", runBlocking { fn() })
 
   // Injected `suspend () -> T` ctor param invoked through the function type
   val injected = graph.consumer.messageProvider
-  assertEquals("hello", runSuspending { injected() })
+  assertEquals("hello", runBlocking { injected() })
 
   // SuspendLazy dispatches through its interface (never the function type) — sanity-check on JS
-  assertEquals("hello", runSuspending { graph.lazyMessage.value() })
+  assertEquals("hello", runBlocking { graph.lazyMessage.value() })
 
   return "OK"
 }

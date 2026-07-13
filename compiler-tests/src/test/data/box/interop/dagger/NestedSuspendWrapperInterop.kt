@@ -25,7 +25,7 @@ interface InteropGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     interopComputations = 0
     val consumer = createGraph<InteropGraph>().consumer
 

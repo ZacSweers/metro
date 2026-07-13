@@ -18,7 +18,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     val accountCreator = createGraph<ExampleGraph>().accountCreator()
     assertEquals("db", accountCreator.database)
     assertEquals(42L, accountCreator.region)

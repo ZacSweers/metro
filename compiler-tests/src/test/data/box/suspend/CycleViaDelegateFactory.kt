@@ -29,7 +29,7 @@ fun box(): String {
   firstComputations = 0
   secondComputations = 0
   val graph = createGraph<ExampleGraph>()
-  assertEquals("first:2", runSuspending { graph.firstProvider() })
+  assertEquals("first:2", runBlocking { graph.firstProvider() })
   assertEquals(2, firstComputations)
   assertEquals(1, secondComputations)
   return "OK"

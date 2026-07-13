@@ -18,7 +18,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  val accountCreator = runSuspending { graph.accountCreator() }
+  val accountCreator = runBlocking { graph.accountCreator() }
   assertEquals("db", accountCreator.database)
   assertEquals(7, accountCreator.tlsConnection)
   return "OK"

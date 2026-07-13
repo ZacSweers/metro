@@ -22,7 +22,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     databaseComputations = 0
     val graph = createGraph<ExampleGraph>()
     val accountCreator = graph.accountCreator()

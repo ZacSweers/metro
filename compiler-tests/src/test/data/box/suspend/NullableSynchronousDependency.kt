@@ -12,7 +12,7 @@ interface ExampleGraph {
 }
 
 fun box(): String =
-  runSuspending {
+  runBlocking {
     val graph = createGraph<ExampleGraph>()
     assertNull(graph.result().value)
     "OK"

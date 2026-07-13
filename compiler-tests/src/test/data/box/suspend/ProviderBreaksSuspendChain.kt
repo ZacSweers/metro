@@ -18,7 +18,7 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   val provider = graph.provider
   assertEquals(0, valueComputations)
-  return runSuspending {
+  return runBlocking {
     assertEquals("Hello, suspend!", provider())
     assertEquals(1, valueComputations)
     "OK"
