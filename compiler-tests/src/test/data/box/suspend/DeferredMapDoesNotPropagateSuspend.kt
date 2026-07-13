@@ -16,6 +16,8 @@ interface ExampleGraph {
   // Non-suspend accessor: Registry construction doesn't suspend
   val registry: Registry
 
+  val handlersProvider: () -> Map<String, suspend () -> Int>
+
   @Provides @IntoMap @StringKey("suspend") suspend fun provideSuspendValue(): Int = 1
 
   @Provides @IntoMap @StringKey("plain") fun providePlainValue(): Int = 2
@@ -27,6 +29,9 @@ fun box(): String {
   val block: suspend () -> String = {
     assertEquals(1, registry.handlers.getValue("suspend").invoke())
     assertEquals(2, registry.handlers.getValue("plain").invoke())
+    val handlers = graph.handlersProvider()
+    assertEquals(1, handlers.getValue("suspend").invoke())
+    assertEquals(2, handlers.getValue("plain").invoke())
     "OK"
   }
   var result: Result<String>? = null
