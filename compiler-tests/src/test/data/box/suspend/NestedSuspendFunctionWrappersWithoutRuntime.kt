@@ -1,10 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 // WITHOUT_RUNTIME_COROUTINES
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var functionComputations = 0
 
 class FunctionValue(val index: Int)
@@ -25,12 +21,6 @@ interface ExampleGraph {
     functionComputations++
     return FunctionValue(functionComputations)
   }
-}
-
-fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String =

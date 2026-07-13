@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 // Test for Map<K, SuspendProvider<V>> multibindings
 @DependencyGraph
 interface ExampleGraph {
@@ -18,12 +14,6 @@ interface ExampleGraph {
 
   // Provider wrapping map with SuspendProvider values
   val providerOfSuspendProviderInts: Provider<Map<Int, SuspendProvider<Int>>>
-}
-
-private fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String =

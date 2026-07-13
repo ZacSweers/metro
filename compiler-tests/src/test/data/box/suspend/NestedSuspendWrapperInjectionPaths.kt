@@ -1,10 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
 @file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var injectionPathComputations = 0
 
 class InjectionPathValue(val index: Int)
@@ -82,12 +78,6 @@ interface ExampleGraph {
   ): String {
     return "${provider().value}:${nested().value().value}"
   }
-}
-
-fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String =

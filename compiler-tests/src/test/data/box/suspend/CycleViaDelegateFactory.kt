@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 // Tests cycle-breaking with suspend bindings: a cycle between two suspend @Provides functions
 // where each wraps the other in SuspendProvider. The compiler must use SuspendDelegateFactory
 // (rather than DelegateFactory) for the deferred binding so the field type matches the
@@ -27,12 +23,6 @@ interface ExampleGraph {
     secondComputations++
     return if (first() == "back-edge") 2 else -1
   }
-}
-
-private fun <T> runSuspending(block: suspend () -> T): T {
-  var result: Result<T>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

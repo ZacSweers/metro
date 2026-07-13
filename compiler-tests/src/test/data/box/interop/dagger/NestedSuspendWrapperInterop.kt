@@ -3,10 +3,6 @@
 @file:Suppress("OPT_IN_USAGE")
 import dagger.Lazy
 import javax.inject.Provider
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var interopComputations = 0
 
 class InteropValue(val index: Int)
@@ -26,12 +22,6 @@ interface InteropGraph {
     interopComputations++
     return InteropValue(interopComputations)
   }
-}
-
-fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String =

@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var stringComputations = 0
 
 @Inject class ServiceB(val valueProvider: SuspendProvider<String>)
@@ -17,12 +13,6 @@ interface ExampleGraph {
     stringComputations++
     return "transitive suspend"
   }
-}
-
-private fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

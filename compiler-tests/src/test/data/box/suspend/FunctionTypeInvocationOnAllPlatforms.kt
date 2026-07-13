@@ -4,12 +4,8 @@
 // platforms including JS. On Kotlin/JS a class instance implementing a function type is not a
 // callable JS function — invocation through the function type compiles to a direct JS call and
 // throws TypeError unless the compiler wraps the value in a real lambda (toSuspendFunctionType).
-// The providers never suspend, so startCoroutine completes synchronously and no runBlocking or
-// kotlinx-coroutines is needed.
-
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
+// The providers never actually suspend, so the test can use the compiler test framework's
+// synchronous coroutine helper without depending on kotlinx-coroutines.
 
 @Inject class Consumer(val messageProvider: suspend () -> String)
 
@@ -24,12 +20,6 @@ interface ExampleGraph {
   val lazyMessage: SuspendLazy<String>
 
   @Provides @SingleIn(AppScope::class) suspend fun provideString(): String = "hello"
-}
-
-private fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

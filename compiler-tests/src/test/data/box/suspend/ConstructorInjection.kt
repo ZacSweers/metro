@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 // Tests the wasmo-style pattern: a constructor-injected class with multiple suspend dependencies
 // accessed via a suspend graph accessor. The graph's accessor inlines construction (canBypassFactory)
 // in a suspend context, awaiting each suspend @Provides directly.
@@ -18,12 +14,6 @@ interface ExampleGraph {
   @Provides suspend fun provideDatabase(): String = "db"
 
   @Provides suspend fun provideTls(): Int = 7
-}
-
-private fun <T> runSuspending(block: suspend () -> T): T {
-  var result: Result<T>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

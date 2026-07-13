@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 // A constructor-injected class with several suspend deps, resolved sequentially.
 
 val dependencyEvaluationOrder = mutableListOf<String>()
@@ -32,12 +28,6 @@ interface ExampleGraph {
     dependencyEvaluationOrder += "region"
     return 42L
   }
-}
-
-private fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

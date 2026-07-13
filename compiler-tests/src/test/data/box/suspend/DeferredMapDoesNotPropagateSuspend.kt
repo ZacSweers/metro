@@ -1,10 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 // WITHOUT_RUNTIME_COROUTINES
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 // A class injecting Map<K, suspend () -> V> resolves the map synchronously — each value defers
 // its own suspension. The class must NOT be marked transitively suspend, so a non-suspend
 // accessor over it is valid.
@@ -34,7 +30,5 @@ fun box(): String {
     assertEquals(2, handlers.getValue("plain").invoke())
     "OK"
   }
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
+  return runSuspending(block)
 }

@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var includedLazyComputations = 0
 
 abstract class IncludedScope private constructor()
@@ -50,12 +46,6 @@ interface IncludingGraph {
   interface Factory {
     fun create(@Includes includedGraph: IncludedGraph): IncludingGraph
   }
-}
-
-private fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String {

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
+import org.jetbrains.kotlin.test.directives.AdditionalFilesDirectives.WITH_COROUTINES as WITH_COROUTINE_HELPERS
 import org.jetbrains.kotlin.test.directives.ConfigurationDirectives.WITH_STDLIB
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 
@@ -24,6 +25,7 @@ open class AbstractJsBoxTest : KotlinJsBoxTestBase() {
       defaultDirectives {
         commonMetroTestDirectives()
         +WITH_STDLIB
+        +WITH_COROUTINE_HELPERS
       }
     }
   }

@@ -1,9 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 @file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
-
 var unscopedComputations = 0
 var scopedComputations = 0
 
@@ -74,12 +70,6 @@ interface ExampleGraph {
     return UnscopedValue(unscopedComputations)
   }
 
-}
-
-fun runSuspending(block: suspend () -> String): String {
-  var result: Result<String>? = null
-  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-  return result!!.getOrThrow()
 }
 
 fun box(): String =
