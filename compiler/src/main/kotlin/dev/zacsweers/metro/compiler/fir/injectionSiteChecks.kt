@@ -21,7 +21,13 @@ import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
+import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.FirStarProjection
+import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
@@ -120,6 +126,10 @@ internal fun validateInjectionSiteType(
       typeRef.source ?: source,
       MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
     )
+    return true
+  }
+
+  if (checkSuspendWrapperOrder(contextKey, typeRef, source)) {
     return true
   }
 
@@ -265,6 +275,97 @@ private fun ConeKotlinType.containsSuspendFunctionProviderType(): Boolean {
   return typeArguments.any { projection ->
     val innerType = (projection as? ConeKotlinTypeProjection)?.type ?: return@any false
     innerType.containsSuspendFunctionProviderType()
+  }
+}
+
+/** Rejects a suspending wrapper outside a synchronous wrapper nearest the bound value. */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private fun checkSuspendWrapperOrder(
+  contextKey: FirContextualTypeKey,
+  typeRef: FirTypeRef,
+  source: KtSourceElement?,
+): Boolean {
+  val wrappedType = contextKey.wrappedType
+  if (!wrappedType.requiresSuspendToUnwrap() || wrappedType.usesSuspendProvider() != false) {
+    return false
+  }
+
+  var currentType = wrappedType
+  while (true) {
+    val innerType = currentType.immediateInnerType() ?: return false
+    if (innerType.isScalarLeaf()) break
+    currentType = innerType
+  }
+
+  val valueType = contextKey.typeKey.render(short = true, includeQualifier = false)
+  val replacement =
+    when (currentType) {
+      is WrappedType.Provider -> "suspend () -> $valueType"
+      is WrappedType.Lazy -> "SuspendLazy<$valueType>"
+      else -> return false
+    }
+  val wrapperType =
+    when (currentType) {
+      is WrappedType.Provider -> {
+        if (currentType.providerType == Symbols.ClassIds.function0) {
+          "() -> $valueType"
+        } else {
+          "Provider<$valueType>"
+        }
+      }
+      is WrappedType.Lazy -> "Lazy<$valueType>"
+      else -> return false
+    }
+  val message = buildString {
+    append(
+      "Suspending wrapper chains require the wrapper nearest `$valueType` to be suspending, but found `$wrapperType`."
+    )
+    appendLine()
+    appendLine()
+    appendLine("Either:")
+    appendLine("- Replace `$wrapperType` with `$replacement`, or")
+    append("- Remove the outer suspending wrapper if `$valueType` is not suspending.")
+  }
+  reporter.reportOn(
+    typeRef.sourceForWrapper(currentType, wrappedType) ?: typeRef.source ?: source,
+    MetroDiagnostics.SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER,
+    message,
+  )
+  return true
+}
+
+private fun FirTypeRef.sourceForWrapper(
+  target: WrappedType<ConeKotlinType>,
+  wrappedType: WrappedType<ConeKotlinType>,
+): KtSourceElement? {
+  var currentTypeRef = sourceTypeRef()
+  var currentWrappedType = wrappedType
+  while (true) {
+    if (currentWrappedType === target) return currentTypeRef.source
+    currentWrappedType = currentWrappedType.immediateInnerType() ?: return null
+    currentTypeRef = currentTypeRef.immediateInnerTypeRef()?.sourceTypeRef() ?: return null
+  }
+}
+
+private fun FirTypeRef.sourceTypeRef(): FirTypeRef {
+  return (this as? FirResolvedTypeRef)?.delegatedTypeRef ?: this
+}
+
+private fun FirTypeRef.immediateInnerTypeRef(): FirTypeRef? {
+  return when (this) {
+    is FirFunctionTypeRef -> returnTypeRef
+    is FirUserTypeRef -> singleTypeArgumentRefOrNull()
+    else -> null
+  }
+}
+
+private fun FirUserTypeRef.singleTypeArgumentRefOrNull(): FirTypeRef? {
+  val arguments = qualifier.lastOrNull()?.typeArgumentList?.typeArguments ?: return null
+  return when (val argument = arguments.singleOrNull()) {
+    is FirTypeProjectionWithVariance -> argument.typeRef
+    is FirPlaceholderProjection,
+    is FirStarProjection,
+    null -> null
   }
 }
 
