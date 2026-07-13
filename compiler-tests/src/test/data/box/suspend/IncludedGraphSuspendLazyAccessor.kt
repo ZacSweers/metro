@@ -1,15 +1,20 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 
 var includedLazyComputations = 0
 
 abstract class IncludedScope private constructor()
 
+class Port(val value: Int)
+
 @DependencyGraph(scope = IncludedScope::class)
 interface IncludedGraph {
-  val value: SuspendLazy<String>
+  val value: Provider<SuspendLazy<String>>
+
+  val port: SuspendLazy<Provider<Port>>
 
   val count: suspend () -> Int
 
@@ -21,6 +26,8 @@ interface IncludedGraph {
   }
 
   @Provides suspend fun provideCount(): Int = 1
+
+  @Provides fun providePort(): Port = Port(8080)
 }
 
 @Inject class IncludedConsumer(val value: String, val count: Int)
@@ -31,6 +38,12 @@ interface IncludingGraph {
 
   val value: suspend () -> String
 
+  val nestedValue: Provider<SuspendLazy<String>>
+
+  val port: SuspendLazy<Provider<Port>>
+
+  suspend fun portValue(): Port
+
   val count: suspend () -> Int
 
   @DependencyGraph.Factory
@@ -39,13 +52,22 @@ interface IncludingGraph {
   }
 }
 
+private fun runSuspending(block: suspend () -> String): String {
+  var result: Result<String>? = null
+  block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
+  return result!!.getOrThrow()
+}
+
 fun box(): String {
   val included = createGraph<IncludedGraph>()
   val graph = createGraphFactory<IncludingGraph.Factory>().create(included)
-  return kotlinx.coroutines.runBlocking {
+  return runSuspending {
     assertEquals("value", graph.consumer().value)
     assertEquals(1, graph.consumer().count)
     assertEquals("value", graph.value())
+    assertEquals("value", graph.nestedValue().value())
+    assertEquals(8080, graph.port.value().invoke().value)
+    assertEquals(8080, graph.portValue().value)
     assertEquals(1, graph.count())
     assertEquals(1, includedLazyComputations)
     "OK"

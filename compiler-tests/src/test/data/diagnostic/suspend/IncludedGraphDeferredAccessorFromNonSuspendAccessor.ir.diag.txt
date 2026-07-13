@@ -8,8 +8,6 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:25:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
-
 /IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:33:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Long bindings must be a suspend function or suspend () -> Long because it depends on suspend bindings and requires a suspend context.
 
 Trace:
