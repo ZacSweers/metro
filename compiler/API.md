@@ -8,7 +8,10 @@ Metro provides extension points for third-party code generators to integrate wit
 
 ## Extension Pipeline Overview
 
-Metro's compiler plugin operates in two phases: **FIR** (Frontend Intermediate Representation) for analysis and declaration generation, and **IR** (Intermediate Representation) for code generation. Most external extensions plug into FIR, with a smaller IR contribution hook for frameworks that need to participate in IR-only graph merging.
+Metro's compiler plugin operates in two phases:
+
+1. **FIR** (Frontend Intermediate Representation) for analysis and declaration generation.
+2. **IR** (Intermediate Representation) for code generation. Most external extensions plug into FIR, with a smaller IR contribution hook for frameworks that need to participate in IR-only graph merging.
 
 The extension APIs in Metro are split by phase:
 

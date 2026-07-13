@@ -4,15 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
-### Fixes
-
-- **[FIR/IR]** Fix generated factories and member injectors that retained source-owned generic type parameter references under Kotlin 2.5.
-- **[IR]** Fix generated generic call result and type argument types rejected by Kotlin 2.5's stricter IR validation.
-
 ### Enhancements
 
 - **[IR]** Improve CLI diagnostic formatting by keeping messages on the compiler severity line.
 - **[IR]** Improve CLI diagnostic formatting by preserving generated-code metadata.
+- **[IR/Circuit]** Support IR class generation in Kotlin 2.4.20+.
+
+### Fixes
+
+- **[FIR/IR]** Fix generated factories and member injectors that retained source-owned generic type parameter references under Kotlin 2.5.
+- **[IR]** Fix generated generic call result and type argument types rejected by Kotlin 2.5's stricter IR validation.
 
 ### Changes
 
