@@ -268,8 +268,10 @@ internal class ContributionIrTransformer(
           // Contribution-provider mode represents binding contributions as a generated
           // @BindingContainer object instead of nested MetroContribution marker functions.
           val container = declaration.getOrCreateContributionProviderContainer(scope)
-          generateContributionProviderFunctions(container, declaration, bindingContributions)
-          transformTopLevelContributionProvider(container)
+          if (container.classIdOrFail !in transformedContributions) {
+            generateContributionProviderFunctions(container, declaration, bindingContributions)
+            transformTopLevelContributionProvider(container, declaration)
+          }
           bindingContainerTransformer.findContainer(container)
           data.addBindingContainerContribution(scope, container)
         } else {
@@ -658,13 +660,21 @@ internal class ContributionIrTransformer(
    * functions. The function reads `@Origin` to find the contributing class, then generates a
    * constructor call body for each provides function.
    */
-  private fun transformTopLevelContributionProvider(declaration: IrClass) {
+  private fun transformTopLevelContributionProvider(
+    declaration: IrClass,
+    knownOriginClass: IrClass? = null,
+  ) {
     val classId = declaration.classIdOrFail
     if (classId in transformedContributions) return
 
-    // @Origin is on the nested contribution interface itself
-    val originClassId = declaration.originClassId() ?: return
-    val originClass = declaration.lookupClass(originClassId)?.owner ?: return
+    val originClass =
+      if (knownOriginClass != null) {
+        knownOriginClass
+      } else {
+        // @Origin is on the nested contribution interface itself
+        val originClassId = declaration.originClassId() ?: return
+        declaration.lookupClass(originClassId)?.owner ?: return
+      }
 
     val isAssistedFactory by memoize {
       originClass.isAnnotatedWithAny(metroSymbols.classIds.assistedFactoryAnnotations)

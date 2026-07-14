@@ -79,8 +79,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
     if (
-      (MetroDirectives.ENABLE_CIRCUIT in directives ||
-        MetroDirectives.ENABLE_HILT_INTEROP in directives ||
+      (MetroDirectives.ENABLE_HILT_INTEROP in directives ||
         MetroDirectives.ENABLE_HILT_KSP in directives) && generateClassesInIr
     ) {
       return true

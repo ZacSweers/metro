@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.api.GenerateProvidesInGraphExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionHintExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
@@ -122,14 +123,18 @@ class MetroExtensionRegistrarConfigurator(
         MetroDirectives.ENABLE_GRAPH_IMPL_CLASS_AS_RETURN_TYPE in module.directives
       generateContributionHints =
         module.directives.singleOrZeroValue(MetroDirectives.GENERATE_CONTRIBUTION_HINTS) ?: true
-      generateContributionHintsInFir =
-        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
-          testServices.shouldGenerateContributionHintsInFirForBackend()
       generateClassesInIr =
         module.directives[MetroDirectives.GENERATE_CLASSES_IN_IR]
           .lastOrNull()
           ?.toString()
           ?.toBoolean() ?: false
+
+      val shouldGenerateContributionHintsInFir =
+        MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
+          testServices.shouldGenerateContributionHintsInFirForBackend()
+
+      generateContributionHintsInFir = shouldGenerateContributionHintsInFir && !generateClassesInIr
+
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
       }
@@ -271,7 +276,7 @@ class MetroExtensionRegistrarConfigurator(
             add(GenerateGraphExtensionExtension.Factory().create(session, options, compatContext))
             add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
-              add(CircuitFirExtension.Factory().create(session, options, compatContext)!!)
+              CircuitFirExtension.Factory().create(session, options, compatContext)?.let(::add)
             }
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.Factory()
@@ -334,6 +339,14 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      if (options.generateClassesInIr) {
+        IrGenerationExtension.registerExtension(
+          CircuitIrDeclarationGenerationExtension.create(
+            classIds = classIds,
+            compatContext = compatContext,
+          )
+        )
+      }
       IrGenerationExtension.registerExtension(
         CircuitIrExtension.create(
           generateClassesInIr = options.generateClassesInIr,

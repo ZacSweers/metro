@@ -21,19 +21,32 @@ This release introduces experimental support for suspend providers. This is disa
 
 - **[IR]** Avoid generating unused provider fields for included graph accessors that can be read directly.
 - **[runtime]** If the input function to `provider()` is already a `Provider` instance, just eagerly return that rather than needlessly wrap.
+
+### Fixes
+
+- **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
+- **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
+
+1.3.2
+-----
+
+_2026-07-13_
+
+### Enhancements
+
 - **[IR]** Improve CLI diagnostic formatting by keeping messages on the compiler severity line.
 - **[IR]** Improve CLI diagnostic formatting by preserving generated-code metadata.
+- **[IR/Circuit]** Support IR class generation in Kotlin 2.4.20+.
 
 ### Fixes
 
 - **[FIR/IR]** Fix generated factories and member injectors that retained source-owned generic type parameter references under Kotlin 2.5.
 - **[IR]** Fix generated generic call result and type argument types rejected by Kotlin 2.5's stricter IR validation.
-- **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
-- **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
 
 ### Changes
 
 - Support Kotlin `2.5.0-dev-498`.
+- Update embedded Wire dependency to `6.4.5`.
 
 ### Contributors
 

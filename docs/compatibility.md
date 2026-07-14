@@ -77,6 +77,7 @@ The following Kotlin versions are tested via CI:
 
 | Kotlin Version  |
 |-----------------|
+| 2.5.0-dev-498   |
 | 2.4.20-dev-6138 |
 | 2.4.20-Beta1    |
 | 2.4.10-RC2      |
