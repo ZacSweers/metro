@@ -601,7 +601,7 @@ jobs:
 
       - name: Setup Node.js (for JS/WasmJS targets)
         if: inputs.multiplatform-target == 'js' || inputs.multiplatform-target == 'wasmJs' || inputs.multiplatform-target == 'all'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
