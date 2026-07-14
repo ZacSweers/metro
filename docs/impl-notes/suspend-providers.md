@@ -14,11 +14,10 @@ The feature gate and runtime dependency are separate. When automatic runtime dep
 enabled, the Gradle plugin adds `runtime-coroutines` whenever this option is enabled; it does not
 inspect source signatures to decide whether to add it.
 
-The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, and the adapters used by
-generated code. An unscoped suspend binding needs only this artifact. `runtime-coroutines` contains
-the scoped suspend cache and the implementations used for injected `SuspendLazy`, the standalone
-`SuspendLazy` factories, and the `SuspendProvider` memoization helpers. Projects that manage runtime
-dependencies themselves need it only when they use those behaviors or APIs.
+The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, `suspendProviderOf`,
+`suspendLazyOf`, and the adapters used by generated code. `runtime-coroutines` contains the
+synchronization used by scoped suspend bindings, Metro-generated memoizing `SuspendLazy` wrappers,
+`suspendLazy`, and the `SuspendProvider` memoization helpers.
 
 Whether a binding requires suspension is determined separately for each graph. A binding requires
 suspension when its provider is a `suspend fun`, or when it directly consumes another suspend
@@ -130,9 +129,10 @@ instead of adding another memoization layer. A deferred request for an entire co
 `SyncSuspendProvider`.
 
 Graph validation records whether generated graph code needs `runtime-coroutines`: either for a
-scoped suspend binding or a `SuspendLazy` anywhere in a requested wrapper stack. If the artifact is
-missing, Metro reports a located `MISSING_RUNTIME_COROUTINES` diagnostic on the graph before code
-generation begins. The diagnostic can therefore appear alongside other graph validation errors.
+scoped suspend binding or to materialize a memoizing `SuspendLazy` anywhere in a requested wrapper
+stack. If the artifact is missing, Metro reports a located `MISSING_RUNTIME_COROUTINES` diagnostic
+on the graph before code generation begins. The diagnostic can therefore appear alongside other
+graph validation errors.
 
 ### JS function types
 

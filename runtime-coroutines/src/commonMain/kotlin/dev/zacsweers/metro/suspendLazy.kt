@@ -14,6 +14,3 @@ public expect fun <T> suspendLazy(
   mode: LazyThreadSafetyMode = LazyThreadSafetyMode.SYNCHRONIZED,
   initializer: suspend () -> T,
 ): SuspendLazy<T>
-
-/** Returns an initialized [SuspendLazy] containing [value]. */
-@ExperimentalMetroCoroutinesApi public expect fun <T> suspendLazyOf(value: T): SuspendLazy<T>

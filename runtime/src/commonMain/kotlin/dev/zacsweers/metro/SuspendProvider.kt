@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro
 
+import dev.zacsweers.metro.internal.SuspendInstanceFactory
 import kotlin.jvm.JvmInline
 
 /** Produces values of type [T] in a suspend context. */
@@ -33,13 +34,7 @@ internal value class SuspendFunctionProvider<T>(private val function: suspend ()
 
 /** Returns a [SuspendProvider] that always returns [value]. */
 @ExperimentalMetroCoroutinesApi
-public fun <T> suspendProviderOf(value: T): SuspendProvider<T> = InstanceSuspendProvider(value)
-
-@OptIn(ExperimentalMetroCoroutinesApi::class)
-@JvmInline
-internal value class InstanceSuspendProvider<T>(private val value: T) : SuspendProvider<T> {
-  override suspend fun invoke(): T = value
-}
+public fun <T> suspendProviderOf(value: T): SuspendProvider<T> = SuspendInstanceFactory(value)
 
 /** Returns a provider that applies [transform] to this provider's value. */
 @ExperimentalMetroCoroutinesApi

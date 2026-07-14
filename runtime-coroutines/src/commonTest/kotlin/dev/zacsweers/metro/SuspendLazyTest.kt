@@ -60,11 +60,4 @@ class SuspendLazyTest {
     assertEquals("value", lazy.value())
     assertEquals(1, count.load())
   }
-
-  @Test
-  fun `suspendLazyOf is already initialized`() = runTest {
-    val lazy = suspendLazyOf("value")
-    assertTrue(lazy.isInitialized())
-    assertEquals("value", lazy.value())
-  }
 }

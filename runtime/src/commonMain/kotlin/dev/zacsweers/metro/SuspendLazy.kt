@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro
 
+import dev.zacsweers.metro.internal.SuspendInstanceFactory
+
 /** A value computed on demand in a suspend context and cached for later calls. */
 @ExperimentalMetroCoroutinesApi
 public interface SuspendLazy<out T> {
@@ -14,3 +16,7 @@ public interface SuspendLazy<out T> {
   /** Returns `true` after a value has been computed and cached. */
   public fun isInitialized(): Boolean
 }
+
+/** Returns an initialized [SuspendLazy] containing [value]. */
+@ExperimentalMetroCoroutinesApi
+public fun <T> suspendLazyOf(value: T): SuspendLazy<T> = SuspendInstanceFactory(value)

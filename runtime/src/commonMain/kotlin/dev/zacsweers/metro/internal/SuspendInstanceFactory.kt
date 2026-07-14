@@ -8,8 +8,12 @@ import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
 import dev.zacsweers.metro.SuspendLazy
 import kotlin.jvm.JvmInline
 
+/** A [SuspendFactory] and [SuspendLazy] that always return the same instance. */
 @JvmInline
-public value class InitializedSuspendLazy<T>(private val value: T) : SuspendLazy<T> {
+internal value class SuspendInstanceFactory<T>(private val value: T) :
+  SuspendFactory<T>, SuspendLazy<T> {
+  override suspend fun invoke(): T = value
+
   override suspend fun value(): T = value
 
   override fun isInitialized(): Boolean = true

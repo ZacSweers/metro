@@ -9,8 +9,8 @@ or performing a network handshake.
     Suspend provider support is experimental and disabled by default. The
     `metro.enableSuspendProviders` option is required for any suspend binding, suspend graph
     accessor, and injection request containing `suspend () -> T`, `SuspendProvider<T>`,
-    `SuspendLazy<T>`, or `Map<K, suspend () -> V>`, including nested uses. This includes unscoped
-    forms that do not need `runtime-coroutines`. Enable it in the Metro Gradle configuration:
+    `SuspendLazy<T>`, or `Map<K, suspend () -> V>`, including nested uses. Enable it in the Metro
+    Gradle configuration:
 
     ```kotlin
     metro {
@@ -18,16 +18,9 @@ or performing a network handshake.
     }
     ```
 
-    The feature flag and runtime dependency are separate. The Gradle plugin adds
-    `dev.zacsweers.metro:runtime-coroutines` automatically when `metro.enableSuspendProviders` is
-    enabled. If `automaticallyAddRuntimeDependencies` is disabled, add that artifact when using
-    scoped suspend bindings, a requested `SuspendLazy` at any nesting level, or the `suspendLazy`,
-    `suspendLazyOf`, and memoization helpers. Unscoped suspend bindings do not need the artifact,
-    but still require `metro.enableSuspendProviders`.
-
-    The compiler feature flag is also separate from Kotlin's API opt-in. `SuspendProvider`,
-    `SuspendLazy`, and their helper APIs are annotated with `@ExperimentalMetroCoroutinesApi`.
-    Using them directly additionally requires a Kotlin opt-in at the use site or
+    `SuspendProvider`, `SuspendLazy`, and their helper APIs are annotated with
+    `@ExperimentalMetroCoroutinesApi`. Using them directly requires
+    `@OptIn(ExperimentalMetroCoroutinesApi::class)` or
     `-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi`.
 
 ## Declaring suspend bindings
@@ -169,8 +162,7 @@ support suspension. `Provider<T>`, `() -> T`, and `Lazy<T>` cannot fill that rol
 suspend function if `T` is not suspending.
 
 Every nested type containing `suspend () -> T`, `SuspendProvider<T>`, or `SuspendLazy<T>` is behind
-`metro.enableSuspendProviders`. A `SuspendLazy` at any nesting level also needs
-`runtime-coroutines` when runtime dependencies are managed manually.
+`metro.enableSuspendProviders`.
 
 ## Scoping
 
@@ -314,6 +306,7 @@ val provider: SuspendProvider<String> = suspendProvider { fetchToken() }
 
 // Wrap an existing value
 val fixed: SuspendProvider<String> = suspendProviderOf("token")
+val fixedConfig: SuspendLazy<Config> = suspendLazyOf(Config())
 
 // Transform lazily
 val mapped: SuspendProvider<Int> = provider.map { it.length }
@@ -336,7 +329,6 @@ You can also create a `SuspendLazy<T>` directly, outside of injection:
 
 ```kotlin
 val config: SuspendLazy<Config> = suspendLazy { loadConfig() }
-val fixedConfig: SuspendLazy<Config> = suspendLazyOf(Config())
 ```
 
 `suspendLazy` accepts the same `LazyThreadSafetyMode` values as `lazy`:

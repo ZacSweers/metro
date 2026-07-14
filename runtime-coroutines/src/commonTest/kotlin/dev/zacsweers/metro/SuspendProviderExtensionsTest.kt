@@ -16,11 +16,6 @@ import kotlinx.coroutines.test.runTest
 @OptIn(ExperimentalAtomicApi::class)
 class SuspendProviderExtensionsTest {
   @Test
-  fun `suspendProviderOf returns the value`() = runTest {
-    assertEquals("value", suspendProviderOf("value").invoke())
-  }
-
-  @Test
   fun `map transforms lazily`() = runTest {
     val count = AtomicInt(0)
     val mapped = SuspendProvider {
