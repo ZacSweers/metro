@@ -14,7 +14,7 @@ kotlin {
     commonMain {
       dependencies {
         api(project(":runtime"))
-        api(libs.coroutines)
+        implementation(libs.coroutines)
       }
     }
     commonTest {

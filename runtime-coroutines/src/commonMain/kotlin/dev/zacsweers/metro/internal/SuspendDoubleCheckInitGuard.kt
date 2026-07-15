@@ -7,23 +7,24 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
- * Platform-specific guard for [SuspendDoubleCheck]'s initialization, mirroring
- * [DoubleCheckInitGuard].
+ * Guard for [SuspendDoubleCheck]'s initialization, mirroring [DoubleCheckInitGuard].
  *
- * This supports [SuspendDoubleCheck] and is not a general-purpose lock. Implementations may rely on
- * the guard being used only until `_value` is initialized.
+ * This supports [SuspendDoubleCheck] and is not a general-purpose lock. It is used only until
+ * `_value` is initialized.
  *
- * Unlike [DoubleCheckInitGuard], the guarded block suspends, so thread-based guards don't apply.
- * Every implementation uses a coroutine Mutex to provide single-flight initialization.
+ * Unlike [DoubleCheckInitGuard], the guarded block suspends, so thread-based guards don't apply. A
+ * coroutine Mutex provides single-flight initialization.
  */
-public expect open class SuspendDoubleCheckInitGuard()
+public open class SuspendDoubleCheckInitGuard {
+  private val mutex = Mutex()
 
-/** Runs [block] while holding this guard. */
-internal expect suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
-  block: suspend () -> T
-): T
+  /** Runs [block] while holding this guard. */
+  internal suspend fun <T> guardedSuspend(block: suspend () -> T): T = mutex.withLock { block() }
+}
 
 /** Tracks the [SuspendDoubleCheck] initializers in the current call chain. */
 internal class SuspendDoubleCheckInitialization(
