@@ -47,8 +47,9 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
     val caller = initCallerIdentity()
     val initialization = coroutineContext[SuspendDoubleCheckInitialization]
     check(initialization?.contains(this, caller) != true) {
-      "Scoped suspend provider was invoked recursively during its own initialization. " +
-        "This is likely due to a circular dependency."
+      "Scoped suspend provider was invoked recursively while its value was still being " +
+        "initialized. The recursive call would wait for that same initialization, likely due " +
+        "to a circular dependency."
     }
 
     return guardedSuspend {
