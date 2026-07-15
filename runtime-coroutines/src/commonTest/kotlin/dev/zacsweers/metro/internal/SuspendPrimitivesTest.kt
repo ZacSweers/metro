@@ -45,16 +45,23 @@ class SuspendPrimitivesTest {
   @Test
   fun `SuspendDelegateFactory throws when invoked before delegate is set`() = runTest {
     val factory = SuspendDelegateFactory<String>()
-    assertFailsWith<IllegalStateException> { factory() }
+    val invokeException = assertFailsWith<IllegalStateException> { factory() }
+    assertEquals("Backing delegate was never set!", invokeException.message)
+
+    val delegateException = assertFailsWith<IllegalStateException> { factory.getDelegate() }
+    assertEquals("Backing delegate was never set!", delegateException.message)
   }
 
   @Test
   fun `SuspendDelegateFactory delegate can only be set once`() = runTest {
     val factory = SuspendDelegateFactory<String>()
-    SuspendDelegateFactory.setDelegate(factory, SuspendProvider { "first" })
-    assertFailsWith<IllegalStateException> {
-      SuspendDelegateFactory.setDelegate(factory, SuspendProvider { "second" })
-    }
+    val first = SuspendProvider { "first" }
+    SuspendDelegateFactory.setDelegate(factory, first)
+    val exception =
+      assertFailsWith<IllegalStateException> {
+        SuspendDelegateFactory.setDelegate(factory, SuspendProvider { "second" })
+      }
+    assertEquals("Backing delegate already set: $first", exception.message)
   }
 
   @Test

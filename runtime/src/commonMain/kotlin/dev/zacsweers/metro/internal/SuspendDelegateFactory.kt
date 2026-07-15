@@ -15,16 +15,16 @@ public class SuspendDelegateFactory<T> : SuspendFactory<T> {
   private var delegate: SuspendProvider<T>? = null
 
   override suspend fun invoke(): T {
-    return checkNotNull(delegate)()
+    return checkNotNull(delegate) { "Backing delegate was never set!" }()
   }
 
   /**
    * Returns the factory's delegate.
    *
-   * @throws NullPointerException if the delegate has not been set
+   * @throws IllegalStateException if the delegate has not been set
    */
   public fun getDelegate(): SuspendProvider<T> {
-    return checkNotNull(delegate)
+    return checkNotNull(delegate) { "Backing delegate was never set!" }
   }
 
   public companion object {
@@ -46,7 +46,9 @@ public class SuspendDelegateFactory<T> : SuspendFactory<T> {
       delegateFactory: SuspendDelegateFactory<T>,
       delegate: SuspendProvider<T>,
     ) {
-      check(delegateFactory.delegate == null)
+      check(delegateFactory.delegate == null) {
+        "Backing delegate already set: ${delegateFactory.delegate}"
+      }
       delegateFactory.delegate = delegate
     }
   }
