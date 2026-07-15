@@ -16,8 +16,7 @@ Metro's runtime and generated code support the platforms listed below.
 | Multi-module aggregation     | ✅<br/>Kotlin `2.3.0`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.21`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ |
 | Top-level function injection | ✅<br/>Kotlin `2.3.0`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.21`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ | ✅<br/>Kotlin `2.3.20`+ |
 
-`runtime-coroutines` uses kotlinx-coroutines on JVM (including Android) and Native. Its JS and Wasm
-variants use only stdlib continuations.
+`runtime-coroutines` uses kotlinx-coroutines on every platform.
 
 **Legend:**
 

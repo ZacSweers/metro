@@ -15,7 +15,7 @@ This release introduces experimental support for suspend providers. This is disa
   - Once a stack contains a suspending wrapper, the wrapper closest to the binding must also support suspension. Maps can defer initialization of individual values with `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`.
 - Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutine context they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
 - The Gradle plugin automatically adds the new `runtime-coroutines` artifact when suspend providers are enabled. If runtime dependencies are managed manually, add it for scoped suspend bindings, `suspendLazy`, and injection requests containing `SuspendLazy` at any nesting level.
-  - Its JS and Wasm variants do _not_ depend on kotlinx-coroutines.
+  - `runtime-coroutines` uses kotlinx-coroutines on every platform.
 
 ### Enhancements
 

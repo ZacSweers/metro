@@ -215,6 +215,36 @@ class SuspendDoubleCheckTest {
   }
 
   @Test
+  fun `cancelled waiter stops waiting for the initializer`() = runTest {
+    val initializerEntered = CompletableDeferred<Unit>()
+    val releaseInitializer = CompletableDeferred<Unit>()
+    val doubleCheck = SuspendDoubleCheck.provider {
+      initializerEntered.complete(Unit)
+      releaseInitializer.await()
+      "value"
+    }
+    val initializer = async { doubleCheck() }
+    initializerEntered.await()
+
+    val waiterStarted = CompletableDeferred<Unit>()
+    val waiter = launch {
+      waiterStarted.complete(Unit)
+      doubleCheck()
+    }
+    waiterStarted.await()
+    yield()
+
+    try {
+      waiter.cancel()
+      yield()
+      assertTrue(waiter.isCompleted)
+    } finally {
+      releaseInitializer.complete(Unit)
+      assertEquals("value", initializer.await())
+    }
+  }
+
+  @Test
   fun `isInitialized works`() = runTest {
     val doubleCheck = SuspendDoubleCheck.provider { Any() }
     assertFalse((doubleCheck as SuspendDoubleCheck<*>).isInitialized())

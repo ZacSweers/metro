@@ -16,9 +16,7 @@ import kotlin.coroutines.suspendCoroutine
  * the guard being used only until `_value` is initialized.
  *
  * Unlike [DoubleCheckInitGuard], the guarded block suspends, so thread-based guards don't apply.
- * Both implementations provide single-flight initialization:
- * - JVM/Native use a coroutine Mutex.
- * - JS/Wasm use a flag and FIFO continuation queue with no kotlinx-coroutines dependency.
+ * Every implementation uses a coroutine Mutex to provide single-flight initialization.
  */
 public expect open class SuspendDoubleCheckInitGuard()
 

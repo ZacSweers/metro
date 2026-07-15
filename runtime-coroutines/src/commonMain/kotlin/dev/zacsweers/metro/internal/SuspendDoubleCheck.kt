@@ -16,9 +16,8 @@ private val UNINITIALIZED_SUSPEND = Any()
  * A [SuspendProvider] implementation that memoizes the value returned from a delegate
  * [SuspendProvider]. The delegate is released after successful initialization.
  *
- * Modeled after [BaseDoubleCheck], with synchronization provided by the
- * [SuspendDoubleCheckInitGuard] superclass (a coroutine Mutex on JVM/Native, a single-threaded
- * continuation-queue lock on JS/Wasm).
+ * Modeled after [BaseDoubleCheck], with synchronization provided by the coroutine Mutex in the
+ * [SuspendDoubleCheckInitGuard] superclass.
  *
  * Semantics on all platforms:
  * - Single-flight. One caller runs the initializer and concurrent callers suspend and share its

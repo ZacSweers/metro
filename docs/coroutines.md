@@ -193,8 +193,7 @@ The cache has these semantics on every platform:
 - A binding that requests itself during initialization fails with a circular dependency error
   instead of deadlocking.
 
-JVM and Native use a coroutine mutex. JS and Wasm use a queue of waiting continuations and do not
-depend on kotlinx-coroutines.
+All platforms use a coroutine mutex from kotlinx-coroutines.
 
 Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must be available at
 compile time and runtime. The Gradle plugin adds it automatically. If automatic runtime dependencies

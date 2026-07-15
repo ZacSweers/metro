@@ -14,13 +14,6 @@ kotlin {
     commonMain {
       dependencies {
         api(project(":runtime"))
-        // The web (JS/Wasm) SuspendDoubleCheck uses only stdlib continuations, so
-        // kotlinx-coroutines remains confined to JVM and Native.
-      }
-    }
-    getByName("nonWebMain") {
-      dependencies {
-        // Mutex-based SuspendDoubleCheck synchronization on JVM/Native
         api(libs.coroutines)
       }
     }

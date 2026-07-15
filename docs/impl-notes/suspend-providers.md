@@ -154,8 +154,7 @@ graph field whose required type is `Provider<T>` or `SuspendProvider<T>`.
 successful result is cached; failure or cancellation leaves the cache empty so a later caller can
 retry. Recursive initialization fails with a cycle error instead of waiting on itself.
 
-JVM and Native use a coroutine `Mutex`. JS and Wasm use a queue of standard-library continuations,
-so their `runtime-coroutines` variants do not depend on kotlinx-coroutines.
+All platforms use a coroutine `Mutex` from kotlinx-coroutines.
 
 Cycle detection uses a coroutine-context marker that identifies the active `SuspendDoubleCheck` and
 the caller. A recursive call sees its marker before attempting to reacquire the guard. Independent
