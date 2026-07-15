@@ -52,7 +52,7 @@ internal enum class MetroDiagnosticId(
     """
     Bindings depend on each other in a loop where every dependency is needed immediately. Break the
     cycle by changing one edge to a deferred type such as `() -> T` or `Lazy<T>`, which delays
-    construction until first use. If the cycle is between graphs that extend or depend on each
+    initialization until first use. If the cycle is between graphs that extend or depend on each
     other, restructure the graph relationship instead.
     """,
     MetroDiagnostics.GRAPH_DEPENDENCY_CYCLE,
