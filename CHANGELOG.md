@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Build against Kotlin `2.4.10`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
+
 1.3.2
 -----
 
