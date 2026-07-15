@@ -19,13 +19,14 @@ public inline fun <T> provider(noinline provider: () -> T): Provider<T> {
       @Suppress("UNCHECKED_CAST")
       provider as Provider<T>
     }
-    else -> FunctionProvider(provider)
+    else -> LambdaProvider(provider)
   }
 }
 
+// Better name would be FunctionProvider but alas, API stable
 @PublishedApi
 @JvmInline
-internal value class FunctionProvider<T>(private val function: () -> T) : Provider<T> {
+internal value class LambdaProvider<T>(private val function: () -> T) : Provider<T> {
   override fun invoke(): T = function()
 }
 

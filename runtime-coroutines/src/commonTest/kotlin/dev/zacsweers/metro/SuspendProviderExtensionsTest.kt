@@ -9,8 +9,6 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -40,25 +38,5 @@ class SuspendProviderExtensionsTest {
   fun `zip combines`() = runTest {
     val zipped = SuspendProvider { 40 }.zip(SuspendProvider { 2 }) { a, b -> a + b }
     assertEquals(42, zipped())
-  }
-
-  @Test
-  fun `memoize caches`() = runTest {
-    val count = AtomicInt(0)
-    val memoized = SuspendProvider { count.incrementAndFetch() }.memoize()
-    assertEquals(1, memoized())
-    assertEquals(1, memoized())
-    assertEquals(1, count.load())
-  }
-
-  @Test
-  fun `memoizeAsLazy caches`() = runTest {
-    val count = AtomicInt(0)
-    val lazy = SuspendProvider { count.incrementAndFetch() }.memoizeAsLazy()
-    assertFalse(lazy.isInitialized())
-    assertEquals(1, lazy.value())
-    assertEquals(1, lazy.value())
-    assertTrue(lazy.isInitialized())
-    assertEquals(1, count.load())
   }
 }

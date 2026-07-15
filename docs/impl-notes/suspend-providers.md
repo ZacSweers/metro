@@ -17,7 +17,7 @@ inspect source signatures to decide whether to add it.
 The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, `suspendProviderOf`,
 `suspendLazyOf`, and the adapters used by generated code. `runtime-coroutines` contains the
 synchronization used by scoped suspend bindings, Metro-generated memoizing `SuspendLazy` wrappers,
-`suspendLazy`, and the `SuspendProvider` memoization helpers.
+and `suspendLazy`.
 
 Whether a binding requires suspension is determined separately for each graph. A binding requires
 suspension when its provider is a `suspend fun`, or when it directly consumes another suspend
@@ -162,10 +162,9 @@ the caller. A recursive call sees its marker before attempting to reacquire the 
 coroutines wait for the in-flight value instead of being treated as cycles. Markers retain their
 parent so indirect cycles are detected as well.
 
-Injected `SuspendLazy` and the `memoize` helpers use the same single-flight behavior. The standalone
-`suspendLazy` factory follows its `LazyThreadSafetyMode`: `SYNCHRONIZED` is single-flight,
-`PUBLICATION` allows initializers to overlap and caches one result, and `NONE` does not coordinate
-callers.
+Injected `SuspendLazy` uses the same single-flight behavior. The standalone `suspendLazy` factory
+follows its `LazyThreadSafetyMode`: `SYNCHRONIZED` is single-flight, `PUBLICATION` allows
+initializers to overlap and caches one result, and `NONE` does not coordinate callers.
 
 ## Tracing
 

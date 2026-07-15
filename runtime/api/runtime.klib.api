@@ -247,13 +247,13 @@ abstract fun interface <#A: kotlin/Any> dev.zacsweers.metro/MembersInjector { //
 
 abstract class dev.zacsweers.metro/AppScope // dev.zacsweers.metro/AppScope|null[0]
 
-final value class <#A: kotlin/Any?> dev.zacsweers.metro/FunctionProvider : dev.zacsweers.metro/Provider<#A> { // dev.zacsweers.metro/FunctionProvider|null[0]
-    constructor <init>(kotlin/Function0<#A>) // dev.zacsweers.metro/FunctionProvider.<init>|<init>(kotlin.Function0<1:0>){}[0]
+final value class <#A: kotlin/Any?> dev.zacsweers.metro/LambdaProvider : dev.zacsweers.metro/Provider<#A> { // dev.zacsweers.metro/LambdaProvider|null[0]
+    constructor <init>(kotlin/Function0<#A>) // dev.zacsweers.metro/LambdaProvider.<init>|<init>(kotlin.Function0<1:0>){}[0]
 
-    final fun equals(kotlin/Any?): kotlin/Boolean // dev.zacsweers.metro/FunctionProvider.equals|equals(kotlin.Any?){}[0]
-    final fun hashCode(): kotlin/Int // dev.zacsweers.metro/FunctionProvider.hashCode|hashCode(){}[0]
-    final fun invoke(): #A // dev.zacsweers.metro/FunctionProvider.invoke|invoke(){}[0]
-    final fun toString(): kotlin/String // dev.zacsweers.metro/FunctionProvider.toString|toString(){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // dev.zacsweers.metro/LambdaProvider.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // dev.zacsweers.metro/LambdaProvider.hashCode|hashCode(){}[0]
+    final fun invoke(): #A // dev.zacsweers.metro/LambdaProvider.invoke|invoke(){}[0]
+    final fun toString(): kotlin/String // dev.zacsweers.metro/LambdaProvider.toString|toString(){}[0]
 }
 
 final fun <#A: kotlin/Any?> (dev.zacsweers.metro/Provider<#A>).dev.zacsweers.metro/memoize(): dev.zacsweers.metro/Provider<#A> // dev.zacsweers.metro/memoize|memoize@dev.zacsweers.metro.Provider<0:0>(){0§<kotlin.Any?>}[0]

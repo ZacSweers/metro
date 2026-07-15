@@ -313,19 +313,7 @@ val mapped: SuspendProvider<Int> = provider.map { it.length }
 val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> a to b }
 ```
 
-The `runtime-coroutines` artifact adds memoization:
-
-```kotlin
-// Cache the first successful result and share it across concurrent callers
-val memoized: SuspendProvider<String> = provider.memoize()
-
-// Same, exposed as SuspendLazy
-val lazy: SuspendLazy<String> = provider.memoizeAsLazy()
-println(lazy.isInitialized()) // false
-val value = lazy.value() // suspends and computes
-```
-
-You can also create a `SuspendLazy<T>` directly, outside of injection:
+Create a `SuspendLazy<T>` directly, outside of injection, with `suspendLazy`:
 
 ```kotlin
 val config: SuspendLazy<Config> = suspendLazy { loadConfig() }
