@@ -6,6 +6,7 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.provider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -62,6 +63,18 @@ class MapFunctionFactoryTest {
     // Lambda is invoked lazily by the consumer, not at map construction
     assertEquals(0, first.getValue("only")())
     assertEquals(1, first.getValue("only")())
+  }
+
+  @Test
+  fun nullableValues() {
+    val fn: () -> String? = { null }
+    val built = MapFunctionFactory.builder<String, String?>(1).put("built", fn).build()()
+    assertNull(built.getValue("built")())
+
+    val singleton = MapFunctionFactory.singleton("singleton", fn)()
+    assertNull(singleton.getValue("singleton")())
+
+    assertTrue(MapFunctionFactory.empty<String, String?>()().isEmpty())
   }
 
   @Test

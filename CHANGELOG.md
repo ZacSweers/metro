@@ -22,6 +22,7 @@ This release introduces experimental support for suspend providers. This is disa
 
 - **[IR]** Avoid generating unused provider fields for included graph accessors that can be read directly.
 - **[runtime]** If the input function to `provider()` is already a `Provider` instance, just eagerly return that rather than needlessly wrap.
+- **[runtime]** Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.
 
 ### Fixes
 

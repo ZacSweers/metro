@@ -9,6 +9,10 @@ interface ExampleGraph {
 
   @Provides @IntoMap @StringKey("c") fun provideEntryC(): Int = 3
 
+  @Provides @IntoMap @StringKey("a") fun provideNullableEntryA(): String? = null
+
+  @Provides @IntoMap @StringKey("b") fun provideNullableEntryB(): String? = "b"
+
   // Inject it with different formats
   val directMap: Map<String, Int>
   val providerValueMap: Map<String, () -> Int>
@@ -20,6 +24,10 @@ interface ExampleGraph {
   val providerOfProviderOfLazyValueMap: () -> Map<String, () -> Lazy<Int>>
   val lazyOfProviderValueMap: Lazy<Map<String, () -> Int>>
   val providerOfLazyOfProviderValueMap: () -> Lazy<Map<String, () -> Int>>
+  val nullableDirectMap: Map<String, String?>
+  val nullableProviderValueMap: Map<String, () -> String?>
+  val nullableLazyValueMap: Map<String, Lazy<String?>>
+  val nullableProviderOfLazyValueMap: Map<String, () -> Lazy<String?>>
 
   // Class that injects the map with yet another format
   val exampleClass: ExampleClass
@@ -35,6 +43,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
+  val expectedNullableMap = mapOf("a" to null, "b" to "b")
 
   // Test direct map
   val directMap = graph.directMap
@@ -98,6 +107,20 @@ fun box(): String {
   assertEquals(
     mapOf("a" to 1, "b" to 2, "c" to 3),
     providerOfLazyOfProviderValueMap().value.mapValues { (_, value) -> value() },
+  )
+
+  assertEquals(expectedNullableMap, graph.nullableDirectMap)
+  assertEquals(
+    expectedNullableMap,
+    graph.nullableProviderValueMap.mapValues { (_, value) -> value() },
+  )
+  assertEquals(
+    expectedNullableMap,
+    graph.nullableLazyValueMap.mapValues { (_, value) -> value.value },
+  )
+  assertEquals(
+    expectedNullableMap,
+    graph.nullableProviderOfLazyValueMap.mapValues { (_, value) -> value().value },
   )
 
   // Test injected class

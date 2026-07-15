@@ -19,7 +19,9 @@ import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.provider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class MapProviderFactoryTest {
   @Test
@@ -67,6 +69,20 @@ class MapProviderFactoryTest {
     // Provider is invoked lazily by the consumer, not at map construction
     assertEquals(0, first.getValue("only")())
     assertEquals(1, first.getValue("only")())
+  }
+
+  @Test
+  fun nullableValues() {
+    val provider = provider<String?> { null }
+    val built = MapProviderFactory.builder<String, String?>(1).put("built", provider).build()()
+    assertSame(provider, built.getValue("built"))
+    assertNull(built.getValue("built")())
+
+    val singleton = MapProviderFactory.singleton("singleton", provider)()
+    assertSame(provider, singleton.getValue("singleton"))
+    assertNull(singleton.getValue("singleton")())
+
+    assertTrue(MapProviderFactory.empty<String, String?>()().isEmpty())
   }
 
   companion object {
