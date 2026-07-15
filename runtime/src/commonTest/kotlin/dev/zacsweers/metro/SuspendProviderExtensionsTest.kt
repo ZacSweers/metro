@@ -9,10 +9,17 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalAtomicApi::class)
 class SuspendProviderExtensionsTest {
+  @Test
+  fun `suspendProvider supports nullable values`() = runTest {
+    val provider = suspendProvider<String?> { null }
+    assertNull(provider())
+  }
+
   @Test
   fun `map transforms lazily`() = runTest {
     val count = AtomicInt(0)

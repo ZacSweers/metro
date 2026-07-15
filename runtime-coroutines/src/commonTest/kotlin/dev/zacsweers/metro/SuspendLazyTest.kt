@@ -10,6 +10,7 @@ import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,22 @@ class SuspendLazyTest {
     computesOnce(LazyThreadSafetyMode.PUBLICATION)
 
   @Test fun `none mode computes once when sequential`() = computesOnce(LazyThreadSafetyMode.NONE)
+
+  @Test
+  fun `suspendLazy supports nullable values`() = runTest {
+    val count = AtomicInt(0)
+    val lazy =
+      suspendLazy<String?> {
+        count.incrementAndFetch()
+        null
+      }
+
+    assertFalse(lazy.isInitialized())
+    assertNull(lazy.value())
+    assertTrue(lazy.isInitialized())
+    assertNull(lazy.value())
+    assertEquals(1, count.load())
+  }
 
   @Test
   fun `publication mode publishes one value when initializers overlap`() = runTest {
