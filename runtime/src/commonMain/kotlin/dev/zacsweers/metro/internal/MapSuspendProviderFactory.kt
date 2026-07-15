@@ -12,7 +12,7 @@ import dev.zacsweers.metro.SuspendProvider
  * A [Factory] for `Map<K, SuspendProvider<V>>` bindings. Values are stored directly as
  * [SuspendProvider]s. The compiler adapts ordinary providers with [SyncSuspendProvider].
  */
-public class MapSuspendProviderFactory<K : Any, V : Any>
+public class MapSuspendProviderFactory<K : Any, V>
 private constructor(private val map: Map<K, SuspendProvider<V>>) :
   Factory<Map<K, SuspendProvider<V>>> {
   /**
@@ -22,7 +22,7 @@ private constructor(private val map: Map<K, SuspendProvider<V>>) :
   override fun invoke(): Map<K, SuspendProvider<V>> = map
 
   /** A builder for [MapSuspendProviderFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) {
+  public class Builder<K : Any, V> internal constructor(size: Int) {
     private val map = newLinkedHashMapWithExpectedSize<K, SuspendProvider<V>>(size)
 
     public fun put(key: K, providerOfValue: SuspendProvider<V>): Builder<K, V> = apply {
@@ -43,7 +43,7 @@ private constructor(private val map: Map<K, SuspendProvider<V>>) :
     private val EMPTY: MapSuspendProviderFactory<Any, Any> = MapSuspendProviderFactory(emptyMap())
 
     /** Returns a new [Builder] */
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 

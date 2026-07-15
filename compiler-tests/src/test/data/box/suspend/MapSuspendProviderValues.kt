@@ -9,11 +9,15 @@ interface ExampleGraph {
 
   @Provides @IntoMap @IntKey(2) suspend fun provideInt2(): Int = 2
 
+  @Provides @IntoMap @IntKey(0) suspend fun provideNullableString(): String? = null
+
   // Map with SuspendProvider values
   val suspendProviderInts: Map<Int, SuspendProvider<Int>>
 
   // Provider wrapping map with SuspendProvider values
   val providerOfSuspendProviderInts: Provider<Map<Int, SuspendProvider<Int>>>
+
+  val suspendProviderNullableStrings: Map<Int, SuspendProvider<String?>>
 }
 
 fun box(): String =
@@ -34,6 +38,8 @@ fun box(): String =
         .providerOfSuspendProviderInts()
         .mapValues { (_, suspendProvider) -> suspendProvider() },
     )
+
+    assertNull(graph.suspendProviderNullableStrings.getValue(0).invoke())
 
     "OK"
   }

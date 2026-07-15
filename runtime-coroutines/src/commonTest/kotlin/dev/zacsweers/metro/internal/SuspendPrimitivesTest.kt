@@ -10,6 +10,7 @@ import dev.zacsweers.metro.SuspendProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlinx.coroutines.test.runTest
 
@@ -67,6 +68,16 @@ class SuspendPrimitivesTest {
     assertEquals(setOf("one", "two"), map.keys)
     assertEquals(1, map.getValue("one").invoke())
     assertEquals(2, map.getValue("two").invoke())
+  }
+
+  @Test
+  fun `MapSuspendProviderFactory supports nullable values`() = runTest {
+    val factory =
+      MapSuspendProviderFactory.builder<String, String?>(1)
+        .put("null", SuspendProvider { null })
+        .build()
+
+    assertNull(factory().getValue("null").invoke())
   }
 
   @Test
