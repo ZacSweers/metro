@@ -8,6 +8,7 @@ import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.AtomicReference
+import kotlin.concurrent.Volatile
 
 private val UNINITIALIZED = Any()
 
@@ -19,7 +20,7 @@ private val UNINITIALIZED = Any()
  */
 internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
   SuspendLazy<T>, SuspendProvider<T> {
-  private var initializer: (suspend () -> T)? = initializer
+  @Volatile private var initializer: (suspend () -> T)? = initializer
   private val atomicValue = AtomicReference<Any?>(UNINITIALIZED)
 
   override suspend fun invoke(): T = value()
