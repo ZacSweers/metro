@@ -41,6 +41,7 @@ class SuspendLazyTest {
     val first = async { lazy.value() }
     val second = async { lazy.value() }
     runCurrent()
+    assertEquals(2, count.load())
     releaseInitializers.complete(Unit)
 
     assertEquals(first.await(), second.await())
