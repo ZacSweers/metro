@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.internal
 
-import kotlin.coroutines.coroutineContext
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -19,10 +17,3 @@ public actual open class SuspendDoubleCheckInitGuard actual constructor() {
 internal actual suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
   block: suspend () -> T
 ): T = mutex.withLock { block() }
-
-internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any {
-  val callerContext = coroutineContext.minusKey(SuspendDoubleCheckInitialization)
-  // The coroutine's Job when present; the context instance for Job-less coroutines (like
-  // `suspend fun main` or a bare `startCoroutine`).
-  return callerContext[Job] ?: callerContext
-}

@@ -21,10 +21,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -64,6 +67,54 @@ class SuspendDoubleCheckTest {
       Continuation(EmptyCoroutineContext) { result -> thrown = result.exceptionOrNull() }
     )
     assertTrue(thrown is IllegalStateException, "Expected IllegalStateException, was $thrown")
+  }
+
+  @Test
+  fun `reentrant invocation through coroutineScope throws instead of deadlocking`() = runTest {
+    val doubleCheck = SuspendDoubleCheck.provider {
+      coroutineScope { doubleCheckReference.load()!!.invoke() }
+      Any()
+    }
+    doubleCheckReference.store(doubleCheck)
+
+    assertFailsWith<IllegalStateException> { doubleCheck() }
+  }
+
+  @Test
+  fun `reentrant invocation through withContext throws instead of deadlocking`() = runTest {
+    val doubleCheck = SuspendDoubleCheck.provider {
+      withContext(NonCancellable) {
+        doubleCheckReference.load()!!.invoke()
+      }
+      Any()
+    }
+    doubleCheckReference.store(doubleCheck)
+
+    assertFailsWith<IllegalStateException> { doubleCheck() }
+  }
+
+  @Test
+  fun `reentrant invocation through awaited async throws instead of deadlocking`() = runTest {
+    val doubleCheck = SuspendDoubleCheck.provider {
+      coroutineScope { async { doubleCheckReference.load()!!.invoke() }.await() }
+      Any()
+    }
+    doubleCheckReference.store(doubleCheck)
+
+    assertFailsWith<IllegalStateException> { doubleCheck() }
+  }
+
+  @Test
+  fun `indirect reentrant invocation throws instead of deadlocking`() = runTest {
+    val firstReference = AtomicReference<SuspendProvider<Any>?>(null)
+    val second = SuspendDoubleCheck.provider { firstReference.load()!!.invoke() }
+    val first = SuspendDoubleCheck.provider {
+      second()
+      Any()
+    }
+    firstReference.store(first)
+
+    assertFailsWith<IllegalStateException> { first() }
   }
 
   @Test

@@ -30,15 +30,14 @@ internal expect suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
 /** Tracks the [SuspendDoubleCheck] initializers in the current call chain. */
 internal class SuspendDoubleCheckInitialization(
   private val owner: SuspendDoubleCheck<*>,
-  private val callerIdentity: Any,
   private val parent: SuspendDoubleCheckInitialization?,
 ) : AbstractCoroutineContextElement(Key) {
   internal companion object Key : CoroutineContext.Key<SuspendDoubleCheckInitialization>
 
-  internal fun contains(owner: SuspendDoubleCheck<*>, callerIdentity: Any): Boolean {
+  internal fun contains(owner: SuspendDoubleCheck<*>): Boolean {
     var current: SuspendDoubleCheckInitialization? = this
     while (current != null) {
-      if (current.owner === owner && current.callerIdentity == callerIdentity) {
+      if (current.owner === owner) {
         return true
       }
       current = current.parent
@@ -50,13 +49,11 @@ internal class SuspendDoubleCheckInitialization(
 /** Runs [block] with an initialization marker added to its coroutine context. */
 internal suspend fun <T> withSuspendDoubleCheckInitialization(
   owner: SuspendDoubleCheck<*>,
-  callerIdentity: Any,
   block: suspend () -> T,
 ): T = suspendCoroutine { continuation ->
   val initialization =
     SuspendDoubleCheckInitialization(
       owner = owner,
-      callerIdentity = callerIdentity,
       parent = continuation.context[SuspendDoubleCheckInitialization],
     )
   block.startCoroutine(
@@ -65,9 +62,3 @@ internal suspend fun <T> withSuspendDoubleCheckInitialization(
     }
   )
 }
-
-/**
- * An identity for the calling coroutine. It distinguishes a marker inherited by the same caller
- * from one inherited by a child coroutine.
- */
-internal expect suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any

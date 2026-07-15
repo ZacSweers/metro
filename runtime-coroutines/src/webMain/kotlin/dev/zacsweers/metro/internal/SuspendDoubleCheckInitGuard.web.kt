@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.internal
 
 import kotlin.coroutines.Continuation
-import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -39,6 +38,3 @@ internal actual suspend fun <T> SuspendDoubleCheckInitGuard.guardedSuspend(
     waiters.removeFirstOrNull()?.resume(Unit)
   }
 }
-
-internal actual suspend fun SuspendDoubleCheckInitGuard.initCallerIdentity(): Any =
-  coroutineContext.minusKey(SuspendDoubleCheckInitialization)

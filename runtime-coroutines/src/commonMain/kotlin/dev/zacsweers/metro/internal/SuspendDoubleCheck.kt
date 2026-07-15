@@ -26,8 +26,8 @@ private val UNINITIALIZED_SUSPEND = Any()
  * - A failed initialization is not cached. The next caller retries.
  * - Cancellation mid-initialization leaves the cache untouched. The next caller recomputes.
  * - A binding that resolves itself during its own initialization fails fast with a circular
- *   dependency error. The delegate runs with a context marker so independent coroutines that share
- *   a `Job` or coroutine context are not mistaken for recursive calls.
+ *   dependency error. The delegate runs with a context marker that is inherited by structured child
+ *   coroutines. Independent calls outside that initialization chain still wait normally.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
   SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {
@@ -44,12 +44,11 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       return result1 as T
     }
 
-    val caller = initCallerIdentity()
     val initialization = coroutineContext[SuspendDoubleCheckInitialization]
-    check(initialization?.contains(this, caller) != true) {
-      "Scoped suspend provider was invoked recursively while its value was still being " +
-        "initialized. The recursive call would wait for that same initialization, likely due " +
-        "to a circular dependency."
+    check(initialization?.contains(this) != true) {
+      "A suspend value was requested recursively while it was still being initialized. The " +
+        "recursive request would wait for that same initialization, likely due to a circular " +
+        "dependency."
     }
 
     return guardedSuspend {
@@ -57,7 +56,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
       } else {
-        val typedValue = withSuspendDoubleCheckInitialization(this, caller) { provider!!.invoke() }
+        val typedValue = withSuspendDoubleCheckInitialization(this) { provider!!.invoke() }
         _value = typedValue
         // Null out the reference to the provider. We are never going to need it again, so we
         // can make it eligible for GC.
