@@ -14,10 +14,10 @@ The feature gate and runtime dependency are separate. When automatic runtime dep
 enabled, the Gradle plugin adds `runtime-coroutines` whenever this option is enabled; it does not
 inspect source signatures to decide whether to add it.
 
-The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, `suspendProviderOf`,
-`suspendLazyOf`, and the adapters used by generated code. `runtime-coroutines` contains the
-synchronization used by scoped suspend bindings, Metro-generated memoizing `SuspendLazy` wrappers,
-and `suspendLazy`.
+The core `runtime` artifact contains `SuspendProvider`, `SuspendLazy`, `suspendProvider`,
+`suspendProviderOf`, `suspendLazyOf`, the provider operators, and the adapters used by generated
+code. `runtime-coroutines` contains the synchronization used by scoped suspend bindings,
+Metro-generated memoizing `SuspendLazy` wrappers, and `suspendLazy`.
 
 Whether a binding requires suspension is determined separately for each graph. A binding requires
 suspension when its provider is a `suspend fun`, or when it directly consumes another suspend
@@ -156,10 +156,15 @@ retry. Recursive initialization fails with a cycle error instead of waiting on i
 
 All platforms use a coroutine `Mutex` from kotlinx-coroutines.
 
-Cycle detection uses a coroutine-context marker that identifies the active `SuspendDoubleCheck` and
-the caller. A recursive call sees its marker before attempting to reacquire the guard. Independent
-coroutines wait for the in-flight value instead of being treated as cycles. Markers retain their
-parent so indirect cycles are detected as well.
+Cycle detection uses a coroutine-context marker for each active `SuspendDoubleCheck`. The marker is
+inherited by structured child coroutines and retains its parent, so direct and indirect requests for
+the same cache in one initialization chain fail before trying to reacquire the mutex. Callers
+outside that chain wait for the in-flight value normally.
+
+The markers do not coordinate separate initialization chains. Two independently launched
+coroutines can deadlock if each initializes one cache and then requests the other. Static graph
+validation catches cycles visible in the dependency graph. Dynamic provider or lazy invocation
+must avoid acquiring caches in opposite orders.
 
 Injected `SuspendLazy` uses the same single-flight behavior. The standalone `suspendLazy` factory
 follows its `LazyThreadSafetyMode`: `SYNCHRONIZED` is single-flight, `PUBLICATION` allows

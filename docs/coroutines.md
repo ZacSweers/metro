@@ -115,9 +115,9 @@ scoped.
 
 ## Deferring and memoizing with `SuspendLazy<T>`
 
-`SuspendLazy<T>` is a suspend form of Kotlin's `Lazy<T>`. It defers initialization and caches the
-first successful result for that wrapper instance. Call its `suspend fun value()` to obtain the
-value.
+`SuspendLazy<T>` is a cached value obtained in a suspend context. When Metro injects one, it defers
+initialization until `value()` is called and caches the first successful result for that wrapper
+instance.
 
 ```kotlin
 @Inject
@@ -190,10 +190,16 @@ The cache has these semantics on every platform:
 - At most one caller computes at a time. Concurrent callers wait and share a successful result.
 - A failed initialization is not cached. A later caller retries.
 - Cancellation during initialization leaves the cache empty. A later caller retries.
-- A binding that requests itself during initialization fails with a circular dependency error
-  instead of deadlocking.
+- A request for the same cache from its current initialization chain fails with a circular
+  dependency error instead of waiting on itself.
 
 All platforms use a coroutine mutex from kotlinx-coroutines.
+
+The initialization check follows structured child coroutines and indirect calls within the same
+chain. It does not coordinate separate initialization chains. Two independently launched
+coroutines can still deadlock if each initializes one cached binding and then requests the other.
+Metro reports cycles visible in the dependency graph; code that invokes providers or lazy values
+dynamically must not initialize the same caches in conflicting orders.
 
 Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must be available at
 compile time and runtime. The Gradle plugin adds it automatically. If automatic runtime dependencies
@@ -297,7 +303,9 @@ injection yet.
 
 ## Runtime helpers
 
-The `runtime` artifact includes small utilities for working with suspend providers:
+The core `runtime` artifact provides `suspendProvider`, `suspendProviderOf`, `suspendLazyOf`, and the
+`map`, `flatMap`, and `zip` provider operators. `suspendLazyOf` returns an already initialized
+`SuspendLazy`.
 
 ```kotlin
 // Wrap a lambda
@@ -312,7 +320,7 @@ val mapped: SuspendProvider<Int> = provider.map { it.length }
 val zipped: SuspendProvider<Pair<String, Int>> = provider.zip(mapped) { a, b -> a to b }
 ```
 
-Create a `SuspendLazy<T>` directly, outside of injection, with `suspendLazy`:
+The `runtime-coroutines` artifact provides `suspendLazy` for values initialized on first access:
 
 ```kotlin
 val config: SuspendLazy<Config> = suspendLazy { loadConfig() }

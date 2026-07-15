@@ -26,7 +26,8 @@ private val UNINITIALIZED_SUSPEND = Any()
  * - Cancellation mid-initialization leaves the cache untouched. The next caller recomputes.
  * - A binding that resolves itself during its own initialization fails fast with a circular
  *   dependency error. The delegate runs with a context marker that is inherited by structured child
- *   coroutines. Independent calls outside that initialization chain still wait normally.
+ *   coroutines. Independent calls outside that initialization chain still wait normally. Separate
+ *   initialization chains can still deadlock if each holds one cache and requests the other.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
   SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {

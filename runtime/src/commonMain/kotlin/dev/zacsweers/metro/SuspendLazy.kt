@@ -4,16 +4,16 @@ package dev.zacsweers.metro
 
 import dev.zacsweers.metro.internal.SuspendInstanceFactory
 
-/** A value computed on demand in a suspend context and cached for later calls. */
+/** A value obtained in a suspend context and cached for later calls. */
 @ExperimentalMetroCoroutinesApi
 public interface SuspendLazy<out T> {
   /**
-   * Returns the cached value, suspending to compute it when necessary. A failed or cancelled
-   * computation is not cached.
+   * Returns the cached value, suspending while initialization runs when necessary. A failed or
+   * cancelled initialization is not cached.
    */
   public suspend fun value(): T
 
-  /** Returns `true` after a value has been computed and cached. */
+  /** Returns `true` when a cached value is available. */
   public fun isInitialized(): Boolean
 }
 
