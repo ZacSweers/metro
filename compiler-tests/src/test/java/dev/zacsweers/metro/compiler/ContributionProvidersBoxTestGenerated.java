@@ -273,6 +273,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("NestedContributedInterfaceDoesNotPromoteContainingClass.kt")
+    public void testNestedContributedInterfaceDoesNotPromoteContainingClass() {
+      run("NestedContributedInterfaceDoesNotPromoteContainingClass.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacementsWithOrigin.kt")
     public void testReplacementsWithOrigin() {
       run("ReplacementsWithOrigin.kt");
