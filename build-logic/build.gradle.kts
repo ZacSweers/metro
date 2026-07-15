@@ -13,6 +13,9 @@ dependencies {
   implementation(
     libs.plugins.mavenPublish.get().run { "$pluginId:$pluginId.gradle.plugin:$version" }
   )
+  implementation(
+    libs.plugins.dependencyGuard.get().run { "$pluginId:$pluginId.gradle.plugin:$version" }
+  )
   implementation(libs.plugins.dokka.get().run { "$pluginId:$pluginId.gradle.plugin:$version" })
   // Force the latest R8 to match what we use the minified JMH tests
   implementation(libs.r8)

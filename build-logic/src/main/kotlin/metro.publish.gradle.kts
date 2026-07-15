@@ -1,5 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.dropbox.gradle.plugins.dependencyguard.DependencyGuardPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.kotlin.dsl.withType
@@ -9,6 +10,30 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 apply(plugin = "com.vanniktech.maven.publish")
 
 apply(plugin = "com.autonomousapps.testkit")
+
+val isCompilerArtifact = project.path == ":compiler" || project.path.startsWith(":compiler-compat")
+val isCommonArtifact = project.path == ":metro-common"
+val isDependencyGuardExcluded = isCompilerArtifact || isCommonArtifact
+
+if (!isDependencyGuardExcluded) {
+  apply(plugin = "com.dropbox.dependency-guard")
+
+  pluginManager.withPlugin("com.android.library") {
+    configure<DependencyGuardPluginExtension> { configuration("releaseRuntimeClasspath") }
+  }
+
+  pluginManager.withPlugin("com.android.kotlin.multiplatform.library") {
+    configure<DependencyGuardPluginExtension> { configuration("androidRuntimeClasspath") }
+  }
+
+  pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+    configure<DependencyGuardPluginExtension> { configuration("jvmRuntimeClasspath") }
+  }
+
+  pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+    configure<DependencyGuardPluginExtension> { configuration("runtimeClasspath") }
+  }
+}
 
 val extension = project.extensions.create<MetroArtifactExtension>("metroArtifact")
 
