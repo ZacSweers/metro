@@ -9,12 +9,15 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
@@ -63,6 +66,64 @@ class SuspendLazyTest {
 
     assertEquals(first.await(), second.await())
     assertTrue(lazy.isInitialized())
+  }
+
+  @Test
+  fun `publication mode retries after a failed initializer`() =
+    retriesAfterFailure(LazyThreadSafetyMode.PUBLICATION)
+
+  @Test
+  fun `none mode retries after a failed initializer`() =
+    retriesAfterFailure(LazyThreadSafetyMode.NONE)
+
+  @Test
+  fun `publication mode retries after a cancelled initializer`() =
+    retriesAfterCancellation(LazyThreadSafetyMode.PUBLICATION)
+
+  @Test
+  fun `none mode retries after a cancelled initializer`() =
+    retriesAfterCancellation(LazyThreadSafetyMode.NONE)
+
+  private fun retriesAfterFailure(mode: LazyThreadSafetyMode) = runTest {
+    val count = AtomicInt(0)
+    val lazy =
+      suspendLazy(mode) {
+        if (count.incrementAndFetch() == 1) {
+          throw IllegalStateException("first attempt fails")
+        }
+        "value"
+      }
+
+    assertFailsWith<IllegalStateException> { lazy.value() }
+    // A failed initializer is not cached, so the next caller retries.
+    assertFalse(lazy.isInitialized())
+    assertEquals("value", lazy.value())
+    assertTrue(lazy.isInitialized())
+    assertEquals(2, count.load())
+  }
+
+  private fun retriesAfterCancellation(mode: LazyThreadSafetyMode) = runTest {
+    val count = AtomicInt(0)
+    val entered = CompletableDeferred<Unit>()
+    val gate = CompletableDeferred<Unit>()
+    val lazy =
+      suspendLazy(mode) {
+        if (count.incrementAndFetch() == 1) {
+          entered.complete(Unit)
+          // Suspends until cancelled
+          gate.await()
+        }
+        "value"
+      }
+
+    val job = launch { lazy.value() }
+    entered.await()
+    job.cancelAndJoin()
+
+    // Cancellation mid-initialization leaves the lazy uninitialized, so the next caller recomputes.
+    assertFalse(lazy.isInitialized())
+    assertEquals("value", lazy.value())
+    assertEquals(2, count.load())
   }
 
   private fun computesOnce(mode: LazyThreadSafetyMode) = runTest {

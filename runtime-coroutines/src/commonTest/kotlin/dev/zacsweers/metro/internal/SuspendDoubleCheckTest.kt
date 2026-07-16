@@ -6,6 +6,7 @@ package dev.zacsweers.metro.internal
 
 import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
 import dev.zacsweers.metro.SuspendProvider
+import dev.zacsweers.metro.suspendProviderOf
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -21,6 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -39,6 +41,43 @@ class SuspendDoubleCheckTest {
   fun `double wrapping provider`() {
     val provider = SuspendDoubleCheck.provider { Any() }
     assertSame(provider, SuspendDoubleCheck.provider(provider))
+  }
+
+  @Test
+  fun `lazy short-circuits an already-lazy delegate`() {
+    // A delegate that is already a SuspendLazy is returned as-is instead of being wrapped again,
+    // mirroring DoubleCheck.lazy. suspendProviderOf is backed by a SuspendInstanceFactory, which is
+    // a SuspendLazy but not a SuspendDoubleCheck.
+    val instance: SuspendProvider<String> = suspendProviderOf("value")
+    assertSame<Any?>(instance, SuspendDoubleCheck.lazy(instance))
+  }
+
+  @Test
+  fun `waiter takes over when the winning initializer is cancelled`() = runTest {
+    val winnerEntered = CompletableDeferred<Unit>()
+    val winnerGate = CompletableDeferred<Unit>()
+    val doubleCheck = SuspendDoubleCheck.provider {
+      if (invocationCount.incrementAndFetch() == 1) {
+        winnerEntered.complete(Unit)
+        // Suspends until cancelled
+        winnerGate.await()
+      }
+      "value"
+    }
+
+    val winner = launch { doubleCheck() }
+    winnerEntered.await()
+
+    // Queue a second caller as a waiter behind the winner on the mutex.
+    val waiter = async { doubleCheck() }
+    yield()
+
+    // Cancelling the winner releases the mutex; the waiter acquires it and runs the initializer.
+    winner.cancelAndJoin()
+
+    assertEquals("value", waiter.await())
+    assertEquals(2, invocationCount.load())
+    assertTrue((doubleCheck as SuspendDoubleCheck<*>).isInitialized())
   }
 
   @Test
@@ -189,6 +228,42 @@ class SuspendDoubleCheckTest {
     assertFailsWith<IllegalArgumentException> { doubleCheck() }
     // The same coroutine retries. It must not be misidentified as a reentrant cycle.
     assertEquals("success", doubleCheck())
+  }
+
+  @Test
+  fun `stale init marker from a failed attempt does not block a child retry`() = runTest {
+    // The first attempt launches a fire-and-forget child that inherits the initialization marker
+    // but not the failing parent's Job, so the child survives the failure. When the child later
+    // retries the same binding it must not be misidentified as a circular dependency.
+    val childCanRun = CompletableDeferred<Unit>()
+    val childResult = CompletableDeferred<Result<Any>>()
+
+    // Launched from inside the initializer so it inherits the initialization marker. The failing
+    // Job is dropped so the child outlives the attempt that spawned it.
+    suspend fun launchStaleChild() {
+      val inheritedContext = coroutineContext.minusKey(Job)
+      backgroundScope.launch(inheritedContext) {
+        childCanRun.await()
+        childResult.complete(runCatching { doubleCheckReference.load()!!.invoke() })
+      }
+    }
+
+    val doubleCheck = SuspendDoubleCheck.provider {
+      if (invocationCount.incrementAndFetch() == 1) {
+        launchStaleChild()
+        throw IllegalArgumentException("first attempt fails")
+      }
+      Any()
+    }
+    doubleCheckReference.store(doubleCheck)
+
+    assertFailsWith<IllegalArgumentException> { doubleCheck() }
+    childCanRun.complete(Unit)
+
+    // The child sees the marker but it is no longer active, so it initializes normally.
+    val value = childResult.await().getOrThrow()
+    assertEquals(2, invocationCount.load())
+    assertSame(value, doubleCheck())
   }
 
   @Test
