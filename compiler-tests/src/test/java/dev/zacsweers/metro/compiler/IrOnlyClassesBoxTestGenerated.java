@@ -3361,6 +3361,30 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ContributedBindingConsumesSuspend.kt")
+    public void testContributedBindingConsumesSuspend() {
+      run("ContributedBindingConsumesSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerSuspendProvides.kt")
+    public void testContributedBindingContainerSuspendProvides() {
+      run("ContributedBindingContainerSuspendProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphExtensionParentSuspend.kt")
+    public void testContributedGraphExtensionParentSuspend() {
+      run("ContributedGraphExtensionParentSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedIntoMapSuspendValue.kt")
+    public void testContributedIntoMapSuspendValue() {
+      run("ContributedIntoMapSuspendValue.kt");
+    }
+
+    @Test
     @TestMetadata("CycleViaDelegateFactory.kt")
     public void testCycleViaDelegateFactory() {
       run("CycleViaDelegateFactory.kt");
@@ -3400,6 +3424,24 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("GenericAssistedFactorySuspendDep.kt")
     public void testGenericAssistedFactorySuspendDep() {
       run("GenericAssistedFactorySuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericSuspendChain.kt")
+    public void testGenericSuspendChain() {
+      run("GenericSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionChildSuspendProvides.kt")
+    public void testGraphExtensionChildSuspendProvides() {
+      run("GraphExtensionChildSuspendProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionConsumesParentSuspendMultibinding.kt")
+    public void testGraphExtensionConsumesParentSuspendMultibinding() {
+      run("GraphExtensionConsumesParentSuspendMultibinding.kt");
     }
 
     @Test
@@ -3448,6 +3490,18 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("MixedSuspendNonSuspendDeps.kt")
     public void testMixedSuspendNonSuspendDeps() {
       run("MixedSuspendNonSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsEmptySuspendMap.kt")
+    public void testMultibindsEmptySuspendMap() {
+      run("MultibindsEmptySuspendMap.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsSuspendMap.kt")
+    public void testMultibindsSuspendMap() {
+      run("MultibindsSuspendMap.kt");
     }
 
     @Test
@@ -3502,6 +3556,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("ProviderTransitiveDep.kt")
     public void testProviderTransitiveDep() {
       run("ProviderTransitiveDep.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedSuspendBindings.kt")
+    public void testQualifiedSuspendBindings() {
+      run("QualifiedSuspendBindings.kt");
     }
 
     @Test

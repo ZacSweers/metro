@@ -1675,6 +1675,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DaggerInteropDaggerLazyWrapsSuspend.kt")
+    public void testDaggerInteropDaggerLazyWrapsSuspend() {
+      run("DaggerInteropDaggerLazyWrapsSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerInteropJakartaProviderWrapsSuspend.kt")
+    public void testDaggerInteropJakartaProviderWrapsSuspend() {
+      run("DaggerInteropJakartaProviderWrapsSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerInteropJavaxProviderWrapsSuspend.kt")
+    public void testDaggerInteropJavaxProviderWrapsSuspend() {
+      run("DaggerInteropJavaxProviderWrapsSuspend.kt");
+    }
+
+    @Test
     @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
     public void testDepInConstructorInjectedNonSuspendAccessor() {
       run("DepInConstructorInjectedNonSuspendAccessor.kt");
