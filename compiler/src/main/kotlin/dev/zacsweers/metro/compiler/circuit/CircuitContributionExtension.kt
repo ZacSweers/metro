@@ -5,7 +5,6 @@ package dev.zacsweers.metro.compiler.circuit
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
@@ -22,7 +21,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.Name
 
 /**
  * Contribution extension that provides metadata for Circuit-generated factories to Metro's
@@ -63,18 +61,24 @@ public class CircuitContributionExtension(
     // Process annotated classes
     for (classSymbol in annotatedClasses) {
       val typeResolver = typeResolverFactory.create(classSymbol) ?: continue
-      val contribution = computeContributionForClass(classSymbol, scopeClassId, typeResolver)
-      if (contribution != null) {
-        contributions.add(contribution)
+      for (target in CircuitCodegenTarget.entries) {
+        val contribution =
+          computeContributionForClass(classSymbol, scopeClassId, typeResolver, target)
+        if (contribution != null) {
+          contributions.add(contribution)
+        }
       }
     }
 
     // Process annotated functions
     for (function in annotatedFunctions) {
       val typeResolver = typeResolverFactory.create(function) ?: continue
-      val contribution = computeContributionForFunction(function, scopeClassId, typeResolver)
-      if (contribution != null) {
-        contributions.add(contribution)
+      for (target in CircuitCodegenTarget.entries) {
+        val contribution =
+          computeContributionForFunction(function, scopeClassId, typeResolver, target)
+        if (contribution != null) {
+          contributions.add(contribution)
+        }
       }
     }
 
@@ -85,9 +89,10 @@ public class CircuitContributionExtension(
     classSymbol: FirRegularClassSymbol,
     requestedScopeClassId: ClassId,
     typeResolver: MetroFirTypeResolver,
+    target: CircuitCodegenTarget,
   ): MetroContributionExtension.Contribution? {
     val annotation =
-      classSymbol.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
+      classSymbol.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull()
         ?: return null
 
     val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
@@ -100,7 +105,7 @@ public class CircuitContributionExtension(
     //    val isValidType = symbols.isUiType(classSymbol) || symbols.isPresenterType(classSymbol)
     //    if (!isValidType) return null
 
-    val factoryClassId = classSymbol.classId.createNestedClassId(CircuitNames.Factory)
+    val factoryClassId = classSymbol.classId.createNestedClassId(target.nestedFactoryName)
 
     // Compute the MetroContribution ClassId and construct the type directly.
     // We can't use symbolProvider here because the MetroContribution class is itself generated
@@ -120,21 +125,20 @@ public class CircuitContributionExtension(
     function: FirNamedFunctionSymbol,
     requestedScopeClassId: ClassId,
     typeResolver: MetroFirTypeResolver,
+    target: CircuitCodegenTarget,
   ): MetroContributionExtension.Contribution? {
     val annotation =
-      function.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
-        ?: return null
+      function.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull() ?: return null
 
     val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
 
-    val functionName = function.name.asString()
     val factoryClassId =
       ClassId(
         function.callableId.packageName,
-        Name.identifier("${functionName.capitalizeUS()}Factory"),
+        target.functionFactoryName(function.name.asString()),
       )
 
     // Construct the type directly (see comment in computeContributionForClass)

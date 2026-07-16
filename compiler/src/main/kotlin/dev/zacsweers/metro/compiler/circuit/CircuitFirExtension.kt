@@ -10,9 +10,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.api.fir.MetroOriginData
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
 import dev.zacsweers.metro.compiler.api.fir.metroOriginData
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.fir.FirContextualTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
@@ -21,6 +19,7 @@ import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
+import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -55,7 +54,6 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.getSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
@@ -100,28 +98,42 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   private val symbols by lazy { session.circuitFirSymbols }
 
-  // Caches for discovered @CircuitInject-annotated elements
+  // Caches for discovered Circuit-family annotated elements.
   private val annotatedSymbols: List<FirBasedSymbol<*>> by lazy {
     findCircuitInjectSymbols(session)
   }
 
-  private val annotatedClasses: Set<FirRegularClassSymbol> by lazy {
+  private val annotatedClasses: Set<AnnotatedCircuitClass> by lazy {
     annotatedSymbols
       .filterIsInstance<FirRegularClassSymbol>()
       // Only read actual declarations to avoid duplicate, plus that's what IR sees
-      .filterNotTo(mutableSetOf()) { it.rawStatus.isExpect }
+      .filterNot { it.rawStatus.isExpect }
+      .flatMapTo(mutableSetOf()) { symbol ->
+        CircuitCodegenTarget.entries.mapNotNull { target ->
+          val annotation =
+            symbol.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull()
+          if (annotation == null) null else AnnotatedCircuitClass(symbol, target)
+        }
+      }
   }
 
-  private val annotatedFunctions by lazy {
+  private val annotatedFunctions: List<AnnotatedCircuitFunction> by lazy {
     annotatedSymbols
       .filterIsInstance<FirNamedFunctionSymbol>()
       .filter { it.callableId.classId == null } // Only top-level functions
       .filterNot { it.rawStatus.isExpect }
+      .flatMap { symbol ->
+        CircuitCodegenTarget.entries.mapNotNull { target ->
+          val annotation =
+            symbol.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull()
+          if (annotation == null) null else AnnotatedCircuitFunction(symbol, target)
+        }
+      }
   }
 
   // Map from factory ClassId -> annotated function (for top-level function factories)
   // Purposefully not FirNamedFunctionSymbol for compat reasons. TODO move in 2.3.20
-  private val functionFactoryClassIds = mutableMapOf<ClassId, FirFunctionSymbol<*>>()
+  private val functionFactoryClassIds = mutableMapOf<ClassId, AnnotatedCircuitFunction>()
 
   // Track generated factory ClassIds for callable generation
   private val generatedFactoryClassIds = mutableSetOf<ClassId>()
@@ -142,15 +154,15 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // Top-level circuit functions
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
-    return annotatedFunctions.mapNotNullToSet { function ->
+    return annotatedFunctions.mapNotNullToSet { annotatedFunction ->
       // Just compute the class ID here, defer full target computation to class gen
-      val functionName = function.name.asString()
+      val function = annotatedFunction.symbol
       val factoryClassId =
         ClassId(
           function.callableId.packageName,
-          Name.identifier("${functionName.capitalizeUS()}Factory"),
+          annotatedFunction.target.functionFactoryName(function.name.asString()),
         )
-      functionFactoryClassIds[factoryClassId] = function
+      functionFactoryClassIds[factoryClassId] = annotatedFunction
       factoryClassId
     }
   }
@@ -161,7 +173,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     return generateFactoryClass(
       target,
       null,
-      CircuitOrigins.FactoryClass(target.factoryType),
+      CircuitOrigins.FactoryClass(target.codegenTarget, target.factoryType),
       target.factoryType,
       // We don't know hasConstructorParams yet, for now always generate as CLASS
       hasConstructorParams = true,
@@ -173,8 +185,10 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     context: NestedClassGenerationContext,
   ): Set<Name> {
     // Just check if annotated, defer full computation to generation
-    if (classSymbol !in annotatedClasses) return emptySet()
-    return setOf(CircuitNames.Factory)
+    return annotatedClasses
+      .asSequence()
+      .filter { it.symbol == classSymbol }
+      .mapTo(mutableSetOf()) { it.target.nestedFactoryName }
   }
 
   override fun generateNestedClassLikeDeclaration(
@@ -182,17 +196,18 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     name: Name,
     context: NestedClassGenerationContext,
   ): FirClassLikeSymbol<*>? {
-    if (name != CircuitNames.Factory) return null
-    if (owner !in annotatedClasses) return null
+    val annotatedClass =
+      annotatedClasses.firstOrNull { it.symbol == owner && it.target.nestedFactoryName == name }
+        ?: return null
 
-    val target = getOrComputeClassTarget(owner) ?: return null
+    val target = getOrComputeClassTarget(annotatedClass) ?: return null
     // factoryType is null here — resolved by CircuitFactorySupertypeGenerator during
     // the supertypes phase, either from the origin key or via BFS
     // Class-based factories always have constructor params (provider or assisted factory)
     return generateFactoryClass(
       target,
       owner,
-      CircuitOrigins.FactoryClass(null),
+      CircuitOrigins.FactoryClass(target.codegenTarget, null),
       factoryType = null,
       hasConstructorParams = true,
     )
@@ -208,7 +223,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
     val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
-    target.populate(session, ::isCircuitProvidedType)
+    target.populate(session, ::isClassProvidedType)
 
     val constructor =
       createConstructor(
@@ -235,7 +250,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
             val functionSymbol = target.originalFunctionSymbol ?: return@createConstructor
             val factoryType = target.factoryType ?: return@createConstructor
             for (param in functionSymbol.valueParameterSymbols) {
-              if (!isCircuitProvidedParam(param, factoryType)) {
+              if (!isFunctionProvidedParam(param, target.codegenTarget, factoryType)) {
                 val type = resolveInjectableParamType(param, functionSymbol) ?: continue
                 valueParameter(param.name, type)
               }
@@ -305,8 +320,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // Indicate where our generated contributing classes are. These are all the `@IntoSet` annotated
   // factories
   override fun getContributionHints(): List<ContributionHint> {
-    val classHints = annotatedClasses.mapNotNull { classSymbol ->
-      val target = getOrComputeClassTarget(classSymbol) ?: return@mapNotNull null
+    val classHints = annotatedClasses.mapNotNull { annotatedClass ->
+      val target = getOrComputeClassTarget(annotatedClass) ?: return@mapNotNull null
       ContributionHint(contributingClassId = target.factoryClassId, scope = target.scopeClassId)
     }
     val functionHints =
@@ -333,10 +348,17 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     val factoryClass =
       if (owner != null) {
-        createNestedClass(owner, CircuitNames.Factory, key, classKind = classKind) {}
+        createNestedClass(
+          owner,
+          target.codegenTarget.nestedFactoryName,
+          key,
+          classKind = classKind,
+        ) {}
       } else {
         createTopLevelClass(target.factoryClassId, key, classKind = classKind) {
-          factoryType?.factoryClassId?.let { superType(it.constructClassLikeType()) }
+          factoryType?.let {
+            superType(target.codegenTarget.factoryClassId(it).constructClassLikeType())
+          }
         }
       }
 
@@ -374,17 +396,19 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     function: FirFunctionSymbol<*>,
     factoryClassId: ClassId,
     typeResolver: MetroFirTypeResolver,
+    codegenTarget: CircuitCodegenTarget,
     factoryType: FactoryType,
     returnType: ConeKotlinType,
   ): CircuitFactoryTarget? {
     val annotation =
-      function.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
+      function.annotationsIn(session, setOf(codegenTarget.injectAnnotation)).firstOrNull()
         ?: return null
 
     val (screenType, scopeType) = extractCircuitInjectArgs(annotation, typeResolver) ?: return null
 
     return CircuitFactoryTarget(
         originClassId = null, // For functions, there is no origin to point at statically
+        codegenTarget = codegenTarget,
         factoryClassId = factoryClassId,
         screenType = screenType,
         scopeClassId = scopeType,
@@ -402,17 +426,19 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   private fun computeFactoryTarget(
     classSymbol: FirClassSymbol<*>,
     typeResolver: MetroFirTypeResolver,
+    codegenTarget: CircuitCodegenTarget,
   ): CircuitFactoryTarget? {
     val annotation =
-      classSymbol.annotationsIn(session, setOf(CircuitClassIds.CircuitInject)).firstOrNull()
+      classSymbol.annotationsIn(session, setOf(codegenTarget.injectAnnotation)).firstOrNull()
         ?: return null
 
     val (screenType, scopeType) = extractCircuitInjectArgs(annotation, typeResolver) ?: return null
 
-    val factoryClassId = classSymbol.classId.createNestedClassId(CircuitNames.Factory)
+    val factoryClassId = classSymbol.classId.createNestedClassId(codegenTarget.nestedFactoryName)
 
     return CircuitFactoryTarget(
       originClassId = classSymbol.classId,
+      codegenTarget = codegenTarget,
       factoryClassId = factoryClassId,
       screenType = screenType,
       scopeClassId = scopeType,
@@ -449,16 +475,32 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
    * Note: CircuitContext is intentionally excluded — it's for factory-level use, not for
    * consumption in actual presenters/UIs.
    */
-  private fun isCircuitProvidedParam(
+  private fun isFunctionProvidedParam(
     param: FirValueParameterSymbol,
+    target: CircuitCodegenTarget,
     factoryType: FactoryType,
   ): Boolean {
     val classId = param.resolvedReturnTypeRef.coneType.classId ?: return false
-    return isCircuitProvidedType(classId, factoryType)
+    val type = classifyCircuitType(classId, target) ?: return false
+    if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+      return type == CircuitProvidedType.MODIFIER || type == CircuitProvidedType.UI_STATE
+    }
+    return isProvidedType(type, factoryType)
   }
 
-  private fun isCircuitProvidedType(classId: ClassId, factoryType: FactoryType): Boolean {
-    val type = classifyCircuitType(classId) ?: return false
+  private fun isClassProvidedType(
+    classId: ClassId,
+    target: CircuitCodegenTarget,
+    factoryType: FactoryType,
+  ): Boolean {
+    val type = classifyCircuitType(classId, target) ?: return false
+    if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+      return type == CircuitProvidedType.SCREEN
+    }
+    return isProvidedType(type, factoryType)
+  }
+
+  private fun isProvidedType(type: CircuitProvidedType, factoryType: FactoryType): Boolean {
     return when (type) {
       CircuitProvidedType.SCREEN -> true
       CircuitProvidedType.NAVIGATOR -> factoryType == FactoryType.PRESENTER
@@ -472,17 +514,21 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
    * Screen and CircuitUiState require supertype walks since they're always subtyped in practice.
    * Navigator and Modifier are exact matches only.
    */
-  private fun classifyCircuitType(classId: ClassId): CircuitProvidedType? {
+  private fun classifyCircuitType(
+    classId: ClassId,
+    target: CircuitCodegenTarget,
+  ): CircuitProvidedType? {
     return when (classId) {
-      CircuitClassIds.Screen -> CircuitProvidedType.SCREEN
-      CircuitClassIds.Navigator -> CircuitProvidedType.NAVIGATOR
+      target.screenClassId -> CircuitProvidedType.SCREEN
+      CircuitClassIds.Navigator ->
+        if (target == CircuitCodegenTarget.CIRCUIT) CircuitProvidedType.NAVIGATOR else null
       CircuitClassIds.Modifier -> CircuitProvidedType.MODIFIER
-      CircuitClassIds.CircuitUiState -> CircuitProvidedType.UI_STATE
+      target.uiStateClassId -> CircuitProvidedType.UI_STATE
       else -> {
         val s = symbols ?: return null
         when {
-          s.isScreenType(classId) -> CircuitProvidedType.SCREEN
-          s.isUiStateType(classId) -> CircuitProvidedType.UI_STATE
+          s.isScreenType(classId, target) -> CircuitProvidedType.SCREEN
+          s.isUiStateType(classId, target) -> CircuitProvidedType.UI_STATE
           else -> null
         }
       }
@@ -501,12 +547,17 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     }
 
     fun findCircuitInjectFunctions(
-      annotatedSymbols: List<FirBasedSymbol<*>>
+      annotatedSymbols: List<FirBasedSymbol<*>>,
+      session: FirSession,
+      target: CircuitCodegenTarget,
     ): List<FirNamedFunctionSymbol> {
       return annotatedSymbols
         .filterIsInstance<FirNamedFunctionSymbol>()
         .filter { it.callableId.classId == null } // Only top-level functions
         .filterNot { it.rawStatus.isExpect }
+        .filter {
+          it.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull() != null
+        }
     }
   }
 
@@ -515,18 +566,23 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   }
 
   /** Gets or lazily computes and caches the factory target for a class-based factory. */
-  private fun getOrComputeClassTarget(classSymbol: FirClassSymbol<*>): CircuitFactoryTarget? {
-    val factoryClassId = classSymbol.classId.createNestedClassId(CircuitNames.Factory)
+  private fun getOrComputeClassTarget(
+    annotatedClass: AnnotatedCircuitClass
+  ): CircuitFactoryTarget? {
+    val classSymbol = annotatedClass.symbol
+    val codegenTarget = annotatedClass.target
+    val factoryClassId = classSymbol.classId.createNestedClassId(codegenTarget.nestedFactoryName)
     return computedTargets.getOrPut(factoryClassId) {
       val typeResolver = typeResolverFactory.create(classSymbol) ?: return@getOrPut null
-      computeFactoryTarget(classSymbol, typeResolver)
+      computeFactoryTarget(classSymbol, typeResolver, codegenTarget)
     }
   }
 
   /** Gets or lazily computes and caches the factory target for a function-based factory. */
   private fun getOrComputeFunctionTarget(factoryClassId: ClassId): CircuitFactoryTarget? {
     return computedTargets.getOrPut(factoryClassId) {
-      val function = functionFactoryClassIds[factoryClassId] ?: return@getOrPut null
+      val annotatedFunction = functionFactoryClassIds[factoryClassId] ?: return@getOrPut null
+      val function = annotatedFunction.symbol
       val typeResolver = typeResolverFactory.create(function) ?: return@getOrPut null
       @OptIn(SymbolInternals::class) val returnTypeRef = function.fir.returnTypeRef
       val returnType =
@@ -536,8 +592,15 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         } else {
           typeResolver.resolveType(returnTypeRef)
         }
-      val factoryType = if (returnType.isUnit) FactoryType.UI else FactoryType.PRESENTER
-      computeFactoryTarget(function, factoryClassId, typeResolver, factoryType, returnType)
+      val factoryType = annotatedFunction.target.functionFactoryType(returnType.isUnit)
+      computeFactoryTarget(
+        function,
+        factoryClassId,
+        typeResolver,
+        annotatedFunction.target,
+        factoryType,
+        returnType,
+      )
     }
   }
 
@@ -594,12 +657,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   }
 }
 
-/** Type of Circuit factory to generate. */
-internal enum class FactoryType(val classId: ClassId, val factoryClassId: ClassId) {
-  UI(CircuitClassIds.Ui, CircuitClassIds.UiFactory),
-  PRESENTER(CircuitClassIds.Presenter, CircuitClassIds.PresenterFactory),
-}
-
 /** Classification of a circuit-provided parameter type. */
 internal enum class CircuitProvidedType {
   SCREEN,
@@ -617,6 +674,16 @@ internal enum class InstantiationType {
   CLASS,
 }
 
+private data class AnnotatedCircuitClass(
+  val symbol: FirRegularClassSymbol,
+  val target: CircuitCodegenTarget,
+)
+
+private data class AnnotatedCircuitFunction(
+  val symbol: FirNamedFunctionSymbol,
+  val target: CircuitCodegenTarget,
+)
+
 /**
  * Holds all information needed to generate a Circuit factory.
  *
@@ -629,6 +696,8 @@ internal enum class InstantiationType {
 internal class CircuitFactoryTarget(
   /** The original class that the factory is for (used for @Origin annotation). */
   val originClassId: ClassId?,
+  /** The Circuit runtime family this factory targets. */
+  val codegenTarget: CircuitCodegenTarget,
   /** The ClassId of the factory to generate. */
   val factoryClassId: ClassId,
   /** The screen type from @CircuitInject. */
@@ -682,7 +751,9 @@ internal class CircuitFactoryTarget(
    */
   fun populate(
     session: FirSession,
-    isCircuitProvidedType: (ClassId, FactoryType) -> Boolean = { _, _ -> false },
+    isCircuitProvidedType: (ClassId, CircuitCodegenTarget, FactoryType) -> Boolean = { _, _, _ ->
+      false
+    },
   ) {
     if (populated) return
     populated = true
@@ -709,13 +780,10 @@ internal class CircuitFactoryTarget(
     instantiationType = InstantiationType.CLASS
 
     factoryType =
-      classSymbol.getSuperTypes(session).firstNotNullOfOrNull { superType ->
-        // TODO remove expectAs in 2.3.20
-        when (superType.expectAs<ConeKotlinType>().classId) {
-          FactoryType.PRESENTER.classId -> FactoryType.PRESENTER
-          FactoryType.UI.classId -> FactoryType.UI
-          else -> null
-        }
+      when {
+        classSymbol.implements(codegenTarget.presenterClassId, session) -> FactoryType.PRESENTER
+        classSymbol.implements(codegenTarget.uiClassId, session) -> FactoryType.UI
+        else -> null
       }
 
     // Classify constructor params into circuit-provided vs injectable.
@@ -732,7 +800,7 @@ internal class CircuitFactoryTarget(
       constructorParams
         .filterNot { param ->
           val classId = param.resolvedReturnTypeRef.coneType.classId ?: return@filterNot false
-          isCircuitProvidedType(classId, resolvedFactoryType)
+          isCircuitProvidedType(classId, codegenTarget, resolvedFactoryType)
         }
         .mapToSet { it.name }
   }
