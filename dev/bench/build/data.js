@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783983466353,
+  "lastUpdate": 1784163704821,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18928,6 +18928,62 @@ window.BENCHMARK_DATA = {
             "value": 19757.322,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -14.83%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80c1091e~1",
+          "message": "[before] Fix nested ContributesTo handling in IR merging (#",
+          "timestamp": "2026-07-15T20:25:21-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80c1091ed6c00ee93f29ed80da90a7ff651cc6b4"
+        },
+        "date": 1784163704821,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22520.64,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "80c1091ed6c00ee93f29ed80da90a7ff651cc6b4",
+          "message": "[after] Fix nested ContributesTo handling in IR merging (#",
+          "timestamp": "2026-07-15T20:25:21-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/80c1091ed6c00ee93f29ed80da90a7ff651cc6b4"
+        },
+        "date": 1784163704822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20171.46,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -10.43%"
           }
         ]
       }
