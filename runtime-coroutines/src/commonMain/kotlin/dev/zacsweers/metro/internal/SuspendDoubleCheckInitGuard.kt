@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.internal
 
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
@@ -31,12 +32,22 @@ internal class SuspendDoubleCheckInitialization(
   private val owner: SuspendDoubleCheck<*>,
   private val parent: SuspendDoubleCheckInitialization?,
 ) : AbstractCoroutineContextElement(Key) {
+  // Cleared once the initialization attempt that created this marker completes. A coroutine
+  // launched from inside the initializer inherits this element and keeps it forever, so a stale
+  // marker from a finished attempt must not be mistaken for an active cycle when that child later
+  // makes a legal request for the same binding.
+  @Volatile private var active: Boolean = true
+
   internal companion object Key : CoroutineContext.Key<SuspendDoubleCheckInitialization>
+
+  internal fun deactivate() {
+    active = false
+  }
 
   internal fun contains(owner: SuspendDoubleCheck<*>): Boolean {
     var current: SuspendDoubleCheckInitialization? = this
     while (current != null) {
-      if (current.owner === owner) {
+      if (current.active && current.owner === owner) {
         return true
       }
       current = current.parent
@@ -57,6 +68,9 @@ internal suspend fun <T> withSuspendDoubleCheckInitialization(
     )
   block.startCoroutine(
     Continuation(continuation.context + initialization) { result ->
+      // Invalidate the marker once this attempt finishes so children that inherited it are not
+      // blocked by a stale cycle check on a later retry.
+      initialization.deactivate()
       continuation.resumeWith(result)
     }
   )
