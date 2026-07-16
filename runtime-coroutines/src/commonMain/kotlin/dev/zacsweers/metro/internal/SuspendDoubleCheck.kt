@@ -90,8 +90,9 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
 
     /** Returns a [SuspendLazy] that caches the value from the given delegate provider. */
     public fun <T> lazy(delegate: SuspendProvider<T>): SuspendLazy<T> {
-      if (delegate is SuspendDoubleCheck<*>) {
-        // Avoid double-wrapping a SuspendDoubleCheck, same pattern as DoubleCheck.lazy
+      if (delegate is SuspendLazy<*>) {
+        // Avoids memoizing a value that is already memoized, same pattern as DoubleCheck.lazy. This
+        // also covers SuspendDoubleCheck, which is itself a SuspendLazy.
         @Suppress("UNCHECKED_CAST")
         return delegate as SuspendLazy<T>
       }
