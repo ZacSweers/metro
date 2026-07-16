@@ -459,6 +459,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DependencyCycleAdvice.kt")
+    public void testDependencyCycleAdvice() {
+      run("DependencyCycleAdvice.kt");
+    }
+
+    @Test
+    @TestMetadata("DependencyCycleAdviceWithSuspendProviders.kt")
+    public void testDependencyCycleAdviceWithSuspendProviders() {
+      run("DependencyCycleAdviceWithSuspendProviders.kt");
+    }
+
+    @Test
     @TestMetadata("DependencyGraphFactory_ParamsCannotBeScoped.kt")
     public void testDependencyGraphFactory_ParamsCannotBeScoped() {
       run("DependencyGraphFactory_ParamsCannotBeScoped.kt");

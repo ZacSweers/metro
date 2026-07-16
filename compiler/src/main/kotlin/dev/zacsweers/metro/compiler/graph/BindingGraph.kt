@@ -80,6 +80,7 @@ internal open class MutableBindingGraph<
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints = {
     MissingBindingHints()
   },
+  private val includeSuspendCycleAdvice: Boolean = false,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
@@ -427,6 +428,12 @@ internal open class MutableBindingGraph<
                   appendCode("() -> $deferredExample")
                   append(" or ")
                   appendCode("Lazy<$deferredExample>")
+                  if (includeSuspendCycleAdvice) {
+                    append(". Suspend dependencies can instead use ")
+                    appendCode("suspend () -> $deferredExample")
+                    append(" or ")
+                    appendCode("SuspendLazy<$deferredExample>")
+                  }
                   append(". Only do this if you know what you're doing though!")
                 }
               )

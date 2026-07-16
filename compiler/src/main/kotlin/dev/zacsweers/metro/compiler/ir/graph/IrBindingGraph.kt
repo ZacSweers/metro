@@ -281,6 +281,7 @@ internal class IrBindingGraph(
       },
       errorReporter = this,
       missingBindingHints = ::missingBindingHints,
+      includeSuspendCycleAdvice = metroContext.options.enableSuspendProviders,
     )
 
   // TODO hoist accessors up and visit in seal?
