@@ -61,6 +61,7 @@ internal interface FrameworkSymbols {
   val mapSuspendProviderFactoryBuilder: IrClassSymbol
   val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol?
   val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
@@ -325,6 +326,10 @@ internal class MetroFrameworkSymbols(
 
   override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("singleton")
   }
 
   override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
@@ -725,6 +730,10 @@ internal class DaggerSymbols(
 
   override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
     mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("empty")
+  }
+
+  override val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("singleton")
   }
 
   val daggerLazy: IrClassSymbol by lazy {

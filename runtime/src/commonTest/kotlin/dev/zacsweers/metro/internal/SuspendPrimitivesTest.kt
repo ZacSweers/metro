@@ -94,4 +94,47 @@ class SuspendPrimitivesTest {
     // empty() is a shared singleton
     assertSame(MapSuspendProviderFactory.empty<String, Int>(), empty)
   }
+
+  @Test
+  fun `MapSuspendProviderFactory singleton builds a single-entry map`() = runTest {
+    val map = MapSuspendProviderFactory.singleton("one", SuspendProvider { 1 }).invoke()
+    assertEquals(setOf("one"), map.keys)
+    assertEquals(1, map.getValue("one").invoke())
+  }
+
+  @Test
+  fun `MapSuspendProviderFactory singleton supports nullable values`() = runTest {
+    val map = MapSuspendProviderFactory.singleton("null", SuspendProvider { null }).invoke()
+    assertNull(map.getValue("null").invoke())
+  }
+
+  @Test
+  fun `MapSuspendProviderFactory putAll merges a sibling factory directly`() = runTest {
+    val source =
+      MapSuspendProviderFactory.builder<String, Int>(2)
+        .put("one", SuspendProvider { 1 })
+        .put("two", SuspendProvider { 2 })
+        .build()
+    val merged =
+      MapSuspendProviderFactory.builder<String, Int>(3)
+        .put("zero", SuspendProvider { 0 })
+        .putAll(source)
+        .build()
+        .invoke()
+    assertEquals(setOf("zero", "one", "two"), merged.keys)
+    assertEquals(0, merged.getValue("zero").invoke())
+    assertEquals(1, merged.getValue("one").invoke())
+    assertEquals(2, merged.getValue("two").invoke())
+  }
+
+  @Test
+  fun `MapSuspendProviderFactory putAll unwraps a DelegateFactory`() = runTest {
+    val source =
+      MapSuspendProviderFactory.builder<String, Int>(1).put("one", SuspendProvider { 1 }).build()
+    val delegate = DelegateFactory<Map<String, SuspendProvider<Int>>>()
+    DelegateFactory.setDelegate(delegate, source)
+    val merged = MapSuspendProviderFactory.builder<String, Int>(1).putAll(delegate).build().invoke()
+    assertEquals(setOf("one"), merged.keys)
+    assertEquals(1, merged.getValue("one").invoke())
+  }
 }

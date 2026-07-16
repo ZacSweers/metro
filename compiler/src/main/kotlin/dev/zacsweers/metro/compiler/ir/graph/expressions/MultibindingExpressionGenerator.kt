@@ -848,8 +848,8 @@ internal class MultibindingExpressionGenerator(
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactorySingletonFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactorySingletonFunction
-              // No singleton helper for suspend-provider maps; fall back to the builder path
-              valueIsWrappedInSuspendProvider -> null
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactorySingletonFunction
               else -> valueProviderSymbols.mapFactorySingletonFunction
             }
 
@@ -862,6 +862,11 @@ internal class MultibindingExpressionGenerator(
             val valueContextKey =
               if (useMapFunctionFactory) {
                 originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+              } else if (valueIsWrappedInSuspendProvider) {
+                // MapSuspendProviderFactory.singleton takes SuspendProvider<V> directly.
+                canonicalValueContextKey
+                  .wrapInSuspendProvider()
+                  .withIrTypeKey(sourceBinding.typeKey)
               } else {
                 canonicalValueContextKey
                   .wrapInProvider(providerType)
@@ -880,7 +885,12 @@ internal class MultibindingExpressionGenerator(
                       sourceBinding,
                       valueContextKey,
                       fieldInitKey,
-                      accessType = AccessType.PROVIDER,
+                      accessType =
+                        if (valueIsWrappedInSuspendProvider) {
+                          AccessType.SUSPEND_PROVIDER
+                        } else {
+                          AccessType.PROVIDER
+                        },
                     ),
                   ),
               )
