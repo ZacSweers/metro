@@ -24,6 +24,7 @@ abstract class MetroProject(
   private val reportsEnabled: Boolean = true,
   private val kotlinVersion: String? = null,
   private val multiplatform: Boolean = true,
+  private val additionalGradleProperties: List<String> = emptyList(),
 ) : AbstractGradleProject() {
 
   /** Source set this project's [source] declarations target by default. */
@@ -245,7 +246,8 @@ abstract class MetroProject(
       dependencyResolutionManagement =
         DependencyResolutionManagement(metroRepositories(Repository.DEFAULT))
     }
-    gradleProperties = gradleProperties.plus(METRO_TESTKIT_GRADLE_PROPERTIES)
+    gradleProperties =
+      gradleProperties.plus(METRO_TESTKIT_GRADLE_PROPERTIES).plus(additionalGradleProperties)
   }
 
   private fun metroRepositories(defaults: List<Repository>): Repositories =
