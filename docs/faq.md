@@ -75,6 +75,8 @@ fun deferredDb(scope: CoroutineScope, db: suspend () -> Database): Deferred<Data
   scope.async(start = CoroutineStart.LAZY) { db() }
 ```
 
+See the [coroutines docs](coroutines.md) for full coverage of suspend bindings.
+
 ### **Would you consider putting Metro into a foundation? My team has concerns about solo maintainers**
 
 I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.
