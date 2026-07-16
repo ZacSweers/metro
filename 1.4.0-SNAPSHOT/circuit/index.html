@@ -1145,6 +1145,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#subcircuit" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubCircuit
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SubCircuit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subpresenter-and-subui-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubPresenter and SubUi Classes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subui-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubUi Functions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#circuit-provided-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1998,6 +2037,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#subcircuit" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubCircuit
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SubCircuit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subpresenter-and-subui-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubPresenter and SubUi Classes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subui-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SubUi Functions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#circuit-provided-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2062,14 +2140,15 @@
 
 
 <h1 id="circuit-integration">Circuit Integration<a class="headerlink" href="#circuit-integration" title="Permanent link">&para;</a></h1>
-<p>Metro includes built-in support for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for building kotlin apps. This integration generates <code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations from <code>@CircuitInject</code>-annotated classes and functions, similar to Circuit&rsquo;s existing KSP code generator but running entirely within Metro&rsquo;s compiler plugin. These factories then contribute into <code>Set&lt;Presenter.Factory&gt;</code> and <code>Set&lt;Ui.Factory&gt;</code> multibindings.</p>
+<p>Metro includes built-in support for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for building kotlin apps. This integration generates <code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations from <code>@CircuitInject</code> declarations, plus <code>SubPresenterFactory</code> and <code>SubUiFactory</code> implementations from <code>@SubCircuitInject</code> declarations. It is similar to Circuit&rsquo;s existing KSP code generator but runs entirely within Metro&rsquo;s compiler plugin. Generated factories contribute into the corresponding set multibindings.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Enable Circuit codegen in your Gradle build:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">enableCircuitCodegen</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>This requires the Circuit runtime libraries on your classpath. The <code>circuit-runtime-presenter</code> and <code>circuit-runtime-ui</code> artifacts are optional — you can use presenter-only or UI-only modules. This will also add the <code>circuit-codegen-annotations</code> artifact to your implementation classpath.</p>
+<p>This requires the relevant Circuit runtime libraries on your classpath. The <code>circuit-runtime-presenter</code> and <code>circuit-runtime-ui</code> artifacts are optional — you can use presenter-only or UI-only modules. To generate SubCircuit factories, add <code>com.slack.circuit:circuitx-subcircuit:&lt;version&gt;</code>. Enabling this option also adds the <code>circuit-codegen-annotations</code> artifact to your implementation classpath.</p>
+<p>Use <strong>either</strong> Metro&rsquo;s native code generator or Circuit&rsquo;s KSP code generator for a declaration but <strong>NOT</strong> both. Running both for the same <code>@CircuitInject</code> or <code>@SubCircuitInject</code> declarations attempts to generate the factories twice.</p>
 <p>This is only compatible with Kotlin 2.3.20+ as it requires support for generating top-level declarations in FIR.</p>
 <p>This will likely eventually move to a separate artifact.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
@@ -2143,6 +2222,53 @@
 <li>The <code>@AssistedFactory</code> must be nested inside the target <code>Presenter</code>/<code>Ui</code> class.</li>
 <li>The assisted parameters on your factory&rsquo;s <code>create()</code> method must be <a href="#circuit-provided-parameters">circuit-provided parameters</a> (e.g., <code>Navigator</code>, <code>Screen</code>). Custom assisted parameters that aren&rsquo;t circuit-provided types are not supported — the generated factory has no way to obtain them at runtime since only Circuit&rsquo;s <code>create()</code> parameters are available.</li>
 </ul>
+<h2 id="subcircuit">SubCircuit<a class="headerlink" href="#subcircuit" title="Permanent link">&para;</a></h2>
+<p>The same <code>enableCircuitCodegen</code> option supports SubCircuit&rsquo;s <code>@SubCircuitInject</code> annotation. Generated factories are contributed into <code>Set&lt;SubPresenterFactory&gt;</code> or <code>Set&lt;SubUiFactory&gt;</code>.</p>
+<h3 id="subpresenter-and-subui-classes">SubPresenter and SubUi Classes<a class="headerlink" href="#subpresenter-and-subui-classes" title="Permanent link">&para;</a></h3>
+<p>Direct class targets must be annotated with <code>@Inject</code> and implement <code>SubPresenter</code> or <code>SubUi</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@SubCircuitInject</span><span class="p">(</span><span class="n">ProfileCardScreen</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@Inject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ProfileCardPresenter</span><span class="p">(</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">repository</span><span class="p">:</span><span class="w"> </span><span class="n">UserRepository</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">SubPresenter</span><span class="o">&lt;</span><span class="n">ProfileCardEvent</span><span class="p">,</span><span class="w"> </span><span class="n">ProfileCardState</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@Composable</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">present</span><span class="p">(</span>
+<span class="w">    </span><span class="n">outerEventSink</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">ProfileCardEvent</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">Unit</span><span class="p">,</span>
+<span class="w">  </span><span class="p">):</span><span class="w"> </span><span class="n">ProfileCardState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Assisted presenters and UIs use a nested factory, with <code>@SubCircuitInject</code> on the factory interface:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">ProfileCardPresenter</span><span class="p">(</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">screen</span><span class="p">:</span><span class="w"> </span><span class="n">ProfileCardScreen</span><span class="p">,</span>
+<span class="w">  </span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">repository</span><span class="p">:</span><span class="w"> </span><span class="n">UserRepository</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">SubPresenter</span><span class="o">&lt;</span><span class="n">ProfileCardEvent</span><span class="p">,</span><span class="w"> </span><span class="n">ProfileCardState</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">  </span><span class="nd">@SubCircuitInject</span><span class="p">(</span><span class="n">ProfileCardScreen</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@AssistedFactory</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="n">screen</span><span class="p">:</span><span class="w"> </span><span class="n">ProfileCardScreen</span><span class="p">):</span><span class="w"> </span><span class="n">ProfileCardPresenter</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>SubPresenterFactory.create()</code> and <code>SubUiFactory.create()</code> receive only a <code>SubScreen</code>. Metro forwards a matching screen to an assisted factory and returns <code>null</code> for non-matching screens. Other assisted parameters are not supported. The <code>@AssistedFactory</code> must be nested inside its target class.</p>
+<h3 id="subui-functions">SubUi Functions<a class="headerlink" href="#subui-functions" title="Permanent link">&para;</a></h3>
+<p>Top-level <code>@SubCircuitInject</code> functions generate <code>SubUiFactory</code> implementations. A <code>Modifier</code> parameter is required, the <code>SubCircuitUiState</code> parameter is optional, and other parameters are injected once per <code>create()</code> call:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@SubCircuitInject</span><span class="p">(</span><span class="n">ProfileCardScreen</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@Composable</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">ProfileCardUi</span><span class="p">(</span>
+<span class="w">  </span><span class="n">state</span><span class="p">:</span><span class="w"> </span><span class="n">ProfileCardState</span><span class="p">,</span>
+<span class="w">  </span><span class="n">analytics</span><span class="p">:</span><span class="w"> </span><span class="n">Analytics</span><span class="p">,</span>
+<span class="w">  </span><span class="n">modifier</span><span class="p">:</span><span class="w"> </span><span class="n">Modifier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Modifier</span><span class="p">,</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>SubPresenter functions are not supported.</p>
 <h2 id="circuit-provided-parameters">Circuit-Provided Parameters<a class="headerlink" href="#circuit-provided-parameters" title="Permanent link">&para;</a></h2>
 <p>Some parameter types are provided by Circuit at runtime and should not be injected:</p>
 <table>
@@ -2175,11 +2301,11 @@
 <p>Parameters already wrapped in <code>() -&gt; T</code>, <code>Provider&lt;T&gt;</code>, <code>Lazy&lt;T&gt;</code>, or function types are passed through as-is without additional wrapping.</p>
 <p><strong><code>CircuitContext</code></strong> is intentionally excluded from the circuit-provided set. It is a factory-level concept and should not be accepted by presenters or UIs.</p>
 <h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
-<p>The compiler plugin validates <code>@CircuitInject</code> usage for common usage errors.</p>
+<p>The compiler plugin validates <code>@CircuitInject</code> and <code>@SubCircuitInject</code> usage for common usage errors.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Top-level <code>@AssistedFactory</code> with <code>@CircuitInject</code></strong> is not supported — the factory must be nested inside the target <code>Presenter</code>/<code>Ui</code> class. This is enforced by the compiler.</li>
-<li><strong><code>expect</code> declarations</strong> with <code>@CircuitInject</code> are skipped. Only <code>actual</code> declarations are processed. You must annotate the <code>actual</code> declaration (too). kotlinc requires this symmetry as well.</li>
+<li><strong>Top-level <code>@AssistedFactory</code> with <code>@CircuitInject</code> or <code>@SubCircuitInject</code></strong> is not supported — the factory must be nested inside the target class. This is enforced by the compiler.</li>
+<li><strong><code>expect</code> declarations</strong> with <code>@CircuitInject</code> or <code>@SubCircuitInject</code> are skipped. Only <code>actual</code> declarations are processed. You must annotate the <code>actual</code> declaration (too). kotlinc requires this symmetry as well.</li>
 </ul>
 
 
