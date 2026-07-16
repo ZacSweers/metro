@@ -2,10 +2,10 @@ androidx.annotation:annotation-jvm:1.10.0
 androidx.annotation:annotation:1.10.0
 androidx.collection:collection-jvm:1.6.0
 androidx.collection:collection:1.6.0
-androidx.tracing:tracing-desktop:2.0.0-alpha09
-androidx.tracing:tracing-wire-desktop:2.0.0-alpha09
-androidx.tracing:tracing-wire:2.0.0-alpha09
-androidx.tracing:tracing:2.0.0-alpha09
+androidx.tracing:tracing-desktop:2.0.0-beta01
+androidx.tracing:tracing-wire-desktop:2.0.0-beta01
+androidx.tracing:tracing-wire:2.0.0-beta01
+androidx.tracing:tracing:2.0.0-beta01
 com.squareup.okio:okio-jvm:3.17.0
 com.squareup.okio:okio:3.17.0
 com.squareup.wire:wire-runtime-jvm:6.4.0
