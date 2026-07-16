@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.implements
+import dev.zacsweers.metro.compiler.mapToSet
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -17,59 +18,34 @@ import org.jetbrains.kotlin.name.ClassId
 internal sealed interface CircuitSymbols {
 
   companion object {
-    val circuitInjectPredicate = annotated(CircuitClassIds.CircuitInject.asSingleFqName())
+    val circuitInjectPredicate =
+      annotated(
+        CircuitCodegenTarget.entries.mapToSet {
+          it.injectAnnotation.asSingleFqName()
+        }
+      )
   }
 
   class Fir(session: FirSession) : FirExtensionSessionComponent(session) {
-
-    private fun require(classId: ClassId) =
-      session.symbolProvider.getClassLikeSymbolByClassId(classId)
-        ?: error(
-          "Circuit codegen is enabled but ${classId.asFqNameString()} was not found on the classpath."
-        )
-
-    // Core runtime types (required — lazily resolved)
-    val circuitInject by lazy { require(CircuitClassIds.CircuitInject) }
-    val screen by lazy { require(CircuitClassIds.Screen) }
-    val navigator by lazy { require(CircuitClassIds.Navigator) }
-    val circuitContext by lazy { require(CircuitClassIds.CircuitContext) }
-    val circuitUiState by lazy { require(CircuitClassIds.CircuitUiState) }
-
-    // UI types (optional — separate artifact, may not be on classpath for presenter-only modules)
-    val modifier by lazy {
-      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Modifier)
-    }
-    val ui by lazy { session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Ui) }
-    val uiFactory by lazy {
-      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.UiFactory)
-    }
-
-    // Presenter types (optional — separate artifact, may not be on classpath for UI-only modules)
-    val presenter by lazy {
-      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.Presenter)
-    }
-    val presenterFactory by lazy {
-      session.symbolProvider.getClassLikeSymbolByClassId(CircuitClassIds.PresenterFactory)
-    }
 
     companion object {
       fun getFactory(): Factory = Factory { session -> Fir(session) }
     }
 
-    fun isUiType(clazz: FirClass): Boolean {
-      return clazz.implements(CircuitClassIds.Ui, session)
+    fun isUiType(clazz: FirClass, target: CircuitCodegenTarget): Boolean {
+      return clazz.implements(target.uiClassId, session)
     }
 
-    fun isPresenterType(clazz: FirClass): Boolean {
-      return clazz.implements(CircuitClassIds.Presenter, session)
+    fun isPresenterType(clazz: FirClass, target: CircuitCodegenTarget): Boolean {
+      return clazz.implements(target.presenterClassId, session)
     }
 
-    fun isScreenType(clazz: FirClassSymbol<*>): Boolean {
-      return clazz.implements(CircuitClassIds.Screen, session)
+    fun isScreenType(clazz: FirClassSymbol<*>, target: CircuitCodegenTarget): Boolean {
+      return clazz.implements(target.screenClassId, session)
     }
 
-    fun isUiStateType(clazz: FirClassSymbol<*>): Boolean {
-      return clazz.implements(CircuitClassIds.CircuitUiState, session)
+    fun isUiStateType(clazz: FirClassSymbol<*>, target: CircuitCodegenTarget): Boolean {
+      return clazz.implements(target.uiStateClassId, session)
     }
 
     fun isNavigatorType(clazz: FirClassSymbol<*>): Boolean {
@@ -93,10 +69,11 @@ internal sealed interface CircuitSymbols {
       return symbol.implements(target, session)
     }
 
-    fun isScreenType(classId: ClassId): Boolean = isOrImplements(classId, CircuitClassIds.Screen)
+    fun isScreenType(classId: ClassId, target: CircuitCodegenTarget): Boolean =
+      isOrImplements(classId, target.screenClassId)
 
-    fun isUiStateType(classId: ClassId): Boolean =
-      isOrImplements(classId, CircuitClassIds.CircuitUiState)
+    fun isUiStateType(classId: ClassId, target: CircuitCodegenTarget): Boolean =
+      isOrImplements(classId, target.uiStateClassId)
 
     fun isModifierType(classId: ClassId): Boolean =
       isOrImplements(classId, CircuitClassIds.Modifier)
@@ -108,49 +85,17 @@ internal sealed interface CircuitSymbols {
 
   class Ir(private val builtinsFinder: CompatContext.DeclarationFinderCompat) : CircuitSymbols {
 
-    val screen: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.Screen)
-        ?: error("Could not find ${CircuitClassIds.Screen}")
-    }
-
-    val navigator: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.Navigator)
-        ?: error("Could not find ${CircuitClassIds.Navigator}")
-    }
-
-    val circuitContext: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.CircuitContext)
-        ?: error("Could not find ${CircuitClassIds.CircuitContext}")
-    }
-
-    val circuitUiState: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.CircuitUiState)
-        ?: error("Could not find ${CircuitClassIds.CircuitUiState}")
-    }
-
-    val ui: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.Ui) ?: error("Could not find ${CircuitClassIds.Ui}")
-    }
-
-    val uiFactory: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.UiFactory)
-        ?: error("Could not find ${CircuitClassIds.UiFactory}")
-    }
-
-    val presenter: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.Presenter)
-        ?: error("Could not find ${CircuitClassIds.Presenter}")
-    }
-
-    val presenterFactory: IrClassSymbol by lazy {
-      builtinsFinder.findClass(CircuitClassIds.PresenterFactory)
-        ?: error("Could not find ${CircuitClassIds.PresenterFactory}")
-    }
-
     val modifier: IrClassSymbol by lazy {
       builtinsFinder.findClass(CircuitClassIds.Modifier)
         ?: error("Could not find ${CircuitClassIds.Modifier}")
     }
+
+    fun uiState(target: CircuitCodegenTarget): IrClassSymbol = require(target.uiStateClassId)
+
+    fun ui(target: CircuitCodegenTarget): IrClassSymbol = require(target.uiClassId)
+
+    private fun require(classId: ClassId): IrClassSymbol =
+      builtinsFinder.findClass(classId) ?: error("Could not find $classId")
 
     val presenterOfFun: IrSimpleFunctionSymbol by lazy {
       builtinsFinder.findFunctions(CircuitCallableIds.presenterOf).singleOrNull()
