@@ -6,14 +6,14 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /**
- * Computes which bindings transitively require suspend evaluation.
+ * Computes which bindings transitively require suspend initialization.
  *
  * The analysis is incremental because child graphs query their parent before the parent is sealed.
  * Discovery walks each binding's dependency edges once, recording reverse edges as it goes, and
  * suspendness propagates along those reverse edges from newly suspend bindings with a worklist.
- * Each binding and edge is processed a constant number of times across all queries, so total work
- * is O(bindings + edges) rather than a fixpoint recomputation per query. When nothing reachable is
- * suspend, propagation does no work at all.
+ * Each resolved binding and edge is processed once across all queries rather than participating in
+ * a fixpoint recomputation per query. Unresolved keys may be retried while the parent graph is
+ * still growing. When nothing reachable is suspend, propagation does no work at all.
  *
  * Multibinding dependencies are memoized snapshots of a mutable source-binding set. That is safe
  * here because every `addSourceBinding` call happens inside `BindingGraphGenerator.generate()`,
@@ -149,9 +149,9 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
 }
 
 /**
- * Whether this request defers evaluation of its binding and therefore stops suspend propagation.
- * Validation separately rejects synchronous Provider or Lazy wrappers over a suspend binding; that
- * invalid edge must not also make its consumer transitively suspend.
+ * Whether this request defers initialization of its binding and therefore stops suspend
+ * propagation. Validation separately rejects synchronous Provider or Lazy wrappers over a suspend
+ * binding; that invalid edge must not also make its consumer transitively suspend.
  */
 internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
   get() = isDeferrable

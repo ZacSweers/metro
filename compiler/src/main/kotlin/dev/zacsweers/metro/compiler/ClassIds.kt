@@ -112,12 +112,25 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
 
   internal val providerTypes = options.providerTypes
 
-  internal val suspendProviderTypes = buildSet {
+  /**
+   * Suspend-provider shapes that type parsing recognizes. This is intentionally independent of the
+   * suspend-provider opt-in so a consuming module can validate signatures compiled elsewhere.
+   */
+  internal val suspendProviderModelingTypes = buildSet {
     add(Symbols.ClassIds.metroSuspendProvider)
     if (options.enableFunctionProviders) {
-      if (options.enableSuspendProviders) {
-        add(Symbols.ClassIds.suspendFunction0)
-      }
+      add(Symbols.ClassIds.suspendFunction0)
+    }
+  }
+
+  /**
+   * Suspend-provider types used after validation. The explicit Metro type stays addressable so its
+   * disabled use can be diagnosed; the function spelling joins only when the opt-in is enabled.
+   */
+  internal val suspendProviderTypes = buildSet {
+    add(Symbols.ClassIds.metroSuspendProvider)
+    if (options.enableFunctionProviders && options.enableSuspendProviders) {
+      add(Symbols.ClassIds.suspendFunction0)
     }
   }
 

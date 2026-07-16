@@ -229,7 +229,8 @@ internal enum class MetroDiagnosticId(
     A `Set` or `Map` multibinding aggregates suspend contributions. Aggregation code runs without a
     suspend context and cannot await each element. Set multibindings over suspend bindings are
     unsupported. A map multibinding must be consumed as a deferred-value form such as
-    `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value defers its resolution.
+    `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value is initialized only when
+    its provider is invoked.
     """,
     MetroDiagnostics.METRO_ERROR,
   ),

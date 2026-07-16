@@ -476,7 +476,7 @@ private fun IrSimpleType.asWrappedType(
   }
 
   // Check if this is a SuspendProvider type
-  if (rawClassId in context.metroSymbols.suspendProviderTypes) {
+  if (rawClassId in context.metroSymbols.suspendProviderModelingTypes) {
     val innerType = arguments[0].typeOrFail
 
     // Recursively analyze the inner type

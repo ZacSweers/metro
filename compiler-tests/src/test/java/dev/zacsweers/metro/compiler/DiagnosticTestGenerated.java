@@ -1651,12 +1651,6 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("BindingWrappedInNestedSynchronousWrapper.kt")
-    public void testBindingWrappedInNestedSynchronousWrapper() {
-      run("BindingWrappedInNestedSynchronousWrapper.kt");
-    }
-
-    @Test
     @TestMetadata("BindingWrappedInProvider.kt")
     public void testBindingWrappedInProvider() {
       run("BindingWrappedInProvider.kt");
@@ -1786,6 +1780,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("SuspendProvidersDisabled.kt")
     public void testSuspendProvidersDisabled() {
       run("SuspendProvidersDisabled.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProvidersDisabledAcrossModules.kt")
+    public void testSuspendProvidersDisabledAcrossModules() {
+      run("SuspendProvidersDisabledAcrossModules.kt");
     }
 
     @Test

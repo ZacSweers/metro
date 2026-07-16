@@ -20,7 +20,6 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.FirFunctionTypeRef
 import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
@@ -31,7 +30,6 @@ import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
-import org.jetbrains.kotlin.name.StandardClassIds
 
 /** Validates a binding ref (anything that can have a qualifier) */
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -118,19 +116,12 @@ internal fun validateInjectionSiteType(
   val contextKey = type.asFirContextualTypeKey(session, qualifier, false)
 
   val options = session.metroFirBuiltIns.options
-  val usesSuspendWrapper =
-    contextKey.wrappedType.innerTypesSequence.any {
-      it is WrappedType.SuspendProvider || it is WrappedType.SuspendLazy
-    } || (options.enableFunctionProviders && type.containsSuspendFunctionInWrapperPosition(session))
+  val usesSuspendWrapper = contextKey.wrappedType.containsSuspendWrapper()
   if (!options.enableSuspendProviders && usesSuspendWrapper) {
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
     )
-    return true
-  }
-
-  if (checkSuspendWrapperOrder(contextKey, typeRef, source)) {
     return true
   }
 
@@ -269,99 +260,6 @@ internal fun validateInjectionSiteType(
   // Future injection site checks can be added here
 
   return false
-}
-
-/**
- * Whether a `suspend () -> T` spelling sits somewhere the flag-on analysis would treat as a
- * SuspendProvider. That only happens in wrapper positions and map-value positions, mirroring how
- * [asWrappedType] descends. A suspend function nested inside a canonical type (like `List<suspend
- * () -> T>`) never becomes a wrapper, so it is not gated.
- */
-private fun ConeKotlinType.containsSuspendFunctionInWrapperPosition(session: FirSession): Boolean {
-  if (classId == Symbols.ClassIds.suspendFunction0) return true
-  val rawClassId = classId
-  val isMapValuePosition = rawClassId == StandardClassIds.Map && typeArguments.size == 2
-  val isScalarWrapperPosition =
-    rawClassId in session.classIds.providerTypes ||
-      rawClassId in session.classIds.suspendProviderTypes ||
-      rawClassId in session.classIds.lazyTypes ||
-      rawClassId in session.classIds.suspendLazyTypes
-  val innerType =
-    when {
-      isMapValuePosition -> (typeArguments[1] as? ConeKotlinTypeProjection)?.type
-      isScalarWrapperPosition -> (typeArguments.firstOrNull() as? ConeKotlinTypeProjection)?.type
-      else -> null
-    }
-  return innerType?.containsSuspendFunctionInWrapperPosition(session) == true
-}
-
-/** Rejects a suspending wrapper outside a synchronous wrapper nearest the bound value. */
-context(context: CheckerContext, reporter: DiagnosticReporter)
-private fun checkSuspendWrapperOrder(
-  contextKey: FirContextualTypeKey,
-  typeRef: FirTypeRef,
-  source: KtSourceElement?,
-): Boolean {
-  val wrappedType = contextKey.wrappedType
-  if (!wrappedType.requiresSuspendToUnwrap() || wrappedType.usesSuspendProvider() != false) {
-    return false
-  }
-
-  var currentType = wrappedType
-  while (true) {
-    val innerType = currentType.immediateInnerType() ?: return false
-    if (innerType.isScalarLeaf()) break
-    currentType = innerType
-  }
-
-  val valueType = contextKey.typeKey.render(short = true, includeQualifier = false)
-  val replacement =
-    when (currentType) {
-      is WrappedType.Provider -> "suspend () -> $valueType"
-      is WrappedType.Lazy -> "SuspendLazy<$valueType>"
-      else -> return false
-    }
-  val wrapperType =
-    when (currentType) {
-      is WrappedType.Provider -> {
-        if (currentType.providerType == Symbols.ClassIds.function0) {
-          "() -> $valueType"
-        } else {
-          "Provider<$valueType>"
-        }
-      }
-      is WrappedType.Lazy -> "Lazy<$valueType>"
-      else -> return false
-    }
-  val message = buildString {
-    append(
-      "Suspending wrapper chains require the wrapper nearest `$valueType` to be suspending, but found `$wrapperType`."
-    )
-    appendLine()
-    appendLine()
-    appendLine("Either:")
-    appendLine("- Replace `$wrapperType` with `$replacement`, or")
-    append("- Remove the outer suspending wrapper if `$valueType` is not suspending.")
-  }
-  reporter.reportOn(
-    typeRef.sourceForWrapper(currentType, wrappedType) ?: typeRef.source ?: source,
-    MetroDiagnostics.SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER,
-    message,
-  )
-  return true
-}
-
-private fun FirTypeRef.sourceForWrapper(
-  target: WrappedType<ConeKotlinType>,
-  wrappedType: WrappedType<ConeKotlinType>,
-): KtSourceElement? {
-  var currentTypeRef = sourceTypeRef()
-  var currentWrappedType = wrappedType
-  while (true) {
-    if (currentWrappedType === target) return currentTypeRef.source
-    currentWrappedType = currentWrappedType.immediateInnerType() ?: return null
-    currentTypeRef = currentTypeRef.immediateInnerTypeRef()?.sourceTypeRef() ?: return null
-  }
 }
 
 private fun FirTypeRef.sourceTypeRef(): FirTypeRef {

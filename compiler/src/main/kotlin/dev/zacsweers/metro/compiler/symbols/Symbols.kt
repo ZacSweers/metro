@@ -929,6 +929,9 @@ internal class Symbols(
   val suspendProviderTypes
     get() = classIds.suspendProviderTypes
 
+  val suspendProviderModelingTypes
+    get() = classIds.suspendProviderModelingTypes
+
   val suspendLazyTypes
     get() = classIds.suspendLazyTypes
 

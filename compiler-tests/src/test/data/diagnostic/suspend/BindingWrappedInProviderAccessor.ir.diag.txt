@@ -21,3 +21,19 @@ Trace:
         [ExampleGraph] ExampleGraph.lazyValue // ❌ needs suspend support
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+/BindingWrappedInProviderAccessor.kt:26:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' because the wrapper nearest it is Provider. Use `suspend () -> String` instead.
+
+Trace:
+    String is requested at
+        [ExampleGraph] ExampleGraph.nestedProvider // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+/BindingWrappedInProviderAccessor.kt:28:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' because the wrapper nearest it is Lazy. Use `SuspendLazy<String>` instead.
+
+Trace:
+    String is requested at
+        [ExampleGraph] ExampleGraph.nestedLazy // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)

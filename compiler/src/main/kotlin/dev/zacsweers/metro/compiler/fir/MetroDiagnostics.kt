@@ -99,7 +99,6 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJEC
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_OBJECT_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_SET_INTO_SET
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_UNUSED_MULTIBINDING
-import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.UNUSED_GRAPH_INPUT_ERROR
@@ -167,7 +166,6 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
   val SUSPEND_PROVIDERS_NOT_ENABLED by error0<KtElement>(NAME_IDENTIFIER)
-  val SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNSUPPORTED_SUSPEND_MAP_VALUE by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
@@ -351,7 +349,6 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
           SUSPEND_PROVIDERS_NOT_ENABLED,
           "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
         )
-        put(SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER, "{0}", STRING)
         put(
           UNSUPPORTED_SUSPEND_MAP_VALUE,
           "Map value `{0}` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.",

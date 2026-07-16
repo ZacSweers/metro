@@ -233,7 +233,7 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
   }
 
   // Check if this is a SuspendProvider type
-  if (rawClassId in session.classIds.suspendProviderTypes) {
+  if (rawClassId in session.classIds.suspendProviderModelingTypes) {
     val innerType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
 
     // Recursively analyze the inner type

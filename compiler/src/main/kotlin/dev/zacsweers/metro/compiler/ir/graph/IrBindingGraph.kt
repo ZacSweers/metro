@@ -861,7 +861,7 @@ internal class IrBindingGraph(
                 textOf(
                   "A directly-provided '${key.render(short = true, includeQualifier = false)}' binding exists, " +
                     "but direct Map bindings cannot satisfy '$requestedType' requests. " +
-                    "Provider/Lazy-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
+                    "Provider-, Lazy-, or SuspendProvider-wrapped map values (e.g., Map<K, Provider<V>>) only work with a Map " +
                     "multibinding created with `@IntoMap` or `@Multibinds`."
                 ),
               items = listOf(locationDiagnostic.toLocatedItem()),
@@ -1087,16 +1087,20 @@ internal class IrBindingGraph(
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     var hasDirectSuspendBinding = false
+    var hasDisabledSuspendProviderUse = false
     bindings.forEachValue { binding ->
-      if (binding.isSuspend) {
-        if (metroContext.options.enableSuspendProviders) {
+      if (metroContext.options.enableSuspendProviders) {
+        if (binding.isSuspend) {
           hasDirectSuspendBinding = true
-        } else {
-          val element = binding.reportableDeclaration ?: node.sourceGraph
-          reportError(
-            element,
-            "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
-          )
+        }
+      } else {
+        val bindingUsesSuspendWrapper =
+          binding.containsSuspendWrapperUse() || binding.contextualTypeKey.containsSuspendWrapper()
+        val dependencyUsesSuspendWrapper = binding.dependencies.any { it.containsSuspendWrapper() }
+        val usesSuspendProvider =
+          binding.isSuspend || bindingUsesSuspendWrapper || dependencyUsesSuspendWrapper
+        if (usesSuspendProvider) {
+          hasDisabledSuspendProviderUse = true
         }
       }
       // Once one binding requires runtime-coroutines the answer can't change, so skip the
@@ -1120,9 +1124,49 @@ internal class IrBindingGraph(
       validateMultibindings(binding, bindings, roots, adjacency.forward)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
+    if (!metroContext.options.enableSuspendProviders) {
+      for (accessor in node.accessors) {
+        val isSuspendAccessor = accessor.metroFunction.ir.isSuspend
+        if (!isSuspendAccessor && !accessor.contextKey.containsSuspendWrapper()) continue
+        hasDisabledSuspendProviderUse = true
+      }
+      if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
+    }
     if (metroContext.options.enableSuspendProviders && hasDirectSuspendBinding) {
       validateSuspendBindings(bindings, roots, adjacency)
     }
+  }
+
+  private fun reportSuspendProvidersNotEnabled() {
+    // FIR handles declarations in this source module. Uses discovered here generally come from
+    // binary dependency metadata, so report the consuming graph where the option can be enabled
+    // rather than a source-less upstream parameter.
+    reportError(
+      node.sourceGraph,
+      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
+    )
+  }
+
+  /** Checks source parameter metadata that may have been compiled with a different option value. */
+  private fun IrBinding.containsSuspendWrapperUse(): Boolean {
+    if (parameters.allParameters.any { it.contextualTypeKey.containsSuspendWrapper() }) return true
+    if (this is IrBinding.AssistedFactory) {
+      val targetUsesSuspendWrapper =
+        targetBinding.parameters.allParameters.any {
+          it.contextualTypeKey.containsSuspendWrapper()
+        }
+      if (targetUsesSuspendWrapper) return true
+    }
+    val injectedFunction =
+      (this as? IrBinding.ConstructorInjected)?.type?.injectedFunctionOrNull()?.owner
+        ?: return false
+    return injectedFunction.parameters().nonDispatchParameters.any {
+      it.contextualTypeKey.containsSuspendWrapper()
+    }
+  }
+
+  private fun IrContextualTypeKey.containsSuspendWrapper(): Boolean {
+    return wrappedType.containsSuspendWrapper()
   }
 
   /**
@@ -1150,7 +1194,7 @@ internal class IrBindingGraph(
     transitivelySuspendKeys = suspendSet
 
     // Step 2: Multibinding aggregates over suspend elements. Aggregation code (buildSet/buildMap
-    // getters, Map*Factory invokes) is non-suspend and can't await element evaluations, so the
+    // getters, Map*Factory invokes) is non-suspend and can't await element initialization, so the
     // supported consumption of a suspend multibinding is a deferred-value map form:
     // `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. Provider-valued set forms are
     // unsupported, as they are for ordinary Provider bindings.
@@ -1183,7 +1227,7 @@ internal class IrBindingGraph(
                 binding.typeKey.type.requireSimpleType().arguments.map {
                   it.typeOrFail.render(short = true)
                 }
-              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value defers its resolution."
+              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value is initialized only when its provider is invoked."
             }
           )
           appendLine()
@@ -1316,7 +1360,7 @@ internal class IrBindingGraph(
           is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
             // A member-injecting class must not be suspend at all. Suspend construction routes
             // through nested suspend factories, which do not perform member injection. The
-            // Suspend evaluation may be required by a member or constructor dependency.
+            // Suspend initialization may be required by a member or constructor dependency.
             val anySuspendDep =
               binding.dependencies.firstOrNull { dep ->
                 dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }

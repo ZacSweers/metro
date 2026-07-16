@@ -5,7 +5,7 @@
 
 // A scalar Map<K, V> over suspend values requires awaiting each value inside non-suspend
 // aggregation code. Not supported — consumers must use Map<K, suspend () -> V> instead, which
-// defers each value's resolution.
+// initializes each value only when its provider is invoked.
 
 @DependencyGraph
 interface ExampleGraph {

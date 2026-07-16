@@ -286,6 +286,18 @@ internal sealed interface WrappedType<T : Any> {
     }
   }
 
+  /** Returns true if any wrapper layer, including a Map value, can suspend. */
+  fun containsSuspendWrapper(): Boolean {
+    return when (this) {
+      is Canonical -> false
+      is Provider -> innerType.containsSuspendWrapper()
+      is Lazy -> innerType.containsSuspendWrapper()
+      is SuspendProvider,
+      is SuspendLazy -> true
+      is Map -> valueType.containsSuspendWrapper()
+    }
+  }
+
   /** Returns true if the scalar wrapper chain contains an adjacent Provider<Lazy<…>> pair. */
   fun containsProviderOfLazy(): Boolean {
     return when (this) {
