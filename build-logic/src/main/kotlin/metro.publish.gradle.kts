@@ -37,6 +37,13 @@ if (!isCompatibilityCheckExcluded) {
     hiddenAnnotations.addAll(metroApiNonPublicMarkers)
   }
 
+  pluginManager.withPlugin("com.github.gmazzo.buildconfig") {
+    val generateBuildConfigClasses = tasks.named("generateBuildConfigClasses")
+    tasks
+      .matching { it.name.startsWith("metalava") }
+      .configureEach { dependsOn(generateBuildConfigClasses) }
+  }
+
   pluginManager.withPlugin("com.android.library") {
     configure<DependencyGuardPluginExtension> { configuration("releaseRuntimeClasspath") }
     tasks
@@ -51,6 +58,7 @@ if (!isCompatibilityCheckExcluded) {
   }
 
   pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+    configure<MetalavaExtension> { arguments.addAll("--hide", "DuplicateSourceClass") }
     configure<DependencyGuardPluginExtension> { configuration("jvmRuntimeClasspath") }
   }
 
