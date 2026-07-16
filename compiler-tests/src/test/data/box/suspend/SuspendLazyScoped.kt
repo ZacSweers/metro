@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // SuspendLazy<T> over a SCOPED suspend binding shares the graph's cache: SuspendDoubleCheck.lazy
 // short-circuits when the delegate is already the graph's SuspendDoubleCheck, so all consumers

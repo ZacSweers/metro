@@ -17,10 +17,7 @@ import kotlin.jvm.JvmStatic
 public class MapSuspendProviderFactory<K : Any, V>
 private constructor(private val map: Map<K, SuspendProvider<V>>) :
   Factory<Map<K, SuspendProvider<V>>> {
-  /**
-   * Returns a `Map<K, SuspendProvider<V>>` whose iteration order is that of the elements given by
-   * each of the providers, in the order given at creation.
-   */
+  /** Returns the map of suspend providers in the order they were added to the builder. */
   override fun invoke(): Map<K, SuspendProvider<V>> = map
 
   /** A builder for [MapSuspendProviderFactory]. */

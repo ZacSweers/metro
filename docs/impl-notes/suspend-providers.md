@@ -7,8 +7,8 @@ User-facing documentation lives in [`docs/coroutines.md`](../coroutines.md).
 
 Suspend providers are gated by the `enable-suspend-providers` compiler option, exposed as
 `metro.enableSuspendProviders` in the Gradle plugin. It is disabled by default. The gate applies to
-every suspend binding, graph accessor, and request using a suspend provider wrapper, including
-unscoped forms whose generated code only needs the core `runtime` artifact.
+every suspend binding, every suspend graph accessor, and every request using a suspend provider
+wrapper, including unscoped forms whose generated code only needs the core `runtime` artifact.
 
 The feature gate and runtime dependency are separate. When automatic runtime dependencies are
 enabled, the Gradle plugin adds `runtime-coroutines` whenever this option is enabled; it does not
@@ -23,10 +23,11 @@ Whether a binding requires suspension is determined separately for each graph. A
 suspension when its provider is a `suspend fun`, or when it directly consumes another suspend
 binding. The same class can therefore require suspension in one graph but not another.
 
-`SuspendBindingAnalysis` starts with directly suspend bindings, follows their consumers, and repeats
-until no more bindings require suspension. It runs only when suspend providers are enabled. Final
-validation analyzes the complete graph. A child graph may query the same analysis on its parent
-before the parent is sealed, so validation and code generation use the same answer.
+`SuspendBindingAnalysis` discovers each binding's dependency edges once and records the reverse
+edges from a dependency to its consumers. A worklist then propagates suspension from directly
+suspend bindings through those consumers. The analysis is incremental because a child graph may
+query its parent before the parent is sealed; unresolved parent keys are retried as the graph grows.
+Final validation analyzes the complete graph, and validation and code generation share the result.
 
 `Provider`, function providers, `Lazy`, `SuspendProvider`, suspend functions, and `SuspendLazy`
 compose recursively at any depth in a scalar wrapper stack. The innermost wrapper determines the
@@ -34,16 +35,15 @@ stored provider type and whether a suspend binding can be initialized:
 
 - An innermost `suspend () -> T`, `SuspendProvider<T>`, or `SuspendLazy<T>` uses
   `SuspendProvider<T>` storage and stops suspend propagation.
-- An innermost `Provider<T>`, `() -> T`, or `Lazy<T>` uses `Provider<T>` storage. It cannot have a
-  suspending wrapper outside it. FIR rejects that wrapper order and suggests either using a
-  suspending innermost wrapper or removing the outer suspending wrapper if `T` is not suspending.
-  Graph validation separately rejects it when `T` resolves to a suspending binding.
+- An innermost `Provider<T>`, `() -> T`, or `Lazy<T>` uses `Provider<T>` storage. Graph validation
+  rejects it when `T` resolves to a suspending binding, regardless of any outer wrappers. The same
+  wrapper stack is valid when `T` is not suspending.
 
 Outer wrappers only control how the immediate inner value is produced or cached. For example,
 `SuspendLazy<suspend () -> T>` caches the suspend function rather than its result.
 
 `Map<K, suspend () -> V>` and `Map<K, SuspendProvider<V>>` remain the supported suspend map-value
-forms. The map is built synchronously and each provider is initialized when invoked.
+forms. The map is built synchronously and each value is initialized when its provider is invoked.
 
 Bindings from parent graphs keep the parent's suspend requirement. Child graphs query the graph that
 owns the binding rather than recomputing a different result.
@@ -67,9 +67,9 @@ Validation runs in this order:
    suspension.
 
 FIR handles checks that do not require graph resolution: the feature gate, suspend `@Binds` and
-`@Multibinds`, unsupported suspend wrappers in map value position, and a suspending outer wrapper
-with a synchronous innermost wrapper. Graph validation separately checks whether an otherwise valid
-`Provider<T>`, `() -> T`, or `Lazy<T>` resolves to a suspending `T` in that graph.
+`@Multibinds`, and unsupported suspend wrappers in map value position. Graph validation checks
+whether an otherwise valid `Provider<T>`, `() -> T`, or `Lazy<T>` resolves to a suspending `T` in
+that graph.
 
 ## Code generation
 
@@ -131,22 +131,23 @@ instead of adding another memoization layer. A deferred request for an entire co
 Graph validation records whether generated graph code needs `runtime-coroutines`: either for a
 scoped suspend binding or to materialize a memoizing `SuspendLazy` anywhere in a requested wrapper
 stack. If the artifact is missing, Metro reports a located `MISSING_RUNTIME_COROUTINES` diagnostic
-on the graph before code generation begins. The diagnostic can therefore appear alongside other
-graph validation errors.
+on the graph before code generation begins. Source factory generation reports the same diagnostic
+on injected declarations and provider parameters that require `SuspendLazy`, including modules
+that contain no graph. The diagnostic can appear alongside other graph validation errors.
 
 ### JS function types
 
 The JVM, Native, and Wasm `SuspendProvider<T>` implementations also implement `suspend () -> T`.
-The JS implementation does not: invoking a function-typed value compiles to a direct JS call, while
-a fun-interface instance is not a callable JS function.
+The JS implementation does not. Invoking a function-typed value compiles to a direct JS call, but a
+fun-interface instance is not a callable JS function.
 
 Provider-framework conversion runs at each wrapper layer. On JS it wraps every function-provider
 and suspend-function-provider layer in a real lambda; other platforms can use the provider object
 directly. The conversion is not performed earlier because the same expression may also initialize a
 graph field whose required type is `Provider<T>` or `SuspendProvider<T>`.
 
-`FunctionTypeInvocationOnAllPlatforms.kt` covers this path with the standard-library
-`startCoroutine` API.
+`FunctionTypeInvocationOnAllPlatforms.kt` covers this path through the test framework's
+multiplatform `runBlocking` helper.
 
 ## Runtime behavior
 
@@ -182,7 +183,7 @@ direct-expression `isSuspend` flag are the compiler hook points.
 Metro currently initializes constructor and provider arguments sequentially in the caller's coroutine
 context. Graphs cache scoped values but do not own a `CoroutineScope`, a `Job`, or resource cleanup.
 
-The possible additions below are independent and do not need to be designed or shipped together.
+The possible additions below are independent.
 
 ### Member injection
 
@@ -232,6 +233,5 @@ including `Map<K, SuspendLazy<V>>`, are also unsupported.
 
 ### Multiplatform test coverage
 
-Several suspend box fixtures are JVM-only because they use `runBlocking`. Suitable fixtures should
-use the standard-library `startCoroutine` pattern from `FunctionTypeInvocationOnAllPlatforms` so the
-same coverage can run on JS and other supported targets.
+Multiplatform suspend box fixtures use the compiler test framework's `runBlocking` helper. It runs
+providers that complete synchronously without adding kotlinx-coroutines to the test fixture.

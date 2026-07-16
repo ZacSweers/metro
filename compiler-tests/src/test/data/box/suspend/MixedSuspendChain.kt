@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // The canonical long-chain scenario mixing suspend and non-suspend bindings:
 // - String: suspend @Provides — SuspendFactory primary factory.

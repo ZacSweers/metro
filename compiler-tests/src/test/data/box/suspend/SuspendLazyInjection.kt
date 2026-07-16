@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // SuspendLazy<T> as an injectable wrapper: it defers and memoizes a suspend binding per wrapper
 // instance. Like `suspend () -> T`, it breaks the suspend chain, so consumers are not suspend.

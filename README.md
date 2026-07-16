@@ -72,6 +72,7 @@ val repository = graph.repository
 | [Provides](https://zacsweers.github.io/metro/latest/provides/)                   | Provider functions and properties              |
 | [Injection Types](https://zacsweers.github.io/metro/latest/injection-types/)     | Constructor, assisted, and member injection    |
 | [Scopes](https://zacsweers.github.io/metro/latest/scopes/)                       | Scoping and lifecycle management               |
+| [Coroutines Support](https://zacsweers.github.io/metro/latest/coroutines/)       | Suspend bindings and deferred initialization   |
 | [Aggregation](https://zacsweers.github.io/metro/latest/aggregation/)             | Anvil-style contributions across modules       |
 | [Interop](https://zacsweers.github.io/metro/latest/interop/)                     | Dagger, kotlin-inject, and Guice compatibility |
 | [Performance](https://zacsweers.github.io/metro/latest/performance/)             | Build and runtime performance                  |

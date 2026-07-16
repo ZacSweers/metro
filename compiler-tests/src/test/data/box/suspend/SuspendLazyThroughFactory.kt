@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // SuspendLazy<T> params flowing through per-class factories (not inline bypass):
 // - Consumer is SCOPED, so the graph goes through Consumer_Factory.create(...). The factory must

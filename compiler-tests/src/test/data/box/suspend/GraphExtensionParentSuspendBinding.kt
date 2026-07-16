@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // A graph extension consuming a scoped suspend binding owned by its parent. The parent stores the
 // binding in a SuspendProvider<T> field; the child's property-access token must classify it as a

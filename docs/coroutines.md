@@ -156,13 +156,13 @@ For example:
 - `SuspendLazy<suspend () -> T>` caches the suspend function, not the `T` returned by that
   function.
 
-Once a wrapper stack contains a suspending wrapper, the wrapper closest to the binding must also
-support suspension. `Provider<T>`, `() -> T`, and `Lazy<T>` cannot fill that role. For example,
-`suspend () -> Lazy<T>` is unsupported: use `suspend () -> SuspendLazy<T>`, or remove the outer
-suspend function if `T` is not suspending.
+When the underlying binding suspends, the wrapper closest to it must also support suspension.
+`Provider<T>`, `() -> T`, and `Lazy<T>` cannot fill that role. For example, `suspend () -> Lazy<T>`
+cannot wrap a suspending `T`; use `suspend () -> SuspendLazy<T>` instead. The same stack is valid
+when `T` is not suspending.
 
-Every nested type containing `suspend () -> T`, `SuspendProvider<T>`, or `SuspendLazy<T>` is behind
-`metro.enableSuspendProviders`.
+Every supported wrapper stack containing `suspend () -> T`, `SuspendProvider<T>`, or
+`SuspendLazy<T>` is behind `metro.enableSuspendProviders`.
 
 ## Scoping
 

@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runBlocking, JVM-only
+// ^ runtime-coroutines is not yet wired into JS box tests
 
 // Whole-collection access to ordinary (non-suspend) multibindings through suspend wrappers:
 // suspend () -> Set<T>, suspend () -> Map<K, V>, and SuspendLazy<Set<T>> adapt the Provider form.
