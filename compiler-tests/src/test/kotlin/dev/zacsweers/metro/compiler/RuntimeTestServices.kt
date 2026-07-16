@@ -59,7 +59,7 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
         configuration.addJvmClasspathRoot(file)
       }
     }
-    if (MetroDirectives.WITH_COROUTINES in module.directives || withMetroRuntimeCoroutines) {
+    if (withMetroRuntimeCoroutines) {
       for (file in coroutinesClasspath) {
         configuration.addJvmClasspathRoot(file)
       }
@@ -89,7 +89,7 @@ class MetroRuntimeClassPathProvider(testServices: TestServices) :
       if (withMetroRuntimeCoroutines) {
         addAll(metroRuntimeCoroutinesClasspath)
       }
-      if (MetroDirectives.WITH_COROUTINES in module.directives || withMetroRuntimeCoroutines) {
+      if (withMetroRuntimeCoroutines) {
         addAll(coroutinesClasspath)
       }
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
