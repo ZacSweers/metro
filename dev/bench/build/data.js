@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784177172643,
+  "lastUpdate": 1784186453151,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19040,6 +19040,62 @@ window.BENCHMARK_DATA = {
             "value": 19189.81,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.16%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02b38f1e~1",
+          "message": "[before] Add SubCircuit support (#2558)",
+          "timestamp": "2026-07-16T06:47:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02b38f1e1bb9de3781571b105aed2bc19eb7d459"
+        },
+        "date": 1784186453151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13682.564000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "02b38f1e1bb9de3781571b105aed2bc19eb7d459",
+          "message": "[after] Add SubCircuit support (#2558)",
+          "timestamp": "2026-07-16T06:47:23Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/02b38f1e1bb9de3781571b105aed2bc19eb7d459"
+        },
+        "date": 1784186453152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13657.592,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.18%"
           }
         ]
       }
