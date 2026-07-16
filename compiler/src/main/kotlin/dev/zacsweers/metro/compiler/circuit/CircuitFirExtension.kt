@@ -680,7 +680,7 @@ private data class AnnotatedCircuitClass(
 )
 
 private data class AnnotatedCircuitFunction(
-  val symbol: FirNamedFunctionSymbol,
+  val symbol: FirFunctionSymbol<*>,
   val target: CircuitCodegenTarget,
 )
 
