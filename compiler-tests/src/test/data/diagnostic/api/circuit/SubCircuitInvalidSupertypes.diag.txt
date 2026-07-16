@@ -1,0 +1,1 @@
+/SubCircuitInvalidSupertypes.kt:15:7: error: @SubCircuitInject-annotated class must implement SubPresenter or SubUi.

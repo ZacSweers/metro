@@ -5,10 +5,16 @@
 
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.screen.Screen
+import com.slack.circuit.subcircuit.SubCircuitOuterEvent
+import com.slack.circuit.subcircuit.SubScreen
 
 data class FavoritesScreen(val userId: String) : Screen {
   data class State(val count: Int) : CircuitUiState
 }
+
+sealed interface ProfileOuterEvent : SubCircuitOuterEvent
+
+data object ProfileScreen : SubScreen<ProfileOuterEvent>
 
 // FILE: file1.kt
 import com.slack.circuit.codegen.annotations.CircuitInject
@@ -30,3 +36,21 @@ import androidx.compose.ui.Modifier
 fun <!CIRCUIT_INJECT_ERROR!>Favorites<!>(state: FavoritesScreen.State, modifier: Modifier = Modifier) {
 
 }
+
+// FILE: file3.kt
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.slack.circuit.codegen.annotations.CircuitInject
+
+@CircuitInject(FavoritesScreen::class, AppScope::class)
+@Composable
+fun <!CIRCUIT_INJECT_ERROR!>ProfileSubCircuit<!>(modifier: Modifier) = Unit
+
+// FILE: file4.kt
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.slack.circuit.subcircuit.SubCircuitInject
+
+@SubCircuitInject(ProfileScreen::class, AppScope::class)
+@Composable
+fun <!CIRCUIT_INJECT_ERROR!>Profile<!>(modifier: Modifier) = Unit

@@ -718,6 +718,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("SubCircuitMultiModule.kt")
+      public void testSubCircuitMultiModule() {
+        run("SubCircuitMultiModule.kt");
+      }
+
+      @Test
       @TestMetadata("UiClassNoInjection.kt")
       public void testUiClassNoInjection() {
         run("UiClassNoInjection.kt");

@@ -1,0 +1,1 @@
+/SubCircuitUiFunctionMissingModifier.kt:19:5: error: @SubCircuitInject @Composable SubUi functions must have a Modifier parameter.
