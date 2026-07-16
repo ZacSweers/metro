@@ -1,4 +1,4 @@
-/IncompatibleMapValueType.kt:11:28: error: [Metro/MissingBinding] No binding found for Map<String, String>
+/IncompatibleMapValueType.kt:12:28: error: [Metro/MissingBinding] No binding found for Map<String, String>
 
   FooComponent.value -> Int -> Map<String, String>
 
@@ -10,7 +10,7 @@
   'Map<String, Function0<String>>' requests. Provider-, Lazy-, or SuspendProvider-wrapped map values
   (e.g., Map<K, Provider<V>>) only work with a Map multibinding created with `@IntoMap` or
   `@Multibinds`.
-      IncompatibleMapValueType.kt:15:16
+      IncompatibleMapValueType.kt:16:16
         @Provides bar: kotlin.collections.Map<kotlin.String, kotlin.String>
                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -18,7 +18,8 @@
         @Binds declaration visible to FooComponent
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
-/IncompatibleMapValueType.kt:24:18: error: [Metro/MissingBinding] No binding found for Map<String, String>
+
+/IncompatibleMapValueType.kt:25:18: error: [Metro/MissingBinding] No binding found for Map<String, String>
 
   SuspendFooComponent.value -> Int -> Map<String, String>
 
@@ -30,7 +31,7 @@
   'Map<String, SuspendFunction0<String>>' requests. Provider-, Lazy-, or SuspendProvider-wrapped map
   values (e.g., Map<K, Provider<V>>) only work with a Map multibinding created with `@IntoMap` or
   `@Multibinds`.
-      IncompatibleMapValueType.kt:28:16
+      IncompatibleMapValueType.kt:29:16
         @Provides bar: kotlin.collections.Map<kotlin.String, kotlin.String>
                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

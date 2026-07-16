@@ -3,7 +3,7 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("DESUGARED_PROVIDER_WARNING")
+@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
 @OptIn(ExperimentalMetroCoroutinesApi::class)
 @Inject
 class <!MISSING_RUNTIME_COROUTINES!>NestedLazyConsumer<!>(
@@ -23,6 +23,6 @@ interface <!MISSING_RUNTIME_COROUTINES!>ExampleGraph<!> {
 object UnusedBindings {
   @Provides
   fun provideLength(
-    <!MISSING_RUNTIME_COROUTINES!>value<!>: Provider<SuspendLazy<String>>
+    <!MISSING_RUNTIME_COROUTINES!>value: Provider<SuspendLazy<String>><!>
   ): Int = 0
 }

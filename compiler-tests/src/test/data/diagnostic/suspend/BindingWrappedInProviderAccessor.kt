@@ -23,7 +23,7 @@ interface ExampleGraph {
 
   val <!METRO_ERROR!>lazyValue<!>: Lazy<String>
 
-  val <!METRO_ERROR!>nestedProvider<!>: suspend () -> <!DESUGARED_PROVIDER_WARNING!>Provider<String><!>
+  val <!METRO_ERROR!>nestedProvider<!>: <!DESUGARED_PROVIDER_WARNING!>suspend () -> Provider<String><!>
 
   val <!METRO_ERROR!>nestedLazy<!>: SuspendLazy<Lazy<String>>
 
