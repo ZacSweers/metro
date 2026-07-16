@@ -8,7 +8,14 @@ import dev.zacsweers.metro.ExperimentalMetroCoroutinesApi
 import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.startCoroutine
+import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private val UNINITIALIZED_SUSPEND = Any()
 
@@ -16,8 +23,7 @@ private val UNINITIALIZED_SUSPEND = Any()
  * A [SuspendProvider] implementation that memoizes the value returned from a delegate
  * [SuspendProvider]. The delegate is released after successful initialization.
  *
- * Modeled after [BaseDoubleCheck], with synchronization provided by the coroutine Mutex in the
- * [SuspendDoubleCheckInitGuard] superclass.
+ * Modeled after [BaseDoubleCheck], with synchronization provided by a coroutine Mutex.
  *
  * Semantics on all platforms:
  * - Single-flight. One caller runs the initializer and concurrent callers suspend and share its
@@ -30,11 +36,12 @@ private val UNINITIALIZED_SUSPEND = Any()
  *   initialization chains can still deadlock if each holds one cache and requests the other.
  */
 public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider<T>) :
-  SuspendDoubleCheckInitGuard(), SuspendProvider<T>, SuspendLazy<T> {
+  SuspendProvider<T>, SuspendLazy<T> {
   // Stored as SuspendProvider (not `suspend () -> T`) so invocation dispatches through the
   // interface. On Kotlin/JS a fun interface instance is not a callable JS function, so invoking
   // it through the suspend function type fails at runtime.
   private var provider: SuspendProvider<T>? = provider
+  private val mutex = Mutex()
   @Volatile private var _value: Any? = UNINITIALIZED_SUSPEND
 
   override suspend fun invoke(): T {
@@ -51,7 +58,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
         "dependency."
     }
 
-    return guardedSuspend {
+    return mutex.withLock {
       val result2 = _value
       if (result2 !== UNINITIALIZED_SUSPEND) {
         @Suppress("UNCHECKED_CAST") (result2 as T)
@@ -99,4 +106,53 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       return SuspendDoubleCheck(delegate)
     }
   }
+}
+
+/** Tracks the [SuspendDoubleCheck] initializers in the current call chain. */
+private class SuspendDoubleCheckInitialization(
+  private val owner: SuspendDoubleCheck<*>,
+  private val parent: SuspendDoubleCheckInitialization?,
+) : AbstractCoroutineContextElement(Key) {
+  // Cleared once the initialization attempt that created this marker completes. A coroutine
+  // launched from inside the initializer inherits this element and keeps it forever, so a stale
+  // marker from a finished attempt must not be mistaken for an active cycle when that child later
+  // makes a legal request for the same binding.
+  @Volatile private var active: Boolean = true
+
+  companion object Key : CoroutineContext.Key<SuspendDoubleCheckInitialization>
+
+  fun deactivate() {
+    active = false
+  }
+
+  fun contains(owner: SuspendDoubleCheck<*>): Boolean {
+    var current: SuspendDoubleCheckInitialization? = this
+    while (current != null) {
+      if (current.active && current.owner === owner) {
+        return true
+      }
+      current = current.parent
+    }
+    return false
+  }
+}
+
+/** Runs [block] with an initialization marker added to its coroutine context. */
+private suspend fun <T> withSuspendDoubleCheckInitialization(
+  owner: SuspendDoubleCheck<*>,
+  block: suspend () -> T,
+): T = suspendCoroutine { continuation ->
+  val initialization =
+    SuspendDoubleCheckInitialization(
+      owner = owner,
+      parent = continuation.context[SuspendDoubleCheckInitialization],
+    )
+  block.startCoroutine(
+    Continuation(continuation.context + initialization) { result ->
+      // Invalidate the marker once this attempt finishes so children that inherited it are not
+      // blocked by a stale cycle check on a later retry.
+      initialization.deactivate()
+      continuation.resumeWith(result)
+    }
+  )
 }
