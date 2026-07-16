@@ -1095,9 +1095,15 @@ internal class IrBindingGraph(
           hasDirectSuspendBinding = true
         }
       } else {
+        // Injected functions use provider-shaped constructor parameters as generated storage. Their
+        // source parameters are checked by containsSuspendWrapperUse() below.
+        val hasSyntheticInjectedFunctionDependencies =
+          binding is IrBinding.ConstructorInjected && binding.type.injectedFunctionOrNull() != null
         val bindingUsesSuspendWrapper =
           binding.containsSuspendWrapperUse() || binding.contextualTypeKey.containsSuspendWrapper()
-        val dependencyUsesSuspendWrapper = binding.dependencies.any { it.containsSuspendWrapper() }
+        val dependencyUsesSuspendWrapper =
+          !hasSyntheticInjectedFunctionDependencies &&
+            binding.dependencies.any { it.containsSuspendWrapper() }
         val usesSuspendProvider =
           binding.isSuspend || bindingUsesSuspendWrapper || dependencyUsesSuspendWrapper
         if (usesSuspendProvider) {
@@ -1150,6 +1156,14 @@ internal class IrBindingGraph(
 
   /** Checks source parameter metadata that may have been compiled with a different option value. */
   private fun IrBinding.containsSuspendWrapperUse(): Boolean {
+    if (this is IrBinding.ConstructorInjected) {
+      val injectedFunction = type.injectedFunctionOrNull()?.owner
+      if (injectedFunction != null) {
+        return injectedFunction.parameters().nonDispatchParameters.any {
+          !it.isAssisted && it.contextualTypeKey.containsSuspendWrapper()
+        }
+      }
+    }
     if (parameters.allParameters.any { it.contextualTypeKey.containsSuspendWrapper() }) return true
     if (this is IrBinding.AssistedFactory) {
       val targetUsesSuspendWrapper =
@@ -1158,12 +1172,7 @@ internal class IrBindingGraph(
         }
       if (targetUsesSuspendWrapper) return true
     }
-    val injectedFunction =
-      (this as? IrBinding.ConstructorInjected)?.type?.injectedFunctionOrNull()?.owner
-        ?: return false
-    return injectedFunction.parameters().nonDispatchParameters.any {
-      it.contextualTypeKey.containsSuspendWrapper()
-    }
+    return false
   }
 
   private fun IrContextualTypeKey.containsSuspendWrapper(): Boolean {
