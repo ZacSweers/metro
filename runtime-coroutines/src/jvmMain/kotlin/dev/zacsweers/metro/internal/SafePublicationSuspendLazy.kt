@@ -22,6 +22,10 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
   @Volatile private var initializer: (suspend () -> T)? = initializer
   @Volatile private var _value: Any? = UNINITIALIZED
 
+  // This final field is required to enable safe publication of the constructed instance itself when
+  // it is shared through a data race. Matches Kotlin stdlib's SafePublicationLazyImpl.
+  private val final: Any = UNINITIALIZED
+
   override suspend fun invoke(): T = value()
 
   @Suppress("UNCHECKED_CAST")
@@ -54,8 +58,6 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
     }
 
   private companion object {
-    private const val serialVersionUID: Long = 1L
-
     private val valueUpdater =
       AtomicReferenceFieldUpdater.newUpdater(
         SafePublicationSuspendLazy::class.java,
