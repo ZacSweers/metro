@@ -410,6 +410,7 @@ internal class BindingPropertyCollector(
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
           contextKey.isMapLazy ||
+          contextKey.isMapSuspendProvider ||
           contextKey.isMapProviderLazy ||
           isMembersInjectedInFactoryPath)
 
@@ -514,7 +515,7 @@ internal class BindingPropertyCollector(
         when {
           // Exact graph accessor values bypass generated properties.
           canPassThrough -> Unit
-          // Flattening a deferred accessor reads its provider handle and evaluates its scalar
+          // Flattening a deferred accessor reads its provider handle and initializes its scalar
           // value. Counting both lets the normal mixed-access rule select a provider field.
           flattensDeferredGraphAccessor -> {
             factoryRefCount++

@@ -1,4 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
+@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
 
 // Test for Map<K, SuspendProvider<V>> multibindings
 @DependencyGraph
@@ -18,6 +19,14 @@ interface ExampleGraph {
   val providerOfSuspendProviderInts: Provider<Map<Int, SuspendProvider<Int>>>
 
   val suspendProviderNullableStrings: Map<Int, SuspendProvider<String?>>
+
+  @Named("direct")
+  val directSuspendProviderInts: Map<Int, SuspendProvider<Int>>
+
+  @Provides
+  @Named("direct")
+  fun provideDirectSuspendProviderInts(): Map<Int, SuspendProvider<Int>> =
+    mapOf(3 to suspendProviderOf(3))
 }
 
 fun box(): String =
@@ -40,6 +49,8 @@ fun box(): String =
     )
 
     assertNull(graph.suspendProviderNullableStrings.getValue(0).invoke())
+
+    assertEquals(3, graph.directSuspendProviderInts.getValue(3).invoke())
 
     "OK"
   }

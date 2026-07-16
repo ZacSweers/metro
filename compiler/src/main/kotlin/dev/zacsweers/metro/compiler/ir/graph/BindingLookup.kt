@@ -624,11 +624,15 @@ internal class BindingLookup(
 
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
-        // Don't satisfy Map<K, Provider<V>>/Map<K, Lazy<V>> from a direct (non-multibinding)
-        // Map<K, V> binding. Only multibinding contributions can provide wrapped map values.
+        // Don't satisfy wrapped map-value requests (Provider, Lazy, or SuspendProvider) from a
+        // direct (non-multibinding) Map<K, V> binding. Only multibinding contributions can provide
+        // wrapped map values.
         // However, a directly provided Map<K, Provider<V>> can satisfy Map<K, Provider<V>>
         // requests since the Provider wrapping is explicit in the return type.
-        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in directMapTypeKeys) {
+        if (
+          (contextKey.isMapProvider || contextKey.isMapLazy || contextKey.isMapSuspendProvider) &&
+            key in directMapTypeKeys
+        ) {
           val originallyWrapped =
             when (binding) {
               is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
