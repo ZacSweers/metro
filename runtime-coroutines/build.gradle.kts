@@ -7,6 +7,11 @@ plugins {
   id("metro.publish")
 }
 
+metroArtifact {
+  artifactId.set("runtime-coroutines")
+  name.set("Metro Runtime (Coroutines)")
+}
+
 metroProject { configureCommonKmpTargets("metro-runtime-coroutines") }
 
 kotlin {
