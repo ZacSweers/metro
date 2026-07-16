@@ -16,6 +16,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
@@ -48,6 +49,22 @@ class SuspendLazyTest {
   }
 
   @Test
+  fun `publication mode supports nullable values`() = runTest {
+    val count = AtomicInt(0)
+    val lazy =
+      suspendLazy<String?>(LazyThreadSafetyMode.PUBLICATION) {
+        count.incrementAndFetch()
+        null
+      }
+
+    assertFalse(lazy.isInitialized())
+    assertNull(lazy.value())
+    assertTrue(lazy.isInitialized())
+    assertNull(lazy.value())
+    assertEquals(1, count.load())
+  }
+
+  @Test
   fun `publication mode publishes one value when initializers overlap`() = runTest {
     val count = AtomicInt(0)
     val releaseInitializers = CompletableDeferred<Unit>()
@@ -67,6 +84,75 @@ class SuspendLazyTest {
     assertEquals(first.await(), second.await())
     assertTrue(lazy.isInitialized())
   }
+
+  @Test
+  fun `publication mode publishes a successful overlapping initializer after a failure`() =
+    runTest {
+      val attempts = AtomicInt(0)
+      val secondInitializerEntered = CompletableDeferred<Unit>()
+      val lazy =
+        suspendLazy(LazyThreadSafetyMode.PUBLICATION) {
+          when (attempts.incrementAndFetch()) {
+            1 -> {
+              secondInitializerEntered.await()
+              throw IllegalStateException("first attempt fails")
+            }
+            2 -> {
+              secondInitializerEntered.complete(Unit)
+              "value"
+            }
+            else -> error("Unexpected initializer attempt")
+          }
+        }
+
+      val failed = async { runCatching { lazy.value() } }
+      runCurrent()
+      val succeeded = async { lazy.value() }
+
+      assertTrue(failed.await().exceptionOrNull() is IllegalStateException)
+      assertEquals("value", succeeded.await())
+      assertTrue(lazy.isInitialized())
+      assertEquals("value", lazy.value())
+      assertEquals(2, attempts.load())
+    }
+
+  @Test
+  fun `publication mode publishes a successful overlapping initializer after cancellation`() =
+    runTest {
+      val attempts = AtomicInt(0)
+      val firstInitializerEntered = CompletableDeferred<Unit>()
+      val secondInitializerEntered = CompletableDeferred<Unit>()
+      val releaseSuccessfulInitializer = CompletableDeferred<Unit>()
+      val lazy =
+        suspendLazy(LazyThreadSafetyMode.PUBLICATION) {
+          when (attempts.incrementAndFetch()) {
+            1 -> {
+              firstInitializerEntered.complete(Unit)
+              awaitCancellation()
+            }
+            2 -> {
+              secondInitializerEntered.complete(Unit)
+              releaseSuccessfulInitializer.await()
+              "value"
+            }
+            else -> error("Unexpected initializer attempt")
+          }
+        }
+
+      val cancelled = async { lazy.value() }
+      firstInitializerEntered.await()
+      val succeeded = async { lazy.value() }
+      secondInitializerEntered.await()
+
+      cancelled.cancelAndJoin()
+      releaseSuccessfulInitializer.complete(Unit)
+
+      assertTrue(cancelled.isCancelled)
+      assertEquals("value", succeeded.await())
+      assertTrue(lazy.isInitialized())
+      assertEquals("value", lazy.value())
+      assertEquals(2, attempts.load())
+    }
 
   @Test
   fun `publication mode retries after a failed initializer`() =
