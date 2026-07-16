@@ -1099,7 +1099,13 @@ internal class IrBindingGraph(
           )
         }
       }
-      if (metroContext.options.enableSuspendProviders && binding.typeKey in adjacency.forward) {
+      // Once one binding requires runtime-coroutines the answer can't change, so skip the
+      // per-binding SuspendLazy scan (injectedFunctionUsesSuspendLazy does symbol lookups).
+      if (
+        !requiresRuntimeCoroutines &&
+          metroContext.options.enableSuspendProviders &&
+          binding.typeKey in adjacency.forward
+      ) {
         val hasSuspendLazyDependency =
           binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
             binding.dependencies.any { it.wrappedType.containsSuspendLazy() } ||
