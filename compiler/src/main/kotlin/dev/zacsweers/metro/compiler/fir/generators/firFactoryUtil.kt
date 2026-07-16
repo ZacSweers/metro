@@ -51,7 +51,6 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-  defaultUsesSuspendProvider: Boolean = false,
 ): FirConstructor =
   with(session.compatContext) {
     val owner = context.owner
@@ -108,7 +107,7 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
             valueParameter.name,
             substitutedType.wrapInProviderIfNecessary(
               session,
-              valueParameter.canonicalProviderClassId(defaultUsesSuspendProvider),
+              valueParameter.canonicalProviderClassId(defaultUsesSuspendProvider = false),
             ),
             key = Keys.RegularParameter,
           )
@@ -124,7 +123,6 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
   instanceReceiver: ConeClassLikeType?,
   extensionReceiver: ConeClassLikeType?,
   valueParameters: List<MetroFirValueParameter>,
-  defaultUsesSuspendProvider: Boolean = false,
 ): FirNamedFunctionSymbol =
   with(session.compatContext) {
     return generateMemberFunction(
@@ -200,7 +198,7 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
             copiedType
               .wrapInProviderIfNecessary(
                 session,
-                original.canonicalProviderClassId(defaultUsesSuspendProvider),
+                original.canonicalProviderClassId(defaultUsesSuspendProvider = false),
               )
               .toFirResolvedTypeRef()
         }
