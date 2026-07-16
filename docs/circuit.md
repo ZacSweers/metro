@@ -1,6 +1,6 @@
 # Circuit Integration
 
-Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject`-annotated classes and functions, similar to Circuit's existing KSP code generator but running entirely within Metro's compiler plugin. These factories then contribute into `Set<Presenter.Factory>` and `Set<Ui.Factory>` multibindings.
+Metro includes built-in support for [Circuit](https://slackhq.github.io/circuit/), a Compose-first architecture for building kotlin apps. This integration generates `Presenter.Factory` and `Ui.Factory` implementations from `@CircuitInject` declarations, plus `SubPresenterFactory` and `SubUiFactory` implementations from `@SubCircuitInject` declarations. It is similar to Circuit's existing KSP code generator but runs entirely within Metro's compiler plugin. Generated factories contribute into the corresponding set multibindings.
 
 ## Setup
 
@@ -12,7 +12,9 @@ metro {
 }
 ```
 
-This requires the Circuit runtime libraries on your classpath. The `circuit-runtime-presenter` and `circuit-runtime-ui` artifacts are optional — you can use presenter-only or UI-only modules. This will also add the `circuit-codegen-annotations` artifact to your implementation classpath.
+This requires the relevant Circuit runtime libraries on your classpath. The `circuit-runtime-presenter` and `circuit-runtime-ui` artifacts are optional — you can use presenter-only or UI-only modules. To generate SubCircuit factories, add `com.slack.circuit:circuitx-subcircuit:<version>`. Enabling this option also adds the `circuit-codegen-annotations` artifact to your implementation classpath.
+
+Use **either** Metro's native code generator or Circuit's KSP code generator for a declaration but **NOT** both. Running both for the same `@CircuitInject` or `@SubCircuitInject` declarations attempts to generate the factories twice.
 
 This is only compatible with Kotlin 2.3.20+ as it requires support for generating top-level declarations in FIR.
 
@@ -107,6 +109,68 @@ The generated Circuit factory automatically bridges Circuit's `Presenter.Factory
 - The `@AssistedFactory` must be nested inside the target `Presenter`/`Ui` class.
 - The assisted parameters on your factory's `create()` method must be [circuit-provided parameters](#circuit-provided-parameters) (e.g., `Navigator`, `Screen`). Custom assisted parameters that aren't circuit-provided types are not supported — the generated factory has no way to obtain them at runtime since only Circuit's `create()` parameters are available.
 
+## SubCircuit
+
+The same `enableCircuitCodegen` option supports SubCircuit's `@SubCircuitInject` annotation. Generated factories are contributed into `Set<SubPresenterFactory>` or `Set<SubUiFactory>`.
+
+### SubPresenter and SubUi Classes
+
+Direct class targets must be annotated with `@Inject` and implement `SubPresenter` or `SubUi`:
+
+```kotlin
+@SubCircuitInject(ProfileCardScreen::class, AppScope::class)
+@Inject
+class ProfileCardPresenter(
+  private val repository: UserRepository,
+) : SubPresenter<ProfileCardEvent, ProfileCardState> {
+  @Composable
+  override fun present(
+    outerEventSink: (ProfileCardEvent) -> Unit,
+  ): ProfileCardState {
+    // ...
+  }
+}
+```
+
+Assisted presenters and UIs use a nested factory, with `@SubCircuitInject` on the factory interface:
+
+```kotlin
+@AssistedInject
+class ProfileCardPresenter(
+  @Assisted private val screen: ProfileCardScreen,
+  private val repository: UserRepository,
+) : SubPresenter<ProfileCardEvent, ProfileCardState> {
+
+  @SubCircuitInject(ProfileCardScreen::class, AppScope::class)
+  @AssistedFactory
+  fun interface Factory {
+    fun create(screen: ProfileCardScreen): ProfileCardPresenter
+  }
+
+  // ...
+}
+```
+
+`SubPresenterFactory.create()` and `SubUiFactory.create()` receive only a `SubScreen`. Metro forwards a matching screen to an assisted factory and returns `null` for non-matching screens. Other assisted parameters are not supported. The `@AssistedFactory` must be nested inside its target class.
+
+### SubUi Functions
+
+Top-level `@SubCircuitInject` functions generate `SubUiFactory` implementations. A `Modifier` parameter is required, the `SubCircuitUiState` parameter is optional, and other parameters are injected once per `create()` call:
+
+```kotlin
+@SubCircuitInject(ProfileCardScreen::class, AppScope::class)
+@Composable
+fun ProfileCardUi(
+  state: ProfileCardState,
+  analytics: Analytics,
+  modifier: Modifier = Modifier,
+) {
+  // ...
+}
+```
+
+SubPresenter functions are not supported.
+
 ## Circuit-Provided Parameters
 
 Some parameter types are provided by Circuit at runtime and should not be injected:
@@ -126,9 +190,9 @@ Parameters already wrapped in `() -> T`, `Provider<T>`, `Lazy<T>`, or function t
 
 ## Validation
 
-The compiler plugin validates `@CircuitInject` usage for common usage errors.
+The compiler plugin validates `@CircuitInject` and `@SubCircuitInject` usage for common usage errors.
 
 ## Notes
 
-- **Top-level `@AssistedFactory` with `@CircuitInject`** is not supported — the factory must be nested inside the target `Presenter`/`Ui` class. This is enforced by the compiler.
-- **`expect` declarations** with `@CircuitInject` are skipped. Only `actual` declarations are processed. You must annotate the `actual` declaration (too). kotlinc requires this symmetry as well.
+- **Top-level `@AssistedFactory` with `@CircuitInject` or `@SubCircuitInject`** is not supported — the factory must be nested inside the target class. This is enforced by the compiler.
+- **`expect` declarations** with `@CircuitInject` or `@SubCircuitInject` are skipped. Only `actual` declarations are processed. You must annotate the `actual` declaration (too). kotlinc requires this symmetry as well.

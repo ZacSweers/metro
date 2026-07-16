@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
+
 ### Fixes
 
 - **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
