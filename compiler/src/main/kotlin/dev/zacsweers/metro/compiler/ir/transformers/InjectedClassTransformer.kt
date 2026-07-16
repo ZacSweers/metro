@@ -15,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
-import dev.zacsweers.metro.compiler.ir.MISSING_RUNTIME_COROUTINES_MESSAGE
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
@@ -48,6 +47,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -461,11 +461,7 @@ internal class InjectedClassTransformer(
       it.contextualTypeKey.wrappedType.containsSuspendLazy()
     }
     if (!requestsSuspendLazy) return
-    val message =
-      "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}] '${declaration.kotlinFqName}' " +
-        "requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. " +
-        MISSING_RUNTIME_COROUTINES_MESSAGE
-    reportCompat(declaration, MetroDiagnostics.MISSING_RUNTIME_COROUTINES, message)
+    reportMissingRuntimeCoroutines(declaration, "'${declaration.kotlinFqName}'")
   }
 
   private fun createInjectConstructorFactoryShell(

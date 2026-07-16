@@ -16,3 +16,13 @@ interface <!MISSING_RUNTIME_COROUTINES!>ExampleGraph<!> {
 
   @Provides fun provideValue(): String = "value"
 }
+
+// This container is not included in the graph above. Its source factory still needs to diagnose
+// the missing runtime rather than compile an invoke() body that always throws.
+@BindingContainer
+object UnusedBindings {
+  @Provides
+  fun provideLength(
+    <!MISSING_RUNTIME_COROUTINES!>value<!>: Provider<SuspendLazy<String>>
+  ): Int = 0
+}

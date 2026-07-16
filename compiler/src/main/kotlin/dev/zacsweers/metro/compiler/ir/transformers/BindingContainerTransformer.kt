@@ -65,6 +65,7 @@ import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
@@ -355,6 +356,8 @@ internal class BindingContainerTransformer(
     }
 
     checkNotLocked()
+
+    reportMissingRuntimeCoroutinesIfNeeded(reference)
 
     val generatedClassId = reference.generatedClassId
 
@@ -791,6 +794,20 @@ internal class BindingContainerTransformer(
       parameters = parameters,
       realDeclaration = callee?.owner ?: backingField,
     )
+  }
+
+  /** Reports a missing coroutines runtime before generating a factory that would require it. */
+  private fun reportMissingRuntimeCoroutinesIfNeeded(reference: CallableReference) {
+    if (!options.enableSuspendProviders) return
+    if (coroutinesRuntimeAvailability.isAvailable) return
+    val parameter =
+      reference.parameters.nonDispatchParameters.firstOrNull {
+        it.contextualTypeKey.wrappedType.containsSuspendLazy()
+      } ?: return
+    val declaration =
+      parameter.ir ?: reference.callee?.owner ?: reference.backingField ?: reference.parent.owner
+    val callableName = reference.callableId.asSingleFqName().asString()
+    reportMissingRuntimeCoroutines(declaration, "`$callableName`")
   }
 
   internal class CallableReference(
