@@ -247,19 +247,20 @@ internal class MetroProviderFramework(
         irBlock(resultType = targetKey.toIrType()) {
           val capturedProvider = createAndAddTemporaryVariable(provider, nameHint = "provider")
           +irLambda(
-            parent = scope.parent,
-            receiverParameter = null,
-            valueParameters = emptyList(),
-            returnType = valueType,
-          ) {
-            +irReturn(
-              irInvoke(
-                irGet(capturedProvider),
-                callee = context.metroSymbols.providerInvoke,
-                typeHint = valueType,
+              parent = scope.parent,
+              receiverParameter = null,
+              valueParameters = emptyList(),
+              returnType = valueType,
+            ) {
+              +irReturn(
+                irInvoke(
+                  irGet(capturedProvider),
+                  callee = context.metroSymbols.providerInvoke,
+                  typeHint = valueType,
+                )
               )
-            )
-          }
+            }
+            .also { it.function.body?.patchDeclarationParents(it.function) }
         }
       }
     } else {
