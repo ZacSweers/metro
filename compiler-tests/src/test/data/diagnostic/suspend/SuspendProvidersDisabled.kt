@@ -25,3 +25,12 @@ interface NestedAccessorGraph {
 
   @Provides fun provideValue(): String = "value"
 }
+
+@Inject
+class CanonicalSuspendConsumer(
+  // A suspend function nested in a canonical type is not a wrapper, so it isn't gated.
+  val list: List<suspend () -> Unit>,
+  val nestedMap: Map<String, List<suspend () -> Unit>>,
+  // A suspend function in map-value position is a real suspend spelling and stays gated.
+  val map: <!SUSPEND_PROVIDERS_NOT_ENABLED!>Map<String, suspend () -> String><!>,
+)

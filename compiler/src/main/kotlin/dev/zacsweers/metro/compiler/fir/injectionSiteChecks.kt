@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.classLikeLookupTagIfAny
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.name.StandardClassIds
 
 /** Validates a binding ref (anything that can have a qualifier) */
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -120,7 +121,7 @@ internal fun validateInjectionSiteType(
   val usesSuspendWrapper =
     contextKey.wrappedType.innerTypesSequence.any {
       it is WrappedType.SuspendProvider || it is WrappedType.SuspendLazy
-    } || (options.enableFunctionProviders && type.containsSuspendFunctionProviderType())
+    } || (options.enableFunctionProviders && type.containsSuspendFunctionInWrapperPosition(session))
   if (!options.enableSuspendProviders && usesSuspendWrapper) {
     reporter.reportOn(
       typeRef.source ?: source,
@@ -142,7 +143,7 @@ internal fun validateInjectionSiteType(
 
   if (contextKey.wrappedType !is WrappedType.Canonical) {
     checkDesugaredProviderUse(session, contextKey, typeRef, source)
-    checkUnsupportedSuspendMapValue(contextKey, typeRef, source)
+    checkUnsupportedSuspendMapValue(session, contextKey, typeRef, source)
   }
 
   val clazz = type.classLikeLookupTagIfAny?.toClassSymbolCompat(session)
@@ -270,12 +271,28 @@ internal fun validateInjectionSiteType(
   return false
 }
 
-private fun ConeKotlinType.containsSuspendFunctionProviderType(): Boolean {
+/**
+ * Whether a `suspend () -> T` spelling sits somewhere the flag-on analysis would treat as a
+ * SuspendProvider. That only happens in wrapper positions and map-value positions, mirroring how
+ * [asWrappedType] descends. A suspend function nested inside a canonical type (like `List<suspend
+ * () -> T>`) never becomes a wrapper, so it is not gated.
+ */
+private fun ConeKotlinType.containsSuspendFunctionInWrapperPosition(session: FirSession): Boolean {
   if (classId == Symbols.ClassIds.suspendFunction0) return true
-  return typeArguments.any { projection ->
-    val innerType = (projection as? ConeKotlinTypeProjection)?.type ?: return@any false
-    innerType.containsSuspendFunctionProviderType()
-  }
+  val rawClassId = classId
+  val isMapValuePosition = rawClassId == StandardClassIds.Map && typeArguments.size == 2
+  val isScalarWrapperPosition =
+    rawClassId in session.classIds.providerTypes ||
+      rawClassId in session.classIds.suspendProviderTypes ||
+      rawClassId in session.classIds.lazyTypes ||
+      rawClassId in session.classIds.suspendLazyTypes
+  val innerType =
+    when {
+      isMapValuePosition -> (typeArguments[1] as? ConeKotlinTypeProjection)?.type
+      isScalarWrapperPosition -> (typeArguments.firstOrNull() as? ConeKotlinTypeProjection)?.type
+      else -> null
+    }
+  return innerType?.containsSuspendFunctionInWrapperPosition(session) == true
 }
 
 /** Rejects a suspending wrapper outside a synchronous wrapper nearest the bound value. */
@@ -435,11 +452,20 @@ private fun checkDesugaredProviderUse(
   val options = session.metroFirBuiltIns.options
   val severity = options.desugaredProviderSeverity.resolve(session.isIde())
   if (severity == NONE) return
-  val hasDesugaredProvider =
-    contextKey.wrappedType.innerTypesSequence.any {
-      it is WrappedType.Provider && it.providerType == Symbols.ClassIds.metroProvider
+  val desugaredProvider =
+    contextKey.wrappedType.innerTypesSequence.firstOrNull { wrapped ->
+      val isDesugaredProvider =
+        wrapped is WrappedType.Provider && wrapped.providerType == Symbols.ClassIds.metroProvider
+      val isDesugaredSuspendProvider =
+        wrapped is WrappedType.SuspendProvider &&
+          wrapped.providerType == Symbols.ClassIds.metroSuspendProvider
+      isDesugaredProvider || isDesugaredSuspendProvider
+    } ?: return
+  val (desugaredForm, functionForm) =
+    when (desugaredProvider) {
+      is WrappedType.SuspendProvider -> "SuspendProvider<T>" to "suspend () -> T"
+      else -> "Provider<T>" to "() -> T"
     }
-  if (!hasDesugaredProvider) return
   val factory =
     when (severity) {
       ERROR -> MetroDiagnostics.DESUGARED_PROVIDER_ERROR
@@ -449,22 +475,88 @@ private fun checkDesugaredProviderUse(
   reporter.reportOn(
     typeRef.source ?: source,
     factory,
-    "Using the desugared `Provider<T>` type is discouraged. Prefer the function syntax form `() -> T` instead.",
+    "Using the desugared `$desugaredForm` type is discouraged. Prefer the function syntax form `$functionForm` instead.",
   )
 }
 
 /** Rejects suspend map value forms that the multibinding factories cannot materialize. */
 context(context: CheckerContext, reporter: DiagnosticReporter)
 private fun checkUnsupportedSuspendMapValue(
+  session: FirSession,
   contextKey: FirContextualTypeKey,
   typeRef: FirTypeRef,
   source: KtSourceElement?,
 ) {
-  if (!contextKey.wrappedType.hasUnsupportedSuspendMapValue()) return
-  reporter.reportOn(
-    typeRef.source ?: source,
-    MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE,
-  )
+  val offendingValue = contextKey.wrappedType.firstUnsupportedSuspendMapValue() ?: return
+  val reportSource =
+    typeRef.sourceForSuspendMapValue(contextKey.wrappedType, offendingValue)
+      ?: typeRef.source
+      ?: source
+  val rendered =
+    FirContextualTypeKey(contextKey.typeKey, offendingValue)
+      .originalType(session)
+      .render(short = true)
+  reporter.reportOn(reportSource, MetroDiagnostics.UNSUPPORTED_SUSPEND_MAP_VALUE, rendered)
+}
+
+/**
+ * Returns the map value wrapper that is unsupported, descending scalar wrappers and nested maps.
+ */
+private fun WrappedType<ConeKotlinType>.firstUnsupportedSuspendMapValue():
+  WrappedType<ConeKotlinType>? {
+  return when (this) {
+    is WrappedType.Canonical -> null
+    is WrappedType.Provider -> innerType.firstUnsupportedSuspendMapValue()
+    is WrappedType.SuspendProvider -> innerType.firstUnsupportedSuspendMapValue()
+    is WrappedType.Lazy -> innerType.firstUnsupportedSuspendMapValue()
+    is WrappedType.SuspendLazy -> innerType.firstUnsupportedSuspendMapValue()
+    is WrappedType.Map -> {
+      val value = valueType
+      if (value !is WrappedType.Map && value.hasUnsupportedSuspendWrapperInMapValue()) {
+        value
+      } else {
+        value.firstUnsupportedSuspendMapValue()
+      }
+    }
+  }
+}
+
+/**
+ * Walks a type ref to the source of [target], descending scalar wrappers and map value positions.
+ */
+private fun FirTypeRef.sourceForSuspendMapValue(
+  root: WrappedType<ConeKotlinType>,
+  target: WrappedType<ConeKotlinType>,
+): KtSourceElement? {
+  var currentTypeRef = sourceTypeRef()
+  var currentWrappedType = root
+  while (true) {
+    if (currentWrappedType === target) return currentTypeRef.source
+    val nextWrappedType: WrappedType<ConeKotlinType>?
+    val nextTypeRef: FirTypeRef?
+    if (currentWrappedType is WrappedType.Map) {
+      nextWrappedType = currentWrappedType.valueType
+      nextTypeRef = currentTypeRef.mapValueTypeRefOrNull()
+    } else {
+      nextWrappedType = currentWrappedType.immediateInnerType()
+      nextTypeRef = currentTypeRef.immediateInnerTypeRef()
+    }
+    if (nextWrappedType == null || nextTypeRef == null) return null
+    currentWrappedType = nextWrappedType
+    currentTypeRef = nextTypeRef.sourceTypeRef()
+  }
+}
+
+private fun FirTypeRef.mapValueTypeRefOrNull(): FirTypeRef? {
+  val userTypeRef = this as? FirUserTypeRef ?: return null
+  val arguments = userTypeRef.qualifier.lastOrNull()?.typeArgumentList?.typeArguments ?: return null
+  if (arguments.size != 2) return null
+  return when (val argument = arguments[1]) {
+    is FirTypeProjectionWithVariance -> argument.typeRef
+    is FirPlaceholderProjection,
+    is FirStarProjection,
+    null -> null
+  }
 }
 
 private fun WrappedType<ConeKotlinType>.hasUnsupportedSuspendMapValue(): Boolean {

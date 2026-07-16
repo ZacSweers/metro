@@ -168,7 +168,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
   val SUSPEND_PROVIDERS_NOT_ENABLED by error0<KtElement>(NAME_IDENTIFIER)
   val SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER by error1<KtElement, String>(NAME_IDENTIFIER)
-  val UNSUPPORTED_SUSPEND_MAP_VALUE by error0<KtElement>(NAME_IDENTIFIER)
+  val UNSUPPORTED_SUSPEND_MAP_VALUE by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
   val ASSISTED_INJECTION_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -354,7 +354,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(SYNCHRONOUS_WRAPPER_INSIDE_SUSPEND_WRAPPER, "{0}", STRING)
         put(
           UNSUPPORTED_SUSPEND_MAP_VALUE,
-          "Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.",
+          "Map value `{0}` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.",
+          STRING,
         )
         put(ASSISTED_INJECTION_ERROR, "{0}", STRING)
         put(ASSISTED_INJECTION_WARNING, "{0}", STRING)
