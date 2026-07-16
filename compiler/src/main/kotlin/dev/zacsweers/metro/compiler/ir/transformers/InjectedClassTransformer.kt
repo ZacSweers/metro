@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.MISSING_RUNTIME_COROUTINES_MESSAGE
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
@@ -283,6 +284,11 @@ internal class InjectedClassTransformer(
     val memberInjectParameters = injectors.flatMap { it.requiredParametersByClass.values.flatten() }
 
     val constructorParameters = targetConstructor.parameters()
+    reportMissingRuntimeCoroutinesIfNeeded(
+      declaration,
+      constructorParameters,
+      memberInjectParameters,
+    )
     val factoryTargetType = declaration.symbol.typeWithParameters(factoryCls.typeParameters)
     val factoryTypeRemapper = declaration.deepRemapperFor(factoryTargetType)
 
@@ -428,6 +434,38 @@ internal class InjectedClassTransformer(
 
     generatedFactories[injectedClassId] = Optional.of(wrapper)
     return wrapper
+  }
+
+  /**
+   * Reports the missing optional runtime-coroutines artifact on the injected declaration itself. A
+   * factory whose invoke() materializes a `SuspendLazy` needs that artifact at runtime, and without
+   * this report a module that compiles only the injected class (no graph) would build a factory
+   * that throws at runtime with no compile-time diagnostic.
+   */
+  private fun reportMissingRuntimeCoroutinesIfNeeded(
+    declaration: IrClass,
+    constructorParameters: Parameters,
+    memberInjectParameters: List<Parameters>,
+  ) {
+    if (!options.enableSuspendProviders) return
+    if (coroutinesRuntimeAvailability.isAvailable) return
+    // Function injection carries its params on the injected function, not the synthetic
+    // constructor.
+    val injectedFunctionParams =
+      declaration.injectedFunctionOrNull()?.owner?.parameters()?.regularParameters.orEmpty()
+    val allParams =
+      constructorParameters.allParameters +
+        memberInjectParameters.flatMap { it.regularParameters } +
+        injectedFunctionParams
+    val requestsSuspendLazy = allParams.any {
+      it.contextualTypeKey.wrappedType.containsSuspendLazy()
+    }
+    if (!requestsSuspendLazy) return
+    val message =
+      "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}] '${declaration.kotlinFqName}' " +
+        "requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. " +
+        MISSING_RUNTIME_COROUTINES_MESSAGE
+    reportCompat(declaration, MetroDiagnostics.MISSING_RUNTIME_COROUTINES, message)
   }
 
   private fun createInjectConstructorFactoryShell(

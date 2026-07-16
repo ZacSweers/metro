@@ -929,7 +929,10 @@ internal class BindingLookup(
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
         val targetRemapper = targetClass.deepRemapperFor(targetType)
 
-        // Create the target's ConstructorInjected binding (NOT added to graph)
+        // Create the target's ConstructorInjected binding (NOT added to graph). Its @Inject members
+        // are tracked so the assisted factory depends on them: the generated factory injects them
+        // after construction, and graph validation can reject suspend member deps (which cannot be
+        // awaited during member injection).
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
             targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
@@ -939,8 +942,10 @@ internal class BindingLookup(
               classFactory = targetClassFactory.remapTypes(targetRemapper),
               annotations = targetAnnotations,
               typeKey = targetKey,
-              // Assisted-inject classes don't have member injections in this context
-              injectedMembers = emptySet(),
+              injectedMembers =
+                targetClass.computeMembersInjectorBindings(targetRemapper).mapToSet {
+                  it.contextualTypeKey
+                },
             )
           }
 

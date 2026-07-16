@@ -1627,6 +1627,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedFactorySuspendMemberDep.kt")
+    public void testAssistedFactorySuspendMemberDep() {
+      run("AssistedFactorySuspendMemberDep.kt");
+    }
+
+    @Test
     @TestMetadata("AssistedFactorySuspendRequired.kt")
     public void testAssistedFactorySuspendRequired() {
       run("AssistedFactorySuspendRequired.kt");
@@ -1672,6 +1678,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
     public void testDepInConstructorInjectedNonSuspendAccessor() {
       run("DepInConstructorInjectedNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("DesugaredSuspendProviderWarning.kt")
+    public void testDesugaredSuspendProviderWarning() {
+      run("DesugaredSuspendProviderWarning.kt");
     }
 
     @Test

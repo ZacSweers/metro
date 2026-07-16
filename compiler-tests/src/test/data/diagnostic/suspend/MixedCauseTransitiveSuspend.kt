@@ -14,7 +14,7 @@ class Config
 @Inject class Database(val config: Config)
 
 @Inject
-class Worker(
+class <!MISSING_RUNTIME_COROUTINES!>Worker<!>(
   // Deferred — legal for a non-suspend consumer, does not make Worker suspend by itself
   val lazyConfig: <!OPT_IN_USAGE!>SuspendLazy<Config><!>,
   // Unwrapped dep on a transitively suspend binding — THIS makes Worker suspend

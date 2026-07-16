@@ -242,6 +242,21 @@ internal sealed interface WrappedType<T : Any> {
   /** Returns true if this type is a canonical type or Map rather than a scalar wrapper. */
   fun isScalarLeaf(): Boolean = immediateInnerType() == null
 
+  /**
+   * The scalar wrapper node directly enclosing the [scalarLeaf], walking through any nested scalar
+   * wrappers. Returns null when this type is itself a scalar leaf (has no wrapper). Both FIR and IR
+   * inspect this innermost wrapper to reason about suspend wrapper ordering.
+   */
+  fun innermostWrapper(): WrappedType<T>? {
+    if (isScalarLeaf()) return null
+    var current: WrappedType<T> = this
+    while (true) {
+      val inner = current.immediateInnerType() ?: return current
+      if (inner.isScalarLeaf()) return current
+      current = inner
+    }
+  }
+
   /** Whether this type requires SuspendProvider, or null if it has no scalar wrapper. */
   fun usesSuspendProvider(): Boolean? {
     return when (this) {

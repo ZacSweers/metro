@@ -95,3 +95,25 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
  */
 internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
   get() = isDeferrable
+
+/**
+ * Whether this request stops suspend propagation, considering both a deferrable wrapper and a graph
+ * dependency that can pass its exact wrapper value through. [findBinding] resolves the request's
+ * binding. Shared by graph validation and (via the analysis) child pre-seal queries.
+ */
+internal fun IrContextualTypeKey.stopsSuspendPropagation(
+  findBinding: (IrTypeKey) -> IrBinding?
+): Boolean {
+  if (stopsSuspendPropagation) return true
+  return (findBinding(typeKey) as? IrBinding.GraphDependency)?.canPassThrough(this) == true
+}
+
+/**
+ * Whether this dependency edge makes its consumer transitively suspend. True when the requested key
+ * is suspend ([isSuspendKey]) and the edge does not [stopsSuspendPropagation]. Shared by graph
+ * validation and codegen so both agree on which edges block.
+ */
+internal fun IrContextualTypeKey.propagatesSuspend(
+  isSuspendKey: (IrTypeKey) -> Boolean,
+  findBinding: (IrTypeKey) -> IrBinding?,
+): Boolean = isSuspendKey(typeKey) && !stopsSuspendPropagation(findBinding)

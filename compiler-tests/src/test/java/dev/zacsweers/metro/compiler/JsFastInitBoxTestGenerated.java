@@ -2533,6 +2533,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("AssistedInjectSuspendMemberInjection.kt")
+    public void testAssistedInjectSuspendMemberInjection() {
+      run("AssistedInjectSuspendMemberInjection.kt");
+    }
+
+    @Test
     @TestMetadata("AssistedInjectSuspendSam.kt")
     public void testAssistedInjectSuspendSam() {
       run("AssistedInjectSuspendSam.kt");
@@ -2578,6 +2584,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("FunctionTypeInvocationOnAllPlatforms.kt")
     public void testFunctionTypeInvocationOnAllPlatforms() {
       run("FunctionTypeInvocationOnAllPlatforms.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericAssistedFactorySuspendDep.kt")
+    public void testGenericAssistedFactorySuspendDep() {
+      run("GenericAssistedFactorySuspendDep.kt");
     }
 
     @Test

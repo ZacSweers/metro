@@ -9,13 +9,20 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
+import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter.AssistedParameterKey.Companion.toAssistedParameterKey
+import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.trackFunctionCall
+import dev.zacsweers.metro.compiler.ir.transformers.MembersInjectorTransformer
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.newName
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -27,21 +34,28 @@ import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSetField
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 
 /**
@@ -75,7 +89,17 @@ internal class GraphSuspendFactoryGenerator(
   private val bindingGraph: IrBindingGraph,
 ) : IrMetroContext by metroContext {
 
-  class NestedSuspendFactory(val irClass: IrClass, val constructor: IrConstructor)
+  /**
+   * @property memberParams the target's non-suspend member-inject params held as extra constructor
+   *   fields (empty unless this is an assisted impl with member injection). Callers append these to
+   *   the target params they pass when constructing the impl so the ctor args line up with the
+   *   generated fields.
+   */
+  class NestedSuspendFactory(
+    val irClass: IrClass,
+    val constructor: IrConstructor,
+    val memberParams: List<Parameter> = emptyList(),
+  )
 
   private val classNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
   private val cache = mutableMapOf<IrTypeKey, NestedSuspendFactory>()
@@ -222,19 +246,26 @@ internal class GraphSuspendFactoryGenerator(
    * interface for graphs where the target consumes suspend bindings. Unlike the shared per-class
    * `*_Impl` (which delegates to the target's plain `Factory<T>`), this impl holds the target's
    * non-assisted deps directly as `SuspendProvider<X>` or `Provider<X>`, based on graph resolution.
-   * Its suspend SAM override awaits them before calling the target constructor.
+   * Its suspend SAM override awaits them before calling the target constructor. If the target has
    *
+   * @param injectors the target's member injectors (target class plus its `HasMemberInjections`
+   *   supertypes), used to run member injection after construction.
    * @param buildTargetCall builds the target constructor call given resolved args aligned with the
    *   target constructor's full parameter list (assisted + non-assisted, in declaration order).
+   * @Inject members, the override injects them after construction. Those member deps are guaranteed
+   *   non-suspend (suspend member deps are rejected earlier), so they are held as `Provider<X>`
+   *   fields.
    */
   fun getOrGenerateAssistedImpl(
     binding: IrBinding.AssistedFactory,
+    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     buildTargetCall: IrBuilderWithScope.(args: List<IrExpression?>) -> IrExpression,
   ): NestedSuspendFactory =
-    cache.getOrPut(binding.typeKey) { generateAssistedImpl(binding, buildTargetCall) }
+    cache.getOrPut(binding.typeKey) { generateAssistedImpl(binding, injectors, buildTargetCall) }
 
   private fun generateAssistedImpl(
     binding: IrBinding.AssistedFactory,
+    injectors: List<MembersInjectorTransformer.MemberInjectClass>,
     buildTargetCall: IrBuilderWithScope.(args: List<IrExpression?>) -> IrExpression,
   ): NestedSuspendFactory {
     val target = binding.targetBinding
@@ -242,19 +273,40 @@ internal class GraphSuspendFactoryGenerator(
     val ctorParams = target.classFactory.targetFunctionParameters.regularParameters
     val nonAssistedParams = ctorParams.filterNot { it.isAssisted }
 
+    // Member injection plan: each static inject function with its (non-suspend) member deps. The
+    // deps become extra constructor fields so the override can resolve them after construction.
+    val injectFunctions: List<Pair<IrSimpleFunction, Parameters>> =
+      injectors
+        .filter { it.injectorClass != null }
+        .flatMap { injector -> injector.declaredInjectFunctions.entries.map { it.key to it.value } }
+    val memberParams = injectFunctions.flatMap { (_, params) -> params.regularParameters }
+
+    // A generic @AssistedFactory interface leaves type-parameter references in the SAM's copied
+    // param/return types. This nested impl is non-generic, so remap them to the concrete arguments
+    // of binding.typeKey.type (the factory type this graph resolved), matching
+    // AssistedFactoryTransformer.
+    val samTypeRemapper =
+      typeRemapperFor(
+        (binding.typeKey.type as? IrSimpleType)?.arguments?.mapNotNull { it.typeOrNull }.orEmpty(),
+        binding.type,
+      )
+
     val implClass =
       buildShell(binding.nameHint.capitalizeUS() + "SuspendImpl", binding.typeKey.type)
 
-    val paramFields = ArrayList<ParamField>(nonAssistedParams.size)
-    val constructor = implClass.addDepsConstructor(nonAssistedParams, paramFields)
-    val fieldsByParam = paramFields.associateBy { it.param }
+    // One combined constructor holds fields for both the target's non-assisted ctor deps and its
+    // member deps, in that order. The call site supplies args in the same order.
+    val combinedParams = nonAssistedParams + memberParams
+    val paramFields = ArrayList<ParamField>(combinedParams.size)
+    val constructor = implClass.addDepsConstructor(combinedParams, paramFields)
+    val fieldsByParam = paramFields.associate { it.param to it.field }
 
     // Suspend SAM override: assisted params flow straight through to the target constructor,
     // non-assisted deps resolve from the fields.
     implClass
       .addFunction {
         name = samFunction.name
-        returnType = samFunction.returnType
+        returnType = samTypeRemapper.remapType(samFunction.returnType)
         isSuspend = samFunction.isSuspend
       }
       .apply {
@@ -265,7 +317,7 @@ internal class GraphSuspendFactoryGenerator(
 
         val samValueParams =
           samFunction.regularParameters.map { samParam ->
-            addValueParameter(name = samParam.name, type = samParam.type)
+            addValueParameter(name = samParam.name, type = samTypeRemapper.remapType(samParam.type))
           }
         // Match SAM params to the target constructor's assisted params by assisted key
         // (type + @Assisted identifier), same as AssistedFactoryTransformer.
@@ -277,9 +329,10 @@ internal class GraphSuspendFactoryGenerator(
             }
             .toMap()
 
+        val overrideFunction = this
         body =
           withIrBuilder(symbol) {
-            val args = ctorParams.map { param ->
+            val ctorArgs = ctorParams.map { param ->
               if (param.isAssisted) {
                 val samParam =
                   samParamsByKey[param.assistedParameterKey]
@@ -288,7 +341,7 @@ internal class GraphSuspendFactoryGenerator(
                     )
                 irGet(samParam)
               } else {
-                val (_, field) = fieldsByParam.getValue(param)
+                val field = fieldsByParam.getValue(param)
                 typeAsProviderArgument(
                   param.contextualTypeKey,
                   irGetField(irGet(localDispatchReceiver), field),
@@ -297,10 +350,37 @@ internal class GraphSuspendFactoryGenerator(
                 )
               }
             }
-            irExprBodySafe(buildTargetCall(args))
+            if (injectFunctions.isEmpty()) {
+              irExprBodySafe(buildTargetCall(ctorArgs))
+            } else {
+              // Construct the target, run member injection, then return the instance. Mirrors the
+              // ordinary factory's generated invoke() member-injection sequence.
+              irBlockBody {
+                val instance = createAndAddTemporaryVariable(buildTargetCall(ctorArgs))
+                for ((injectFn, params) in injectFunctions) {
+                  trackFunctionCall(overrideFunction, injectFn)
+                  +irInvoke(
+                    dispatchReceiver = irGetObject(injectFn.parentAsClass.symbol),
+                    callee = injectFn.symbol,
+                    args =
+                      buildList {
+                        add(irGet(instance))
+                        addAll(
+                          parametersAsProviderArguments(
+                            parameters = params,
+                            receiver = localDispatchReceiver,
+                            parametersToFields = fieldsByParam,
+                          )
+                        )
+                      },
+                  )
+                }
+                +irReturn(irGet(instance))
+              }
+            }
           }
       }
 
-    return NestedSuspendFactory(implClass, constructor)
+    return NestedSuspendFactory(implClass, constructor, memberParams)
   }
 }

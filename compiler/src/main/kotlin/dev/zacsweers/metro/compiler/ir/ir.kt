@@ -803,8 +803,10 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
 
   val requestedUsesSuspendProvider =
     contextKey.wrappedType.usesSuspendProvider(resolvedIsSuspendProvider)
-  check(!resolvedIsSuspendProvider || requestedUsesSuspendProvider) {
-    "Cannot materialize a synchronous provider from ${bindingType.dumpKotlinLike()}"
+  if (resolvedIsSuspendProvider && !requestedUsesSuspendProvider) {
+    reportCompilerBug(
+      "Cannot materialize a synchronous provider from ${bindingType.dumpKotlinLike()} for context key $contextKey"
+    )
   }
 
   val leafType = contextKey.wrappedType.scalarLeaf()

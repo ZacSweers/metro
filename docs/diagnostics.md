@@ -11,6 +11,7 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 
 | Diagnostic | Summary |
 |------------|---------|
+| [`Metro/AssistedFactorySuspendRequired`](#assistedfactorysuspendrequired) | An assisted factory creates a target that depends on suspend bindings. |
 | [`Metro/DependencyCycle`](#dependencycycle) | A binding cycle has no deferred edge. |
 | [`Metro/DuplicateBinding`](#duplicatebinding) | Multiple bindings match the same type key. |
 | [`Metro/DuplicateMapKeys`](#duplicatemapkeys) | Multiple map contributions use the same key. |
@@ -20,11 +21,28 @@ Diagnostics rendering is controlled by the `diagnosticsRenderMode` Gradle option
 | [`Metro/IncompatibleReturnTypes`](#incompatiblereturntypes) | Merged declarations have incompatible return types. |
 | [`Metro/IncompatiblyScopedBindings`](#incompatiblyscopedbindings) | A graph uses bindings with incompatible scopes. |
 | [`Metro/InvalidBinding`](#invalidbinding) | A binding declaration uses an unsupported form. |
+| [`Metro/MemberInjectionOverSuspendBinding`](#memberinjectionoversuspendbinding) | Member injection depends on a suspend binding. |
 | [`Metro/MissingBinding`](#missingbinding) | No binding satisfies a requested type. |
+| [`Metro/MissingRuntimeCoroutines`](#missingruntimecoroutines) | Suspend codegen needs the optional runtime-coroutines artifact. |
+| [`Metro/MultibindingOverSuspendBindings`](#multibindingoversuspendbindings) | A multibinding aggregates suspend bindings. |
 | [`Metro/QualifierOverrideMismatch`](#qualifieroverridemismatch) | An override changes the qualifiers on a declaration. |
+| [`Metro/SuspendBindingFromNonSuspendAccessor`](#suspendbindingfromnonsuspendaccessor) | A non-suspend accessor requests a binding that needs a suspend context. |
+| [`Metro/SuspendBindingWrappedInLazy`](#suspendbindingwrappedinlazy) | A suspend binding is requested through a synchronous `Lazy`. |
+| [`Metro/SuspendBindingWrappedInProvider`](#suspendbindingwrappedinprovider) | A suspend binding is requested through a synchronous `Provider`. |
+| [`Metro/SuspendProvidersNotEnabled`](#suspendprovidersnotenabled) | A suspend binding is used while suspend providers are disabled. |
 | [`Metro/SuspiciousUnusedMultibinding`](#suspiciousunusedmultibinding) | A multibinding has contributions but is never requested. |
 | [`Metro/UnprocessedUpstreamDeclaration`](#unprocessedupstreamdeclaration) | An upstream declaration does not appear to have been processed by Metro. |
 | [`Metro/UnusedGraphInputs`](#unusedgraphinputs) | A graph input is unused and can be removed. |
+
+## AssistedFactorySuspendRequired
+
+**Diagnostic:** `Metro/AssistedFactorySuspendRequired`
+
+**Summary:** An assisted factory creates a target that depends on suspend bindings.
+
+An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings.
+The factory function must await them. Declare the factory function as a `suspend` function so the
+generated implementation can await the suspend dependencies.
 
 ## DependencyCycle
 
@@ -116,6 +134,16 @@ A binding is requested in a way its declaration does not support. The most commo
 injecting an assisted-injected class directly. Inject its `@AssistedFactory` instead and call the
 factory's `create()` function.
 
+## MemberInjectionOverSuspendBinding
+
+**Diagnostic:** `Metro/MemberInjectionOverSuspendBinding`
+
+**Summary:** Member injection depends on a suspend binding.
+
+A member-injected dependency resolves to a suspend binding, but member injection runs without a
+suspend context and cannot await it. Defer the dependency as `suspend () -> T` (or
+`SuspendLazy<T>`) so the member holds a deferred value instead.
+
 ## MissingBinding
 
 **Diagnostic:** `Metro/MissingBinding`
@@ -130,6 +158,27 @@ subtype/supertype relationship, or multibinding.
 Add an `@Inject` constructor, an `@Provides` function, or a `@Binds`/contributed binding visible
 to the graph that requests the type.
 
+## MissingRuntimeCoroutines
+
+**Diagnostic:** `Metro/MissingRuntimeCoroutines`
+
+**Summary:** Suspend codegen needs the optional runtime-coroutines artifact.
+
+A binding or request needs runtime support from the optional `runtime-coroutines` artifact, such
+as a scoped suspend binding or a `SuspendLazy<T>` request, but that artifact is not on the
+classpath. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+## MultibindingOverSuspendBindings
+
+**Diagnostic:** `Metro/MultibindingOverSuspendBindings`
+
+**Summary:** A multibinding aggregates suspend bindings.
+
+A `Set` or `Map` multibinding aggregates suspend contributions. Aggregation code runs without a
+suspend context and cannot await each element. Set multibindings over suspend bindings are
+unsupported. A map multibinding must be consumed as a deferred-value form such as
+`Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value defers its resolution.
+
 ## QualifierOverrideMismatch
 
 **Diagnostic:** `Metro/QualifierOverrideMismatch`
@@ -139,6 +188,46 @@ to the graph that requests the type.
 Qualifier annotations are not inherited. An override with different or missing qualifiers
 resolves a different binding than the declaration it overrides. Declare the same qualifiers on
 the override and the overridden declaration.
+
+## SuspendBindingFromNonSuspendAccessor
+
+**Diagnostic:** `Metro/SuspendBindingFromNonSuspendAccessor`
+
+**Summary:** A non-suspend accessor requests a binding that needs a suspend context.
+
+An accessor returns a type that transitively depends on suspend bindings, so resolving it
+requires awaiting them. A non-suspend accessor cannot do that. Mark the accessor as
+`suspend fun`, or change its return type to a deferred form such as `suspend () -> T` or
+`SuspendProvider<T>`.
+
+## SuspendBindingWrappedInLazy
+
+**Diagnostic:** `Metro/SuspendBindingWrappedInLazy`
+
+**Summary:** A suspend binding is requested through a synchronous `Lazy`.
+
+A suspend binding is wrapped in a synchronous `Lazy`. `Lazy` resolves its value without a suspend
+context and cannot await the binding. Use `SuspendLazy<T>` instead.
+
+## SuspendBindingWrappedInProvider
+
+**Diagnostic:** `Metro/SuspendBindingWrappedInProvider`
+
+**Summary:** A suspend binding is requested through a synchronous `Provider`.
+
+A suspend binding is wrapped in a synchronous `Provider` (or `() -> T`). That wrapper resolves
+its value without a suspend context and cannot await the binding. Use the deferred suspend form
+`suspend () -> T` (or `SuspendProvider<T>`) instead.
+
+## SuspendProvidersNotEnabled
+
+**Diagnostic:** `Metro/SuspendProvidersNotEnabled`
+
+**Summary:** A suspend binding is used while suspend providers are disabled.
+
+A binding is provided by a `suspend` function, but suspend provider support is turned off. Enable
+the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+Otherwise make the provider non-suspend.
 
 ## SuspiciousUnusedMultibinding
 

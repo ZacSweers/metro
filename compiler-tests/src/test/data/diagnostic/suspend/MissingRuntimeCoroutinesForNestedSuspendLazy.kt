@@ -6,7 +6,7 @@
 @file:Suppress("DESUGARED_PROVIDER_WARNING")
 @OptIn(ExperimentalMetroCoroutinesApi::class)
 @Inject
-class NestedLazyConsumer(
+class <!MISSING_RUNTIME_COROUTINES!>NestedLazyConsumer<!>(
   val value: Provider<SuspendLazy<String>>
 )
 

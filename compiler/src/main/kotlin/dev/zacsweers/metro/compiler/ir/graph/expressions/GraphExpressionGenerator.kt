@@ -20,6 +20,7 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.propagatesSuspend
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -552,15 +553,11 @@ private constructor(
 
           val targetConsumesSuspend =
             targetBinding.parameters.nonDispatchParameters.any { param ->
-              val dependencyBinding = bindingGraph.findBinding(param.contextualTypeKey.typeKey)
-              val exactGraphDependency =
-                (dependencyBinding as? IrBinding.GraphDependency)?.canPassThrough(
-                  param.contextualTypeKey
-                ) == true
               !param.isAssisted &&
-                !param.contextualTypeKey.isDeferrable &&
-                !exactGraphDependency &&
-                bindingGraph.isTransitivelySuspend(param.contextualTypeKey.typeKey)
+                param.contextualTypeKey.propagatesSuspend(
+                  isSuspendKey = bindingGraph::isTransitivelySuspend,
+                  findBinding = { key -> bindingGraph.findBinding(key) },
+                )
             }
           if (targetConsumesSuspend) {
             // The shared per-class Impl delegates to the target's plain Factory<T>, which can't
@@ -1069,12 +1066,26 @@ private constructor(
         }
       }
 
-      val nested = suspendFactoryGenerator.getOrGenerateAssistedImpl(binding, buildTargetCall)
-      // Ctor args are the target's non-assisted deps; generateBindingArguments filters assisted
-      // params from the target parameter list, matching the nested ctor's parameter order.
+      // Member injectors for the target class plus its HasMemberInjections supertypes. The nested
+      // impl injects these non-suspend members after construction.
+      val injectors = metroDeclarations.findAllInjectorsFor(targetBinding.type)
+      val nested =
+        suspendFactoryGenerator.getOrGenerateAssistedImpl(binding, injectors, buildTargetCall)
+      // Ctor args are the target's non-assisted deps followed by its member deps, in the same order
+      // the nested ctor declares its fields. generateBindingArguments filters assisted params and
+      // aligns the rest to the nested ctor's parameters by index.
+      val targetParams =
+        if (nested.memberParams.isEmpty()) {
+          classFactory.targetFunctionParameters
+        } else {
+          classFactory.targetFunctionParameters.copy(
+            regularParameters =
+              classFactory.targetFunctionParameters.regularParameters + nested.memberParams
+          )
+        }
       val ctorArgs =
         generateBindingArguments(
-          targetParams = classFactory.targetFunctionParameters,
+          targetParams = targetParams,
           function = nested.constructor,
           binding = targetBinding,
           fieldInitKey = fieldInitKey,

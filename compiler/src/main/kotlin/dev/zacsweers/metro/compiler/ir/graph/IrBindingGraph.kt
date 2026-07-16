@@ -1095,7 +1095,7 @@ internal class IrBindingGraph(
           val element = binding.reportableDeclaration ?: node.sourceGraph
           reportError(
             element,
-            "[Metro/SuspendProvidersNotEnabled] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
+            "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
           )
         }
       }
@@ -1171,13 +1171,13 @@ internal class IrBindingGraph(
         val message = buildString {
           appendLine(
             if (binding.isSet) {
-              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly."
+              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly."
             } else {
               val (keyType, valueType) =
                 binding.typeKey.type.requireSimpleType().arguments.map {
                   it.typeOrFail.render(short = true)
                 }
-              "[Metro/MultibindingOverSuspendBindings] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value defers its resolution."
+              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value defers its resolution."
             }
           )
           appendLine()
@@ -1260,7 +1260,7 @@ internal class IrBindingGraph(
           }
         val message = buildString {
           appendLine(
-            "[Metro/SuspendBindingWrappedIn$blockingWrapper] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1277,7 +1277,7 @@ internal class IrBindingGraph(
         val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
         val message = buildString {
           appendLine(
-            "[Metro/SuspendBindingFromNonSuspendAccessor] $typeRender bindings must be a suspend function or $deferredFormRender because it depends on suspend bindings and requires a suspend context."
+            "[${MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId}] $typeRender bindings must be a suspend function or $deferredFormRender because it depends on suspend bindings and requires a suspend context."
           )
           appendLine()
           appendLine("Trace:")
@@ -1303,7 +1303,7 @@ internal class IrBindingGraph(
           is IrBinding.MembersInjected -> {
             val dep =
               binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation(bindings)
+                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
               } ?: return@forEachValue
             dep to "'${binding.targetClassId.asFqNameString()}' member injection"
           }
@@ -1313,14 +1313,14 @@ internal class IrBindingGraph(
             // Suspend evaluation may be required by a member or constructor dependency.
             val anySuspendDep =
               binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation(bindings)
+                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
               } ?: return@forEachValue
             // Resolve through the MembersInjected binding to name the actual member's type
             // rather than the synthetic MembersInjector<T> key.
             val memberBinding = bindings[anySuspendDep.typeKey] as? IrBinding.MembersInjected
             val dep =
               memberBinding?.dependencies?.firstOrNull {
-                it.typeKey in suspendSet && !it.stopsSuspendPropagation(bindings)
+                it.typeKey in suspendSet && !it.stopsSuspendPropagation { key -> bindings[key] }
               } ?: anySuspendDep
             dep to "'${binding.type.kotlinFqName}' has @Inject members and"
           }
@@ -1333,7 +1333,7 @@ internal class IrBindingGraph(
       val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendDep.typeKey, head)
       val message = buildString {
         appendLine(
-          "[Metro/MemberInjectionOverSuspendBinding] $subject depends on suspend binding '$depRender', but member injection cannot combine with suspend bindings. Defer the dependency as `${suspendFunctionRender(depRender)}` (or `SuspendLazy<$depRender>`) instead."
+          "[${MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING.fullId}] $subject depends on suspend binding '$depRender', but member injection cannot combine with suspend bindings. Defer the dependency as `${suspendFunctionRender(depRender)}` (or `SuspendLazy<$depRender>`) instead."
         )
         appendLine()
         appendLine("Trace:")
@@ -1375,7 +1375,7 @@ internal class IrBindingGraph(
             }
           val message = buildString {
             appendLine(
-              "[Metro/SuspendBindingWrappedIn$blockingWrapper] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+              "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
             )
             appendLine()
             appendLine("Trace:")
@@ -1414,7 +1414,7 @@ internal class IrBindingGraph(
         val element = param.ir ?: target.reportableDeclaration
         val message = buildString {
           appendLine(
-            "[Metro/SuspendBindingWrappedIn$blockingWrapper] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1429,12 +1429,15 @@ internal class IrBindingGraph(
           message,
         )
       }
+
       if (binding.function.isSuspend) return@forEachValue
       val blockingDep =
         target.parameters.nonDispatchParameters.firstOrNull { param ->
           !param.isAssisted &&
-            param.contextualTypeKey.typeKey in suspendSet &&
-            !param.contextualTypeKey.stopsSuspendPropagation(bindings)
+            param.contextualTypeKey.propagatesSuspend(
+              { it in suspendSet },
+              { key -> bindings[key] },
+            )
         } ?: return@forEachValue
       val head =
         bindingStackEntryForDependency(target, blockingDep.contextualTypeKey, blockingDep.typeKey)
@@ -1442,7 +1445,7 @@ internal class IrBindingGraph(
       val trace = buildSuspendTrace(bindings, suspendSet, blockingDep.typeKey, head)
       val message = buildString {
         appendLine(
-          "[Metro/AssistedFactorySuspendRequired] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings. Declare '${binding.function.name}' as a suspend function so it can await them."
+          "[${MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED.fullId}] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings. Declare '${binding.function.name}' as a suspend function so it can await them."
         )
         appendLine()
         appendLine("Trace:")
@@ -1494,7 +1497,7 @@ internal class IrBindingGraph(
       }
       val nextDep =
         current.dependencies.firstOrNull { dep ->
-          dep.typeKey in suspendSet && !dep.stopsSuspendPropagation(bindings)
+          dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
         } ?: break
       result +=
         bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)
@@ -1511,19 +1514,11 @@ internal class IrBindingGraph(
   /** Returns the synchronous wrapper nearest the bound value, if there is one. */
   private fun IrContextualTypeKey.lowestSynchronousWrapperName(): String? {
     if (wrappedType.usesSuspendProvider() != false) return null
-    var currentType = wrappedType
-    while (true) {
-      val innerType = currentType.immediateInnerType() ?: break
-      if (innerType.isScalarLeaf()) {
-        return when (currentType) {
-          is WrappedType.Provider -> "Provider"
-          is WrappedType.Lazy -> "Lazy"
-          else -> reportCompilerBug("Expected an innermost synchronous wrapper for $this")
-        }
-      }
-      currentType = innerType
+    return when (wrappedType.innermostWrapper()) {
+      is WrappedType.Provider -> "Provider"
+      is WrappedType.Lazy -> "Lazy"
+      else -> reportCompilerBug("Expected an innermost synchronous wrapper for $this")
     }
-    reportCompilerBug("Expected an innermost synchronous wrapper for $this")
   }
 
   private fun IrContextualTypeKey.blockingWrapperPhrase(wrapper: String): String {
@@ -1547,13 +1542,6 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun IrContextualTypeKey.stopsSuspendPropagation(
-    bindings: ScatterMap<IrTypeKey, IrBinding>
-  ): Boolean {
-    if (stopsSuspendPropagation) return true
-    return (bindings[typeKey] as? IrBinding.GraphDependency)?.canPassThrough(this) == true
-  }
-
   private fun IrContextualTypeKey.isValidSuspendBoundary(
     bindings: ScatterMap<IrTypeKey, IrBinding>
   ): Boolean {
@@ -1572,11 +1560,52 @@ internal class IrBindingGraph(
   private fun validateRuntimeCoroutinesAvailability() {
     if (!requiresRuntimeCoroutines) return
     if (coroutinesRuntimeAvailability.isAvailable) return
-    reportError(
-      node.sourceGraph,
-      MISSING_RUNTIME_COROUTINES_MESSAGE,
-      MetroDiagnostics.MISSING_RUNTIME_COROUTINES,
-    )
+    val tag = "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}]"
+    val trigger = describeRuntimeCoroutinesTrigger()
+    val message =
+      if (trigger == null) {
+        "$tag $MISSING_RUNTIME_COROUTINES_MESSAGE"
+      } else {
+        "$tag $trigger $MISSING_RUNTIME_COROUTINES_MESSAGE"
+      }
+    reportError(node.sourceGraph, message, MetroDiagnostics.MISSING_RUNTIME_COROUTINES)
+  }
+
+  /**
+   * Names why this graph needs the optional runtime-coroutines artifact so the report points at the
+   * cause instead of only saying what to add. Prefers a scoped suspend binding, then a
+   * `SuspendLazy` request. Candidate keys are chosen by their sorted rendered form so the message
+   * is stable.
+   */
+  private fun describeRuntimeCoroutinesTrigger(): String? {
+    val scopedSuspendKeys = mutableListOf<IrTypeKey>()
+    val suspendLazyKeys = mutableListOf<IrTypeKey>()
+    realGraph.bindings.forEachValue { binding ->
+      if (binding.isScoped() && binding.typeKey in transitivelySuspendKeys) {
+        scopedSuspendKeys += binding.typeKey
+      }
+      val requestsSuspendLazy =
+        binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
+          binding.dependencies.any { it.wrappedType.containsSuspendLazy() } ||
+          binding.injectedFunctionUsesSuspendLazy()
+      if (requestsSuspendLazy) {
+        suspendLazyKeys += binding.typeKey
+      }
+    }
+    for (accessor in node.accessors) {
+      if (accessor.contextKey.wrappedType.containsSuspendLazy()) {
+        suspendLazyKeys += accessor.contextKey.typeKey
+      }
+    }
+    if (scopedSuspendKeys.isNotEmpty()) {
+      val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
+      return "The scoped suspend binding `$key` caches its awaited value, which needs the optional runtime-coroutines artifact."
+    }
+    if (suspendLazyKeys.isNotEmpty()) {
+      val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
+      return "`$key` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact."
+    }
+    return null
   }
 
   private fun reportError(

@@ -1,4 +1,6 @@
-/MixedCauseTransitiveSuspend.kt:28:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MixedCauseTransitiveSuspend.kt:18:7: error: [Metro/MissingRuntimeCoroutines] 'Worker' requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+/MixedCauseTransitiveSuspend.kt:28:11: error: [Metro/MissingRuntimeCoroutines] `Worker` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
 
 /MixedCauseTransitiveSuspend.kt:29:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Worker bindings must be a suspend function or suspend () -> Worker because it depends on suspend bindings and requires a suspend context.
 

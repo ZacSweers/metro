@@ -1,1 +1,3 @@
-/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:15:11: error: Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:10:7: error: [Metro/MissingRuntimeCoroutines] 'NestedLazyConsumer' requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:15:11: error: [Metro/MissingRuntimeCoroutines] `NestedLazyConsumer` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
