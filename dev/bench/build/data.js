@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784163704821,
+  "lastUpdate": 1784177172643,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -18984,6 +18984,62 @@ window.BENCHMARK_DATA = {
             "value": 20171.46,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -10.43%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "699d2b83~1",
+          "message": "[before] Improve published artifact validation (#2550)",
+          "timestamp": "2026-07-16T04:08:30Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/699d2b83875117c440bba2b1b71a52fb43654671"
+        },
+        "date": 1784177172643,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18970.064000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "699d2b83875117c440bba2b1b71a52fb43654671",
+          "message": "[after] Improve published artifact validation (#2550)",
+          "timestamp": "2026-07-16T04:08:30Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/699d2b83875117c440bba2b1b71a52fb43654671"
+        },
+        "date": 1784177172644,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19189.81,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.16%"
           }
         ]
       }
