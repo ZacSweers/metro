@@ -43,7 +43,7 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
 
       - name: Generate API docs
         # NOTE: The `dokkaPublications.html` task is pre-configured to generate HTML in `/docs/api`.

@@ -13,6 +13,10 @@ inputs:
     description: 'Whether to set up konan cache'
     required: false
     default: 'false'
+  konan-cache-read-only:
+    description: 'Whether konan caches are read-only'
+    required: false
+    default: 'true'
   kotlin-compiler-version:
     description: |
       Kotlin compiler version this run targets (e.g. matrix.kotlin-compiler from
@@ -35,14 +39,22 @@ runs:
       uses: gradle/actions/setup-gradle@v6
       with:
         cache-read-only: ${{ inputs.cache-read-only }}
-        gradle-home-cache-strict-match: true
         cache-encryption-key: ${{ inputs.encryption-key }}
         gradle-home-cache-excludes: |
           caches/jars-9
-          caches/transforms-3
+          caches/transforms-*
+          caches/*/transforms
           wrapper/dists
 
+    - name: Restore Gradle wrapper
+      if: inputs.cache-read-only == 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.gradle/wrapper/dists
+        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+
     - name: Cache Gradle wrapper
+      if: inputs.cache-read-only != 'true'
       uses: actions/cache@v6
       with:
         path: ~/.gradle/wrapper/dists
@@ -56,21 +68,57 @@ runs:
     #     suffix if K/N ever restructures this directory in a backward-incompatible way.
     #
     #  2. `kotlin-native-prebuilt-<os>-<arch>-<version>/` — the per-Kotlin-version compiler
-    #     distribution + bundled klibs. Cached with the explicit `kotlin-compiler-version` input as
-    #     the discriminator, so each matrix entry owns its own prebuilt.
+    #     distribution + bundled klibs. Cached with the resolved Kotlin compiler version as the
+    #     discriminator, so each matrix entry owns its own prebuilt.
     #
     # `~/.konan/cache/` (K/N's incremental compile cache) is also kept on the per-version key —
     # its contents depend on the Kotlin version's compiler output. It may not exist on cold runs;
     # actions/cache silently ignores missing paths.
-    - name: Cache konan toolchain (shared)
+    - name: Resolve Kotlin compiler version
       if: inputs.konan == 'true'
+      id: kotlin-compiler-version
+      shell: bash
+      env:
+        INPUT_KOTLIN_COMPILER_VERSION: ${{ inputs.kotlin-compiler-version }}
+      run: |
+        kotlin_compiler_version="$INPUT_KOTLIN_COMPILER_VERSION"
+        if [[ -z "$kotlin_compiler_version" ]]; then
+          kotlin_compiler_version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+        fi
+        if [[ -z "$kotlin_compiler_version" ]]; then
+          echo "::error::Could not resolve the Kotlin compiler version"
+          exit 1
+        fi
+        echo "version=$kotlin_compiler_version" >> "$GITHUB_OUTPUT"
+
+    - name: Restore konan toolchain (shared)
+      if: inputs.konan == 'true' && inputs.konan-cache-read-only == 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.konan/dependencies
+        key: ${{ runner.os }}-konan-deps-v1
+
+    - name: Cache konan toolchain (shared)
+      if: inputs.konan == 'true' && inputs.konan-cache-read-only != 'true'
       uses: actions/cache@v6
       with:
         path: ~/.konan/dependencies
         key: ${{ runner.os }}-konan-deps-v1
 
+    - name: Restore konan klibs (per Kotlin version)
+      if: inputs.konan == 'true' && inputs.konan-cache-read-only == 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          ~/.konan/cache
+          ~/.konan/kotlin-native-prebuilt-linux*
+          ~/.konan/kotlin-native-prebuilt-macos*
+          ~/.konan/kotlin-native-prebuilt-mingw*
+          ~/.konan/kotlin-native-prebuilt-windows*
+        key: ${{ runner.os }}-konan-klibs-${{ steps.kotlin-compiler-version.outputs.version }}
+
     - name: Cache konan klibs (per Kotlin version)
-      if: inputs.konan == 'true'
+      if: inputs.konan == 'true' && inputs.konan-cache-read-only != 'true'
       uses: actions/cache@v6
       with:
         path: |
@@ -79,4 +127,4 @@ runs:
           ~/.konan/kotlin-native-prebuilt-macos*
           ~/.konan/kotlin-native-prebuilt-mingw*
           ~/.konan/kotlin-native-prebuilt-windows*
-        key: ${{ runner.os }}-konan-klibs-${{ inputs.kotlin-compiler-version || 'default' }}
+        key: ${{ runner.os }}-konan-klibs-${{ steps.kotlin-compiler-version.outputs.version }}
