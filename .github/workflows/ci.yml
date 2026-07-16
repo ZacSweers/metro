@@ -325,7 +325,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
         # mingwX64, etc.), so each runner covers a different native target naturally.
-        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
+        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
 
       - name: Check samples
         if: github.ref == 'refs/heads/main'
