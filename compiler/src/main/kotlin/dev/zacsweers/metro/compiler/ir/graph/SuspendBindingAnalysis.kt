@@ -9,18 +9,19 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /**
- * Computes which bindings transitively require suspend initialization.
+ * Metro's IR-specific entry point for finding bindings that require suspend initialization.
  *
- * The analysis is incremental because child graphs query their parent before the parent is sealed.
- * Discovery walks each binding's dependency edges once, recording reverse edges as it goes, and
- * suspendness propagates along those reverse edges from newly suspend bindings with a worklist.
- * Each resolved binding and edge is processed once across all queries rather than participating in
- * a fixpoint recomputation per query. Unresolved keys are retried once after the graph's generation
- * changes. When nothing reachable is suspend, propagation does no work at all.
+ * [SuspendBindingWorklist] contains the graph algorithm. This adapter supplies the IR rules for
+ * recognizing suspend bindings, skipping assisted-factory dependencies, and passing an exact graph
+ * dependency wrapper through without making its consumer suspend. Keeping the worklist generic also
+ * lets its behavior be tested with small fake bindings instead of compiler IR.
  *
- * Multibinding dependencies are memoized snapshots of a mutable source-binding set. Accessing that
- * snapshot prevents later source bindings from being added, so this analysis cannot silently keep
- * stale multibinding edges.
+ * Child graphs can query their parent before the parent graph is sealed. The same analysis instance
+ * therefore accepts more bindings as the parent grows and updates its earlier answers. Final graph
+ * validation uses these rules after the full binding set is available.
+ *
+ * Reading a multibinding's dependencies freezes its current set of contributions. The graph
+ * prevents later contributions from being added, so the dependency edges cached here remain valid.
  */
 internal class SuspendBindingAnalysis(
   findBinding: (IrTypeKey) -> IrBinding?,
@@ -42,7 +43,29 @@ internal class SuspendBindingAnalysis(
   fun isSuspend(key: IrTypeKey): Boolean = worklist.isSuspend(key)
 }
 
-/** Incrementally propagates suspend requirements along reverse dependency edges. */
+/**
+ * Finds every binding that must be initialized from a suspend context.
+ *
+ * A binding requires suspend initialization when it is itself suspend or has a non-deferred
+ * dependency that requires suspend initialization. Propagation runs opposite to dependency lookup:
+ * ```
+ * Dependency lookup:    A --> B --> C (suspend)
+ * Suspend propagation:  A <-- B <-- C
+ *
+ * Deferred dependency:  A --> suspend () -> C
+ *                             propagation stops
+ * ```
+ *
+ * The worklist is incremental because a child graph may inspect an unsealed parent:
+ * ```
+ * query A --> resolve A and B --> C is missing
+ * graph changes --> retry C --> C is suspend --> mark C, B, then A
+ * ```
+ *
+ * Each binding's dependencies are expanded once. A missing binding is retried only after the graph
+ * generation changes, and each key enters the propagation queue only the first time it is marked
+ * suspend. These properties also make cycles terminate without a separate fixpoint pass.
+ */
 internal class SuspendBindingWorklist<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, TypeKey>,
@@ -53,36 +76,45 @@ internal class SuspendBindingWorklist<
   private val bindingIsSuspend: (Binding) -> Boolean,
   private val skipDependencyTraversal: (Binding) -> Boolean,
   private val canPassThrough: (Binding, ContextualTypeKey) -> Boolean,
-  currentGraphGeneration: () -> Int = { 0 },
+  private val currentGraphGeneration: () -> Int = { 0 },
 ) {
-  /** Bindings resolved so far. Misses are tracked in [unresolvedGenerations], never stored here. */
+  /** Successfully resolved bindings. Missing bindings are tracked in [unresolvedGenerations]. */
   private val discoveredBindings = mutableMapOf<TypeKey, Binding>()
 
-  /** Keys whose dependency edges have been walked and recorded in [reverseEdges]. */
+  /** Bindings whose dependencies have already been recorded. */
   private val expandedKeys = mutableSetOf<TypeKey>()
 
   /**
-   * Keys that had no binding when last queried. Pre-seal, the parent graph is still being
-   * populated, so these are retried after [currentGraphGeneration] changes. Remembering the
-   * generation also avoids repeating the same failed lookup when another root reaches the key.
+   * The graph generation of each failed lookup. A miss is retried after the graph changes, but not
+   * every time another root reaches the same key in the meantime.
    */
   private val unresolvedGenerations = mutableMapOf<TypeKey, Int>()
 
-  private val currentGraphGeneration = currentGraphGeneration
   private var analyzedGraphGeneration = currentGraphGeneration()
 
-  /** Dependency key to consumers whose edge to that dependency propagates suspension. */
+  /**
+   * Dependency-to-consumer edges along which suspend requirements propagate.
+   *
+   * The adjacency buckets are lists because they are append-only and usually small. Repeated
+   * requests can add the same consumer more than once, but [markSuspend] makes those duplicates
+   * harmless.
+   */
   private val reverseEdges = mutableMapOf<TypeKey, MutableList<TypeKey>>()
 
   /**
-   * Edges whose dependency key was unresolved when walked. A `GraphDependency` that passes its
-   * wrapper through stops propagation, and that check needs the resolved binding, so these edges
-   * are classified when (if) the key resolves on a later retry.
+   * Edges waiting for their dependency binding to resolve.
+   *
+   * Each edge retains its contextual dependency because [canPassThrough] may differ between wrapper
+   * shapes for the same type key. Once the binding resolves, the edge either becomes a
+   * [reverseEdges] entry or is discarded as pass-through.
    */
   private val pendingEdges =
     mutableMapOf<TypeKey, MutableList<PendingEdge<TypeKey, ContextualTypeKey>>>()
 
+  /** Keys already known to require suspend initialization. */
   private val suspendKeys = mutableSetOf<TypeKey>()
+
+  /** Newly marked keys whose consumers still need to be visited. */
   private val newlySuspend = ArrayDeque<TypeKey>()
 
   private class PendingEdge<TypeKey, ContextualTypeKey>(
@@ -188,17 +220,19 @@ internal class SuspendBindingWorklist<
 }
 
 /**
- * Whether this request defers initialization of its binding and therefore stops suspend
- * propagation. Validation separately rejects synchronous Provider or Lazy wrappers over a suspend
- * binding; that invalid edge must not also make its consumer transitively suspend.
+ * Whether this request defers initialization and therefore stops suspend propagation.
+ *
+ * Validation separately rejects synchronous `Provider` or `Lazy` wrappers over a suspend binding.
+ * That invalid request must not also make its consumer transitively suspend.
  */
 internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
   get() = isDeferrable
 
 /**
- * Whether this request stops suspend propagation, considering both a deferrable wrapper and a graph
- * dependency that can pass its exact wrapper value through. [findBinding] resolves the request's
- * binding. Shared by graph validation and (via the analysis) child pre-seal queries.
+ * Whether this request stops suspend propagation because it defers initialization or because a
+ * graph dependency can pass the exact wrapper value through.
+ *
+ * Shared by graph validation and child queries against an unsealed parent graph.
  */
 internal fun IrContextualTypeKey.stopsSuspendPropagation(
   findBinding: (IrTypeKey) -> IrBinding?
@@ -208,9 +242,10 @@ internal fun IrContextualTypeKey.stopsSuspendPropagation(
 }
 
 /**
- * Whether this dependency edge makes its consumer transitively suspend. True when the requested key
- * is suspend ([isSuspendKey]) and the edge does not [stopsSuspendPropagation]. Shared by graph
- * validation and codegen so both agree on which edges block.
+ * Whether this dependency makes its consumer suspend: the requested binding is suspend and this
+ * request does not defer or pass it through.
+ *
+ * Shared by graph validation and code generation so both use the same propagation rules.
  */
 internal fun IrContextualTypeKey.propagatesSuspend(
   isSuspendKey: (IrTypeKey) -> Boolean,
