@@ -1,21 +1,28 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A graph extension consuming a parent map multibinding whose contributor is backed by a suspend
-// binding. Only the child consumes the map, so the child must query the parent's multibinding
-// before the parent is sealed.
+// Only the child consumes this parent map. The parent must finish collecting both the local and
+// cross-module contributors before the child queries whether the map requires suspension.
 
+// MODULE: lib
 interface Handler {
   fun db(): String
 }
 
 @ContributesIntoMap(AppScope::class)
-@StringKey("auth")
+@StringKey("suspend")
 @Inject
 class AuthHandler(val database: String) : Handler {
   override fun db() = database
 }
 
+// MODULE: main(lib)
+@file:Suppress("OPT_IN_USAGE")
+
 abstract class ChildScope private constructor()
+
+object SyncHandler : Handler {
+  override fun db() = "sync"
+}
 
 @GraphExtension(ChildScope::class)
 interface ChildGraph {
@@ -31,15 +38,20 @@ interface ChildGraph {
 @DependencyGraph(AppScope::class)
 interface AppGraph {
   @Provides suspend fun provideDatabase(): String = "db"
+
+  @Provides
+  @IntoMap
+  @StringKey("sync")
+  fun provideSyncHandler(): Handler = SyncHandler
 }
 
 fun box(): String {
   val parent = createGraph<AppGraph>()
   val child = parent.createChild()
   return runBlocking {
-    assertEquals(setOf("auth"), child.handlers.keys)
-    val handler = child.handlers.getValue("auth").invoke()
-    assertEquals("db", handler.db())
+    assertEquals(setOf("suspend", "sync"), child.handlers.keys)
+    assertEquals("db", child.handlers.getValue("suspend").invoke().db())
+    assertEquals("sync", child.handlers.getValue("sync").invoke().db())
     "OK"
   }
 }

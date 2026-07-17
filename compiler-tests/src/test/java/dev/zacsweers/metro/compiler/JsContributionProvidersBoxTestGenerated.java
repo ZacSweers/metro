@@ -2599,6 +2599,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("FullBindingGraphValidationSuspendPropagation.kt")
+    public void testFullBindingGraphValidationSuspendPropagation() {
+      run("FullBindingGraphValidationSuspendPropagation.kt");
+    }
+
+    @Test
     @TestMetadata("FunctionProvider.kt")
     public void testFunctionProvider() {
       run("FunctionProvider.kt");
@@ -2722,6 +2728,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("NullableSynchronousDependency.kt")
     public void testNullableSynchronousDependency() {
       run("NullableSynchronousDependency.kt");
+    }
+
+    @Test
+    @TestMetadata("ParallelSuspendPropagationAcrossGraphExtensions.kt")
+    public void testParallelSuspendPropagationAcrossGraphExtensions() {
+      run("ParallelSuspendPropagationAcrossGraphExtensions.kt");
     }
 
     @Test
