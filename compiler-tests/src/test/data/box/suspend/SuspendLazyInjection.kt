@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // SuspendLazy<T> as an injectable wrapper: it defers and memoizes a suspend binding per wrapper
 // instance. Like `suspend () -> T`, it breaks the suspend chain, so consumers are not suspend.
 
@@ -29,7 +26,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     val lazyDb = graph.database
     assertFalse(lazyDb.isInitialized())
     assertEquals("db", lazyDb.value())

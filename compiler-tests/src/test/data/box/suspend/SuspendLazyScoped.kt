@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // SuspendLazy<T> over a SCOPED suspend binding shares the graph's cache: SuspendDoubleCheck.lazy
 // short-circuits when the delegate is already the graph's SuspendDoubleCheck, so all consumers
 // observe one computation. Also exercises a SuspendLazy ctor param inside a generated suspend
@@ -36,7 +33,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     val lazyDb = graph.database
     assertEquals("db", lazyDb.value())
     // Scoped: the suspend accessor shares the same cached instance, no recomputation

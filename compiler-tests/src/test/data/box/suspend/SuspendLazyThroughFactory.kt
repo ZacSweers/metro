@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // SuspendLazy<T> params flowing through per-class factories (not inline bypass):
 // - Consumer is SCOPED, so the graph goes through Consumer_Factory.create(...). The factory must
 //   hold a SuspendProvider<T> field and memoize per invoke.
@@ -35,7 +32,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     val consumer = graph.consumer
     assertEquals("db", consumer.database.value())
     assertEquals("db", consumer.database.value())
