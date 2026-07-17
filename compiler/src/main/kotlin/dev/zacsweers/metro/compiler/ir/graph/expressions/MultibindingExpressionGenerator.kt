@@ -423,14 +423,20 @@ internal class MultibindingExpressionGenerator(
                   valueExpr =
                     with(metroSymbols.providerTypeConverter) { valueExpr.convertTo(lazyTargetKey) }
                 } else if (wrapInProviderLazy) {
-                  // For Provider<Lazy<V>>, use ProviderOfLazy.create(provider)
-                  // This wraps Provider<V> to produce Provider<Lazy<V>>
-                  // Use framework-specific version for Dagger interop
+                  val providerLazyTargetKey =
+                    valueType.asContextualTypeKey(
+                      null,
+                      hasDefault = false,
+                      patchMutableCollections = false,
+                      declaration = null,
+                    )
                   valueExpr =
-                    irInvoke(
-                      callee = valueFrameworkSymbols.providerOfLazyCreate,
-                      typeHint = valueType, // Provider<Lazy<V>>
-                      args = listOf(valueExpr),
+                    typeAsProviderArgument(
+                      contextKey = providerLazyTargetKey,
+                      bindingCode = valueExpr,
+                      isAssisted = false,
+                      isGraphInstance = false,
+                      actualIsSuspendProvider = false,
                     )
                 }
 

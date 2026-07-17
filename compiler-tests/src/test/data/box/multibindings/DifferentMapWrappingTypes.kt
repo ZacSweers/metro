@@ -13,6 +13,10 @@ interface ExampleGraph {
 
   @Provides @IntoMap @StringKey("b") fun provideNullableEntryB(): String? = "b"
 
+  @Provides @IntoMap @StringKey("a") fun provideLongEntryA(): Long = 4L
+
+  @Provides @IntoMap @StringKey("b") fun provideLongEntryB(): Long = 5L
+
   // Inject it with different formats
   val directMap: Map<String, Int>
   val providerValueMap: Map<String, () -> Int>
@@ -28,6 +32,7 @@ interface ExampleGraph {
   val nullableProviderValueMap: Map<String, () -> String?>
   val nullableLazyValueMap: Map<String, Lazy<String?>>
   val nullableProviderOfLazyValueMap: Map<String, () -> Lazy<String?>>
+  val lowRefCountProviderOfLazyValueMap: Map<String, () -> Lazy<Long>>
 
   // Class that injects the map with yet another format
   val exampleClass: ExampleClass
@@ -121,6 +126,10 @@ fun box(): String {
   assertEquals(
     expectedNullableMap,
     graph.nullableProviderOfLazyValueMap.mapValues { (_, value) -> value().value },
+  )
+  assertEquals(
+    mapOf("a" to 4L, "b" to 5L),
+    graph.lowRefCountProviderOfLazyValueMap.mapValues { (_, value) -> value().value },
   )
 
   // Test injected class
