@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // Deep and diamond-shaped suspend propagation through multiple non-suspend hops:
 //
 //   suspend Config
@@ -64,7 +61,7 @@ fun box(): String {
   assertEquals(0, configComputations)
   assertEquals(0, dbComputations)
 
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     // Two-hop transitive chain resolves through nested suspend factories
     val repository = graph.repository()
     assertEquals("jdbc:test", repository.database.config.url)

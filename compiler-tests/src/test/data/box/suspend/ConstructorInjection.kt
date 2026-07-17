@@ -1,14 +1,12 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// Tests the wasmo-style pattern: a constructor-injected class with multiple suspend dependencies
-// accessed via a suspend graph accessor. The graph's accessor inlines construction (canBypassFactory)
-// in a suspend context, awaiting each suspend @Provides directly.
+// A suspend graph accessor can construct an @Inject class whose constructor parameters come from
+// multiple suspend bindings.
 
 @Inject class AccountCreator(val database: String, val tlsConnection: Int)
 
 @DependencyGraph
 interface ExampleGraph {
-  // Suspend accessor that constructs AccountCreator inline. Both deps are suspend @Provides.
   suspend fun accountCreator(): AccountCreator
 
   @Provides suspend fun provideDatabase(): String = "db"

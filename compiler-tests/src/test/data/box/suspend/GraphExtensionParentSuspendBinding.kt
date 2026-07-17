@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // A graph extension consuming a scoped suspend binding owned by its parent. The parent stores the
 // binding in a SuspendProvider<T> field; the child's property-access token must classify it as a
 // suspend provider, not a scalar instance.
@@ -42,7 +39,7 @@ interface ChildGraph {
 fun box(): String {
   val parent = createGraph<ParentGraph>()
   val child = parent.childGraphFactory().create()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     assertEquals("db", child.repository().database)
     assertEquals("db", child.database())
     assertEquals("db", parent.database())

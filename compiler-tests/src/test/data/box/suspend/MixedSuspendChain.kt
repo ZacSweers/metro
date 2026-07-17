@@ -1,15 +1,12 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // The canonical long-chain scenario mixing suspend and non-suspend bindings:
 // - String: suspend @Provides — SuspendFactory primary factory.
 // - Int: non-suspend @Provides with an unwrapped suspend dep — transitively suspend, multi-ref →
 //   IR-only nested SuspendFactory in the graph.
 // - Long: non-suspend @Provides, transitively suspend, SCOPED → nested factory wrapped in
 //   SuspendDoubleCheck.
-// - Double: suspend @Provides taking SuspendProvider<Long> (defers, but directly suspend).
+// - Double: suspend @Provides taking `suspend () -> Long` (defers, but directly suspend).
 // - Short: non-suspend @Provides whose Double dep is wrapped in `suspend () -> Double` — the
 //   wrapper breaks the chain, so Short is NOT suspend.
 // - Sink: constructor-injected, mixes an unwrapped suspend scalar with deferred suspend wrappers.
@@ -19,7 +16,7 @@ abstract class AppScope private constructor()
 @Inject
 class Sink(
   val short: Short,
-  val longProvider: SuspendProvider<Long>,
+  val longProvider: suspend () -> Long,
   val intProviderFn: suspend () -> Int,
   val doubleScalar: Double,
 )
@@ -39,7 +36,7 @@ interface ExampleGraph {
     return i.toLong()
   }
 
-  @Provides suspend fun provideDouble(l: SuspendProvider<Long>): Double = l().toDouble()
+  @Provides suspend fun provideDouble(l: suspend () -> Long): Double = l().toDouble()
 
   @Provides fun provideShort(d: suspend () -> Double): Short = 7
 
@@ -53,7 +50,7 @@ var longComputations = 0
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     val sink = graph.sink()
 
     // Short inlined via the deferred `suspend () -> Double` wrapper

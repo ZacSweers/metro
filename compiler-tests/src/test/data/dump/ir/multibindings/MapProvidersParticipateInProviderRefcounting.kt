@@ -18,9 +18,9 @@ interface AppGraph {
   val int: () -> Int
   val ints: Map<Int, () -> Int>
 
-  // A suspend-provider-valued map creates factories for its contributions. Both contribution
+  // A suspend-function-valued map creates factories for its contributions. Both contribution
   // factories need SharedDependency, so its provider should be cached and shared between them.
-  val strings: Map<String, SuspendProvider<String>>
+  val strings: Map<String, suspend () -> String>
 }
 
 class SharedDependency

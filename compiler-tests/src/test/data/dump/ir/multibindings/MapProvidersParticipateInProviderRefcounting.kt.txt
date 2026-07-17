@@ -75,8 +75,8 @@ interface AppGraph {
 )
       }
 
-    override val strings: Map<String, SuspendProvider<String>>
-      override get(): Map<String, SuspendProvider<String>> {
+    override val strings: Map<String, SuspendFunction0<String>>
+      override get(): Map<String, SuspendFunction0<String>> {
         return <this>.<get-mapOfStringToString>()
       }
 
@@ -330,8 +330,7 @@ interface AppGraph {
   abstract val ints: Map<Int, Function0<Int>>
     abstract get
 
-  abstract val strings: Map<String, SuspendProvider<String>>
+  abstract val strings: Map<String, SuspendFunction0<String>>
     abstract get
 
 }
-

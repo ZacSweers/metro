@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// Only the child consumes this parent map. The parent must finish collecting both the local and
-// cross-module contributors before the child queries whether the map requires suspension.
+// A graph extension can consume a map that combines a parent-local contribution with a
+// cross-module contribution that depends on a suspend binding.
 
 // MODULE: lib
 interface Handler {
@@ -26,7 +26,7 @@ object SyncHandler : Handler {
 
 @GraphExtension(ChildScope::class)
 interface ChildGraph {
-  val handlers: Map<String, SuspendProvider<Handler>>
+  val handlers: Map<String, suspend () -> Handler>
 
   @GraphExtension.Factory
   @ContributesTo(AppScope::class)

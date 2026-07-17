@@ -4,7 +4,7 @@ var valueComputations = 0
 
 @DependencyGraph
 interface ExampleGraph {
-  val provider: SuspendProvider<String>
+  val provider: suspend () -> String
 
   @Provides
   suspend fun provideValue(): String {

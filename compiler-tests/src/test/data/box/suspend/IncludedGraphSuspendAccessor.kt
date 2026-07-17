@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // A suspend accessor on an @Includes-ed graph is a suspend binding in the consuming graph:
 // consumers must be suspend (or defer), and codegen must wrap the included graph's suspend getter
 // in a suspend provider rather than a plain provider lambda.
@@ -45,7 +42,7 @@ interface AppGraph {
 fun box(): String {
   val dbGraph = createGraph<DatabaseGraph>()
   val appGraph = createGraphFactory<AppGraph.Factory>().create(dbGraph)
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     val repository = appGraph.repository()
     assertEquals("db", repository.database)
     assertEquals(5432, repository.port)

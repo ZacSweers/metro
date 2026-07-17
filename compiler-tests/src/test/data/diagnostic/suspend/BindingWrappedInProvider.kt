@@ -3,7 +3,7 @@
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
 
-// Cannot depend on a suspend binding via Provider<T>. Must use SuspendProvider<T>.
+// Cannot depend on a suspend binding via Provider<T>. Must use `suspend () -> T`.
 
 @DependencyGraph
 interface ExampleGraph {

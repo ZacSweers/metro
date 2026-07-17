@@ -2,7 +2,7 @@
 
 var stringComputations = 0
 
-@Inject class ServiceB(val valueProvider: SuspendProvider<String>)
+@Inject class ServiceB(val valueProvider: suspend () -> String)
 
 @DependencyGraph
 interface ExampleGraph {

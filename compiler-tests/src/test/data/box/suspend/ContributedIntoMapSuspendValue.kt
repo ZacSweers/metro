@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // A @ContributesIntoMap contribution whose value is transitively suspend (its constructor consumes
-// a suspend binding), consumed as the deferred map form Map<K, SuspendProvider<V>>.
+// a suspend binding), consumed as the deferred map form Map<K, suspend () -> V>.
 
 // MODULE: lib
 interface Handler {
@@ -18,7 +18,7 @@ class AuthHandler(val database: String) : Handler {
 // MODULE: main(lib)
 @DependencyGraph(AppScope::class)
 interface AppGraph {
-  val handlers: Map<String, SuspendProvider<Handler>>
+  val handlers: Map<String, suspend () -> Handler>
 
   @Provides suspend fun provideDatabase(): String = "db"
 }

@@ -1,8 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// IGNORE_BACKEND: JS_IR, JS_IR_ES6
-// ^ runtime-coroutines is not yet wired into JS box tests
-
 // Whole-collection access to ordinary (non-suspend) multibindings through suspend wrappers:
 // suspend () -> Set<T>, suspend () -> Map<K, V>, and SuspendLazy<Set<T>> adapt the Provider form.
 
@@ -25,7 +22,7 @@ interface ExampleGraph {
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
-  return kotlinx.coroutines.runBlocking {
+  return runBlocking {
     assertEquals(setOf(1, 2), graph.ints())
     assertEquals(mapOf("a" to 1, "b" to 2), graph.labels())
     assertEquals(setOf(1, 2), graph.lazyInts.value())

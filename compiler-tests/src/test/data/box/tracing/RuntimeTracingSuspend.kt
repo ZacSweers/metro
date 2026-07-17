@@ -36,7 +36,7 @@ interface AppGraph {
 fun box(): String {
   testMetroTrace {
     val graph = createGraphFactory<AppGraph.Factory>().create(tracer)
-    kotlinx.coroutines.runBlocking {
+    runBlocking {
       // Suspend accessor inlines Repository construction; Database resolves through its traced
       // SuspendProvider field; the scoped suspend String is computed once under its own span.
       assertEquals("db://localhost", graph.repository().database.url)
@@ -71,7 +71,7 @@ fun box(): String {
       kind = "Provided",
     )
 
-    kotlinx.coroutines.runBlocking {
+    runBlocking {
       // Second resolution: Database recomputes (unscoped) under its span; the scoped String is
       // cached by SuspendDoubleCheck, so no new String span.
       assertEquals("db://localhost", graph.databaseProvider().url)

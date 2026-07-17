@@ -2,7 +2,7 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  val provider: SuspendProvider<Int>
+  val provider: suspend () -> Int
 
   @Provides suspend fun provideInt(dep: String): Int = dep.length
 

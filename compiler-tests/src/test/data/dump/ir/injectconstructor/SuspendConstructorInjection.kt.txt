@@ -1,0 +1,208 @@
+@Inject
+class AccountCreator {
+  val database: String
+    field = database
+    get
+
+  val tlsConnection: Int
+    field = tlsConnection
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<AccountCreator> {
+    private /* final field */ val database: Provider<String> = database
+    private /* final field */ val tlsConnection: Provider<Int> = tlsConnection
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(database: Provider<String>, tlsConnection: Provider<Int>): MetroFactory {
+        return MetroFactory(database = database, tlsConnection = tlsConnection)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(database: String, tlsConnection: Int): AccountCreator {
+        return AccountCreator(database = database, tlsConnection = tlsConnection)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(database: Provider<String>, tlsConnection: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AccountCreator {
+      return MetroFactory/* companion */.newInstance(database = <this>.#database.invoke(), tlsConnection = <this>.#tlsConnection.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(database: String, tlsConnection: Int): AccountCreator {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(database: String, tlsConnection: Int) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph
+interface ExampleGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : ExampleGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override suspend fun accountCreator(): AccountCreator {
+      return AccountCreator(database = <this>.#thisGraphInstance.provideDatabase(), tlsConnection = <this>.#thisGraphInstance.provideTls())
+    }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): ExampleGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideDatabase", propertyName = "", startOffset = 226, endOffset = 280, newInstanceName = "provideDatabase")
+  class ProvideDatabaseMetroFactory : SuspendFactory<String> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): ProvideDatabaseMetroFactory {
+        return ProvideDatabaseMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      suspend fun provideDatabase(instance: ExampleGraph): String {
+        return instance.provideDatabase()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): String {
+      return ProvideDatabaseMetroFactory/* companion */.provideDatabase(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideTls", propertyName = "", startOffset = 284, endOffset = 327, newInstanceName = "provideTls")
+  class ProvideTlsMetroFactory : SuspendFactory<Int> {
+    private /* final field */ val instance: ExampleGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: ExampleGraph): ProvideTlsMetroFactory {
+        return ProvideTlsMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      suspend fun provideTls(instance: ExampleGraph): Int {
+        return instance.provideTls()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: ExampleGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): Int {
+      return ProvideTlsMetroFactory/* companion */.provideTls(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): Int {
+      return error(message = "Never called")
+    }
+
+  }
+
+  abstract suspend fun accountCreator(): AccountCreator
+
+  @Provides
+  suspend fun provideDatabase(): String {
+    return "db"
+  }
+
+  @Provides
+  suspend fun provideTls(): Int {
+    return 7
+  }
+
+}
