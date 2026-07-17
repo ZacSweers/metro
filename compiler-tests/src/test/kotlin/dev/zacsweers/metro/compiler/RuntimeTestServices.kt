@@ -32,6 +32,10 @@ private val coroutinesClasspath =
   System.getProperty("coroutines.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'coroutines.classpath' property")
 
+private val coroutinesKlibClasspath =
+  System.getProperty("coroutines.klibClasspath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'coroutines.klibClasspath' property")
+
 private val runtimeTracingClasspath =
   System.getProperty("runtimeTracing.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'runtimeTracing.classpath' property")
@@ -79,7 +83,7 @@ class MetroRuntimeClassPathProvider(testServices: TestServices) :
       MetroDirectives.includeMetroRuntimeCoroutines(module.directives)
     if (testServices.isJsBackend()) {
       return if (withMetroRuntimeCoroutines) {
-        metroRuntimeKlibClasspath + metroRuntimeCoroutinesKlibClasspath
+        metroRuntimeKlibClasspath + metroRuntimeCoroutinesKlibClasspath + coroutinesKlibClasspath
       } else {
         metroRuntimeKlibClasspath
       }

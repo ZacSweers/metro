@@ -104,6 +104,19 @@ val metroRuntimeCoroutinesKlibClasspath =
       attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
     }
   }
+val coroutinesKlibClasspath =
+  configurations.create("coroutinesKlibClasspath") {
+    // Coroutines' JS implementation depends on atomicfu. Keep that dependency while allowing the
+    // compiler test framework to supply the Kotlin libraries for the compiler under test.
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-js")
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
+  }
 
 val runtimeTracingClasspath = configurations.create("runtimeTracingClasspath")
 val anvilRuntimeClasspath = configurations.create("anvilRuntimeClasspath") { isTransitive = false }
@@ -241,6 +254,7 @@ dependencies {
   metroRuntimeCoroutinesKlibClasspath(
     project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
   )
+  coroutinesKlibClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
 
   daggerInteropClasspath(project(":interop-dagger"))
@@ -338,6 +352,7 @@ tasks.withType<Test> {
   dependsOn(metroRuntimeCoroutinesClasspath)
   dependsOn(metroRuntimeCoroutinesKlibClasspath)
   dependsOn(coroutinesClasspath)
+  dependsOn(coroutinesKlibClasspath)
   dependsOn(metroRuntimeKlibClasspath)
   dependsOn(daggerInteropClasspath)
   dependsOn(hiltCoreClasspath)
@@ -443,6 +458,7 @@ tasks.withType<Test> {
     metroRuntimeCoroutinesKlibClasspath.asPath,
   )
   systemProperty("coroutines.classpath", coroutinesClasspath.asPath)
+  systemProperty("coroutines.klibClasspath", coroutinesKlibClasspath.asPath)
   systemProperty("runtimeTracing.classpath", runtimeTracingClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
