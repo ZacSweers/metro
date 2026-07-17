@@ -9,13 +9,11 @@ import dev.zacsweers.metro.SuspendLazy
 import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
-import kotlin.coroutines.startCoroutine
-import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 private val UNINITIALIZED_SUSPEND = Any()
 
@@ -141,18 +139,17 @@ private class SuspendDoubleCheckInitialization(
 private suspend fun <T> withSuspendDoubleCheckInitialization(
   owner: SuspendDoubleCheck<*>,
   block: suspend () -> T,
-): T = suspendCoroutine { continuation ->
+): T {
   val initialization =
     SuspendDoubleCheckInitialization(
       owner = owner,
-      parent = continuation.context[SuspendDoubleCheckInitialization],
+      parent = coroutineContext[SuspendDoubleCheckInitialization],
     )
-  block.startCoroutine(
-    Continuation(continuation.context + initialization) { result ->
-      // Invalidate the marker once this attempt finishes so children that inherited it are not
-      // blocked by a stale cycle check on a later retry.
-      initialization.deactivate()
-      continuation.resumeWith(result)
-    }
-  )
+  return try {
+    withContext(initialization) { block() }
+  } finally {
+    // Invalidate the marker once this attempt finishes so children that inherited it are not
+    // blocked by a stale cycle check on a later retry.
+    initialization.deactivate()
+  }
 }
