@@ -9,9 +9,8 @@
 
 class Database(val value: String)
 
-class AccountCreator
-<!SUGGEST_CLASS_INJECTION!>@AssistedInject<!>
-constructor(@Assisted val region: String) {
+@AssistedInject
+class AccountCreator(@Assisted val region: String) {
   @Inject lateinit var <!MEMBERS_INJECT_WARNING, METRO_ERROR!>database<!>: Database
 
   @AssistedFactory

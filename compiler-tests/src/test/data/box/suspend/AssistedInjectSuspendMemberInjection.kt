@@ -8,9 +8,8 @@ class Database(val value: String)
 
 class Config(val name: String)
 
-class AccountCreator
 @AssistedInject
-constructor(@Assisted val region: String, val database: Database) {
+class AccountCreator(@Assisted val region: String, val database: Database) {
   @Inject lateinit var config: Config
 
   @AssistedFactory

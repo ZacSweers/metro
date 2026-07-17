@@ -13,9 +13,8 @@ class MemberInjectedTarget {
   @Inject lateinit var value: Provider<SuspendLazy<InjectionPathValue>>
 }
 
-class AssistedTarget
 @AssistedInject
-constructor(
+class AssistedTarget(
   @Assisted val name: String,
   val value: Provider<SuspendLazy<InjectionPathValue>>,
 ) {

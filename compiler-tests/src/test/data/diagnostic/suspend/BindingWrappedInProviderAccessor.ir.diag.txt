@@ -1,4 +1,4 @@
-/BindingWrappedInProviderAccessor.kt:14:43: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+/BindingWrappedInProviderAccessor.kt:13:43: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
 
 Trace:
     String is injected at
@@ -6,7 +6,7 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
-/BindingWrappedInProviderAccessor.kt:23:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+/BindingWrappedInProviderAccessor.kt:22:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' via Provider. Use `suspend () -> String` instead.
 
 Trace:
     String is requested at
@@ -14,7 +14,7 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
-/BindingWrappedInProviderAccessor.kt:25:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' via Lazy. Use `SuspendLazy<String>` instead.
+/BindingWrappedInProviderAccessor.kt:24:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' via Lazy. Use `SuspendLazy<String>` instead.
 
 Trace:
     String is requested at
@@ -22,7 +22,7 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
-/BindingWrappedInProviderAccessor.kt:27:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' because the wrapper nearest it is Provider. Use `suspend () -> String` instead.
+/BindingWrappedInProviderAccessor.kt:26:7: error: [Metro/SuspendBindingWrappedInProvider] Cannot access suspend binding 'String' because the wrapper nearest it is Provider. Use `suspend () -> String` instead.
 
 Trace:
     String is requested at
@@ -30,7 +30,7 @@ Trace:
     String is provided at
         [ExampleGraph] suspend ExampleGraph.provideString(…)
 
-/BindingWrappedInProviderAccessor.kt:29:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' because the wrapper nearest it is Lazy. Use `SuspendLazy<String>` instead.
+/BindingWrappedInProviderAccessor.kt:28:7: error: [Metro/SuspendBindingWrappedInLazy] Cannot access suspend binding 'String' because the wrapper nearest it is Lazy. Use `SuspendLazy<String>` instead.
 
 Trace:
     String is requested at

@@ -6,9 +6,8 @@
 
 class Database(val value: String)
 
-class Holder<T>
 @AssistedInject
-constructor(@Assisted val id: Int, val database: Database) {
+class Holder<T>(@Assisted val id: Int, val database: Database) {
   @AssistedFactory
   interface Factory<T> {
     suspend fun create(id: Int): Holder<T>

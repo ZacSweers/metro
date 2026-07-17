@@ -8,9 +8,8 @@
 // error just like Provider/Lazy dependency edges do. Assisted-inject targets with Provider-wrapped
 // suspend deps are the same hole via a different path.
 
-class Creator
-<!SUGGEST_CLASS_INJECTION!>@AssistedInject<!>
-constructor(@Assisted val region: String, <!METRO_ERROR!>val db: <!DESUGARED_PROVIDER_WARNING!>Provider<String><!><!>) {
+@AssistedInject
+class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: <!DESUGARED_PROVIDER_WARNING!>Provider<String><!><!>) {
   @AssistedFactory
   fun interface Factory {
     fun create(region: String): Creator
