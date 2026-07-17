@@ -801,7 +801,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
     override val scope: IrAnnotation? = null
-    override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
+    private var dependenciesFinalized = false
+    override val dependencies by memoize {
+      dependenciesFinalized = true
+      sourceBindings.map { IrContextualTypeKey(it) }
+    }
     override val parameters: Parameters = Parameters.empty()
 
     fun isEmpty() = sourceBindings.isEmpty()
@@ -858,6 +862,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
 
     fun addSourceBinding(source: IrTypeKey) {
+      check(!dependenciesFinalized) {
+        "Cannot add multibinding source $source after dependencies have been finalized"
+      }
       if (source in sourceBindings) {
         reportCompilerBug("Duplicate multibinding source: $source")
       }

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.BaseBinding
+import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
+import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
@@ -12,82 +15,119 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
  * Discovery walks each binding's dependency edges once, recording reverse edges as it goes, and
  * suspendness propagates along those reverse edges from newly suspend bindings with a worklist.
  * Each resolved binding and edge is processed once across all queries rather than participating in
- * a fixpoint recomputation per query. Unresolved keys may be retried while the parent graph is
- * still growing. When nothing reachable is suspend, propagation does no work at all.
+ * a fixpoint recomputation per query. Unresolved keys are retried once after the graph's generation
+ * changes. When nothing reachable is suspend, propagation does no work at all.
  *
- * Multibinding dependencies are memoized snapshots of a mutable source-binding set. That is safe
- * here because every `addSourceBinding` call happens inside `BindingGraphGenerator.generate()`,
- * which completes before the first pre-seal child query and before `seal()`. If contributors are
- * ever registered later than that, this analysis (and the memoize on
- * [IrBinding.Multibinding.dependencies]) must be revisited.
+ * Multibinding dependencies are memoized snapshots of a mutable source-binding set. Accessing that
+ * snapshot prevents later source bindings from being added, so this analysis cannot silently keep
+ * stale multibinding edges.
  */
-internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> IrBinding?) {
-  /** Bindings resolved so far. Misses are tracked in [unresolvedKeys], never stored here. */
-  private val discoveredBindings = mutableMapOf<IrTypeKey, IrBinding>()
+internal class SuspendBindingAnalysis(
+  findBinding: (IrTypeKey) -> IrBinding?,
+  currentGraphGeneration: () -> Int = { 0 },
+) {
+  private val worklist =
+    SuspendBindingWorklist(
+      findBinding = findBinding,
+      bindingIsSuspend = { it.isSuspend },
+      skipDependencyTraversal = { it is IrBinding.AssistedFactory },
+      canPassThrough = { binding, dependency ->
+        binding is IrBinding.GraphDependency && binding.canPassThrough(dependency)
+      },
+      currentGraphGeneration = currentGraphGeneration,
+    )
+
+  fun analyze(keys: Iterable<IrTypeKey>): Set<IrTypeKey> = worklist.analyze(keys)
+
+  fun isSuspend(key: IrTypeKey): Boolean = worklist.isSuspend(key)
+}
+
+/** Incrementally propagates suspend requirements along reverse dependency edges. */
+internal class SuspendBindingWorklist<
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, TypeKey>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
+  Binding : BaseBinding<Type, TypeKey, ContextualTypeKey>,
+>(
+  private val findBinding: (TypeKey) -> Binding?,
+  private val bindingIsSuspend: (Binding) -> Boolean,
+  private val skipDependencyTraversal: (Binding) -> Boolean,
+  private val canPassThrough: (Binding, ContextualTypeKey) -> Boolean,
+  currentGraphGeneration: () -> Int = { 0 },
+) {
+  /** Bindings resolved so far. Misses are tracked in [unresolvedGenerations], never stored here. */
+  private val discoveredBindings = mutableMapOf<TypeKey, Binding>()
 
   /** Keys whose dependency edges have been walked and recorded in [reverseEdges]. */
-  private val expandedKeys = mutableSetOf<IrTypeKey>()
+  private val expandedKeys = mutableSetOf<TypeKey>()
 
   /**
    * Keys that had no binding when last queried. Pre-seal, the parent graph is still being
-   * populated, so these are retried whenever a query explores a new key (the only time the
-   * underlying graph can have grown).
+   * populated, so these are retried after [currentGraphGeneration] changes. Remembering the
+   * generation also avoids repeating the same failed lookup when another root reaches the key.
    */
-  private val unresolvedKeys = mutableSetOf<IrTypeKey>()
+  private val unresolvedGenerations = mutableMapOf<TypeKey, Int>()
+
+  private val currentGraphGeneration = currentGraphGeneration
+  private var analyzedGraphGeneration = currentGraphGeneration()
 
   /** Dependency key to consumers whose edge to that dependency propagates suspension. */
-  private val reverseEdges = mutableMapOf<IrTypeKey, MutableList<IrTypeKey>>()
+  private val reverseEdges = mutableMapOf<TypeKey, MutableList<TypeKey>>()
 
   /**
    * Edges whose dependency key was unresolved when walked. A `GraphDependency` that passes its
    * wrapper through stops propagation, and that check needs the resolved binding, so these edges
    * are classified when (if) the key resolves on a later retry.
    */
-  private val pendingEdges = mutableMapOf<IrTypeKey, MutableList<PendingEdge>>()
+  private val pendingEdges =
+    mutableMapOf<TypeKey, MutableList<PendingEdge<TypeKey, ContextualTypeKey>>>()
 
-  private val suspendKeys = mutableSetOf<IrTypeKey>()
-  private val newlySuspend = ArrayDeque<IrTypeKey>()
+  private val suspendKeys = mutableSetOf<TypeKey>()
+  private val newlySuspend = ArrayDeque<TypeKey>()
 
-  private class PendingEdge(val consumer: IrTypeKey, val dependency: IrContextualTypeKey)
+  private class PendingEdge<TypeKey, ContextualTypeKey>(
+    val consumer: TypeKey,
+    val dependency: ContextualTypeKey,
+  )
 
-  fun analyze(keys: Iterable<IrTypeKey>): Set<IrTypeKey> {
-    val pending = ArrayDeque<IrTypeKey>()
+  fun analyze(keys: Iterable<TypeKey>): Set<TypeKey> {
+    val pending = ArrayDeque<TypeKey>()
     for (key in keys) {
       if (key !in expandedKeys) {
         pending += key
       }
     }
+    val graphGeneration = currentGraphGeneration()
+    if (graphGeneration != analyzedGraphGeneration) {
+      analyzedGraphGeneration = graphGeneration
+      pending += unresolvedGenerations.keys
+    }
     if (pending.isNotEmpty()) {
-      pending += unresolvedKeys
       expand(pending)
       propagate()
     }
     return suspendKeys
   }
 
-  fun isSuspend(key: IrTypeKey): Boolean = key in analyze(listOf(key))
+  fun isSuspend(key: TypeKey): Boolean = key in analyze(listOf(key))
 
-  private fun expand(pending: ArrayDeque<IrTypeKey>) {
-    // Keys that missed during this pass, so each is looked up at most once per analyze() call.
-    val missedThisPass = mutableSetOf<IrTypeKey>()
+  private fun expand(pending: ArrayDeque<TypeKey>) {
     while (pending.isNotEmpty()) {
       val key = pending.removeFirst()
       if (key in expandedKeys) continue
-      val binding = resolve(key, missedThisPass) ?: continue
+      val binding = resolve(key) ?: continue
       expandedKeys += key
-      // Assisted factories are constructed on demand and never become transitively suspend; their
-      // suspend requirements are validated separately against the target binding.
-      if (binding is IrBinding.AssistedFactory) continue
+      if (skipDependencyTraversal(binding)) continue
 
       for (dependency in binding.dependencies) {
-        if (dependency.stopsSuspendPropagation) continue
+        if (dependency.isDeferrable) continue
         val depKey = dependency.typeKey
-        val depBinding = resolve(depKey, missedThisPass)
+        val depBinding = resolve(depKey)
         if (depBinding == null) {
           pendingEdges.getOrPut(depKey, ::mutableListOf) += PendingEdge(key, dependency)
           continue
         }
-        if (depBinding is IrBinding.GraphDependency && depBinding.canPassThrough(dependency)) {
+        if (canPassThrough(depBinding, dependency)) {
           continue
         }
         reverseEdges.getOrPut(depKey, ::mutableListOf) += key
@@ -101,26 +141,25 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
     }
   }
 
-  private fun resolve(key: IrTypeKey, missedThisPass: MutableSet<IrTypeKey>): IrBinding? {
+  private fun resolve(key: TypeKey): Binding? {
     discoveredBindings[key]?.let {
       return it
     }
-    if (key in missedThisPass) return null
+    if (unresolvedGenerations[key] == analyzedGraphGeneration) return null
     val binding = findBinding(key)
     if (binding == null) {
-      missedThisPass += key
-      unresolvedKeys += key
+      unresolvedGenerations[key] = analyzedGraphGeneration
       return null
     }
-    unresolvedKeys -= key
+    unresolvedGenerations -= key
     discoveredBindings[key] = binding
-    if (binding.isSuspend) {
+    if (bindingIsSuspend(binding)) {
       markSuspend(key)
     }
     // Classify edges that were waiting on this key's binding.
     pendingEdges.remove(key)?.let { edges ->
       for (edge in edges) {
-        if (binding is IrBinding.GraphDependency && binding.canPassThrough(edge.dependency)) {
+        if (canPassThrough(binding, edge.dependency)) {
           continue
         }
         reverseEdges.getOrPut(key, ::mutableListOf) += edge.consumer
@@ -132,7 +171,7 @@ internal class SuspendBindingAnalysis(private val findBinding: (IrTypeKey) -> Ir
     return binding
   }
 
-  private fun markSuspend(key: IrTypeKey) {
+  private fun markSuspend(key: TypeKey) {
     if (suspendKeys.add(key)) {
       newlySuspend += key
     }

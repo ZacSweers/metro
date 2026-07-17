@@ -122,10 +122,11 @@ internal class IrBindingGraph(
   /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
   private var requiresRuntimeCoroutines = false
 
-  /** Resolves parent suspend bindings before this graph is sealed. */
-  private val parentSuspendBindingAnalysis = SuspendBindingAnalysis { typeKey ->
-    findBinding(typeKey, allowLookup = true)
-  }
+  /** Incremented whenever [realGraph] gains a binding before it is sealed. */
+  private var graphGeneration = 0
+
+  /** Resolves parent suspend bindings before this graph is sealed, when a child first needs it. */
+  private var parentSuspendBindingAnalysis: SuspendBindingAnalysis? = null
 
   /**
    * Guards [parentSuspendBindingAnalysis] and the binding lookups it performs. Sibling extensions
@@ -155,7 +156,14 @@ internal class IrBindingGraph(
       if (_bindingLookup == null) {
         return@synchronized isTransitivelySuspend(typeKey)
       }
-      parentSuspendBindingAnalysis.isSuspend(typeKey)
+      val analysis =
+        parentSuspendBindingAnalysis
+          ?: SuspendBindingAnalysis(
+              findBinding = { findBinding(it, allowLookup = true) },
+              currentGraphGeneration = { graphGeneration },
+            )
+            .also { parentSuspendBindingAnalysis = it }
+      analysis.isSuspend(typeKey)
     }
   }
 
@@ -254,10 +262,15 @@ internal class IrBindingGraph(
 
   private var _bindingLookup: BindingLookup? = bindingLookup
     set(value) {
-      if (value == null) {
-        field?.clear()
+      if (value != null) {
+        field = value
+        return
       }
-      field = value
+      synchronized(parentSuspendResolutionLock) {
+        field?.clear()
+        parentSuspendBindingAnalysis = null
+        field = null
+      }
     }
 
   private val bindingLookup
@@ -310,7 +323,13 @@ internal class IrBindingGraph(
   }
 
   fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {
-    realGraph.tryPut(binding, bindingStack, key)
+    synchronized(parentSuspendResolutionLock) {
+      val previousSize = realGraph.bindings.size
+      realGraph.tryPut(binding, bindingStack, key)
+      if (realGraph.bindings.size != previousSize) {
+        graphGeneration++
+      }
+    }
   }
 
   fun keep(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
