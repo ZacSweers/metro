@@ -585,6 +585,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("SuspendDependencyCycleAdvice.kt")
+    public void testSuspendDependencyCycleAdvice() {
+      run("SuspendDependencyCycleAdvice.kt");
+    }
+
+    @Test
     @TestMetadata("UnusedGraphInputsAreReported.kt")
     public void testUnusedGraphInputsAreReported() {
       run("UnusedGraphInputsAreReported.kt");

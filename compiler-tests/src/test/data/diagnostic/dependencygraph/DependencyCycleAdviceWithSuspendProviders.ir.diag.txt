@@ -11,6 +11,5 @@
       ...
 
   help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Second` or
-        `Lazy<Second>`. Suspend dependencies can instead use `suspend () -> Second` or
-        `SuspendLazy<Second>`. Only do this if you know what you're doing though!
+        `Lazy<Second>`. Only do this if you know what you're doing though!
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

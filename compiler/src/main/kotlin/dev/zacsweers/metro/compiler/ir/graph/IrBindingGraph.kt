@@ -294,8 +294,17 @@ internal class IrBindingGraph(
       },
       errorReporter = this,
       missingBindingHints = ::missingBindingHints,
-      includeSuspendCycleAdvice = metroContext.options.enableSuspendProviders,
+      findSuspendCycleKey = ::findSuspendCycleKey,
     )
+
+  private fun findSuspendCycleKey(
+    cycleKeys: List<IrTypeKey>,
+    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  ): IrTypeKey? {
+    if (!metroContext.options.enableSuspendProviders) return null
+    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
+    return cycleKeys.firstOrNull { it in suspendKeys }
+  }
 
   // TODO hoist accessors up and visit in seal?
   private val accessors = mutableMapOf<IrContextualTypeKey, IrBindingStack.Entry>()
