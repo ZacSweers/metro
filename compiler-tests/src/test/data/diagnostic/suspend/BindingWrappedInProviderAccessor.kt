@@ -2,14 +2,14 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("OPT_IN_USAGE")
+@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
 
 // Provider<T> and Lazy<T> accessors over a suspend binding can never await the work — they must
 // error just like Provider/Lazy dependency edges do. Assisted-inject targets with Provider-wrapped
 // suspend deps are the same hole via a different path.
 
 @AssistedInject
-class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: <!DESUGARED_PROVIDER_WARNING!>Provider<String><!><!>) {
+class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: Provider<String><!>) {
   @AssistedFactory
   fun interface Factory {
     fun create(region: String): Creator
@@ -18,11 +18,11 @@ class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: <!DESUGARED_P
 
 @DependencyGraph
 interface ExampleGraph {
-  val <!METRO_ERROR!>value<!>: <!DESUGARED_PROVIDER_WARNING!>Provider<String><!>
+  val <!METRO_ERROR!>value<!>: Provider<String>
 
   val <!METRO_ERROR!>lazyValue<!>: Lazy<String>
 
-  val <!METRO_ERROR!>nestedProvider<!>: <!DESUGARED_PROVIDER_WARNING!>suspend () -> Provider<String><!>
+  val <!METRO_ERROR!>nestedProvider<!>: suspend () -> Provider<String>
 
   val <!METRO_ERROR!>nestedLazy<!>: SuspendLazy<Lazy<String>>
 

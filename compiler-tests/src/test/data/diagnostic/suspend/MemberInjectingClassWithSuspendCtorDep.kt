@@ -2,6 +2,7 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
+@file:Suppress("MEMBERS_INJECT_WARNING")
 
 // A constructor-injected class with @Inject members whose suspend-ness comes from a CONSTRUCTOR
 // dependency (not a member): still an error. Suspend construction routes through nested suspend
@@ -11,7 +12,7 @@
 
 @Inject
 class <!METRO_ERROR!>Foo<!>(val dep: String) {
-  @Inject lateinit var <!MEMBERS_INJECT_WARNING!>bar<!>: Bar
+  @Inject lateinit var bar: Bar
 }
 
 @DependencyGraph

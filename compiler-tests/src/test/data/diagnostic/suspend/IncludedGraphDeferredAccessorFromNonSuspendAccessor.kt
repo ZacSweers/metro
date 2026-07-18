@@ -2,6 +2,7 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
+@file:Suppress("OPT_IN_USAGE")
 
 @DependencyGraph
 interface ProviderGraph {
@@ -22,7 +23,7 @@ interface ProviderConsumerGraph {
 
 @DependencyGraph
 interface LazyGraph {
-  val value: <!OPT_IN_USAGE!>SuspendLazy<Long><!>
+  val value: SuspendLazy<Long>
 
   @Provides suspend fun provideLong(): Long = 1L
 }
