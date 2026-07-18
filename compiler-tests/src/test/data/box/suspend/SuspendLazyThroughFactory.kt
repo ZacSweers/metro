@@ -8,8 +8,6 @@
 
 var dbComputations = 0
 
-abstract class AppScope private constructor()
-
 @Inject
 @SingleIn(AppScope::class)
 class Consumer(val database: SuspendLazy<String>)

@@ -9,8 +9,6 @@
 
 @Inject class Consumer(val messageProvider: suspend () -> String)
 
-abstract class AppScope private constructor()
-
 @DependencyGraph(scope = AppScope::class)
 interface ExampleGraph {
   val message: suspend () -> String

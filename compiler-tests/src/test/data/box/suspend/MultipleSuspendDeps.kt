@@ -31,7 +31,6 @@ interface ExampleGraph {
 }
 
 fun box(): String {
-  dependencyEvaluationOrder.clear()
   return runBlocking {
     val accountCreator = createGraph<ExampleGraph>().accountCreator()
     assertEquals("db", accountCreator.database)

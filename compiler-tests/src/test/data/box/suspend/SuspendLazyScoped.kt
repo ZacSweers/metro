@@ -7,8 +7,6 @@
 
 var dbComputations = 0
 
-abstract class AppScope private constructor()
-
 @Inject
 class Mixed(val lazyDb: SuspendLazy<String>, val db: String)
 

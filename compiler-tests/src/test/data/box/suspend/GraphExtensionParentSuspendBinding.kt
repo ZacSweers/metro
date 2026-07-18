@@ -6,8 +6,6 @@
 
 var dbComputations = 0
 
-abstract class AppScope private constructor()
-
 @DependencyGraph(scope = AppScope::class)
 interface ParentGraph {
   suspend fun database(): String

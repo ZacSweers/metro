@@ -12,8 +12,6 @@ class NullableValue
 
 class SynchronousValue(val index: Int)
 
-abstract class AppScope private constructor()
-
 @Inject
 @SingleIn(AppScope::class)
 class Consumer(

@@ -1,6 +1,22 @@
 // ENABLE_SUSPEND_PROVIDERS
 // PARALLEL_THREADS: 4
 
+// One suspend binding flows through sibling and nested graph extensions:
+//
+// AppGraph [AppScope]
+//   provideConfig() [suspend]
+//       |
+//       v
+//   provideRepository(Config) [scoped, transitively suspend]
+//       |
+//       +--> FeatureAGraph.repository()
+//       |       +--> LeafOneGraph.repository()
+//       |       `--> LeafTwoGraph.repository()
+//       |               `~~> DeferredConsumer.repository
+//       `--> FeatureBGraph.repository()
+//
+// Every path resolves the same AppScope-scoped Repository. `~~>` marks the deferred function edge.
+
 var configInitializations = 0
 
 abstract class FeatureAScope private constructor()

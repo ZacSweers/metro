@@ -2,8 +2,6 @@
 
 var databaseComputations = 0
 
-abstract class AppScope private constructor()
-
 @Inject
 @SingleIn(AppScope::class)
 class AccountCreator(val database: String)

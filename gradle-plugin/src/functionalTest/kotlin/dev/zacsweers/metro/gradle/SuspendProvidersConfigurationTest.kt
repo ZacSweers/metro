@@ -35,8 +35,6 @@ class SuspendProvidersConfigurationTest {
           listOf(
             source(
               """
-              abstract class AppScope private constructor()
-
               @DependencyGraph(scope = AppScope::class)
               interface AppGraph {
                 suspend fun value(): String

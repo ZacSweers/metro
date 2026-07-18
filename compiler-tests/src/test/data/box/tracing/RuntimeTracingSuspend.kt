@@ -11,8 +11,6 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.SuspendProvider
 import dev.zacsweers.metro.trace.internal.testMetroTrace
 
-abstract class AppScope private constructor()
-
 // Transitively suspend: unwrapped suspend dep. Multi-use so it gets a nested SuspendFactory +
 // SuspendProvider field.
 @Inject class Database(val url: String)

@@ -1,17 +1,23 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// The canonical long-chain scenario mixing suspend and non-suspend bindings:
-// - String: suspend @Provides — SuspendFactory primary factory.
-// - Int: non-suspend @Provides with an unwrapped suspend dep — transitively suspend, multi-ref →
-//   IR-only nested SuspendFactory in the graph.
-// - Long: non-suspend @Provides, transitively suspend, SCOPED → nested factory wrapped in
-//   SuspendDoubleCheck.
-// - Double: suspend @Provides taking `suspend () -> Long` (defers, but directly suspend).
-// - Short: non-suspend @Provides whose Double dep is wrapped in `suspend () -> Double` — the
-//   wrapper breaks the chain, so Short is NOT suspend.
-// - Sink: constructor-injected, mixes an unwrapped suspend scalar with deferred suspend wrappers.
-
-abstract class AppScope private constructor()
+// A long chain mixing eager and deferred suspend dependencies:
+//
+// provideString() [suspend]
+//     |
+//     v
+// provideInt(String) [transitively suspend] -----------> intValue()
+//     | \
+//     |  `~~> Sink.intProviderFn
+//     v
+// provideLong(Int) [scoped, transitively suspend] -----> longValue()
+//     | \
+//     |  `~~> Sink.longProvider
+//     `~~> provideDouble(suspend () -> Long) [suspend] --> Sink.doubleScalar
+//               |
+//               `~~> provideShort(suspend () -> Double) [sync] --> Sink.short
+//
+// `-->` is an eager dependency. `~~>` is a deferred `suspend () -> T` edge, which stops suspend
+// propagation.
 
 @Inject
 class Sink(

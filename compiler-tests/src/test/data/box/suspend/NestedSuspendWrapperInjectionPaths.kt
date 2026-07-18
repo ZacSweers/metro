@@ -1,6 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
-@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
+@file:Suppress("OPT_IN_USAGE")
 var injectionPathComputations = 0
 
 class InjectionPathValue(val index: Int)
@@ -9,14 +9,30 @@ class SynchronousInjectionPathValue(val value: String)
 
 abstract class InjectionPathScope private constructor()
 
+// The same deferred suspend binding flows through every supported injection path:
+//
+// provideValue() [suspend]
+//     |
+//     `~~> () -> SuspendLazy<InjectionPathValue>
+//              |
+//              +--> @Inject member
+//              +--> @AssistedInject constructor
+//              +--> @Provides parameter
+//              +--> injected top-level function
+//              `--> graph-local @Inject constructor
+//
+// The graph-local target also requests InjectionPathValue directly. SynchronousInjectionPathValue
+// is requested directly, through `() -> T`, and through `() -> SuspendLazy<T>` to cover the same
+// wrapper shapes without suspension. `~~>` marks a deferred edge.
+
 class MemberInjectedTarget {
-  @Inject lateinit var value: Provider<SuspendLazy<InjectionPathValue>>
+  @Inject lateinit var value: () -> SuspendLazy<InjectionPathValue>
 }
 
 @AssistedInject
 class AssistedTarget(
   @Assisted val name: String,
-  val value: Provider<SuspendLazy<InjectionPathValue>>,
+  val value: () -> SuspendLazy<InjectionPathValue>,
 ) {
   @AssistedFactory
   interface Factory {
@@ -30,15 +46,15 @@ class Report(val index: Int)
 @SingleIn(InjectionPathScope::class)
 class GraphLocalTarget(
   val direct: InjectionPathValue,
-  val nested: Provider<SuspendLazy<InjectionPathValue>>,
+  val nested: () -> SuspendLazy<InjectionPathValue>,
   val synchronous: SynchronousInjectionPathValue,
-  val synchronousProvider: Provider<SynchronousInjectionPathValue>,
+  val synchronousProvider: () -> SynchronousInjectionPathValue,
 )
 
 @Inject
 fun NestedInjectedFunction(
-  value: Provider<SuspendLazy<InjectionPathValue>>
-): Provider<SuspendLazy<InjectionPathValue>> = value
+  value: () -> SuspendLazy<InjectionPathValue>
+): () -> SuspendLazy<InjectionPathValue> = value
 
 @DependencyGraph(scope = InjectionPathScope::class)
 interface ExampleGraph {
@@ -61,7 +77,7 @@ interface ExampleGraph {
   }
 
   @Provides
-  suspend fun provideReport(value: Provider<SuspendLazy<InjectionPathValue>>): Report {
+  suspend fun provideReport(value: () -> SuspendLazy<InjectionPathValue>): Report {
     return Report(value().value().index)
   }
 
@@ -72,8 +88,8 @@ interface ExampleGraph {
 
   @Provides
   suspend fun provideMixedStorageKinds(
-    nested: Provider<SuspendLazy<SynchronousInjectionPathValue>>,
-    provider: Provider<SynchronousInjectionPathValue>,
+    nested: () -> SuspendLazy<SynchronousInjectionPathValue>,
+    provider: () -> SynchronousInjectionPathValue,
   ): String {
     return "${provider().value}:${nested().value().value}"
   }

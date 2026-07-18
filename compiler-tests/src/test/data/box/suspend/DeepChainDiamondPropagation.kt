@@ -17,8 +17,6 @@
 var configComputations = 0
 var dbComputations = 0
 
-abstract class AppScope private constructor()
-
 class Config(val url: String)
 
 @Inject
