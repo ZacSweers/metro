@@ -1747,6 +1747,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MemberInjectingClassWithSuspendCtorDepFromBinary.kt")
+    public void testMemberInjectingClassWithSuspendCtorDepFromBinary() {
+      run("MemberInjectingClassWithSuspendCtorDepFromBinary.kt");
+    }
+
+    @Test
     @TestMetadata("MemberInjectionOverSuspendBinding.kt")
     public void testMemberInjectionOverSuspendBinding() {
       run("MemberInjectionOverSuspendBinding.kt");

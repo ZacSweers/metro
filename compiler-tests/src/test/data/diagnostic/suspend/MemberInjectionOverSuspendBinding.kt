@@ -2,7 +2,6 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("MEMBERS_INJECT_WARNING")
 
 // Member injection has no suspend form — injector functions and MembersInjector.injectMembers are
 // non-suspend and can't await suspend bindings. Must be an error, not broken codegen.
@@ -12,8 +11,8 @@ class Target {
 }
 
 @Inject
-class <!METRO_ERROR!>ConstructedTarget<!> {
-  @Inject lateinit var <!METRO_ERROR!>database<!>: String
+class ConstructedTarget {
+  @Inject fun injectDatabase(<!METRO_ERROR!>database: String<!>) = Unit
 }
 
 @DependencyGraph

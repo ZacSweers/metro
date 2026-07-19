@@ -9,10 +9,9 @@
 
 class Database(val value: String)
 
-@Suppress("MEMBERS_INJECT_WARNING")
 @AssistedInject
 class AccountCreator(@Assisted val region: String) {
-  @Inject lateinit var <!METRO_ERROR!>database<!>: Database
+  @Inject fun injectDatabase(<!METRO_ERROR!>database: Database<!>) = Unit
 
   @AssistedFactory
   interface Factory {

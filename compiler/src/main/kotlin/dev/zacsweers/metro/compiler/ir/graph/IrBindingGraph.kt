@@ -1403,14 +1403,12 @@ internal class IrBindingGraph(
               binding.dependencies.firstOrNull { dep ->
                 dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
               } ?: return@forEachValue
-            // Resolve through the MembersInjected binding to name the actual member's type
-            // rather than the synthetic MembersInjector<T> key.
+            // The MembersInjected binding reports suspend member dependencies directly. Only the
+            // constructor-specific case remains here: construction requires suspension, so its
+            // otherwise synchronous member injection would be skipped.
             val memberBinding = bindings[anySuspendDep.typeKey] as? IrBinding.MembersInjected
-            val dep =
-              memberBinding?.dependencies?.firstOrNull {
-                it.typeKey in suspendSet && !it.stopsSuspendPropagation { key -> bindings[key] }
-              } ?: anySuspendDep
-            dep to "'${binding.type.kotlinFqName}' has @Inject members and"
+            if (memberBinding != null) return@forEachValue
+            anySuspendDep to "'${binding.type.kotlinFqName}' has @Inject members and"
           }
           else -> return@forEachValue
         }
@@ -1427,11 +1425,24 @@ internal class IrBindingGraph(
         appendLine("Trace:")
         appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
       }
-      val element =
-        (binding as? IrBinding.MembersInjected)?.parameterFor(firstSuspendDep.typeKey)?.ir
-          ?: binding.reportableDeclaration
-          ?: return@forEachValue
-      reportError(element.originalDeclarationIfOverride(), message)
+      val reportCandidates =
+        when (binding) {
+          is IrBinding.MembersInjected ->
+            sequenceOf(
+              binding.parameterFor(firstSuspendDep.typeKey)?.ir?.originalDeclarationIfOverride(),
+              node.sourceGraph,
+            )
+          is IrBinding.ConstructorInjected ->
+            binding.injectedMembers
+              .asSequence()
+              .mapNotNull { bindings[it.typeKey] as? IrBinding.MembersInjected }
+              .flatMap { it.parameters.nonDispatchParameters.asSequence() }
+              .filter { it.isMember }
+              .mapNotNull { it.ir?.originalDeclarationIfOverride() }
+              .plus(node.sourceGraph)
+          else -> return@forEachValue
+        }
+      reportError(reportCandidates, message)
     }
 
     // Step 5: Validate wrapper stacks whose innermost wrapper is Provider or Lazy over a suspend
@@ -1703,6 +1714,15 @@ internal class IrBindingGraph(
   ) {
     hasErrors = true
     metroContext.reportCompat(element, factory, message.trimEnd())
+  }
+
+  private fun reportError(
+    candidates: Sequence<IrDeclaration?>,
+    message: String,
+    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+  ) {
+    hasErrors = true
+    metroContext.reportCompat(candidates, factory, message.trimEnd())
   }
 
   // Check scoping compatibility
