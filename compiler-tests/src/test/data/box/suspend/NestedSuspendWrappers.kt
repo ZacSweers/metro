@@ -1,5 +1,4 @@
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("OPT_IN_USAGE")
 var unscopedComputations = 0
 var scopedComputations = 0
 var synchronousComputations = 0

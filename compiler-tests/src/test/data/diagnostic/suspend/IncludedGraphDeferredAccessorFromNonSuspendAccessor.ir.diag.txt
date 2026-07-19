@@ -1,4 +1,4 @@
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:17:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
+/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:15:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Int bindings must be a suspend function or suspend () -> Int because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Int is requested at
@@ -8,7 +8,7 @@ Either:
   - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
   - Make the return type `suspend () -> Int`.
 
-/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:34:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Long bindings must be a suspend function or suspend () -> Long because it depends on suspend bindings and requires a suspend context.
+/IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt:32:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Long bindings must be a suspend function or suspend () -> Long because it depends on suspend bindings and requires a suspend context.
 
 Trace:
     Long is requested at

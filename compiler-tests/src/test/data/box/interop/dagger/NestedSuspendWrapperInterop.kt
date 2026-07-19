@@ -1,6 +1,5 @@
 // ENABLE_DAGGER_INTEROP
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("OPT_IN_USAGE")
 import dagger.Lazy
 import javax.inject.Provider
 var interopComputations = 0

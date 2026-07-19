@@ -3,8 +3,6 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("OPT_IN_USAGE")
-@OptIn(ExperimentalMetroCoroutinesApi::class)
 @Inject
 class <!MISSING_RUNTIME_COROUTINES!>NestedLazyConsumer<!>(
   val value: () -> SuspendLazy<String>

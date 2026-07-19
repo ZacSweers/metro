@@ -5,8 +5,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // FILE: upstream.kt
-@file:Suppress("OPT_IN_USAGE")
-
 class UpstreamValue(val provider: suspend () -> String)
 
 @Inject

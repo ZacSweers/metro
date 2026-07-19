@@ -1,5 +1,5 @@
-/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:10:7: error: [Metro/MissingRuntimeCoroutines] 'NestedLazyConsumer' requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:8:7: error: [Metro/MissingRuntimeCoroutines] 'NestedLazyConsumer' requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
 
-/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:15:11: error: [Metro/MissingRuntimeCoroutines] `NestedLazyConsumer` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:13:11: error: [Metro/MissingRuntimeCoroutines] `NestedLazyConsumer` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
 
-/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:27:5: error: [Metro/MissingRuntimeCoroutines] `UnusedBindings.provideLength` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+/MissingRuntimeCoroutinesForNestedSuspendLazy.kt:25:5: error: [Metro/MissingRuntimeCoroutines] `UnusedBindings.provideLength` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.

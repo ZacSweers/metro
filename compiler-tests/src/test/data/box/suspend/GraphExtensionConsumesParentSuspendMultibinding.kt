@@ -16,8 +16,6 @@ class AuthHandler(val database: String) : Handler {
 }
 
 // MODULE: main(lib)
-@file:Suppress("OPT_IN_USAGE")
-
 abstract class ChildScope private constructor()
 
 object SyncHandler : Handler {

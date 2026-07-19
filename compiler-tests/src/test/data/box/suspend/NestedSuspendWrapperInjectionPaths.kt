@@ -1,6 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
 // ENABLE_TOP_LEVEL_FUNCTION_INJECTION
-@file:Suppress("OPT_IN_USAGE")
 var injectionPathComputations = 0
 
 class InjectionPathValue(val index: Int)

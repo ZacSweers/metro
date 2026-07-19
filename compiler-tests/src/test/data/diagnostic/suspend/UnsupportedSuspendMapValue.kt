@@ -1,7 +1,6 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // RENDER_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("OPT_IN_USAGE")
 @DependencyGraph
 interface ExampleGraph {
   val directLazy: Map<String, <!UNSUPPORTED_SUSPEND_MAP_VALUE!>SuspendLazy<Int><!>>

@@ -140,6 +140,7 @@ private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_V
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
+  OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroCoroutinesApi")
   OPT_IN.with("dev.zacsweers.metro.DelicateMetroApi")
 }
 

@@ -1,5 +1,3 @@
-@file:Suppress(names = ["OPT_IN_USAGE"])
-
 class SharedDependency {
   constructor() /* primary */ {
     super/*Any*/()
@@ -23,7 +21,7 @@ interface AppGraph {
     @Binds
     @IntoMap
     @IntKey(value = 3)
-    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 194, endOffset = 216)
+    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 163, endOffset = 185)
     fun Int.bindInt4013004651_intomap(): Int {
       return error(message = "Never called")
     }
@@ -66,9 +64,9 @@ interface AppGraph {
 )
       }
 
-    private val mapOfStringToString: Map<String, SuspendProvider<String>>
-      private get(): Map<String, SuspendProvider<String>> {
-        return buildMap<String, SuspendProvider<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendProvider<String>>.<anonymous>() {
+    private val mapOfStringToString: Map<String, SuspendFunction0<String>>
+      private get(): Map<String, SuspendFunction0<String>> {
+        return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
           $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
           $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
         }
@@ -99,7 +97,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideFirst", propertyName = "", startOffset = 302, endOffset = 413, newInstanceName = "provideFirst")
+  @CallableMetadata(callableName = "provideFirst", propertyName = "", startOffset = 271, endOffset = 382, newInstanceName = "provideFirst")
   class ProvideFirstMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
@@ -149,7 +147,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 129, endOffset = 164, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 98, endOffset = 133, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -196,7 +194,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideSecond", propertyName = "", startOffset = 417, endOffset = 531, newInstanceName = "provideSecond")
+  @CallableMetadata(callableName = "provideSecond", propertyName = "", startOffset = 386, endOffset = 500, newInstanceName = "provideSecond")
   class ProvideSecondMetroFactory : Factory<String> {
     private /* final field */ val instance: AppGraph = instance
     private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
@@ -246,7 +244,7 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideSharedDependency", propertyName = "", startOffset = 220, endOffset = 298, newInstanceName = "provideSharedDependency")
+  @CallableMetadata(callableName = "provideSharedDependency", propertyName = "", startOffset = 189, endOffset = 267, newInstanceName = "provideSharedDependency")
   class ProvideSharedDependencyMetroFactory : Factory<SharedDependency> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -334,3 +332,4 @@ interface AppGraph {
     abstract get
 
 }
+

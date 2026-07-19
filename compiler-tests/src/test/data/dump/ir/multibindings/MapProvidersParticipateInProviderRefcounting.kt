@@ -1,5 +1,4 @@
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("OPT_IN_USAGE")
 
 @DependencyGraph
 interface AppGraph {

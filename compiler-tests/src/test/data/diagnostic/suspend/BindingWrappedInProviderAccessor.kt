@@ -2,8 +2,6 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("OPT_IN_USAGE")
-
 // Synchronous provider and Lazy<T> accessors over a suspend binding can never await the work — they
 // must error just like synchronous provider/lazy dependency edges do. Assisted-inject targets with
 // synchronous-provider-wrapped suspend deps are the same hole via a different path.

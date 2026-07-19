@@ -1,6 +1,4 @@
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("OPT_IN_USAGE")
-
 // Test for Map<K, suspend () -> V> multibindings
 @DependencyGraph
 interface ExampleGraph {

@@ -4,7 +4,6 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@OptIn(ExperimentalMetroCoroutinesApi::class)
 @Inject
 fun NestedLazyFunction(
   value: () -> SuspendLazy<String>

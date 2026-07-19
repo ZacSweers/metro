@@ -3,8 +3,6 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("OPT_IN_USAGE")
-
 // A class with BOTH a deferred suspend dep (legal, does not propagate) and an unwrapped
 // transitively-suspend dep (propagates): the class is suspend because of the unwrapped edge only,
 // and the error trace must walk through that edge. A sibling consumer deferring the same class
