@@ -15,7 +15,7 @@ interface DatabaseGraph {
 
 @DependencyGraph
 interface AppGraph {
-  val <!METRO_ERROR!>database<!>: String
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>database<!>: String
 
   @DependencyGraph.Factory
   interface Factory {

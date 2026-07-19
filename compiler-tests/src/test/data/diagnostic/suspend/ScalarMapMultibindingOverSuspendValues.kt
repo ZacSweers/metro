@@ -9,7 +9,7 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  suspend fun <!METRO_ERROR!>values<!>(): Map<String, Int>
+  suspend fun <!MULTIBINDING_OVER_SUSPEND_BINDINGS!>values<!>(): Map<String, Int>
 
   // This form is fine — values are deferred
   val deferredValues: Map<String, suspend () -> Int>

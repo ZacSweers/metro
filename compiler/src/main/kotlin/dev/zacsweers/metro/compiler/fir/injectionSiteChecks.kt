@@ -121,6 +121,7 @@ internal fun validateInjectionSiteType(
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+      SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
     )
     return true
   }

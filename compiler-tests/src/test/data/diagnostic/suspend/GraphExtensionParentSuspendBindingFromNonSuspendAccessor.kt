@@ -14,7 +14,7 @@ interface ParentGraph {
 
 @GraphExtension
 interface ChildGraph {
-  val <!METRO_ERROR!>value<!>: String
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value<!>: String
 
   @GraphExtension.Factory
   interface Factory {

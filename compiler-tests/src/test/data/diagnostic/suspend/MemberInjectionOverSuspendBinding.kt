@@ -7,12 +7,12 @@
 // non-suspend and can't await suspend bindings. Must be an error, not broken codegen.
 
 class Target {
-  @Inject lateinit var <!METRO_ERROR!>database<!>: String
+  @Inject lateinit var <!MEMBER_INJECTION_OVER_SUSPEND_BINDING!>database<!>: String
 }
 
 @Inject
 class ConstructedTarget {
-  @Inject fun injectDatabase(<!METRO_ERROR!>database: String<!>) = Unit
+  @Inject fun injectDatabase(<!MEMBER_INJECTION_OVER_SUSPEND_BINDING!>database: String<!>) = Unit
 }
 
 @DependencyGraph

@@ -24,7 +24,7 @@ class <!MISSING_RUNTIME_COROUTINES!>Worker<!>(
 
 @DependencyGraph
 interface <!MISSING_RUNTIME_COROUTINES!>ExampleGraph<!> {
-  val <!METRO_ERROR!>worker<!>: Worker
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>worker<!>: Worker
 
   // Deferring the same suspend class is fine
   val dashboard: Dashboard

@@ -11,7 +11,7 @@
 
 @Inject
 class Foo(val dep: String) {
-  @Inject fun injectBar(<!METRO_ERROR!>bar: Bar<!>) = Unit
+  @Inject fun injectBar(<!MEMBER_INJECTION_OVER_SUSPEND_BINDING!>bar: Bar<!>) = Unit
 }
 
 @DependencyGraph

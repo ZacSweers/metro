@@ -10,7 +10,7 @@
 interface ExampleGraph {
   suspend fun value(): String
 
-  val <!METRO_ERROR!>eagerValue<!>: String
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>eagerValue<!>: String
 
   @Provides suspend fun provideString(): String = "hello"
 }

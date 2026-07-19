@@ -21,6 +21,7 @@ import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
@@ -1178,7 +1179,8 @@ internal class IrBindingGraph(
     // rather than a source-less upstream parameter.
     reportError(
       node.sourceGraph,
-      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
+      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] $SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE",
+      MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
     )
   }
 
@@ -1272,7 +1274,11 @@ internal class IrBindingGraph(
           appendLine("Trace:")
           appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
         }
-        reportError(element.originalDeclarationIfOverride(), message)
+        reportError(
+          element.originalDeclarationIfOverride(),
+          message,
+          MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.factory,
+        )
       }
 
       // Roots consuming this multibinding
@@ -1346,15 +1352,20 @@ internal class IrBindingGraph(
           } else {
             "`SuspendLazy<$typeRender>`"
           }
+        val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
           appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
         }
-        reportError(accessorDeclaration.originalDeclarationIfOverride(), message)
+        reportError(
+          accessorDeclaration.originalDeclarationIfOverride(),
+          message,
+          diagnosticId.factory,
+        )
         continue
       }
 
@@ -1377,7 +1388,11 @@ internal class IrBindingGraph(
           )
           append("  - Make the return type `$deferredFormRender`.")
         }
-        reportError(accessorDeclaration.originalDeclarationIfOverride(), message)
+        reportError(
+          accessorDeclaration.originalDeclarationIfOverride(),
+          message,
+          MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.factory,
+        )
       }
     }
 
@@ -1442,7 +1457,11 @@ internal class IrBindingGraph(
               .plus(node.sourceGraph)
           else -> return@forEachValue
         }
-      reportError(reportCandidates, message)
+      reportError(
+        reportCandidates,
+        message,
+        MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING.factory,
+      )
     }
 
     // Step 5: Validate wrapper stacks whose innermost wrapper is Provider or Lazy over a suspend
@@ -1472,9 +1491,10 @@ internal class IrBindingGraph(
             } else {
               "`SuspendLazy<$depRender>`"
             }
+          val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
           val message = buildString {
             appendLine(
-              "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
             )
             appendLine()
             appendLine("Trace:")
@@ -1485,7 +1505,7 @@ internal class IrBindingGraph(
             appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
           }
           val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
-          reportError(element.originalDeclarationIfOverride(), message)
+          reportError(element.originalDeclarationIfOverride(), message, diagnosticId.factory)
         }
       }
     }
@@ -1511,9 +1531,10 @@ internal class IrBindingGraph(
             "`SuspendLazy<$depRender>`"
           }
         val element = param.ir ?: target.reportableDeclaration
+        val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper).fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1526,6 +1547,7 @@ internal class IrBindingGraph(
         reportError(
           element.originalDeclarationIfOverride(),
           message,
+          diagnosticId.factory,
         )
       }
 
@@ -1550,7 +1572,11 @@ internal class IrBindingGraph(
         appendLine("Trace:")
         appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
       }
-      reportError(binding.function.originalDeclarationIfOverride(), message)
+      reportError(
+        binding.function.originalDeclarationIfOverride(),
+        message,
+        MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED.factory,
+      )
     }
   }
 
@@ -1667,7 +1693,7 @@ internal class IrBindingGraph(
       } else {
         "$tag $trigger $MISSING_RUNTIME_COROUTINES_MESSAGE"
       }
-    reportError(node.sourceGraph, message, MetroDiagnostics.MISSING_RUNTIME_COROUTINES)
+    reportError(node.sourceGraph, message, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.factory)
   }
 
   /**
@@ -1710,7 +1736,7 @@ internal class IrBindingGraph(
   private fun reportError(
     element: IrDeclarationWithName,
     message: String,
-    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+    factory: KtDiagnosticFactory1<String>,
   ) {
     hasErrors = true
     metroContext.reportCompat(element, factory, message.trimEnd())
@@ -1719,7 +1745,7 @@ internal class IrBindingGraph(
   private fun reportError(
     candidates: Sequence<IrDeclaration?>,
     message: String,
-    factory: KtDiagnosticFactory1<String> = MetroDiagnostics.METRO_ERROR,
+    factory: KtDiagnosticFactory1<String>,
   ) {
     hasErrors = true
     metroContext.reportCompat(candidates, factory, message.trimEnd())

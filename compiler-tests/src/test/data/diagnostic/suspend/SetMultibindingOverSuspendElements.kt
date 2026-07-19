@@ -9,7 +9,7 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  suspend fun <!METRO_ERROR!>values<!>(): Set<String>
+  suspend fun <!MULTIBINDING_OVER_SUSPEND_BINDINGS!>values<!>(): Set<String>
 
   @Provides @IntoSet suspend fun provideOne(): String = "one"
 

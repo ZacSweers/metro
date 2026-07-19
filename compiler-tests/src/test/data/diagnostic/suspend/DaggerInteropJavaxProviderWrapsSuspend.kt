@@ -12,7 +12,7 @@ import javax.inject.Provider
 interface ExampleGraph {
   val value: Int
 
-  @Provides fun provideInt(<!METRO_ERROR!>dep: Provider<String><!>): Int = 1
+  @Provides fun provideInt(<!SUSPEND_BINDING_WRAPPED_IN_PROVIDER!>dep: Provider<String><!>): Int = 1
 
   @Provides suspend fun provideString(): String = "hello"
 }

@@ -23,14 +23,14 @@ object UpstreamBindings {
 
 // FILE: main.kt
 @DependencyGraph
-interface <!METRO_ERROR!>DownstreamFunctionGraph<!> {
+interface <!SUSPEND_PROVIDERS_NOT_ENABLED!>DownstreamFunctionGraph<!> {
   val functionConsumer: UpstreamFunctionConsumer
 
   @Provides fun provideString(): String = "value"
 }
 
 @DependencyGraph(bindingContainers = [UpstreamBindings::class])
-interface <!METRO_ERROR!>DownstreamProviderGraph<!> {
+interface <!SUSPEND_PROVIDERS_NOT_ENABLED!>DownstreamProviderGraph<!> {
   val consumer: UpstreamConsumer
 
   val value: UpstreamValue

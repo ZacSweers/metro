@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ADHOC_GRAPH_EXTENSION_F
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AGGREGATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AMBIGUOUS_INJECT_CONSTRUCTOR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORIES_CANNOT_BE_LAZY
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.ASSISTED_INJECTION_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.AS_CONTRIBUTION_ERROR
@@ -59,6 +60,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_RETURN_T
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_STATUS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_TYPE_PARAMETERS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBERS_INJECT_WARNING
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MEMBER_INJECTION_OVER_SUSPEND_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_DECLARATION_VISIBILITY_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_ERROR
@@ -67,6 +69,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_TYPE_PARAMETERS_E
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_BINDING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MISSING_RUNTIME_COROUTINES
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.MULTIBINDS_OVERRIDE_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.NON_EXPOSED_IMPL_TYPE
@@ -93,6 +96,9 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SCOPED_PROVIDES_SHOULD_
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SOURCELESS_METRO_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUGGEST_CLASS_INJECTION
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_LAZY
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_PROVIDER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_AGGREGATION_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.SUSPICIOUS_MEMBER_INJECT_FUNCTION
@@ -128,6 +134,9 @@ import org.jetbrains.kotlin.diagnostics.warning1
 import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement
+
+internal const val SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE =
+  "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true."
 
 internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
@@ -165,7 +174,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val LOCAL_CLASSES_CANNOT_BE_INJECTED by error0<KtElement>(NAME_IDENTIFIER)
   val INJECTED_CLASSES_MUST_BE_VISIBLE by error1<KtElement, String>(VISIBILITY_MODIFIER)
   val PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY by error2<KtElement, String, String>(NAME_IDENTIFIER)
-  val SUSPEND_PROVIDERS_NOT_ENABLED by error0<KtElement>(NAME_IDENTIFIER)
+  val SUSPEND_PROVIDERS_NOT_ENABLED by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNSUPPORTED_SUSPEND_MAP_VALUE by error1<KtElement, String>(NAME_IDENTIFIER)
 
   // Assisted factory/inject errors
@@ -247,6 +256,12 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val EMPTY_MULTIBINDING by error1<KtElement, String>(NAME_IDENTIFIER)
   val QUALIFIER_OVERRIDE_MISMATCH by error1<KtElement, String>(NAME_IDENTIFIER)
   val UNPROCESSED_UPSTREAM_DECLARATION by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPEND_BINDING_WRAPPED_IN_PROVIDER by error1<KtElement, String>(NAME_IDENTIFIER)
+  val SUSPEND_BINDING_WRAPPED_IN_LAZY by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MEMBER_INJECTION_OVER_SUSPEND_BINDING by error1<KtElement, String>(NAME_IDENTIFIER)
+  val ASSISTED_FACTORY_SUSPEND_REQUIRED by error1<KtElement, String>(NAME_IDENTIFIER)
+  val MULTIBINDING_OVER_SUSPEND_BINDINGS by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_TRACE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val METRO_WARNING by warning1<KtElement, String>(NAME_IDENTIFIER)
@@ -347,7 +362,8 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         )
         put(
           SUSPEND_PROVIDERS_NOT_ENABLED,
-          "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.",
+          "{0}",
+          STRING,
         )
         put(
           UNSUPPORTED_SUSPEND_MAP_VALUE,
@@ -442,6 +458,12 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(EMPTY_MULTIBINDING, "{0}", TO_STRING)
         put(QUALIFIER_OVERRIDE_MISMATCH, "{0}", TO_STRING)
         put(UNPROCESSED_UPSTREAM_DECLARATION, "{0}", TO_STRING)
+        put(SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR, "{0}", TO_STRING)
+        put(SUSPEND_BINDING_WRAPPED_IN_PROVIDER, "{0}", TO_STRING)
+        put(SUSPEND_BINDING_WRAPPED_IN_LAZY, "{0}", TO_STRING)
+        put(MEMBER_INJECTION_OVER_SUSPEND_BINDING, "{0}", TO_STRING)
+        put(ASSISTED_FACTORY_SUSPEND_REQUIRED, "{0}", TO_STRING)
+        put(MULTIBINDING_OVER_SUSPEND_BINDINGS, "{0}", TO_STRING)
       }
     }
 }

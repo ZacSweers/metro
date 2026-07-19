@@ -15,7 +15,7 @@ class Foo(val dep: String) {
 // MODULE: main(lib)
 // FILE: main.kt
 @DependencyGraph
-interface <!METRO_ERROR!>ExampleGraph<!> {
+interface <!MEMBER_INJECTION_OVER_SUSPEND_BINDING!>ExampleGraph<!> {
   suspend fun foo(): Foo
 
   @Provides suspend fun provideString(): String = "db"

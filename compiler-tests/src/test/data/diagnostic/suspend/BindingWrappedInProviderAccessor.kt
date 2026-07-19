@@ -7,7 +7,7 @@
 // synchronous-provider-wrapped suspend deps are the same hole via a different path.
 
 @AssistedInject
-class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: () -> String<!>) {
+class Creator(@Assisted val region: String, <!SUSPEND_BINDING_WRAPPED_IN_PROVIDER!>val db: () -> String<!>) {
   @AssistedFactory
   fun interface Factory {
     fun create(region: String): Creator
@@ -16,13 +16,13 @@ class Creator(@Assisted val region: String, <!METRO_ERROR!>val db: () -> String<
 
 @DependencyGraph
 interface ExampleGraph {
-  val <!METRO_ERROR!>value<!>: () -> String
+  val <!SUSPEND_BINDING_WRAPPED_IN_PROVIDER!>value<!>: () -> String
 
-  val <!METRO_ERROR!>lazyValue<!>: Lazy<String>
+  val <!SUSPEND_BINDING_WRAPPED_IN_LAZY!>lazyValue<!>: Lazy<String>
 
-  val <!METRO_ERROR!>nestedProvider<!>: suspend () -> (() -> String)
+  val <!SUSPEND_BINDING_WRAPPED_IN_PROVIDER!>nestedProvider<!>: suspend () -> (() -> String)
 
-  val <!METRO_ERROR!>nestedLazy<!>: SuspendLazy<Lazy<String>>
+  val <!SUSPEND_BINDING_WRAPPED_IN_LAZY!>nestedLazy<!>: SuspendLazy<Lazy<String>>
 
   val factory: Creator.Factory
 

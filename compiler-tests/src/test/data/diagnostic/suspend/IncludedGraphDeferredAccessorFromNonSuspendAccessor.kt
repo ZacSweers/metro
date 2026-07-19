@@ -11,7 +11,7 @@ interface ProviderGraph {
 
 @DependencyGraph
 interface ProviderConsumerGraph {
-  val <!METRO_ERROR!>value<!>: Int
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value<!>: Int
 
   @DependencyGraph.Factory
   interface Factory {
@@ -28,7 +28,7 @@ interface LazyGraph {
 
 @DependencyGraph
 interface LazyConsumerGraph {
-  val <!METRO_ERROR!>value<!>: Long
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value<!>: Long
 
   @DependencyGraph.Factory
   interface Factory {

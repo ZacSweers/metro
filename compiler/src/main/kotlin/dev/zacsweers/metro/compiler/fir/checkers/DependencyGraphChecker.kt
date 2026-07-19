@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -257,6 +258,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           reporter.reportOn(
             if (isInherited) declaration.source else callable.source,
             MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+            SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
           )
           continue
         }

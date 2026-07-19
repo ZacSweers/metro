@@ -11,7 +11,7 @@ class Database(val value: String)
 
 @AssistedInject
 class AccountCreator(@Assisted val region: String) {
-  @Inject fun injectDatabase(<!METRO_ERROR!>database: Database<!>) = Unit
+  @Inject fun injectDatabase(<!MEMBER_INJECTION_OVER_SUSPEND_BINDING!>database: Database<!>) = Unit
 
   @AssistedFactory
   interface Factory {

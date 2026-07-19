@@ -12,7 +12,7 @@
 
 @DependencyGraph
 interface ExampleGraph {
-  val <!METRO_ERROR!>foo<!>: Foo
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>foo<!>: Foo
 
   @Provides suspend fun provideString(): String = "hello"
 }

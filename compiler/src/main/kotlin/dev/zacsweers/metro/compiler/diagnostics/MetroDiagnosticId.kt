@@ -170,7 +170,7 @@ internal enum class MetroDiagnosticId(
     the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
     Otherwise make the provider non-suspend.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
   ),
   SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR(
     "Metro/SuspendBindingFromNonSuspendAccessor",
@@ -181,7 +181,7 @@ internal enum class MetroDiagnosticId(
     `suspend fun`, or change its return type to a deferred form such as `suspend () -> T` or
     `SuspendProvider<T>`.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR,
   ),
   SUSPEND_BINDING_WRAPPED_IN_PROVIDER(
     "Metro/SuspendBindingWrappedInProvider",
@@ -191,7 +191,7 @@ internal enum class MetroDiagnosticId(
     its value without a suspend context and cannot await the binding. Use the deferred suspend form
     `suspend () -> T` (or `SuspendProvider<T>`) instead.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_PROVIDER,
   ),
   SUSPEND_BINDING_WRAPPED_IN_LAZY(
     "Metro/SuspendBindingWrappedInLazy",
@@ -200,7 +200,7 @@ internal enum class MetroDiagnosticId(
     A suspend binding is wrapped in a synchronous `Lazy`. `Lazy` resolves its value without a suspend
     context and cannot await the binding. Use `SuspendLazy<T>` instead.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_LAZY,
   ),
   MEMBER_INJECTION_OVER_SUSPEND_BINDING(
     "Metro/MemberInjectionOverSuspendBinding",
@@ -210,7 +210,7 @@ internal enum class MetroDiagnosticId(
     suspend context and cannot await it. Defer the dependency as `suspend () -> T` (or
     `SuspendLazy<T>`) so the member holds a deferred value instead.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.MEMBER_INJECTION_OVER_SUSPEND_BINDING,
   ),
   ASSISTED_FACTORY_SUSPEND_REQUIRED(
     "Metro/AssistedFactorySuspendRequired",
@@ -220,7 +220,7 @@ internal enum class MetroDiagnosticId(
     The factory function must await them. Declare the factory function as a `suspend` function so the
     generated implementation can await the suspend dependencies.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED,
   ),
   MULTIBINDING_OVER_SUSPEND_BINDINGS(
     "Metro/MultibindingOverSuspendBindings",
@@ -232,7 +232,7 @@ internal enum class MetroDiagnosticId(
     `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value is initialized only when
     its provider is invoked.
     """,
-    MetroDiagnostics.METRO_ERROR,
+    MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS,
   ),
   MISSING_RUNTIME_COROUTINES(
     "Metro/MissingRuntimeCoroutines",

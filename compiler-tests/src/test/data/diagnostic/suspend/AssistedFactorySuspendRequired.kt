@@ -10,7 +10,7 @@
 class AccountCreator(@Assisted val region: String, val database: Int) {
   @AssistedFactory
   interface Factory {
-    fun <!METRO_ERROR!>create<!>(region: String): AccountCreator
+    fun <!ASSISTED_FACTORY_SUSPEND_REQUIRED!>create<!>(region: String): AccountCreator
   }
 }
 
