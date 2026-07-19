@@ -1,0 +1,10 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.interop.jakarta {
+
+  public final class JakartaInteropKt {
+    method public static <T> jakarta.inject.Provider<T> asJakartaProvider(dev.zacsweers.metro.Provider<T>);
+    method public static <T> dev.zacsweers.metro.Provider<T> asMetroProvider(jakarta.inject.Provider<T>);
+  }
+
+}
+

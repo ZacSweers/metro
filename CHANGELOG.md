@@ -6,6 +6,8 @@ Changelog
 
 ### New
 
+- **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
+
 #### Experimental support for suspend providers
 
 This release introduces experimental support for suspend providers. This is disabled by default and can be enabled by the `metro.enableSuspendProviders` option. See the [coroutines documentation](https://zacsweers.github.io/metro/latest/coroutines/) for details.
@@ -31,6 +33,11 @@ This release introduces experimental support for suspend providers. This is disa
 - **[IR]** Prevent directly provided maps from satisfying suspend-provider-valued map requests unless the provided map uses that exact value type.
 - **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
 - **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
+- **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
+
+### Changes
+
+- Build against Kotlin `2.4.10`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 
 1.3.2
 -----

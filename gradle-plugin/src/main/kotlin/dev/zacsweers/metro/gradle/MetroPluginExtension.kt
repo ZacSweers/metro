@@ -404,9 +404,9 @@ constructor(
     objects.booleanProperty("metro.generateContributionProviders", false)
 
   /**
-   * Generates Metro-native Circuit bindings for `@CircuitInject` classes and functions. Metro will
-   * generate `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated
-   * classes and functions.
+   * Generates Metro-native Circuit bindings for `@CircuitInject` and `@SubCircuitInject` classes
+   * and functions. Metro will generate `Ui.Factory`, `Presenter.Factory`, `SubUiFactory`, and
+   * `SubPresenterFactory` implementations for annotated declarations.
    *
    * Note this will eventually move to a separate plugin.
    *

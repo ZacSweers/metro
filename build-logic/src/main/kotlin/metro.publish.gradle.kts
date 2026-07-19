@@ -1,5 +1,8 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
+import com.dropbox.gradle.plugins.dependencyguard.DependencyGuardPluginExtension
+import me.tylerbwong.gradle.metalava.Format
+import me.tylerbwong.gradle.metalava.extension.MetalavaExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.kotlin.dsl.withType
@@ -9,6 +12,60 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 apply(plugin = "com.vanniktech.maven.publish")
 
 apply(plugin = "com.autonomousapps.testkit")
+
+val isCompilerArtifact = project.path == ":compiler" || project.path.startsWith(":compiler-compat")
+val isCommonArtifact = project.path == ":metro-common"
+val isCompatibilityCheckExcluded = isCompilerArtifact || isCommonArtifact
+
+if (!isCompatibilityCheckExcluded) {
+  apply(plugin = "com.dropbox.dependency-guard")
+  apply(plugin = "me.tylerbwong.gradle.metalava")
+
+  val metalavaPackageFilter = buildList {
+    add("dev.zacsweers.metro.*")
+    metroApiIgnoredPackages.forEach { add("-$it.*") }
+    add("dev.zacsweers.metrox.*")
+  }
+    .joinToString(":")
+
+  configure<MetalavaExtension> {
+    format.set(Format.V4)
+    filename.set("api/metalava.txt")
+    reportWarningsAsErrors.set(true)
+    arguments.add("--stub-packages=$metalavaPackageFilter")
+    arguments.addAll("--jdk-home", System.getProperty("java.home"))
+    hiddenAnnotations.addAll(metroApiNonPublicMarkers)
+  }
+
+  pluginManager.withPlugin("com.github.gmazzo.buildconfig") {
+    val generateBuildConfigClasses = tasks.named("generateBuildConfigClasses")
+    tasks
+      .matching { it.name.startsWith("metalava") }
+      .configureEach { dependsOn(generateBuildConfigClasses) }
+  }
+
+  pluginManager.withPlugin("com.android.library") {
+    configure<DependencyGuardPluginExtension> { configuration("releaseRuntimeClasspath") }
+    tasks
+      .matching { it.name.startsWith("metalava") }
+      .configureEach {
+        enabled = name.endsWith("Release")
+      }
+  }
+
+  pluginManager.withPlugin("com.android.kotlin.multiplatform.library") {
+    configure<DependencyGuardPluginExtension> { configuration("androidRuntimeClasspath") }
+  }
+
+  pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+    configure<MetalavaExtension> { arguments.addAll("--hide", "DuplicateSourceClass") }
+    configure<DependencyGuardPluginExtension> { configuration("jvmRuntimeClasspath") }
+  }
+
+  pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+    configure<DependencyGuardPluginExtension> { configuration("runtimeClasspath") }
+  }
+}
 
 val extension = project.extensions.create<MetroArtifactExtension>("metroArtifact")
 

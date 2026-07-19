@@ -1,0 +1,59 @@
+// Signature format: 4.0
+package dev.zacsweers.metrox.viewmodel {
+
+  public interface ManualViewModelAssistedFactory {
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ManualViewModelAssistedFactoryKey {
+    ctor @KotlinOnly public ManualViewModelAssistedFactoryKey(optional kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory> value;
+  }
+
+  public abstract class MetroViewModelFactory implements androidx.lifecycle.ViewModelProvider.Factory {
+    ctor public MetroViewModelFactory();
+    method public final <T extends androidx.lifecycle.ViewModel> T create(kotlin.reflect.KClass<T> modelClass, androidx.lifecycle.viewmodel.CreationExtras extras);
+    method public final <FactoryType extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory> kotlin.jvm.functions.Function0<FactoryType> createManuallyAssistedFactory(kotlin.reflect.KClass<FactoryType> factoryClass);
+    method @InaccessibleFromKotlin protected java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory>> getAssistedFactoryProviders();
+    method @InaccessibleFromKotlin protected java.util.Map<kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>> getManualAssistedFactoryProviders();
+    method @InaccessibleFromKotlin protected java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<androidx.lifecycle.ViewModel>> getViewModelProviders();
+    property protected java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory>> assistedFactoryProviders;
+    property protected java.util.Map<kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>> manualAssistedFactoryProviders;
+    property protected java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<androidx.lifecycle.ViewModel>> viewModelProviders;
+  }
+
+  public interface MetroViewModelMultibindings {
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory>> getAssistedFactoryProviders();
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>> getManualAssistedFactoryProviders();
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<androidx.lifecycle.ViewModel>> getViewModelProviders();
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory>> assistedFactoryProviders;
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>,kotlin.jvm.functions.Function0<dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory>> manualAssistedFactoryProviders;
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel>,kotlin.jvm.functions.Function0<androidx.lifecycle.ViewModel>> viewModelProviders;
+  }
+
+  public interface ViewModelAssistedFactory {
+    method public androidx.lifecycle.ViewModel create(androidx.lifecycle.viewmodel.CreationExtras extras);
+  }
+
+  @dev.zacsweers.metro.MapKey @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ViewModelAssistedFactoryKey {
+    ctor @KotlinOnly public ViewModelAssistedFactoryKey(kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends androidx.lifecycle.ViewModel> value();
+    property public abstract kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel> value;
+  }
+
+  public interface ViewModelGraph extends dev.zacsweers.metrox.viewmodel.MetroViewModelMultibindings {
+    method @InaccessibleFromKotlin public dev.zacsweers.metrox.viewmodel.MetroViewModelFactory getMetroViewModelFactory();
+    property public abstract dev.zacsweers.metrox.viewmodel.MetroViewModelFactory metroViewModelFactory;
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ViewModelKey {
+    ctor @KotlinOnly public ViewModelKey(optional kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends androidx.lifecycle.ViewModel> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends androidx.lifecycle.ViewModel> value;
+  }
+
+  public abstract class ViewModelScope {
+  }
+
+}
+

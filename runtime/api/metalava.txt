@@ -1,0 +1,237 @@
+// Signature format: 4.0
+package dev.zacsweers.metro {
+
+  public abstract class AppScope {
+  }
+
+  public final class AsContributionKt {
+    method @KotlinOnly public static inline <reified T> T asContribution(Object);
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.VALUE_PARAMETER) public @interface Assisted {
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface AssistedFactory {
+  }
+
+  @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.CONSTRUCTOR}) public @interface AssistedInject {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface BindingContainer {
+    ctor @KotlinOnly public BindingContainer(optional kotlin.reflect.KClass<? extends java.lang.Object?>[] includes);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] includes();
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] includes;
+  }
+
+  @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.PROPERTY}) public @interface Binds {
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ClassKey {
+    ctor @KotlinOnly public ClassKey(optional kotlin.reflect.KClass<? extends java.lang.Object?> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> value;
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesBinding {
+    ctor @KotlinOnly public ContributesBinding(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface ContributesBinding.Container {
+    method public abstract dev.zacsweers.metro.ContributesBinding[] value();
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesIntoMap {
+    ctor @KotlinOnly public ContributesIntoMap(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface ContributesIntoMap.Container {
+    method public abstract dev.zacsweers.metro.ContributesIntoMap[] value();
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesIntoSet {
+    ctor @KotlinOnly public ContributesIntoSet(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface ContributesIntoSet.Container {
+    method public abstract dev.zacsweers.metro.ContributesIntoSet[] value();
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesTo {
+    ctor @KotlinOnly public ContributesTo(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface ContributesTo.Container {
+    method public abstract dev.zacsweers.metro.ContributesTo[] value();
+  }
+
+  public final class CreateGraphKt {
+    method @KotlinOnly public static inline <reified T> T createDynamicGraph(java.lang.Object... containers);
+    method @KotlinOnly public static inline <reified T> T createDynamicGraphFactory(java.lang.Object... containers);
+    method @KotlinOnly public static inline <reified T> T createGraph();
+    method @KotlinOnly public static inline <reified T> T createGraphFactory();
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface DependencyGraph {
+    ctor @KotlinOnly public DependencyGraph(optional kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] additionalScopes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] excludes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] bindingContainers);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] additionalScopes();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] bindingContainers();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] excludes();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] additionalScopes;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] bindingContainers;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] excludes;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface DependencyGraph.Factory {
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER}) public @interface ElementsIntoSet {
+  }
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is an experimental API and may change or be removed in the future. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface ExperimentalMetroApi {
+  }
+
+  @dev.zacsweers.metro.Qualifier @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ForScope {
+    ctor @KotlinOnly public ForScope(kotlin.reflect.KClass<? extends java.lang.Object?> scope);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface GraphExtension {
+    ctor @KotlinOnly public GraphExtension(optional kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] additionalScopes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] excludes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] bindingContainers);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] additionalScopes();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] bindingContainers();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] excludes();
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] additionalScopes;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] bindingContainers;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] excludes;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface GraphExtension.Factory {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface HasMemberInjections {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.VALUE_PARAMETER) public @interface Includes {
+  }
+
+  @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.CONSTRUCTOR, kotlin.annotation.AnnotationTarget.PROPERTY_SETTER, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD}) public @interface Inject {
+  }
+
+  @dev.zacsweers.metro.MapKey @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS}) public @interface IntKey {
+    ctor @KotlinOnly public IntKey(int value);
+    method @InaccessibleFromKotlin public abstract int value();
+    property public abstract int value;
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER}) public @interface IntoMap {
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER}) public @interface IntoSet {
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.ANNOTATION_CLASS) public @interface MapKey {
+    ctor @KotlinOnly public MapKey(optional boolean unwrapValue, optional boolean implicitClassKey);
+    method @InaccessibleFromKotlin public abstract boolean implicitClassKey() default false;
+    method @InaccessibleFromKotlin public abstract boolean unwrapValue() default true;
+    property public abstract boolean implicitClassKey;
+    property public abstract boolean unwrapValue;
+  }
+
+  public fun interface MembersInjector<T> {
+    method public void injectMembers(T instance);
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER}) public @interface Multibinds {
+    ctor @KotlinOnly public Multibinds(optional boolean allowEmpty);
+    method @InaccessibleFromKotlin public abstract boolean allowEmpty() default false;
+    property public abstract boolean allowEmpty;
+  }
+
+  @dev.zacsweers.metro.Qualifier @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER, kotlin.annotation.AnnotationTarget.TYPE}) public @interface Named {
+    ctor @KotlinOnly public Named(String name);
+    method @InaccessibleFromKotlin public abstract String name();
+    property public abstract String name;
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER}) public @interface OptionalBinding {
+  }
+
+  @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface Origin {
+    ctor @KotlinOnly public Origin(kotlin.reflect.KClass<? extends java.lang.Object?> value, optional String context);
+    method @InaccessibleFromKotlin public abstract String context() default "";
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> value();
+    property public abstract String context;
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> value;
+  }
+
+  public fun interface Provider<T> {
+    method public operator T invoke();
+  }
+
+  public final class ProviderKt {
+    method public static inline <T, R> dev.zacsweers.metro.Provider<R> flatMap(dev.zacsweers.metro.Provider<T>, kotlin.jvm.functions.Function1<? super T,? extends dev.zacsweers.metro.Provider<R>> transform);
+    method public static inline <T, R> dev.zacsweers.metro.Provider<R> map(dev.zacsweers.metro.Provider<T>, kotlin.jvm.functions.Function1<? super T,? extends R> transform);
+    method public static <T> dev.zacsweers.metro.Provider<T> memoize(dev.zacsweers.metro.Provider<T>);
+    method public static <T> kotlin.Lazy<T> memoizeAsLazy(dev.zacsweers.metro.Provider<T>);
+    method public static inline <T> dev.zacsweers.metro.Provider<T> provider(kotlin.jvm.functions.Function0<? extends T> provider);
+    method public static <T> dev.zacsweers.metro.Provider<T> providerOf(T value);
+    method public static inline <T, R, V> dev.zacsweers.metro.Provider<V> zip(dev.zacsweers.metro.Provider<T>, dev.zacsweers.metro.Provider<R> other, kotlin.jvm.functions.Function2<? super T,? super R,? extends V> transform);
+  }
+
+  @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER}) public @interface Provides {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.ANNOTATION_CLASS) public @interface Qualifier {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.ANNOTATION_CLASS) public @interface Scope {
+  }
+
+  @dev.zacsweers.metro.Scope @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER}) public @interface SingleIn {
+    ctor @KotlinOnly public SingleIn(kotlin.reflect.KClass<? extends java.lang.Object?> scope);
+    method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
+    property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
+  }
+
+  @dev.zacsweers.metro.Scope @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER}) public static @interface SingleIn.Container {
+    method public abstract dev.zacsweers.metro.SingleIn[] value();
+  }
+
+  @dev.zacsweers.metro.MapKey @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.RUNTIME) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.FIELD, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.TYPE}) public @interface StringKey {
+    ctor @KotlinOnly public StringKey(String value);
+    method @InaccessibleFromKotlin public abstract String value();
+    property public abstract String value;
+  }
+
+  public @interface binding<T> {
+  }
+
+}
+

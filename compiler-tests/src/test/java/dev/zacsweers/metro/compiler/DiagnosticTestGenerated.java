@@ -234,6 +234,24 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("SubCircuitInvalidSupertypes.kt")
+      public void testSubCircuitInvalidSupertypes() {
+        run("SubCircuitInvalidSupertypes.kt");
+      }
+
+      @Test
+      @TestMetadata("SubCircuitTopLevelAssistedFactory.kt")
+      public void testSubCircuitTopLevelAssistedFactory() {
+        run("SubCircuitTopLevelAssistedFactory.kt");
+      }
+
+      @Test
+      @TestMetadata("SubCircuitUiFunctionMissingModifier.kt")
+      public void testSubCircuitUiFunctionMissingModifier() {
+        run("SubCircuitUiFunctionMissingModifier.kt");
+      }
+
+      @Test
       @TestMetadata("UiClassInvalidParams.kt")
       public void testUiClassInvalidParams() {
         run("UiClassInvalidParams.kt");

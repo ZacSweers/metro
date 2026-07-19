@@ -977,7 +977,9 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Generate Metro-native Circuit bindings for `@CircuitInject` classes and functions.",
+        "Generate Metro-native `Ui.Factory`, `Presenter.Factory`, `SubUiFactory`, and " +
+          "`SubPresenterFactory` bindings for `@CircuitInject` and `@SubCircuitInject` " +
+          "declarations.",
       required = false,
       allowMultipleOccurrences = false,
     )

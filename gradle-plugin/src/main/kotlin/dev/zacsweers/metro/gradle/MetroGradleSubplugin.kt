@@ -32,7 +32,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
   KotlinCompilerPluginSupportPlugin {
 
   private companion object {
-    val minKotlinVersion by lazy {
+    val minKotlinVersion: KotlinVersion by lazy {
       SUPPORTED_KOTLIN_VERSIONS.minOf { KotlinVersion.fromVersion(it.substringBeforeLast('.')) }
     }
 

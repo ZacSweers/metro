@@ -1,0 +1,12 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.interop.dagger {
+
+  public final class DaggerInteropKt {
+    method public static <T> dagger.Lazy<T> asDaggerLazy(kotlin.Lazy<? extends T>);
+    method public static <T> dagger.MembersInjector<T> asDaggerMembersInjector(dev.zacsweers.metro.MembersInjector<T>);
+    method public static <T> kotlin.Lazy<T> asKotlinLazy(dagger.Lazy<T>);
+    method public static <T> dev.zacsweers.metro.MembersInjector<T> asMetroMembersInjector(dagger.MembersInjector<T>);
+  }
+
+}
+

@@ -8,7 +8,8 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 /** FIR declaration origin keys and IR origins for Circuit-generated declarations. */
 internal object CircuitOrigins {
   /** Key for generated Circuit factory classes. */
-  data class FactoryClass(val type: FactoryType?) : GeneratedDeclarationKey()
+  data class FactoryClass(val target: CircuitCodegenTarget, val type: FactoryType?) :
+    GeneratedDeclarationKey()
 
   /** Key for generated Circuit factory constructors. */
   object FactoryConstructor : GeneratedDeclarationKey()

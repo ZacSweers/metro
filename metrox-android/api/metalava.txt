@@ -1,0 +1,54 @@
+// Signature format: 4.0
+package dev.zacsweers.metrox.android {
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ActivityKey {
+    ctor @KotlinOnly public ActivityKey(optional kotlin.reflect.KClass<? extends android.app.Activity> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends android.app.Activity> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends android.app.Activity> value;
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface BroadcastReceiverKey {
+    ctor @KotlinOnly public BroadcastReceiverKey(optional kotlin.reflect.KClass<? extends android.content.BroadcastReceiver> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends android.content.BroadcastReceiver> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends android.content.BroadcastReceiver> value;
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContentProviderKey {
+    ctor @KotlinOnly public ContentProviderKey(optional kotlin.reflect.KClass<? extends android.content.ContentProvider> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends android.content.ContentProvider> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends android.content.ContentProvider> value;
+  }
+
+  @Keep @RequiresApi(28) public class MetroAppComponentFactory extends androidx.core.app.AppComponentFactory {
+    ctor public MetroAppComponentFactory();
+    method public android.app.Activity instantiateActivityCompat(ClassLoader cl, String className, android.content.Intent? intent);
+    method public android.app.Application instantiateApplicationCompat(ClassLoader cl, String className);
+    method public android.content.ContentProvider instantiateProviderCompat(ClassLoader cl, String className);
+    method public android.content.BroadcastReceiver instantiateReceiverCompat(ClassLoader cl, String className, android.content.Intent? intent);
+    method public android.app.Service instantiateServiceCompat(ClassLoader cl, String className, android.content.Intent? intent);
+  }
+
+  public interface MetroAppComponentProviders {
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends android.app.Activity>,kotlin.jvm.functions.Function0<android.app.Activity>> getActivityProviders();
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends android.content.ContentProvider>,kotlin.jvm.functions.Function0<android.content.ContentProvider>> getProviderProviders();
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends android.content.BroadcastReceiver>,kotlin.jvm.functions.Function0<android.content.BroadcastReceiver>> getReceiverProviders();
+    method @InaccessibleFromKotlin public java.util.Map<kotlin.reflect.KClass<? extends android.app.Service>,kotlin.jvm.functions.Function0<android.app.Service>> getServiceProviders();
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends android.app.Activity>,kotlin.jvm.functions.Function0<android.app.Activity>> activityProviders;
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends android.content.ContentProvider>,kotlin.jvm.functions.Function0<android.content.ContentProvider>> providerProviders;
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends android.content.BroadcastReceiver>,kotlin.jvm.functions.Function0<android.content.BroadcastReceiver>> receiverProviders;
+    property @dev.zacsweers.metro.Multibinds(allowEmpty=true) public abstract java.util.Map<kotlin.reflect.KClass<? extends android.app.Service>,kotlin.jvm.functions.Function0<android.app.Service>> serviceProviders;
+  }
+
+  public interface MetroApplication {
+    method @InaccessibleFromKotlin public dev.zacsweers.metrox.android.MetroAppComponentProviders getAppComponentProviders();
+    property public abstract dev.zacsweers.metrox.android.MetroAppComponentProviders appComponentProviders;
+  }
+
+  @dev.zacsweers.metro.MapKey(implicitClassKey=true) @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ServiceKey {
+    ctor @KotlinOnly public ServiceKey(optional kotlin.reflect.KClass<? extends android.app.Service> value);
+    method @InaccessibleFromKotlin public abstract Class<? extends android.app.Service> value() default Nothing::class;
+    property public abstract kotlin.reflect.KClass<? extends android.app.Service> value;
+  }
+
+}
+

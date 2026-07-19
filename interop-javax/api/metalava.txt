@@ -1,0 +1,10 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.interop.javax {
+
+  public final class JavaxInteropKt {
+    method public static <T> javax.inject.Provider<T> asJavaxProvider(dev.zacsweers.metro.Provider<T>);
+    method public static <T> dev.zacsweers.metro.Provider<T> asMetroProvider(javax.inject.Provider<T>);
+  }
+
+}
+

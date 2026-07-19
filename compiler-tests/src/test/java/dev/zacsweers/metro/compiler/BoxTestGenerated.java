@@ -273,6 +273,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("NestedContributedInterfaceDoesNotPromoteContainingClass.kt")
+    public void testNestedContributedInterfaceDoesNotPromoteContainingClass() {
+      run("NestedContributedInterfaceDoesNotPromoteContainingClass.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacementsWithOrigin.kt")
     public void testReplacementsWithOrigin() {
       run("ReplacementsWithOrigin.kt");
@@ -709,6 +715,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("PresenterFunctionWithContributionProviders.kt")
       public void testPresenterFunctionWithContributionProviders() {
         run("PresenterFunctionWithContributionProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("SubCircuitMultiModule.kt")
+      public void testSubCircuitMultiModule() {
+        run("SubCircuitMultiModule.kt");
       }
 
       @Test

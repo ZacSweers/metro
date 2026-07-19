@@ -55,7 +55,7 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
           konan: true
 
       - name: Publish Metro to functionalTestRepo
@@ -108,7 +108,7 @@ jobs:
             uses: ./.github/actions/setup-gradle
             with:
               encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-              cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+              cache-read-only: true
 
           - name: Install aria2 and xvfb
             run: |

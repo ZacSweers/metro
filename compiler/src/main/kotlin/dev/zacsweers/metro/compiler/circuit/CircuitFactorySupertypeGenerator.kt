@@ -71,31 +71,32 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
   ): List<ConeKotlinType> {
     // Determine factory type from parent class (for nested) or from the factory name (for
     // top-level)
-    val factoryType = determineFactoryType(declaration, typeResolver) ?: return emptyList()
-    return listOf(factoryType.factoryClassId.constructClassLikeType())
+    val origin =
+      declaration.symbol.origin
+        .expectAsOrNull<FirDeclarationOrigin.Plugin>()
+        ?.key
+        ?.expectAsOrNull<CircuitOrigins.FactoryClass>() ?: return emptyList()
+    val factoryType = determineFactoryType(declaration, typeResolver, origin) ?: return emptyList()
+    return listOf(origin.target.factoryClassId(factoryType).constructClassLikeType())
   }
 
   @OptIn(SymbolInternals::class)
   private fun determineFactoryType(
     declaration: FirClass,
     typeResolver: TypeResolveService,
+    origin: CircuitOrigins.FactoryClass,
   ): FactoryType? {
     // Happy path: factoryType is stored in the origin key. This handles:
     // - Top-level function factories (set during class creation)
     // - Assisted factory classes (resolved from containing class in CircuitFirExtension)
-    declaration.symbol.origin
-      .expectAsOrNull<FirDeclarationOrigin.Plugin>()
-      ?.key
-      ?.expectAsOrNull<CircuitOrigins.FactoryClass>()
-      ?.type
-      ?.let {
-        return it
-      }
+    origin.type?.let {
+      return it
+    }
 
     // For nested factories, BFS through the parent class's supertypes
     val parent =
       declaration.getContainingClassSymbol()?.expectAs<FirClassSymbol<FirClass>>() ?: return null
-    bfsForFactoryType(parent.fir, typeResolver)?.let {
+    bfsForFactoryType(parent.fir, typeResolver, origin.target)?.let {
       return it
     }
 
@@ -103,7 +104,7 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
     // nested inside the actual Presenter/Ui class. Try the grandparent.
     val grandparent = parent.getContainingClassSymbol()?.expectAs<FirClassSymbol<FirClass>>()
     if (grandparent != null) {
-      return bfsForFactoryType(grandparent.fir, typeResolver)
+      return bfsForFactoryType(grandparent.fir, typeResolver, origin.target)
     }
 
     return null
@@ -111,7 +112,11 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
 
   /** BFS through [root]'s supertypes looking for [FactoryType.PRESENTER] or [FactoryType.UI]. */
   @OptIn(SymbolInternals::class)
-  private fun bfsForFactoryType(root: FirClass, typeResolver: TypeResolveService): FactoryType? {
+  private fun bfsForFactoryType(
+    root: FirClass,
+    typeResolver: TypeResolveService,
+    target: CircuitCodegenTarget,
+  ): FactoryType? {
     val queue = ArrayDeque<FirClass>()
     val seen = mutableSetOf<ClassId>()
     queue.add(root)
@@ -131,8 +136,8 @@ internal class CircuitFactorySupertypeGenerator(session: FirSession, compatConte
         val classId = coneType.classId ?: continue
         if (classId in seen) continue
         when (classId) {
-          FactoryType.PRESENTER.classId -> return FactoryType.PRESENTER
-          FactoryType.UI.classId -> return FactoryType.UI
+          target.presenterClassId -> return FactoryType.PRESENTER
+          target.uiClassId -> return FactoryType.UI
           else -> coneType.toClassSymbol(session)?.let { queue.add(it.fir) }
         }
       }
