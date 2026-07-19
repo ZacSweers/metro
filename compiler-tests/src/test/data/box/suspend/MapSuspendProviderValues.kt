@@ -1,7 +1,7 @@
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
+@file:Suppress("OPT_IN_USAGE")
 
-// Test for Map<K, SuspendProvider<V>> multibindings
+// Test for Map<K, suspend () -> V> multibindings
 @DependencyGraph
 interface ExampleGraph {
   @Provides @IntoMap @IntKey(0) suspend fun provideInt0(): Int = 0
@@ -12,21 +12,21 @@ interface ExampleGraph {
 
   @Provides @IntoMap @IntKey(0) suspend fun provideNullableString(): String? = null
 
-  // Map with SuspendProvider values
-  val suspendProviderInts: Map<Int, SuspendProvider<Int>>
+  // Map with suspend function values
+  val suspendProviderInts: Map<Int, suspend () -> Int>
 
-  // Provider wrapping map with SuspendProvider values
-  val providerOfSuspendProviderInts: Provider<Map<Int, SuspendProvider<Int>>>
+  // Function provider wrapping a map with suspend function values
+  val providerOfSuspendProviderInts: () -> Map<Int, suspend () -> Int>
 
-  val suspendProviderNullableStrings: Map<Int, SuspendProvider<String?>>
+  val suspendProviderNullableStrings: Map<Int, suspend () -> String?>
 
   @Named("direct")
-  val directSuspendProviderInts: Map<Int, SuspendProvider<Int>>
+  val directSuspendProviderInts: Map<Int, suspend () -> Int>
 
   @Provides
   @Named("direct")
-  fun provideDirectSuspendProviderInts(): Map<Int, SuspendProvider<Int>> =
-    mapOf(3 to suspendProviderOf(3))
+  fun provideDirectSuspendProviderInts(): Map<Int, suspend () -> Int> =
+    mapOf(3 to suspend { 3 })
 }
 
 fun box(): String =
@@ -34,13 +34,13 @@ fun box(): String =
     val graph = createGraph<ExampleGraph>()
     val expected = mapOf(0 to 0, 1 to 1, 2 to 2)
 
-    // Test Map<Int, SuspendProvider<Int>>
+    // Test Map<Int, suspend () -> Int>
     assertEquals(
       expected,
       graph.suspendProviderInts.mapValues { (_, suspendProvider) -> suspendProvider() },
     )
 
-    // Test Provider<Map<Int, SuspendProvider<Int>>>
+    // Test () -> Map<Int, suspend () -> Int>
     assertEquals(
       expected,
       graph

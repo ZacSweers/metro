@@ -1,4 +1,4 @@
-/BindingWrappedInProviderAccessor.kt:13:43: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
+/BindingWrappedInProviderAccessor.kt:13:45: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'String' via Provider. Use `suspend () -> String` instead.
 
 Trace:
     String is injected at

@@ -4,11 +4,10 @@
 
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
-@file:Suppress("DESUGARED_PROVIDER_WARNING")
 @OptIn(ExperimentalMetroCoroutinesApi::class)
 @Inject
 fun NestedLazyFunction(
-  value: Provider<SuspendLazy<String>>
+  value: () -> SuspendLazy<String>
 ): String = value.toString()
 
 @DependencyGraph

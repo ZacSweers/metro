@@ -5,12 +5,12 @@
 // ENABLE_SUSPEND_PROVIDERS
 
 // FILE: upstream.kt
-@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
+@file:Suppress("OPT_IN_USAGE")
 
-class UpstreamValue(val provider: SuspendProvider<String>)
+class UpstreamValue(val provider: suspend () -> String)
 
 @Inject
-class UpstreamConsumer(val provider: SuspendProvider<String>)
+class UpstreamConsumer(val provider: suspend () -> String)
 
 @Inject
 class UpstreamFunctionConsumer(val provider: suspend () -> String)
@@ -18,7 +18,7 @@ class UpstreamFunctionConsumer(val provider: suspend () -> String)
 @BindingContainer
 object UpstreamBindings {
   @Provides
-  fun provideValue(provider: SuspendProvider<String>): UpstreamValue = UpstreamValue(provider)
+  fun provideValue(provider: suspend () -> String): UpstreamValue = UpstreamValue(provider)
 }
 
 // MODULE: main(lib)

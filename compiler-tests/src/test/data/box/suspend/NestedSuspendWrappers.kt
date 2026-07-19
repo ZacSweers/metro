@@ -1,5 +1,5 @@
 // ENABLE_SUSPEND_PROVIDERS
-@file:Suppress("DESUGARED_PROVIDER_WARNING", "OPT_IN_USAGE")
+@file:Suppress("OPT_IN_USAGE")
 var unscopedComputations = 0
 var scopedComputations = 0
 var synchronousComputations = 0
@@ -15,7 +15,7 @@ class SynchronousValue(val index: Int)
 @Inject
 @SingleIn(AppScope::class)
 class Consumer(
-  val providerOfLazy: Provider<SuspendLazy<UnscopedValue>>,
+  val providerOfLazy: () -> SuspendLazy<UnscopedValue>,
   val functionOfFunction: () -> suspend () -> UnscopedValue,
   val lazyOfFunction: SuspendLazy<suspend () -> UnscopedValue>,
   val functionOfLazy: suspend () -> SuspendLazy<UnscopedValue>,
@@ -28,35 +28,35 @@ class Consumer(
 interface ExampleGraph {
   val consumer: Consumer
 
-  val providerOfLazy: Provider<SuspendLazy<UnscopedValue>>
+  val providerOfLazy: () -> SuspendLazy<UnscopedValue>
 
   val functionOfFunction: () -> suspend () -> UnscopedValue
 
   val lazyOfFunction: SuspendLazy<suspend () -> UnscopedValue>
 
-  val lazyOfSuspendProvider: SuspendLazy<SuspendProvider<UnscopedValue>>
+  val lazyOfSuspendProvider: SuspendLazy<suspend () -> UnscopedValue>
 
   val deep: () -> Lazy<SuspendLazy<suspend () -> UnscopedValue>>
 
-  val providerOfLazyMap: Provider<SuspendLazy<Map<String, suspend () -> UnscopedValue>>>
+  val providerOfLazyMap: () -> SuspendLazy<Map<String, suspend () -> UnscopedValue>>
 
-  val scopedProviderOfLazy: Provider<SuspendLazy<ScopedValue>>
+  val scopedProviderOfLazy: () -> SuspendLazy<ScopedValue>
 
   val scopedFunctionOfFunction: () -> suspend () -> ScopedValue
 
   val scopedLazyOfFunction: SuspendLazy<suspend () -> ScopedValue>
 
-  val nullableProviderOfLazy: Provider<SuspendLazy<NullableValue?>>
+  val nullableProviderOfLazy: () -> SuspendLazy<NullableValue?>
 
-  val suspendFunctionOfProvider: suspend () -> Provider<SynchronousValue>
+  val suspendFunctionOfProvider: suspend () -> () -> SynchronousValue
 
-  val suspendLazyOfProvider: SuspendLazy<Provider<SynchronousValue>>
+  val suspendLazyOfProvider: SuspendLazy<() -> SynchronousValue>
 
   val suspendFunctionOfLazy: suspend () -> Lazy<SynchronousValue>
 
   val suspendFunctionOfFunction: suspend () -> () -> SynchronousValue
 
-  val providerOfSuspendLazyOfProvider: Provider<SuspendLazy<Provider<SynchronousValue>>>
+  val providerOfSuspendLazyOfProvider: () -> SuspendLazy<() -> SynchronousValue>
 
   @Provides
   suspend fun provideUnscopedValue(): UnscopedValue {
@@ -120,7 +120,7 @@ fun box(): String =
 
     unscopedComputations = 0
     val lazyOfSuspendProvider = graph.lazyOfSuspendProvider
-    val cachedProvider: SuspendProvider<UnscopedValue> = lazyOfSuspendProvider.value()
+    val cachedProvider: suspend () -> UnscopedValue = lazyOfSuspendProvider.value()
     assertSame(cachedProvider, lazyOfSuspendProvider.value())
     assertEquals(0, unscopedComputations)
     assertEquals(1, cachedProvider.invoke().index)
@@ -165,14 +165,14 @@ fun box(): String =
     assertNull(graph.nullableProviderOfLazy().value())
 
     synchronousComputations = 0
-    val synchronousProvider: Provider<SynchronousValue> = graph.suspendFunctionOfProvider()
+    val synchronousProvider: () -> SynchronousValue = graph.suspendFunctionOfProvider()
     assertEquals(0, synchronousComputations)
     assertEquals(1, synchronousProvider().index)
     assertEquals(2, synchronousProvider().index)
 
     synchronousComputations = 0
     val suspendLazyOfProvider = graph.suspendLazyOfProvider
-    val cachedSynchronousProvider: Provider<SynchronousValue> = suspendLazyOfProvider.value()
+    val cachedSynchronousProvider: () -> SynchronousValue = suspendLazyOfProvider.value()
     assertSame(cachedSynchronousProvider, suspendLazyOfProvider.value())
     assertEquals(0, synchronousComputations)
     assertEquals(1, cachedSynchronousProvider().index)
@@ -196,7 +196,7 @@ fun box(): String =
 
     synchronousComputations = 0
     val nestedSynchronousLazy = graph.providerOfSuspendLazyOfProvider()
-    val nestedSynchronousProvider: Provider<SynchronousValue> = nestedSynchronousLazy.value()
+    val nestedSynchronousProvider: () -> SynchronousValue = nestedSynchronousLazy.value()
     assertSame(nestedSynchronousProvider, nestedSynchronousLazy.value())
     assertEquals(0, synchronousComputations)
     assertEquals(1, nestedSynchronousProvider().index)
