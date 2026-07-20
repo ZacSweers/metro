@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [versions]
-agp = "9.0.1"
+agp = "9.3.0"
 android-compileSdk = "36"
 androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0"
