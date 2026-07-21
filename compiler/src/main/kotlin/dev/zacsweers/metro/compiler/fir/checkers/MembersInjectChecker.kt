@@ -97,6 +97,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
       // Track that this class has valid declared member injections
       hasDeclaredMemberInjections = true
+      val injectionSite = callable.callableId?.asSingleFqName()?.asString()
 
       if (callable is FirPropertySymbol) {
         validateInjectionSiteType(
@@ -104,6 +105,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
           callable.resolvedReturnTypeRef,
           annotations.qualifier,
           callable.source,
+          injectionSite = injectionSite,
         )
       }
 
@@ -157,6 +159,7 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
             param.resolvedReturnTypeRef,
             paramAnnotations.qualifier,
             param.source ?: callable.source,
+            injectionSite = injectionSite,
           )
 
           if (param.hasMetroDefault(session)) {
