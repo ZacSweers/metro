@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# CI invokes Gradle through this wrapper so every job uses the same worker and heap limits.
+# This leaves memory for Gradle, Kotlin daemons, and test JVMs on GitHub-hosted runners.
+
 read_meminfo_kb() {
   local key="$1"
   if [[ -r "/proc/meminfo" ]]; then
@@ -62,6 +65,7 @@ monitor_resources() {
   done
 }
 
+# Resource samples help diagnose runner memory pressure without cluttering normal logs.
 # GitHub sets RUNNER_DEBUG=1 when a run is rerun with debug logging enabled.
 if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
   monitor_resources &
