@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784611045815,
+  "lastUpdate": 1784663815151,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19152,6 +19152,62 @@ window.BENCHMARK_DATA = {
             "value": 19817.696,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.81%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "91dc94ac~1",
+          "message": "[before] Fix nested JS suspend provider generation",
+          "timestamp": "2026-07-21T15:21:13-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/91dc94ac400d4da6c52596ce39ba449202bf20a1"
+        },
+        "date": 1784663815151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20965.752,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "91dc94ac400d4da6c52596ce39ba449202bf20a1",
+          "message": "[after] Fix nested JS suspend provider generation",
+          "timestamp": "2026-07-21T15:21:13-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/91dc94ac400d4da6c52596ce39ba449202bf20a1"
+        },
+        "date": 1784663815152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21088.412,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.59%"
           }
         ]
       }
