@@ -16,6 +16,7 @@ val metroApiIgnoredPackages =
 
 val metroApiNonPublicMarkers =
   listOf(
+    "dev.zacsweers.metro.ExperimentalMetroCoroutinesApi",
     "dev.zacsweers.metro.ExperimentalMetroApi",
     "dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi",
   )

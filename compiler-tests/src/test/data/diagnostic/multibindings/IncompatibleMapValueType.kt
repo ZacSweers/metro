@@ -1,5 +1,6 @@
 // RUN_PIPELINE_TILL: FIR2IR
 // RENDER_IR_DIAGNOSTICS_FULL_TEXT
+// ENABLE_SUSPEND_PROVIDERS
 
 // https://github.com/ZacSweers/metro/issues/1816
 
@@ -12,5 +13,18 @@ interface FooComponent {
   @DependencyGraph.Factory
   interface Factory {
     fun create(@Provides bar: Map<String, String>): FooComponent
+  }
+}
+
+@DependencyGraph
+interface SuspendFooComponent {
+  val value: Int
+
+  @Provides
+  fun provideFoo(<!MISSING_BINDING!>bar: Map<String, suspend () -> String><!>): Int = 3
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Provides bar: Map<String, String>): SuspendFooComponent
   }
 }

@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeMetroDefault
 import dev.zacsweers.metro.compiler.exitProcessing
@@ -20,6 +21,7 @@ import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInLazy
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.isGraphImpl
@@ -64,6 +66,7 @@ import org.jetbrains.kotlin.ir.builders.IrStatementsBuilder
 import org.jetbrains.kotlin.ir.builders.declarations.addField
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildFun
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
@@ -143,6 +146,7 @@ import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.mergeNullability
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.types.typeWithParameters
@@ -174,6 +178,7 @@ import org.jetbrains.kotlin.ir.util.isTopLevelDeclaration
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
@@ -701,14 +706,21 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
   }
 }
 
-/** For use with generated factory creator functions, converts parameters to Provider<T> types. */
+/**
+ * Converts generated factory parameters to their requested provider forms.
+ *
+ * Every key in [providerFieldsByKey] must come from [Parameter.toCanonicalProviderKey]. Raw
+ * contextual keys retain consumer wrapper shapes and will not reliably match the canonical
+ * `Provider` or `SuspendProvider` fields generated for them.
+ */
 context(context: IrMetroContext)
 internal fun IrBuilderWithScope.parametersAsProviderArguments(
   parameters: Parameters,
   receiver: IrValueParameter,
-  fields: Map<IrTypeKey, IrField>,
+  providerFieldsByKey: Map<IrContextualTypeKey, IrField>,
   nameToField: Map<Name, IrField>? = null,
   calleeParameters: Parameters = parameters,
+  defaultUsesSuspendProvider: Boolean = false,
   typeRemapper: TypeRemapper? = null,
 ): List<IrExpression?> {
   return buildList {
@@ -719,8 +731,12 @@ internal fun IrBuilderWithScope.parametersAsProviderArguments(
           // When calling value getter on Provider<T>, make sure the dispatch
           // receiver is the Provider instance itself
           // Look up by name first (handles multiple params with same type key),
-          // fall back to type key (handles deduped params where name was removed)
-          val field = nameToField?.get(parameter.name) ?: fields.getValue(parameter.typeKey)
+          // fall back to the normalized contextual key when the parameter name was deduped
+          val field =
+            nameToField?.get(parameter.name)
+              ?: providerFieldsByKey.getValue(
+                parameter.toCanonicalProviderKey(defaultUsesSuspendProvider)
+              )
           val providerInstance = irGetField(irGet(receiver), field)
           val contextKey =
             typeRemapper?.let { parameter.contextualTypeKey.remapType(it) }
@@ -742,92 +758,322 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
   bindingCode: IrExpression,
   isAssisted: Boolean,
   isGraphInstance: Boolean,
+  actualIsSuspendProvider: Boolean? = null,
 ): IrExpression {
   val symbols = context.metroSymbols
 
-  val irType = bindingCode.type
-
-  if (!irType.implementsLazyType() && !irType.implementsProviderType()) {
-    // Not a provider, nothing else to do here!
-    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
-    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`
+  // Assisted values and graph receivers are already values of the requested type. In particular,
+  // a graph type may itself implement a provider interface without being a provider field that
+  // Metro should invoke.
+  if (isAssisted || isGraphInstance) {
     return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
   }
 
-  val providerTypeConverter = symbols.providerTypeConverter
+  // Included graph accessors can already return the complete requested wrapper stack. Preserve
+  // that value as-is rather than treating it as the canonical provider stored by this graph.
+  if (bindingCode.type == contextKey.toIrType()) {
+    return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
+  }
 
-  // Get the provider expression, handling the special ProviderOfLazy case
-  // TODO move this into ProviderFramework
-  val metroProviderExpression =
-    when {
-      // Provider<T> -> Provider<Lazy<T>> or () -> Lazy<T>
-      contextKey.isLazyWrappedInProvider -> {
-        val isFunctionTarget =
-          (contextKey.wrappedType as? WrappedType.Provider)?.providerType ==
-            Symbols.ClassIds.function0
-        if (isFunctionTarget && context.platform.isJs()) {
-          // JS: ProviderOfLazy doesn't implement () -> T, so emit { <lazy conversion> }
-          val lazyType = contextKey.typeKey.type.wrapInLazy(symbols)
-          val lazyContextKey =
-            IrContextualTypeKey.create(
-              typeKey = contextKey.typeKey,
-              isWrappedInLazy = true,
-              rawType = lazyType,
-            )
-          irLambda(
-            parent = this@typeAsProviderArgument.parent,
-            receiverParameter = null,
-            valueParameters = emptyList(),
-            returnType = lazyType,
-          ) {
-            +irReturn(with(providerTypeConverter) { bindingCode.convertTo(lazyContextKey) })
-          }
-        } else {
-          // ProviderOfLazy.create(provider) returns Provider<Lazy<T>>
-          // On non-JS, Provider<Lazy<T>> IS () -> Lazy<T>
-          irInvoke(
-            dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
-            callee = symbols.providerOfLazyCreate,
-            typeArgs = listOf(contextKey.typeKey.type),
-            args = listOf(bindingCode),
-            typeHint =
-              contextKey.typeKey.type.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
-          )
+  if (
+    !context.coroutinesRuntimeAvailability.isAvailable &&
+      contextKey.wrappedType.containsSuspendLazy()
+  ) {
+    // Source transformers report the missing optional artifact on their original declaration.
+    // Keep generating well-formed, unreachable IR so graph validation can collect its remaining
+    // diagnostics and stop before code generation.
+    return stubExpression(MISSING_RUNTIME_COROUTINES_MESSAGE)
+  }
+
+  val bindingType = bindingCode.type
+  val bindingClass = bindingType.rawTypeOrNull()
+  val isSuspendProvider =
+    bindingClass?.classId in symbols.classIds.suspendProviderTypes ||
+      bindingClass?.implements(Symbols.ClassIds.metroSuspendProvider) == true
+  val resolvedIsSuspendProvider =
+    actualIsSuspendProvider
+      ?: when {
+        isSuspendProvider -> true
+        bindingType.implementsProviderType() -> false
+        else -> {
+          // Not a stored provider. This includes direct values and assisted lazy values.
+          return maybeConvertMapKeysToJavaClass(bindingCode, contextKey)
         }
       }
 
-      else -> with(providerTypeConverter) { bindingCode.convertTo(contextKey) }
+  val requestedUsesSuspendProvider =
+    contextKey.wrappedType.usesSuspendProvider(resolvedIsSuspendProvider)
+  if (resolvedIsSuspendProvider && !requestedUsesSuspendProvider) {
+    reportCompilerBug(
+      "Cannot materialize a synchronous provider from ${bindingType.dumpKotlinLike()} for context key $contextKey"
+    )
+  }
+
+  val leafType = contextKey.wrappedType.scalarLeaf()
+  val leafIrType = leafType.toIrType()
+  val canonicalProvider =
+    if (resolvedIsSuspendProvider) {
+      val metroProviderType =
+        WrappedType.SuspendProvider(leafType, Symbols.ClassIds.metroSuspendProvider)
+      val metroProviderKey = contextKey.withWrappedType(metroProviderType)
+      with(symbols.providerTypeConverter) { bindingCode.convertTo(metroProviderKey) }
+    } else {
+      val metroProviderType = WrappedType.Provider(leafType, Symbols.ClassIds.metroProvider)
+      val metroProviderKey = contextKey.withWrappedType(metroProviderType)
+      with(symbols.providerTypeConverter) { bindingCode.convertTo(metroProviderKey) }
+    }
+  val materializationProvider =
+    if (!resolvedIsSuspendProvider && requestedUsesSuspendProvider) {
+      irCallConstructor(symbols.metroSyncSuspendProviderConstructor, listOf(leafIrType)).apply {
+        type = symbols.metroSyncSuspendProvider.typeWith(leafIrType)
+        arguments[0] = canonicalProvider
+      }
+    } else {
+      canonicalProvider
     }
 
-  // Determine whether we need to invoke the provider to get the value.
-  // We should not call invoke() when:
-  // - Provider-wrapped types
-  // - Lazy-wrapped types (Normally Dagger changes Lazy<Type> parameters to a Provider<Type>,
-  //   usually the container is a joined type, therefore we use DoubleCheck.lazy(..) to convert
-  //   the Provider to a Lazy. Assisted parameters behave differently and the Lazy type is not
-  //   changed to a Provider and we can simply use the parameter name in the argument list.)
-  // - Assisted or graph instance parameters
-  val shouldInvoke =
-    !contextKey.isWrappedInProvider &&
-      !contextKey.isWrappedInLazy &&
-      !isAssisted &&
-      !isGraphInstance
-
-  return if (shouldInvoke) {
-    // provider.invoke()
-    val invoked =
-      irInvoke(
-        dispatchReceiver = metroProviderExpression,
-        callee = symbols.providerInvoke,
-        typeHint = contextKey.typeKey.type,
-      )
-    // If KClass/Class interop is enabled and the consumer declared Map<Class<*>, V>,
-    // convert the canonical Map<KClass<*>, V> to Map<Class<*>, V> via `mapKeys { it.key.java }`.
-    // This must happen after invoking the provider, since the binding code is Provider<Map<...>>.
-    maybeConvertMapKeysToJavaClass(invoked, contextKey)
-  } else {
-    metroProviderExpression
+  if (!contextKey.wrappedType.requiresProviderCapture()) {
+    return materializeWrappedType(
+      contextKey = contextKey,
+      wrappedType = contextKey.wrappedType,
+      rawType = contextKey.rawType,
+      provider = { materializationProvider },
+      usesSuspendProvider = requestedUsesSuspendProvider,
+    )
   }
+
+  return irBlock(resultType = contextKey.toIrType()) {
+    val capturedProvider =
+      createAndAddTemporaryVariable(materializationProvider, nameHint = "provider")
+    +materializeWrappedType(
+      contextKey = contextKey,
+      wrappedType = contextKey.wrappedType,
+      rawType = contextKey.rawType,
+      provider = { irGet(capturedProvider) },
+      usesSuspendProvider = requestedUsesSuspendProvider,
+    )
+  }
+}
+
+context(context: IrMetroContext)
+private fun IrBuilderWithScope.materializeWrappedType(
+  contextKey: IrContextualTypeKey,
+  wrappedType: WrappedType<IrType>,
+  rawType: IrType?,
+  provider: IrBuilderWithScope.() -> IrExpression,
+  usesSuspendProvider: Boolean,
+): IrExpression {
+  val symbols = context.metroSymbols
+  val currentKey = contextKey.withWrappedType(wrappedType)
+  val leafType = wrappedType.scalarLeaf().toIrType()
+  val canonicalProviderType =
+    if (usesSuspendProvider) {
+      symbols.metroSuspendProvider.typeWith(leafType)
+    } else {
+      leafType.wrapInProvider(symbols.metroProvider)
+    }
+
+  return when (wrappedType) {
+    is WrappedType.Canonical,
+    is WrappedType.Map -> {
+      val valueType = wrappedType.toIrType()
+      val value =
+        if (usesSuspendProvider) {
+          irInvoke(
+            dispatchReceiver = provider(),
+            callee = symbols.suspendProviderInvoke,
+            typeHint = valueType,
+          )
+        } else {
+          irInvoke(
+            dispatchReceiver = provider(),
+            callee = symbols.providerInvoke,
+            typeHint = valueType,
+          )
+        }
+      maybeConvertMapKeysToJavaClass(value, currentKey)
+    }
+    is WrappedType.Provider -> {
+      val innerType = wrappedType.immediateInnerType()!!
+      if (wrappedType.isExactProviderOfKotlinLazy()) {
+        val valueType = (innerType as WrappedType.Lazy).innerType.canonicalType()
+        val metroProviderOfLazy =
+          irInvoke(
+            dispatchReceiver = irGetObject(symbols.providerOfLazyCompanionObject),
+            callee = symbols.providerOfLazyCreate,
+            typeArgs = listOf(valueType),
+            args = listOf(provider()),
+            typeHint = valueType.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
+          )
+        with(symbols.providerTypeConverter) { metroProviderOfLazy.convertTo(currentKey) }
+      } else if (innerType.isScalarLeaf()) {
+        check(!usesSuspendProvider)
+        with(symbols.providerTypeConverter) {
+          provider().convertTo(currentKey, providerType = canonicalProviderType)
+        }
+      } else {
+        val innerIrType = innerType.toIrType()
+        val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val metroProvider =
+          metroProviderReturning(innerIrType) {
+            materializeWrappedType(
+              contextKey,
+              innerType,
+              innerRawType,
+              provider,
+              usesSuspendProvider,
+            )
+          }
+        with(symbols.providerTypeConverter) { metroProvider.convertTo(currentKey) }
+      }
+    }
+    is WrappedType.Lazy -> {
+      val innerType = wrappedType.immediateInnerType()!!
+      if (innerType.isScalarLeaf()) {
+        check(!usesSuspendProvider)
+        with(symbols.providerTypeConverter) {
+          provider().convertTo(currentKey, providerType = canonicalProviderType)
+        }
+      } else {
+        val innerIrType = innerType.toIrType()
+        val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val metroProvider =
+          metroProviderReturning(innerIrType) {
+            materializeWrappedType(
+              contextKey,
+              innerType,
+              innerRawType,
+              provider,
+              usesSuspendProvider,
+            )
+          }
+        with(symbols.providerTypeConverter) { metroProvider.convertTo(currentKey) }
+      }
+    }
+    is WrappedType.SuspendProvider -> {
+      val innerType = wrappedType.immediateInnerType()!!
+      if (innerType.isScalarLeaf()) {
+        check(usesSuspendProvider)
+        with(symbols.providerTypeConverter) {
+          provider().convertTo(currentKey, providerType = canonicalProviderType)
+        }
+      } else {
+        val innerIrType = innerType.toIrType()
+        val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val metroProvider =
+          metroSuspendProviderReturning(innerIrType) {
+            materializeWrappedType(
+              contextKey,
+              innerType,
+              innerRawType,
+              provider,
+              usesSuspendProvider,
+            )
+          }
+        with(symbols.providerTypeConverter) { metroProvider.convertTo(currentKey) }
+      }
+    }
+    is WrappedType.SuspendLazy -> {
+      val innerType = wrappedType.immediateInnerType()!!
+      val innerIrType = innerType.toIrType()
+      if (innerType.isScalarLeaf()) {
+        check(usesSuspendProvider)
+        provider().suspendDoubleCheckLazy(symbols, innerIrType)
+      } else {
+        val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        metroSuspendProviderReturning(innerIrType) {
+            materializeWrappedType(
+              contextKey,
+              innerType,
+              innerRawType,
+              provider,
+              usesSuspendProvider,
+            )
+          }
+          .suspendDoubleCheckLazy(symbols, innerIrType)
+      }
+    }
+  }
+}
+
+private fun WrappedType<IrType>.requiresProviderCapture(): Boolean {
+  return when (this) {
+    is WrappedType.Canonical,
+    is WrappedType.Map -> false
+    is WrappedType.Provider -> !isExactProviderOfKotlinLazy() && !innerType.isScalarLeaf()
+    is WrappedType.Lazy -> !innerType.isScalarLeaf()
+    is WrappedType.SuspendProvider -> !innerType.isScalarLeaf()
+    is WrappedType.SuspendLazy -> !innerType.isScalarLeaf()
+  }
+}
+
+context(context: IrMetroContext)
+private fun IrBuilderWithScope.metroProviderReturning(
+  valueType: IrType,
+  value: IrBuilderWithScope.() -> IrExpression,
+): IrExpression {
+  val lambda =
+    irLambda(
+      parent = parent,
+      receiverParameter = null,
+      valueParameters = emptyList(),
+      returnType = valueType,
+    ) {
+      +irReturn(value())
+    }
+  return irInvoke(
+    callee = context.metroSymbols.metroProviderFunction,
+    typeHint = valueType.wrapInProvider(context.metroSymbols.metroProvider),
+    typeArgs = listOf(valueType),
+    args = listOf(lambda),
+  )
+}
+
+context(context: IrMetroContext)
+private fun IrBuilderWithScope.metroSuspendProviderReturning(
+  valueType: IrType,
+  value: IrBuilderWithScope.() -> IrExpression,
+): IrExpression {
+  val lambda =
+    irLambda(
+      parent = parent,
+      receiverParameter = null,
+      valueParameters = emptyList(),
+      returnType = valueType,
+      suspend = true,
+    ) {
+      +irReturn(value())
+    }
+  return irInvoke(
+    callee = context.metroSymbols.metroSuspendProviderFunction,
+    typeHint = context.metroSymbols.metroSuspendProvider.typeWith(valueType),
+    typeArgs = listOf(valueType),
+    args = listOf(lambda),
+  )
+}
+
+context(context: IrMetroContext)
+private fun IrContextualTypeKey.withWrappedType(
+  wrappedType: WrappedType<IrType>,
+  rawType: IrType? = null,
+): IrContextualTypeKey {
+  return IrContextualTypeKey(
+    typeKey = typeKey,
+    wrappedType = wrappedType,
+    hasDefault = hasDefault,
+    rawType = rawType ?: wrappedType.toIrType(),
+  )
+}
+
+private fun WrappedType.Provider<IrType>.isExactProviderOfKotlinLazy(): Boolean {
+  val lazy = innerType as? WrappedType.Lazy ?: return false
+  if (lazy.innerType !is WrappedType.Canonical) return false
+  return lazy.lazyType == ClassId(FqName("kotlin"), Name.identifier("Lazy"))
+}
+
+private fun IrType?.wrapperValueTypeOrNull(): IrType? {
+  val simpleType = this as? IrSimpleType ?: return null
+  return simpleType.arguments.singleOrNull()?.typeOrNull
 }
 
 /**
@@ -1018,6 +1264,61 @@ internal fun IrExpression.doubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrE
       typeHint = providerType,
       typeArgs = listOf(providerType, typeKey.type),
       args = listOf(this@doubleCheck),
+    )
+  }
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+internal fun IrExpression.suspendDoubleCheckLazy(
+  symbols: Symbols,
+  typeKey: IrTypeKey,
+): IrExpression = suspendDoubleCheckLazy(symbols, typeKey.type)
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+internal fun IrExpression.suspendDoubleCheckLazy(
+  symbols: Symbols,
+  valueType: IrType,
+): IrExpression =
+  with(scope) {
+    val companionObject =
+      symbols.suspendDoubleCheckCompanionObject
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val lazyFun =
+      symbols.suspendDoubleCheckLazy
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck.lazy not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val suspendLazyType = symbols.metroSuspendLazy.typeWith(valueType)
+    irInvoke(
+      dispatchReceiver = irGetObject(companionObject),
+      callee = lazyFun,
+      typeHint = suspendLazyType,
+      typeArgs = listOf(valueType),
+      args = listOf(this@suspendDoubleCheckLazy),
+    )
+  }
+
+context(context: IrMetroContext, scope: IrBuilderWithScope)
+internal fun IrExpression.suspendDoubleCheck(symbols: Symbols, typeKey: IrTypeKey): IrExpression =
+  with(scope) {
+    val companionObject =
+      symbols.suspendDoubleCheckCompanionObject
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val providerFun =
+      symbols.suspendDoubleCheckProvider
+        ?: reportCompilerBug(
+          "SuspendDoubleCheck.provider not found. Ensure the metro-runtime-coroutines dependency is on the classpath."
+        )
+    val suspendProviderType = symbols.metroSuspendProvider.typeWith(typeKey.type)
+    irInvoke(
+      dispatchReceiver = irGetObject(companionObject),
+      callee = providerFun,
+      typeHint = suspendProviderType,
+      typeArgs = listOf(typeKey.type),
+      args = listOf(this@suspendDoubleCheck),
     )
   }
 
@@ -2472,6 +2773,19 @@ internal fun IrDeclaration.lookupFunctions(
   callableId: CallableId
 ): Collection<IrSimpleFunctionSymbol> {
   return with(context) { pluginContext.finderFor(this@lookupFunctions).findFunctions(callableId) }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.injectedFunctionOrNull(): IrSimpleFunctionSymbol? {
+  val annotation =
+    getAnnotation(Symbols.ClassIds.metroInjectedFunctionClass.asSingleFqName()) ?: return null
+  val callableName =
+    annotation.getAnnotationStringValue()?.asName()
+      ?: reportCompilerBug("Injected function class annotation is missing its callable name")
+  val callableId = CallableId(packageFqName!!, callableName)
+  return lookupFunctions(callableId).single {
+    it.owner.isAnnotatedWithAny(context.metroSymbols.classIds.injectAnnotations)
+  }
 }
 
 context(context: IrMetroContext)

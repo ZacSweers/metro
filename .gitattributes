@@ -4,4 +4,5 @@
 compiler-tests/**/*.java linguist-generated=true
 **/yarn.lock linguist-generated=true
 **/package-lock.lock linguist-generated=true
+docs/diagnostics.md linguist-generated=true
 *.bat text eol=crlf

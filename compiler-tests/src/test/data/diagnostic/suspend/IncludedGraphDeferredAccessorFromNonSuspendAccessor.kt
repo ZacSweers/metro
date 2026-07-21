@@ -1,0 +1,37 @@
+// ENABLE_SUSPEND_PROVIDERS
+
+// RUN_PIPELINE_TILL: FIR2IR
+// RENDER_IR_DIAGNOSTICS_FULL_TEXT
+@DependencyGraph
+interface ProviderGraph {
+  val value: suspend () -> Int
+
+  @Provides suspend fun provideInt(): Int = 1
+}
+
+@DependencyGraph
+interface ProviderConsumerGraph {
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value<!>: Int
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Includes providerGraph: ProviderGraph): ProviderConsumerGraph
+  }
+}
+
+@DependencyGraph
+interface LazyGraph {
+  val value: SuspendLazy<Long>
+
+  @Provides suspend fun provideLong(): Long = 1L
+}
+
+@DependencyGraph
+interface LazyConsumerGraph {
+  val <!SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR!>value<!>: Long
+
+  @DependencyGraph.Factory
+  interface Factory {
+    fun create(@Includes lazyGraph: LazyGraph): LazyConsumerGraph
+  }
+}

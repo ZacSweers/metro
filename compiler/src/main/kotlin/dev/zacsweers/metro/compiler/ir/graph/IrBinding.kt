@@ -61,6 +61,7 @@ import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
+import org.jetbrains.kotlin.ir.util.isSuspend
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -77,6 +78,10 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   val nameHint: String
   override val contextualTypeKey: IrContextualTypeKey
   val reportableDeclaration: IrDeclarationWithName?
+
+  /** Returns true if this binding is provided by a suspend function. */
+  val isSuspend: Boolean
+    get() = false
 
   /** A human-readable type name for this binding, used in diagnostic messages. */
   val diagnosticTypeName: String
@@ -190,9 +195,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      */
     fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
-    fun parameterFor(typeKey: IrTypeKey) =
+    fun parameterFor(contextualTypeKey: IrContextualTypeKey) =
       classFactory.function.regularParameters.getOrNull(
-        parameters.regularParameters.indexOfFirst { it.typeKey == typeKey }
+        parameters.regularParameters.indexOfFirst {
+          !it.isAssisted && it.contextualTypeKey == contextualTypeKey
+        }
       )
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String =
@@ -274,6 +281,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val dependencies: List<IrContextualTypeKey> by memoize {
       parameters.allParameters.map { it.contextualTypeKey }
     }
+
+    override val isSuspend: Boolean
+      get() = providerFactory.function.isSuspend
 
     override val scope: IrAnnotation?
       get() = annotations.scope
@@ -706,6 +716,17 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     val callableId: CallableId?
       get() = getter?.callableId
 
+    /** Whether resolving this graph dependency requires a suspend context. */
+    override val isSuspend: Boolean
+      get() =
+        getter?.isSuspend == true ||
+          contextualTypeKey.wrappedType.requiresSuspendToUnwrap() ||
+          token?.isSuspend == true
+
+    /** Whether this dependency can return the accessor's wrapper value without unwrapping it. */
+    fun canPassThrough(contextKey: IrContextualTypeKey): Boolean =
+      getter?.isSuspend == false && contextualTypeKey == contextKey
+
     override val dependencies: List<IrContextualTypeKey> by memoize {
       listOf(IrContextualTypeKey(ownerKey))
     }
@@ -780,7 +801,11 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
   ) : IrBinding {
     override val typeKey: IrTypeKey = contextualTypeKey.typeKey
     override val scope: IrAnnotation? = null
-    override val dependencies by memoize { sourceBindings.map { IrContextualTypeKey(it) } }
+    private var dependenciesFinalized = false
+    override val dependencies by memoize {
+      dependenciesFinalized = true
+      sourceBindings.map { IrContextualTypeKey(it) }
+    }
     override val parameters: Parameters = Parameters.empty()
 
     fun isEmpty() = sourceBindings.isEmpty()
@@ -837,6 +862,9 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
       }
 
     fun addSourceBinding(source: IrTypeKey) {
+      check(!dependenciesFinalized) {
+        "Cannot add multibinding source $source after dependencies have been finalized"
+      }
       if (source in sourceBindings) {
         reportCompilerBug("Duplicate multibinding source: $source")
       }

@@ -245,6 +245,10 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
         enableRuntimeTracing = true
       }
+
+      if (MetroDirectives.ENABLE_SUSPEND_PROVIDERS in module.directives) {
+        enableSuspendProviders = true
+      }
     }
 
     if (!options.enabled) return

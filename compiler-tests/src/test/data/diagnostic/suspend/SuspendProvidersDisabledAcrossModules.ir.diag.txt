@@ -1,0 +1,3 @@
+/main.kt:27:11: error: [Metro/SuspendProvidersNotEnabled] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+
+/main.kt:34:11: error: [Metro/SuspendProvidersNotEnabled] Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.

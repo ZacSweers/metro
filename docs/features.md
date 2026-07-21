@@ -35,6 +35,12 @@ Metro’s user-facing API is similar to kotlin-inject: focused on simplicity and
 * Native support for optional dependencies via default parameter values
 * Use of Kotlin’s native `Lazy` type for lazy injections
 
+## Coroutines Support
+
+Metro supports suspend bindings and graph accessors, deferred initialization, scoping, and lazy
+initialization. Coroutines support is experimental and disabled by default. See
+[Coroutines Support](coroutines.md) for details.
+
 ## Anvil-esque aggregation
 
 Like Anvil, Metro supports contributing types via aggregation with annotations like `@ContributesTo`, `@ContributesBinding`, etc.

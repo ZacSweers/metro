@@ -3,13 +3,11 @@
 package dev.zacsweers.metro.compiler.ir.graph
 
 import androidx.collection.MutableObjectIntMap
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
-import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 
 /**
@@ -98,33 +96,35 @@ internal class BindingPropertyContext(
    */
   context(metroContext: IrMetroContext)
   fun get(key: IrContextualTypeKey, searchParents: Boolean = false): BindingProperty? {
-    // Direct match in current context
-    properties[key]?.let { property ->
+    fun localProperty(storedKey: IrContextualTypeKey): BindingProperty? {
+      val property = properties[storedKey] ?: return null
       return BindingProperty(
         property = property,
-        storedKey = key,
-        shardProperty = shardProperties[key],
-        shardIndex = shardIndices.getOrDefault(key, -1).takeUnless { it == -1 },
+        storedKey = storedKey,
+        shardProperty = shardProperties[storedKey],
+        shardIndex = shardIndices.getOrDefault(storedKey, -1).takeUnless { it == -1 },
       )
     }
 
-    // For non-provider requests, try provider key (a provider can satisfy an instance request)
-    // - if it's a scalar (non-provider/lazy type)
-    // - if it's a provider but _not_ a metro provider
-    val tryReWrapping =
-      !key.isWrappedInProvider ||
-        key.isWrappedInLazy ||
-        (key.wrappedType is WrappedType.Provider &&
-          key.wrappedType.providerType != Symbols.ClassIds.metroProvider)
-    if (tryReWrapping) {
-      val providerKey = key.stripOuterProviderOrLazy().wrapInProvider()
-      properties[providerKey]?.let {
-        return BindingProperty(
-          property = it,
-          storedKey = providerKey,
-          shardProperty = shardProperties[providerKey],
-          shardIndex = shardIndices.getOrDefault(providerKey, -1).takeUnless { it == -1 },
-        )
+    localProperty(key)?.let {
+      return it
+    }
+
+    // Properties use one canonical Metro Provider/SuspendProvider layer regardless of how many
+    // scalar wrappers the consumer requested. Preserve map value structure while normalizing the
+    // outer stack, and prefer the provider kind required by the innermost scalar wrapper.
+    val canonicalKey = key.canonicalize()
+    val providerKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = false)
+    val suspendProviderKey = canonicalKey.asCanonicalProviderKey(usesSuspendProvider = true)
+    val providerLookupKeys =
+      if (key.wrappedType.usesSuspendProvider() == true) {
+        listOf(suspendProviderKey, providerKey)
+      } else {
+        listOf(providerKey, suspendProviderKey)
+      }
+    for (providerLookupKey in providerLookupKeys) {
+      localProperty(providerLookupKey)?.let {
+        return it
       }
     }
 

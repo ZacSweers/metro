@@ -41,7 +41,7 @@ public sealed class AbstractMapFactory<K : Any, V, V2>(map: Map<K, Provider<V>>)
   }
 
   /** A builder for [AbstractMapFactory]. */
-  public sealed class Builder<K : Any, V : Any, V2>(size: Int) {
+  public sealed class Builder<K : Any, V, V2>(size: Int) {
     internal val map: LinkedHashMap<K, Provider<V>> = newLinkedHashMapWithExpectedSize(size)
 
     // Unfortunately, we cannot return a self-type here because a raw Provider type passed to one of

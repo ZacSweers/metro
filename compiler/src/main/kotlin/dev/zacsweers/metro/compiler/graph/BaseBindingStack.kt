@@ -57,6 +57,14 @@ internal interface BaseBindingStack<
     val typeKey: TypeKey
       get() = contextKey.typeKey
 
+    /**
+     * Optional trailing comment appended to the [graphContext] line when rendered, such as `// ❌
+     * needs suspend support`. Used by diagnostics that want to call out specific entries in a
+     * trace.
+     */
+    val trailingComment: String?
+      get() = null
+
     fun render(graph: FqName, short: Boolean): String {
       return buildString {
         append(displayTypeKey.render(short))
@@ -72,6 +80,10 @@ internal interface BaseBindingStack<
           append(']')
           append(' ')
           append(it)
+          trailingComment?.let { comment ->
+            append(" // ")
+            append(comment)
+          }
         }
       }
     }

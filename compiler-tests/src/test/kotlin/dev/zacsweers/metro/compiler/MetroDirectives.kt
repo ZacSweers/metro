@@ -95,6 +95,12 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Number of threads to use for parallel Metro processing.") { it.toInt() }
   val ENABLE_PROVIDER_INLINING by
     valueDirective("Enable/disable provider body inlining.") { it.toBoolean() }
+  val ENABLE_SUSPEND_PROVIDERS by
+    directive(
+      "Enable experimental suspend provider support and add Metro's runtime-coroutines artifact."
+    )
+  val WITHOUT_RUNTIME_COROUTINES by
+    directive("Do not add Metro's runtime-coroutines artifact when suspend providers are enabled.")
   val DESUGARED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of uses of the desugared `Provider<T>` form. Prefer the function syntax form `() -> T` instead."
@@ -107,7 +113,6 @@ object MetroDirectives : SimpleDirectivesContainer() {
     ) {
       it.toBoolean()
     }
-
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
   val WITH_KI_ANVIL by
@@ -229,5 +234,9 @@ object MetroDirectives : SimpleDirectivesContainer() {
 
   fun enableGuiceInterop(directives: RegisteredDirectives): Boolean {
     return ENABLE_GUICE_INTEROP in directives
+  }
+
+  fun includeMetroRuntimeCoroutines(directives: RegisteredDirectives): Boolean {
+    return ENABLE_SUSPEND_PROVIDERS in directives && WITHOUT_RUNTIME_COROUTINES !in directives
   }
 }

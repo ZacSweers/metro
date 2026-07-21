@@ -545,6 +545,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     public void testDefaultValuesPropagateToNewInstanceParams() {
       run("DefaultValuesPropagateToNewInstanceParams.kt");
     }
+
+    @Test
+    @TestMetadata("SuspendConstructorInjection.kt")
+    public void testSuspendConstructorInjection() {
+      run("SuspendConstructorInjection.kt");
+    }
   }
 
   @Nested

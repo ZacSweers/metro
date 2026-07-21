@@ -160,6 +160,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
           registerIrExtensionCompat(
             CircuitIrExtension(
               generateClassesInIr = options.generateClassesInIr,
+              function0Types = classIds.function0Types,
               assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
               injectAnnotations = classIds.allInjectAnnotations,
               qualifierAnnotations = classIds.qualifierAnnotations,

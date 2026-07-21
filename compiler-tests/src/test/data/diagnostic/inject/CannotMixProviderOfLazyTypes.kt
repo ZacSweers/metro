@@ -6,6 +6,7 @@
 class Example(
   // Ok
   val one: Provider<Lazy<Int>>,
+  val nestedOne: Provider<Lazy<Provider<Lazy<Int>>>>,
   // Bad
   val two: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>Provider<dagger.Lazy<Int>><!>,
   val twoFunction: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>() -> dagger.Lazy<Int><!>,
@@ -13,4 +14,5 @@ class Example(
   val four: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>jakarta.inject.Provider<Lazy<Int>><!>,
   val five: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>jakarta.inject.Provider<dagger.Lazy<Int>><!>,
   val six: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>javax.inject.Provider<dagger.Lazy<Int>><!>,
+  val nestedTwo: <!PROVIDERS_OF_LAZY_MUST_BE_METRO_ONLY!>Provider<Lazy<javax.inject.Provider<Lazy<Int>>>><!>,
 )

@@ -30,12 +30,12 @@ interface AppGraph {
 
     override val long1: Lazy<Long>
       override get(): Lazy<Long> {
-        return DoubleCheck/* companion */.lazy<Lazy<Long>, Long>(provider = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+        return DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
       }
 
     override val long2: Lazy<Long>
       override get(): Lazy<Long> {
-        return DoubleCheck/* companion */.lazy<Lazy<Long>, Long>(provider = DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider))
+        return DoubleCheck/* companion */.lazy<Provider<Long>, Long>(provider = <this>.#provideLongProvider)
       }
 
   }
@@ -173,4 +173,3 @@ interface AppGraph {
     abstract get
 
 }
-

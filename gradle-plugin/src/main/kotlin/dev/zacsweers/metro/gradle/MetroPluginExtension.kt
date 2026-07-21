@@ -426,6 +426,18 @@ constructor(
     objects.booleanProperty("metro.enableRuntimeTracing", false)
 
   /**
+   * Enables experimental suspend `@Provides` functions, graph accessors, and provider types.
+   *
+   * When automatic runtime dependencies are enabled, this also adds Metro's `runtime-coroutines`
+   * artifact.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableSuspendProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableSuspendProviders", false)
+
+  /**
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API
    * controls.
    */

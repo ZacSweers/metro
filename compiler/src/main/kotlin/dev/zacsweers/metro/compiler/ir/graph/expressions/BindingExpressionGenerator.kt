@@ -11,9 +11,11 @@ import dev.zacsweers.metro.compiler.ir.instanceFactory
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.parameters.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBlockBodyBuilder
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -21,6 +23,7 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
@@ -34,14 +37,23 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
   enum class AccessType {
     INSTANCE,
     // note: maybe rename this to PROVIDER_LIKE or PROVIDER_OR_FACTORY
-    PROVIDER;
+    PROVIDER,
+    SUSPEND_PROVIDER;
+
+    val isSuspendProvider: Boolean?
+      get() =
+        when (this) {
+          INSTANCE -> null
+          PROVIDER -> false
+          SUSPEND_PROVIDER -> true
+        }
 
     companion object {
       fun of(contextKey: IrContextualTypeKey): AccessType {
-        return if (contextKey.isWrappedInProvider) {
-          PROVIDER
-        } else {
-          INSTANCE
+        return when (contextKey.wrappedType.usesSuspendProvider()) {
+          true -> SUSPEND_PROVIDER
+          false -> PROVIDER
+          null -> INSTANCE
         }
       }
     }
@@ -51,12 +63,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
   abstract fun generateBindingCode(
     binding: T,
     contextualTypeKey: IrContextualTypeKey,
-    accessType: AccessType =
-      if (contextualTypeKey.requiresProviderInstance) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
-      },
+    accessType: AccessType = AccessType.of(contextualTypeKey),
     fieldInitKey: IrTypeKey? = null,
   ): IrExpression
 
@@ -88,31 +95,26 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     contextualTypeKey: IrContextualTypeKey,
     actual: AccessType = run {
       val classId = type.classOrNull?.owner?.classId
-      val isProviderType =
-        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes
-      if (isProviderType) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
+      when {
+        classId in metroSymbols.suspendProviderTypes -> AccessType.SUSPEND_PROVIDER
+        classId in metroSymbols.providerTypes || classId in metroSymbols.lazyTypes ->
+          AccessType.PROVIDER
+        else -> AccessType.INSTANCE
       }
     },
-    requested: AccessType =
-      if (contextualTypeKey.requiresProviderInstance) {
-        AccessType.PROVIDER
-      } else {
-        AccessType.INSTANCE
-      },
+    requested: AccessType = AccessType.of(contextualTypeKey),
     useInstanceFactory: Boolean = true,
     allowPropertyGetter: Boolean = false,
     bindingKind: String? = null,
     providerOrigin: ProviderExpressionOrigin = ProviderExpressionOrigin.NewExpression,
     providerType: IrType? = null,
   ): IrExpression {
-    // Step 1: Transform access type (INSTANCE <-> PROVIDER)
+    // Step 1: Transform access type
     val accessTransformed =
       when (requested) {
         actual -> this
         PROVIDER -> {
+          check(actual == INSTANCE) { "Unsupported access type conversion: $actual -> $requested" }
           if (useInstanceFactory) {
             // actual is an instance, wrap it
             wrapInInstanceFactory(contextualTypeKey.typeKey.type, allowPropertyGetter)
@@ -122,31 +124,66 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
             }
           }
         }
+        SUSPEND_PROVIDER -> {
+          when (actual) {
+            INSTANCE -> {
+              // Wrap instance expression in a suspend provider lambda
+              scope.wrapInSuspendProviderFunction(contextualTypeKey.typeKey.type) {
+                this@toTargetType
+              }
+            }
+            PROVIDER -> {
+              // Adapt Provider<T> -> SuspendProvider<T> via SyncSuspendProvider, avoiding a
+              // captured suspend lambda.
+              with(scope) { wrapInSyncSuspendProvider(contextualTypeKey.typeKey.type) }
+            }
+            else -> this
+          }
+        }
         INSTANCE -> {
-          // actual is a provider but we want instance
-          unwrapProvider(contextualTypeKey.typeKey.type)
+          when (actual) {
+            PROVIDER -> unwrapProvider(contextualTypeKey.typeKey.type)
+            SUSPEND_PROVIDER -> unwrapSuspendProvider(contextualTypeKey.typeKey.type)
+            else -> this
+          }
         }
       }
 
     // Step 2: Convert provider if needed (e.g., Metro -> Dagger)
     // Only do this if we're in PROVIDER mode (or transformed to it)
+    // SuspendProvider doesn't need framework conversion (no Dagger/Javax equivalent) but does get
+    // its own decoration hook (like TracedSuspendProvider when runtime tracing is enabled).
     val maybeTraced =
-      if (requested == AccessType.PROVIDER) {
-        expressionDecorator.decorateProviderExpression(
-          accessTransformed,
-          ProviderExpressionRequest(
-            contextualTypeKey = contextualTypeKey,
-            bindingKind = bindingKind,
-            origin = providerOrigin,
-            providerType = providerType,
-          ),
-        )
-      } else {
-        accessTransformed
+      when (requested) {
+        AccessType.PROVIDER ->
+          expressionDecorator.decorateProviderExpression(
+            accessTransformed,
+            ProviderExpressionRequest(
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+              origin = providerOrigin,
+              providerType = providerType,
+            ),
+          )
+        AccessType.SUSPEND_PROVIDER ->
+          expressionDecorator.decorateSuspendProviderExpression(
+            accessTransformed,
+            ProviderExpressionRequest(
+              contextualTypeKey = contextualTypeKey,
+              bindingKind = bindingKind,
+              origin = providerOrigin,
+            ),
+          )
+        else -> accessTransformed
       }
 
     val finalAccessType = if (requested == AccessType.PROVIDER) requested else actual
     return if (finalAccessType == AccessType.PROVIDER) {
+      // NOTE: SUSPEND_PROVIDER results are deliberately NOT converted here. These expressions
+      // also initialize graph fields typed SuspendProvider<T>; converting to the requested
+      // `suspend () -> T` function type at this layer produces type-mismatched field
+      // initializers (invalid IR on JS). The function-type adaptation happens at the consumer
+      // boundary in typeAsProviderArgument instead.
       with(scope) {
         with(metroSymbols.providerTypeConverter) {
           if (providerType == null) {
@@ -197,10 +234,54 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     )
   }
 
+  protected fun IrBuilderWithScope.wrapInSuspendProviderFunction(
+    type: IrType,
+    returnExpression: IrBlockBodyBuilder.(function: IrSimpleFunction) -> IrExpression,
+  ): IrExpression {
+    val lambda =
+      irLambda(parent = this.parent, receiverParameter = null, emptyList(), type, suspend = true) {
+        +irReturn(returnExpression(it))
+      }
+    return irInvoke(
+      dispatchReceiver = null,
+      callee = metroSymbols.metroSuspendProviderFunction,
+      typeHint = type.wrapInSuspendProvider(),
+      typeArgs = listOf(type),
+      args = listOf(lambda),
+    )
+  }
+
+  /**
+   * Wraps a `Provider<T>` expression as a `SuspendProvider<T>` via the `SyncSuspendProvider`
+   * value-class adapter. This avoids creating the captured lambda used by
+   * [wrapInSuspendProviderFunction] for the common Provider→SuspendProvider adaptation.
+   */
+  context(scope: IrBuilderWithScope)
+  protected fun IrExpression.wrapInSyncSuspendProvider(type: IrType): IrExpression {
+    val provider = this
+    return with(scope) {
+      irCallConstructor(metroSymbols.metroSyncSuspendProviderConstructor, listOf(type)).apply {
+        this.type = metroSymbols.metroSyncSuspendProvider.typeWith(type)
+        arguments[0] = provider
+      }
+    }
+  }
+
   context(scope: IrBuilderWithScope)
   protected fun IrExpression.unwrapProvider(type: IrType): IrExpression {
     return with(scope) {
       irInvoke(this@unwrapProvider, callee = metroSymbols.providerInvoke, typeHint = type)
+    }
+  }
+
+  context(scope: IrBuilderWithScope)
+  protected fun IrExpression.unwrapSuspendProvider(type: IrType): IrExpression {
+    return with(scope) {
+      irInvoke(
+        this@unwrapSuspendProvider,
+        callee = metroSymbols.suspendProviderInvoke,
+        typeHint = type,
+      )
     }
   }
 
@@ -220,12 +301,15 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     directExpr: IrExpression,
     contextualTypeKey: IrContextualTypeKey,
     bindingKind: String?,
+    /** True when [directExpr] contains suspend calls, so the trace wrapper must be suspend. */
+    isSuspend: Boolean = false,
   ): IrExpression {
     return expressionDecorator.decorateDirectExpression(
       directExpr,
       DirectExpressionRequest(
         contextualTypeKey = contextualTypeKey,
         bindingKind = bindingKind,
+        isSuspend = isSuspend,
       ),
     )
   }

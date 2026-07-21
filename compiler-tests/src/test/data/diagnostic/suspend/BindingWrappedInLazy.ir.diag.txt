@@ -1,0 +1,7 @@
+/BindingWrappedInLazy.kt:13:28: error: [Metro/SuspendBindingWrappedInLazy] Cannot depend on suspend binding 'String' via Lazy. Use `SuspendLazy<String>` instead.
+
+Trace:
+    String is injected at
+        [ExampleGraph] ExampleGraph.provideInt(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)

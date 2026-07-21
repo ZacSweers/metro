@@ -55,7 +55,7 @@ run_tests() {
         echo "Running tests..."
     fi
 
-    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
+    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests :runtime-coroutines:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
     # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
     ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
     ./gradlew -p samples :integration-tests:allTests --quiet

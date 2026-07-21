@@ -1,0 +1,5 @@
+/UnsupportedSuspendMapValue.kt:7:31: error: Map value `SuspendLazy<Int>` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.
+
+/UnsupportedSuspendMapValue.kt:9:31: error: Map value `() -> SuspendLazy<Int>` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.
+
+/UnsupportedSuspendMapValue.kt:11:42: error: Map value `suspend () -> suspend () -> Int` is not a supported suspend map value. Map values support suspension as `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. `SuspendLazy` and additional suspend-wrapper layers in map value position are unsupported.

@@ -49,6 +49,7 @@ open class AbstractReportsTest : AbstractPhasedJvmDiagnosticLightTreeTest() {
         +WITH_STDLIB
         +IGNORE_DEXING
         +DISABLE_GENERATED_FIR_TAGS
+        commonMetroTestDirectives()
       }
     }
   }

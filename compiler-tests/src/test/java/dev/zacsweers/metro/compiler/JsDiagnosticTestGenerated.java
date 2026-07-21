@@ -367,6 +367,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("DependencyCycleAdvice.kt")
+    public void testDependencyCycleAdvice() {
+      run("DependencyCycleAdvice.kt");
+    }
+
+    @Test
+    @TestMetadata("DependencyCycleAdviceWithSuspendProviders.kt")
+    public void testDependencyCycleAdviceWithSuspendProviders() {
+      run("DependencyCycleAdviceWithSuspendProviders.kt");
+    }
+
+    @Test
     @TestMetadata("DependencyGraphFactory_ParamsCannotBeScoped.kt")
     public void testDependencyGraphFactory_ParamsCannotBeScoped() {
       run("DependencyGraphFactory_ParamsCannotBeScoped.kt");
@@ -478,6 +490,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("RuntimeTracingRequiresTracerFactoryInput.kt")
     public void testRuntimeTracingRequiresTracerFactoryInput() {
       run("RuntimeTracingRequiresTracerFactoryInput.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendDependencyCycleAdvice.kt")
+    public void testSuspendDependencyCycleAdvice() {
+      run("SuspendDependencyCycleAdvice.kt");
     }
 
     @Test
@@ -1442,6 +1460,194 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("MissingBindingRich.kt")
     public void testMissingBindingRich() {
       run("MissingBindingRich.kt");
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/diagnostic/suspend")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Suspend {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/diagnostic/suspend/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInSuspend() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("AssistedFactorySuspendMemberDep.kt")
+    public void testAssistedFactorySuspendMemberDep() {
+      run("AssistedFactorySuspendMemberDep.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedFactorySuspendRequired.kt")
+    public void testAssistedFactorySuspendRequired() {
+      run("AssistedFactorySuspendRequired.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingFromNonSuspendAccessor.kt")
+    public void testBindingFromNonSuspendAccessor() {
+      run("BindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWrappedInLazy.kt")
+    public void testBindingWrappedInLazy() {
+      run("BindingWrappedInLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWrappedInProvider.kt")
+    public void testBindingWrappedInProvider() {
+      run("BindingWrappedInProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("BindingWrappedInProviderAccessor.kt")
+    public void testBindingWrappedInProviderAccessor() {
+      run("BindingWrappedInProviderAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("BindsIsNotAllowed.kt")
+    public void testBindsIsNotAllowed() {
+      run("BindsIsNotAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerInteropDaggerLazyWrapsSuspend.kt")
+    public void testDaggerInteropDaggerLazyWrapsSuspend() {
+      run("DaggerInteropDaggerLazyWrapsSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerInteropJakartaProviderWrapsSuspend.kt")
+    public void testDaggerInteropJakartaProviderWrapsSuspend() {
+      run("DaggerInteropJakartaProviderWrapsSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DaggerInteropJavaxProviderWrapsSuspend.kt")
+    public void testDaggerInteropJavaxProviderWrapsSuspend() {
+      run("DaggerInteropJavaxProviderWrapsSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DepInConstructorInjectedNonSuspendAccessor.kt")
+    public void testDepInConstructorInjectedNonSuspendAccessor() {
+      run("DepInConstructorInjectedNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("DesugaredSuspendProviderWarning.kt")
+    public void testDesugaredSuspendProviderWarning() {
+      run("DesugaredSuspendProviderWarning.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicateKeyAccessors.kt")
+    public void testDuplicateKeyAccessors() {
+      run("DuplicateKeyAccessors.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt")
+    public void testGraphExtensionParentSuspendBindingFromNonSuspendAccessor() {
+      run("GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt")
+    public void testIncludedGraphDeferredAccessorFromNonSuspendAccessor() {
+      run("IncludedGraphDeferredAccessorFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt")
+    public void testIncludedGraphSuspendAccessorFromNonSuspendAccessor() {
+      run("IncludedGraphSuspendAccessorFromNonSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectingClassWithSuspendCtorDep.kt")
+    public void testMemberInjectingClassWithSuspendCtorDep() {
+      run("MemberInjectingClassWithSuspendCtorDep.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectingClassWithSuspendCtorDepFromBinary.kt")
+    public void testMemberInjectingClassWithSuspendCtorDepFromBinary() {
+      run("MemberInjectingClassWithSuspendCtorDepFromBinary.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectionOverSuspendBinding.kt")
+    public void testMemberInjectionOverSuspendBinding() {
+      run("MemberInjectionOverSuspendBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingRuntimeCoroutinesForNestedSuspendLazy.kt")
+    public void testMissingRuntimeCoroutinesForNestedSuspendLazy() {
+      run("MissingRuntimeCoroutinesForNestedSuspendLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction.kt")
+    public void testMissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction() {
+      run("MissingRuntimeCoroutinesForNestedSuspendLazyInInjectedFunction.kt");
+    }
+
+    @Test
+    @TestMetadata("MissingRuntimeCoroutinesForScopedBinding.kt")
+    public void testMissingRuntimeCoroutinesForScopedBinding() {
+      run("MissingRuntimeCoroutinesForScopedBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedCauseTransitiveSuspend.kt")
+    public void testMixedCauseTransitiveSuspend() {
+      run("MixedCauseTransitiveSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsIsNotAllowed.kt")
+    public void testMultibindsIsNotAllowed() {
+      run("MultibindsIsNotAllowed.kt");
+    }
+
+    @Test
+    @TestMetadata("ScalarMapMultibindingOverSuspendValues.kt")
+    public void testScalarMapMultibindingOverSuspendValues() {
+      run("ScalarMapMultibindingOverSuspendValues.kt");
+    }
+
+    @Test
+    @TestMetadata("SetMultibindingOverSuspendElements.kt")
+    public void testSetMultibindingOverSuspendElements() {
+      run("SetMultibindingOverSuspendElements.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProvidersDisabled.kt")
+    public void testSuspendProvidersDisabled() {
+      run("SuspendProvidersDisabled.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProvidersDisabledAcrossModules.kt")
+    public void testSuspendProvidersDisabledAcrossModules() {
+      run("SuspendProvidersDisabledAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("UnsupportedSuspendMapValue.kt")
+    public void testUnsupportedSuspendMapValue() {
+      run("UnsupportedSuspendMapValue.kt");
     }
   }
 }

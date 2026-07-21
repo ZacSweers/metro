@@ -7,13 +7,13 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.canBeInlined
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -31,10 +31,8 @@ import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -93,6 +91,7 @@ internal fun generateStaticCreateFunction(
   sourceFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   isAssistedInject: Boolean = false,
+  wrapInSuspendProvider: Boolean = false,
   stubDefaults: Boolean = true,
 ): IrSimpleFunction {
   val createFunction =
@@ -121,6 +120,7 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           stubDefaults = stubDefaults,
           typeRemapper = { type -> typeRemapper.remapType(type) },
+          wrapInSuspendProvider = wrapInSuspendProvider,
         )
         addHiddenFromObjCAnnotation(this)
         addStaticAnnotations(this)
@@ -246,6 +246,7 @@ internal fun generateStaticNewInstanceFunction(
   sourceParameters: List<IrValueParameter>,
   functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
+  isSuspend: Boolean = false,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
   val newInstanceFunction =
@@ -255,6 +256,7 @@ internal fun generateStaticNewInstanceFunction(
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
         origin = Origins.FactoryNewInstanceFunction,
+        isSuspend = isSuspend,
         // inline can only work if the target is visible
         isInline = targetFunction?.canBeInlined() == true,
       )
@@ -452,7 +454,12 @@ internal fun generateStubCreatorFunctions(
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(params, wrapInProvider = true, copyQualifiers = true)
+    addParameters(
+      params,
+      wrapInProvider = true,
+      copyQualifiers = true,
+      wrapInSuspendProvider = sourceFunction.isSuspend,
+    )
     addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
@@ -473,19 +480,22 @@ internal fun IrFunction.addParameters(
   copyQualifiers: Boolean = false,
   typeRemapper: ((IrType) -> IrType)? = null,
   stubDefaults: Boolean = true,
-  onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
+  /**
+   * Wrap non-dispatch-receiver params in `SuspendProvider<…>` instead of `Provider<…>`. Used when
+   * generating constructors / `create()` / etc. for a factory that backs a suspend `@Provides`, so
+   * the field type can be invoked from the suspend `invoke()` body and so the graph can pass a
+   * `SuspendProvider<…>` directly when the dep is itself suspend.
+   */
+  wrapInSuspendProvider: Boolean = false,
+  onParam: (Parameter, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
-        // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
-        // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
-        var stripped = param.contextualTypeKey
-        while (stripped.isWrapped) {
-          stripped = stripped.stripOuterProviderOrLazy()
-        }
-        stripped.wrapInProvider().toIrType()
+        val ctxKey = param.contextualTypeKey
+        val usesSuspendProvider = ctxKey.wrappedType.usesSuspendProvider(wrapInSuspendProvider)
+        ctxKey.asCanonicalProviderKey(usesSuspendProvider).toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }
@@ -522,6 +532,6 @@ internal fun IrFunction.addParameters(
           param.typeKey.qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }
       }
-      .also { onParam(param.typeKey, it) }
+      .also { onParam(param, it) }
   }
 }

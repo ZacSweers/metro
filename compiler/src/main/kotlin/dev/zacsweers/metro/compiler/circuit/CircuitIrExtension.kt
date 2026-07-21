@@ -101,6 +101,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 /** Generates Circuit factory class declarations before Metro's IR pipeline consumes them. */
 public class CircuitIrDeclarationGenerationExtension
 private constructor(
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -112,6 +113,7 @@ private constructor(
       compatContext: CompatContext,
     ): CircuitIrDeclarationGenerationExtension {
       return CircuitIrDeclarationGenerationExtension(
+        function0Types = classIds.function0Types,
         assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
         injectAnnotations = classIds.allInjectAnnotations,
         qualifierAnnotations = classIds.qualifierAnnotations,
@@ -124,6 +126,7 @@ private constructor(
     val targetResolver =
       CircuitIrFactoryTargetResolver(
         pluginContext = pluginContext,
+        function0Types = function0Types,
         assistedFactoryAnnotations = assistedFactoryAnnotations,
         injectAnnotations = injectAnnotations,
         qualifierAnnotations = qualifierAnnotations,
@@ -149,6 +152,7 @@ private constructor(
  */
 public class CircuitIrExtension(
   private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -162,6 +166,7 @@ public class CircuitIrExtension(
     ): CircuitIrExtension {
       return CircuitIrExtension(
         generateClassesInIr = generateClassesInIr,
+        function0Types = classIds.function0Types,
         assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
         injectAnnotations = classIds.allInjectAnnotations,
         qualifierAnnotations = classIds.qualifierAnnotations,
@@ -178,6 +183,7 @@ public class CircuitIrExtension(
     val targetResolver =
       CircuitIrFactoryTargetResolver(
         pluginContext = pluginContext,
+        function0Types = function0Types,
         assistedFactoryAnnotations = assistedFactoryAnnotations,
         injectAnnotations = injectAnnotations,
         qualifierAnnotations = qualifierAnnotations,
@@ -188,6 +194,7 @@ public class CircuitIrExtension(
         pluginContext = pluginContext,
         symbols = symbols,
         generateClassesInIr = generateClassesInIr,
+        function0Types = function0Types,
         targetResolver = targetResolver,
         compatContext = compatContext,
       )
@@ -197,6 +204,7 @@ public class CircuitIrExtension(
 
 private class CircuitIrFactoryTargetResolver(
   private val pluginContext: IrPluginContext,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -411,11 +419,7 @@ private class CircuitIrFactoryTargetResolver(
 
   private fun injectableParamType(paramType: IrType): IrType {
     val paramClassId = paramType.classOrNull?.owner?.classId
-    val isAlreadyWrapped =
-      paramClassId != null &&
-        (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-          paramClassId == Symbols.ClassIds.Lazy ||
-          paramClassId == Symbols.ClassIds.function0)
+    val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
     return if (isAlreadyWrapped) {
       paramType
     } else {
@@ -646,6 +650,7 @@ private class CircuitIrTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
   private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val targetResolver: CircuitIrFactoryTargetResolver,
   private val compatContext: CompatContext,
 ) : IrElementTransformerVoid(), CompatContext by compatContext {
@@ -910,11 +915,7 @@ private class CircuitIrTransformer(
           val field = fieldsByName[ctorParam.name] ?: continue
           val fieldGet = irGetField(irGet(thisReceiver), field)
           val paramClassId = ctorParam.type.classOrNull?.owner?.classId
-          val isAlreadyWrapped =
-            paramClassId != null &&
-              (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-                paramClassId == Symbols.ClassIds.Lazy ||
-                paramClassId == Symbols.ClassIds.function0)
+          val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
           arguments[ctorParam.indexInParameters] =
             if (isAlreadyWrapped) {
               fieldGet
@@ -1076,11 +1077,7 @@ private class CircuitIrTransformer(
         // If so, the field type matches and we pass it through without invoking.
         val paramType = param.type
         val paramClassId = paramType.classOrNull?.owner?.classId
-        val isAlreadyWrapped =
-          paramClassId != null &&
-            (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-              paramClassId == Symbols.ClassIds.Lazy ||
-              paramClassId == Symbols.ClassIds.function0)
+        val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
 
         val localVar =
           if (isAlreadyWrapped) {
@@ -1285,6 +1282,14 @@ private class CircuitIrTransformer(
     val screenIsObject: Boolean
       get() = screenClassSymbol.owner.kind == ClassKind.OBJECT
   }
+}
+
+private fun ClassId?.isCircuitProviderParameterType(function0Types: Set<ClassId>): Boolean {
+  val classId = this ?: return false
+  if (classId in Symbols.ClassIds.commonMetroProviders) return true
+  if (classId == Symbols.ClassIds.Lazy) return true
+  if (classId == Symbols.ClassIds.metroSuspendProvider) return true
+  return classId in function0Types
 }
 
 private data class CircuitIrConstructorParam(

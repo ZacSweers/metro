@@ -1,3 +1,12 @@
+class SharedDependency {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 @DependencyGraph
 interface AppGraph {
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
@@ -12,7 +21,7 @@ interface AppGraph {
     @Binds
     @IntoMap
     @IntKey(value = 3)
-    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 134, endOffset = 156)
+    @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 163, endOffset = 185)
     fun Int.bindInt4013004651_intomap(): Int {
       return error(message = "Never called")
     }
@@ -27,6 +36,9 @@ interface AppGraph {
 
     private val provideIntProvider: Provider<Int>
       field = ProvideIntMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
+
+    private val provideSharedDependencyProvider: Provider<SharedDependency>
+      field = ProvideSharedDependencyMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance)
 
     private constructor() /* primary */ {
       super/*Any*/()
@@ -52,6 +64,20 @@ interface AppGraph {
 )
       }
 
+    private val mapOfStringToString: Map<String, SuspendFunction0<String>>
+      private get(): Map<String, SuspendFunction0<String>> {
+        return buildMap<String, SuspendFunction0<String>>(capacity = 2, builderAction = local fun MutableMap<String, SuspendFunction0<String>>.<anonymous>() {
+          $receiver.put(key = "second", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideSecondMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
+          $receiver.put(key = "first", value = SyncSuspendProvider<String>(delegate = AppGraph.ProvideFirstMetroFactory/* companion */.create(instance = <this>.#thisGraphInstance, sharedDependency = <this>.#provideSharedDependencyProvider)))
+        }
+)
+      }
+
+    override val strings: Map<String, SuspendFunction0<String>>
+      override get(): Map<String, SuspendFunction0<String>> {
+        return <this>.<get-mapOfStringToString>()
+      }
+
   }
 
   companion object Companion {
@@ -71,7 +97,57 @@ interface AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 69, endOffset = 104, newInstanceName = "provideInt")
+  @CallableMetadata(callableName = "provideFirst", propertyName = "", startOffset = 271, endOffset = 382, newInstanceName = "provideFirst")
+  class ProvideFirstMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, sharedDependency: Provider<SharedDependency>): ProvideFirstMetroFactory {
+        return ProvideFirstMetroFactory(instance = instance, sharedDependency = sharedDependency)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideFirst(instance: AppGraph, sharedDependency: SharedDependency): String {
+        return instance.provideFirst(sharedDependency = sharedDependency)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, sharedDependency: Provider<SharedDependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideFirstMetroFactory/* companion */.provideFirst(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
+    }
+
+    @IntoMap
+    @StringKey(value = "first")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(sharedDependency: SharedDependency): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideInt", propertyName = "", startOffset = 98, endOffset = 133, newInstanceName = "provideInt")
   class ProvideIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
@@ -117,6 +193,103 @@ interface AppGraph {
 
   }
 
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideSecond", propertyName = "", startOffset = 386, endOffset = 500, newInstanceName = "provideSecond")
+  class ProvideSecondMetroFactory : Factory<String> {
+    private /* final field */ val instance: AppGraph = instance
+    private /* final field */ val sharedDependency: Provider<SharedDependency> = sharedDependency
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph, sharedDependency: Provider<SharedDependency>): ProvideSecondMetroFactory {
+        return ProvideSecondMetroFactory(instance = instance, sharedDependency = sharedDependency)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideSecond(instance: AppGraph, sharedDependency: SharedDependency): String {
+        return instance.provideSecond(sharedDependency = sharedDependency)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph, sharedDependency: Provider<SharedDependency>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideSecondMetroFactory/* companion */.provideSecond(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
+    }
+
+    @IntoMap
+    @StringKey(value = "second")
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(sharedDependency: SharedDependency): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideSharedDependency", propertyName = "", startOffset = 189, endOffset = 267, newInstanceName = "provideSharedDependency")
+  class ProvideSharedDependencyMetroFactory : Factory<SharedDependency> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideSharedDependencyMetroFactory {
+        return ProvideSharedDependencyMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideSharedDependency(instance: AppGraph): SharedDependency {
+        return instance.provideSharedDependency()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SharedDependency {
+      return ProvideSharedDependencyMetroFactory/* companion */.provideSharedDependency(instance = <this>.#instance)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): SharedDependency {
+      return error(message = "Never called")
+    }
+
+  }
+
   @Binds
   @IntoMap
   @IntKey(value = 3)
@@ -126,14 +299,36 @@ interface AppGraph {
   }
 
   @Provides
+  @IntoMap
+  @StringKey(value = "first")
+  fun provideFirst(sharedDependency: SharedDependency): String {
+    return "first"
+  }
+
+  @Provides
   fun provideInt(): Int {
     return 3
+  }
+
+  @Provides
+  @IntoMap
+  @StringKey(value = "second")
+  fun provideSecond(sharedDependency: SharedDependency): String {
+    return "second"
+  }
+
+  @Provides
+  fun provideSharedDependency(): SharedDependency {
+    return SharedDependency()
   }
 
   abstract val int: Function0<Int>
     abstract get
 
   abstract val ints: Map<Int, Function0<Int>>
+    abstract get
+
+  abstract val strings: Map<String, SuspendFunction0<String>>
     abstract get
 
 }

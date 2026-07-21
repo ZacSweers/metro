@@ -39,7 +39,7 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
   override val value: Map<K, Provider<V>> = invoke()
 
   /** A builder for [MapProviderFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) :
+  public class Builder<K : Any, V> internal constructor(size: Int) :
     AbstractMapFactory.Builder<K, V, Provider<V>>(size) {
     public override fun put(key: K, providerOfValue: Provider<V>): Builder<K, V> = apply {
       super.put(key, providerOfValue)
@@ -58,7 +58,7 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
@@ -66,7 +66,7 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
     @JvmStatic
     @JsStatic
     @Suppress("UNCHECKED_CAST")
-    public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<V>>> =
+    public fun <K : Any, V> empty(): Provider<Map<K, Provider<V>>> =
       EMPTY as Provider<Map<K, Provider<V>>>
 
     /**
@@ -76,14 +76,14 @@ private constructor(contributingMap: Map<K, Provider<V>>) :
      */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> singleton(
+    public fun <K : Any, V> singleton(
       key: K,
       provider: Provider<V>,
     ): Factory<Map<K, Provider<V>>> = SingletonMapProviderFactory(key, provider)
   }
 }
 
-private class SingletonMapProviderFactory<K : Any, V : Any>(key: K, provider: Provider<V>) :
+private class SingletonMapProviderFactory<K : Any, V>(key: K, provider: Provider<V>) :
   Factory<Map<K, Provider<V>>> {
   private val map: Map<K, Provider<V>> = SingletonMap(key, provider)
 
