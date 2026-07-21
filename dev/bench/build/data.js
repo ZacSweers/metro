@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784663815151,
+  "lastUpdate": 1784666560906,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19208,6 +19208,62 @@ window.BENCHMARK_DATA = {
             "value": 21088.412,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.59%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "03858e38~1",
+          "message": "[before] Couple small suspend providers followups (#2569)",
+          "timestamp": "2026-07-21T20:10:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/03858e387b666ff8de9a7d6fc7004015136af0d5"
+        },
+        "date": 1784666560906,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21079.502,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "03858e387b666ff8de9a7d6fc7004015136af0d5",
+          "message": "[after] Couple small suspend providers followups (#2569)",
+          "timestamp": "2026-07-21T20:10:24Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/03858e387b666ff8de9a7d6fc7004015136af0d5"
+        },
+        "date": 1784666560907,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20195.756,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.19%"
           }
         ]
       }
