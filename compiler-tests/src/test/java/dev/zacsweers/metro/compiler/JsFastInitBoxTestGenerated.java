@@ -2743,6 +2743,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateSuspendProvidesInOtherModule.kt")
+    public void testPrivateSuspendProvidesInOtherModule() {
+      run("PrivateSuspendProvidesInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidedWithSuspendDep.kt")
     public void testProvidedWithSuspendDep() {
       run("ProvidedWithSuspendDep.kt");

@@ -338,6 +338,7 @@ internal fun generateMetadataVisibleMirrorFunction(
         name = Symbols.Names.mirrorFunction
         this.returnType = returnType
         this.isInline = target?.canBeInlined() == true
+        this.isSuspend = target is IrSimpleFunction && target.isSuspend
       }
       .apply {
         val typeSubstitution =
@@ -466,6 +467,7 @@ internal fun generateStubCreatorFunctions(
 
   // Named function (e.g., "provideImplAsBase")
   creatorClass.addFunction(callableName, returnType).apply {
+    isSuspend = sourceFunction.isSuspend
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
     addParameters(params, wrapInProvider = false, copyQualifiers = true)
     addStaticAnnotations(this)

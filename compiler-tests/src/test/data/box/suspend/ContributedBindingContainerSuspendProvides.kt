@@ -1,13 +1,15 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// A @ContributesTo binding container with a suspend @Provides, merged into a graph and accessed
-// through a suspend accessor.
+// A scoped suspend @Provides in an upstream contributed container. Scoping forces the downstream
+// graph to store a provider field, so it must retain the function's suspend metadata.
 
 // MODULE: lib
 @BindingContainer
 @ContributesTo(AppScope::class)
 object DatabaseContainer {
-  @Provides suspend fun provideDatabase(): String = "db"
+  @Provides
+  @SingleIn(AppScope::class)
+  suspend fun provideDatabase(): String = "db"
 }
 
 // MODULE: main(lib)
