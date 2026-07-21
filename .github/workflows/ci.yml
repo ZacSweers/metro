@@ -72,7 +72,50 @@ jobs:
           echo "default_kotlin_version=$default_kotlin_version" >> "$GITHUB_OUTPUT"
 
   core:
-    name: "core artifacts / ${{ matrix.kotlin-compiler }}"
+    name: core artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Keep one Linux Gradle cache writer on main.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan: true
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Check root project
+        run: |
+          ./scripts/run-ci-gradle.sh check --continue --quiet \
+            -x :compiler:test \
+            -x :compiler-tests:test \
+            -x :gradle-plugin:functionalTest \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-core
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - core'
+
+  compatibility:
+    name: "compiler compatibility / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
     needs: generate-matrix
     timeout-minutes: 40
@@ -90,27 +133,41 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Keep one Linux Gradle cache writer, using the repository's default Kotlin version.
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler != needs.generate-matrix.outputs.default_kotlin_version }}
+          cache-read-only: true
+          # NativeICTests runs independently of the JVM-only parameterized IC tests. Preserve its
+          # per-version toolchain coverage while avoiding a second writer for the default version.
           konan: true
-          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version }}
           kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
 
-      - name: Check root project
+      - name: Generate compiler tests
+        id: generate_tests
         run: |
-          # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
-          echo "Generating tests..."
-          ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "Running checks..."
-          # metro.functionalTestKmpTarget=jvm scopes IC test parameterization to JVM only here. The
-          # kmp-functional job (main only) fans the remaining targets out into parallel runners.
-          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.excludeJsBoxTests -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            -Pmetro.excludeJsBoxTests \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test compiler
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            -Pmetro.excludeJsBoxTests \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test Gradle plugin
+        if: ${{ !cancelled() && steps.generate_tests.outcome == 'success' }}
+        run: |
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            -Pmetro.functionalTestKmpTarget=jvm \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-core-${{ matrix.kotlin-compiler }}
+          name: reports-compatibility-${{ matrix.kotlin-compiler }}
           path: |
             **/build/reports/**
 
@@ -119,7 +176,7 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
+          check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
 
   js-box:
     name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
@@ -174,8 +231,8 @@ jobs:
 
   # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner so
   # the slow IC test classes (BindingContainerICTests, ICTests, GenerateContributionProvidersICTests)
-  # parallelize across targets instead of serializing inside one job. PR/branch runs stay JVM-only
-  # via the `core` job above.
+  # parallelize across targets instead of serializing inside one job. The `compatibility` job keeps
+  # these parameterized tests JVM-only on PR/branch runs.
   kmp-functional:
     name: ${{ format('kmp functional / {0}{1}', matrix.target, github.ref != 'refs/heads/main' && ' (skipped)' || '') }}
     runs-on: ubuntu-latest
@@ -394,7 +451,9 @@ jobs:
     runs-on: ubuntu-slim
     needs:
       - format
+      - generate-matrix
       - core
+      - compatibility
       - js-box
       - kmp-functional
       - benchmarks
