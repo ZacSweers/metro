@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784666560906,
+  "lastUpdate": 1784670543959,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19264,6 +19264,62 @@ window.BENCHMARK_DATA = {
             "value": 20195.756,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.19%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b504c0f3~1",
+          "message": "[before] Propagate suspend in factories (#2572)",
+          "timestamp": "2026-07-21T21:17:46Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b504c0f3dd748bd9bad871c35c55dc370633cab1"
+        },
+        "date": 1784670543959,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19515.906,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b504c0f3dd748bd9bad871c35c55dc370633cab1",
+          "message": "[after] Propagate suspend in factories (#2572)",
+          "timestamp": "2026-07-21T21:17:46Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b504c0f3dd748bd9bad871c35c55dc370633cab1"
+        },
+        "date": 1784670543960,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19212.506,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.55%"
           }
         ]
       }
