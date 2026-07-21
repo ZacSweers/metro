@@ -2492,144 +2492,93 @@
 <h2 id="assistedfactorysuspendrequired">AssistedFactorySuspendRequired<a class="headerlink" href="#assistedfactorysuspendrequired" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/AssistedFactorySuspendRequired</code></p>
 <p><strong>Summary:</strong> An assisted factory creates a target that depends on suspend bindings.</p>
-<p>An <code>@AssistedFactory</code> creates a type whose non-assisted dependencies include suspend bindings.<br />
-The factory function must await them. Declare the factory function as a <code>suspend</code> function so the<br />
-generated implementation can await the suspend dependencies.</p>
+<p>An <code>@AssistedFactory</code> creates a type whose non-assisted dependencies include suspend bindings. The factory function must await them. Declare the factory function as a <code>suspend</code> function so the generated implementation can await the suspend dependencies.</p>
 <h2 id="dependencycycle">DependencyCycle<a class="headerlink" href="#dependencycycle" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DependencyCycle</code></p>
 <p><strong>Summary:</strong> A binding cycle has no deferred edge.</p>
-<p>Bindings depend on each other in a loop where every dependency is needed immediately. Break the<br />
-cycle by changing one edge to a deferred type such as <code>() -&gt; T</code> or <code>Lazy&lt;T&gt;</code>, which delays<br />
-initialization until first use. If the cycle is between graphs that extend or depend on each<br />
-other, restructure the graph relationship instead.</p>
+<p>Bindings depend on each other in a loop where every dependency is needed immediately. Break the cycle by changing one edge to a deferred type such as <code>() -&gt; T</code> or <code>Lazy&lt;T&gt;</code>, which delays initialization until first use. If the cycle is between graphs that extend or depend on each other, restructure the graph relationship instead.</p>
 <h2 id="duplicatebinding">DuplicateBinding<a class="headerlink" href="#duplicatebinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DuplicateBinding</code></p>
 <p><strong>Summary:</strong> Multiple bindings match the same type key.</p>
-<p>Two or more bindings resolve to the same type and qualifier. Each conflicting declaration is<br />
-listed with its location. Remove all but one, give them distinct qualifiers, or annotate them<br />
-with <code>@IntoSet</code>/<code>@IntoMap</code> if the bindings are meant to contribute to a collection.</p>
+<p>Two or more bindings resolve to the same type and qualifier. Each conflicting declaration is listed with its location. Remove all but one, give them distinct qualifiers, or annotate them with <code>@IntoSet</code>/<code>@IntoMap</code> if the bindings are meant to contribute to a collection.</p>
 <h2 id="duplicatemapkeys">DuplicateMapKeys<a class="headerlink" href="#duplicatemapkeys" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/DuplicateMapKeys</code></p>
 <p><strong>Summary:</strong> Multiple map contributions use the same key.</p>
-<p>Two <code>@IntoMap</code> contributions declare the same key for the same map binding. Each map key may<br />
-only be contributed once. Change one key or remove the duplicate contribution.</p>
+<p>Two <code>@IntoMap</code> contributions declare the same key for the same map binding. Each map key may only be contributed once. Change one key or remove the duplicate contribution.</p>
 <h2 id="emptymultibinding">EmptyMultibinding<a class="headerlink" href="#emptymultibinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/EmptyMultibinding</code></p>
 <p><strong>Summary:</strong> A declared multibinding has no contributions.</p>
-<p>A <code>Set</code> or <code>Map</code> multibinding is declared or requested, but no binding contributes to it. If an<br />
-empty collection is valid, declare it with <code>@Multibinds(allowEmpty = true)</code>. Otherwise check that<br />
-the intended contributions target the same collection type, qualifier, and graph scope. When<br />
-Metro finds a near match, the report lists it as a similar multibinding.</p>
+<p>A <code>Set</code> or <code>Map</code> multibinding is declared or requested, but no binding contributes to it. If an empty collection is valid, declare it with <code>@Multibinds(allowEmpty = true)</code>. Otherwise check that the intended contributions target the same collection type, qualifier, and graph scope. When Metro finds a near match, the report lists it as a similar multibinding.</p>
 <h2 id="error">Error<a class="headerlink" href="#error" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/Error</code></p>
 <p><strong>Summary:</strong> A general Metro graph validation error.</p>
-<p>Metro reported a graph validation error that does not have a dedicated diagnostic ID. The<br />
-diagnostic message contains the specific failure and any available fix guidance.</p>
+<p>Metro reported a graph validation error that does not have a dedicated diagnostic ID. The diagnostic message contains the specific failure and any available fix guidance.</p>
 <h2 id="incompatibleoverrides">IncompatibleOverrides<a class="headerlink" href="#incompatibleoverrides" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/IncompatibleOverrides</code></p>
 <p><strong>Summary:</strong> Merged declarations conflict in their binding roles.</p>
-<p>Declarations merged into a graph have the same signature but incompatible Metro annotations or<br />
-binding roles. For example, one declaration may be an accessor while another is an <code>@Provides</code><br />
-function. Align the declarations or rename one of the members.</p>
+<p>Declarations merged into a graph have the same signature but incompatible Metro annotations or binding roles. For example, one declaration may be an accessor while another is an <code>@Provides</code> function. Align the declarations or rename one of the members.</p>
 <h2 id="incompatiblereturntypes">IncompatibleReturnTypes<a class="headerlink" href="#incompatiblereturntypes" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/IncompatibleReturnTypes</code></p>
 <p><strong>Summary:</strong> Merged declarations have incompatible return types.</p>
-<p>Declarations merged into a graph override each other but return incompatible types. This can<br />
-happen with members inherited from contributed supertypes. Make the return types compatible or<br />
-rename one of the members so they no longer override each other.</p>
+<p>Declarations merged into a graph override each other but return incompatible types. This can happen with members inherited from contributed supertypes. Make the return types compatible or rename one of the members so they no longer override each other.</p>
 <h2 id="incompatiblyscopedbindings">IncompatiblyScopedBindings<a class="headerlink" href="#incompatiblyscopedbindings" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/IncompatiblyScopedBindings</code></p>
 <p><strong>Summary:</strong> A graph uses bindings with incompatible scopes.</p>
-<p>A graph references a scoped binding without declaring that scope, or an unscoped graph<br />
-references a scoped binding. Add the binding&rsquo;s scope to the graph&rsquo;s <code>@SingleIn</code>/scope<br />
-annotations, move the binding to a graph that declares the scope, or remove the binding&rsquo;s scope.</p>
+<p>A graph references a scoped binding without declaring that scope, or an unscoped graph references a scoped binding. Add the binding&rsquo;s scope to the graph&rsquo;s <code>@SingleIn</code>/scope annotations, move the binding to a graph that declares the scope, or remove the binding&rsquo;s scope.</p>
 <h2 id="invalidbinding">InvalidBinding<a class="headerlink" href="#invalidbinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/InvalidBinding</code></p>
 <p><strong>Summary:</strong> A binding declaration uses an unsupported form.</p>
-<p>A binding is requested in a way its declaration does not support. The most common case is<br />
-injecting an assisted-injected class directly. Inject its <code>@AssistedFactory</code> instead and call the<br />
-factory&rsquo;s <code>create()</code> function.</p>
+<p>A binding is requested in a way its declaration does not support. The most common case is injecting an assisted-injected class directly. Inject its <code>@AssistedFactory</code> instead and call the factory&rsquo;s <code>create()</code> function.</p>
 <h2 id="memberinjectionoversuspendbinding">MemberInjectionOverSuspendBinding<a class="headerlink" href="#memberinjectionoversuspendbinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/MemberInjectionOverSuspendBinding</code></p>
 <p><strong>Summary:</strong> Member injection depends on a suspend binding.</p>
-<p>A member-injected dependency resolves to a suspend binding, but member injection runs without a<br />
-suspend context and cannot await it. Defer the dependency as <code>suspend () -&gt; T</code> (or<br />
-<code>SuspendLazy&lt;T&gt;</code>) so the member holds a deferred value instead.</p>
+<p>A member-injected dependency resolves to a suspend binding, but member injection runs without a suspend context and cannot await it. Defer the dependency as <code>suspend () -&gt; T</code> (or <code>SuspendLazy&lt;T&gt;</code>) so the member holds a deferred value instead.</p>
 <h2 id="missingbinding">MissingBinding<a class="headerlink" href="#missingbinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/MissingBinding</code></p>
 <p><strong>Summary:</strong> No binding satisfies a requested type.</p>
-<p>A graph accessor, injected constructor parameter, or injected member requests a type that no<br />
-visible binding provides. The report includes the dependency path that led to the request and<br />
-any similar bindings Metro found, such as the same type with a different qualifier, nullability,<br />
-subtype/supertype relationship, or multibinding.</p>
-<p>Add an <code>@Inject</code> constructor, an <code>@Provides</code> function, or a <code>@Binds</code>/contributed binding visible<br />
-to the graph that requests the type.</p>
+<p>A graph accessor, injected constructor parameter, or injected member requests a type that no visible binding provides. The report includes the dependency path that led to the request and any similar bindings Metro found, such as the same type with a different qualifier, nullability, subtype/supertype relationship, or multibinding.</p>
+<p>Add an <code>@Inject</code> constructor, an <code>@Provides</code> function, or a <code>@Binds</code>/contributed binding visible to the graph that requests the type.</p>
 <h2 id="missingruntimecoroutines">MissingRuntimeCoroutines<a class="headerlink" href="#missingruntimecoroutines" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/MissingRuntimeCoroutines</code></p>
 <p><strong>Summary:</strong> Suspend codegen needs the optional runtime-coroutines artifact.</p>
-<p>A binding or request needs runtime support from the optional <code>runtime-coroutines</code> artifact, such<br />
-as a scoped suspend binding or a <code>SuspendLazy&lt;T&gt;</code> request, but that artifact is not on the<br />
-classpath. Add <code>dev.zacsweers.metro:runtime-coroutines</code> to the compile and runtime classpath.</p>
+<p>A binding or request needs runtime support from the optional <code>runtime-coroutines</code> artifact, such as a scoped suspend binding or a <code>SuspendLazy&lt;T&gt;</code> request, but that artifact is not on the classpath. Add <code>dev.zacsweers.metro:runtime-coroutines</code> to the compile and runtime classpath.</p>
 <h2 id="multibindingoversuspendbindings">MultibindingOverSuspendBindings<a class="headerlink" href="#multibindingoversuspendbindings" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/MultibindingOverSuspendBindings</code></p>
 <p><strong>Summary:</strong> A multibinding aggregates suspend bindings.</p>
-<p>A <code>Set</code> or <code>Map</code> multibinding aggregates suspend contributions. Aggregation code runs without a<br />
-suspend context and cannot await each element. Set multibindings over suspend bindings are<br />
-unsupported. A map multibinding must be consumed as a deferred-value form such as<br />
-<code>Map&lt;K, suspend () -&gt; V&gt;</code> or <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> so each value is initialized only when<br />
-its provider is invoked.</p>
+<p>A <code>Set</code> or <code>Map</code> multibinding aggregates suspend contributions. Aggregation code runs without a suspend context and cannot await each element. Set multibindings over suspend bindings are unsupported. A map multibinding must be consumed as a deferred-value form such as <code>Map&lt;K, suspend () -&gt; V&gt;</code> or <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> so each value is initialized only when its provider is invoked.</p>
 <h2 id="qualifieroverridemismatch">QualifierOverrideMismatch<a class="headerlink" href="#qualifieroverridemismatch" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/QualifierOverrideMismatch</code></p>
 <p><strong>Summary:</strong> An override changes the qualifiers on a declaration.</p>
-<p>Qualifier annotations are not inherited. An override with different or missing qualifiers<br />
-resolves a different binding than the declaration it overrides. Declare the same qualifiers on<br />
-the override and the overridden declaration.</p>
+<p>Qualifier annotations are not inherited. An override with different or missing qualifiers resolves a different binding than the declaration it overrides. Declare the same qualifiers on the override and the overridden declaration.</p>
 <h2 id="suspendbindingfromnonsuspendaccessor">SuspendBindingFromNonSuspendAccessor<a class="headerlink" href="#suspendbindingfromnonsuspendaccessor" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/SuspendBindingFromNonSuspendAccessor</code></p>
 <p><strong>Summary:</strong> A non-suspend accessor requests a binding that needs a suspend context.</p>
-<p>An accessor returns a type that transitively depends on suspend bindings, so resolving it<br />
-requires awaiting them. A non-suspend accessor cannot do that. Mark the accessor as<br />
-<code>suspend fun</code>, or change its return type to a deferred form such as <code>suspend () -&gt; T</code> or<br />
-<code>SuspendProvider&lt;T&gt;</code>.</p>
+<p>An accessor returns a type that transitively depends on suspend bindings, so resolving it requires awaiting them. A non-suspend accessor cannot do that. Mark the accessor as <code>suspend fun</code>, or change its return type to a deferred form such as <code>suspend () -&gt; T</code> or <code>SuspendProvider&lt;T&gt;</code>.</p>
 <h2 id="suspendbindingwrappedinlazy">SuspendBindingWrappedInLazy<a class="headerlink" href="#suspendbindingwrappedinlazy" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/SuspendBindingWrappedInLazy</code></p>
 <p><strong>Summary:</strong> A suspend binding is requested through a synchronous <code>Lazy</code>.</p>
-<p>A suspend binding is wrapped in a synchronous <code>Lazy</code>. <code>Lazy</code> resolves its value without a suspend<br />
-context and cannot await the binding. Use <code>SuspendLazy&lt;T&gt;</code> instead.</p>
+<p>A suspend binding is wrapped in a synchronous <code>Lazy</code>. <code>Lazy</code> resolves its value without a suspend context and cannot await the binding. Use <code>SuspendLazy&lt;T&gt;</code> instead.</p>
 <h2 id="suspendbindingwrappedinprovider">SuspendBindingWrappedInProvider<a class="headerlink" href="#suspendbindingwrappedinprovider" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/SuspendBindingWrappedInProvider</code></p>
 <p><strong>Summary:</strong> A suspend binding is requested through a synchronous <code>Provider</code>.</p>
-<p>A suspend binding is wrapped in a synchronous <code>Provider</code> (or <code>() -&gt; T</code>). That wrapper resolves<br />
-its value without a suspend context and cannot await the binding. Use the deferred suspend form<br />
-<code>suspend () -&gt; T</code> (or <code>SuspendProvider&lt;T&gt;</code>) instead.</p>
+<p>A suspend binding is wrapped in a synchronous <code>Provider</code> (or <code>() -&gt; T</code>). That wrapper resolves its value without a suspend context and cannot await the binding. Use the deferred suspend form <code>suspend () -&gt; T</code> (or <code>SuspendProvider&lt;T&gt;</code>) instead.</p>
 <h2 id="suspendprovidersnotenabled">SuspendProvidersNotEnabled<a class="headerlink" href="#suspendprovidersnotenabled" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/SuspendProvidersNotEnabled</code></p>
 <p><strong>Summary:</strong> A suspend binding is used while suspend providers are disabled.</p>
-<p>A binding is provided by a <code>suspend</code> function, but suspend provider support is turned off. Enable<br />
-the <code>enable-suspend-providers</code> compiler option or set <code>metro.enableSuspendProviders</code> to true.<br />
-Otherwise make the provider non-suspend.</p>
+<p>A binding is provided by a <code>suspend</code> function, but suspend provider support is turned off. Enable the <code>enable-suspend-providers</code> compiler option or set <code>metro.enableSuspendProviders</code> to true. Otherwise make the provider non-suspend.</p>
 <h2 id="suspiciousunusedmultibinding">SuspiciousUnusedMultibinding<a class="headerlink" href="#suspiciousunusedmultibinding" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/SuspiciousUnusedMultibinding</code></p>
 <p><strong>Summary:</strong> A multibinding has contributions but is never requested.</p>
-<p>Contributions exist for a multibinding that nothing in the graph requests. This usually means<br />
-the contributions target the wrong collection type, qualifier, or graph scope. The report lists<br />
-the unused contributions and any child graph scopes where the multibinding is requested.</p>
+<p>Contributions exist for a multibinding that nothing in the graph requests. This usually means the contributions target the wrong collection type, qualifier, or graph scope. The report lists the unused contributions and any child graph scopes where the multibinding is requested.</p>
 <h2 id="unprocessedupstreamdeclaration">UnprocessedUpstreamDeclaration<a class="headerlink" href="#unprocessedupstreamdeclaration" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/UnprocessedUpstreamDeclaration</code></p>
 <p><strong>Summary:</strong> An upstream declaration does not appear to have been processed by Metro.</p>
-<p>Metro was asked to use an injected declaration from another module or compilation unit, but that<br />
-declaration does not appear to have been processed by Metro. This usually means Metro was<br />
-enabled only in the downstream module while the referenced declaration lives upstream.</p>
-<p>Enable Metro in the upstream module too. If this happens while using framework interop, make<br />
-sure the upstream module also runs that framework&rsquo;s code generation when Metro relies on its<br />
-generated code.</p>
+<p>Metro was asked to use an injected declaration from another module or compilation unit, but that declaration does not appear to have been processed by Metro. This usually means Metro was enabled only in the downstream module while the referenced declaration lives upstream.</p>
+<p>Enable Metro in the upstream module too. If this happens while using framework interop, make sure the upstream module also runs that framework&rsquo;s code generation when Metro relies on its generated code.</p>
 <h2 id="unusedgraphinputs">UnusedGraphInputs<a class="headerlink" href="#unusedgraphinputs" title="Permanent link">&para;</a></h2>
 <p><strong>Diagnostic:</strong> <code>Metro/UnusedGraphInputs</code></p>
 <p><strong>Summary:</strong> A graph input is unused and can be removed.</p>
-<p>A graph factory parameter, included graph, or binding container is never used by any binding in<br />
-the graph. Remove it. If a binding container is present only to expose other containers, include<br />
-the used containers directly. Configure this diagnostic with the <code>unusedGraphInputsSeverity</code><br />
-Gradle option.</p>
+<p>A graph factory parameter, included graph, or binding container is never used by any binding in the graph. Remove it. If a binding container is present only to expose other containers, include the used containers directly. Configure this diagnostic with the <code>unusedGraphInputsSeverity</code> Gradle option.</p>
 
 
 

@@ -2900,12 +2900,9 @@
 <li>Private <code>@Provides</code> and <code>@Binds</code> bindings <strong>may not</strong> be exposed directly via an accessor.</li>
 <li>The binding <strong>will not</strong> be visible to extensions of this graph.</li>
 </ul>
-<p>Private bindings <em>may</em> be depended on by other bindings within the same graph as an implementation detail.<br />
-<code>@GraphPrivate @Multibinds</code> declarations may also be requested from the graph that declares them;<br />
-the privacy boundary only prevents them from being inherited by extensions.</p>
+<p>Private bindings <em>may</em> be depended on by other bindings within the same graph as an implementation detail. <code>@GraphPrivate @Multibinds</code> declarations may also be requested from the graph that declares them; the privacy boundary only prevents them from being inherited by extensions.</p>
 <h4 id="private-implementation-bindings">Private Implementation Bindings<a class="headerlink" href="#private-implementation-bindings" title="Permanent link">&para;</a></h4>
-<p>Use <code>@GraphPrivate</code> when a binding should be available as an implementation detail of its graph,<br />
-but should not become part of that graph&rsquo;s public accessor surface or extension surface.</p>
+<p>Use <code>@GraphPrivate</code> when a binding should be available as an implementation detail of its graph, but should not become part of that graph&rsquo;s public accessor surface or extension surface.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">ApiService</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">)</span>
 
@@ -2930,9 +2927,7 @@ but should not become part of that graph&rsquo;s public accessor surface or exte
 <span class="p">}</span>
 </code></pre></div>
 <h4 id="same-typed-scoped-bindings">Same-typed Scoped Bindings<a class="headerlink" href="#same-typed-scoped-bindings" title="Permanent link">&para;</a></h4>
-<p><code>@GraphPrivate</code> is also useful when parent and child graphs both provide the same scoped type. The<br />
-private binding remains available inside the graph that provides it, so consumers can request the<br />
-plain type without qualifiers that only exist to distinguish graph ownership.</p>
+<p><code>@GraphPrivate</code> is also useful when parent and child graphs both provide the same scoped type. The private binding remains available inside the graph that provides it, so consumers can request the plain type without qualifiers that only exist to distinguish graph ownership.</p>
 <p>Compare a qualifier-based version with the same graph-local binding expressed with <code>@GraphPrivate</code>:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="with-qualifiers" name="__tabbed_1" type="radio" /><input id="with-graphprivate" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="with-qualifiers">With qualifiers</label><label for="with-graphprivate">With @GraphPrivate</label></div>
 <div class="tabbed-content">
@@ -2999,10 +2994,7 @@ plain type without qualifiers that only exist to distinguish graph ownership.</p
 </div>
 </div>
 <h4 id="graph-private-multibindings">Graph-private Multibindings<a class="headerlink" href="#graph-private-multibindings" title="Permanent link">&para;</a></h4>
-<p>Graph-local multibindings use the same pattern, but the private binding is the collection declaration<br />
-plus its local contributions. This is useful for graph-local registries such as menu actions,<br />
-navigation entries, or feature handlers. You can leave individual contributions public when they<br />
-should continue to be visible to extensions.</p>
+<p>Graph-local multibindings use the same pattern, but the private binding is the collection declaration plus its local contributions. This is useful for graph-local registries such as menu actions, navigation entries, or feature handlers. You can leave individual contributions public when they should continue to be visible to extensions.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">MenuAction</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">label</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
 
 <span class="nd">@Inject</span>
@@ -3279,10 +3271,8 @@ should continue to be visible to extensions.</p>
 <li>All containers must be instances (or objects) of <em>binding containers</em>.</li>
 <li>It&rsquo;s an error to pass no containers.</li>
 <li>All containers must be non-local, canonical classes. i.e., they must be something with a name!</li>
-<li>This overload may be called in a member function body, top-level function body, or property<br />
-  initializer.</li>
-<li>The target [T] graph <em>must</em> be annotated with <code>@DependencyGraph</code> and must be a<br />
-  valid graph on its own.</li>
+<li>This overload may be called in a member function body, top-level function body, or property initializer.</li>
+<li>The target [T] graph <em>must</em> be annotated with <code>@DependencyGraph</code> and must be a valid graph on its own.</li>
 </ul>
 <details class="note">
 <summary>Implementation Notes</summary>

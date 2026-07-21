@@ -3053,47 +3053,40 @@
 </table>
 <h2 id="reading-the-analysis">Reading the Analysis<a class="headerlink" href="#reading-the-analysis" title="Permanent link">&para;</a></h2>
 <h3 id="understanding-graph-structure">Understanding Graph Structure<a class="headerlink" href="#understanding-graph-structure" title="Permanent link">&para;</a></h3>
-<p><strong>Entry points (roots):</strong><br />
-The graph&rsquo;s entry points are tracked in the <code>roots</code> metadata object, separate from binding dependencies. This includes:</p>
+<p><strong>Entry points (roots):</strong> The graph&rsquo;s entry points are tracked in the <code>roots</code> metadata object, separate from binding dependencies. This includes:</p>
 <ul>
 <li><strong>Accessors</strong> - Properties on the graph interface that expose bindings (e.g., <code>val serviceA: ServiceA</code>)</li>
 <li><strong>Injectors</strong> - Functions that inject dependencies into targets (e.g., <code>fun inject(target: Activity)</code>)</li>
 </ul>
 <p>Light blue edges from the main graph (diamond) show these entry points—your graph&rsquo;s public API. The analysis infrastructure creates edges from the graph to accessor targets when building the graph structure.</p>
-<p><strong>Graph extensions:</strong><br />
-Rounded rectangle nodes show <code>@GraphExtension</code> types. Extension information is tracked in the <code>extensions</code> metadata object:</p>
+<p><strong>Graph extensions:</strong> Rounded rectangle nodes show <code>@GraphExtension</code> types. Extension information is tracked in the <code>extensions</code> metadata object:</p>
 <ul>
 <li><strong>accessors</strong> - Non-factory extension accessors</li>
 <li><strong>factoryAccessors</strong> - Factory accessors that create extension instances</li>
 <li><strong>factoriesImplemented</strong> - Factory interfaces this graph implements</li>
 </ul>
 <p>Magenta dashed edges indicate which scoped bindings extensions inherit from the parent graph.</p>
-<p><strong>Binding flow:</strong><br />
-Follow edges from entry points inward to understand how dependencies are resolved. The direction of arrows shows the &ldquo;depends on&rdquo; relationship.</p>
+<p><strong>Binding flow:</strong> Follow edges from entry points inward to understand how dependencies are resolved. The direction of arrows shows the &ldquo;depends on&rdquo; relationship.</p>
 <h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>
 <h3 id="identifying-issues">Identifying Issues<a class="headerlink" href="#identifying-issues" title="Permanent link">&para;</a></h3>
-<p><strong>Deep dependency chains:</strong><br />
-Use &ldquo;Show Longest Path&rdquo; to find the deepest dependency chain. Very long paths may indicate:</p>
+<p><strong>Deep dependency chains:</strong> Use &ldquo;Show Longest Path&rdquo; to find the deepest dependency chain. Very long paths may indicate:</p>
 <ul>
 <li>Overly coupled code</li>
 <li>Missing abstractions</li>
 <li>Opportunities to defer dependencies with <code>Provider</code>/<code>Lazy</code></li>
 </ul>
-<p><strong>Too many scoped bindings:</strong><br />
-Filter to &ldquo;Show only scoped bindings&rdquo;. If you have many scoped bindings:</p>
+<p><strong>Too many scoped bindings:</strong> Filter to &ldquo;Show only scoped bindings&rdquo;. If you have many scoped bindings:</p>
 <ul>
 <li>Consider if all truly need to be singletons</li>
 <li>Scoped bindings add memory overhead and complexity</li>
 <li>Some may be candidates for unscoped bindings</li>
 </ul>
-<p><strong>Complex multibindings:</strong><br />
-Look for pink nodes with many incoming purple edges. Large multibindings may indicate:</p>
+<p><strong>Complex multibindings:</strong> Look for pink nodes with many incoming purple edges. Large multibindings may indicate:</p>
 <ul>
 <li>Plugin systems that could be simplified</li>
 <li>Opportunities to use more targeted bindings</li>
 </ul>
-<p><strong>Circular dependencies:</strong><br />
-While Metro prevents true cycles, you may see near-cycles broken by <code>Provider</code>/<code>Lazy</code> (cyan dashed edges). Many of these may indicate:</p>
+<p><strong>Circular dependencies:</strong> While Metro prevents true cycles, you may see near-cycles broken by <code>Provider</code>/<code>Lazy</code> (cyan dashed edges). Many of these may indicate:</p>
 <ul>
 <li>Tightly coupled components</li>
 <li>Opportunities for refactoring</li>

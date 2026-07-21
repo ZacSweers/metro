@@ -2426,9 +2426,7 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">tag</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>The <code>@DependencyGraph(FeatureScoped::class)</code> argument is the aggregation key. If contributed Hilt<br />
-bindings are also scoped with <code>@FeatureScoped</code>, put <code>@FeatureScoped</code> on the graph too so Metro&rsquo;s<br />
-scope compatibility check sees the concrete scope annotation.</p>
+<p>The <code>@DependencyGraph(FeatureScoped::class)</code> argument is the aggregation key. If contributed Hilt bindings are also scoped with <code>@FeatureScoped</code>, put <code>@FeatureScoped</code> on the graph too so Metro&rsquo;s scope compatibility check sees the concrete scope annotation.</p>
 <h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>@TestInstallIn</code> and <code>@CustomTestApplication</code> are not supported.</li>

@@ -2116,8 +2116,7 @@
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">MessageImpl</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
 </code></pre></div>
-<p>This is useful when you want Metro to fail if another explicit binding for <code>MessageImpl</code> is added<br />
-to the same graph.</p>
+<p>This is useful when you want Metro to fail if another explicit binding for <code>MessageImpl</code> is added to the same graph.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="n">MessageImpl</span>
@@ -2131,10 +2130,7 @@ to the same graph.</p>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">MessageImpl</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">text</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">)</span>
 </code></pre></div>
-<p>The target must be a non-generic constructor-injected class and the<br />
-<code>@Binds</code> declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding<br />
-annotations. If <code>generateContributionProviders</code> hides the implementation binding, bind the<br />
-contributed type instead or annotate the implementation with <code>@ExposeImplBinding</code>.</p>
+<p>The target must be a non-generic constructor-injected class and the <code>@Binds</code> declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding annotations. If <code>generateContributionProviders</code> hides the implementation binding, bind the contributed type instead or annotate the implementation with <code>@ExposeImplBinding</code>.</p>
 <p>This matches Dagger 2.60+&rsquo;s behavior: <a href="https://dagger.dev/dev-guide/#parameterless-binds">https://dagger.dev/dev-guide/#parameterless-binds</a></p>
 <h2 id="multibindings">Multibindings<a class="headerlink" href="#multibindings" title="Permanent link">&para;</a></h2>
 <p>Like Dagger and KI, Metro supports <code>Set</code> and <code>Map</code> multibindings. Multibindings are collections of bindings of a common type. Multibindings are implicitly declared by the existence of providers annotated with <code>@IntoSet</code>, <code>@IntoMap</code>, or <code>@ElementsIntoSet</code>.</p>

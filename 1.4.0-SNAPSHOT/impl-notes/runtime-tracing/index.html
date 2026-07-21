@@ -1953,67 +1953,45 @@
 
 
 <h1 id="runtime-tracing-notes">Runtime Tracing Notes<a class="headerlink" href="#runtime-tracing-notes" title="Permanent link">&para;</a></h1>
-<p>Internal notes for Metro&rsquo;s generated runtime tracing implementation. User-facing setup docs live in<br />
-<a href="../../performance/#runtime-tracing"><code>docs/performance.md</code></a>.</p>
+<p>Internal notes for Metro&rsquo;s generated runtime tracing implementation. User-facing setup docs live in <a href="../../performance/#runtime-tracing"><code>docs/performance.md</code></a>.</p>
 <h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
-<p><code>metro { enableRuntimeTracing.set(true) }</code> makes generated graph code emit AndroidX Tracing events<br />
-while user code runs. This is separate from Metro&rsquo;s compiler self-tracing, which records FIR and IR<br />
-extension work during compilation.</p>
+<p><code>metro { enableRuntimeTracing.set(true) }</code> makes generated graph code emit AndroidX Tracing events while user code runs. This is separate from Metro&rsquo;s compiler self-tracing, which records FIR and IR extension work during compilation.</p>
 <p>Runtime tracing records two kinds of work:</p>
 <ul>
-<li>graph entry-point instants, such as accessors, graph extension creators, and member-injection<br />
-  functions</li>
-<li>binding-realization spans, such as constructor injection, <code>@Provides</code>, multibindings, and<br />
-  provider invocation</li>
+<li>graph entry-point instants, such as accessors, graph extension creators, and member-injection functions</li>
+<li>binding-realization spans, such as constructor injection, <code>@Provides</code>, multibindings, and provider invocation</li>
 </ul>
-<p>The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in <br />
-the JVM-only <code>metro-trace</code> artifact.</p>
+<p>The implementation currently targets JVM and Android JVM code (what androix.trace targets). The helper runtime lives in the JVM-only <code>metro-trace</code> artifact.</p>
 <h2 id="graph-input-contract">Graph Input Contract<a class="headerlink" href="#graph-input-contract" title="Permanent link">&para;</a></h2>
-<p>Runtime tracing needs an AndroidX <code>Tracer</code> instance before generated graph code can create any<br />
-binding spans or entry-point instant events. Metro does not synthesize this binding. Root dependency<br />
-graphs must use a graph factory whose create function takes a<br />
-<code>@Provides tracer: androidx.tracing.Tracer</code> graph input.</p>
+<p>Runtime tracing needs an AndroidX <code>Tracer</code> instance before generated graph code can create any binding spans or entry-point instant events. Metro does not synthesize this binding. Root dependency graphs must use a graph factory whose create function takes a <code>@Provides tracer: androidx.tracing.Tracer</code> graph input.</p>
 <p>FIR enforces that contract in two places:</p>
 <ul>
-<li><code>DependencyGraphChecker</code>: root <code>@DependencyGraph</code> declarations must declare a<br />
-<code>@DependencyGraph.Factory</code>.</li>
-<li><code>DependencyGraphCreatorChecker</code>: root graph factory create functions must include the<br />
-<code>@Provides Tracer</code> input.</li>
+<li><code>DependencyGraphChecker</code>: root <code>@DependencyGraph</code> declarations must declare a <code>@DependencyGraph.Factory</code>.</li>
+<li><code>DependencyGraphCreatorChecker</code>: root graph factory create functions must include the <code>@Provides Tracer</code> input.</li>
 </ul>
-<p>Both diagnostics report <code>METRO_TRACE_ERROR</code>. Graph extensions do not take their own tracer input.<br />
-They inherit the parent graph&rsquo;s trace context.</p>
+<p>Both diagnostics report <code>METRO_TRACE_ERROR</code>. Graph extensions do not take their own tracer input. They inherit the parent graph&rsquo;s trace context.</p>
 <h2 id="runtime-helpers">Runtime Helpers<a class="headerlink" href="#runtime-helpers" title="Permanent link">&para;</a></h2>
 <p><code>metro-trace</code> contains the small (internal) runtime surface generated code calls:</p>
 <ul>
 <li><code>MetroTraceContext</code>: immutable graph-local trace state.</li>
 <li><code>TracedProvider</code>: a Metro <code>Provider&lt;T&gt;</code> decorator that traces each provider invocation.</li>
-<li><code>TracedMembersInjector</code>: a Metro <code>MembersInjector&lt;T&gt;</code> decorator that marks each<br />
-<code>injectMembers(...)</code> invocation with an <code>instant</code> event.</li>
+<li><code>TracedMembersInjector</code>: a Metro <code>MembersInjector&lt;T&gt;</code> decorator that marks each <code>injectMembers(...)</code> invocation with an <code>instant</code> event.</li>
 <li><code>TraceTestUtil</code>: test-only helpers used by compiler box tests.</li>
 </ul>
-<p><code>MetroTraceContext</code> stores the AndroidX <code>Tracer</code>, a category, the current graph name, and the<br />
-root-to-current graph path. It does not store propagation tokens or mutable current-span state.<br />
-Generated graph implementations and provider fields can be reused across threads, so Metro keeps<br />
-the context immutable and leaves thread-local behavior to AndroidX Tracing.</p>
-<p>Graph extensions call <code>parent.metroTraceContext.child(graphName)</code>. The child context reuses the<br />
-same underlying <code>Tracer</code> and only extends the graph path metadata.</p>
+<p><code>MetroTraceContext</code> stores the AndroidX <code>Tracer</code>, a category, the current graph name, and the root-to-current graph path. It does not store propagation tokens or mutable current-span state. Generated graph implementations and provider fields can be reused across threads, so Metro keeps the context immutable and leaves thread-local behavior to AndroidX Tracing.</p>
+<p>Graph extensions call <code>parent.metroTraceContext.child(graphName)</code>. The child context reuses the same underlying <code>Tracer</code> and only extends the graph path metadata.</p>
 <h2 id="availability">Availability<a class="headerlink" href="#availability" title="Permanent link">&para;</a></h2>
-<p>The Gradle plugin adds <code>metro-trace</code> automatically for JVM and Android compilations when<br />
-automatic runtime dependencies are enabled and <code>enableRuntimeTracing</code> is true.</p>
-<p>IR still validates availability because users can disable automatic dependencies or invoke the<br />
-compiler directly. <code>RuntimeTracingAvailability</code> memoizes one compilation-wide decision:</p>
+<p>The Gradle plugin adds <code>metro-trace</code> automatically for JVM and Android compilations when automatic runtime dependencies are enabled and <code>enableRuntimeTracing</code> is true.</p>
+<p>IR still validates availability because users can disable automatic dependencies or invoke the compiler directly. <code>RuntimeTracingAvailability</code> memoizes one compilation-wide decision:</p>
 <ul>
 <li>the option must be enabled</li>
 <li>the platform must support tracing</li>
 <li><code>androidx.tracing.Tracer</code> must be resolvable</li>
-<li><code>MetroTraceContext</code>, <code>MetroTraceContext.trace</code>, <code>MetroTraceContext.instant</code>,<br />
-<code>MetroTraceContext.child</code>, <code>TracedMembersInjector</code>, and <code>TracedProvider</code> must be resolvable</li>
+<li><code>MetroTraceContext</code>, <code>MetroTraceContext.trace</code>, <code>MetroTraceContext.instant</code>, <code>MetroTraceContext.child</code>, <code>TracedMembersInjector</code>, and <code>TracedProvider</code> must be resolvable</li>
 </ul>
-<p><code>DependencyGraphTransformer</code> reports the unavailable reason once as <code>METRO_TRACE_ERROR</code>, then exits<br />
-processing. FIR intentionally does not do classpath symbol checks for these helper classes.</p>
+<p><code>DependencyGraphTransformer</code> reports the unavailable reason once as <code>METRO_TRACE_ERROR</code>, then exits processing. FIR intentionally does not do classpath symbol checks for these helper classes.</p>
 <h2 id="generated-graph-state">Generated Graph State<a class="headerlink" href="#generated-graph-state" title="Permanent link">&para;</a></h2>
-<p><code>IrGraphGenerator</code> creates a private <code>metroTraceContext</code> property on generated graph<br />
-implementations when runtime tracing is available.</p>
+<p><code>IrGraphGenerator</code> creates a private <code>metroTraceContext</code> property on generated graph implementations when runtime tracing is available.</p>
 <p>For root graphs, the initializer resolves the user-provided tracer graph input and creates:</p>
 <div class="highlight"><pre><span></span><code><span class="n">MetroTraceContext</span><span class="p">(</span>
 <span class="w">  </span><span class="n">tracer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tracer</span><span class="p">,</span>
@@ -2022,54 +2000,32 @@ implementations when runtime tracing is available.</p>
 <span class="w">  </span><span class="n">graphPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
-<p>For graph extensions, the initializer reads the parent graph&rsquo;s generated context and calls<br />
-<code>child(graphName)</code>.</p>
-<p>The tracer binding and trace context binding are infrastructure. <code>RuntimeTraceRendering</code> marks<br />
-<code>androidx.tracing.Tracer</code> and <code>MetroTraceContext</code> as runtime-tracing infra so generated code does<br />
-not trace the act of reading the tracer or trace context itself.</p>
+<p>For graph extensions, the initializer reads the parent graph&rsquo;s generated context and calls <code>child(graphName)</code>.</p>
+<p>The tracer binding and trace context binding are infrastructure. <code>RuntimeTraceRendering</code> marks <code>androidx.tracing.Tracer</code> and <code>MetroTraceContext</code> as runtime-tracing infra so generated code does not trace the act of reading the tracer or trace context itself.</p>
 <h2 id="binding-spans">Binding Spans<a class="headerlink" href="#binding-spans" title="Permanent link">&para;</a></h2>
-<p><code>BindingExpressionDecorator</code> is the codegen hook for expression-level tracing. <code>IrDependencyGraph</code><br />
-injects either <code>RuntimeTracingBindingExpressionDecorator</code> or <code>BindingExpressionDecorator.None</code><br />
-based on <code>RuntimeTracingAvailability</code>.</p>
-<p>The decorator runs at Metro&rsquo;s shared binding conversion points instead of being scattered through<br />
-each binding branch:</p>
+<p><code>BindingExpressionDecorator</code> is the codegen hook for expression-level tracing. <code>IrDependencyGraph</code> injects either <code>RuntimeTracingBindingExpressionDecorator</code> or <code>BindingExpressionDecorator.None</code> based on <code>RuntimeTracingAvailability</code>.</p>
+<p>The decorator runs at Metro&rsquo;s shared binding conversion points instead of being scattered through each binding branch:</p>
 <ul>
-<li><code>BindingExpressionGenerator.maybeTraceDirectExpression</code>: wraps direct value expressions in<br />
-<code>MetroTraceContext.trace { ... }</code>.</li>
-<li><code>BindingExpressionGenerator.toTargetType</code>: decorates provider-valued expressions before final<br />
-  provider interop conversion.</li>
+<li><code>BindingExpressionGenerator.maybeTraceDirectExpression</code>: wraps direct value expressions in <code>MetroTraceContext.trace { ... }</code>.</li>
+<li><code>BindingExpressionGenerator.toTargetType</code>: decorates provider-valued expressions before final provider interop conversion.</li>
 </ul>
-<p>Direct value spans cover expressions such as constructor calls, <code>@Provides</code> calls, and aggregate<br />
-multibinding getters.</p>
-<p>Provider spans use <code>TracedProvider</code>. Before wrapping, the decorator normalizes the provider<br />
-expression to Metro&rsquo;s <code>Provider&lt;T&gt;</code>. The regular provider conversion path can then convert the<br />
-traced Metro provider back to Dagger, Javax, Jakarta, Guice, or function-provider types. Reads of<br />
-stored provider properties are not wrapped again because those fields are initialized with the<br />
-traced provider.</p>
-<p>Multibinding code uses the same hooks. The aggregate getter is traced as <code>Multibinding</code>, and each<br />
-element binding can still emit its own binding span when it is realized.</p>
-<p>Requested <code>MembersInjector&lt;T&gt;</code> bindings use <code>TracedMembersInjector</code>. Creating or accessing the<br />
-injector is not treated as its own binding span, but later <code>injectMembers(...)</code> calls emit instant<br />
-events named like <code>MembersInjector&lt;T&gt;</code>.</p>
+<p>Direct value spans cover expressions such as constructor calls, <code>@Provides</code> calls, and aggregate multibinding getters.</p>
+<p>Provider spans use <code>TracedProvider</code>. Before wrapping, the decorator normalizes the provider expression to Metro&rsquo;s <code>Provider&lt;T&gt;</code>. The regular provider conversion path can then convert the traced Metro provider back to Dagger, Javax, Jakarta, Guice, or function-provider types. Reads of stored provider properties are not wrapped again because those fields are initialized with the traced provider.</p>
+<p>Multibinding code uses the same hooks. The aggregate getter is traced as <code>Multibinding</code>, and each element binding can still emit its own binding span when it is realized.</p>
+<p>Requested <code>MembersInjector&lt;T&gt;</code> bindings use <code>TracedMembersInjector</code>. Creating or accessing the injector is not treated as its own binding span, but later <code>injectMembers(...)</code> calls emit instant events named like <code>MembersInjector&lt;T&gt;</code>.</p>
 <h2 id="entry-point-instants">Entry-Point Instants<a class="headerlink" href="#entry-point-instants" title="Permanent link">&para;</a></h2>
-<p><code>IrGraphGenerator.traceGeneratedGraphEntryPoint(...)</code> emits generated graph APIs as instant events.<br />
-These markers make it clear which graph operation caused lower-level binding spans without making<br />
-the graph entry point look like its own binding.</p>
+<p><code>IrGraphGenerator.traceGeneratedGraphEntryPoint(...)</code> emits generated graph APIs as instant events. These markers make it clear which graph operation caused lower-level binding spans without making the graph entry point look like its own binding.</p>
 <p>Current entry-point kinds are:</p>
 <ul>
 <li><code>Accessor</code>: graph accessors and graph extension creators.</li>
-<li><code>Member Injector</code>: generated member-injection functions and requested <code>MembersInjector&lt;T&gt;</code><br />
-  invocations.</li>
+<li><code>Member Injector</code>: generated member-injection functions and requested <code>MembersInjector&lt;T&gt;</code> invocations.</li>
 </ul>
-<p>These entry-point markers use <code>MetroTraceContext.instant(...)</code>. Their visible names render the<br />
-implemented graph member, such as <code>AppGraph.foo</code> or <code>AppGraph.createChildGraph</code>. Metadata records<br />
-the callable name separately without using binding-kind metadata.</p>
+<p>These entry-point markers use <code>MetroTraceContext.instant(...)</code>. Their visible names render the implemented graph member, such as <code>AppGraph.foo</code> or <code>AppGraph.createChildGraph</code>. Metadata records the callable name separately without using binding-kind metadata.</p>
 <h2 id="names-and-metadata">Names And Metadata<a class="headerlink" href="#names-and-metadata" title="Permanent link">&para;</a></h2>
 <p>Binding span names are intentionally readable rather than globally unique. The visible name is:</p>
 <div class="highlight"><pre><span></span><code>&lt;qualifier&gt; &lt;contextual type&gt;
 </code></pre></div>
-<p>The qualifier is omitted for unqualified bindings. The contextual type falls back to the canonical<br />
-type when they are the same.</p>
+<p>The qualifier is omitted for unqualified bindings. The contextual type falls back to the canonical type when they are the same.</p>
 <p>Every Metro runtime trace event records:</p>
 <ul>
 <li><code>metro.graph</code>: the graph that owns the generated code.</li>
@@ -2093,36 +2049,27 @@ type when they are the same.</p>
 <li><code>metro.qualifier</code>: the rendered qualifier.</li>
 <li><code>metro.entry_point_kind</code>: <code>Accessor</code> or <code>Member Injector</code>.</li>
 </ul>
-<p>Multibinding element rendering is special-cased. The element&rsquo;s visible type remains the element<br />
-type, but qualifier rendering uses the target multibinding when that is the useful user-facing key.</p>
+<p>Multibinding element rendering is special-cased. The element&rsquo;s visible type remains the element type, but qualifier rendering uses the target multibinding when that is the useful user-facing key.</p>
 <h2 id="integration-points">Integration Points<a class="headerlink" href="#integration-points" title="Permanent link">&para;</a></h2>
 <p>The Android sample under <code>samples/android-app</code> shows the app-side setup:</p>
 <ul>
 <li>the graph factory takes the <code>Tracer</code> input</li>
 <li><code>MetroApp</code> owns the <code>TraceDriver</code> and <code>TraceSink</code></li>
-<li>AndroidX tracing 2.0.0-alpha09 defers <code>TraceSink</code> writer creation, so Android apps can create the<br />
-  graph from <code>Application.onCreate</code> without keeping the graph lazy just to avoid early file setup</li>
+<li>AndroidX tracing 2.0.0-alpha09 defers <code>TraceSink</code> writer creation, so Android apps can create the graph from <code>Application.onCreate</code> without keeping the graph lazy just to avoid early file setup</li>
 <li>the AndroidX profiler initializer is removed so profiler broadcasts use the app&rsquo;s driver</li>
 <li>the UI can flush pending trace data</li>
 </ul>
-<p>Benchmark generation has a separate <code>--enable-runtime-tracing</code> mode. It is Metro-only, enables the<br />
-compiler option on generated projects, passes a tracer through generated graph factories, and copies<br />
-Perfetto trace files into startup benchmark result directories.</p>
+<p>Benchmark generation has a separate <code>--enable-runtime-tracing</code> mode. It is Metro-only, enables the compiler option on generated projects, passes a tracer through generated graph factories, and copies Perfetto trace files into startup benchmark result directories.</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <p>Runtime tracing coverage is mostly functional:</p>
 <ul>
-<li><code>compiler-tests/src/test/data/box/tracing</code>: box tests that exercise generated graphs and assert<br />
-  recorded trace events with <code>testMetroTrace</code>.</li>
-<li><code>compiler-tests/src/test/data/diagnostic/dependencygraph/RuntimeTracingRequires*</code>: FIR<br />
-  diagnostics for missing graph factories and missing tracer factory inputs.</li>
-<li><code>compiler-tests/src/test/data/dump/ir/dependencygraph/RuntimeTracing.kt</code>: IR dump coverage for<br />
-  generated trace context and wrapper placement.</li>
+<li><code>compiler-tests/src/test/data/box/tracing</code>: box tests that exercise generated graphs and assert recorded trace events with <code>testMetroTrace</code>.</li>
+<li><code>compiler-tests/src/test/data/diagnostic/dependencygraph/RuntimeTracingRequires*</code>: FIR diagnostics for missing graph factories and missing tracer factory inputs.</li>
+<li><code>compiler-tests/src/test/data/dump/ir/dependencygraph/RuntimeTracing.kt</code>: IR dump coverage for generated trace context and wrapper placement.</li>
 <li><code>metro-trace/src/test</code>: runtime helper tests for <code>MetroTraceContext</code> and <code>TracedProvider</code>.</li>
-<li><code>gradle-plugin/src/functionalTest/.../RuntimeTracingConfigurationTest.kt</code>: verifies automatic<br />
-<code>metro-trace</code> dependency wiring.</li>
+<li><code>gradle-plugin/src/functionalTest/.../RuntimeTracingConfigurationTest.kt</code>: verifies automatic <code>metro-trace</code> dependency wiring.</li>
 </ul>
-<p>Prefer adding box tests when changing behavior. IR dumps are useful for wrapper placement, but the<br />
-box tests confirm that emitted trace events are observable in execution order.</p>
+<p>Prefer adding box tests when changing behavior. IR dumps are useful for wrapper placement, but the box tests confirm that emitted trace events are observable in execution order.</p>
 
 
 

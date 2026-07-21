@@ -2020,248 +2020,100 @@
 
 
 <h1 id="coroutines-support-implementation-notes">Coroutines Support Implementation Notes<a class="headerlink" href="#coroutines-support-implementation-notes" title="Permanent link">&para;</a></h1>
-<p>These notes describe the current compiler and runtime design. Metro&rsquo;s coroutine support currently<br />
-centers on suspend providers. User-facing documentation lives in<br />
-<a href="../../coroutines/"><code>docs/coroutines.md</code></a>.</p>
+<p>These notes describe the current compiler and runtime design. Metro&rsquo;s coroutine support currently centers on suspend providers. User-facing documentation lives in <a href="../../coroutines/"><code>docs/coroutines.md</code></a>.</p>
 <h2 id="model">Model<a class="headerlink" href="#model" title="Permanent link">&para;</a></h2>
-<p>Metro&rsquo;s suspend-provider bindings are gated by the <code>enable-suspend-providers</code> compiler option. The<br />
-Gradle plugin exposes it as <code>metro.enableSuspendProviders</code>. It is disabled by default. Within<br />
-Metro&rsquo;s binding model, the gate applies to every suspend binding, every suspend graph accessor, and<br />
-every request using a suspend provider wrapper, including unscoped forms that only need the core<br />
-<code>runtime</code> artifact. Separately, source code that names the public coroutine APIs must opt in to<br />
-<code>ExperimentalMetroCoroutinesApi</code>.</p>
-<p>The feature gate and runtime dependency are separate. When automatic runtime dependencies are<br />
-enabled, the Gradle plugin adds <code>runtime-coroutines</code> whenever this option is enabled; it does not<br />
-inspect source signatures to decide whether to add it.</p>
-<p>The core <code>runtime</code> artifact defines <code>SuspendProvider</code> and <code>SuspendLazy</code>. It also contains helpers<br />
-that need no coroutine coordination: <code>suspendProvider</code>, <code>suspendProviderOf</code>, <code>suspendLazyOf</code>,<br />
-<code>map</code>, <code>flatMap</code>, and <code>zip</code>, plus adapters used by generated code. <code>suspendProviderOf</code> and<br />
-<code>suspendLazyOf</code> wrap an existing value and do not run an initializer.</p>
-<p><code>runtime-coroutines</code> contains <code>suspendLazy</code>, <code>SuspendProvider.memoize()</code>, <code>memoizeAsLazy()</code>, and<br />
-<code>SuspendDoubleCheck</code>. Metro uses <code>SuspendDoubleCheck</code> for scoped suspend bindings and generated<br />
-memoizing <code>SuspendLazy</code> wrappers. This artifact has an implementation dependency on<br />
-kotlinx-coroutines on every platform, but no kotlinx-coroutines type appears in Metro&rsquo;s public API.</p>
-<p>Whether a binding requires a suspend context is determined separately for each graph. A binding<br />
-requires one when its provider is a <code>suspend fun</code>, or when one of its eager dependencies requires<br />
-one. Provider and lazy requests stop propagation because the consumer receives a handle instead of<br />
-the value. Graph validation separately rejects a wrapper stack when the wrapper closest to the<br />
-underlying value is synchronous. The same class can therefore require suspension in one graph but<br />
-not another.</p>
-<p><code>SuspendBindingAnalysis</code> starts with directly suspend bindings and follows reverse dependency edges<br />
-to mark their eager consumers. It caches resolved bindings and their edges. A child graph may query<br />
-a parent before that parent has finished collecting bindings, so missing lookups are retried after<br />
-the graph changes. Final validation stores the completed result for code generation.</p>
-<p>Metro parses enabled provider and lazy wrappers recursively at any depth in a scalar wrapper stack.<br />
-When <code>enableFunctionProviders</code> is also enabled, this includes <code>() -&gt; T</code> and <code>suspend () -&gt; T</code>.</p>
-<p>Any scalar wrapper defers the dependency for suspend propagation. The wrapper nearest the<br />
-underlying value then selects whether generated code starts from <code>Provider&lt;T&gt;</code> or<br />
-<code>SuspendProvider&lt;T&gt;</code> and determines whether the request is valid:</p>
+<p>Metro&rsquo;s suspend-provider bindings are gated by the <code>enable-suspend-providers</code> compiler option. The Gradle plugin exposes it as <code>metro.enableSuspendProviders</code>. It is disabled by default. Within Metro&rsquo;s binding model, the gate applies to every suspend binding, every suspend graph accessor, and every request using a suspend provider wrapper, including unscoped forms that only need the core <code>runtime</code> artifact. Separately, source code that names the public coroutine APIs must opt in to <code>ExperimentalMetroCoroutinesApi</code>.</p>
+<p>The feature gate and runtime dependency are separate. When automatic runtime dependencies are enabled, the Gradle plugin adds <code>runtime-coroutines</code> whenever this option is enabled; it does not inspect source signatures to decide whether to add it.</p>
+<p>The core <code>runtime</code> artifact defines <code>SuspendProvider</code> and <code>SuspendLazy</code>. It also contains helpers that need no coroutine coordination: <code>suspendProvider</code>, <code>suspendProviderOf</code>, <code>suspendLazyOf</code>, <code>map</code>, <code>flatMap</code>, and <code>zip</code>, plus adapters used by generated code. <code>suspendProviderOf</code> and <code>suspendLazyOf</code> wrap an existing value and do not run an initializer.</p>
+<p><code>runtime-coroutines</code> contains <code>suspendLazy</code>, <code>SuspendProvider.memoize()</code>, <code>memoizeAsLazy()</code>, and <code>SuspendDoubleCheck</code>. Metro uses <code>SuspendDoubleCheck</code> for scoped suspend bindings and generated memoizing <code>SuspendLazy</code> wrappers. This artifact has an implementation dependency on kotlinx-coroutines on every platform, but no kotlinx-coroutines type appears in Metro&rsquo;s public API.</p>
+<p>Whether a binding requires a suspend context is determined separately for each graph. A binding requires one when its provider is a <code>suspend fun</code>, or when one of its eager dependencies requires one. Provider and lazy requests stop propagation because the consumer receives a handle instead of the value. Graph validation separately rejects a wrapper stack when the wrapper closest to the underlying value is synchronous. The same class can therefore require suspension in one graph but not another.</p>
+<p><code>SuspendBindingAnalysis</code> starts with directly suspend bindings and follows reverse dependency edges to mark their eager consumers. It caches resolved bindings and their edges. A child graph may query a parent before that parent has finished collecting bindings, so missing lookups are retried after the graph changes. Final validation stores the completed result for code generation.</p>
+<p>Metro parses enabled provider and lazy wrappers recursively at any depth in a scalar wrapper stack. When <code>enableFunctionProviders</code> is also enabled, this includes <code>() -&gt; T</code> and <code>suspend () -&gt; T</code>.</p>
+<p>Any scalar wrapper defers the dependency for suspend propagation. The wrapper nearest the underlying value then selects whether generated code starts from <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> and determines whether the request is valid:</p>
 <ul>
 <li><code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>, and <code>SuspendLazy&lt;T&gt;</code> select <code>SuspendProvider&lt;T&gt;</code>.</li>
-<li><code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, and <code>Lazy&lt;T&gt;</code> select <code>Provider&lt;T&gt;</code>. Graph validation rejects this form<br />
-  when <code>T</code> requires a suspend context, regardless of any outer wrappers. The same stack is valid<br />
-  when <code>T</code> does not require suspension.</li>
+<li><code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, and <code>Lazy&lt;T&gt;</code> select <code>Provider&lt;T&gt;</code>. Graph validation rejects this form when <code>T</code> requires a suspend context, regardless of any outer wrappers. The same stack is valid when <code>T</code> does not require suspension.</li>
 </ul>
-<p>This selected <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> is the canonical provider that code generation<br />
-uses as the base for the full wrapper stack.</p>
-<p>Outer wrappers only control how the immediate inner value is produced or cached. For example,<br />
-<code>SuspendLazy&lt;suspend () -&gt; T&gt;</code> caches the suspend function rather than its result.</p>
-<p>Suspend wrappers in map value position do not support the same recursive nesting as scalar<br />
-requests. <code>Map&lt;K, suspend () -&gt; V&gt;</code> and <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> are supported, including<br />
-nullable <code>V</code>. The map is built synchronously and each value is initialized when its provider is<br />
-invoked. Generated map multibinding factories retain non-null keys. <code>SuspendLazy</code> and additional<br />
-wrapper layers in map value position are unsupported. Scalar wrappers may still surround the whole<br />
-map.</p>
-<p>A binding accessed through <code>ParentContext</code> keeps the owning graph&rsquo;s suspend classification.<br />
-Unscoped factories copied into a child graph are instead analyzed in that child.</p>
+<p>This selected <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> is the canonical provider that code generation uses as the base for the full wrapper stack.</p>
+<p>Outer wrappers only control how the immediate inner value is produced or cached. For example, <code>SuspendLazy&lt;suspend () -&gt; T&gt;</code> caches the suspend function rather than its result.</p>
+<p>Suspend wrappers in map value position do not support the same recursive nesting as scalar requests. <code>Map&lt;K, suspend () -&gt; V&gt;</code> and <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> are supported, including nullable <code>V</code>. The map is built synchronously and each value is initialized when its provider is invoked. Generated map multibinding factories retain non-null keys. <code>SuspendLazy</code> and additional wrapper layers in map value position are unsupported. Scalar wrappers may still surround the whole map.</p>
+<p>A binding accessed through <code>ParentContext</code> keeps the owning graph&rsquo;s suspend classification. Unscoped factories copied into a child graph are instead analyzed in that child.</p>
 <h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
 <p>Suspend-specific graph validation runs after Metro has built the ordinary binding graph:</p>
 <ol>
 <li>Compute the complete set of bindings that require suspension.</li>
-<li>Reject unsupported multibindings. <code>Set&lt;T&gt;</code> cannot contain suspend contributions, and a<br />
-<code>Map&lt;K, V&gt;</code> with suspend values must be requested as <code>Map&lt;K, suspend () -&gt; V&gt;</code> or<br />
-<code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code>.</li>
-<li>Check every graph accessor. An unwrapped accessor for a suspend binding must itself be <code>suspend</code>.<br />
-   A wrapped accessor must have a suspend-capable wrapper nearest the underlying value, even when<br />
-   the accessor is <code>suspend</code>.</li>
-<li>Reject member dependencies that require suspension. An ordinary constructor-injected class with<br />
-   injected members is also rejected when its constructor requires suspension because its<br />
-   graph-local suspend factory does not run member injection. Suspend assisted implementations are<br />
-   different: they support suspend constructor dependencies and run synchronous member injection<br />
-   after construction.</li>
-<li>Reject dependency edges whose nearest wrapper is <code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, or <code>Lazy&lt;T&gt;</code> over a<br />
-   suspend binding.</li>
-<li>Validate the assisted target&rsquo;s dependency wrappers, then require its factory SAM function to be<br />
-<code>suspend</code> when constructing the target requires a suspend context.</li>
+<li>Reject unsupported multibindings. <code>Set&lt;T&gt;</code> cannot contain suspend contributions, and a <code>Map&lt;K, V&gt;</code> with suspend values must be requested as <code>Map&lt;K, suspend () -&gt; V&gt;</code> or <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code>.</li>
+<li>Check every graph accessor. An unwrapped accessor for a suspend binding must itself be <code>suspend</code>. A wrapped accessor must have a suspend-capable wrapper nearest the underlying value, even when the accessor is <code>suspend</code>.</li>
+<li>Reject member dependencies that require suspension. An ordinary constructor-injected class with injected members is also rejected when its constructor requires suspension because its graph-local suspend factory does not run member injection. Suspend assisted implementations are different: they support suspend constructor dependencies and run synchronous member injection after construction.</li>
+<li>Reject dependency edges whose nearest wrapper is <code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, or <code>Lazy&lt;T&gt;</code> over a suspend binding.</li>
+<li>Validate the assisted target&rsquo;s dependency wrappers, then require its factory SAM function to be <code>suspend</code> when constructing the target requires a suspend context.</li>
 </ol>
-<p>FIR reports source-local errors that do not require graph resolution, including the feature gate,<br />
-suspend <code>@Binds</code> and <code>@Multibinds</code>, and unsupported wrappers in map value position. These errors are<br />
-available in the IDE. IR repeats the feature-gate check for suspend metadata read from compiled<br />
-dependencies and handles checks that require the resolved graph. Named suspend failures use their<br />
-dedicated <code>MetroDiagnosticId</code> and diagnostic factory. <code>METRO_ERROR</code> is reserved for<br />
-<code>MetroDiagnosticId.GENERIC</code>.</p>
-<p>Suspend diagnostics prefer the source declaration that requests the offending binding. The<br />
-member-injection diagnostic specifically falls back to the graph declaration when the injected<br />
-member has no reportable source. Dependency-cycle advice mentions suspend providers only when the<br />
-feature is enabled and the cycle contains a binding that requires suspension.</p>
-<p>One source-local check is still missing: injected members do not yet run the common FIR<br />
-injection-site validation. IR still enforces the feature gate and rejects member dependencies that<br />
-resolve to suspend bindings, but an unsupported suspend map wrapper over a synchronous member can<br />
-currently pass validation.</p>
+<p>FIR reports source-local errors that do not require graph resolution, including the feature gate, suspend <code>@Binds</code> and <code>@Multibinds</code>, and unsupported wrappers in map value position. These errors are available in the IDE. IR repeats the feature-gate check for suspend metadata read from compiled dependencies and handles checks that require the resolved graph. Named suspend failures use their dedicated <code>MetroDiagnosticId</code> and diagnostic factory. <code>METRO_ERROR</code> is reserved for <code>MetroDiagnosticId.GENERIC</code>.</p>
+<p>Suspend diagnostics prefer the source declaration that requests the offending binding. The member-injection diagnostic specifically falls back to the graph declaration when the injected member has no reportable source. Dependency-cycle advice mentions suspend providers only when the feature is enabled and the cycle contains a binding that requires suspension.</p>
+<p>One source-local check is still missing: injected members do not yet run the common FIR injection-site validation. IR still enforces the feature gate and rejects member dependencies that resolve to suspend bindings, but an unsupported suspend map wrapper over a synchronous member can currently pass validation.</p>
 <h2 id="code-generation">Code generation<a class="headerlink" href="#code-generation" title="Permanent link">&para;</a></h2>
 <h3 id="factories">Factories<a class="headerlink" href="#factories" title="Permanent link">&para;</a></h3>
 <p>A suspend <code>@Provides</code> function gets a source-level <code>SuspendFactory&lt;T&gt;</code> with a suspend <code>invoke()</code>.</p>
-<p>Ordinary providers and injected constructors can require suspension only in a particular graph, so<br />
-their source-level factories remain synchronous. When generated graph code needs a<br />
-<code>SuspendProvider&lt;T&gt;</code> for one of these bindings, <code>GraphSuspendFactoryGenerator</code> creates a private,<br />
-IR-only <code>SuspendFactory&lt;T&gt;</code> inside that graph. Direct suspend access can call the constructor or<br />
-provider function without creating this factory. The same graph-local factory approach is used for<br />
-assisted-factory implementations.</p>
+<p>Ordinary providers and injected constructors can require suspension only in a particular graph, so their source-level factories remain synchronous. When generated graph code needs a <code>SuspendProvider&lt;T&gt;</code> for one of these bindings, <code>GraphSuspendFactoryGenerator</code> creates a private, IR-only <code>SuspendFactory&lt;T&gt;</code> inside that graph. Direct suspend access can call the constructor or provider function without creating this factory. The same graph-local factory approach is used for assisted-factory implementations.</p>
 <p>Factory dependency fields depend on where the factory is generated:</p>
 <ul>
 <li>Ordinary source factories store unwrapped dependencies as <code>Provider&lt;T&gt;</code>.</li>
-<li>A source factory for a suspend <code>@Provides</code> function stores unwrapped dependencies as<br />
-<code>SuspendProvider&lt;T&gt;</code> because source generation does not know how those dependencies resolve in a<br />
-  particular graph. Generated graph code adapts an ordinary provider with <code>SyncSuspendProvider</code><br />
-  when necessary.</li>
-<li>An explicit wrapper stack uses <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> according to the wrapper<br />
-  nearest the underlying value.</li>
-<li>An IR-only graph suspend factory uses the resolved graph to choose <code>Provider&lt;T&gt;</code> or<br />
-<code>SuspendProvider&lt;T&gt;</code> for each dependency.</li>
+<li>A source factory for a suspend <code>@Provides</code> function stores unwrapped dependencies as <code>SuspendProvider&lt;T&gt;</code> because source generation does not know how those dependencies resolve in a particular graph. Generated graph code adapts an ordinary provider with <code>SyncSuspendProvider</code> when necessary.</li>
+<li>An explicit wrapper stack uses <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> according to the wrapper nearest the underlying value.</li>
+<li>An IR-only graph suspend factory uses the resolved graph to choose <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> for each dependency.</li>
 </ul>
 <p>Graph and binding-container receivers remain plain values.</p>
-<p>Source factories deduplicate non-assisted parameters without defaults by their normalized binding<br />
-key and whether the field is a <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code>. Parameters with defaults<br />
-remain separate because their defaults may differ. IR-only graph suspend factories keep one field<br />
-per source parameter and choose <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> from the resolved graph.</p>
+<p>Source factories deduplicate non-assisted parameters without defaults by their normalized binding key and whether the field is a <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code>. Parameters with defaults remain separate because their defaults may differ. IR-only graph suspend factories keep one field per source parameter and choose <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code> from the resolved graph.</p>
 <h3 id="graph-fields">Graph fields<a class="headerlink" href="#graph-fields" title="Permanent link">&para;</a></h3>
-<p>When a suspend binding needs a graph field, it is stored as <code>SuspendProvider&lt;T&gt;</code>. A generated<br />
-non-suspend getter could not invoke it, and it cannot participate in fastInit&rsquo;s <code>SwitchingProvider</code>.</p>
-<p>Scoped suspend fields are wrapped in <code>SuspendDoubleCheck</code>. Dependency cycles that pass through a<br />
-suspend provider use <code>SuspendDelegateFactory</code>.</p>
-<p><code>BindingPropertyCollector</code> remains the source of truth for graph fields. It canonicalizes outer<br />
-scalar wrappers while preserving map value structure, and <code>ParentContext</code> carries parent-owned<br />
-fields into child graphs. Suspend bindings do not use a separate graph-field collection path.</p>
+<p>When a suspend binding needs a graph field, it is stored as <code>SuspendProvider&lt;T&gt;</code>. A generated non-suspend getter could not invoke it, and it cannot participate in fastInit&rsquo;s <code>SwitchingProvider</code>.</p>
+<p>Scoped suspend fields are wrapped in <code>SuspendDoubleCheck</code>. Dependency cycles that pass through a suspend provider use <code>SuspendDelegateFactory</code>.</p>
+<p><code>BindingPropertyCollector</code> remains the source of truth for graph fields. It canonicalizes outer scalar wrappers while preserving map value structure, and <code>ParentContext</code> carries parent-owned fields into child graphs. Suspend bindings do not use a separate graph-field collection path.</p>
 <h3 id="access-types-and-conversions">Access types and conversions<a class="headerlink" href="#access-types-and-conversions" title="Permanent link">&para;</a></h3>
-<p>Generated expressions use three access types: instance, provider, and suspend provider.<br />
-<code>BindingExpressionGenerator.toTargetType</code> performs these conversions:</p>
+<p>Generated expressions use three access types: instance, provider, and suspend provider. <code>BindingExpressionGenerator.toTargetType</code> performs these conversions:</p>
 <ul>
 <li><code>Provider&lt;T&gt;</code> to <code>SuspendProvider&lt;T&gt;</code>: wrap with <code>SyncSuspendProvider</code>.</li>
 <li><code>T</code> to <code>SuspendProvider&lt;T&gt;</code>: wrap with a suspend provider lambda.</li>
 <li><code>SuspendProvider&lt;T&gt;</code> to <code>T</code>: invoke it from a suspend context.</li>
 </ul>
-<p>Provider and lazy wrappers, generated adapters, and suspend map values preserve nullable types.<br />
-When a scope or lazy wrapper caches a result, <code>null</code> counts as an initialized value.</p>
-<p>Consumer boundaries recursively rebuild the requested wrapper stack from a canonical <code>Provider&lt;T&gt;</code><br />
-or <code>SuspendProvider&lt;T&gt;</code>. Ordinary lazy layers use <code>DoubleCheck.lazy</code>; suspend lazy layers use<br />
-<code>SuspendDoubleCheck.lazy</code>. Provider layers return the recursively built inner value. This preserves<br />
-each wrapper&rsquo;s own initialization and caching boundary. The existing <code>ProviderOfLazy</code> path remains<br />
-an optimization for the exact <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> form.</p>
-<p>When a stack needs nested lambdas, Metro captures the canonical provider once before building them.<br />
-The lambdas still invoke that provider only when their wrapper is used, and they do not recreate the<br />
-provider object on every call.</p>
-<p>An included graph accessor is also a source of wrappers. A non-suspend accessor can pass its value<br />
-through unchanged when the consuming graph requests exactly the same wrapper stack. Otherwise Metro<br />
-unwraps the accessor to a canonical provider and rebuilds the requested shape. Crossing a suspend<br />
-wrapper produces a <code>SuspendProvider&lt;T&gt;</code>.</p>
-<p><code>SuspendDoubleCheck.lazy</code> returns its delegate unchanged when that delegate already implements<br />
-<code>SuspendLazy</code>. This avoids adding a second cache around a scoped graph cache or another existing<br />
-suspend-lazy implementation. <code>SuspendProvider.memoize()</code> delegates to<br />
-<code>SuspendDoubleCheck.provider</code>, and <code>memoizeAsLazy()</code> delegates to <code>SuspendDoubleCheck.lazy</code>; an<br />
-existing <code>SuspendLazy</code> therefore keeps its current concurrency behavior.</p>
-<p>A deferred request for an entire collection, such as <code>suspend () -&gt; Set&lt;T&gt;</code>, generates the ordinary<br />
-provider form and adapts it with <code>SyncSuspendProvider</code>. This only works for synchronous set<br />
-contributions; it does not enable suspend set contributions.</p>
-<p>Graph validation records whether generated graph code needs <code>runtime-coroutines</code>: either for a<br />
-scoped suspend binding or to materialize a memoizing <code>SuspendLazy</code> anywhere in a requested wrapper<br />
-stack. If the artifact is missing, Metro reports a located <code>MISSING_RUNTIME_COROUTINES</code> diagnostic<br />
-on the graph before code generation begins. Source factory generation reports the same diagnostic<br />
-on injected declarations and provider parameters that require <code>SuspendLazy</code>, including modules<br />
-that contain no graph. The diagnostic can appear alongside other graph validation errors.</p>
+<p>Provider and lazy wrappers, generated adapters, and suspend map values preserve nullable types. When a scope or lazy wrapper caches a result, <code>null</code> counts as an initialized value.</p>
+<p>Consumer boundaries recursively rebuild the requested wrapper stack from a canonical <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code>. Ordinary lazy layers use <code>DoubleCheck.lazy</code>; suspend lazy layers use <code>SuspendDoubleCheck.lazy</code>. Provider layers return the recursively built inner value. This preserves each wrapper&rsquo;s own initialization and caching boundary. The existing <code>ProviderOfLazy</code> path remains an optimization for the exact <code>Provider&lt;Lazy&lt;T&gt;&gt;</code> form.</p>
+<p>When a stack needs nested lambdas, Metro captures the canonical provider once before building them. The lambdas still invoke that provider only when their wrapper is used, and they do not recreate the provider object on every call.</p>
+<p>An included graph accessor is also a source of wrappers. A non-suspend accessor can pass its value through unchanged when the consuming graph requests exactly the same wrapper stack. Otherwise Metro unwraps the accessor to a canonical provider and rebuilds the requested shape. Crossing a suspend wrapper produces a <code>SuspendProvider&lt;T&gt;</code>.</p>
+<p><code>SuspendDoubleCheck.lazy</code> returns its delegate unchanged when that delegate already implements <code>SuspendLazy</code>. This avoids adding a second cache around a scoped graph cache or another existing suspend-lazy implementation. <code>SuspendProvider.memoize()</code> delegates to <code>SuspendDoubleCheck.provider</code>, and <code>memoizeAsLazy()</code> delegates to <code>SuspendDoubleCheck.lazy</code>; an existing <code>SuspendLazy</code> therefore keeps its current concurrency behavior.</p>
+<p>A deferred request for an entire collection, such as <code>suspend () -&gt; Set&lt;T&gt;</code>, generates the ordinary provider form and adapts it with <code>SyncSuspendProvider</code>. This only works for synchronous set contributions; it does not enable suspend set contributions.</p>
+<p>Graph validation records whether generated graph code needs <code>runtime-coroutines</code>: either for a scoped suspend binding or to materialize a memoizing <code>SuspendLazy</code> anywhere in a requested wrapper stack. If the artifact is missing, Metro reports a located <code>MISSING_RUNTIME_COROUTINES</code> diagnostic on the graph before code generation begins. Source factory generation reports the same diagnostic on injected declarations and provider parameters that require <code>SuspendLazy</code>, including modules that contain no graph. The diagnostic can appear alongside other graph validation errors.</p>
 <h3 id="js-function-types">JS function types<a class="headerlink" href="#js-function-types" title="Permanent link">&para;</a></h3>
-<p>The JVM, Native, and Wasm <code>SuspendProvider&lt;T&gt;</code> implementations also implement <code>suspend () -&gt; T</code>.<br />
-The JS implementation does not. Invoking a function-typed value compiles to a direct JS call, but a<br />
-fun-interface instance is not a callable JS function.</p>
-<p>Provider-framework conversion runs at each wrapper layer. On JS it wraps every function-provider<br />
-and suspend-function-provider layer in a real lambda; other platforms can use the provider object<br />
-directly. The conversion is not performed earlier because the same expression may also initialize a<br />
-graph field whose required type is <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code>.</p>
-<p><code>FunctionTypeInvocationOnAllPlatforms.kt</code> covers this path through the test framework&rsquo;s<br />
-multiplatform <code>runBlocking</code> helper.</p>
+<p>The JVM, Native, and Wasm <code>SuspendProvider&lt;T&gt;</code> implementations also implement <code>suspend () -&gt; T</code>. The JS implementation does not. Invoking a function-typed value compiles to a direct JS call, but a fun-interface instance is not a callable JS function.</p>
+<p>Provider-framework conversion runs at each wrapper layer. On JS it wraps every function-provider and suspend-function-provider layer in a real lambda; other platforms can use the provider object directly. The conversion is not performed earlier because the same expression may also initialize a graph field whose required type is <code>Provider&lt;T&gt;</code> or <code>SuspendProvider&lt;T&gt;</code>.</p>
+<p><code>FunctionTypeInvocationOnAllPlatforms.kt</code> covers this path through the test framework&rsquo;s multiplatform <code>runBlocking</code> helper.</p>
 <h2 id="runtime-behavior">Runtime behavior<a class="headerlink" href="#runtime-behavior" title="Permanent link">&para;</a></h2>
-<p><code>SuspendDoubleCheck</code> first reads a volatile cached-value field, so initialized calls do not acquire<br />
-a lock. On the first call, it holds a private kotlinx-coroutines <code>Mutex</code> while invoking the<br />
-delegate. Other callers suspend until that attempt finishes. The same implementation is used on<br />
-JVM, Native, JS, and Wasm.</p>
-<p>A successful result, including <code>null</code>, is cached and the delegate reference is released. If the<br />
-delegate fails or is cancelled, the cache remains empty so a waiting or later caller can retry.<br />
-Cancelling a caller that is waiting for the mutex does not cancel the caller already invoking the<br />
-delegate.</p>
-<p>Each initialization attempt adds a linked marker to its coroutine context. Structured child<br />
-coroutines inherit it. A request for a cache already in that active chain fails before trying to<br />
-acquire the same mutex. The marker is deactivated when the attempt finishes, so a child that<br />
-outlives a failed or cancelled attempt can request the cache later without being mistaken for a<br />
-cycle. Callers outside the active chain wait normally.</p>
-<p>These markers do not coordinate separate initialization chains. Two independently launched<br />
-coroutines can deadlock if each initializes one cache and then requests the other. Static graph<br />
-validation catches cycles visible in the dependency graph. Dynamic provider and lazy calls must<br />
-avoid acquiring caches in opposite orders.</p>
-<p><code>suspendLazy(SYNCHRONIZED)</code> uses <code>SuspendDoubleCheck</code>. <code>PUBLICATION</code> may run several initializers at<br />
-once and publishes one result. JVM and Native use compare-and-set. JS and Wasm run on one thread,<br />
-but initializers can overlap at suspension points, so the implementation checks again after an<br />
-initializer returns before publishing. <code>NONE</code> caches the result when calls do not overlap but does<br />
-not coordinate concurrent callers. A failed or cancelled attempt does not publish a value in any<br />
-mode.</p>
+<p><code>SuspendDoubleCheck</code> first reads a volatile cached-value field, so initialized calls do not acquire a lock. On the first call, it holds a private kotlinx-coroutines <code>Mutex</code> while invoking the delegate. Other callers suspend until that attempt finishes. The same implementation is used on JVM, Native, JS, and Wasm.</p>
+<p>A successful result, including <code>null</code>, is cached and the delegate reference is released. If the delegate fails or is cancelled, the cache remains empty so a waiting or later caller can retry. Cancelling a caller that is waiting for the mutex does not cancel the caller already invoking the delegate.</p>
+<p>Each initialization attempt adds a linked marker to its coroutine context. Structured child coroutines inherit it. A request for a cache already in that active chain fails before trying to acquire the same mutex. The marker is deactivated when the attempt finishes, so a child that outlives a failed or cancelled attempt can request the cache later without being mistaken for a cycle. Callers outside the active chain wait normally.</p>
+<p>These markers do not coordinate separate initialization chains. Two independently launched coroutines can deadlock if each initializes one cache and then requests the other. Static graph validation catches cycles visible in the dependency graph. Dynamic provider and lazy calls must avoid acquiring caches in opposite orders.</p>
+<p><code>suspendLazy(SYNCHRONIZED)</code> uses <code>SuspendDoubleCheck</code>. <code>PUBLICATION</code> may run several initializers at once and publishes one result. JVM and Native use compare-and-set. JS and Wasm run on one thread, but initializers can overlap at suspension points, so the implementation checks again after an initializer returns before publishing. <code>NONE</code> caches the result when calls do not overlap but does not coordinate concurrent callers. A failed or cancelled attempt does not publish a value in any mode.</p>
 <h2 id="tracing">Tracing<a class="headerlink" href="#tracing" title="Permanent link">&para;</a></h2>
-<p>Suspend traces follow the coroutine across suspension and thread changes. <code>TracedSuspendProvider</code><br />
-wraps provider values, while direct suspend expressions use <code>MetroTraceContext.traceSuspend</code>. Both<br />
-paths delegate to <code>Tracer.traceCoroutine</code>.</p>
+<p>Suspend traces follow the coroutine across suspension and thread changes. <code>TracedSuspendProvider</code> wraps provider values, while direct suspend expressions use <code>MetroTraceContext.traceSuspend</code>. Both paths delegate to <code>Tracer.traceCoroutine</code>.</p>
 <h2 id="limitations-and-future-work">Limitations and future work<a class="headerlink" href="#limitations-and-future-work" title="Permanent link">&para;</a></h2>
-<p>Metro currently initializes constructor and provider arguments sequentially in the caller&rsquo;s<br />
-coroutine context. Graphs cache scoped values, but they do not own a <code>CoroutineScope</code> or <code>Job</code> and<br />
-have no resource-cleanup lifecycle.</p>
+<p>Metro currently initializes constructor and provider arguments sequentially in the caller&rsquo;s coroutine context. Graphs cache scoped values, but they do not own a <code>CoroutineScope</code> or <code>Job</code> and have no resource-cleanup lifecycle.</p>
 <p>The possible additions below are independent.</p>
 <h3 id="member-injection">Member injection<a class="headerlink" href="#member-injection" title="Permanent link">&para;</a></h3>
-<p>Ordinary constructor-injected classes cannot combine suspend construction with member injection.<br />
-Supporting this would require their graph-local suspend factory to construct the instance and then<br />
-run the existing synchronous member injectors.</p>
-<p>Suspend assisted-factory implementations already do this for synchronous injected members. Suspend<br />
-member dependencies and suspend graph injector functions remain separate future work.</p>
-<p>Supporting actual <code>@Inject suspend fun</code> members is a separate feature. It would need rules for<br />
-inherited members, cross-module metadata, a possible <code>SuspendMembersInjector</code> API, and Dagger<br />
-interop, whose <code>MembersInjector</code> has no suspend form.</p>
+<p>Ordinary constructor-injected classes cannot combine suspend construction with member injection. Supporting this would require their graph-local suspend factory to construct the instance and then run the existing synchronous member injectors.</p>
+<p>Suspend assisted-factory implementations already do this for synchronous injected members. Suspend member dependencies and suspend graph injector functions remain separate future work.</p>
+<p>Supporting actual <code>@Inject suspend fun</code> members is a separate feature. It would need rules for inherited members, cross-module metadata, a possible <code>SuspendMembersInjector</code> API, and Dagger interop, whose <code>MembersInjector</code> has no suspend form.</p>
 <h3 id="warm-up">Warm-up<a class="headerlink" href="#warm-up" title="Permanent link">&para;</a></h3>
-<p>Applications can warm selected graph roots today by calling their accessors concurrently from an<br />
-application-owned <code>coroutineScope</code>. This keeps the caller&rsquo;s dispatcher, cancellation, and trace<br />
-context.</p>
-<p>If Metro adds a warm-up API, roots should be selected explicitly. Warming every scoped binding could<br />
-run unused side effects and retain values the application never requests. Calling selected roots<br />
-concurrently already lets <code>SuspendDoubleCheck</code> initialize shared dependencies once.</p>
-<p>Ordinary graph access remains sequential. If Metro adds parallel initialization, it should happen<br />
-at an explicit warm-up boundary rather than at every construction site.</p>
+<p>Applications can warm selected graph roots today by calling their accessors concurrently from an application-owned <code>coroutineScope</code>. This keeps the caller&rsquo;s dispatcher, cancellation, and trace context.</p>
+<p>If Metro adds a warm-up API, roots should be selected explicitly. Warming every scoped binding could run unused side effects and retain values the application never requests. Calling selected roots concurrently already lets <code>SuspendDoubleCheck</code> initialize shared dependencies once.</p>
+<p>Ordinary graph access remains sequential. If Metro adds parallel initialization, it should happen at an explicit warm-up boundary rather than at every construction site.</p>
 <h3 id="graph-lifecycle-and-resource-cleanup">Graph lifecycle and resource cleanup<a class="headerlink" href="#graph-lifecycle-and-resource-cleanup" title="Permanent link">&para;</a></h3>
-<p>Warm-up does not require a graph-owned scope. A graph lifecycle would be a separate change to the<br />
-execution model.</p>
-<p>Initialization currently runs in the caller. Adding a <code>Job</code> field would not make that work a child<br />
-of the graph job; Metro would have to launch it in a graph-owned scope. A design would need to<br />
-define caller cancellation, dispatchers, tracing, parent and child graph ownership, and behavior<br />
-after the graph is closed.</p>
-<p>Cancelling in-flight work is not resource cleanup. Closing an initialized database or other cached<br />
-value needs a separate ownership and disposal contract.</p>
+<p>Warm-up does not require a graph-owned scope. A graph lifecycle would be a separate change to the execution model.</p>
+<p>Initialization currently runs in the caller. Adding a <code>Job</code> field would not make that work a child of the graph job; Metro would have to launch it in a graph-owned scope. A design would need to define caller cancellation, dispatchers, tracing, parent and child graph ownership, and behavior after the graph is closed.</p>
+<p>Cancelling in-flight work is not resource cleanup. Closing an initialized database or other cached value needs a separate ownership and disposal contract.</p>
 <h3 id="unsupported-apis-and-shapes">Unsupported APIs and shapes<a class="headerlink" href="#unsupported-apis-and-shapes" title="Permanent link">&para;</a></h3>
-<p><code>Deferred&lt;T&gt;</code> is not an injectable wrapper. It exposes job lifecycle operations such as <code>cancel()</code><br />
-to every consumer and requires an owning <code>CoroutineScope</code>. Applications that need a <code>Deferred</code> can<br />
-provide one from a scope they own.</p>
-<p>Provider-valued sets, including <code>Set&lt;suspend () -&gt; T&gt;</code>, are unsupported in the same way as<br />
-<code>Set&lt;Provider&lt;T&gt;&gt;</code>. <code>SuspendLazy</code> and additional suspend-wrapper layers in map value position,<br />
-including <code>Map&lt;K, SuspendLazy&lt;V&gt;&gt;</code>, are also unsupported.</p>
+<p><code>Deferred&lt;T&gt;</code> is not an injectable wrapper. It exposes job lifecycle operations such as <code>cancel()</code> to every consumer and requires an owning <code>CoroutineScope</code>. Applications that need a <code>Deferred</code> can provide one from a scope they own.</p>
+<p>Provider-valued sets, including <code>Set&lt;suspend () -&gt; T&gt;</code>, are unsupported in the same way as <code>Set&lt;Provider&lt;T&gt;&gt;</code>. <code>SuspendLazy</code> and additional suspend-wrapper layers in map value position, including <code>Map&lt;K, SuspendLazy&lt;V&gt;&gt;</code>, are also unsupported.</p>
 <h3 id="multiplatform-test-coverage">Multiplatform test coverage<a class="headerlink" href="#multiplatform-test-coverage" title="Permanent link">&para;</a></h3>
-<p>Multiplatform suspend box fixtures use the compiler test framework&rsquo;s <code>runBlocking</code> helper. It starts<br />
-a coroutine and expects it to finish before the helper returns, so it only supports calls that<br />
-complete synchronously. This avoids the awkward event-loop behavior of trying to block a JS box<br />
-test. <code>ENABLE_SUSPEND_PROVIDERS</code> adds <code>runtime-coroutines</code> and the kotlinx-coroutines classpath to a<br />
-fixture unless it also uses <code>WITHOUT_RUNTIME_COROUTINES</code>. Tests for real suspension, scheduling,<br />
-cancellation, and contention live in the runtime modules and use kotlinx-coroutines directly.</p>
+<p>Multiplatform suspend box fixtures use the compiler test framework&rsquo;s <code>runBlocking</code> helper. It starts a coroutine and expects it to finish before the helper returns, so it only supports calls that complete synchronously. This avoids the awkward event-loop behavior of trying to block a JS box test. <code>ENABLE_SUSPEND_PROVIDERS</code> adds <code>runtime-coroutines</code> and the kotlinx-coroutines classpath to a fixture unless it also uses <code>WITHOUT_RUNTIME_COROUTINES</code>. Tests for real suspension, scheduling, cancellation, and contention live in the runtime modules and use kotlinx-coroutines directly.</p>
 
 
 

@@ -2177,24 +2177,15 @@
 
 
 <h1 id="coroutines-support">Coroutines Support<a class="headerlink" href="#coroutines-support" title="Permanent link">&para;</a></h1>
-<p>Metro&rsquo;s coroutine support currently includes <code>suspend</code> provider functions and graph accessors. Use<br />
-them for dependencies whose creation suspends, such as opening a database, reading configuration,<br />
-or performing a network handshake.</p>
+<p>Metro&rsquo;s coroutine support currently includes <code>suspend</code> provider functions and graph accessors. Use them for dependencies whose creation suspends, such as opening a database, reading configuration, or performing a network handshake.</p>
 <div class="admonition warning">
 <p class="admonition-title">Experimental</p>
-<p>Suspend provider support is experimental and disabled by default. The<br />
-<code>metro.enableSuspendProviders</code> option is required for any suspend binding, suspend graph<br />
-accessor, and injection request containing <code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>,<br />
-<code>SuspendLazy&lt;T&gt;</code>, or <code>Map&lt;K, suspend () -&gt; V&gt;</code>, including nested uses. Enable it in the Metro<br />
-Gradle configuration:</p>
+<p>Suspend provider support is experimental and disabled by default. The <code>metro.enableSuspendProviders</code> option is required for any suspend binding, suspend graph accessor, and injection request containing <code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>, <code>SuspendLazy&lt;T&gt;</code>, or <code>Map&lt;K, suspend () -&gt; V&gt;</code>, including nested uses. Enable it in the Metro Gradle configuration:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">enableSuspendProviders</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>SuspendProvider</code>, <code>SuspendLazy</code>, and their helper APIs are annotated with<br />
-<code>@ExperimentalMetroCoroutinesApi</code>. Using them directly requires<br />
-<code>@OptIn(ExperimentalMetroCoroutinesApi::class)</code> or<br />
-<code>-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi</code>.</p>
+<p><code>SuspendProvider</code>, <code>SuspendLazy</code>, and their helper APIs are annotated with <code>@ExperimentalMetroCoroutinesApi</code>. Using them directly requires <code>@OptIn(ExperimentalMetroCoroutinesApi::class)</code> or <code>-opt-in=dev.zacsweers.metro.ExperimentalMetroCoroutinesApi</code>.</p>
 </div>
 <h2 id="declaring-suspend-bindings">Declaring suspend bindings<a class="headerlink" href="#declaring-suspend-bindings" title="Permanent link">&para;</a></h2>
 <p>Annotate a <code>suspend</code> function with <code>@Provides</code> like any other provider.</p>
@@ -2206,18 +2197,15 @@ Gradle configuration:</p>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">(</span><span class="n">config</span><span class="p">:</span><span class="w"> </span><span class="n">DbConfig</span><span class="p">):</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openDatabase</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Because creating <code>Database</code> suspends, its graph accessor must also be <code>suspend</code>. Metro checks this<br />
-at compile time.</p>
-<p><code>@Binds</code> and <code>@Multibinds</code> only declare graph relationships, so Metro does not allow them to be<br />
-<code>suspend</code>.</p>
+<p>Because creating <code>Database</code> suspends, its graph accessor must also be <code>suspend</code>. Metro checks this at compile time.</p>
+<p><code>@Binds</code> and <code>@Multibinds</code> only declare graph relationships, so Metro does not allow them to be <code>suspend</code>.</p>
 <h2 id="how-suspension-propagates">How suspension propagates<a class="headerlink" href="#how-suspension-propagates" title="Permanent link">&para;</a></h2>
 <p>A binding requires initialization in a suspend context when either:</p>
 <ol>
 <li>Its provider is a <code>suspend</code> function, or</li>
 <li>It depends on a suspend binding directly, without a deferring wrapper.</li>
 </ol>
-<p>This is computed separately for each graph and requires no annotation on consuming classes. Here,<br />
-constructing <code>Repository</code> requires <code>Database</code>, so the <code>Repository</code> accessor must be <code>suspend</code> too:</p>
+<p>This is computed separately for each graph and requires no annotation on consuming classes. Here, constructing <code>Repository</code> requires <code>Database</code>, so the <code>Repository</code> accessor must be <code>suspend</code> too:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">Repository</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">database</span><span class="p">:</span><span class="w"> </span><span class="n">Database</span><span class="p">)</span>
 
@@ -2229,12 +2217,10 @@ constructing <code>Repository</code> requires <code>Database</code>, so the <cod
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">():</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openDatabase</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Suspension propagates through any number of unwrapped dependencies. A non-suspend accessor for one<br />
-of those bindings produces an error with the full dependency path to the suspend provider.</p>
+<p>Suspension propagates through any number of unwrapped dependencies. A non-suspend accessor for one of those bindings produces an error with the full dependency path to the suspend provider.</p>
 <p>Suspend providers may depend on ordinary bindings without restriction.</p>
 <h2 id="deferring-with-suspend-t">Deferring with <code>suspend () -&gt; T</code><a class="headerlink" href="#deferring-with-suspend-t" title="Permanent link">&para;</a></h2>
-<p>Injecting <code>suspend () -&gt; T</code> instead of <code>T</code> defers initialization until the function is called. The<br />
-consumer can then be constructed synchronously; only invoking the function suspends.</p>
+<p>Injecting <code>suspend () -&gt; T</code> instead of <code>T</code> defers initialization until the function is called. The consumer can then be constructed synchronously; only invoking the function suspends.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">Repository</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">database</span><span class="p">:</span><span class="w"> </span><span class="n">suspend</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Database</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="n">Row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">database</span><span class="p">().</span><span class="na">query</span><span class="p">(</span><span class="n">id</span><span class="p">)</span>
@@ -2258,16 +2244,11 @@ consumer can then be constructed synchronously; only invoking the function suspe
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">():</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openDatabase</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>suspend () -&gt; T</code> is the suspend form of the <a href="../metro-intrinsics/"><code>() -&gt; T</code> function provider</a>.<br />
-Prefer it at injection sites. It requires <code>enableFunctionProviders</code>, which is enabled by default.</p>
-<p>Metro uses <code>SuspendProvider&lt;T&gt;</code> as the runtime type and converts it to the function type where<br />
-needed. The <a href="#runtime-helpers">runtime helpers</a> operate on <code>SuspendProvider&lt;T&gt;</code> directly.</p>
-<p>Each invocation initializes the binding again, or returns the cached instance if the binding is<br />
-scoped.</p>
+<p><code>suspend () -&gt; T</code> is the suspend form of the <a href="../metro-intrinsics/"><code>() -&gt; T</code> function provider</a>. Prefer it at injection sites. It requires <code>enableFunctionProviders</code>, which is enabled by default.</p>
+<p>Metro uses <code>SuspendProvider&lt;T&gt;</code> as the runtime type and converts it to the function type where needed. The <a href="#runtime-helpers">runtime helpers</a> operate on <code>SuspendProvider&lt;T&gt;</code> directly.</p>
+<p>Each invocation initializes the binding again, or returns the cached instance if the binding is scoped.</p>
 <h2 id="deferring-and-memoizing-with-suspendlazyt">Deferring and memoizing with <code>SuspendLazy&lt;T&gt;</code><a class="headerlink" href="#deferring-and-memoizing-with-suspendlazyt" title="Permanent link">&para;</a></h2>
-<p><code>SuspendLazy&lt;T&gt;</code> is a cached value obtained in a suspend context. When Metro injects one, it defers<br />
-initialization until <code>value()</code> is called and caches the first successful result for that wrapper<br />
-instance.</p>
+<p><code>SuspendLazy&lt;T&gt;</code> is a cached value obtained in a suspend context. When Metro injects one, it defers initialization until <code>value()</code> is called and caches the first successful result for that wrapper instance.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">Repository</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">database</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendLazy</span><span class="o">&lt;</span><span class="n">Database</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="n">Row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">database</span><span class="p">.</span><span class="na">value</span><span class="p">().</span><span class="na">query</span><span class="p">(</span><span class="n">id</span><span class="p">)</span>
@@ -2282,34 +2263,23 @@ instance.</p>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">():</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openDatabase</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Like <code>Lazy&lt;T&gt;</code>, an unscoped <code>SuspendLazy&lt;T&gt;</code> caches per wrapper. Two injection sites therefore have<br />
-separate caches. For a scoped binding, every wrapper uses the graph&rsquo;s shared cached value.</p>
-<p>Injected <code>SuspendLazy</code> values are single-flight: one caller computes the value, concurrent callers<br />
-wait for it, and a failed or cancelled computation can be retried (i.e. unlike <code>Deferred</code>).</p>
+<p>Like <code>Lazy&lt;T&gt;</code>, an unscoped <code>SuspendLazy&lt;T&gt;</code> caches per wrapper. Two injection sites therefore have separate caches. For a scoped binding, every wrapper uses the graph&rsquo;s shared cached value.</p>
+<p>Injected <code>SuspendLazy</code> values are single-flight: one caller computes the value, concurrent callers wait for it, and a failed or cancelled computation can be retried (i.e. unlike <code>Deferred</code>).</p>
 <p><code>SuspendLazy</code> can also wrap an ordinary binding when a uniform suspend API is useful.</p>
 <p><code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>, and <code>SuspendLazy&lt;T&gt;</code> all support nullable <code>T</code>.</p>
 <h3 id="nested-wrappers">Nested wrappers<a class="headerlink" href="#nested-wrappers" title="Permanent link">&para;</a></h3>
-<p><code>Provider</code>, function providers, <code>Lazy</code>, <code>SuspendProvider</code>, suspend functions, and <code>SuspendLazy</code> can<br />
-be nested to any depth in a scalar wrapper stack. Each wrapper applies to its immediate inner value.<br />
-For example:</p>
+<p><code>Provider</code>, function providers, <code>Lazy</code>, <code>SuspendProvider</code>, suspend functions, and <code>SuspendLazy</code> can be nested to any depth in a scalar wrapper stack. Each wrapper applies to its immediate inner value. For example:</p>
 <ul>
 <li><code>Provider&lt;SuspendLazy&lt;T&gt;&gt;</code> creates a <code>SuspendLazy&lt;T&gt;</code> when the provider is invoked.</li>
 <li><code>() -&gt; suspend () -&gt; T</code> creates the suspend function when the outer function is invoked.</li>
-<li><code>SuspendLazy&lt;suspend () -&gt; T&gt;</code> caches the suspend function, not the <code>T</code> returned by that<br />
-  function.</li>
+<li><code>SuspendLazy&lt;suspend () -&gt; T&gt;</code> caches the suspend function, not the <code>T</code> returned by that function.</li>
 </ul>
-<p>When the underlying binding suspends, the wrapper closest to it must also support suspension.<br />
-<code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, and <code>Lazy&lt;T&gt;</code> cannot fill that role. For example, <code>suspend () -&gt; Lazy&lt;T&gt;</code><br />
-cannot wrap a suspending <code>T</code>; use <code>suspend () -&gt; SuspendLazy&lt;T&gt;</code> instead. The same stack is valid<br />
-when <code>T</code> is not suspending.</p>
-<p>Every supported wrapper stack containing <code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>, or<br />
-<code>SuspendLazy&lt;T&gt;</code> is behind <code>metro.enableSuspendProviders</code>.</p>
+<p>When the underlying binding suspends, the wrapper closest to it must also support suspension. <code>Provider&lt;T&gt;</code>, <code>() -&gt; T</code>, and <code>Lazy&lt;T&gt;</code> cannot fill that role. For example, <code>suspend () -&gt; Lazy&lt;T&gt;</code> cannot wrap a suspending <code>T</code>; use <code>suspend () -&gt; SuspendLazy&lt;T&gt;</code> instead. The same stack is valid when <code>T</code> is not suspending.</p>
+<p>Every supported wrapper stack containing <code>suspend () -&gt; T</code>, <code>SuspendProvider&lt;T&gt;</code>, or <code>SuspendLazy&lt;T&gt;</code> is behind <code>metro.enableSuspendProviders</code>.</p>
 <h2 id="scoping">Scoping<a class="headerlink" href="#scoping" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Scope here means Metro scope</p>
-<p>Here, scope means a Metro binding scope (<code>@SingleIn</code>, <code>@DependencyGraph(scope = ...)</code>), not a<br />
-<code>kotlinx.coroutines.CoroutineScope</code>. Metro graphs do not own a <code>CoroutineScope</code>; suspend<br />
-providers run in the calling coroutine.</p>
+<p>Here, scope means a Metro binding scope (<code>@SingleIn</code>, <code>@DependencyGraph(scope = ...)</code>), not a <code>kotlinx.coroutines.CoroutineScope</code>. Metro graphs do not own a <code>CoroutineScope</code>; suspend providers run in the calling coroutine.</p>
 </div>
 <p>Scoped suspend bindings work like other scoped bindings. The first successful result is cached:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2326,26 +2296,15 @@ providers run in the calling coroutine.</p>
 <li>At most one caller computes at a time. Concurrent callers wait and share a successful result.</li>
 <li>A failed initialization is not cached. A later caller retries.</li>
 <li>Cancellation during initialization leaves the cache empty. A later caller retries.</li>
-<li>A request for the same cache from its current initialization chain fails with a circular<br />
-  dependency error instead of waiting on itself.</li>
+<li>A request for the same cache from its current initialization chain fails with a circular dependency error instead of waiting on itself.</li>
 </ul>
 <p>All platforms use a coroutine mutex from kotlinx-coroutines.</p>
-<p>The initialization check follows structured child coroutines and indirect calls within the same<br />
-chain. It does not coordinate separate initialization chains. Two independently launched<br />
-coroutines can still deadlock if each initializes one cached binding and then requests the other.<br />
-Metro reports cycles visible in the dependency graph; code that invokes providers or lazy values<br />
-dynamically must not initialize the same caches in conflicting orders.</p>
-<p>Scoped suspend bindings use <code>dev.zacsweers.metro:runtime-coroutines</code>, which must be available at<br />
-compile time and runtime. The Gradle plugin adds it automatically. If automatic runtime dependencies<br />
-are disabled and the artifact is missing, Metro reports a compile-time error with the dependency to<br />
-add.</p>
-<p>Metro caches the value but does not close it. The application remains responsible for releasing<br />
-resources when they are no longer needed.</p>
+<p>The initialization check follows structured child coroutines and indirect calls within the same chain. It does not coordinate separate initialization chains. Two independently launched coroutines can still deadlock if each initializes one cached binding and then requests the other. Metro reports cycles visible in the dependency graph; code that invokes providers or lazy values dynamically must not initialize the same caches in conflicting orders.</p>
+<p>Scoped suspend bindings use <code>dev.zacsweers.metro:runtime-coroutines</code>, which must be available at compile time and runtime. The Gradle plugin adds it automatically. If automatic dependency management is disabled, follow the <a href="../installation/#manual-dependency-management">manual dependency setup</a>. If the artifact is missing, Metro reports a compile-time error with the dependency to add.</p>
+<p>Metro caches the value but does not close it. The application remains responsible for releasing resources when they are no longer needed.</p>
 <h2 id="execution-context">Execution context<a class="headerlink" href="#execution-context" title="Permanent link">&para;</a></h2>
-<p>Metro does not switch dispatchers or launch independent dependencies concurrently. Provider code<br />
-runs in the calling coroutine&rsquo;s context, and dependency arguments are initialized sequentially.</p>
-<p>For a scoped binding, the first caller runs the initializer and other callers share its result. If<br />
-initialization needs a specific dispatcher, switch inside the provider:</p>
+<p>Metro does not switch dispatchers or launch independent dependencies concurrently. Provider code runs in the calling coroutine&rsquo;s context, and dependency arguments are initialized sequentially.</p>
+<p>For a scoped binding, the first caller runs the initializer and other callers share its result. If initialization needs a specific dispatcher, switch inside the provider:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span>
 <span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">():</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span>
@@ -2353,8 +2312,7 @@ initialization needs a specific dispatcher, switch inside the provider:</p>
 <span class="w">    </span><span class="n">openDatabase</span><span class="p">()</span>
 <span class="w">  </span><span class="p">}</span>
 </code></pre></div>
-<p>Use the same approach for blocking I/O or thread-confined work. Metro does not choose an execution<br />
-context for the provider.</p>
+<p>Use the same approach for blocking I/O or thread-confined work. Metro does not choose an execution context for the provider.</p>
 <h2 id="multibindings">Multibindings<a class="headerlink" href="#multibindings" title="Permanent link">&para;</a></h2>
 <p>Maps of deferred suspend values are supported:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
@@ -2368,20 +2326,15 @@ context for the provider.</p>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideLogoutHandler</span><span class="p">():</span><span class="w"> </span><span class="n">Handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LogoutHandler</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Suspend and non-suspend contributions can be mixed. Each provider is initialized when its function<br />
-is invoked.</p>
+<p>Suspend and non-suspend contributions can be mixed. Each provider is initialized when its function is invoked.</p>
 <p>Other collection forms are unsupported:</p>
 <ul>
-<li><code>Set&lt;T&gt;</code> multibindings cannot contain suspend contributions. Provider-valued set forms such as<br />
-<code>Set&lt;suspend () -&gt; T&gt;</code> are unsupported, matching <code>Set&lt;Provider&lt;T&gt;&gt;</code>.</li>
-<li><code>Map&lt;K, V&gt;</code> over suspend values must be consumed as <code>Map&lt;K, suspend () -&gt; V&gt;</code> or<br />
-<code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> instead.</li>
-<li><code>SuspendLazy</code> and additional suspend-wrapper layers in map value position, such as<br />
-<code>Map&lt;K, SuspendLazy&lt;V&gt;&gt;</code>, are unsupported.</li>
+<li><code>Set&lt;T&gt;</code> multibindings cannot contain suspend contributions. Provider-valued set forms such as <code>Set&lt;suspend () -&gt; T&gt;</code> are unsupported, matching <code>Set&lt;Provider&lt;T&gt;&gt;</code>.</li>
+<li><code>Map&lt;K, V&gt;</code> over suspend values must be consumed as <code>Map&lt;K, suspend () -&gt; V&gt;</code> or <code>Map&lt;K, SuspendProvider&lt;V&gt;&gt;</code> instead.</li>
+<li><code>SuspendLazy</code> and additional suspend-wrapper layers in map value position, such as <code>Map&lt;K, SuspendLazy&lt;V&gt;&gt;</code>, are unsupported.</li>
 </ul>
 <h2 id="assisted-injection">Assisted injection<a class="headerlink" href="#assisted-injection" title="Permanent link">&para;</a></h2>
-<p>If an <code>@AssistedInject</code> class consumes suspend bindings, its <code>@AssistedFactory</code> function must be<br />
-declared <code>suspend</code>:</p>
+<p>If an <code>@AssistedInject</code> class consumes suspend bindings, its <code>@AssistedFactory</code> function must be declared <code>suspend</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nc">AccountCreator</span>
 <span class="nd">@AssistedInject</span>
 <span class="k">constructor</span><span class="p">(</span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">region</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">database</span><span class="p">:</span><span class="w"> </span><span class="n">Database</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -2399,23 +2352,16 @@ declared <code>suspend</code>:</p>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">():</span><span class="w"> </span><span class="n">Database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openDatabase</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Obtaining the factory does not suspend. Calling <code>create(...)</code> does. Metro reports an error when the<br />
-factory function is not <code>suspend</code> but constructing its target requires suspension.</p>
+<p>Obtaining the factory does not suspend. Calling <code>create(...)</code> does. Metro reports an error when the factory function is not <code>suspend</code> but constructing its target requires suspension.</p>
 <h2 id="member-injection">Member injection<a class="headerlink" href="#member-injection" title="Permanent link">&para;</a></h2>
-<p>Member injection cannot initialize suspend bindings because injector functions and <code>MembersInjector</code><br />
-are synchronous. Change the member type to <code>suspend () -&gt; T</code> or <code>SuspendLazy&lt;T&gt;</code> to defer<br />
-initialization:</p>
+<p>Member injection cannot initialize suspend bindings because injector functions and <code>MembersInjector</code> are synchronous. Change the member type to <code>suspend () -&gt; T</code> or <code>SuspendLazy&lt;T&gt;</code> to defer initialization:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nc">ProfileActivity</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="kd">lateinit</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">database</span><span class="p">:</span><span class="w"> </span><span class="n">suspend</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Database</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>Metro also rejects a constructor-injected class with injected members when constructing the class<br />
-requires suspension. Generated suspend factories do not run the usual post-construction member<br />
-injection yet.</p>
+<p>Metro also rejects a constructor-injected class with injected members when constructing the class requires suspension. Generated suspend factories do not run the usual post-construction member injection yet.</p>
 <h2 id="runtime-helpers">Runtime helpers<a class="headerlink" href="#runtime-helpers" title="Permanent link">&para;</a></h2>
-<p>The core <code>runtime</code> artifact provides <code>suspendProvider</code>, <code>suspendProviderOf</code>, <code>suspendLazyOf</code>, and the<br />
-<code>map</code>, <code>flatMap</code>, and <code>zip</code> provider operators. <code>suspendLazyOf</code> returns an already initialized<br />
-<code>SuspendLazy</code>.</p>
+<p>The core <code>runtime</code> artifact provides <code>suspendProvider</code>, <code>suspendProviderOf</code>, <code>suspendLazyOf</code>, and the <code>map</code>, <code>flatMap</code>, and <code>zip</code> provider operators. <code>suspendLazyOf</code> returns an already initialized <code>SuspendLazy</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Wrap a lambda</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">provider</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendProvider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">suspendProvider</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">fetchToken</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
 

@@ -2234,8 +2234,7 @@
 <p>Unlike Dagger, Metro uses parameter names as implicit identifiers rather than requiring explicit <code>@Assisted("identifier")</code> values. This is because parameter names are a first-class citizen in Kotlin&rsquo;s API. Dagger&rsquo;s <code>@Assisted</code> annotations&rsquo; identifiers <em>are</em> supported for interop purposes.</p>
 </div>
 <h3 id="automatic-assisted-factory-generation">Automatic Assisted Factory Generation<a class="headerlink" href="#automatic-assisted-factory-generation" title="Permanent link">&para;</a></h3>
-<p>Metro supports automatic generation of assisted factories via opt-in compiler option. If enabled,<br />
-Metro will automatically generate a default factory as a nested class within the injected type.</p>
+<p>Metro supports automatic generation of assisted factories via opt-in compiler option. If enabled, Metro will automatically generate a default factory as a nested class within the injected type.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span>
 <span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">timeoutDuration</span><span class="p">:</span><span class="w"> </span><span class="n">Duration</span><span class="p">,</span>
@@ -2450,12 +2449,9 @@ Metro will automatically generate a default factory as a nested class within the
 <h3 id="why-opt-in_1">Why opt-in?<a class="headerlink" href="#why-opt-in_1" title="Permanent link">&para;</a></h3>
 <p>There are three reasons this is behind an opt-in option at the moment.</p>
 <ol>
-<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not<br />
-   currently compatible with incremental compilation on the JVM.</li>
-<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not<br />
-   currently compatible with non-JVM targets.</li>
-<li>IDE support is rudimentary at best and currently requires enabling a custom registry flag.<br />
-   See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
+<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with incremental compilation on the JVM.</li>
+<li>Generating top-level declarations in Kotlin compiler plugins (in FIR specifically) is not currently compatible with non-JVM targets.</li>
+<li>IDE support is rudimentary at best and currently requires enabling a custom registry flag. See <a href="../installation/#ide-support">the docs for how to enable IDE support</a>.</li>
 </ol>
 <p>Because of this, it&rsquo;s likely better for now to just hand-write the equivalent class that Metro generates. If you still wish to proceed with using this, it can be enabled via the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>

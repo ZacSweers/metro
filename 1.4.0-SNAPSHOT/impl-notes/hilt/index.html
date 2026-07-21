@@ -1942,54 +1942,34 @@
 
 
 <h1 id="hilt-interop-notes">Hilt Interop Notes<a class="headerlink" href="#hilt-interop-notes" title="Permanent link">&para;</a></h1>
-<p>Internal notes for Metro&rsquo;s Hilt interop implementation. User-facing docs live in<br />
-<a href="../../interop/#hilt"><code>docs/interop.md</code></a>.</p>
+<p>Internal notes for Metro&rsquo;s Hilt interop implementation. User-facing docs live in <a href="../../interop/#hilt"><code>docs/interop.md</code></a>.</p>
 <h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
-<p><code>metro { interop { includeHilt() } }</code> lets a Metro graph merge Hilt declarations that target the<br />
-same logical scope:</p>
+<p><code>metro { interop { includeHilt() } }</code> lets a Metro graph merge Hilt declarations that target the same logical scope:</p>
 <ul>
-<li><code>@InstallIn(&lt;component&gt;) @Module</code> contributes its <code>@Provides</code> declarations as a binding<br />
-  container.</li>
-<li><code>@InstallIn(&lt;component&gt;) @EntryPoint</code> contributes the entry point interface as a graph<br />
-  supertype.</li>
+<li><code>@InstallIn(&lt;component&gt;) @Module</code> contributes its <code>@Provides</code> declarations as a binding container.</li>
+<li><code>@InstallIn(&lt;component&gt;) @EntryPoint</code> contributes the entry point interface as a graph supertype.</li>
 </ul>
-<p>The Hilt layer only discovers and translates Hilt metadata. Metro&rsquo;s normal contribution pipeline<br />
-still owns nested contribution generation, hint emission, supertype merging, binding-container<br />
-processing, replacements, exclusions, and IR graph validation.</p>
+<p>The Hilt layer only discovers and translates Hilt metadata. Metro&rsquo;s normal contribution pipeline still owns nested contribution generation, hint emission, supertype merging, binding-container processing, replacements, exclusions, and IR graph validation.</p>
 <h2 id="main-files">Main Files<a class="headerlink" href="#main-files" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>compiler/.../hilt/HiltSymbols.kt</code>: Hilt <code>ClassId</code>s, FIR predicates, standard component IDs, and<br />
-  canonical component scopes.</li>
-<li><code>compiler/.../hilt/HiltComponentScopeMapping.kt</code>: component-to-scope mapping, including<br />
-  user-defined <code>@DefineComponent</code> scope lookup and per-consumer in-round <code>@InstallIn</code> scans.</li>
-<li><code>compiler/.../hilt/HiltAggregatedDepsScanner.kt</code>: parses compiled Hilt <code>@AggregatedDeps</code> markers<br />
-  from <code>hilt_aggregated_deps</code>.</li>
-<li><code>compiler/.../hilt/HiltFirDeclarationExtension.kt</code>: emits contribution hints and contribution<br />
-  targets for in-round Hilt modules and entry points.</li>
-<li><code>compiler/.../hilt/HiltContributionExtension.kt</code>: contributes Hilt entry points during FIR<br />
-  supertype merging.</li>
-<li><code>compiler/.../hilt/HiltIrContributionExtension.kt</code>: contributes Hilt modules and entry points to<br />
-  IR-only merge paths.</li>
-<li><code>compiler/.../api/fir/MetroFirDeclarationGenerationExtension.kt</code>: exposes<br />
-<code>getContributionTargets()</code> so interop layers can ask Metro to generate the same nested<br />
-  contribution type as <code>@ContributesTo</code>.</li>
-<li><code>compiler/.../api/ir/MetroIrContributionExtension.kt</code>: exposes IR-side binding-container and<br />
-  supertype contribution hooks.</li>
-<li><code>compiler/.../fir/generators/ContributedInterfaceSupertypeGenerator.kt</code>: treats<br />
-<code>@InstallIn(component)</code> modules as matching a graph scope when the component maps to that scope.</li>
-<li><code>compiler/.../fir/generators/ContributionsFirGenerator.kt</code>: generates nested contribution<br />
-  interfaces for extension-provided <code>ContributionTarget</code>s.</li>
+<li><code>compiler/.../hilt/HiltSymbols.kt</code>: Hilt <code>ClassId</code>s, FIR predicates, standard component IDs, and canonical component scopes.</li>
+<li><code>compiler/.../hilt/HiltComponentScopeMapping.kt</code>: component-to-scope mapping, including user-defined <code>@DefineComponent</code> scope lookup and per-consumer in-round <code>@InstallIn</code> scans.</li>
+<li><code>compiler/.../hilt/HiltAggregatedDepsScanner.kt</code>: parses compiled Hilt <code>@AggregatedDeps</code> markers from <code>hilt_aggregated_deps</code>.</li>
+<li><code>compiler/.../hilt/HiltFirDeclarationExtension.kt</code>: emits contribution hints and contribution targets for in-round Hilt modules and entry points.</li>
+<li><code>compiler/.../hilt/HiltContributionExtension.kt</code>: contributes Hilt entry points during FIR supertype merging.</li>
+<li><code>compiler/.../hilt/HiltIrContributionExtension.kt</code>: contributes Hilt modules and entry points to IR-only merge paths.</li>
+<li><code>compiler/.../api/fir/MetroFirDeclarationGenerationExtension.kt</code>: exposes <code>getContributionTargets()</code> so interop layers can ask Metro to generate the same nested contribution type as <code>@ContributesTo</code>.</li>
+<li><code>compiler/.../api/ir/MetroIrContributionExtension.kt</code>: exposes IR-side binding-container and supertype contribution hooks.</li>
+<li><code>compiler/.../fir/generators/ContributedInterfaceSupertypeGenerator.kt</code>: treats <code>@InstallIn(component)</code> modules as matching a graph scope when the component maps to that scope.</li>
+<li><code>compiler/.../fir/generators/ContributionsFirGenerator.kt</code>: generates nested contribution interfaces for extension-provided <code>ContributionTarget</code>s.</li>
 </ul>
 <h2 id="discovery-paths">Discovery Paths<a class="headerlink" href="#discovery-paths" title="Permanent link">&para;</a></h2>
 <p>There are two broad inputs.</p>
 <p>In-round source:</p>
 <ul>
 <li><code>HiltComponentScopeMapping.inRoundInstallIns</code> scans source classes annotated with <code>@InstallIn</code>.</li>
-<li>Modules emit hints and are later handled as binding containers because <code>includeHilt()</code> also<br />
-  enables Dagger annotation interop.</li>
-<li>Entry points emit hints and <code>ContributionTarget</code>s. Metro generates a nested<br />
-<code>MetroContributionTo&lt;Scope&gt;</code> interface that extends the entry point, matching native<br />
-<code>@ContributesTo</code> behavior.</li>
+<li>Modules emit hints and are later handled as binding containers because <code>includeHilt()</code> also enables Dagger annotation interop.</li>
+<li>Entry points emit hints and <code>ContributionTarget</code>s. Metro generates a nested <code>MetroContributionTo&lt;Scope&gt;</code> interface that extends the entry point, matching native <code>@ContributesTo</code> behavior.</li>
 </ul>
 <p>Compiled classpath metadata:</p>
 <ul>
@@ -2009,39 +1989,23 @@ processing, replacements, exclusions, and IR graph validation.</p>
 <li><code>ViewComponent</code> -&gt; <code>@ViewScoped</code></li>
 <li><code>ViewWithFragmentComponent</code> -&gt; <code>@ViewScoped</code></li>
 </ul>
-<p>For user-defined <code>@DefineComponent</code> interfaces, Metro looks for an annotation on the component<br />
-whose annotation class is itself annotated with <code>@Scope</code>. The <code>parent</code> argument is intentionally<br />
-not used to derive Metro graph-extension relationships.</p>
-<p>This mapping is an aggregation key mapping. It does not make <code>@FeatureScoped</code> equal to<br />
-<code>@SingleIn(FeatureScoped::class)</code> for binding scope validation. If Hilt module bindings are scoped<br />
-with the concrete Hilt scope annotation, the Metro graph must also carry that concrete annotation.</p>
+<p>For user-defined <code>@DefineComponent</code> interfaces, Metro looks for an annotation on the component whose annotation class is itself annotated with <code>@Scope</code>. The <code>parent</code> argument is intentionally not used to derive Metro graph-extension relationships.</p>
+<p>This mapping is an aggregation key mapping. It does not make <code>@FeatureScoped</code> equal to <code>@SingleIn(FeatureScoped::class)</code> for binding scope validation. If Hilt module bindings are scoped with the concrete Hilt scope annotation, the Metro graph must also carry that concrete annotation.</p>
 <h2 id="fir-resolution-notes">FIR Resolution Notes<a class="headerlink" href="#fir-resolution-notes" title="Permanent link">&para;</a></h2>
-<p>Do not rely on <code>lazyResolveToPhase</code> from these compiler extensions. In compiler mode it is not a<br />
-general way to force annotation resolution, and using it from the wrong phase can create re-entry<br />
-problems.</p>
+<p>Do not rely on <code>lazyResolveToPhase</code> from these compiler extensions. In compiler mode it is not a general way to force annotation resolution, and using it from the wrong phase can create re-entry problems.</p>
 <p>The working pattern here is:</p>
 <ul>
-<li>Read raw <code>fir.annotations</code> when the code needs all annotations on an in-round symbol.<br />
-<code>resolvedCompilerAnnotationsWithClassIds</code> can be cached before every annotation is resolved.</li>
+<li>Read raw <code>fir.annotations</code> when the code needs all annotations on an in-round symbol. <code>resolvedCompilerAnnotationsWithClassIds</code> can be cached before every annotation is resolved.</li>
 <li>Use <code>toAnnotationClassIdSafe(session)</code> so both resolved and unresolved annotation forms work.</li>
-<li>For <code>@InstallIn</code> class-array arguments, use the <code>installInComponents(...)</code> helpers with either a<br />
-<code>MetroFirTypeResolver</code> or <code>TypeResolveService</code>.</li>
+<li>For <code>@InstallIn</code> class-array arguments, use the <code>installInComponents(...)</code> helpers with either a <code>MetroFirTypeResolver</code> or <code>TypeResolveService</code>.</li>
 </ul>
 <h2 id="cache-invariant">Cache Invariant<a class="headerlink" href="#cache-invariant" title="Permanent link">&para;</a></h2>
-<p><code>HiltComponentScopeMapping</code> is intentionally not a shared session component. Each consumer creates<br />
-its own instance.</p>
-<p>The scope cache only stores successful lookups. A user-defined <code>@DefineComponent</code> may be queried<br />
-before its annotations are ready in an early phase; caching <code>null</code> would make later phases silently<br />
-miss that component. Keeping instances local and retrying failed lookups avoids poisoning later<br />
-consumers such as IR.</p>
+<p><code>HiltComponentScopeMapping</code> is intentionally not a shared session component. Each consumer creates its own instance.</p>
+<p>The scope cache only stores successful lookups. A user-defined <code>@DefineComponent</code> may be queried before its annotations are ready in an early phase; caching <code>null</code> would make later phases silently miss that component. Keeping instances local and retrying failed lookups avoids poisoning later consumers such as IR.</p>
 <h2 id="hint-modes">Hint Modes<a class="headerlink" href="#hint-modes" title="Permanent link">&para;</a></h2>
-<p>FIR hint generation calls <code>HiltFirDeclarationExtension.getContributionHints()</code> and supports<br />
-cross-module Metro-only Hilt interop for modules and entry points.</p>
-<p>IR hint generation only visits classes with Metro contribution annotations, so plain Hilt classes<br />
-do not get Metro hints in that mode. Cross-module Hilt-only inputs are still supported through<br />
-Hilt&rsquo;s <code>@AggregatedDeps</code> markers. Same-module inputs are handled by the in-round scan.</p>
-<p>Box tests for cross-module Metro-only Hilt inputs should set<br />
-<code>// GENERATE_CONTRIBUTION_HINTS_IN_FIR</code>. <code>ContributionProvidersBoxTest</code> enables this by default.</p>
+<p>FIR hint generation calls <code>HiltFirDeclarationExtension.getContributionHints()</code> and supports cross-module Metro-only Hilt interop for modules and entry points.</p>
+<p>IR hint generation only visits classes with Metro contribution annotations, so plain Hilt classes do not get Metro hints in that mode. Cross-module Hilt-only inputs are still supported through Hilt&rsquo;s <code>@AggregatedDeps</code> markers. Same-module inputs are handled by the in-round scan.</p>
+<p>Box tests for cross-module Metro-only Hilt inputs should set <code>// GENERATE_CONTRIBUTION_HINTS_IN_FIR</code>. <code>ContributionProvidersBoxTest</code> enables this by default.</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>WITH_HILT</code>: adds <code>hilt-core</code>.</li>
@@ -2049,11 +2013,8 @@ Hilt&rsquo;s <code>@AggregatedDeps</code> markers. Same-module inputs are handle
 <li><code>ENABLE_HILT_KSP</code>: runs Hilt KSP processors, implies <code>WITH_HILT</code>, and also enables Dagger KSP.</li>
 <li><code>GENERATE_CONTRIBUTION_HINTS_IN_FIR</code>: needed for cross-module Metro-only Hilt tests.</li>
 </ul>
-<p><code>Ksp2AdditionalSourceProvider</code> loads all <code>dagger.hilt.processor.*</code> KSP processors for<br />
-<code>ENABLE_HILT_KSP</code>. Loading only <code>AggregatedDepsProcessor</code> is not enough because Hilt&rsquo;s processors<br />
-coordinate validation across multiple processors.</p>
-<p>The compiler-test registrar wires the Hilt extensions explicitly instead of relying on<br />
-ServiceLoader.</p>
+<p><code>Ksp2AdditionalSourceProvider</code> loads all <code>dagger.hilt.processor.*</code> KSP processors for <code>ENABLE_HILT_KSP</code>. Loading only <code>AggregatedDepsProcessor</code> is not enough because Hilt&rsquo;s processors coordinate validation across multiple processors.</p>
+<p>The compiler-test registrar wires the Hilt extensions explicitly instead of relying on ServiceLoader.</p>
 <h2 id="current-limitations">Current Limitations<a class="headerlink" href="#current-limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>@TestInstallIn</code> and <code>@CustomTestApplication</code> are not supported.</li>

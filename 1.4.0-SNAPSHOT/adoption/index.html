@@ -2217,8 +2217,7 @@
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p>If your Dagger codebase also uses Hilt, use <code>includeHilt()</code> instead of <code>includeDagger()</code> in<br />
-Metro modules that should consume Hilt declarations. This also enables Dagger interop.</p>
+<p>If your Dagger codebase also uses Hilt, use <code>includeHilt()</code> instead of <code>includeDagger()</code> in Metro modules that should consume Hilt declarations. This also enables Dagger interop.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="n">interop</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">includeHilt</span><span class="p">()</span>
@@ -2229,21 +2228,15 @@ Metro modules that should consume Hilt declarations. This also enables Dagger in
 <ul>
 <li><code>@InstallIn(&lt;component&gt;::class) @Module</code> classes are merged as binding containers.</li>
 <li><code>@InstallIn(&lt;component&gt;::class) @EntryPoint</code> interfaces are merged as graph supertypes.</li>
-<li>Standard Hilt components map to their canonical scopes, such as<br />
-<code>SingletonComponent</code> to <code>@Singleton</code>.</li>
-<li>Custom <code>@DefineComponent</code> interfaces are mapped from the scope annotation on the component<br />
-  interface.</li>
+<li>Standard Hilt components map to their canonical scopes, such as <code>SingletonComponent</code> to <code>@Singleton</code>.</li>
+<li>Custom <code>@DefineComponent</code> interfaces are mapped from the scope annotation on the component interface.</li>
 </ul>
-<p>This lets you keep Hilt modules and entry points in place while introducing Metro graphs. Hilt<br />
-scoped bindings still use their concrete scope annotations, so a Metro graph that consumes<br />
-scoped Hilt bindings should carry both the aggregation key and the concrete scope annotation:</p>
+<p>This lets you keep Hilt modules and entry points in place while introducing Metro graphs. Hilt scoped bindings still use their concrete scope annotations, so a Metro graph that consumes scoped Hilt bindings should carry both the aggregation key and the concrete scope annotation:</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Singleton</span>
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">Singleton</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span>
 </code></pre></div>
-<p>Metro does not consume Hilt&rsquo;s generated component tree from <code>@HiltAndroidApp</code>; it merges the<br />
-Hilt declarations into Metro graphs directly. See <a href="../interop/#hilt">Hilt interop</a> for the full<br />
-mapping and current limitations.</p>
+<p>Metro does not consume Hilt&rsquo;s generated component tree from <code>@HiltAndroidApp</code>; it merges the Hilt declarations into Metro graphs directly. See <a href="../interop/#hilt">Hilt interop</a> for the full mapping and current limitations.</p>
 <p>Most things will Just Work™, but you will still possibly need to do some manual migrations.</p>
 <ul>
 <li>If you use <code>KClass</code> and <code>Class</code> interchangeably in your graph, Metro distinguishes between these by default. You can temporarily enable interop via <code>enableKClassToClassMapKeyInterop</code> (with some runtime overhead caveats, see the docs), or you&rsquo;ll need to move fully over to <code>KClass</code>.</li>
