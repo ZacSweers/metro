@@ -116,35 +116,18 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
    * Suspend-provider shapes that type parsing recognizes. This is intentionally independent of the
    * suspend-provider opt-in so a consuming module can validate signatures compiled elsewhere.
    */
-  internal val suspendProviderModelingTypes = buildSet {
-    add(Symbols.ClassIds.metroSuspendProvider)
-    if (options.enableFunctionProviders) {
-      add(Symbols.ClassIds.suspendFunction0)
-    }
-  }
+  internal val suspendProviderModelingTypes = options.suspendProviderModelingTypes
 
   /**
    * Suspend-provider types used after validation. The explicit Metro type stays addressable so its
    * disabled use can be diagnosed; the function spelling joins only when the opt-in is enabled.
    */
-  internal val suspendProviderTypes = buildSet {
-    add(Symbols.ClassIds.metroSuspendProvider)
-    if (options.enableFunctionProviders && options.enableSuspendProviders) {
-      add(Symbols.ClassIds.suspendFunction0)
-    }
-  }
+  internal val suspendProviderTypes = options.suspendProviderTypes
 
-  internal val suspendLazyTypes = setOf(Symbols.ClassIds.metroSuspendLazy)
+  internal val suspendLazyTypes = options.suspendLazyTypes
 
   /** The zero-arg function types enabled as provider spellings. */
-  internal val function0Types: Set<ClassId> = buildSet {
-    if (options.enableFunctionProviders) {
-      add(Symbols.ClassIds.function0)
-      if (options.enableSuspendProviders) {
-        add(Symbols.ClassIds.suspendFunction0)
-      }
-    }
-  }
+  internal val function0Types: Set<ClassId> = options.function0Types
 
   internal val ClassId?.isFunction0Like: Boolean
     get() = this != null && this in function0Types

@@ -112,6 +112,8 @@ private fun KaType.asWrappedType(options: MetroOptions): WrappedType<KaTypeSnaps
       mapClassId = StandardClassIds.Map,
       providerTypes = options.providerTypes,
       lazyTypes = options.lazyTypes,
+      suspendProviderTypes = options.suspendProviderModelingTypes,
+      suspendLazyTypes = options.suspendLazyTypes,
       classIdOf = { type ->
         (type as? KaClassType)?.classId
           ?: (with(session) { type.expandedSymbol } as? KaNamedClassSymbol)?.classId

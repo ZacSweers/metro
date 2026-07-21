@@ -110,6 +110,14 @@ The IDE adapter uses Metro's shared binding-graph implementation to report:
 - Dependency cycles.
 - Duplicate bindings and duplicate map keys.
 - Empty multibindings that do not allow emptiness.
+- Bindings used from incompatible graph scopes.
+- Suspend-provider errors, including non-suspend accessors, synchronous `Provider`/`Lazy`
+  boundaries, unsupported suspend multibindings, member injection, assisted factories, and a
+  missing optional `runtime-coroutines` artifact.
+
+Suspend validation uses the same transitive propagation worklist as the compiler. It recognizes
+`suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` boundaries, and preserves exact
+wrapper pass-through from factory-included graph dependencies.
 
 The last result remains visible in the tool window and on the graph's gutter badge. Results are
 marked stale after relevant code changes until validation runs again. Unexpected plugin failures

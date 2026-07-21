@@ -29,7 +29,6 @@ import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
-import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -1327,7 +1326,7 @@ internal class IrBindingGraph(
 
       // A synchronous wrapper nearest the bound value cannot await a suspend binding, regardless
       // of what outer wrappers surround it or whether the accessor itself is suspend.
-      val blockingWrapper = contextKey.lowestSynchronousWrapperName()
+      val blockingWrapper = contextKey.wrappedType.lowestSynchronousWrapperName()
       if (blockingWrapper != null) {
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
@@ -1342,7 +1341,7 @@ internal class IrBindingGraph(
         val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1469,7 +1468,7 @@ internal class IrBindingGraph(
           binding.parameters.allParameters.firstOrNull { it.contextualTypeKey == dep }?.ir
             ?: binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
 
-        val blockingWrapper = dep.lowestSynchronousWrapperName()
+        val blockingWrapper = dep.wrappedType.lowestSynchronousWrapperName()
         if (blockingWrapper != null) {
           val depRender = dep.typeKey.render(short = true)
           val replacement =
@@ -1481,7 +1480,7 @@ internal class IrBindingGraph(
           val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
           val message = buildString {
             appendLine(
-              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
             )
             appendLine()
             appendLine("Trace:")
@@ -1509,7 +1508,7 @@ internal class IrBindingGraph(
         val ctxKey = param.contextualTypeKey
         if (ctxKey.typeKey !in suspendSet) continue
         if (ctxKey.isValidSuspendBoundary(bindings)) continue
-        val blockingWrapper = ctxKey.lowestSynchronousWrapperName() ?: continue
+        val blockingWrapper = ctxKey.wrappedType.lowestSynchronousWrapperName() ?: continue
         val depRender = ctxKey.typeKey.render(short = true)
         val replacement =
           if (blockingWrapper == "Provider") {
@@ -1521,7 +1520,7 @@ internal class IrBindingGraph(
         val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1621,37 +1620,6 @@ internal class IrBindingGraph(
 
   private companion object {
     private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
-  }
-
-  /** Returns the synchronous wrapper nearest the bound value, if there is one. */
-  private fun IrContextualTypeKey.lowestSynchronousWrapperName(): String? {
-    if (wrappedType.usesSuspendProvider() != false) return null
-    return when (wrappedType.innermostWrapper()) {
-      is WrappedType.Provider -> "Provider"
-      is WrappedType.Lazy -> "Lazy"
-      else -> reportCompilerBug("Expected an innermost synchronous wrapper for $this")
-    }
-  }
-
-  private fun IrContextualTypeKey.blockingWrapperPhrase(wrapper: String): String {
-    val hasOuterWrapper =
-      when (val type = wrappedType) {
-        is WrappedType.Canonical,
-        is WrappedType.Map -> false
-        is WrappedType.Provider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendProvider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.Lazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendLazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-      }
-    return if (hasOuterWrapper) {
-      "because the wrapper nearest it is $wrapper"
-    } else {
-      "via $wrapper"
-    }
   }
 
   private fun IrContextualTypeKey.isValidSuspendBoundary(

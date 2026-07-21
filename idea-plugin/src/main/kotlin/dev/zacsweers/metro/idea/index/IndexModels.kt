@@ -45,6 +45,10 @@ internal class BindingData(
   val contributionScopes: Set<ClassId> = emptySet(),
   /** See [KaBinding.dependencies]. */
   val dependencies: List<KaContextualTypeKey> = emptyList(),
+  /** See [KaBinding.isSuspend]. */
+  val isSuspend: Boolean = false,
+  /** See [KaBinding.ConstructorInjected.memberDependencies]. */
+  val memberDependencies: List<KaContextualTypeKey> = emptyList(),
   /** See [KaBinding.mapKeyValue]. */
   val mapKeyValue: String? = null,
   /** See [KaBinding.Alias.isClassContribution]. */

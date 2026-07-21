@@ -339,6 +339,26 @@ public sealed interface WrappedType<T : Any> {
       is SuspendLazy -> true
     }
 
+  /** Returns the synchronous wrapper nearest the bound value, if there is one. */
+  public fun lowestSynchronousWrapperName(): String? {
+    if (usesSuspendProvider() != false) return null
+    return when (innermostWrapper()) {
+      is Provider -> "Provider"
+      is Lazy -> "Lazy"
+      else -> error("Expected an innermost synchronous wrapper for $this")
+    }
+  }
+
+  /** Describes whether [wrapper] is the outer wrapper or is nested under another wrapper. */
+  public fun blockingWrapperPhrase(wrapper: String): String {
+    val hasOuterWrapper = immediateInnerType()?.isScalarLeaf() == false
+    return if (hasOuterWrapper) {
+      "because the wrapper nearest it is $wrapper"
+    } else {
+      "via $wrapper"
+    }
+  }
+
   public fun render(renderType: (T) -> String): String =
     when (this) {
       is Canonical -> renderType(type)
@@ -373,8 +393,7 @@ public fun <T : Any, R : Any> WrappedType<T>.mapTypes(transform: (T) -> R): Wrap
     is WrappedType.SuspendProvider ->
       WrappedType.SuspendProvider(innerType.mapTypes(transform), providerType)
     is WrappedType.Lazy -> WrappedType.Lazy(innerType.mapTypes(transform), lazyType)
-    is WrappedType.SuspendLazy ->
-      WrappedType.SuspendLazy(innerType.mapTypes(transform), lazyType)
+    is WrappedType.SuspendLazy -> WrappedType.SuspendLazy(innerType.mapTypes(transform), lazyType)
     is WrappedType.Map -> {
       val mappedKey = transform(keyType)
       val mappedValue = valueType.mapTypes(transform)

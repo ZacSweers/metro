@@ -257,12 +257,15 @@ internal class LibraryIndexPostProcessor(
               constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
           if (!hasInject || isAssisted) return@analyze null
 
+          val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
+          val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
           KaBinding.ConstructorInjected(
             pointerManager.createSmartPsiElementPointer(psi),
             request.key,
             scopeAnnotation(classSymbol, options),
             classSymbol.name.asString(),
-            dependencies = injectClassDependencyKeys(classSymbol, options),
+            dependencies = constructorDependencies + memberDependencies,
+            memberDependencies = memberDependencies,
           )
         }
       if (binding == null) continue

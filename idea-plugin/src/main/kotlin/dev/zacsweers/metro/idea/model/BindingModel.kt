@@ -31,6 +31,10 @@ internal class ConsumerEntry(
   val includedContainerKey: KaTypeKey? = null,
   /** Exact owning graph declaration for graph accessor consumers. */
   val graphId: GraphDeclarationId? = null,
+  /** How a graph declaration requests this key. Null for ordinary dependency sites. */
+  val graphRequestKind: GraphRequestKind? = null,
+  /** Whether a graph accessor is declared as a suspend function. */
+  val isSuspend: Boolean = false,
   /**
    * Whether absence is allowed: a native `@OptionalBinding`/`@OptionalDependency` site, or a
    * defaulted parameter under `DEFAULT` optional-binding behavior. An unresolved optional site is
@@ -40,6 +44,11 @@ internal class ConsumerEntry(
 ) {
   val key: KaTypeKey
     get() = contextKey.typeKey
+
+  enum class GraphRequestKind {
+    ACCESSOR,
+    MEMBERS_INJECTOR,
+  }
 }
 
 /**
@@ -79,6 +88,8 @@ internal class KaGraphNode(
   val supertypeIds: Set<ClassId> = emptySet(),
   /** Extension or extension factory ids created by this graph's accessors. */
   val extensionCreationIds: Set<ClassId> = emptySet(),
+  /** Whether this graph's compilation classpath contains the optional coroutine runtime. */
+  val runtimeCoroutinesAvailable: Boolean = false,
   /**
    * The scope annotations this graph declares: explicit scope annotations on the class plus the
    * implicit `@SingleIn(X::class)` conveyed by each aggregation scope in the graph annotation

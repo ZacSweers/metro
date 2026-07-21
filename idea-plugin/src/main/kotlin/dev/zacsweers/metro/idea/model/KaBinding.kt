@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.MergeContribution
@@ -25,6 +26,10 @@ internal sealed interface KaBinding :
   /** Scope annotation, if present. */
   val scope: KaAnnotationSnapshot?
     get() = null
+
+  /** Whether this binding is provided directly by a suspend declaration. */
+  val isSuspend: Boolean
+    get() = false
 
   /** Short name of the implementation backing this binding when it differs from the key type. */
   val implementationName: String?
@@ -108,12 +113,17 @@ internal sealed interface KaBinding :
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    /** The subset of [dependencies] required by member injection after construction. */
+    val memberDependencies: List<KaContextualTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
     override val label: String
       get() = "injected class"
+
+    val hasInjectedMembers: Boolean
+      get() = memberDependencies.isNotEmpty()
   }
 
   /** A `@Provides` callable, or a generated factory contribution modeled as one. */
@@ -130,6 +140,7 @@ internal sealed interface KaBinding :
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    override val isSuspend: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
@@ -227,9 +238,17 @@ internal sealed interface KaBinding :
     override val scope: KaAnnotationSnapshot?,
     override val implementationName: String?,
     override val originClassId: ClassId? = null,
-    override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    val targetConstructorDependencies: List<KaContextualTypeKey> = emptyList(),
+    val targetMemberDependencies: List<KaContextualTypeKey> = emptyList(),
+    val factoryFunctionName: String? = null,
+    val factoryFunctionIsSuspend: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
+
+    // Mirrors IR: target dependencies participate in graph population and cycle detection through
+    // deferred Provider edges. Suspend validation inspects the unwrapped target lists above.
+    override val dependencies: List<KaContextualTypeKey> =
+      (targetConstructorDependencies + targetMemberDependencies).map { it.wrapInProvider() }
 
     override val isImplicitlyDeferrable: Boolean
       get() = true
@@ -244,11 +263,21 @@ internal sealed interface KaBinding :
     override val contextualTypeKey: KaContextualTypeKey,
     /** The included graph object on which this accessor is invoked. */
     val ownerKey: KaTypeKey,
+    /** Whether the included graph accessor itself is suspend. */
+    val accessorIsSuspend: Boolean,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 
     override val label: String
       get() = "included dependency accessor"
+
+    override val isSuspend: Boolean
+      get() = accessorIsSuspend || contextualTypeKey.wrappedType.requiresSuspendToUnwrap()
+
+    /** Whether the accessor can return this exact wrapper value without unwrapping it. */
+    fun canPassThrough(request: KaContextualTypeKey): Boolean {
+      return !accessorIsSuspend && contextualTypeKey == request
+    }
   }
 
   /** The graph (or a parent in its extension chain) provided as its own type. Seal-time node. */
@@ -304,4 +333,12 @@ internal sealed interface KaBinding :
 
 internal fun KaTypeKey.canonicalContextKey(): KaContextualTypeKey {
   return KaContextualTypeKey(this, WrappedType.Canonical(type))
+}
+
+private fun KaContextualTypeKey.wrapInProvider(): KaContextualTypeKey {
+  return KaContextualTypeKey(
+    typeKey = typeKey,
+    wrappedType = WrappedType.Provider(wrappedType, MetroClassIds.provider),
+    hasDefault = hasDefault,
+  )
 }

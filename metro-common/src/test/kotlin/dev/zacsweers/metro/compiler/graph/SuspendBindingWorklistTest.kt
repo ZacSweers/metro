@@ -1,16 +1,12 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir.graph
+package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.compiler.graph.BaseBinding
-import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
-import dev.zacsweers.metro.compiler.graph.StringContextualTypeKey
-import dev.zacsweers.metro.compiler.graph.StringTypeKey
 import kotlin.random.Random
 import org.junit.Test
 
-class SuspendBindingAnalysisTest {
+class SuspendBindingWorklistTest {
 
   @Test
   fun `same root is updated after a missing dependency is added`() {

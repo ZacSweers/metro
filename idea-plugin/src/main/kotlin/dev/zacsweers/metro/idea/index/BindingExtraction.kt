@@ -335,6 +335,7 @@ internal fun KaSession.bindingData(
           null,
           multibindingId = multibindingId,
           dependencies = dependencies,
+          isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
           mapKeyValue = mapKeyInfo?.annotationRender,
         )
       )
@@ -388,6 +389,8 @@ private fun KaSession.classBindingData(
   val originClassId = ktClass.getClassId()
   val ownsInjectBinding = isInjectable && !isAssisted
   if (ownsInjectBinding) {
+    val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
+    val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
     result +=
       BindingData(
         typeKey(classSymbol.defaultType, qualifier),
@@ -395,7 +398,8 @@ private fun KaSession.classBindingData(
         scope,
         ktClass.name,
         originClassId = originClassId,
-        dependencies = injectClassDependencyKeys(classSymbol, options),
+        dependencies = constructorDependencies + memberDependencies,
+        memberDependencies = memberDependencies,
       )
   }
   // Contributed bindings alias the class's own inject binding, matching the compiler's model.

@@ -8,6 +8,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.PsiTreeUtil
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
@@ -426,6 +427,8 @@ internal class IndexBuilder(
                 site.multibindingId,
                 site.typeClassId,
                 graphId = graphId,
+                graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
+                isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
                 isOptional = isOptionalAccessor,
               )
           }
@@ -464,6 +467,7 @@ internal class IndexBuilder(
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
           supertypeIds = supertypeIds,
           extensionCreationIds = extensionCreationIds,
+          runtimeCoroutinesAvailable = findClass(MetroClassIds.suspendDoubleCheck) != null,
           scopingAnnotations = scopingAnnotations,
         )
     }
@@ -519,6 +523,8 @@ internal class IndexBuilder(
           site.multibindingId,
           site.typeClassId,
           graphId = graphId,
+          graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
+          isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
           isOptional = isOptionalAccessor,
         )
     }
@@ -545,6 +551,7 @@ internal class IndexBuilder(
           multibindingId = contextKey.multibindingId(options),
           typeClassId = contextKey.typeKey.type.classId,
           graphId = graphId,
+          graphRequestKind = ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR,
           isOptional = contextKey.hasDefault,
         )
     }
@@ -566,8 +573,10 @@ internal class IndexBuilder(
       val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
       // The factory constructs its target directly, so it inherits the target's graph-provided
       // dependencies. The assisted class itself has no own-type binding.
-      val targetDependencies =
-        createdClassSymbol?.let { injectClassDependencyKeys(it, options) }.orEmpty()
+      val targetConstructorDependencies =
+        createdClassSymbol?.let { injectConstructorDependencyKeys(it, options) }.orEmpty()
+      val targetMemberDependencies =
+        createdClassSymbol?.let { memberInjectDependencyKeys(it, options) }.orEmpty()
       bindings +=
         KaBinding.AssistedFactory(
           ptr(ktClass),
@@ -575,7 +584,10 @@ internal class IndexBuilder(
           scopeAnnotation(classSymbol, options),
           createdName,
           originClassId = ktClass.getClassId(),
-          dependencies = targetDependencies,
+          targetConstructorDependencies = targetConstructorDependencies,
+          targetMemberDependencies = targetMemberDependencies,
+          factoryFunctionName = samFunction?.name?.asString(),
+          factoryFunctionIsSuspend = samFunction?.isSuspend == true,
         )
     }
   }

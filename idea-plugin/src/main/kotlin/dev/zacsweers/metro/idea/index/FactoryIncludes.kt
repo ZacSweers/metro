@@ -138,6 +138,7 @@ private fun KaSession.includedGraphDependency(
             options,
           ),
           ownerKey = dependencyKey,
+          accessorIsSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
         )
     }
   }

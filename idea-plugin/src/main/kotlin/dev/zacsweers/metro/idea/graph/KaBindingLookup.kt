@@ -150,6 +150,7 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = dependencies,
+        isSuspend = isSuspend,
       )
     is KaBinding.Alias ->
       KaBinding.Alias(

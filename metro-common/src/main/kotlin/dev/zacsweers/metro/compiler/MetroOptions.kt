@@ -82,12 +82,16 @@ public object MetroClassIds {
   public val graphExtension: ClassId = metroRuntimePackage.classId("GraphExtension")
   public val graphExtensionFactory: ClassId = graphExtension.nested("Factory")
   public val provider: ClassId = metroRuntimePackage.classId("Provider")
+  public val suspendProvider: ClassId = metroRuntimePackage.classId("SuspendProvider")
+  public val suspendLazy: ClassId = metroRuntimePackage.classId("SuspendLazy")
+  public val suspendDoubleCheck: ClassId = metroRuntimeInternalPackage.classId("SuspendDoubleCheck")
   public val includes: ClassId = metroRuntimePackage.classId("Includes")
   public val multibindingElement: ClassId =
     metroRuntimeInternalPackage.classId("MultibindingElement")
   public val hasMemberInjections: ClassId = metroRuntimePackage.classId("HasMemberInjections")
   public val lazy: ClassId = StandardClassIds.byName("Lazy")
   public val function0: ClassId = StandardClassIds.FunctionN(0)
+  public val suspendFunction0: ClassId = FqName("kotlin.coroutines").classId("SuspendFunction0")
 }
 
 public data class RawMetroOption<T : Any>(
@@ -1247,6 +1251,40 @@ public class MetroOptions(
   }
 
   @Transient public val lazyTypes: Set<ClassId> = MetroClassIds.lazy.withCustom(customLazyTypes)
+
+  /** Suspend-provider shapes recognized while modeling signatures, including when disabled. */
+  @Transient
+  public val suspendProviderModelingTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
+  /**
+   * Suspend-provider shapes used after option validation. The explicit Metro type remains
+   * addressable while disabled so consumers can report its use.
+   */
+  @Transient
+  public val suspendProviderTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders && enableSuspendProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
+  @Transient public val suspendLazyTypes: Set<ClassId> = setOf(MetroClassIds.suspendLazy)
+
+  /** Zero-argument function types enabled as provider spellings. */
+  @Transient
+  public val function0Types: Set<ClassId> = buildSet {
+    if (enableFunctionProviders) {
+      add(MetroClassIds.function0)
+      if (enableSuspendProviders) {
+        add(MetroClassIds.suspendFunction0)
+      }
+    }
+  }
 
   @Transient
   public val dependencyGraphAnnotations: Set<ClassId> =

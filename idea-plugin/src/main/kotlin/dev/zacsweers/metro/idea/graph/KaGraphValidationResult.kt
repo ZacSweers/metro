@@ -23,6 +23,8 @@ internal sealed interface KaGraphValidationResult {
     /** Null when a fatal Metro diagnostic aborted the seal before sorting. */
     val topology: GraphTopology<KaTypeKey>?,
     val bindings: ScatterMap<KaTypeKey, KaBinding>,
+    /** Bindings that directly or transitively require suspend initialization. */
+    val suspendKeys: Set<KaTypeKey>,
   ) : KaGraphValidationResult
 
   /** Validation stopped because the IDE plugin itself failed unexpectedly. */

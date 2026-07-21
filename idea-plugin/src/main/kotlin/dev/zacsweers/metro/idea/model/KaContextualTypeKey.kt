@@ -65,10 +65,15 @@ internal fun KaContextualTypeKey.multibindingId(options: MetroOptions): String? 
   return typeKey.copy(type = elementType).computeMultibindingId()
 }
 
-/** Peels `Provider`/`Lazy` wrappers off a snapshot to its underlying type. */
+/** Peels synchronous and suspend provider/lazy wrappers off a snapshot to its underlying type. */
 private tailrec fun KaTypeSnapshot.canonicalType(options: MetroOptions): KaTypeSnapshot {
   val classId = classId ?: return this
-  if (classId !in options.providerTypes && classId !in options.lazyTypes) return this
+  val isWrapper =
+    classId in options.providerTypes ||
+      classId in options.lazyTypes ||
+      classId in options.suspendProviderModelingTypes ||
+      classId in options.suspendLazyTypes
+  if (!isWrapper) return this
   val inner = typeArguments.firstOrNull() ?: return this
   return inner.canonicalType(options)
 }

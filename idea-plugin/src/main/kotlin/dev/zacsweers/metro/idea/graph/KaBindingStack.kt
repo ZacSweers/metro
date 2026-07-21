@@ -49,6 +49,7 @@ internal class KaBindingStack(override val graph: KaGraphNode) :
     val pointer: SmartPsiElementPointer<out PsiElement>? = null,
     override val displayTypeKey: KaTypeKey = contextKey.typeKey,
     override val isSynthetic: Boolean = false,
+    override val trailingComment: String? = null,
   ) : BaseBindingStack.BaseEntry<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey> {
     override fun toString() = contextKey.toString()
 
@@ -78,6 +79,28 @@ internal class KaBindingStack(override val graph: KaGraphNode) :
           pointer = binding.pointer,
         )
       }
+
+      /** An entry for a binding provided directly by its declaration. */
+      fun providedAt(binding: KaBinding): Entry {
+        return Entry(
+          contextKey = binding.contextualTypeKey,
+          usage = "is provided at",
+          graphContext = binding.location(),
+          pointer = binding.pointer,
+        )
+      }
+    }
+
+    fun withTrailingComment(comment: String): Entry {
+      return Entry(
+        contextKey = contextKey,
+        usage = usage,
+        graphContext = graphContext,
+        pointer = pointer,
+        displayTypeKey = displayTypeKey,
+        isSynthetic = isSynthetic,
+        trailingComment = comment,
+      )
     }
   }
 }

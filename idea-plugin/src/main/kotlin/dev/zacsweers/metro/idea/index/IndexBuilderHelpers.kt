@@ -59,6 +59,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = dependencies,
+        memberDependencies = memberDependencies,
         hintAvailability = hintAvailability,
       )
     BindingData.Kind.PROVIDED ->
@@ -75,6 +76,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         dependencies = listOfNotNull(ownerDependency) + dependencies,
+        isSuspend = isSuspend,
         hintAvailability = hintAvailability,
       )
     BindingData.Kind.ALIAS ->

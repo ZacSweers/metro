@@ -47,7 +47,9 @@ internal class KaBindingGraph(
   private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
+  private val graphConsumers = index.accessorsFor(graph)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
+  private var suspendKeys: Set<KaTypeKey> = emptySet()
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
   private var _bindingLookup: KaBindingLookup? = KaBindingLookup(index, queryContext, options)
@@ -103,7 +105,7 @@ internal class KaBindingGraph(
     }
 
     val roots = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
-    for (consumer in index.accessorsFor(graph)) {
+    for (consumer in graphConsumers) {
       // hasDefault is what makes the shared core treat an absent optional binding as not missing
       val contextKey = consumer.contextKey.withDefault(consumer.isOptional)
       roots[contextKey] = KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName)
@@ -134,6 +136,7 @@ internal class KaBindingGraph(
       diagnostics.toList(),
       topology,
       realGraph.bindings,
+      suspendKeys,
     )
   }
 
@@ -184,6 +187,30 @@ internal class KaBindingGraph(
       ProgressManager.checkCanceled()
       validateBindingScope(binding, stack, roots, adjacency)
       validateMultibindings(binding, bindings, stack, roots, adjacency)
+    }
+    suspendKeys =
+      SuspendBindingValidator(
+          graph = graph,
+          graphName = graphName,
+          options = options,
+          graphConsumers = graphConsumers,
+          bindings = bindings,
+          runtimeCoroutinesAvailable = graph.runtimeCoroutinesAvailable,
+          report = ::reportSuspendDiagnostic,
+        )
+        .validate()
+  }
+
+  private fun reportSuspendDiagnostic(
+    diagnostic: MetroDiagnostic,
+    stack: KaBindingStack,
+    related: List<KaBinding>,
+  ) {
+    pendingRelated = related
+    try {
+      report(diagnostic, stack)
+    } finally {
+      pendingRelated = emptyList()
     }
   }
 
