@@ -138,6 +138,17 @@ val embedded = configurations.dependencyScope("embedded")
 
 val embeddedClasspath = configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
+val shadowR8 =
+  configurations.register("shadowR8") {
+    isCanBeConsumed = false
+    isCanBeResolved = false
+  }
+
+val r8Libraries = configurations.dependencyScope("r8Libraries")
+
+val r8LibraryClasspath =
+  configurations.resolvable("r8LibraryClasspath") { extendsFrom(r8Libraries) }
+
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 
 configurations.named("testImplementation").configure { extendsFrom(embedded) }
@@ -148,6 +159,45 @@ val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
     configurations.add(embeddedClasspath)
+
+    minimize {
+      exclude(dependency("dev.zacsweers.metro:compiler-compat.*:.*"))
+      exclude(dependency("dev.zacsweers.metro:metro-common:.*"))
+      r8 {
+        keepRules.add(
+          """
+          -keep class dev.zacsweers.metro.compiler.shaded.kotlinx.serialization.** { *; }
+          -keepclassmembers class kotlinx.coroutines.** {
+            volatile <fields>;
+          }
+          -keepattributes AnnotationDefault,EnclosingMethod,Exceptions,InnerClasses,RuntimeInvisibleAnnotations,RuntimeVisibleAnnotations,Signature
+          -dontwarn com.intellij.**
+          -dontwarn org.intellij.**
+          -dontwarn org.jetbrains.**
+          """
+            .trimIndent()
+        )
+        args.add("--no-minification")
+        args.addAll(
+          providers.provider {
+            r8LibraryClasspath
+              .get()
+              .files
+              .sortedBy { it.name }
+              .flatMap {
+                listOf("--lib", it.absolutePath)
+              }
+          }
+        )
+      }
+    }
+
+    // TODO(https://github.com/GradleUp/shadow/pull/2115): Remove these exclusions once fixed.
+    // Shadow 9.6.0 de-duplicates these files line-by-line when extracting R8 rules, which removes
+    // repeated closing braces and produces invalid rules. The relevant rules are supplied above.
+    exclude("META-INF/proguard/*.pro")
+    exclude("META-INF/com.android.tools/proguard/*.pro")
+    exclude("META-INF/com.android.tools/r8/*.pro")
 
     // TODO these are relocated, do we need to/can we exclude these?
     //  exclude("META-INF/wire-runtime.kotlin_module")
@@ -222,6 +272,9 @@ for (c in arrayOf("apiElements", "runtimeElements")) {
 }
 
 dependencies {
+  add(shadowR8.name, libs.r8)
+  add(r8Libraries.name, libs.kotlin.stdlib)
+
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
