@@ -33,7 +33,13 @@ constructor(
   /** Enables Metro for this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
-  /** Automatically adds Metro runtime artifact dependencies. */
+  /**
+   * Automatically adds the dependencies required by enabled Metro features.
+   *
+   * See the
+   * [manual dependency setup](https://zacsweers.github.io/metro/latest/installation/#manual-dependency-management)
+   * when disabling this.
+   */
   public val automaticallyAddRuntimeDependencies: Property<Boolean> =
     objects.booleanProperty("metro.automaticallyAddRuntimeDependencies", true)
 

@@ -202,9 +202,9 @@ Metro reports cycles visible in the dependency graph; code that invokes provider
 dynamically must not initialize the same caches in conflicting orders.
 
 Scoped suspend bindings use `dev.zacsweers.metro:runtime-coroutines`, which must be available at
-compile time and runtime. The Gradle plugin adds it automatically. If automatic runtime dependencies
-are disabled and the artifact is missing, Metro reports a compile-time error with the dependency to
-add.
+compile time and runtime. The Gradle plugin adds it automatically. If automatic dependency
+management is disabled, follow the [manual dependency setup](installation.md#manual-dependency-management).
+If the artifact is missing, Metro reports a compile-time error with the dependency to add.
 
 Metro caches the value but does not close it. The application remains responsible for releasing
 resources when they are no longer needed.
