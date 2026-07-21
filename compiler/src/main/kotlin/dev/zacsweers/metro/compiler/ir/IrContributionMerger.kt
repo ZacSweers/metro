@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.graph.computeMergePlan
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -270,142 +271,81 @@ internal class IrContributionMerger(
       val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
       val mutableExternalSupertypes = scopedContributions.externalSupertypes.toMutableMap()
 
-      // Process excludes FIRST - excluded classes should not have their `replaces` effect applied
-      if (excluded.isNotEmpty()) {
-        trace("Process exclusions") {
-          val unmatchedExclusions = mutableSetOf<ClassId>()
-          for (excludedClassId in excluded) {
-            // Remove excluded binding containers - they won't contribute their bindings
-            val removedContainer = mutableContributedBindingContainers.remove(excludedClassId)
+      // Excludes and replaces are computed by the shared merge engine: excluded classes are
+      // removed first so they don't get their `replaces` honored, then survivors' replacements are
+      // applied. The IR-specific shape (three contribution maps, @Origin indirection, nested
+      // `MetroContribution` markers) is supplied to the engine via the navigators below.
+      val presentIds = buildSet {
+        addAll(mutableAllContributions.keys)
+        addAll(mutableContributedBindingContainers.keys)
+        addAll(mutableExternalSupertypes.keys)
+      }
 
-            // Remove contributions from excluded classes that have nested `MetroContribution`
-            // classes
-            // (binding containers don't have these, so this only affects @ContributesBinding etc.)
-            val removedContribution = mutableAllContributions.remove(excludedClassId)
+      fun scanReplaces(irClass: IrClass): Set<ClassId> =
+        irClass
+          .repeatableAnnotationsIn(
+            metroSymbols.classIds.allContributesAnnotationsWithContainers,
+            irBody = { annotations ->
+              annotations
+                .flatMap { annotation -> annotation.replacedClasses() }
+                .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
+            },
+            firBody = { session, annotations ->
+              annotations
+                .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
+                .mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
+            },
+          )
+          .toSet()
 
-            // Remove excluded external supertypes (raw IR extension contributions)
-            val removedExternalSupertype = mutableExternalSupertypes.remove(excludedClassId)
-
-            // Remove contributions that have @Origin annotation pointing to the excluded class
-            val originContributions = originToContributions[excludedClassId]
-            originContributions?.forEach { contributionId ->
-              mutableAllContributions.remove(contributionId)
-              mutableContributedBindingContainers.remove(contributionId)
-              mutableExternalSupertypes.remove(contributionId)
-            }
-
-            val nestedContributions =
-              (mutableAllContributions.keys +
-                  mutableContributedBindingContainers.keys +
-                  mutableExternalSupertypes.keys)
-                .filter { it.parentClassId == excludedClassId }
-            nestedContributions.forEach { contributionId ->
-              mutableAllContributions.remove(contributionId)
-              mutableContributedBindingContainers.remove(contributionId)
-              mutableExternalSupertypes.remove(contributionId)
-            }
-
-            val removedDirectContribution =
-              removedContainer != null ||
-                removedContribution != null ||
-                removedExternalSupertype != null
-            val removedOriginContribution = originContributions != null
-            val removedNestedContribution = nestedContributions.isNotEmpty()
-            val wasNotMatched =
-              !removedDirectContribution && !removedOriginContribution && !removedNestedContribution
-            if (wasNotMatched) {
-              unmatchedExclusions += excludedClassId
-            }
-          }
-
-          if (unmatchedExclusions.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-exclusions-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
-              unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
-            }
+      // The classes that declare a contribution id's `replaces`: the contribution's parent class,
+      // or a binding container plus its @Origin class (contribution providers).
+      fun replacesForId(id: ClassId): Set<ClassId> = buildSet {
+        mutableAllContributions[id]?.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let {
+          addAll(scanReplaces(it))
+        }
+        mutableContributedBindingContainers[id]?.let { container ->
+          addAll(scanReplaces(container))
+          val originClassId = container.originClassId()
+          if (originClassId != null) {
+            container.lookupClass(originClassId)?.owner?.let { addAll(scanReplaces(it)) }
           }
         }
       }
 
-      // Collect replacements AFTER exclusions - only from remaining (non-excluded) contributions
-      // This ensures excluded classes don't have their `replaces` effect applied
-      val classesToReplace = mutableSetOf<ClassId>()
-      val allClassesToScan = sequence {
-        // Parent classes of regular contributions (only remaining ones after exclusions)
-        for (contributions in mutableAllContributions.values) {
-          contributions.firstOrNull()?.rawTypeOrNull()?.parentAsClass?.let { yield(it) }
+      val mergePlan =
+        trace("Process exclusions and replacements") {
+          computeMergePlan(
+            presentIds = presentIds,
+            excluded = excluded,
+            originToIds = originToContributions,
+            nestedChildrenOf = { target ->
+              presentIds.filterTo(mutableSetOf()) { it.parentClassId == target }
+            },
+            replacesOf = ::replacesForId,
+          )
         }
-        // Binding containers (only remaining ones after exclusions)
-        yieldAll(mutableContributedBindingContainers.values)
 
-        // For binding containers with @Origin (contribution providers), also scan the
-        // origin class for @ContributesBinding(replaces=...) annotations
-        for (container in mutableContributedBindingContainers.values) {
-          val originClassId = container.originClassId() ?: continue
-          val originClass = container.lookupClass(originClassId)?.owner ?: continue
-          yield(originClass)
-        }
+      for (removedId in mergePlan.removed) {
+        mutableAllContributions.remove(removedId)
+        mutableContributedBindingContainers.remove(removedId)
+        mutableExternalSupertypes.remove(removedId)
       }
 
-      trace("Process replacements") {
-        for (irClass in allClassesToScan) {
-          val replacedClasses =
-            irClass.repeatableAnnotationsIn(
-              metroSymbols.classIds.allContributesAnnotationsWithContainers,
-              irBody = { annotations ->
-                annotations
-                  .flatMap { annotation -> annotation.replacedClasses() }
-                  .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
-              },
-              firBody = { session, annotations ->
-                annotations
-                  .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
-                  .mapNotNull {
-                    it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId
-                  }
-              },
-            )
-          classesToReplace.addAll(replacedClasses)
+      if (mergePlan.unmatchedExclusions.isNotEmpty()) {
+        writeDiagnostic(
+          "merging-unmatched-exclusions-ir",
+          { "${primaryScope.safePathString}.txt" },
+        ) {
+          mergePlan.unmatchedExclusions.map { it.safePathString }.sorted().joinToString("\n")
         }
-
-        // Process replacements
-        if (classesToReplace.isNotEmpty()) {
-          val unmatchedReplacements = mutableSetOf<ClassId>()
-
-          for (replacedClassId in classesToReplace) {
-            val removedContribution = mutableAllContributions.remove(replacedClassId)
-            val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
-            val removedExternalSupertype = mutableExternalSupertypes.remove(replacedClassId)
-
-            // Remove contributions that have @Origin annotation pointing to the replaced class
-            val originContributions = originToContributions[replacedClassId]
-            originContributions?.forEach { contributionId ->
-              mutableAllContributions.remove(contributionId)
-              mutableContributedBindingContainers.remove(contributionId)
-              mutableExternalSupertypes.remove(contributionId)
-            }
-
-            val removedDirectContribution =
-              removedContribution != null ||
-                removedContainer != null ||
-                removedExternalSupertype != null
-            val removedOriginContribution = originContributions != null
-            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
-            if (wasNotMatched) {
-              unmatchedReplacements += replacedClassId
-            }
-          }
-
-          if (unmatchedReplacements.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-replacements-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
-              unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
-            }
-          }
+      }
+      if (mergePlan.unmatchedReplacements.isNotEmpty()) {
+        writeDiagnostic(
+          "merging-unmatched-replacements-ir",
+          { "${primaryScope.safePathString}.txt" },
+        ) {
+          mergePlan.unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
         }
       }
 

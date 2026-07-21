@@ -2,6 +2,7 @@
 * text=auto
 
 compiler-tests/**/*.java linguist-generated=true
+compiler-tests/src/test/data/diagnostic/ideaParity/_reports/** linguist-generated=true
 **/yarn.lock linguist-generated=true
 **/package-lock.lock linguist-generated=true
 docs/diagnostics.md linguist-generated=true

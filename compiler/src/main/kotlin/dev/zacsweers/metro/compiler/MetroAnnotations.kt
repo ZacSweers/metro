@@ -536,7 +536,13 @@ internal fun FirBasedSymbol<*>.metroAnnotations(
     return it
   }
   val computed = metroAnnotations(session, null, kinds)
-  fir.metroAnnotationsCache = computed
+  try {
+    fir.metroAnnotationsCache = computed
+  } catch (_: IllegalStateException) {
+    // FirDeclarationAttributes is not thread-safe and the IDE runs checkers concurrently, so this
+    // write can race another attribute write on the same declaration. The cache is an
+    // optimization, so skip it and return the computed value.
+  }
   return computed
 }
 

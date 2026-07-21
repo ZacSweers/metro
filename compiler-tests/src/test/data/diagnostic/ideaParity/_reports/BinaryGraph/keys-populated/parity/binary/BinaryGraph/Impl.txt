@@ -1,0 +1,10 @@
+@dev.zacsweers.metro.internal.MultibindingElement("libtest.LibAnalytics", "483501658") libtest.LibAnalytics
+kotlin.collections.Set<libtest.LibAnalytics>
+libtest.LibAnalyticsImpl
+libtest.LibClientWithDeps
+libtest.LibContained
+libtest.LibExplicit
+libtest.LibExplicitImpl
+libtest.LibHttpClient
+libtest.LibService
+libtest.LibServiceImpl

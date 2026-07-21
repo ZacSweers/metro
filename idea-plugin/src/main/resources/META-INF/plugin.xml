@@ -19,14 +19,52 @@ Metro IDE support for Kotlin dependency injection projects.
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
+    <projectConfigurable
+        parentId="tools"
+        id="dev.zacsweers.metro.idea.settings"
+        displayName="Metro"
+        instance="dev.zacsweers.metro.idea.MetroSettingsConfigurable"/>
+    <implicitUsageProvider implementation="dev.zacsweers.metro.idea.unused.MetroImplicitUsageProvider"/>
+    <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
+    <codeInsight.lineMarkerProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.index.MetroLineMarkerProvider"/>
+    <codeInsight.daemonBoundCodeVisionProvider
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionProvider"/>
+    <config.codeVisionGroupSettingProvider
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionGroupSettingProvider"/>
+    <codeInsight.declarativeInlayProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider"
+        isEnabledByDefault="true"
+        group="OTHER_GROUP"
+        providerId="metro.injected.implementation"
+        bundle="messages.MetroBundle"
+        nameKey="metro.inlay.injected.implementation.name"
+        descriptionKey="metro.inlay.injected.implementation.description"/>
     <lang.inspectionSuppressor
         language="kotlin"
-        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        implementationClass="dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor"
         order="first"/>
     <lang.inspectionSuppressor
         language="JAVA"
-        implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        implementationClass="dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor"
         order="first"/>
+    <toolWindow
+        id="Metro"
+        anchor="right"
+        icon="dev.zacsweers.metro.idea.MetroIcons.METRO"
+        factoryClass="dev.zacsweers.metro.idea.toolwindow.MetroToolWindowFactory"/>
   </extensions>
+
+  <actions>
+    <action
+        id="Metro.ValidateGraph"
+        class="dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction"
+        text="Validate Metro Graph"
+        description="Validates the Metro graph at the caret in the Metro tool window"
+        icon="dev.zacsweers.metro.idea.MetroIcons.GRAPH">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+  </actions>
 </idea-plugin>

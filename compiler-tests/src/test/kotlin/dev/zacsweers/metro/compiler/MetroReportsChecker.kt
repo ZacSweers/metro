@@ -3,6 +3,11 @@
 package dev.zacsweers.metro.compiler
 
 import java.io.File
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.kotlin.test.directives.model.DirectivesContainer
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.singleOrZeroValue
@@ -20,9 +25,10 @@ import org.opentest4j.AssertionFailedError
  * 1. Find the specified report files in the reports destination
  * 2. Compare each report file against an expected file alongside the test data
  *
- * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. If the
- * report name includes an explicit extension, the expected file appends `.txt` to avoid treating
- * generated `.kt` reports as test inputs.
+ * Expected files should be named: `<testFile>/<diagnosticKey>/<path>/<reportName>.txt`. A sibling
+ * `_reports` directory changes that root to `_reports/<testFile>/...`, which keeps report goldens
+ * out of generated-test discovery. If the report name includes an explicit extension, the expected
+ * file appends `.txt` to avoid treating generated `.kt` reports as test inputs.
  *
  * Example usage:
  * ```
@@ -46,17 +52,24 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     const val DEFAULT_REPORTS_DIR = "metro/reports"
     const val DEFAULT_TRACES_DIR = "metro/traces"
     private val TRACE_FILENAME_PATTERN = Regex("""^(\d{6}-\d{6})-(fir|ir)-(.+)\.perfetto-trace$""")
+    private val REPORT_JSON = Json {
+      prettyPrint = true
+      @OptIn(ExperimentalSerializationApi::class)
+      prettyPrintIndent = "  "
+    }
   }
 
   override val directiveContainers: List<DirectivesContainer>
     get() = listOf(MetroDirectives)
 
   override fun checkMetroReports(thereWereFailures: Boolean) {
-    if (thereWereFailures) return
-
     val allDirectives = testServices.moduleStructure.allDirectives
 
-    checkReports(allDirectives)
+    if (allDirectives[MetroDirectives.CHECK_REPORTS].isNotEmpty()) {
+      checkReports(allDirectives)
+    }
+    if (thereWereFailures) return
+
     if (MetroDirectives.CHECK_TRACES in allDirectives) {
       checkTraces(allDirectives)
     }
@@ -75,13 +88,21 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
       File(testServices.temporaryDirectoryManager.rootDir.absolutePath, reportsDestination)
 
     val testDataFile = testServices.moduleStructure.originalTestDataFiles.first()
+    val legacyExpectedRoot = testDataFile.withoutExtension()
+    val sharedReportsRoot = testDataFile.parentFile.resolve("_reports")
+    val expectedRoot =
+      if (sharedReportsRoot.isDirectory) {
+        sharedReportsRoot.resolve(legacyExpectedRoot.name)
+      } else {
+        legacyExpectedRoot
+      }
 
     var generatedMissingFiles = false
     var lastError: AssertionFailedError? = null
     for (reportName in reportNamesToCheck) {
       val baseFileName = reportFileName(reportName)
       val reportFile = File(reportsDir, baseFileName)
-      val expectedFile = File(testDataFile.withoutExtension(), expectedReportFileName(reportName))
+      val expectedFile = File(expectedRoot, expectedReportFileName(reportName))
 
       if (!reportFile.exists()) {
         testServices.assertions.fail {
@@ -89,7 +110,17 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
             "Report file not found: ${reportFile.absolutePath}"
         }
       } else {
-        val actualContent = reportFile.readText()
+        val actualContent =
+          reportFile.readText().let { content ->
+            if (
+              MetroDirectives.NORMALIZE_REPORT_SOURCE_LOCATIONS in allDirectives &&
+                reportName.endsWith(".json")
+            ) {
+              normalizeReportSourceLocations(content)
+            } else {
+              content
+            }
+          }
         try {
           testServices.assertions.assertEqualsToFile(expectedFile, actualContent)
         } catch (e: AssertionFailedError) {
@@ -117,6 +148,21 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     return if (File(reportName).extension.isEmpty()) reportFileName(reportName)
     else "${reportName}.txt"
   }
+
+  private fun normalizeReportSourceLocations(content: String): String {
+    val report = REPORT_JSON.parseToJsonElement(content).withoutSourceLocations()
+    return REPORT_JSON.encodeToString(JsonElement.serializer(), report)
+  }
+
+  private fun JsonElement.withoutSourceLocations(): JsonElement =
+    when (this) {
+      is JsonObject ->
+        JsonObject(
+          filterKeys { it != "origin" }.mapValues { (_, value) -> value.withoutSourceLocations() }
+        )
+      is JsonArray -> JsonArray(map { it.withoutSourceLocations() })
+      else -> this
+    }
 
   private fun checkTraces(allDirectives: RegisteredDirectives) {
     val destination =

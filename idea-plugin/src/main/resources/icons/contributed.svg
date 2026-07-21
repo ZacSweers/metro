@@ -1,0 +1,8 @@
+<!--
+  ~ Copyright (C) 2026 Zac Sweers
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <circle cx="6.5" cy="9.2" r="3" fill="#1D9E75"/>
+  <path d="M11.8 3 V7 M9.8 5 H13.8" stroke="#378ADD" stroke-width="1.7" stroke-linecap="round"/>
+</svg>

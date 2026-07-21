@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
-import dev.zacsweers.metro.compiler.graph.BaseTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
@@ -64,7 +63,7 @@ internal interface IrBindingStack :
      * Optional deferred-evaluation alternative to [graphContext]. When non-null, this takes
      * precedence and [graphContext] is ignored. The expensive formatting that some factories do
      * (parent traversals, fake-override resolution, buildString) only runs when the stack is
-     * actually rendered — i.e. error reports or when logging is enabled.
+     * actually rendered, meaning error reports or enabled logging.
      */
     graphContextProvider: (() -> String?)? = null,
     override val trailingComment: String? = null,
@@ -345,20 +344,6 @@ internal interface IrBindingStack :
 
     fun empty() = EMPTY
   }
-}
-
-internal inline fun <
-  T,
-  Type : Any,
-  TypeKey : BaseTypeKey<Type, *, *>,
-  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, *>,
-  Impl : BaseBindingStack<*, Type, TypeKey, Entry, Impl>,
-> Impl.withEntry(entry: Entry?, block: () -> T): T {
-  if (entry == null) return block()
-  push(entry)
-  val result = block()
-  pop()
-  return result
 }
 
 internal fun Appendable.appendBindingStackEntries(

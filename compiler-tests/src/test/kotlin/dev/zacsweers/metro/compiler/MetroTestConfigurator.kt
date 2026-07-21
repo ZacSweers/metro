@@ -23,6 +23,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   override fun shouldSkipTest(): Boolean {
     val directives = testServices.moduleStructure.allDirectives
     if (MetroDirectives.METRO_IGNORE in directives) return true
+    if (MetroDirectives.METRO_JVM_ONLY in directives && testServices.isJsBackend()) return true
 
     if (
       testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION

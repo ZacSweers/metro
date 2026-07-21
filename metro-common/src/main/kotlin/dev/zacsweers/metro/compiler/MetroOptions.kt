@@ -49,6 +49,8 @@ private fun ClassId.withCustom(customClassIds: Set<ClassId>): Set<ClassId> {
 
 public object MetroClassIds {
   public val metroRuntimePackage: FqName = FqName("dev.zacsweers.metro")
+  public val metroRuntimeInternalPackage: FqName =
+    metroRuntimePackage.child(Name.identifier("internal"))
 
   public val dependencyGraph: ClassId = metroRuntimePackage.classId("DependencyGraph")
   public val dependencyGraphFactory: ClassId = dependencyGraph.nested("Factory")
@@ -58,6 +60,7 @@ public object MetroClassIds {
   public val inject: ClassId = metroRuntimePackage.classId("Inject")
   public val qualifier: ClassId = metroRuntimePackage.classId("Qualifier")
   public val scope: ClassId = metroRuntimePackage.classId("Scope")
+  public val singleIn: ClassId = metroRuntimePackage.classId("SingleIn")
   public val bindingContainer: ClassId = metroRuntimePackage.classId("BindingContainer")
   public val origin: ClassId = metroRuntimePackage.classId("Origin")
   public val defaultBinding: ClassId = metroRuntimePackage.classId("DefaultBinding")
@@ -79,9 +82,16 @@ public object MetroClassIds {
   public val graphExtension: ClassId = metroRuntimePackage.classId("GraphExtension")
   public val graphExtensionFactory: ClassId = graphExtension.nested("Factory")
   public val provider: ClassId = metroRuntimePackage.classId("Provider")
+  public val suspendProvider: ClassId = metroRuntimePackage.classId("SuspendProvider")
+  public val suspendLazy: ClassId = metroRuntimePackage.classId("SuspendLazy")
+  public val suspendDoubleCheck: ClassId = metroRuntimeInternalPackage.classId("SuspendDoubleCheck")
   public val includes: ClassId = metroRuntimePackage.classId("Includes")
+  public val multibindingElement: ClassId =
+    metroRuntimeInternalPackage.classId("MultibindingElement")
+  public val hasMemberInjections: ClassId = metroRuntimePackage.classId("HasMemberInjections")
   public val lazy: ClassId = StandardClassIds.byName("Lazy")
   public val function0: ClassId = StandardClassIds.FunctionN(0)
+  public val suspendFunction0: ClassId = FqName("kotlin.coroutines").classId("SuspendFunction0")
 }
 
 public data class RawMetroOption<T : Any>(
@@ -1242,6 +1252,40 @@ public class MetroOptions(
 
   @Transient public val lazyTypes: Set<ClassId> = MetroClassIds.lazy.withCustom(customLazyTypes)
 
+  /** Suspend-provider shapes recognized while modeling signatures, including when disabled. */
+  @Transient
+  public val suspendProviderModelingTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
+  /**
+   * Suspend-provider shapes used after option validation. The explicit Metro type remains
+   * addressable while disabled so consumers can report its use.
+   */
+  @Transient
+  public val suspendProviderTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders && enableSuspendProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
+  @Transient public val suspendLazyTypes: Set<ClassId> = setOf(MetroClassIds.suspendLazy)
+
+  /** Zero-argument function types enabled as provider spellings. */
+  @Transient
+  public val function0Types: Set<ClassId> = buildSet {
+    if (enableFunctionProviders) {
+      add(MetroClassIds.function0)
+      if (enableSuspendProviders) {
+        add(MetroClassIds.suspendFunction0)
+      }
+    }
+  }
+
   @Transient
   public val dependencyGraphAnnotations: Set<ClassId> =
     MetroClassIds.dependencyGraph.withCustom(customGraphAnnotations)
@@ -1420,7 +1464,7 @@ public class MetroOptions(
   @Transient
   public val traceDir: Lazy<Path?> = lazy {
     // Don't wipe the directory: when a Gradle daemon reruns compilation
-    // (e.g. gradle-profiler iterations), wiping each time loses every
+    // (like gradle-profiler iterations), wiping each time loses every
     // prior trace. Filenames are timestamped, so accumulation is safe.
     rawTraceDestination?.apply { createDirectories() }
   }
@@ -2075,8 +2119,4 @@ private inline fun <reified T : Any> Any.expectAs(): T {
 
 private fun Any.diagnosticSeverity(): MetroOptions.DiagnosticSeverity {
   return MetroOptions.DiagnosticSeverity.valueOf(expectAs<String>().uppercase(Locale.US))
-}
-
-private fun <T, R> Sequence<T>.mapToSet(transform: (T) -> R): Set<R> {
-  return mapTo(mutableSetOf(), transform)
 }

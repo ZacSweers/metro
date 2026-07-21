@@ -1,0 +1,276 @@
+{
+  "graph": "parity.binary.BinaryGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "libtest.LibClientWithDeps",
+        "isDeferrable": false
+      },
+      {
+        "key": "libtest.LibService",
+        "isDeferrable": false
+      },
+      {
+        "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+        "isDeferrable": false
+      },
+      {
+        "key": "libtest.LibExplicit",
+        "isDeferrable": false
+      },
+      {
+        "key": "libtest.LibContained",
+        "isDeferrable": false
+      },
+      {
+        "key": "libtest.LibHidden? = ...",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": true,
+    "generateClassesInIr": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE"
+  },
+  "stats": {
+    "providerFactories": 1,
+    "bindsCallables": 3,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 6,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 10,
+    "validatedKeys": 10,
+    "reachableKeys": 10,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 2,
+    "scopedProviderProperties": 1,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 4,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindIntoSetAsLibAnalytics",
+      "dependencies": [
+        {
+          "key": "libtest.LibAnalyticsImpl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "LibAnalyticsImpl",
+      "aliasTarget": "libtest.LibAnalyticsImpl"
+    },
+    {
+      "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfLibAnalytics",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics"
+        ]
+      }
+    },
+    {
+      "key": "libtest.LibAnalyticsImpl",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "LibAnalyticsImpl",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LibAnalyticsImpl"
+    },
+    {
+      "key": "libtest.LibClientWithDeps",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "LibClientWithDeps",
+      "dependencies": [
+        {
+          "key": "libtest.LibHttpClient",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "LibClientWithDeps"
+    },
+    {
+      "key": "libtest.LibContained",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideLibContained",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LibContainedImpl"
+    },
+    {
+      "key": "libtest.LibExplicit",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindsAsLibExplicit",
+      "dependencies": [
+        {
+          "key": "libtest.LibExplicitImpl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "LibExplicitImpl",
+      "aliasTarget": "libtest.LibExplicitImpl"
+    },
+    {
+      "key": "libtest.LibExplicitImpl",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "LibExplicitImpl",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LibExplicitImpl"
+    },
+    {
+      "key": "libtest.LibHttpClient",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "LibHttpClient",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LibHttpClient"
+    },
+    {
+      "key": "libtest.LibService",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindsAsLibService",
+      "dependencies": [
+        {
+          "key": "libtest.LibServiceImpl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "LibServiceImpl",
+      "aliasTarget": "libtest.LibServiceImpl"
+    },
+    {
+      "key": "libtest.LibServiceImpl",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "LibServiceImpl",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "LibServiceImpl"
+    }
+  ]
+}

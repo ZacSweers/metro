@@ -6,7 +6,6 @@ import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
-import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
@@ -16,6 +15,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -29,7 +29,8 @@ import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
-import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
+import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
@@ -193,7 +194,7 @@ internal class IrBindingGraph(
         ?: node.reportableSourceGraphDeclaration
     hasErrors = true
     if (element is IrDeclaration) {
-      // For missing bindings the anchor is the interesting injection/request site — carry its
+      // For missing bindings the anchor is the interesting injection/request site, so carry its
       // source span so rich console mode draws a frame for it. Other codes anchor at the graph
       // declaration, where a frame adds noise rather than signal.
       val enriched =
@@ -204,7 +205,8 @@ internal class IrBindingGraph(
         }
       pendingDiagnostics += PendingDiagnostic.Structured(enriched.id.factory, element, enriched)
     } else {
-      // Rare non-declaration anchor — report immediately (no batch passes to share with).
+      // Rare non-declaration anchor. Report immediately, since there are no batch passes to share
+      // with.
       val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
       with(metroContext) {
         diagnosticReporter.reportAt(
@@ -689,12 +691,7 @@ internal class IrBindingGraph(
     val errors = mutableListOf<GraphError>()
     for (multibinding in multibindings) {
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        val notes = buildList {
-          add(
-            Note.help(
-              "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
-            )
-          )
+        val extraNotes = buildList {
           similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
 
           val elementType =
@@ -705,18 +702,7 @@ internal class IrBindingGraph(
             }
           functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
         }
-        val diagnostic =
-          MetroDiagnostic(
-            id = MetroDiagnosticId.EMPTY_MULTIBINDING,
-            severity = MetroSeverity.ERROR,
-            title =
-              buildText {
-                append("Multibinding ")
-                append(multibinding.typeKey.toText())
-                append(" was unexpectedly empty")
-              },
-            notes = notes,
-          )
+        val diagnostic = emptyMultibindingDiagnostic(multibinding.typeKey, extraNotes)
         val declarationToReport =
           if (multibinding.declaration?.isFakeOverride == true) {
             multibinding.declaration!!
@@ -1340,7 +1326,7 @@ internal class IrBindingGraph(
 
       // A synchronous wrapper nearest the bound value cannot await a suspend binding, regardless
       // of what outer wrappers surround it or whether the accessor itself is suspend.
-      val blockingWrapper = contextKey.lowestSynchronousWrapperName()
+      val blockingWrapper = contextKey.wrappedType.lowestSynchronousWrapperName()
       if (blockingWrapper != null) {
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
@@ -1355,7 +1341,7 @@ internal class IrBindingGraph(
         val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1482,7 +1468,7 @@ internal class IrBindingGraph(
           binding.parameters.allParameters.firstOrNull { it.contextualTypeKey == dep }?.ir
             ?: binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
 
-        val blockingWrapper = dep.lowestSynchronousWrapperName()
+        val blockingWrapper = dep.wrappedType.lowestSynchronousWrapperName()
         if (blockingWrapper != null) {
           val depRender = dep.typeKey.render(short = true)
           val replacement =
@@ -1494,7 +1480,7 @@ internal class IrBindingGraph(
           val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
           val message = buildString {
             appendLine(
-              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
             )
             appendLine()
             appendLine("Trace:")
@@ -1522,7 +1508,7 @@ internal class IrBindingGraph(
         val ctxKey = param.contextualTypeKey
         if (ctxKey.typeKey !in suspendSet) continue
         if (ctxKey.isValidSuspendBoundary(bindings)) continue
-        val blockingWrapper = ctxKey.lowestSynchronousWrapperName() ?: continue
+        val blockingWrapper = ctxKey.wrappedType.lowestSynchronousWrapperName() ?: continue
         val depRender = ctxKey.typeKey.render(short = true)
         val replacement =
           if (blockingWrapper == "Provider") {
@@ -1534,7 +1520,7 @@ internal class IrBindingGraph(
         val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
         val message = buildString {
           appendLine(
-            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
+            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.wrappedType.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
           )
           appendLine()
           appendLine("Trace:")
@@ -1634,37 +1620,6 @@ internal class IrBindingGraph(
 
   private companion object {
     private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
-  }
-
-  /** Returns the synchronous wrapper nearest the bound value, if there is one. */
-  private fun IrContextualTypeKey.lowestSynchronousWrapperName(): String? {
-    if (wrappedType.usesSuspendProvider() != false) return null
-    return when (wrappedType.innermostWrapper()) {
-      is WrappedType.Provider -> "Provider"
-      is WrappedType.Lazy -> "Lazy"
-      else -> reportCompilerBug("Expected an innermost synchronous wrapper for $this")
-    }
-  }
-
-  private fun IrContextualTypeKey.blockingWrapperPhrase(wrapper: String): String {
-    val hasOuterWrapper =
-      when (val type = wrappedType) {
-        is WrappedType.Canonical,
-        is WrappedType.Map -> false
-        is WrappedType.Provider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendProvider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.Lazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendLazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-      }
-    return if (hasOuterWrapper) {
-      "because the wrapper nearest it is $wrapper"
-    } else {
-      "via $wrapper"
-    }
   }
 
   private fun IrContextualTypeKey.isValidSuspendBoundary(
@@ -1869,28 +1824,12 @@ internal class IrBindingGraph(
       val locationItems = locationDiagnostics.map { it.toLocatedItem() }
 
       val diagnostic =
-        MetroDiagnostic(
-          id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
-          severity = MetroSeverity.ERROR,
-          title =
-            buildText {
-              append(DiagnosticHeadlines.DUPLICATE_MAP_KEYS_PREFIX)
-              append(binding.typeKey.toText())
-            },
-          sections =
-            buildList {
-              add(
-                DiagnosticSection.Locations(
-                  header =
-                    textOf(
-                      "The following bindings contribute the same map key '${mapKey.render(short = false)}'"
-                    ),
-                  items = locationItems,
-                )
-              )
-              stack.toTraceSection()?.let(::add)
-            },
-          notes = locationDiagnostics.flatMap { it.notes }.distinct(),
+        duplicateMapKeysDiagnostic(
+          typeKey = binding.typeKey,
+          mapKeyRender = mapKey.render(short = false),
+          locations = locationItems,
+          trace = stack.toTraceSection(),
+          extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
         )
       report(diagnostic, stack)
     }

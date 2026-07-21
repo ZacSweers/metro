@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.diagnostics
 
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
+import dev.zacsweers.metro.compiler.diagnostics.render.RICH
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderContext
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
 import org.junit.Test

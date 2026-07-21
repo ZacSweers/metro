@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBinding
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.ClassFactory
@@ -26,7 +27,6 @@ import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.UnknownLocationContext
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.computeMultibindingId
 import dev.zacsweers.metro.compiler.ir.createMapBindingId
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.implements

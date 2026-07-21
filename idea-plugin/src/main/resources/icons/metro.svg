@@ -1,0 +1,10 @@
+<!--
+  ~ Copyright (C) 2026 Zac Sweers
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path d="M1 15 V8.5 a7 7 0 0 1 14 0 V15 h-2.5 V8.5 a4.5 4.5 0 0 0 -9 0 V15 Z" fill="#013754"/>
+  <path d="M3.5 15 V8.5 a4.5 4.5 0 0 1 9 0 V15 Z" fill="#0A2533"/>
+  <rect x="4.6" y="6.3" width="6.8" height="8.7" rx="1.8" fill="#F1F5F7"/>
+  <rect x="5.8" y="7.5" width="4.4" height="3" rx="0.9" fill="#013754"/>
+</svg>
