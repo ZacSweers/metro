@@ -20,15 +20,16 @@ IU:2025.3.2
 IU:2026.1.1
 IU:2026.1.2
 IU:2026.1.3
+IU:2026.2
 # IntelliJ EAP
-IU:262.8117.19:eap
 # AS stable
 AS:2025.3.1.8:android-studio-panda1-patch1 # Panda 1 Patch 1
 AS:2025.3.2.6:android-studio-panda2 # Panda 2
 AS:2025.3.3.6:android-studio-panda3 # Panda 3
 AS:2025.3.4.7:android-studio-panda4-patch1 # Panda 4 Patch 1
 AS:2026.1.1.8:android-studio-quail1 # Quail 1
+AS:2026.1.2.10:android-studio-quail2 # Quail 2
 # AS RC
-AS:2026.1.2.8:android-studio-quail2-rc1 # Quail 2 RC 1
+AS:2026.1.3.5:android-studio-quail3-rc1 # Quail 3 RC 1
 # AS Canary
-AS:2026.1.3.1:android-studio-quail3-canary1 # Quail 3 Canary 1
+AS:2026.1.4.1:android-studio-quail4-canary1 # Quail 4 Canary 1
