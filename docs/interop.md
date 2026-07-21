@@ -254,9 +254,7 @@ interface FeatureGraph {
 }
 ```
 
-The `@DependencyGraph(FeatureScoped::class)` argument is the aggregation key. If contributed Hilt
-bindings are also scoped with `@FeatureScoped`, put `@FeatureScoped` on the graph too so Metro's
-scope compatibility check sees the concrete scope annotation.
+The `@DependencyGraph(FeatureScoped::class)` argument is the aggregation key. If contributed Hilt bindings are also scoped with `@FeatureScoped`, put `@FeatureScoped` on the graph too so Metro's scope compatibility check sees the concrete scope annotation.
 
 ### Limitations
 

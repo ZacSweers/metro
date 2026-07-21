@@ -85,8 +85,7 @@ Note that support is unstable and subject to change.
 
 ## Manual dependency management
 
-The Metro Gradle plugin normally adds the dependencies needed by each Metro-enabled compilation.
-To manage them yourself, disable automatic dependency management in the Metro DSL:
+The Metro Gradle plugin normally adds the dependencies needed by each Metro-enabled compilation. To manage them yourself, disable automatic dependency management in the Metro DSL:
 
 ```kotlin
 metro {
@@ -94,12 +93,9 @@ metro {
 }
 ```
 
-You can also disable it for all Metro projects with the
-`metro.automaticallyAddRuntimeDependencies=false` Gradle property.
+You can also disable it for all Metro projects with the `metro.automaticallyAddRuntimeDependencies=false` Gradle property.
 
-Add `dev.zacsweers.metro:runtime:<metro-version>` to every Metro-enabled compilation. For a Kotlin
-Multiplatform project, add it to `commonMain` when Metro is enabled for the shared source set. Add
-the following dependencies when their corresponding feature is enabled:
+Add `dev.zacsweers.metro:runtime:<metro-version>` to every Metro-enabled compilation. For a Kotlin Multiplatform project, add it to `commonMain` when Metro is enabled for the shared source set. Add the following dependencies when their corresponding feature is enabled:
 
 | Feature                 | Dependency                                               | Platform        |
 |-------------------------|----------------------------------------------------------|-----------------|
@@ -109,8 +105,7 @@ the following dependencies when their corresponding feature is enabled:
 | Guice runtime interop   | `dev.zacsweers.metro:interop-guice:<metro-version>`      | JVM and Android |
 | Circuit code generation | `com.slack.circuit:circuit-codegen-annotations:0.33.0`   | All platforms   |
 
-Use the same version for Metro's compiler and runtime artifacts unless you are intentionally using
-the compiler version override described below.
+Use the same version for Metro's compiler and runtime artifacts unless you are intentionally using the compiler version override described below.
 
 ## Advanced Usage: Decoupling compiler and Gradle plugin versions
 

@@ -41,8 +41,7 @@ Reports are written to files like:
 - `merging-unmatched-replacements-ir/<scope>.txt`
 - `merging-unmatched-rank-replacements-ir/<scope>.txt`
 
-`<graph>` and `<scope>` here may be a path like `<graph1>/<graph2>/<graph3>.txt` when graph
-extensions or embedded classes are used.
+`<graph>` and `<scope>` here may be a path like `<graph1>/<graph2>/<graph3>.txt` when graph extensions or embedded classes are used.
 
 ## Graph Analysis & Visualization
 

@@ -14,57 +14,39 @@ Some `@Provides` declarations are just constants:
 - class literals
 - `const val` reads
 
-For these, generated graph accessors can return the value directly instead of going through the
-generated `*MetroFactory` class. This reduces generated graph work and avoids unnecessary provider
-factory allocation for values that the Kotlin compiler has already made constant or singleton-like.
+For these, generated graph accessors can return the value directly instead of going through the generated `*MetroFactory` class. This reduces generated graph work and avoids unnecessary provider factory allocation for values that the Kotlin compiler has already made constant or singleton-like.
 
-The feature is enabled by default through `enable-provider-inlining`. It can be disabled as an
-incubating kill switch.
+The feature is enabled by default through `enable-provider-inlining`. It can be disabled as an incubating kill switch.
 
 ## Eligibility
 
-`IrInlinedProvider.fromProviderFactory(...)` is the central eligibility check. A provider can be
-inlined only when it:
+`IrInlinedProvider.fromProviderFactory(...)` is the central eligibility check. A provider can be inlined only when it:
 
 - has no parameters, including dispatch, extension, context, or value parameters
 - is not scoped
 - has a body Metro can represent as an `IrInlinedProvider.Value`
 
-The last condition is intentionally narrow. Metro only records values that can be materialized
-without running user code.
+The last condition is intentionally narrow. Metro only records values that can be materialized without running user code.
 
-Class-referencing values (objects, enum entries, class literals) are only recorded when the
-referenced class is effectively public. They materialize as direct references at consuming graph
-sites, possibly in other modules, where a non-public class would be an inaccessible reference that
-fails IR validation.
+Class-referencing values (objects, enum entries, class literals) are only recorded when the referenced class is effectively public. They materialize as direct references at consuming graph sites, possibly in other modules, where a non-public class would be an inaccessible reference that fails IR validation.
 
-Scoped constant providers are excluded because scope annotations imply identity and caching
-semantics. When provider inlining is enabled, FIR reports a warning recommending that the user
-remove the scope annotation if they want the provider to be inlined.
+Scoped constant providers are excluded because scope annotations imply identity and caching semantics. When provider inlining is enabled, FIR reports a warning recommending that the user remove the scope annotation if they want the provider to be inlined.
 
 ## Metadata
 
-Provider factory metadata carries the inlined value so cross-module providers can still be inlined.
-The flow is:
+Provider factory metadata carries the inlined value so cross-module providers can still be inlined. The flow is:
 
 - `IrProviderFactory.Metro.create(...)` computes `IrInlinedProvider` for in-round factories.
 - `IrInlinedProvider.toProto()` writes it into Metro metadata.
-- `BindingContainerTransformer` reads it back with `IrInlinedProvider.fromProto(...)` when the
-  provider factory comes from metadata.
+- `BindingContainerTransformer` reads it back with `IrInlinedProvider.fromProto(...)` when the provider factory comes from metadata.
 
-The compiler option is checked both when computing in-round values and when reading metadata. This
-keeps `enable-provider-inlining=false` as a real disable path even if upstream metadata contains an
-inlined value.
+The compiler option is checked both when computing in-round values and when reading metadata. This keeps `enable-provider-inlining=false` as a real disable path even if upstream metadata contains an inlined value.
 
-On JVM, generated provider factory classes whose value was inlined are annotated with
-`@ComptimeOnly`. They still exist as synthetic declarations for metadata and compatibility, but the
-annotation marks them as compile-time-only implementation detail.
+On JVM, generated provider factory classes whose value was inlined are annotated with `@ComptimeOnly`. They still exist as synthetic declarations for metadata and compatibility, but the annotation marks them as compile-time-only implementation detail.
 
 ## Graph Codegen
 
-`GraphExpressionGenerator` owns the actual substitution. For `IrBinding.Provided`, it looks up the
-provider factory and, when inlining is enabled, materializes the stored `IrInlinedProvider.Value`
-directly into the generated graph expression.
+`GraphExpressionGenerator` owns the actual substitution. For `IrBinding.Provided`, it looks up the provider factory and, when inlining is enabled, materializes the stored `IrInlinedProvider.Value` directly into the generated graph expression.
 
 Materialization happens per value kind:
 
@@ -73,57 +55,36 @@ Materialization happens per value kind:
 - enum values become enum entry reads
 - class literal values become `KClass` references
 
-The materialized expression is then adapted to the requested access type. For normal graph
-accessors this means returning the scalar value directly. For provider access, Metro wraps
-the materialized value in the appropriate factory.
+The materialized expression is then adapted to the requested access type. For normal graph accessors this means returning the scalar value directly. For provider access, Metro wraps the materialized value in the appropriate factory.
 
-Materialization can still fail for class-referencing values: the class may not be resolvable in
-the consuming compilation (e.g. an object behind an implementation dependency of the providing
-module). `materialize(...)` returns null in that case and the generator falls back to the factory
-paths. The fallback factory survives R8 despite `@ComptimeOnly` because `-assumenosideeffects`
-only removes calls whose results are unused.
+Materialization can still fail for class-referencing values: the class may not be resolvable in the consuming compilation (e.g. an object behind an implementation dependency of the providing module). `materialize(...)` returns null in that case and the generator falls back to the factory paths. The fallback factory survives R8 despite `@ComptimeOnly` because `-assumenosideeffects` only removes calls whose results are unused.
 
 ## Provider Wrappers
 
-Provider access to already-known values uses `instanceFactory(...)`. That helper chooses the
-smallest runtime wrapper from the expression type:
+Provider access to already-known values uses `instanceFactory(...)`. That helper chooses the smallest runtime wrapper from the expression type:
 
 - primitive values use `ByteFactory`, `IntFactory`, `LongFactory`, etc.
 - booleans use `BooleanFactory`, which reuses the two singleton boolean factories
 - other values use `InstanceFactory`
 
-The declared field type is taken from the returned expression instead of being computed separately.
-This keeps primitive factories and other concrete wrapper types visible in generated code instead of
-hiding them behind `Provider<T>` when a concrete factory type is available.
+The declared field type is taken from the returned expression instead of being computed separately. This keeps primitive factories and other concrete wrapper types visible in generated code instead of hiding them behind `Provider<T>` when a concrete factory type is available.
 
 ## Generated Factories
 
-Generated factory `create()` functions return the concrete generated factory type, not `Factory<T>`.
-Any metadata-backed or phantom factory declarations used for cross-module lookups must mirror that
-same return type so JVM call descriptors match the real generated factory. Inlined constants do not
-change factory creation; inlining remains a graph expression optimization.
+Generated factory `create()` functions return the concrete generated factory type, not `Factory<T>`. Any metadata-backed or phantom factory declarations used for cross-module lookups must mirror that same return type so JVM call descriptors match the real generated factory. Inlined constants do not change factory creation; inlining remains a graph expression optimization.
 
-Value-class provider factories are intentionally not generated today. Fir2Ir computes value-class
-representation from FIR declarations, while Metro currently creates regular factory constructors
-and fields in IR. Declaring a factory as a value class in FIR without also declaring its backing
-constructor/property in FIR leaves Fir2Ir with no representation to lower.
+Value-class provider factories are intentionally not generated today. Fir2Ir computes value-class representation from FIR declarations, while Metro currently creates regular factory constructors and fields in IR. Declaring a factory as a value class in FIR without also declaring its backing constructor/property in FIR leaves Fir2Ir with no representation to lower.
 
-Future value-class factory support can either generate the backing FIR member declarations alongside
-the factory class declaration, or wait for Kotlin compiler plugin support for generating new classes
-directly in IR.
+Future value-class factory support can either generate the backing FIR member declarations alongside the factory class declaration, or wait for Kotlin compiler plugin support for generating new classes directly in IR.
 
 ## Bound Instances
 
-Bound instances are handled separately from computed provider bindings. The graph already stores
-their scalar value in an instance field. A single provider access can cheaply wrap that field at the
-use site, so Metro does not create an extra provider field for one provider reference.
+Bound instances are handled separately from computed provider bindings. The graph already stores their scalar value in an instance field. A single provider access can cheaply wrap that field at the use site, so Metro does not create an extra provider field for one provider reference.
 
 `BindingPropertyCollector` owns the caching decision:
 
 - multiple provider references to the same bound instance reserve a cached provider context key
 - one provider reference does not reserve a provider field
-- computed bindings still cache provider fields for mixed scalar/provider use, because otherwise
-  Metro would generate the binding expression twice
+- computed bindings still cache provider fields for mixed scalar/provider use, because otherwise Metro would generate the binding expression twice
 
-`IrGraphGenerator` consumes the collector's `cachedProviderContextKeys` result. It creates bound
-instance provider fields only for keys the collector reserved.
+`IrGraphGenerator` consumes the collector's `cachedProviderContextKeys` result. It creates bound instance provider fields only for keys the collector reserved.

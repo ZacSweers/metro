@@ -60,12 +60,9 @@ If you're on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O
 
 ### **Why `SuspendLazy<T>` instead of `Deferred<T>`?**
 
-A `Deferred` is also a `Job`. Any consumer could cancel shared initialization, register completion
-callbacks, or otherwise control work used by other consumers. It also needs a `CoroutineScope` and
-Metro graphs do not own one.
+A `Deferred` is also a `Job`. Any consumer could cancel shared initialization, register completion callbacks, or otherwise control work used by other consumers. It also needs a `CoroutineScope` and Metro graphs do not own one.
 
-`SuspendLazy<T>` lets consumers await the value and check whether it has been initialized without
-exposing cancellation or job ownership.
+`SuspendLazy<T>` lets consumers await the value and check whether it has been initialized without exposing cancellation or job ownership.
 
 If you need a `Deferred`, provide it from a scope you own:
 
@@ -119,12 +116,9 @@ A few different reasons Metro doesn't have it
 
 ### **How are Metro's suspend providers different from Dagger Producers?**
 
-Both support dependencies whose initialization cannot or should not complete synchronously,
-but they differ in how that requirement moves through a dependency graph and how the work runs.
+Both support dependencies whose initialization cannot or should not complete synchronously, but they differ in how that requirement moves through a dependency graph and how the work runs.
 
-With [Dagger Producers](https://dagger.dev/semantics/producers.html), every binding that waits for a
-produced value must itself be a production binding. For example, both bindings in this chain use
-`@Produces`, and the component exposes the result as a future:
+With [Dagger Producers](https://dagger.dev/semantics/producers.html), every binding that waits for a produced value must itself be a production binding. For example, both bindings in this chain use `@Produces`, and the component exposes the result as a future:
 
 ```kotlin
 @Produces
@@ -137,11 +131,9 @@ fun provideSession(user: User): Session = Session(user)
 fun session(): ListenableFuture<Session>
 ```
 
-Changing `provideSession` to `@Provides` would be invalid because a provision binding cannot wait
-for a production binding.
+Changing `provideSession` to `@Provides` would be invalid because a provision binding cannot wait for a production binding.
 
-Metro only requires the operation that actually suspends to be declared `suspend`. The need for a
-suspend context then propagates through ordinary `@Provides` and constructor-injected bindings:
+Metro only requires the operation that actually suspends to be declared `suspend`. The need for a suspend context then propagates through ordinary `@Provides` and constructor-injected bindings:
 
 ```kotlin
 @Provides
@@ -154,20 +146,11 @@ fun provideSession(user: User): Session = Session(user)
 suspend fun session(): Session
 ```
 
-`provideSession` remains an ordinary function, but Metro knows that initializing `Session`
-requires the suspending `User` binding. A synchronous consumer can instead request
-`suspend () -> Session` or `SuspendLazy<Session>` to defer that initialization.
+`provideSession` remains an ordinary function, but Metro knows that initializing `Session` requires the suspending `User` binding. A synchronous consumer can instead request `suspend () -> Session` or `SuspendLazy<Session>` to defer that initialization.
 
-Dagger schedules production methods on the production component's executor and represents their
-results with futures and producer APIs. Metro does not launch work, choose a dispatcher, or own a
-`CoroutineScope`; it initializes dependencies in the coroutine that calls the graph accessor. Code
-that needs a particular dispatcher or concurrent initialization must express that with coroutines.
+Dagger schedules production methods on the production component's executor and represents their results with futures and producer APIs. Metro does not launch work, choose a dispatcher, or own a `CoroutineScope`; it initializes dependencies in the coroutine that calls the graph accessor. Code that needs a particular dispatcher or concurrent initialization must express that with coroutines.
 
-When migrating, an asynchronous `@Produces` method usually becomes a suspending `@Provides`
-function. Intermediate `@Produces` methods that only carried the production chain can often become
-ordinary providers or constructor-injected types. Code that relied on Dagger to schedule
-independent producers concurrently must preserve that concurrency explicitly. See Metro's
-[coroutines documentation](coroutines.md) for the full behavior.
+When migrating, an asynchronous `@Produces` method usually becomes a suspending `@Provides` function. Intermediate `@Produces` methods that only carried the production chain can often become ordinary providers or constructor-injected types. Code that relied on Dagger to schedule independent producers concurrently must preserve that concurrency explicitly. See Metro's [coroutines documentation](coroutines.md) for the full behavior.
 
 ### **Will Metro add support for Hilt features or Hilt interop?**
 

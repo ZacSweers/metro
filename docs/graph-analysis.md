@@ -171,16 +171,14 @@ Edges are styled to indicate the relationship type:
 
 ### Understanding Graph Structure
 
-**Entry points (roots):**
-The graph's entry points are tracked in the `roots` metadata object, separate from binding dependencies. This includes:
+**Entry points (roots):** The graph's entry points are tracked in the `roots` metadata object, separate from binding dependencies. This includes:
 
 - **Accessors** - Properties on the graph interface that expose bindings (e.g., `val serviceA: ServiceA`)
 - **Injectors** - Functions that inject dependencies into targets (e.g., `fun inject(target: Activity)`)
 
 Light blue edges from the main graph (diamond) show these entry points—your graph's public API. The analysis infrastructure creates edges from the graph to accessor targets when building the graph structure.
 
-**Graph extensions:**
-Rounded rectangle nodes show `@GraphExtension` types. Extension information is tracked in the `extensions` metadata object:
+**Graph extensions:** Rounded rectangle nodes show `@GraphExtension` types. Extension information is tracked in the `extensions` metadata object:
 
 - **accessors** - Non-factory extension accessors
 - **factoryAccessors** - Factory accessors that create extension instances
@@ -188,35 +186,30 @@ Rounded rectangle nodes show `@GraphExtension` types. Extension information is t
 
 Magenta dashed edges indicate which scoped bindings extensions inherit from the parent graph.
 
-**Binding flow:**
-Follow edges from entry points inward to understand how dependencies are resolved. The direction of arrows shows the "depends on" relationship.
+**Binding flow:** Follow edges from entry points inward to understand how dependencies are resolved. The direction of arrows shows the "depends on" relationship.
 
 ## Tips
 
 ### Identifying Issues
 
-**Deep dependency chains:**
-Use "Show Longest Path" to find the deepest dependency chain. Very long paths may indicate:
+**Deep dependency chains:** Use "Show Longest Path" to find the deepest dependency chain. Very long paths may indicate:
 
 - Overly coupled code
 - Missing abstractions
 - Opportunities to defer dependencies with `Provider`/`Lazy`
 
-**Too many scoped bindings:**
-Filter to "Show only scoped bindings". If you have many scoped bindings:
+**Too many scoped bindings:** Filter to "Show only scoped bindings". If you have many scoped bindings:
 
 - Consider if all truly need to be singletons
 - Scoped bindings add memory overhead and complexity
 - Some may be candidates for unscoped bindings
 
-**Complex multibindings:**
-Look for pink nodes with many incoming purple edges. Large multibindings may indicate:
+**Complex multibindings:** Look for pink nodes with many incoming purple edges. Large multibindings may indicate:
 
 - Plugin systems that could be simplified
 - Opportunities to use more targeted bindings
 
-**Circular dependencies:**
-While Metro prevents true cycles, you may see near-cycles broken by `Provider`/`Lazy` (cyan dashed edges). Many of these may indicate:
+**Circular dependencies:** While Metro prevents true cycles, you may see near-cycles broken by `Provider`/`Lazy` (cyan dashed edges). Many of these may indicate:
 
 - Tightly coupled components
 - Opportunities for refactoring

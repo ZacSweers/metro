@@ -88,8 +88,7 @@ interface AppGraph {
 class MessageImpl(val text: String)
 ```
 
-This is useful when you want Metro to fail if another explicit binding for `MessageImpl` is added
-to the same graph.
+This is useful when you want Metro to fail if another explicit binding for `MessageImpl` is added to the same graph.
 
 ```kotlin
 @DependencyGraph
@@ -106,10 +105,7 @@ interface AppGraph {
 class MessageImpl(val text: String)
 ```
 
-The target must be a non-generic constructor-injected class and the
-`@Binds` declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding
-annotations. If `generateContributionProviders` hides the implementation binding, bind the
-contributed type instead or annotate the implementation with `@ExposeImplBinding`.
+The target must be a non-generic constructor-injected class and the `@Binds` declaration cannot have parameters, a receiver, qualifiers, scopes, or multibinding annotations. If `generateContributionProviders` hides the implementation binding, bind the contributed type instead or annotate the implementation with `@ExposeImplBinding`.
 
 This matches Dagger 2.60+'s behavior: https://dagger.dev/dev-guide/#parameterless-binds
 
