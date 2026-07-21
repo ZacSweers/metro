@@ -831,6 +831,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../coroutines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Coroutines Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../bindings/" class="md-nav__link">
         
   
@@ -1601,6 +1628,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#why-suspendlazyt-instead-of-deferredt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>Why <code>SuspendLazy&lt;T&gt;</code> instead of <code>Deferred&lt;T&gt;</code>?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1650,6 +1688,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         <strong>Why doesn&rsquo;t Metro support <code>@Reusable</code>?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-are-metros-suspend-providers-different-from-dagger-producers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>How are Metro&rsquo;s suspend providers different from Dagger Producers?</strong>
       </span>
     </span>
   </a>
@@ -2047,6 +2096,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#why-suspendlazyt-instead-of-deferredt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>Why <code>SuspendLazy&lt;T&gt;</code> instead of <code>Deferred&lt;T&gt;</code>?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2096,6 +2156,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         <strong>Why doesn&rsquo;t Metro support <code>@Reusable</code>?</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-are-metros-suspend-providers-different-from-dagger-producers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <strong>How are Metro&rsquo;s suspend providers different from Dagger Producers?</strong>
       </span>
     </span>
   </a>
@@ -2213,6 +2284,18 @@
 <p>On JDK 21–23, <code>synchronized</code> can pin a virtual thread to its carrier if the thread blocks while holding or acquiring the monitor (<a href="https://openjdk.org/jeps/444">JEP 444</a>). For Metro this can only happen during a scoped binding&rsquo;s <em>one-time</em> initialization, and only if the provider does blocking work — after initialization, reads never touch the monitor.</p>
 <p>JDK 24+ removes monitor pinning entirely (<a href="https://openjdk.org/jeps/491">JEP 491</a>).</p>
 <p>If you&rsquo;re on JDK 21–23 with virtual-thread-heavy workloads, avoid blocking I/O in scoped providers (good advice in general) or initialize those bindings during startup.</p>
+<h3 id="why-suspendlazyt-instead-of-deferredt"><strong>Why <code>SuspendLazy&lt;T&gt;</code> instead of <code>Deferred&lt;T&gt;</code>?</strong><a class="headerlink" href="#why-suspendlazyt-instead-of-deferredt" title="Permanent link">&para;</a></h3>
+<p>A <code>Deferred</code> is also a <code>Job</code>. Any consumer could cancel shared initialization, register completion<br />
+callbacks, or otherwise control work used by other consumers. It also needs a <code>CoroutineScope</code> and<br />
+Metro graphs do not own one.</p>
+<p><code>SuspendLazy&lt;T&gt;</code> lets consumers await the value and check whether it has been initialized without<br />
+exposing cancellation or job ownership.</p>
+<p>If you need a <code>Deferred</code>, provide it from a scope you own:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Provides</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">deferredDb</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">,</span><span class="w"> </span><span class="n">db</span><span class="p">:</span><span class="w"> </span><span class="n">suspend</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Database</span><span class="p">):</span><span class="w"> </span><span class="n">Deferred</span><span class="o">&lt;</span><span class="n">Database</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span>
+<span class="w">  </span><span class="n">scope</span><span class="p">.</span><span class="na">async</span><span class="p">(</span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineStart</span><span class="p">.</span><span class="na">LAZY</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">db</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>See the <a href="../coroutines/">coroutines docs</a> for full coverage of suspend bindings.</p>
 <h3 id="would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers"><strong>Would you consider putting Metro into a foundation? My team has concerns about solo maintainers</strong><a class="headerlink" href="#would-you-consider-putting-metro-into-a-foundation-my-team-has-concerns-about-solo-maintainers" title="Permanent link">&para;</a></h3>
 <p>I would only do this if it makes sense for the project, not for optics. Most open source software is maintained by one person. This probably includes many libraries your team already uses.</p>
 <p>This usually comes up in comparison to Dagger. Dagger is also usually only maintained by one or two people at Google. That level of backing is a luxury, not the standard.</p>
@@ -2244,6 +2327,46 @@
 </li>
 <li>What&rsquo;s the expected behavior if you have a <code>@Reusable</code> type <code>Thing</code> and then request a <code>Lazy&lt;Thing&gt;</code> elsewhere? Currently, Metro <code>DoubleCheck.lazy(...)</code>&rsquo;s whatever binding provides it at the injection site, which would then defeat this. To undo that, Metro would need to introduce some means of indicating &ldquo;what kind&rdquo; of <code>Lazy</code> is needed, which just complicates things for the developer.</li>
 </ul>
+<h3 id="how-are-metros-suspend-providers-different-from-dagger-producers"><strong>How are Metro&rsquo;s suspend providers different from Dagger Producers?</strong><a class="headerlink" href="#how-are-metros-suspend-providers-different-from-dagger-producers" title="Permanent link">&para;</a></h3>
+<p>Both support dependencies whose initialization cannot or should not complete synchronously,<br />
+but they differ in how that requirement moves through a dependency graph and how the work runs.</p>
+<p>With <a href="https://dagger.dev/semantics/producers.html">Dagger Producers</a>, every binding that waits for a<br />
+produced value must itself be a production binding. For example, both bindings in this chain use<br />
+<code>@Produces</code>, and the component exposes the result as a future:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Produces</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideUser</span><span class="p">():</span><span class="w"> </span><span class="n">ListenableFuture</span><span class="o">&lt;</span><span class="n">User</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadUser</span><span class="p">()</span>
+
+<span class="nd">@Produces</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideSession</span><span class="p">(</span><span class="n">user</span><span class="p">:</span><span class="w"> </span><span class="n">User</span><span class="p">):</span><span class="w"> </span><span class="n">Session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Session</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+<span class="c1">// Production component entry point</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">session</span><span class="p">():</span><span class="w"> </span><span class="n">ListenableFuture</span><span class="o">&lt;</span><span class="n">Session</span><span class="o">&gt;</span>
+</code></pre></div>
+<p>Changing <code>provideSession</code> to <code>@Provides</code> would be invalid because a provision binding cannot wait<br />
+for a production binding.</p>
+<p>Metro only requires the operation that actually suspends to be declared <code>suspend</code>. The need for a<br />
+suspend context then propagates through ordinary <code>@Provides</code> and constructor-injected bindings:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Provides</span>
+<span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideUser</span><span class="p">():</span><span class="w"> </span><span class="n">User</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadUser</span><span class="p">()</span>
+
+<span class="nd">@Provides</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideSession</span><span class="p">(</span><span class="n">user</span><span class="p">:</span><span class="w"> </span><span class="n">User</span><span class="p">):</span><span class="w"> </span><span class="n">Session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Session</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+
+<span class="c1">// Graph accessor</span>
+<span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">session</span><span class="p">():</span><span class="w"> </span><span class="n">Session</span>
+</code></pre></div>
+<p><code>provideSession</code> remains an ordinary function, but Metro knows that initializing <code>Session</code><br />
+requires the suspending <code>User</code> binding. A synchronous consumer can instead request<br />
+<code>suspend () -&gt; Session</code> or <code>SuspendLazy&lt;Session&gt;</code> to defer that initialization.</p>
+<p>Dagger schedules production methods on the production component&rsquo;s executor and represents their<br />
+results with futures and producer APIs. Metro does not launch work, choose a dispatcher, or own a<br />
+<code>CoroutineScope</code>; it initializes dependencies in the coroutine that calls the graph accessor. Code<br />
+that needs a particular dispatcher or concurrent initialization must express that with coroutines.</p>
+<p>When migrating, an asynchronous <code>@Produces</code> method usually becomes a suspending <code>@Provides</code><br />
+function. Intermediate <code>@Produces</code> methods that only carried the production chain can often become<br />
+ordinary providers or constructor-injected types. Code that relied on Dagger to schedule<br />
+independent producers concurrently must preserve that concurrency explicitly. See Metro&rsquo;s<br />
+<a href="../coroutines/">coroutines documentation</a> for the full behavior.</p>
 <h3 id="will-metro-add-support-for-hilt-features-or-hilt-interop"><strong>Will Metro add support for Hilt features or Hilt interop?</strong><a class="headerlink" href="#will-metro-add-support-for-hilt-features-or-hilt-interop" title="Permanent link">&para;</a></h3>
 <p>Metro is largely inspired by Dagger and Anvil, but not Hilt. Hilt works in different ways and has different goals. Hilt is largely focused around supporting android components and relies heavily on subcomponents to achieve this.</p>
 <p>Some features overlap but just work differently in Metro:</p>

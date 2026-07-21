@@ -21,3 +21,5 @@ module:metrox-viewmodel-compose
 dev.zacsweers.metrox.viewmodel
 module:runtime
 dev.zacsweers.metro
+module:runtime-coroutines
+dev.zacsweers.metro

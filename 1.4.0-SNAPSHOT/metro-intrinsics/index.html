@@ -18,7 +18,7 @@
         <link rel="prev" href="../scopes/">
       
       
-        <link rel="next" href="../bindings/">
+        <link rel="next" href="../coroutines/">
       
       
         
@@ -901,10 +901,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#providers-of-lazy" class="md-nav__link">
+  <a href="#nested-providers-and-lazy-values" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Providers of Lazy
+        Nested providers and lazy values
       </span>
     </span>
   </a>
@@ -915,6 +915,33 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coroutines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Coroutines Support
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1920,10 +1947,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#providers-of-lazy" class="md-nav__link">
+  <a href="#nested-providers-and-lazy-values" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Providers of Lazy
+        Nested providers and lazy values
       </span>
     </span>
   </a>
@@ -1991,8 +2018,11 @@
 <p class="admonition-title">Opting out</p>
 <p>Function provider support is enabled by default and can be disabled via the <code>enableFunctionProviders</code> compiler option. Disabling it reverts to using <code>Provider&lt;T&gt;</code> exclusively.</p>
 </div>
+<p>For suspend bindings, use <code>suspend () -&gt; T</code> to defer initialization. See<br />
+<a href="../coroutines/">Coroutines Support</a>.</p>
 <h2 id="lazy"><code>Lazy</code><a class="headerlink" href="#lazy" title="Permanent link">&para;</a></h2>
-<p><code>Lazy</code> is Kotlin’s standard library <code>Lazy</code>. It lazily computes a value the first time it’s evaluated and is thread-safe.</p>
+<p><code>Lazy</code> is Kotlin’s standard library <code>Lazy</code>. It initializes a value on first access, caches it, and<br />
+is thread-safe.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">HttpClient</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">cacheProvider</span><span class="p">:</span><span class="w"> </span><span class="n">Lazy</span><span class="o">&lt;</span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createCache</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
@@ -2022,8 +2052,12 @@
 <li><code>ERROR</code> — fail the compilation</li>
 </ul>
 <p><code>Provider&lt;T&gt;</code> and <code>() -&gt; T</code> are fully interchangeable within a graph — they resolve to the same underlying binding — so you can migrate incrementally.</p>
-<h2 id="providers-of-lazy">Providers of Lazy<a class="headerlink" href="#providers-of-lazy" title="Permanent link">&para;</a></h2>
-<p>Metro supports combining functions and <code>Lazy</code> to inject <code>() -&gt; Lazy&lt;T&gt;</code> (or <code>Provider&lt;Lazy&lt;T&gt;&gt;</code>). On unscoped bindings this means the provider will return a new deferrable computable value (i.e. a new <code>Lazy</code>). Meanwhile <code>Lazy&lt;() -&gt; T&gt;</code> / <code>Lazy&lt;Provider&lt;T&gt;&gt;</code> is meaningless and not supported.</p>
+<h2 id="nested-providers-and-lazy-values">Nested providers and lazy values<a class="headerlink" href="#nested-providers-and-lazy-values" title="Permanent link">&para;</a></h2>
+<p>Provider and lazy wrappers can be nested to any depth. For example, Metro supports<br />
+<code>() -&gt; Lazy&lt;T&gt;</code>, <code>Provider&lt;Lazy&lt;T&gt;&gt;</code>, <code>Lazy&lt;() -&gt; T&gt;</code>, and <code>Lazy&lt;Provider&lt;T&gt;&gt;</code>. Each wrapper keeps<br />
+its normal behavior: a provider call returns its immediate inner value, while a <code>Lazy</code> caches its<br />
+immediate inner value. Suspending provider and lazy wrappers follow the same recursive model; see<br />
+<a href="../coroutines/">Coroutines Support</a>.</p>
 
 
 
@@ -2080,13 +2114,13 @@
         
         
           
-          <a href="../bindings/" class="md-footer__link md-footer__link--next" aria-label="Next: Bindings">
+          <a href="../coroutines/" class="md-footer__link md-footer__link--next" aria-label="Next: Coroutines Support">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Bindings
+                Coroutines Support
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -831,6 +831,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../coroutines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Coroutines Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../bindings/" class="md-nav__link">
         
   
@@ -2719,6 +2746,10 @@ Also, disable the default <code>TraceDriver</code> initialization hook (<code>an
 <span class="w">  </span><span class="p">}</span>
 </code></pre></div>
 </div>
+<p>Suspend bindings use coroutine-aware trace sections, so their spans remain connected across<br />
+suspension points and thread changes. Suspend accessors emit the same instant events as other<br />
+accessors. A scoped suspend binding emits a span only when it computes the value; cache hits emit<br />
+none. See <a href="../coroutines/">Coroutines Support</a>.</p>
 <p>Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Requested <code>MembersInjector&lt;T&gt;</code> values also emit instant events named like <code>MembersInjector&lt;T&gt;</code> when <code>injectMembers(...)</code> is called. Metro also attaches string metadata for filtering and grouping:</p>
 <ul>
 <li><code>metro.graph</code>: the graph that owns the binding.</li>
