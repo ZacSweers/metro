@@ -362,6 +362,7 @@ internal fun Appendable.appendBindingStackEntries(
     appendLine("...")
   }
 }
+
 internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 

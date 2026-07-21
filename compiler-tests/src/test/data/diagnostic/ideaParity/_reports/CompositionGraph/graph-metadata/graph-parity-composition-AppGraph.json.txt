@@ -81,6 +81,7 @@
     "bufferedIcTracking": true,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
     "desugaredProviderSeverity": "WARN",
     "enableKClassToClassInterop": false,
     "generateContributionProviders": false,
@@ -110,7 +111,7 @@
     "reachableKeys": 5,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 1,
+    "providerProperties": 0,
     "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {

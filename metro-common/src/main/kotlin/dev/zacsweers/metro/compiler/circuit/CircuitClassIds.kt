@@ -44,8 +44,7 @@ public object CircuitClassIds {
   public val PresenterFactory: ClassId = Presenter.createNestedClassId(Name.identifier("Factory"))
 
   // SubCircuit runtime types
-  public val SubScreen: ClassId =
-    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubScreen"))
+  public val SubScreen: ClassId = ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubScreen"))
   public val SubCircuitUiState: ClassId =
     ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubCircuitUiState"))
   public val SubUi: ClassId = ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubUi"))
