@@ -62,14 +62,17 @@ monitor_resources() {
   done
 }
 
-monitor_resources &
-monitor_pid=$!
+# GitHub sets RUNNER_DEBUG=1 when a run is rerun with debug logging enabled.
+if [[ "${RUNNER_DEBUG:-0}" == "1" ]]; then
+  monitor_resources &
+  monitor_pid=$!
 
-cleanup() {
-  kill "$monitor_pid" 2>/dev/null || true
-  wait "$monitor_pid" 2>/dev/null || true
-}
-trap cleanup EXIT
+  cleanup() {
+    kill "$monitor_pid" 2>/dev/null || true
+    wait "$monitor_pid" 2>/dev/null || true
+  }
+  trap cleanup EXIT
+fi
 
 gradle_jvm_args="-Xmx4g -Dfile.encoding=UTF-8 --enable-native-access=ALL-UNNAMED"
 
