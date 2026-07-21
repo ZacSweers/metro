@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -16,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isEffectivelyOpen
+import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.nestedClasses
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.requireContainingClassSymbol
@@ -46,6 +48,7 @@ import org.jetbrains.kotlin.fir.declarations.constructors
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.dispatchReceiverClassTypeOrNull
 import org.jetbrains.kotlin.fir.expectActualMatchingContextFactory
@@ -245,6 +248,20 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           declaration.symbol.let {
             it is FirRegularClassSymbol && callable.isFakeOverride(it, matchingContext)
           }
+
+        val suspendFunction = callable as? FirNamedFunctionSymbol
+        val isSuspendAccessor =
+          suspendFunction?.let {
+            it.valueParameterSymbols.isEmpty() && it.isSuspend && !it.hasBody
+          } == true
+        if (!session.metroFirBuiltIns.options.enableSuspendProviders && isSuspendAccessor) {
+          reporter.reportOn(
+            if (isInherited) declaration.source else callable.source,
+            MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+            SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
+          )
+          continue
+        }
 
         // Check graph extensions
         val returnType = callable.resolvedReturnTypeRef.coneType

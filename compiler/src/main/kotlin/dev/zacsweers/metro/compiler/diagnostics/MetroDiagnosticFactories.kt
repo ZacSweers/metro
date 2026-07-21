@@ -29,5 +29,20 @@ internal val MetroDiagnosticId.factory: KtDiagnosticFactory1<String>
       MetroDiagnosticId.UNPROCESSED_UPSTREAM_DECLARATION ->
         MetroDiagnostics.UNPROCESSED_UPSTREAM_DECLARATION
       MetroDiagnosticId.UNUSED_GRAPH_INPUTS -> MetroDiagnostics.UNUSED_GRAPH_INPUT_WARNING
+      MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED ->
+        MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED
+      MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR ->
+        MetroDiagnostics.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR
+      MetroDiagnosticId.SUSPEND_BINDING_WRAPPED_IN_PROVIDER ->
+        MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_PROVIDER
+      MetroDiagnosticId.SUSPEND_BINDING_WRAPPED_IN_LAZY ->
+        MetroDiagnostics.SUSPEND_BINDING_WRAPPED_IN_LAZY
+      MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING ->
+        MetroDiagnostics.MEMBER_INJECTION_OVER_SUSPEND_BINDING
+      MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED ->
+        MetroDiagnostics.ASSISTED_FACTORY_SUSPEND_REQUIRED
+      MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS ->
+        MetroDiagnostics.MULTIBINDING_OVER_SUSPEND_BINDINGS
+      MetroDiagnosticId.MISSING_RUNTIME_COROUTINES -> MetroDiagnostics.MISSING_RUNTIME_COROUTINES
       MetroDiagnosticId.GENERIC -> MetroDiagnostics.METRO_ERROR
     }

@@ -1,0 +1,12 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.interop.guice {
+
+  public final class GuiceInteropKt {
+    method public static <T> com.google.inject.MembersInjector<T> asGuiceMembersInjector(dev.zacsweers.metro.MembersInjector<T>);
+    method public static <T> com.google.inject.Provider<T> asGuiceProvider(dev.zacsweers.metro.Provider<T>);
+    method public static <T> dev.zacsweers.metro.MembersInjector<T> asMetroMembersInjector(com.google.inject.MembersInjector<T>);
+    method public static <T> dev.zacsweers.metro.Provider<T> asMetroProvider(com.google.inject.Provider<T>);
+  }
+
+}
+

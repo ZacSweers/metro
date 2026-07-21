@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
-import org.jetbrains.kotlin.fir.expressions.builder.buildResolvedQualifier
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
@@ -61,8 +60,8 @@ val CONTRIBUTES_BINDING_CLASS_ID =
  * The generated class has `@Inject` annotation, which Metro's `InjectedClassFirGenerator`
  * processes. The contribution to the graph is made via [GenerateImplContributionExtension].
  */
-internal class GenerateImplExtension(session: FirSession) :
-  MetroFirDeclarationGenerationExtension(session) {
+internal class GenerateImplExtension(session: FirSession, compatContext: CompatContext) :
+  MetroFirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   companion object {
     val GENERATE_IMPL_FQ_NAME = FqName("test.GenerateImpl")
@@ -139,14 +138,7 @@ internal class GenerateImplExtension(session: FirSession) :
         mapping[Name.identifier("scope")] = buildGetClassCall {
           // The argument should be a FirResolvedQualifier for resolvedClassId() to work
           argumentList = buildArgumentList {
-            arguments += buildResolvedQualifier {
-              packageFqName = scopeClassId.packageFqName
-              relativeClassFqName = scopeClassId.relativeClassName
-              symbol = scopeSymbol
-              resolvedToCompanionObject = false
-              isFullyQualified = true
-              coneTypeOrNull = scopeType
-            }
+            arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
           }
           coneTypeOrNull =
             ConeClassLikeTypeImpl(
@@ -194,7 +186,7 @@ internal class GenerateImplExtension(session: FirSession) :
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension {
-      return GenerateImplExtension(session)
+      return GenerateImplExtension(session, compatContext)
     }
   }
 }

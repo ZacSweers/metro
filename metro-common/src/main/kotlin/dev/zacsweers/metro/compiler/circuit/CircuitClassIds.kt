@@ -13,10 +13,13 @@ public object CircuitClassIds {
   private const val CIRCUIT_RUNTIME_SCREEN_PACKAGE = "$CIRCUIT_RUNTIME_BASE_PACKAGE.screen"
   private const val CIRCUIT_RUNTIME_PRESENTER_PACKAGE = "$CIRCUIT_RUNTIME_BASE_PACKAGE.presenter"
   private const val CIRCUIT_CODEGEN_ANNOTATIONS_PACKAGE = "com.slack.circuit.codegen.annotations"
+  private const val SUBCIRCUIT_PACKAGE = "com.slack.circuit.subcircuit"
 
   // Annotation
   public val CircuitInject: ClassId =
     ClassId(FqName(CIRCUIT_CODEGEN_ANNOTATIONS_PACKAGE), Name.identifier("CircuitInject"))
+  public val SubCircuitInject: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubCircuitInject"))
 
   // Runtime types
   public val Screen: ClassId =
@@ -39,4 +42,17 @@ public object CircuitClassIds {
   public val Presenter: ClassId =
     ClassId(FqName(CIRCUIT_RUNTIME_PRESENTER_PACKAGE), Name.identifier("Presenter"))
   public val PresenterFactory: ClassId = Presenter.createNestedClassId(Name.identifier("Factory"))
+
+  // SubCircuit runtime types
+  public val SubScreen: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubScreen"))
+  public val SubCircuitUiState: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubCircuitUiState"))
+  public val SubUi: ClassId = ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubUi"))
+  public val SubUiFactory: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubUiFactory"))
+  public val SubPresenter: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubPresenter"))
+  public val SubPresenterFactory: ClassId =
+    ClassId(FqName(SUBCIRCUIT_PACKAGE), Name.identifier("SubPresenterFactory"))
 }

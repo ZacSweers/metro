@@ -14,14 +14,26 @@ public interface BaseContextualTypeKey<
   public val isDeferrable: Boolean
     get() = wrappedType.isDeferrable()
 
+  /**
+   * True when the outer type is any wrapper (Provider/Lazy or their suspend analogues). Sites that
+   * care only about the non-suspend wrappers should check [isWrappedInProvider] and
+   * [isWrappedInLazy] explicitly.
+   */
   public val isWrapped: Boolean
-    get() = isWrappedInProvider || isWrappedInLazy
+    get() =
+      isWrappedInProvider || isWrappedInLazy || isWrappedInSuspendProvider || isWrappedInSuspendLazy
 
   public val requiresProviderInstance: Boolean
-    get() = isWrappedInProvider || isWrappedInLazy || isLazyWrappedInProvider
+    get() = isWrapped
 
   public val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
+
+  public val isWrappedInSuspendProvider: Boolean
+    get() = wrappedType is WrappedType.SuspendProvider
+
+  public val isWrappedInSuspendLazy: Boolean
+    get() = wrappedType is WrappedType.SuspendLazy
 
   public val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
@@ -36,6 +48,13 @@ public interface BaseContextualTypeKey<
 
   public val isMapLazy: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Lazy
+
+  public val isMapSuspendProvider: Boolean
+    get() = wrappedType.findMapValueType() is WrappedType.SuspendProvider
+
+  /** Whether the wrapper nearest the bound value can evaluate a suspend binding. */
+  public val isSuspendCapableBoundary: Boolean
+    get() = wrappedType.usesSuspendProvider() == true || isMapSuspendProvider
 
   public val isMapProviderLazy: Boolean
     get() {

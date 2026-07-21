@@ -1,0 +1,13 @@
+// Signature format: 4.0
+package dev.zacsweers.metrox.viewmodel {
+
+  public final class MetroViewModelKt {
+    method @KotlinOnly @androidx.compose.runtime.Composable public static inline <reified VM extends androidx.lifecycle.ViewModel> VM assistedMetroViewModel(optional androidx.lifecycle.ViewModelStoreOwner viewModelStoreOwner, optional String? key, optional androidx.lifecycle.viewmodel.CreationExtras extras);
+    method @KotlinOnly @androidx.compose.runtime.Composable public static inline <reified VM extends androidx.lifecycle.ViewModel, reified FactoryType extends dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory> VM assistedMetroViewModel(optional androidx.lifecycle.ViewModelStoreOwner viewModelStoreOwner, optional String? key, optional androidx.lifecycle.viewmodel.CreationExtras extras, kotlin.jvm.functions.Function2<FactoryType,androidx.lifecycle.viewmodel.CreationExtras,VM> createViewModel);
+    method @InaccessibleFromKotlin public static androidx.compose.runtime.ProvidableCompositionLocal<dev.zacsweers.metrox.viewmodel.MetroViewModelFactory> getLocalMetroViewModelFactory();
+    method @KotlinOnly @androidx.compose.runtime.Composable public static inline <reified VM extends androidx.lifecycle.ViewModel> VM metroViewModel(optional androidx.lifecycle.ViewModelStoreOwner viewModelStoreOwner, optional String? key);
+    property public static androidx.compose.runtime.ProvidableCompositionLocal<dev.zacsweers.metrox.viewmodel.MetroViewModelFactory> LocalMetroViewModelFactory;
+  }
+
+}
+

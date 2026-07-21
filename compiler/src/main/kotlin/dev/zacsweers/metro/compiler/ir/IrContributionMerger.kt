@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.computeMergePlan
 import dev.zacsweers.metro.compiler.safePathString
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import java.util.SortedMap
@@ -34,6 +35,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.createThisReceiverParameter
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.name.ClassId
 
@@ -393,10 +395,9 @@ internal class IrContributionMerger(
         }
       }
 
-      // Build and cache the result. Combine native markers and external supertypes into a single
-      // sorted set. External supertypes are top-level types (no MetroContribution marker shape),
-      // but the downstream supertype-chunking flow handles them uniformly via the safe cast in
-      // computePromotedParents.
+      // Build and cache the result. Combine native markers and raw supertypes into a single sorted
+      // set. The downstream supertype-chunking flow distinguishes MetroContribution markers by
+      // their annotation.
       val combinedSupertypes = mutableSetOf<IrType>()
       mutableAllContributions.values.forEach(combinedSupertypes::addAll)
       mutableExternalSupertypes.values.forEach { irClass ->
@@ -420,10 +421,9 @@ internal data class IrContributions(
   val allScopes: Set<ClassId>,
   /**
    * All supertype contributions for the graph, sorted deterministically. Includes native nested
-   * `MetroContribution` markers as well as raw top-level external supertypes from
-   * [MetroIrContributionExtension]s (e.g., Hilt entry points). Downstream code distinguishes them
-   * via the safe cast in [computePromotedParents] (top-level externals have no `IrClass` parent to
-   * promote).
+   * `MetroContribution` markers as well as raw supertypes from direct `@ContributesTo` interfaces
+   * and [MetroIrContributionExtension]s (e.g., Hilt entry points). Downstream code distinguishes
+   * them by annotation in [computePromotedParents].
    */
   val supertypes: SortedSet<IrType>,
   // Deterministic sort
@@ -432,9 +432,8 @@ internal data class IrContributions(
 
 /**
  * For each `MetroContribution` marker in [contributions], returns its parent contributing interface
- * if that parent is not already a direct supertype of [ownerGraph]. Each marker in
- * [IrContributions.supertypes] is already a `@MetroContribution(scope = X)` for an X in
- * `allScopes`, so the parent is unconditionally a legitimate contribution.
+ * if that parent is not already a direct supertype of [ownerGraph]. Raw supertypes are left as-is,
+ * including nested direct `@ContributesTo` interfaces whose containing class is not a contribution.
  */
 internal fun computePromotedParents(
   contributions: IrContributions,
@@ -443,9 +442,9 @@ internal fun computePromotedParents(
   val existing = ownerGraph.superTypes.mapNotNullTo(mutableSetOf()) { it.rawTypeOrNull()?.classId }
   return buildMap {
     for (marker in contributions.supertypes) {
-      // Skip top-level types (e.g., external supertype contributions whose parent is an IrFile).
-      // Only nested MetroContribution markers have a class parent to promote.
-      val parentClass = marker.rawType().parent as? IrClass ?: continue
+      val markerClass = marker.rawType()
+      if (!markerClass.hasAnnotation(Symbols.ClassIds.metroContribution)) continue
+      val parentClass = markerClass.parent as? IrClass ?: continue
       val parentClassId = parentClass.classId ?: continue
       if (!existing.add(parentClassId)) continue
       put(marker, parentClass.symbol.defaultType)

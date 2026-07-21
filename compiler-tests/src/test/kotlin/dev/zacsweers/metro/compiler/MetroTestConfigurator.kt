@@ -80,8 +80,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       return true
     }
     if (
-      (MetroDirectives.ENABLE_CIRCUIT in directives ||
-        MetroDirectives.ENABLE_HILT_INTEROP in directives ||
+      (MetroDirectives.ENABLE_HILT_INTEROP in directives ||
         MetroDirectives.ENABLE_HILT_KSP in directives) && generateClassesInIr
     ) {
       return true
@@ -142,6 +141,7 @@ private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_V
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
+  OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroCoroutinesApi")
   OPT_IN.with("dev.zacsweers.metro.DelicateMetroApi")
 }
 

@@ -513,7 +513,6 @@ private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDecl
         }
       }
     }
-    else -> null
   } ?: this
 }
 

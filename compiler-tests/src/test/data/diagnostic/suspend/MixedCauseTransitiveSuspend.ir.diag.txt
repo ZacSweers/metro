@@ -1,0 +1,19 @@
+/MixedCauseTransitiveSuspend.kt:17:7: error: [Metro/MissingRuntimeCoroutines] 'Worker' requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+/MixedCauseTransitiveSuspend.kt:27:11: error: [Metro/MissingRuntimeCoroutines] `Worker` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+
+/MixedCauseTransitiveSuspend.kt:28:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Worker bindings must be a suspend function or suspend () -> Worker because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    Worker is requested at
+        [ExampleGraph] ExampleGraph.worker // ❌ needs suspend support
+    Database is injected at
+        [ExampleGraph] Worker(…, database) // ❌ needs suspend support
+    Config is injected at
+        [ExampleGraph] Database(…, config) // ❌ needs suspend support
+    Config is provided at
+        [ExampleGraph] suspend ExampleGraph.provideConfig(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> Worker`.

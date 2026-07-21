@@ -3,6 +3,7 @@
 Metro is **stable, optimized, and well-tested**. Dozens of companies are using it in production, including a number of large engineering shops.
 
 Metro's **runtime** and **Gradle plugin** APIs are stable and abide by semantic versioning.
+APIs marked as experimental are not covered by this guarantee and may change or be removed.
 
 ## What about compiler plugin stability?
 

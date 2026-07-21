@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.scopes.collectAllFunctions
 import org.jetbrains.kotlin.fir.scopes.collectAllProperties
-import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -45,6 +44,7 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 
 internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
@@ -59,9 +59,14 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
     val targetClass = owner.getContainingClassSymbol() as? FirClassSymbol<*>
     val substitutionMap =
       if (targetClass != null) {
+        val directMappings =
+          targetClass.typeParameterSymbols.zip(owner.typeParameterSymbols).associate {
+            (source, generated) ->
+            source to generated.constructType()
+          }
         buildFullSubstitutionMap(
           targetClass,
-          targetClass.typeParameterSymbols.associateWith { it.toConeType() },
+          directMappings,
           session,
         )
       } else {
@@ -100,7 +105,10 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
 
           valueParameter(
             valueParameter.name,
-            substitutedType.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
+            substitutedType.wrapInProviderIfNecessary(
+              session,
+              valueParameter.canonicalProviderClassId(defaultUsesSuspendProvider = false),
+            ),
             key = Keys.RegularParameter,
           )
         }
@@ -188,7 +196,10 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
           val copiedType = substitutor.substituteOrNull(type) ?: type
           this.returnTypeRef =
             copiedType
-              .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+              .wrapInProviderIfNecessary(
+                session,
+                original.canonicalProviderClassId(defaultUsesSuspendProvider = false),
+              )
               .toFirResolvedTypeRef()
         }
       }
@@ -203,6 +214,16 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
       }
       .symbol as FirNamedFunctionSymbol
   }
+
+internal fun MetroFirValueParameter.canonicalProviderClassId(
+  defaultUsesSuspendProvider: Boolean
+): ClassId {
+  return if (contextKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {
+    Symbols.ClassIds.metroSuspendProvider
+  } else {
+    Symbols.ClassIds.metroProvider
+  }
+}
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()

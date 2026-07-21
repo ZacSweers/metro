@@ -20,9 +20,11 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.stripIfLazy
+import dev.zacsweers.metro.compiler.ir.stripSuspendProvider
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.FrameworkSymbols
@@ -42,6 +44,7 @@ import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
+import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -76,6 +79,14 @@ internal class MultibindingExpressionGenerator(
     accessType: AccessType,
     fieldInitKey: IrTypeKey?,
   ): IrExpression {
+    if (contextualTypeKey.isWrappedInSuspendProvider) {
+      // There is no native suspend aggregate form. Build the Provider form and adapt it via
+      // the SyncSuspendProvider adapter. Suspend elements inside the
+      // aggregate are validated/rejected separately.
+      val providerKey = contextualTypeKey.stripSuspendProvider().wrapInProvider()
+      return generateBindingCode(binding, providerKey, AccessType.PROVIDER, fieldInitKey)
+        .toTargetType(actual = AccessType.PROVIDER, contextualTypeKey = contextualTypeKey)
+    }
     // need to change this to a Metro Provider for our generation
     val transformedContextKey =
       contextualTypeKey.letIf(contextualTypeKey.requiresProviderInstance) {
@@ -412,20 +423,27 @@ internal class MultibindingExpressionGenerator(
                   valueExpr =
                     with(metroSymbols.providerTypeConverter) { valueExpr.convertTo(lazyTargetKey) }
                 } else if (wrapInProviderLazy) {
-                  // For Provider<Lazy<V>>, use ProviderOfLazy.create(provider)
-                  // This wraps Provider<V> to produce Provider<Lazy<V>>
-                  // Use framework-specific version for Dagger interop
+                  val providerLazyTargetKey =
+                    valueType.asContextualTypeKey(
+                      null,
+                      hasDefault = false,
+                      patchMutableCollections = false,
+                      declaration = null,
+                    )
                   valueExpr =
-                    irInvoke(
-                      callee = valueFrameworkSymbols.providerOfLazyCreate,
-                      typeHint = valueType, // Provider<Lazy<V>>
-                      args = listOf(valueExpr),
+                    typeAsProviderArgument(
+                      contextKey = providerLazyTargetKey,
+                      bindingCode = valueExpr,
+                      isAssisted = false,
+                      isGraphInstance = false,
+                      actualIsSuspendProvider = false,
                     )
                 }
 
                 +irInvoke(
                   dispatchReceiver = irGet(functionReceiver),
                   callee = metroSymbols.mutableMapPut.symbol,
+                  typeHint = valueType.makeNullable(),
                   args = listOf(generateMapKeyLiteral(binding), valueExpr),
                 )
               }
@@ -603,9 +621,10 @@ internal class MultibindingExpressionGenerator(
         )
 
       // Determine the value type wrapping structure
-      // Can be: V, Provider<V>, Lazy<V>, or Provider<Lazy<V>>
+      // Can be: V, Provider<V>, Lazy<V>, Provider<Lazy<V>>, or SuspendProvider<V>
       val valueIsWrappedInProvider: Boolean = valueWrappedType is WrappedType.Provider
       val valueIsWrappedInLazy: Boolean = valueWrappedType is WrappedType.Lazy
+      val valueIsWrappedInSuspendProvider: Boolean = valueWrappedType is WrappedType.SuspendProvider
       val valueIsProviderLazy: Boolean =
         valueWrappedType is WrappedType.Provider &&
           (valueWrappedType as WrappedType.Provider<*>).innerType is WrappedType.Lazy
@@ -724,6 +743,7 @@ internal class MultibindingExpressionGenerator(
             mapProviderType,
             valueIsWrappedInProvider,
             valueIsWrappedInLazy,
+            valueIsWrappedInSuspendProvider,
             valueIsProviderLazy,
             useMapFunctionFactory,
             valueProviderSymbols,
@@ -745,6 +765,36 @@ internal class MultibindingExpressionGenerator(
       val sourceBindings =
         binding.sourceBindings.map { sourceKey -> bindingGraph.requireBinding(sourceKey) }
 
+      val useInlineSuspendFunctionProvider =
+        platform.isJs() &&
+          accessType == AccessType.PROVIDER &&
+          valueWrappedType is WrappedType.SuspendProvider &&
+          valueWrappedType.providerType == Symbols.ClassIds.suspendFunction0
+
+      if (useInlineSuspendFunctionProvider) {
+        val mapType = irBuiltIns.mapClass.typeWith(keyType, originalValueType)
+        val mapProvider =
+          scope.wrapInProviderFunction(mapType) {
+            generateMapBuilderExpression(
+              sourceBindings = sourceBindings,
+              keyType = keyType,
+              valueType = originalValueType,
+              canonicalValueContextKey = originalValueContextKey,
+              valueAccessType = AccessType.SUSPEND_PROVIDER,
+              wrapInLazy = false,
+              wrapInProviderLazy = false,
+              valueFrameworkSymbols = valueProviderSymbols,
+              fieldInitKey = fieldInitKey,
+            )
+          }
+
+        return mapProvider.toTargetType(
+          actual = AccessType.PROVIDER,
+          contextualTypeKey = contextualTypeKey,
+          bindingKind = binding.diagnosticTypeName,
+        )
+      }
+
       val instance =
         if (accessType == AccessType.INSTANCE) {
           // Multiple elements but only needs a Map<Key, Value> type
@@ -755,6 +805,8 @@ internal class MultibindingExpressionGenerator(
           //   We need to get Provider<canonical> and wrap it in DoubleCheck.lazy()
           // - For Map<K, Provider<Lazy<V>>>:
           //   We need to get Provider<canonical> and wrap it in Provider { lazy(provider) }
+          // - For Map<K, SuspendProvider<V>>:
+          //   We need Provider<canonical> - factory handles wrapping internally
           // - For Map<K, Provider<V>> or Map<K, V>:
           //   Use the original context key directly
           val needsManualLazyWrap = valueIsWrappedInLazy
@@ -771,6 +823,7 @@ internal class MultibindingExpressionGenerator(
                   // For any lazy maps, we need Provider<canonical> to wrap
                   needsAnyLazyWrap -> AccessType.PROVIDER
                   valueIsWrappedInProvider -> AccessType.PROVIDER
+                  valueIsWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
                   else -> AccessType.INSTANCE
                 },
               wrapInLazy = needsManualLazyWrap,
@@ -792,6 +845,7 @@ internal class MultibindingExpressionGenerator(
           // - Map<K, Provider<V>> -> MapProviderFactory
           // - Map<K, Lazy<V>> -> MapLazyFactory
           // - Map<K, Provider<Lazy<V>>> -> MapProviderLazyFactory
+          // - Map<K, SuspendProvider<V>> -> MapSuspendProviderFactory
           // - Map<K, () -> V> on JS -> MapFunctionFactory (see useMapFunctionFactory)
           val metroFrameworkSymbols = metroSymbols.metroFrameworkSymbols
           val singletonFunction =
@@ -800,6 +854,8 @@ internal class MultibindingExpressionGenerator(
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactorySingletonFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactorySingletonFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactorySingletonFunction
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactorySingletonFunction
               else -> valueProviderSymbols.mapFactorySingletonFunction
             }
 
@@ -812,6 +868,11 @@ internal class MultibindingExpressionGenerator(
             val valueContextKey =
               if (useMapFunctionFactory) {
                 originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+              } else if (valueIsWrappedInSuspendProvider) {
+                // MapSuspendProviderFactory.singleton takes SuspendProvider<V> directly.
+                canonicalValueContextKey
+                  .wrapInSuspendProvider()
+                  .withIrTypeKey(sourceBinding.typeKey)
               } else {
                 canonicalValueContextKey
                   .wrapInProvider(providerType)
@@ -830,7 +891,12 @@ internal class MultibindingExpressionGenerator(
                       sourceBinding,
                       valueContextKey,
                       fieldInitKey,
-                      accessType = AccessType.PROVIDER,
+                      accessType =
+                        if (valueIsWrappedInSuspendProvider) {
+                          AccessType.SUSPEND_PROVIDER
+                        } else {
+                          AccessType.PROVIDER
+                        },
                     ),
                   ),
               )
@@ -850,6 +916,8 @@ internal class MultibindingExpressionGenerator(
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderFunction
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactoryBuilderFunction
               else -> valueProviderSymbols.mapFactoryBuilderFunction
             }
 
@@ -859,6 +927,8 @@ internal class MultibindingExpressionGenerator(
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilder
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilder
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilder
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactoryBuilder
               else -> valueProviderSymbols.mapFactoryBuilder
             }
 
@@ -868,6 +938,8 @@ internal class MultibindingExpressionGenerator(
               valueIsProviderLazy -> valueProviderSymbols.mapProviderLazyFactoryBuilderPutFunction
               valueIsWrappedInProvider -> valueProviderSymbols.mapProviderFactoryBuilderPutFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutFunction
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactoryBuilderPutFunction
               else -> valueProviderSymbols.mapFactoryBuilderPutFunction
             }
 
@@ -878,6 +950,8 @@ internal class MultibindingExpressionGenerator(
               valueIsWrappedInProvider ->
                 valueProviderSymbols.mapProviderFactoryBuilderPutAllFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderPutAllFunction
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactoryBuilderPutAllFunction
               else -> valueProviderSymbols.mapFactoryBuilderPutAllFunction
             }
 
@@ -889,6 +963,8 @@ internal class MultibindingExpressionGenerator(
               valueIsWrappedInProvider ->
                 valueProviderSymbols.mapProviderFactoryBuilderBuildFunction
               valueIsWrappedInLazy -> valueProviderSymbols.mapLazyFactoryBuilderBuildFunction
+              valueIsWrappedInSuspendProvider ->
+                valueProviderSymbols.mapSuspendProviderFactoryBuilderBuildFunction
               else -> valueProviderSymbols.mapFactoryBuilderBuildFunction
             }
 
@@ -933,6 +1009,11 @@ internal class MultibindingExpressionGenerator(
               val valueContextKey =
                 if (useMapFunctionFactory) {
                   originalValueContextKey.withIrTypeKey(sourceBinding.typeKey)
+                } else if (valueIsWrappedInSuspendProvider) {
+                  // MapSuspendProviderFactory.Builder.put takes SuspendProvider<V> directly.
+                  canonicalValueContextKey
+                    .wrapInSuspendProvider()
+                    .withIrTypeKey(sourceBinding.typeKey)
                 } else {
                   // Non-function map factories take Provider<V> where V is canonical.
                   canonicalValueContextKey
@@ -950,7 +1031,12 @@ internal class MultibindingExpressionGenerator(
                       sourceBinding,
                       valueContextKey,
                       fieldInitKey,
-                      accessType = AccessType.PROVIDER,
+                      accessType =
+                        if (valueIsWrappedInSuspendProvider) {
+                          AccessType.SUSPEND_PROVIDER
+                        } else {
+                          AccessType.PROVIDER
+                        },
                     ),
                   ),
               )
@@ -982,6 +1068,7 @@ internal class MultibindingExpressionGenerator(
     mapProviderType: IrType,
     valueIsWrappedInProvider: Boolean,
     valueIsWrappedInLazy: Boolean,
+    valueIsWrappedInSuspendProvider: Boolean,
     valueIsProviderLazy: Boolean,
     useMapFunctionFactory: Boolean,
     valueFrameworkSymbols: FrameworkSymbols,
@@ -1007,6 +1094,7 @@ internal class MultibindingExpressionGenerator(
       // - Map<K, () -> V> on JS    -> MapFunctionFactory (see useMapFunctionFactory)
       // - Map<K, Provider<V>>      -> MapProviderFactory
       // - Map<K, Lazy<V>>          -> MapLazyFactory
+      // - Map<K, SuspendProvider<V>> -> MapSuspendProviderFactory
       // - Map<K, V>                -> MapFactory
       val factory =
         when {
@@ -1033,6 +1121,12 @@ internal class MultibindingExpressionGenerator(
               empty = valueFrameworkSymbols.mapLazyFactoryEmptyFunction,
               builder = valueFrameworkSymbols.mapLazyFactoryBuilderFunction,
               build = valueFrameworkSymbols.mapLazyFactoryBuilderBuildFunction,
+            )
+          valueIsWrappedInSuspendProvider ->
+            EmptyMapFactorySymbols(
+              empty = valueFrameworkSymbols.mapSuspendProviderFactoryEmptyFunction,
+              builder = valueFrameworkSymbols.mapSuspendProviderFactoryBuilderFunction,
+              build = valueFrameworkSymbols.mapSuspendProviderFactoryBuilderBuildFunction,
             )
           else ->
             EmptyMapFactorySymbols(
@@ -1080,13 +1174,15 @@ internal class MultibindingExpressionGenerator(
           accessType = accessType,
           fieldInitKey = fieldInitKey,
         )
-        .letIf(accessType == AccessType.PROVIDER) {
-          // If it's a provider, we need to handle the type of provider including interop
+        .letIf(accessType != AccessType.INSTANCE) {
+          // Rebuild the requested provider spelling at the map value boundary. This is required
+          // for suspend function values on JS, where SuspendProvider is not itself callable.
           typeAsProviderArgument(
             contextKey = contextKey,
             bindingCode = it,
             isAssisted = false,
             isGraphInstance = false,
+            actualIsSuspendProvider = accessType.isSuspendProvider,
           )
         }
     }

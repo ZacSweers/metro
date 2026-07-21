@@ -28,6 +28,7 @@ import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
+import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
@@ -55,6 +56,7 @@ import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.staticIshDeclarationContainerOrNull
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.memoized
 import dev.zacsweers.metro.compiler.newName
@@ -89,6 +91,7 @@ import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.companionObject
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
@@ -310,9 +313,16 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
             origin = Origins.MembersInjectorStaticInjectFunction,
           )
           .apply {
+            val copiedTypeParameters = copyTypeParametersFrom(declaration)
+            val injectedType = declaration.symbol.typeWithParameters(copiedTypeParameters)
+            val typeRemapper =
+              typeRemapperFor(
+                copiedTypeParameters.map { it.defaultType },
+                declaration,
+              )
             addValueParameter(
               name = Symbols.Names.instance,
-              type = declaration.defaultType,
+              type = injectedType,
               origin = Origins.InstanceParameter,
             )
             addParameters(
@@ -320,6 +330,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               wrapInProvider = false,
               copyQualifiers = true,
               stubDefaults = false,
+              typeRemapper = typeRemapper::remapType,
             )
             metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(this)
           }
@@ -488,6 +499,8 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     trace("Override injectMembers()") {
       injectorClass.requireSimpleFunction(Symbols.StringNames.INJECT_MEMBERS).owner.apply {
         finalizeFakeOverride(injectorClass.thisReceiverOrFail)
+        regularParameters[0].type =
+          declaration.symbol.typeWithParameters(injectorClass.typeParameters)
         body =
           pluginContext.createIrBuilder(symbol).irBlockBody {
             addMemberInjection(
@@ -521,10 +534,13 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         name = Symbols.Names.MetroMembersInjector,
         origin = Origins.MembersInjectorClassDeclaration,
         superTypesProvider = {
-          listOf(metroSymbols.metroMembersInjector.typeWith(declaration.defaultType))
+          val injectedType = declaration.symbol.typeWithParameters(typeParameters)
+          listOf(metroSymbols.metroMembersInjector.typeWith(injectedType))
         },
       )
       .apply {
+        val injectedType = declaration.symbol.typeWithParameters(typeParameters)
+        val typeRemapper = declaration.deepRemapperFor(injectedType)
         addConstructor {
           visibility = DescriptorVisibilities.PRIVATE
           isPrimary = true
@@ -535,6 +551,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
               wrapInProvider = true,
               copyQualifiers = true,
               stubDefaults = false,
+              typeRemapper = typeRemapper::remapType,
             )
             body = generateDefaultConstructorBody()
             metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
@@ -940,14 +957,31 @@ internal fun IrBlockBodyBuilder.addMemberInjection(
   instanceReceiver: IrValueParameter,
   injectorReceiver: IrValueParameter,
 ) {
+  val sourceClass = instanceReceiver.type.classOrNull!!.owner
+  val typeRemapper = sourceClass.deepRemapperFor(instanceReceiver.type)
   for ((function, parameters) in injectFunctions) {
     trackFunctionCall(callingFunction, function)
+    val typeArgs =
+      if (function.typeParameters.isNotEmpty()) {
+        val injectedSourceClass = function.regularParameters[0].type.classOrNull!!.owner
+        injectedSourceClass.typeParameters.map { typeRemapper.remapType(it.defaultType) }
+      } else {
+        null
+      }
     +irInvoke(
       callee = function.symbol,
+      typeArgs = typeArgs,
       args =
         buildList {
           add(irGet(instanceReceiver))
-          addAll(parametersAsProviderArguments(parameters, injectorReceiver, parametersToFields))
+          addAll(
+            parametersAsProviderArguments(
+              parameters,
+              injectorReceiver,
+              parametersToFields,
+              typeRemapper,
+            )
+          )
         },
     )
   }

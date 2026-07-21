@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
+import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stripProvider
 import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
@@ -28,6 +29,7 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.constructors
 
 /**
@@ -113,6 +115,17 @@ internal interface GraphBindingExpressionDecorator {
     request: ProviderExpressionRequest,
   ) = expression
 
+  /**
+   * Called by [BindingExpressionGenerator.toTargetType] after Metro has produced a
+   * `SuspendProvider`-shaped expression. Unlike [decorateProviderExpression], no framework
+   * conversion follows. Suspend providers have no Dagger/Javax equivalents.
+   */
+  context(scope: IrBuilderWithScope)
+  fun decorateSuspendProviderExpression(
+    expression: IrExpression,
+    request: ProviderExpressionRequest,
+  ) = expression
+
   /** Called after Metro has produced a direct `MembersInjector<T>` value. */
   context(scope: IrBuilderWithScope)
   fun decorateMembersInjectorExpression(
@@ -133,6 +146,13 @@ internal interface GraphBindingExpressionDecorator {
 internal data class DirectExpressionRequest(
   val contextualTypeKey: IrContextualTypeKey,
   val bindingKind: String?,
+  /**
+   * True when [BindingExpressionGenerator.maybeTraceDirectExpression]'s expression contains suspend
+   * calls (the binding is transitively suspend in this graph). The trace wrapper must then be a
+   * suspend lambda passed to `MetroTraceContext.traceSuspend`; a non-suspend trace lambda would be
+   * invalid IR.
+   */
+  val isSuspend: Boolean = false,
 )
 
 /**
@@ -216,7 +236,15 @@ private class TraceExpressionDecorator(
     request: DirectExpressionRequest,
   ): IrExpression {
     val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
-    val traceFunction = metroSymbols.metroTraceContextTrace!!
+    val traceFunction =
+      if (request.isSuspend) {
+        // Requires a metro-trace runtime with suspend support; absence means an older runtime.
+        // Skip decoration rather than generate invalid IR (a suspend call in a non-suspend
+        // trace lambda).
+        metroSymbols.metroTraceContextTraceSuspend ?: return expression
+      } else {
+        metroSymbols.metroTraceContextTrace!!
+      }
     val bindingType = request.contextualTypeKey.typeKey.type
     val qualifier = request.contextualTypeKey.runtimeTraceQualifier()
     val type = request.contextualTypeKey.runtimeTraceType()
@@ -232,7 +260,7 @@ private class TraceExpressionDecorator(
           receiverParameter = null,
           valueParameters = emptyList(),
           returnType = bindingType,
-          suspend = false,
+          suspend = request.isSuspend,
         ) {
           +irReturn(expression)
         }
@@ -271,6 +299,48 @@ private class TraceExpressionDecorator(
       bindingKind = request.bindingKind,
       providerType = request.providerType,
     )
+  }
+
+  context(scope: IrBuilderWithScope)
+  override fun decorateSuspendProviderExpression(
+    expression: IrExpression,
+    request: ProviderExpressionRequest,
+  ): IrExpression {
+    if (request.origin == ProviderExpressionOrigin.ProviderProperty) return expression
+    // Requires a metro-trace runtime with suspend support; skip gracefully on older runtimes.
+    val tracedSuspendProvider = metroSymbols.tracedSuspendProvider ?: return expression
+    val traceContext = traceContextFor(request.contextualTypeKey) ?: return expression
+    val valueContextKey = request.contextualTypeKey.suspendProviderValueContextualTypeKey()
+    val qualifier = valueContextKey.runtimeTraceQualifier()
+    val type = valueContextKey.runtimeTraceType()
+    return with(scope) {
+      irCallConstructor(
+          tracedSuspendProvider.constructors.first { it.owner.isPrimary },
+          listOf(valueContextKey.toIrType()),
+        )
+        .apply {
+          this.type = tracedSuspendProvider.typeWith(valueContextKey.toIrType())
+          // traceContext
+          arguments[0] = traceContext
+          // qualifier
+          arguments[1] = qualifier.toNullableStringExpression()
+          // type
+          arguments[2] = irString(type)
+          // kind
+          arguments[3] = request.bindingKind.toNullableStringExpression()
+          // provider
+          arguments[4] = expression
+        }
+    }
+  }
+
+  /** Returns the value key inside a suspend provider request. */
+  private fun IrContextualTypeKey.suspendProviderValueContextualTypeKey(): IrContextualTypeKey {
+    return if (isWrappedInSuspendProvider) {
+      stripOuterProviderOrLazy()
+    } else {
+      this
+    }
   }
 
   context(scope: IrBuilderWithScope)
@@ -367,6 +437,7 @@ private class TraceExpressionDecorator(
           listOf(providerValueType),
         )
         .apply {
+          this.type = tracedProvider.typeWith(providerValueType)
           // traceContext
           arguments[0] = traceContext
           // qualifier
@@ -396,6 +467,7 @@ private class TraceExpressionDecorator(
           listOf(targetType),
         )
         .apply {
+          this.type = tracedMembersInjector.typeWith(targetType)
           // traceContext
           arguments[0] = traceContext
           // qualifier

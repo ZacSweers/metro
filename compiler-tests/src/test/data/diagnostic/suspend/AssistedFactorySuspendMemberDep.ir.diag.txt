@@ -1,0 +1,7 @@
+/AssistedFactorySuspendMemberDep.kt:15:30: error: [Metro/MemberInjectionOverSuspendBinding] 'AccountCreator' member injection depends on suspend binding 'Database', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> Database` (or `SuspendLazy<Database>`) instead.
+
+Trace:
+    Database is injected at
+        [ExampleGraph] AccountCreator.injectDatabase.database // ❌ needs suspend support
+    Database is provided at
+        [ExampleGraph] suspend ExampleGraph.provideDatabase(…)

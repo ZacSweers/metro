@@ -93,7 +93,7 @@ private fun StringBuilder.renderAsAnnotationArgument(argument: FirExpression, si
     }
     is FirGetClassCall -> {
       val id =
-        (argument.argument as? FirResolvedQualifier)?.symbol?.classId?.asSingleFqName() ?: "<Error>"
+        (argument.argument as? FirResolvedQualifier)?.classIdCompat?.asSingleFqName() ?: "<Error>"
       append(id)
       append("::class")
     }

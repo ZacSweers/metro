@@ -58,6 +58,13 @@ internal interface FrameworkSymbols {
   val mapProviderLazyFactoryBuilderPutFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
   val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilder: IrClassSymbol
+  val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol?
+  val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol?
+  val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol
+  val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol
 }
 
 internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
@@ -67,6 +74,7 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
   protected abstract val mapProviderFactory: IrClassSymbol
   protected abstract val mapLazyFactory: IrClassSymbol
   protected abstract val mapProviderLazyFactory: IrClassSymbol
+  protected abstract val mapSuspendProviderFactory: IrClassSymbol
 
   override val doubleCheckCompanionObject by lazy { doubleCheck.owner.companionObject()!!.symbol }
   override val doubleCheckProvider by lazy {
@@ -153,6 +161,22 @@ internal abstract class BaseFrameworkSymbols : FrameworkSymbols {
 
   override val mapProviderLazyFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryBuilder.requireSimpleFunction("build")
+  }
+
+  override val mapSuspendProviderFactoryBuilder: IrClassSymbol by lazy {
+    mapSuspendProviderFactory.owner.nestedClasses.first { it.name.asString() == "Builder" }.symbol
+  }
+
+  override val mapSuspendProviderFactoryBuilderPutFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("put")
+  }
+
+  override val mapSuspendProviderFactoryBuilderPutAllFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("putAll")
+  }
+
+  override val mapSuspendProviderFactoryBuilderBuildFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryBuilder.requireSimpleFunction("build")
   }
 }
 
@@ -286,6 +310,28 @@ internal class MetroFrameworkSymbols(
     mapProviderLazyFactoryCompanionObject.requireSimpleFunction("empty")
   }
 
+  override val mapSuspendProviderFactory: IrClassSymbol by lazy {
+    builtinsFinder.findClass(
+      ClassId(metroRuntimeInternal.packageFqName, "MapSuspendProviderFactory".asName())
+    )!!
+  }
+
+  private val mapSuspendProviderFactoryCompanionObject: IrClassSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol
+  }
+
+  override val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("builder")
+  }
+
+  override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("empty")
+  }
+
+  override val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactoryCompanionObject.requireSimpleFunction("singleton")
+  }
+
   override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
     mapProviderLazyFactoryCompanionObject.requireSimpleFunction("singleton")
   }
@@ -329,11 +375,15 @@ internal class MetroFrameworkSymbols(
 
 internal class JavaxSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val javaxInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.javax",
+      compatContext,
+    )
   }
 
   val javaxProvider: IrClassSymbol by lazy {
@@ -373,11 +423,15 @@ internal class JavaxSymbols(
 
 internal class JakartaSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   delegate: FrameworkSymbols,
 ) : FrameworkSymbols by delegate {
   private val jakartaInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.jakarta",
+      compatContext,
+    )
   }
 
   val jakartaProvider: IrClassSymbol by lazy {
@@ -417,16 +471,21 @@ internal class JakartaSymbols(
 
 internal class GuiceSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
   metroFrameworkSymbols: MetroFrameworkSymbols,
 ) : FrameworkSymbols by metroFrameworkSymbols {
   private val guiceInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice",
+      compatContext,
+    )
   }
 
   private val guiceInteropRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage(
-      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal"
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.guice.internal",
+      compatContext,
     )
   }
 
@@ -507,21 +566,26 @@ internal class GuiceSymbols(
 
 internal class DaggerSymbols(
   private val moduleFragment: IrModuleFragment,
+  private val compatContext: CompatContext,
   private val builtinsFinder: CompatContext.DeclarationFinderCompat,
 ) : BaseFrameworkSymbols() {
   lateinit var jakartaSymbols: JakartaSymbols
 
   private val daggerRuntimeInternal: IrPackageFragment by lazy {
-    moduleFragment.createPackage("dagger.internal")
+    moduleFragment.createPackage("dagger.internal", compatContext)
   }
 
   private val daggerInteropRuntime: IrPackageFragment by lazy {
-    moduleFragment.createPackage("${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger")
+    moduleFragment.createPackage(
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger",
+      compatContext,
+    )
   }
 
   private val daggerInteropRuntimeInternal: IrPackageFragment by lazy {
     moduleFragment.createPackage(
-      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal"
+      "${Symbols.StringNames.METRO_RUNTIME_PACKAGE}.interop.dagger.internal",
+      compatContext,
     )
   }
 
@@ -652,6 +716,25 @@ internal class DaggerSymbols(
   }
 
   override val mapProviderLazyFactorySingletonFunction: IrSimpleFunctionSymbol? = null
+
+  // Dagger has no SuspendProvider concept, use Metro's runtime version
+  override val mapSuspendProviderFactory: IrClassSymbol by lazy {
+    builtinsFinder.findClass(
+      ClassId(FqName("dev.zacsweers.metro.internal"), "MapSuspendProviderFactory".asName())
+    )!!
+  }
+
+  override val mapSuspendProviderFactoryBuilderFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("builder")
+  }
+
+  override val mapSuspendProviderFactoryEmptyFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("empty")
+  }
+
+  override val mapSuspendProviderFactorySingletonFunction: IrSimpleFunctionSymbol by lazy {
+    mapSuspendProviderFactory.owner.companionObject()!!.symbol.requireSimpleFunction("singleton")
+  }
 
   val daggerLazy: IrClassSymbol by lazy {
     builtinsFinder.findClass(ClassIds.DAGGER_LAZY_CLASS_ID)!!

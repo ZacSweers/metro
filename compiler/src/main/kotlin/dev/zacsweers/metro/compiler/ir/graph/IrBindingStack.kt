@@ -66,6 +66,7 @@ internal interface IrBindingStack :
      * actually rendered, meaning error reports or enabled logging.
      */
     graphContextProvider: (() -> String?)? = null,
+    override val trailingComment: String? = null,
   ) : BaseBindingStack.BaseEntry<IrType, IrTypeKey, IrContextualTypeKey> {
 
     private val graphContextLazy: Lazy<String?> =
@@ -74,6 +75,24 @@ internal interface IrBindingStack :
 
     override val graphContext: String?
       get() = graphContextLazy.value
+
+    /**
+     * Returns a copy of this entry with [annotation] applied. Used by diagnostics that build a
+     * trace from existing entry factories and want to mark specific entries.
+     */
+    fun withAnnotation(annotation: String?): Entry {
+      if (annotation == this.trailingComment) return this
+      return Entry(
+        contextKey = contextKey,
+        usage = usage,
+        graphContext = null,
+        declaration = declaration,
+        displayTypeKey = displayTypeKey,
+        isSynthetic = isSynthetic,
+        graphContextProvider = { graphContextLazy.value },
+        trailingComment = annotation,
+      )
+    }
 
     override fun toString(): String = render(FqName("..."), short = true)
 
@@ -198,7 +217,17 @@ internal interface IrBindingStack :
                 } else {
                   "(…, ${param.name.asString()})"
                 }
-              "$targetFqName$middle$end"
+              val suspendPrefix =
+                if (
+                  functionToUse is IrSimpleFunction &&
+                    functionToUse.isSuspend &&
+                    !functionToUse.isPropertyAccessor
+                ) {
+                  "suspend "
+                } else {
+                  ""
+                }
+              "$suspendPrefix$targetFqName$middle$end"
             }
           },
         )
@@ -244,7 +273,9 @@ internal interface IrBindingStack :
           graphContextProvider = {
             val targetFqName = function.parent.kotlinFqName
             val middle = if (function is IrConstructor) "" else ".${function.name.asString()}"
-            "$targetFqName$middle(…)"
+            val suspendPrefix =
+              if (function is IrSimpleFunction && function.isSuspend) "suspend " else ""
+            "$suspendPrefix$targetFqName$middle(…)"
           },
         )
       }
@@ -315,6 +346,22 @@ internal interface IrBindingStack :
   }
 }
 
+internal fun Appendable.appendBindingStackEntries(
+  graphName: FqName,
+  entries: Collection<BaseBindingStack.BaseEntry<*, *, *>>,
+  indent: String = "    ",
+  ellipse: Boolean = false,
+  short: Boolean = true,
+) {
+  if (graphName == FqName.ROOT || entries.isEmpty()) return
+  for (entry in entries) {
+    entry.render(graphName, short).prependIndent(indent).lineSequence().forEach { appendLine(it) }
+  }
+  if (ellipse) {
+    append(indent)
+    appendLine("...")
+  }
+}
 internal val IrBindingStack.lastEntryOrGraph
   get() = entries.firstOrNull()?.declaration?.takeUnless { it.fileOrNull == null }
 
@@ -452,7 +499,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(
         contextKey,
         callingBinding.classFactory.function,
-        callingBinding.parameterFor(targetKey),
+        callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isMirrorFunction = true,
         diagnosticNotes = callingBinding.diagnosticNotes,

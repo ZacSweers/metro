@@ -55,7 +55,7 @@ run_tests() {
         echo "Running tests..."
     fi
 
-    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
+    ./gradlew :compiler:test :compiler-tests:test :gradle-plugin:functionalTest :runtime:allTests :runtime-coroutines:allTests $version_flag --quiet -x logLinkDokkaGeneratePublicationHtml -x dokkaGeneratePublicationHtml
     # We have to regen package locks because the kotlin yarn/node/etc build tooling is brittle
     ./gradlew -p samples kotlinWasmUpgradePackageLock kotlinUpgradePackageLock --rerun-tasks --no-build-cache --no-configuration-cache --quiet
     ./gradlew -p samples :integration-tests:allTests --quiet
@@ -245,6 +245,7 @@ case "$1" in
    "regen")
        version=""
        locks_only=false
+       release_baselines=false
 
        while [[ $# -gt 1 ]]; do
            case "$2" in
@@ -256,12 +257,21 @@ case "$1" in
                    locks_only=true
                    shift
                    ;;
+               --release-baselines)
+                   release_baselines=true
+                   shift
+                   ;;
                *)
                    echo "Unknown regen argument: $2"
                    exit 1
                    ;;
            esac
        done
+
+       if [[ "$locks_only" = true && "$release_baselines" = true ]]; then
+           echo "Cannot combine --locks-only with --release-baselines"
+           exit 1
+       fi
 
        version_flag=""
        if [[ -n "$version" ]]; then
@@ -284,8 +294,13 @@ case "$1" in
            # shellcheck disable=SC2086  # Word splitting is intentional so empty version_flag drops out
            ./gradlew apiDump --rerun-tasks --no-build-cache --no-configuration-cache --quiet $version_flag
 
-           echo "Generating diagnostics docs..."
-           ./gradlew :compiler:generateDiagnosticsDocs --quiet
+           echo "Generating diagnostics docs, dependency guard baselines..."
+           ./gradlew :compiler:generateDiagnosticsDocs dependencyGuardBaseline --quiet
+
+           if [[ "$release_baselines" = true ]]; then
+               echo "Promoting Metalava release baselines..."
+               ./gradlew metalavaGenerateSignature metalavaGenerateSignatureRelease --quiet
+           fi
        else
            echo "Regenerating package locks only..."
        fi
@@ -371,6 +386,7 @@ case "$1" in
        echo "regen options:"
        echo "  --version <version>  Regenerate against a specific compiler version"
        echo "  --locks-only         Only regenerate package locks (skip format/apiDump/clean)"
+       echo "  --release-baselines  Promote the current APIs to Metalava's release baselines"
        echo ""
        echo "trace options:"
        echo "  <project-dir> <gradle-task> [version]  Publish metro locally, pin it in"

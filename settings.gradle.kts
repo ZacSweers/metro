@@ -46,6 +46,7 @@ include(
   ":metrox-viewmodel",
   ":metrox-viewmodel-compose",
   ":runtime",
+  ":runtime-coroutines",
 )
 
 // Include compiler-compat versions

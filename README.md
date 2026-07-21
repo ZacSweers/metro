@@ -3,7 +3,7 @@
 A compile-time dependency injection framework for Kotlin Multiplatform, powered by a Kotlin compiler plugin.
 
 [![Maven Central](https://img.shields.io/maven-central/v/dev.zacsweers.metro/runtime.svg)](https://github.com/ZacSweers/metro/releases)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.0%20--%202.4.20--dev--6138-blue.svg?logo=kotlin)](docs/compatibility.md)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.0%20--%202.5.0--dev--498-blue.svg?logo=kotlin)](docs/compatibility.md)
 [![Build Status](https://github.com/ZacSweers/metro/actions/workflows/ci.yml/badge.svg)](https://github.com/ZacSweers/metro/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -72,6 +72,7 @@ val repository = graph.repository
 | [Provides](https://zacsweers.github.io/metro/latest/provides/)                   | Provider functions and properties              |
 | [Injection Types](https://zacsweers.github.io/metro/latest/injection-types/)     | Constructor, assisted, and member injection    |
 | [Scopes](https://zacsweers.github.io/metro/latest/scopes/)                       | Scoping and lifecycle management               |
+| [Coroutines Support](https://zacsweers.github.io/metro/latest/coroutines/)       | Suspend bindings and deferred initialization   |
 | [Aggregation](https://zacsweers.github.io/metro/latest/aggregation/)             | Anvil-style contributions across modules       |
 | [Interop](https://zacsweers.github.io/metro/latest/interop/)                     | Dagger, kotlin-inject, and Guice compatibility |
 | [Performance](https://zacsweers.github.io/metro/latest/performance/)             | Build and runtime performance                  |

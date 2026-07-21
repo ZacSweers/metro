@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDING_CONTAINER_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
+import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.compatContext
@@ -62,6 +63,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isConst
 import org.jetbrains.kotlin.fir.declarations.utils.isExtension
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.declarations.utils.nameOrSpecialName
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirBlock
@@ -231,6 +233,34 @@ internal object BindingContainerCallableChecker :
         return
       }
 
+      // Suspend checks: @Binds and @Multibinds cannot be suspend (no body to suspend in)
+      if (declaration is FirFunction && declaration.isSuspend) {
+        if (annotations.isProvides && !session.metroFirBuiltIns.options.enableSuspendProviders) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
+            SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
+          )
+          return
+        }
+        if (annotations.isBinds) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.BINDS_ERROR,
+            "@Binds declarations cannot be suspend functions. They have no body to suspend in.",
+          )
+          return
+        }
+        if (annotations.isMultibinds) {
+          reporter.reportOn(
+            source,
+            MetroDiagnostics.MULTIBINDS_ERROR,
+            "@Multibinds declarations cannot be suspend functions. They have no body to suspend in.",
+          )
+          return
+        }
+      }
+
       declaration
         .getAnnotationByClassId(DaggerSymbols.ClassIds.DAGGER_REUSABLE_CLASS_ID, session)
         ?.let {
@@ -366,13 +396,9 @@ internal object BindingContainerCallableChecker :
               "Remove the wrapper and let Metro provide the underlying type directly."
 
           val message =
-            if (
-              session.metroFirBuiltIns.options.enableFunctionProviders &&
-                returnClassId == Symbols.ClassIds.function0
-            ) {
+            if (with(session.classIds) { returnClassId.isFunction0Like }) {
               base +
-                " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types " +
-                "are treated as provider types by Metro and cannot be unique bindings on the graph."
+                " Note: `enableFunctionProviders` is enabled, so parameter-less Kotlin function types are treated as provider types by Metro and cannot be unique bindings on the graph."
             } else {
               base
             }
@@ -700,7 +726,7 @@ internal object BindingContainerCallableChecker :
                 hasDefault = parameter.symbol.hasDefaultValue,
               )
             ) {
-              return
+              continue
             }
           }
         }
@@ -746,7 +772,7 @@ internal object BindingContainerCallableChecker :
     targetKey: FirTypeKey,
   ): Boolean {
     return declarationSymbols.filterIsInstance<FirCallableSymbol<*>>().any { symbol ->
-      val declaration = symbol.fir as? FirCallableDeclaration ?: return@any false
+      val declaration = symbol.fir ?: return@any false
       val annotations = symbol.metroAnnotations(session)
       if (!declaration.isParameterlessBinds(annotations)) return@any false
 

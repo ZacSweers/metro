@@ -42,7 +42,7 @@ public enum class MetroDiagnosticId(
     """
     Bindings depend on each other in a loop where every dependency is needed immediately. Break the
     cycle by changing one edge to a deferred type such as `() -> T` or `Lazy<T>`, which delays
-    construction until first use. If the cycle is between graphs that extend or depend on each
+    initialization until first use. If the cycle is between graphs that extend or depend on each
     other, restructure the graph relationship instead.
     """,
   ),
@@ -141,6 +141,80 @@ public enum class MetroDiagnosticId(
     Gradle option.
     """,
   ),
+  SUSPEND_PROVIDERS_NOT_ENABLED(
+    "Metro/SuspendProvidersNotEnabled",
+    "A suspend binding is used while suspend providers are disabled.",
+    """
+    A binding is provided by a `suspend` function, but suspend provider support is turned off. Enable
+    the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true.
+    Otherwise make the provider non-suspend.
+    """,
+  ),
+  SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR(
+    "Metro/SuspendBindingFromNonSuspendAccessor",
+    "A non-suspend accessor requests a binding that needs a suspend context.",
+    """
+    An accessor returns a type that transitively depends on suspend bindings, so resolving it
+    requires awaiting them. A non-suspend accessor cannot do that. Mark the accessor as
+    `suspend fun`, or change its return type to a deferred form such as `suspend () -> T` or
+    `SuspendProvider<T>`.
+    """,
+  ),
+  SUSPEND_BINDING_WRAPPED_IN_PROVIDER(
+    "Metro/SuspendBindingWrappedInProvider",
+    "A suspend binding is requested through a synchronous `Provider`.",
+    """
+    A suspend binding is wrapped in a synchronous `Provider` (or `() -> T`). That wrapper resolves
+    its value without a suspend context and cannot await the binding. Use the deferred suspend form
+    `suspend () -> T` (or `SuspendProvider<T>`) instead.
+    """,
+  ),
+  SUSPEND_BINDING_WRAPPED_IN_LAZY(
+    "Metro/SuspendBindingWrappedInLazy",
+    "A suspend binding is requested through a synchronous `Lazy`.",
+    """
+    A suspend binding is wrapped in a synchronous `Lazy`. `Lazy` resolves its value without a suspend
+    context and cannot await the binding. Use `SuspendLazy<T>` instead.
+    """,
+  ),
+  MEMBER_INJECTION_OVER_SUSPEND_BINDING(
+    "Metro/MemberInjectionOverSuspendBinding",
+    "Member injection depends on a suspend binding.",
+    """
+    A member-injected dependency resolves to a suspend binding, but member injection runs without a
+    suspend context and cannot await it. Defer the dependency as `suspend () -> T` (or
+    `SuspendLazy<T>`) so the member holds a deferred value instead.
+    """,
+  ),
+  ASSISTED_FACTORY_SUSPEND_REQUIRED(
+    "Metro/AssistedFactorySuspendRequired",
+    "An assisted factory creates a target that depends on suspend bindings.",
+    """
+    An `@AssistedFactory` creates a type whose non-assisted dependencies include suspend bindings.
+    The factory function must await them. Declare the factory function as a `suspend` function so the
+    generated implementation can await the suspend dependencies.
+    """,
+  ),
+  MULTIBINDING_OVER_SUSPEND_BINDINGS(
+    "Metro/MultibindingOverSuspendBindings",
+    "A multibinding aggregates suspend bindings.",
+    """
+    A `Set` or `Map` multibinding aggregates suspend contributions. Aggregation code runs without a
+    suspend context and cannot await each element. Set multibindings over suspend bindings are
+    unsupported. A map multibinding must be consumed as a deferred-value form such as
+    `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>` so each value is initialized only when
+    its provider is invoked.
+    """,
+  ),
+  MISSING_RUNTIME_COROUTINES(
+    "Metro/MissingRuntimeCoroutines",
+    "Suspend codegen needs the optional runtime-coroutines artifact.",
+    """
+    A binding or request needs runtime support from the optional `runtime-coroutines` artifact, such
+    as a scoped suspend binding or a `SuspendLazy<T>` request, but that artifact is not on the
+    classpath. Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.
+    """,
+  ),
   GENERIC(
     "Metro/Error",
     "A general Metro graph validation error.",
@@ -159,5 +233,16 @@ public enum class MetroDiagnosticId(
 
   public companion object {
     public const val DOCS_BASE_URL: String = "https://zacsweers.github.io/metro/latest/diagnostics/"
+
+    /**
+     * Selects the wrapped-in-synchronous-wrapper diagnostic for a suspend binding. [wrapper] is the
+     * synchronous wrapper name nearest the bound value, either `Provider` or `Lazy`.
+     */
+    public fun suspendBindingWrappedIn(wrapper: String): MetroDiagnosticId =
+      when (wrapper) {
+        "Provider" -> SUSPEND_BINDING_WRAPPED_IN_PROVIDER
+        "Lazy" -> SUSPEND_BINDING_WRAPPED_IN_LAZY
+        else -> error("Unexpected synchronous wrapper name: $wrapper")
+      }
   }
 }

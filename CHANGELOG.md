@@ -4,10 +4,62 @@ Changelog
 **Unreleased**
 --------------
 
+### New
+
+- **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
+
+#### Experimental support for suspend providers
+
+This release introduces experimental support for suspend providers. This is disabled by default and can be enabled by the `metro.enableSuspendProviders` option. See the [coroutines documentation](https://zacsweers.github.io/metro/latest/coroutines/) for details.
+
+- `@Provides` functions and graph accessors can be `suspend`. Suspension propagates through dependent bindings. Metro reports a dependency trace when a non-suspend path reaches one.
+- Inject `suspend () -> T` to defer initialization until invocation, or `SuspendLazy<T>` to also cache the first successful result. `Provider`, function providers, `Lazy`, `SuspendProvider`, suspend functions, and `SuspendLazy` can be nested to any depth in a scalar wrapper stack.
+  - When the underlying binding suspends, the wrapper closest to it must also support suspension. Maps can defer initialization of individual values with `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`.
+  - Wrapper layers and supported map values preserve nullable binding types.
+- Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutine context they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
+- The Gradle plugin automatically adds the new `runtime-coroutines` artifact when suspend providers are enabled. If runtime dependencies are managed manually, add it for scoped suspend bindings, `suspendLazy`, and injection requests containing `SuspendLazy` at any nesting level.
+  - `runtime-coroutines` uses kotlinx-coroutines on every platform.
+
+### Enhancements
+
+- **[IR]** Avoid generating unused provider fields for included graph accessors that can be read directly.
+- **[runtime]** If the input function to `provider()` is already a `Provider` instance, return it directly rather than needlessly wrap it.
+- **[runtime]** Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.
+
+### Fixes
+
+- **[IR]** Enforce `enableSuspendProviders` for suspend-provider signatures read from upstream modules.
+- **[IR]** Report a missing `runtime-coroutines` dependency from generated provider factories, including factories not used by a graph.
+- **[IR]** Prevent directly provided maps from satisfying suspend-provider-valued map requests unless the provided map uses that exact value type.
+- **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
+- **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
+- **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
+
+### Changes
+
+- Build against Kotlin `2.4.10`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
+- Test Android Studio Quail 4 canaries
+
+1.3.2
+-----
+
+_2026-07-13_
+
 ### Enhancements
 
 - **[IR]** Improve CLI diagnostic formatting by keeping messages on the compiler severity line.
 - **[IR]** Improve CLI diagnostic formatting by preserving generated-code metadata.
+- **[IR/Circuit]** Support IR class generation in Kotlin 2.4.20+.
+
+### Fixes
+
+- **[FIR/IR]** Fix generated factories and member injectors that retained source-owned generic type parameter references under Kotlin 2.5.
+- **[IR]** Fix generated generic call result and type argument types rejected by Kotlin 2.5's stricter IR validation.
+
+### Changes
+
+- Support Kotlin `2.5.0-dev-498`.
+- Update embedded Wire dependency to `6.4.5`.
 
 ### Contributors
 

@@ -3,19 +3,24 @@
 package dev.zacsweers.metro.compiler.ir.graph.expressions
 
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.ParentContext
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.graph.BindingPropertyContext
 import dev.zacsweers.metro.compiler.ir.graph.GraphMetadataReporter
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
+import dev.zacsweers.metro.compiler.ir.graph.GraphSuspendFactoryGenerator
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
+import dev.zacsweers.metro.compiler.ir.graph.propagatesSuspend
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -28,8 +33,9 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider as wrapTypeInPr
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.letIf
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -38,18 +44,23 @@ import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.ir.builders.parent
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.allParameters
-import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.companionObject
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isSuspend
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.superClass
@@ -75,6 +86,7 @@ private constructor(
   /** Optional context for generating expressions inside a shard. */
   private val shardContext: ShardExpressionContext?,
   private val traceContextProperty: IrProperty?,
+  private val suspendFactoryGenerator: GraphSuspendFactoryGenerator,
 ) :
   BindingExpressionGenerator<IrBinding>(
     context,
@@ -107,6 +119,7 @@ private constructor(
      */
     private val ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     private val traceContextProperty: IrProperty?,
+    private val suspendFactoryGenerator: GraphSuspendFactoryGenerator,
   ) {
     fun create(
       thisReceiver: IrValueParameter,
@@ -126,6 +139,7 @@ private constructor(
         ancestorGraphProperties = ancestorGraphProperties,
         shardContext = shardContext,
         traceContextProperty = traceContextProperty,
+        suspendFactoryGenerator = suspendFactoryGenerator,
       )
     }
   }
@@ -174,21 +188,45 @@ private constructor(
         reportCompilerBug("Assisted inject factories should only be accessed as instances")
       }
 
+      val exactGraphDependencyRequest =
+        binding is IrBinding.GraphDependency && binding.canPassThrough(contextualTypeKey)
+      if (!exactGraphDependencyRequest) {
+        // Graph expressions operate on one canonical Metro Provider/SuspendProvider layer. The
+        // complete consumer wrapper stack is reconstructed by typeAsProviderArgument.
+        val storageContextKey =
+          when (accessType) {
+            AccessType.INSTANCE -> contextualTypeKey.canonicalize()
+            AccessType.PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
+            AccessType.SUSPEND_PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = true)
+          }
+        if (storageContextKey != contextualTypeKey) {
+          return generateBindingCode(binding, storageContextKey, accessType, fieldInitKey)
+        }
+      }
+
       val bindingKind = binding.diagnosticTypeName
       // If we're initializing the field for this key, don't ever try to reach for an existing
       // provider for it.
       // This is important for cases like DelegateFactory and breaking cycles.
-      if (fieldInitKey == null || fieldInitKey != binding.typeKey) {
+      if (
+        !exactGraphDependencyRequest && (fieldInitKey == null || fieldInitKey != binding.typeKey)
+      ) {
         bindingPropertyContext.get(contextualTypeKey)?.let { bindingProperty ->
           val (property, storedKey, shardProperty, shardIndex) = bindingProperty
           val actual =
-            if (storedKey.isWrappedInProvider) AccessType.PROVIDER else AccessType.INSTANCE
+            when {
+              storedKey.isWrappedInSuspendProvider -> AccessType.SUSPEND_PROVIDER
+              storedKey.isWrappedInProvider -> AccessType.PROVIDER
+              else -> AccessType.INSTANCE
+            }
 
           // Determine the correct receiver for property access based on shard context
           val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
 
           val providerOrigin =
-            if (storedKey.isWrappedInProvider) {
+            if (storedKey.isWrappedInProvider || storedKey.isWrappedInSuspendProvider) {
               ProviderExpressionOrigin.ProviderProperty
             } else {
               ProviderExpressionOrigin.NewExpression
@@ -211,17 +249,34 @@ private constructor(
           // Optimization: Skip factory instantiation when possible
           val canBypassFactory = accessType == AccessType.INSTANCE && binding.canBypassFactory()
 
+          if (
+            accessType == AccessType.SUSPEND_PROVIDER &&
+              !isAssistedInject &&
+              bindingGraph.isTransitivelySuspend(binding.typeKey)
+          ) {
+            // Transitively-suspend constructor-injected binding requested as a
+            // SuspendProvider<T>. Its per-class factory is a plain Factory<T> and can't hold
+            // SuspendProvider deps, so generate an IR-only nested SuspendFactory in the graph.
+            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
+          }
+
           if (canBypassFactory) {
             if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
               codegenStats?.run { classConstructorDirectInvocations++ }
               // Call constructor directly
               val targetConstructor = classFactory.targetConstructor!!
+              val targetType = binding.typeKey.type
+              val typeArguments =
+                targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                  it.typeOrFail
+                }
               val directExpr =
                 irCallConstructor(
                     targetConstructor.symbol,
-                    binding.type.typeParameters.map { it.defaultType },
+                    typeArguments,
                   )
                   .apply {
+                    type = targetType
                     val args =
                       generateBindingArguments(
                         targetParams = classFactory.targetFunctionParameters,
@@ -234,7 +289,12 @@ private constructor(
                       arguments[i] = arg
                     }
                   }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              maybeTraceDirectExpression(
+                  directExpr,
+                  contextualTypeKey,
+                  bindingKind,
+                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                )
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -256,7 +316,12 @@ private constructor(
                     fieldInitKey = null,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              maybeTraceDirectExpression(
+                  directExpr,
+                  contextualTypeKey,
+                  bindingKind,
+                  isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                )
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -365,11 +430,15 @@ private constructor(
 
           // Optimization: Skip factory instantiation when we don't need a provider instance.
           // This applies when accessType is INSTANCE and the providerFactory supports direct
-          // invocation
+          // invocation.
+          // For suspend bindings, always bypass the factory since factories implement Provider<T>,
+          // not SuspendProvider<T>. The suspend call must be inlined or wrapped in a
+          // SuspendProvider lambda.
           val canBypassFactory =
             providerFactory.canBypassFactory &&
               // TODO what if the return type is a Provider?
-              accessType == AccessType.INSTANCE
+              (accessType == AccessType.INSTANCE ||
+                (binding.isSuspend && accessType == AccessType.SUSPEND_PROVIDER))
 
           if (canBypassFactory) {
             val providerFunction = providerFactory.function
@@ -394,9 +463,17 @@ private constructor(
                   fieldInitKey = fieldInitKey,
                 )
 
-              val directExpr =
+              val directExpr: IrExpression =
                 irInvoke(callee = realFunction.symbol, args = args, typeHint = binding.typeKey.type)
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              directExpr
+                .letIf(accessType == AccessType.INSTANCE) {
+                  maybeTraceDirectExpression(
+                    it,
+                    contextualTypeKey,
+                    bindingKind,
+                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                  )
+                }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
@@ -417,13 +494,29 @@ private constructor(
                     fieldInitKey = fieldInitKey,
                   )
                 }
-              maybeTraceDirectExpression(directExpr, contextualTypeKey, bindingKind)
+              directExpr
+                .letIf(accessType == AccessType.INSTANCE) {
+                  maybeTraceDirectExpression(
+                    it,
+                    contextualTypeKey,
+                    bindingKind,
+                    isSuspend = bindingGraph.isTransitivelySuspend(binding.typeKey),
+                  )
+                }
                 .toTargetType(
                   actual = AccessType.INSTANCE,
                   contextualTypeKey = contextualTypeKey,
                   bindingKind = bindingKind,
                 )
             }
+          } else if (
+            accessType == AccessType.SUSPEND_PROVIDER &&
+              bindingGraph.isTransitivelySuspend(binding.typeKey)
+          ) {
+            // Non-suspend @Provides that transitively depends on suspend bindings. Its factory
+            // is a plain Factory<T> whose ctor can't hold SuspendProvider deps. Generate an
+            // IR-only nested SuspendFactory in the graph instead.
+            return generateNestedSuspendFactoryCall(binding, contextualTypeKey, fieldInitKey)
           } else {
             // Invoke its factory's create() function
             val factoryProvider =
@@ -455,11 +548,26 @@ private constructor(
         }
 
         is AssistedFactory -> {
-          // Example9_Factory_Impl.create(example9Provider);
-          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
-
           // The target binding is stored directly on the Assisted binding (not in the graph)
           val targetBinding = binding.targetBinding
+
+          val targetConsumesSuspend =
+            targetBinding.parameters.nonDispatchParameters.any { param ->
+              !param.isAssisted &&
+                param.contextualTypeKey.propagatesSuspend(
+                  isSuspendKey = bindingGraph::isTransitivelySuspend,
+                  findBinding = { key -> bindingGraph.findBinding(key) },
+                )
+            }
+          if (targetConsumesSuspend) {
+            // The shared per-class Impl delegates to the target's plain Factory<T>, which can't
+            // hold suspend deps. Generate an IR-only nested impl that holds the deps directly and
+            // awaits them in its suspend SAM override. Validation guarantees the SAM is suspend.
+            return generateNestedAssistedImplCall(binding, contextualTypeKey, fieldInitKey)
+          }
+
+          // Example9_Factory_Impl.create(example9Provider);
+          val factoryImpl = metroDeclarations.findAssistedFactoryImpl(binding.type)
 
           // Assisted-inject factories don't implement Provider.
           // The target binding is not an independent graph binding — it's an implementation
@@ -484,7 +592,8 @@ private constructor(
               fieldInitKey = effectiveFieldInitKey,
             )
 
-          val factoryProvider = with(factoryImpl) { invokeCreate(delegateFactory) }
+          val factoryProvider =
+            with(factoryImpl) { invokeCreate(delegateFactory, binding.typeKey.type) }
 
           factoryProvider.toTargetType(
             actual = AccessType.PROVIDER,
@@ -504,7 +613,12 @@ private constructor(
 
         is MembersInjected -> {
           val injectedClass = node.metroGraphOrFail.lookupClass(binding.targetClassId)!!.owner
-          val injectedType = injectedClass.defaultType
+          val injectedType =
+            binding.typeKey.type
+              .expectAsOrNull<IrSimpleType>()
+              ?.arguments
+              ?.firstOrNull()
+              ?.typeOrFail ?: injectedClass.defaultType
           val targetTypeKey =
             IrContextualTypeKey(IrTypeKey(injectedType, binding.typeKey.qualifier))
 
@@ -552,7 +666,17 @@ private constructor(
 
             // InjectableClass_MembersInjector.create(stringValueProvider,
             // exampleComponentProvider)
-            val membersInjector = irInvoke(callee = createFunction, args = args)
+            val typeArguments =
+              injectedType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map {
+                it.typeOrFail
+              }
+            val membersInjector =
+              irInvoke(
+                callee = createFunction,
+                typeHint = metroSymbols.metroMembersInjector.typeWith(injectedType),
+                typeArgs = typeArguments,
+                args = args,
+              )
             expressionDecorator
               .decorateMembersInjectorExpression(
                 membersInjector,
@@ -611,7 +735,8 @@ private constructor(
             }
           when (accessType) {
             INSTANCE -> instanceExpr
-            PROVIDER -> {
+            PROVIDER,
+            SUSPEND_PROVIDER -> {
               instanceExpr.toTargetType(
                 actual = AccessType.INSTANCE,
                 contextualTypeKey = contextualTypeKey,
@@ -705,13 +830,12 @@ private constructor(
           val (bindingGetter, actual) =
             if (binding.token != null) {
               val propertyAccess = resolveToken(binding.token)
-              val isScalarProperty = !propertyAccess.isProviderProperty
 
               propertyAccess.accessProperty(irGet(thisReceiver)) to
-                if (isScalarProperty) {
-                  AccessType.INSTANCE
-                } else {
-                  AccessType.PROVIDER
+                when {
+                  propertyAccess.isSuspendProviderProperty -> AccessType.SUSPEND_PROVIDER
+                  propertyAccess.isProviderProperty -> AccessType.PROVIDER
+                  else -> AccessType.INSTANCE
                 }
             } else if (binding.getter != null) {
               val graphInstanceBindingProperty =
@@ -733,38 +857,50 @@ private constructor(
                 irInvoke(
                   dispatchReceiver = graphInstanceAccess,
                   callee = binding.getter.symbol,
-                  typeHint = binding.typeKey.type,
+                  typeHint = getterContextKey.toIrType(),
                 )
 
-              val getterRawClassId = getterContextKey.rawType?.rawTypeOrNull()?.classId
-              val isCanonicalProvider =
-                getterRawClassId == Symbols.ClassIds.metroProvider ||
-                  getterRawClassId == Symbols.ClassIds.function0
-              val canUseProviderDirectly =
-                getterContextKey.isWrappedInProvider && isCanonicalProvider
+              if (binding.canPassThrough(contextualTypeKey)) {
+                return invokeGetter
+              }
 
-              val expr =
-                if (canUseProviderDirectly) {
-                  invokeGetter
-                } else {
-                  wrapInProviderFunction(binding.typeKey.type) {
-                    when {
-                      getterContextKey.isWrappedInProvider -> {
-                        val providerType = getterContextKey.rawType ?: invokeGetter.type
-                        irInvoke(invokeGetter, callee = metroSymbols.providerValue(providerType))
-                      }
+              val sourceWrapper = getterContextKey.wrappedType
+              val targetWrapper = contextualTypeKey.wrappedType
+              val sourceIsDirectProvider =
+                sourceWrapper is WrappedType.Provider ||
+                  sourceWrapper is WrappedType.SuspendProvider
+              val targetIsDirectProvider =
+                targetWrapper is WrappedType.Provider ||
+                  targetWrapper is WrappedType.SuspendProvider
+              val wrappersUseSameProviderType =
+                sourceWrapper.usesSuspendProvider() == targetWrapper.usesSuspendProvider()
+              val wrappersHaveSameValue =
+                sourceWrapper.immediateInnerType()?.isScalarLeaf() == true &&
+                  targetWrapper.immediateInnerType()?.isScalarLeaf() == true
+              if (
+                sourceIsDirectProvider &&
+                  targetIsDirectProvider &&
+                  wrappersUseSameProviderType &&
+                  wrappersHaveSameValue
+              ) {
+                return convertGraphDependencyProvider(
+                  invokeGetter,
+                  sourceWrapper,
+                  contextualTypeKey,
+                )
+              }
 
-                      getterContextKey.isWrappedInLazy -> {
-                        val lazyType = getterContextKey.rawType ?: invokeGetter.type
-                        irInvoke(invokeGetter, callee = metroSymbols.lazyValue(lazyType))
-                      }
-
-                      else -> invokeGetter
-                    }
-                  }
-                }
-              // getter case always produces a Provider
-              expr to AccessType.PROVIDER
+              val sourceRequiresSuspend =
+                binding.getter.isSuspend || getterContextKey.wrappedType.requiresSuspendToUnwrap()
+              if (sourceRequiresSuspend) {
+                scope.wrapInSuspendProviderFunction(binding.typeKey.type) {
+                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
+                } to AccessType.SUSPEND_PROVIDER
+              } else {
+                scope.wrapInProviderFunction(binding.typeKey.type) {
+                  unwrapGraphDependencySource(invokeGetter, getterContextKey)
+                } to AccessType.PROVIDER
+              }
             } else {
               reportCompilerBug("Unknown graph dependency type")
             }
@@ -777,6 +913,325 @@ private constructor(
           )
         }
       }
+    }
+
+  /** Flattens an included graph accessor's wrapper value to its canonical bound value. */
+  context(scope: IrBuilderWithScope)
+  private fun unwrapGraphDependencySource(
+    expression: IrExpression,
+    contextKey: IrContextualTypeKey,
+  ): IrExpression = unwrapGraphDependencySource(expression, contextKey, contextKey.wrappedType)
+
+  context(scope: IrBuilderWithScope)
+  private fun unwrapGraphDependencySource(
+    expression: IrExpression,
+    contextKey: IrContextualTypeKey,
+    wrappedType: WrappedType<IrType>,
+  ): IrExpression =
+    with(scope) {
+      when (wrappedType) {
+        is WrappedType.Canonical,
+        is WrappedType.Map -> expression
+        else -> {
+          val innerType =
+            when (wrappedType) {
+              is WrappedType.Provider -> wrappedType.innerType
+              is WrappedType.SuspendProvider -> wrappedType.innerType
+              is WrappedType.Lazy -> wrappedType.innerType
+              is WrappedType.SuspendLazy -> wrappedType.innerType
+              is WrappedType.Canonical,
+              is WrappedType.Map -> error("Handled above")
+            }
+          val innerContextKey =
+            IrContextualTypeKey(
+              typeKey = contextKey.typeKey,
+              wrappedType = innerType,
+              hasDefault = contextKey.hasDefault,
+            )
+          val innerIrType = innerContextKey.toIrType()
+          val innerExpression =
+            when (wrappedType) {
+              is WrappedType.Provider -> {
+                val metroProviderKey =
+                  IrContextualTypeKey(
+                    typeKey = contextKey.typeKey,
+                    wrappedType = WrappedType.Provider(innerType, Symbols.ClassIds.metroProvider),
+                    hasDefault = contextKey.hasDefault,
+                  )
+                val metroProvider =
+                  with(metroSymbols.providerTypeConverter) {
+                    expression.convertTo(metroProviderKey)
+                  }
+                irInvoke(
+                  dispatchReceiver = metroProvider,
+                  callee = metroSymbols.providerInvoke,
+                  typeHint = innerIrType,
+                )
+              }
+              is WrappedType.SuspendProvider -> {
+                val metroProviderKey =
+                  IrContextualTypeKey(
+                    typeKey = contextKey.typeKey,
+                    wrappedType =
+                      WrappedType.SuspendProvider(
+                        innerType,
+                        Symbols.ClassIds.metroSuspendProvider,
+                      ),
+                    hasDefault = contextKey.hasDefault,
+                  )
+                val metroProvider =
+                  convertGraphDependencyProvider(expression, wrappedType, metroProviderKey)
+                irInvoke(
+                  dispatchReceiver = metroProvider,
+                  callee = metroSymbols.suspendProviderInvoke,
+                  typeHint = innerIrType,
+                )
+              }
+              is WrappedType.Lazy -> {
+                val getter = metroSymbols.lazyValue(expression.type)
+                irInvoke(dispatchReceiver = expression, callee = getter, typeHint = innerIrType)
+              }
+              is WrappedType.SuspendLazy ->
+                irInvoke(
+                  dispatchReceiver = expression,
+                  callee = metroSymbols.suspendLazyValue,
+                  typeHint = innerIrType,
+                )
+              is WrappedType.Canonical,
+              is WrappedType.Map -> error("Handled above")
+            }
+          unwrapGraphDependencySource(innerExpression, contextKey, innerType)
+        }
+      }
+    }
+
+  context(scope: IrBuilderWithScope)
+  private fun convertGraphDependencyProvider(
+    expression: IrExpression,
+    sourceWrapper: WrappedType<IrType>,
+    targetKey: IrContextualTypeKey,
+  ): IrExpression {
+    if (
+      sourceWrapper is WrappedType.SuspendProvider &&
+        sourceWrapper.providerType == Symbols.ClassIds.suspendFunction0
+    ) {
+      return scope.irInvoke(
+        callee = metroSymbols.metroSuspendProviderFunction,
+        typeHint = targetKey.toIrType(),
+        typeArgs = listOf(sourceWrapper.innerType.toIrType()),
+        args = listOf(expression),
+      )
+    }
+    return with(scope) {
+      with(metroSymbols.providerTypeConverter) { expression.convertTo(targetKey) }
+    }
+  }
+
+  /**
+   * Generates `NestedAssistedSuspendImpl(depProviders...)` for an assisted factory whose target
+   * consumes suspend bindings in this graph. See
+   * [GraphSuspendFactoryGenerator.getOrGenerateAssistedImpl].
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateNestedAssistedImplCall(
+    binding: IrBinding.AssistedFactory,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      val targetBinding = binding.targetBinding
+      val classFactory = targetBinding.classFactory
+      val buildTargetCall: IrBuilderWithScope.(List<IrExpression?>) -> IrExpression
+      if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+        val targetConstructor = classFactory.targetConstructor!!
+        val targetType = targetBinding.typeKey.type
+        val typeArguments =
+          targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail }
+        buildTargetCall = { resolved ->
+          irCallConstructor(targetConstructor.symbol, typeArguments).apply {
+            type = targetType
+            for ((i, expr) in resolved.withIndex()) {
+              if (expr != null) arguments[i] = expr
+            }
+          }
+        }
+      } else {
+        buildTargetCall = { resolved ->
+          classFactory.invokeNewInstanceExpression(
+            targetBinding.typeKey,
+            Symbols.Names.newInstance,
+          ) { _, _ ->
+            resolved
+          }
+        }
+      }
+
+      // Member injectors for the target class plus its HasMemberInjections supertypes. The nested
+      // impl injects these non-suspend members after construction.
+      val injectors = metroDeclarations.findAllInjectorsFor(targetBinding.type)
+      val nested =
+        suspendFactoryGenerator.getOrGenerateAssistedImpl(binding, injectors, buildTargetCall)
+      // Ctor args are the target's non-assisted deps followed by its member deps, in the same order
+      // the nested ctor declares its fields. generateBindingArguments filters assisted params and
+      // aligns the rest to the nested ctor's parameters by index.
+      val targetParams =
+        if (nested.memberParams.isEmpty()) {
+          classFactory.targetFunctionParameters
+        } else {
+          classFactory.targetFunctionParameters.copy(
+            regularParameters =
+              classFactory.targetFunctionParameters.regularParameters + nested.memberParams
+          )
+        }
+      val ctorArgs =
+        generateBindingArguments(
+          targetParams = targetParams,
+          function = nested.constructor,
+          binding = targetBinding,
+          fieldInitKey = fieldInitKey,
+        )
+      val implInstance =
+        irCallConstructor(nested.constructor.symbol, emptyList()).apply {
+          for ((i, arg) in ctorArgs.withIndex()) {
+            if (arg != null) arguments[i] = arg
+          }
+        }
+      return implInstance.toTargetType(
+        actual = AccessType.INSTANCE,
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = binding.diagnosticTypeName,
+      )
+    }
+
+  /**
+   * Decorates a freshly constructed nested `SuspendFactory<T>` expression (like wrapping it in
+   * `TracedSuspendProvider` when runtime tracing is enabled).
+   */
+  context(scope: IrBuilderWithScope)
+  private fun IrExpression.decorateNewSuspendProvider(
+    contextualTypeKey: IrContextualTypeKey,
+    bindingKind: String?,
+  ): IrExpression =
+    expressionDecorator.decorateSuspendProviderExpression(
+      this,
+      ProviderExpressionRequest(
+        contextualTypeKey = contextualTypeKey,
+        bindingKind = bindingKind,
+        origin = ProviderExpressionOrigin.NewExpression,
+      ),
+    )
+
+  /**
+   * The source callable's parameters in call order, the same decomposition
+   * [generateBindingArguments] uses to map args (dispatch receiver for non-object provides, context
+   * params, extension receiver, regular params; assisted excluded).
+   */
+  private fun callOrderedParams(targetParams: Parameters, binding: IrBinding): List<Parameter> =
+    buildList {
+      if (
+        binding is IrBinding.Provided &&
+          targetParams.dispatchReceiverParameter?.type?.rawTypeOrNull()?.isObject != true
+      ) {
+        targetParams.dispatchReceiverParameter?.let(::add)
+      }
+      addAll(targetParams.contextParameters.filterNot { it.isAssisted })
+      targetParams.extensionReceiverParameter?.let(::add)
+      addAll(targetParams.regularParameters.filterNot { it.isAssisted })
+    }
+
+  /**
+   * Generates `NestedSuspendFactory(depProviders...)` for a binding that is transitively suspend in
+   * this graph but whose source declaration is not itself suspend. The nested class is an IR-only
+   * private `SuspendFactory<T>` on the graph impl. See [GraphSuspendFactoryGenerator].
+   */
+  context(scope: IrBuilderWithScope)
+  private fun generateNestedSuspendFactoryCall(
+    binding: IrBinding,
+    contextualTypeKey: IrContextualTypeKey,
+    fieldInitKey: IrTypeKey?,
+  ): IrExpression =
+    with(scope) {
+      val targetParams: Parameters
+      val buildSourceCall: IrBuilderWithScope.(List<IrExpression?>) -> IrExpression
+      when (binding) {
+        is ConstructorInjected -> {
+          val classFactory = binding.classFactory
+          targetParams = classFactory.targetFunctionParameters
+          if (classFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+            val targetConstructor = classFactory.targetConstructor!!
+            val targetType = binding.typeKey.type
+            val typeArguments =
+              targetType.expectAsOrNull<IrSimpleType>()?.arguments.orEmpty().map { it.typeOrFail }
+            buildSourceCall = { resolved ->
+              irCallConstructor(targetConstructor.symbol, typeArguments).apply {
+                type = targetType
+                for ((i, expr) in resolved.withIndex()) {
+                  if (expr != null) arguments[i] = expr
+                }
+              }
+            }
+          } else {
+            buildSourceCall = { resolved ->
+              classFactory.invokeNewInstanceExpression(
+                binding.typeKey,
+                Symbols.Names.newInstance,
+              ) { _, _ ->
+                resolved
+              }
+            }
+          }
+        }
+        is Provided -> {
+          val providerFactory =
+            metroDeclarations.lookupProviderFactory(binding)
+              ?: reportCompilerBug(
+                "No factory found for Provided binding ${binding.typeKey}. This is likely a bug in the Metro compiler, please report it to the issue tracker."
+              )
+          targetParams = binding.parameters
+          if (providerFactory.supportsDirectInvocation(node.metroGraphOrFail)) {
+            val realFunction =
+              providerFactory.realDeclaration?.expectAsOrNull<IrFunction>()
+                ?: providerFactory.function
+            buildSourceCall = { resolved ->
+              irInvoke(
+                callee = realFunction.symbol,
+                args = resolved,
+                typeHint = binding.typeKey.type,
+              )
+            }
+          } else {
+            buildSourceCall = { resolved ->
+              providerFactory.invokeNewInstanceExpression(
+                binding.typeKey,
+                providerFactory.newInstanceName,
+              ) { _, _ ->
+                resolved
+              }
+            }
+          }
+        }
+        else ->
+          reportCompilerBug(
+            "Unexpected binding kind for nested suspend factory: ${binding.javaClass.simpleName}"
+          )
+      }
+
+      val orderedParams = callOrderedParams(targetParams, binding)
+      val nested = suspendFactoryGenerator.getOrGenerate(binding, orderedParams, buildSourceCall)
+      val ctorArgs =
+        generateBindingArguments(
+          targetParams = targetParams,
+          function = nested.constructor,
+          binding = binding,
+          fieldInitKey = fieldInitKey,
+        )
+      return irCallConstructor(nested.constructor.symbol, emptyList())
+        .apply {
+          for ((i, arg) in ctorArgs.withIndex()) {
+            if (arg != null) arguments[i] = arg
+          }
+        }
+        .decorateNewSuspendProvider(contextualTypeKey, binding.diagnosticTypeName)
     }
 
   context(scope: IrBuilderWithScope)
@@ -868,20 +1323,16 @@ private constructor(
 
       return paramsForCall.mapIndexed { i, param ->
         val contextualTypeKey = paramsToMap[i].contextualTypeKey
-        val accessType =
-          if (param.contextualTypeKey.requiresProviderInstance) {
-            AccessType.PROVIDER
-          } else {
-            AccessType.INSTANCE
-          }
+        val accessType = AccessType.of(param.contextualTypeKey)
 
         // TODO consolidate this logic with generateBindingCode
         if (accessType == AccessType.INSTANCE) {
           // IFF the parameter can take a direct instance, try our instance fields
           bindingPropertyContext.get(contextualTypeKey)?.let { bindingProperty ->
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
-            // Only return early if we got an actual instance property, not a provider fallback
-            if (!storedKey.isWrappedInProvider) {
+            // Only return early if we got an actual instance property, not a
+            // provider/suspendProvider fallback
+            if (!storedKey.isWrappedInProvider && !storedKey.isWrappedInSuspendProvider) {
               val instanceExpression =
                 generatePropertyAccess(property, shardProperty, shardIndex)
                   .toTargetType(actual = AccessType.INSTANCE, contextualTypeKey = contextualTypeKey)
@@ -895,23 +1346,27 @@ private constructor(
           }
         }
 
-        // When we need a provider (accessType == PROVIDER), look up by the provider-wrapped key
+        // When we need a provider/suspendProvider, look up by the wrapped key
         // to get the provider property (e.g., longInstanceProvider) instead of the scalar property
         // (e.g., longInstance).
         val lookupKey =
-          if (accessType == AccessType.PROVIDER) contextualTypeKey.wrapInProvider()
-          else contextualTypeKey
+          when (accessType) {
+            AccessType.PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
+            AccessType.SUSPEND_PROVIDER ->
+              contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = true)
+            else -> contextualTypeKey.canonicalize()
+          }
         val providerInstance =
           bindingPropertyContext.get(lookupKey)?.let { bindingProperty ->
             val (property, storedKey, shardProperty, shardIndex) = bindingProperty
-            // If it's in provider fields, invoke that field
             val propertyAccess = generatePropertyAccess(property, shardProperty, shardIndex)
-
-            // If we wanted an instance but got a provider property, invoke it to get the instance
-            if (accessType == AccessType.INSTANCE && storedKey.isWrappedInProvider) {
+            val actualAccessType = AccessType.of(storedKey)
+            if (actualAccessType != accessType) {
               propertyAccess.toTargetType(
-                actual = AccessType.PROVIDER,
-                contextualTypeKey = contextualTypeKey,
+                actual = actualAccessType,
+                requested = accessType,
+                contextualTypeKey = lookupKey,
               )
             } else {
               propertyAccess
@@ -939,6 +1394,7 @@ private constructor(
           providerInstance,
           isAssisted = param.isAssisted,
           isGraphInstance = param.isGraphInstance,
+          actualIsSuspendProvider = accessType.isSuspendProvider,
         )
       }
     }
@@ -997,6 +1453,7 @@ private constructor(
       ancestorChain = ancestorChain,
       shardGraphProperty = shardContext?.graphProperty,
       isProviderProperty = bindingProperty.storedKey.isWrappedInProvider,
+      isSuspendProviderProperty = bindingProperty.storedKey.isWrappedInSuspendProvider,
     )
   }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
@@ -146,11 +147,20 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       val expectActualTracker: ExpectActualTracker =
         configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]
       with(compatContext) {
-        // Register Circuit IR extension if enabled first
         if (options.enableCircuitCodegen) {
+          if (options.generateClassesInIr) {
+            registerIrExtensionCompat(
+              CircuitIrDeclarationGenerationExtension.create(
+                classIds = classIds,
+                compatContext = compatContext,
+              )
+            )
+          }
+          // Register Circuit's body transformer before Metro's main IR pipeline.
           registerIrExtensionCompat(
             CircuitIrExtension(
               generateClassesInIr = options.generateClassesInIr,
+              function0Types = classIds.function0Types,
               assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
               injectAnnotations = classIds.allInjectAnnotations,
               qualifierAnnotations = classIds.qualifierAnnotations,

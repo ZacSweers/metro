@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.NOOP_TYPE_REMAPPER
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.constArgumentOfTypeAt
 import dev.zacsweers.metro.compiler.ir.hasMetroDefault
@@ -439,16 +440,48 @@ internal fun Parameter.remapTypes(remapper: TypeRemapper): Parameter =
   copy(contextualTypeKey = contextualTypeKey.remapType(remapper))
 
 /**
- * Deduplicates parameters by [IrTypeKey], keeping one parameter per unique key. Parameters that are
- * always kept (never deduped):
+ * Returns the normalized contextual key for a generated provider field.
+ *
+ * Provider-field maps and parameter-deduplication sets must use this key rather than
+ * [contextualTypeKey] directly. A raw contextual key retains the consumer's complete wrapper stack,
+ * which would give equivalent requests such as `Provider<T>` and `Lazy<T>` different field
+ * identities.
+ *
+ * Normalization strips only the outer scalar wrapper stack and replaces it with Metro's canonical
+ * `Provider` or `SuspendProvider` wrapper. It preserves the qualified [typeKey] and nested
+ * map-value structure, so distinct bindings such as `Map<K, V>` and `Map<K, Provider<V>>` remain
+ * distinct.
+ */
+context(context: IrMetroContext)
+internal fun Parameter.toCanonicalProviderKey(
+  defaultUsesSuspendProvider: Boolean = false
+): IrContextualTypeKey {
+  val usesSuspendProvider =
+    contextualTypeKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)
+  return contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider)
+}
+
+/**
+ * Deduplicates parameters by [toCanonicalProviderKey], keeping one parameter per unique normalized
+ * key. Parameters that are always kept (never deduped):
  * - Assisted parameters: each is a distinct caller-provided value
  * - Parameters with [IrContextualTypeKey.hasDefault]: their defaults may differ
  */
-internal fun List<Parameter>.dedupeParameters(): List<Parameter> {
-  val seenKeys = HashSet<IrTypeKey>(size)
+context(context: IrMetroContext)
+internal fun List<Parameter>.dedupeParameters(
+  defaultUsesSuspendProvider: Boolean = false
+): List<Parameter> {
+  val seenKeys = HashSet<IrContextualTypeKey>(size)
   return buildList {
     for (param in this@dedupeParameters) {
-      if (param.isAssisted || param.hasDefault || seenKeys.add(param.typeKey)) {
+      // A scalar wrapper stack is reconstructed from a canonical Provider or SuspendProvider
+      // field. The innermost wrapper determines which field type is required. Unwrapped parameters
+      // use the factory's default field type.
+      if (
+        param.isAssisted ||
+          param.hasDefault ||
+          seenKeys.add(param.toCanonicalProviderKey(defaultUsesSuspendProvider))
+      ) {
         add(param)
       }
     }

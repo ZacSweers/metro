@@ -1,2 +1,4 @@
-/file1.kt:20:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.
-/file2.kt:31:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.
+/file1.kt:26:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.
+/file2.kt:37:5: error: Multiple @CircuitInject-annotated functions named Favorites were found. This will create conflicts in Circuit FIR code gen, please deduplicate names.
+/file3.kt:48:5: error: @CircuitInject function ProfileSubCircuit generates ProfileSubCircuitFactory, which conflicts with another Circuit codegen function. Rename one of the functions.
+/file4.kt:57:5: error: @SubCircuitInject function Profile generates ProfileSubCircuitFactory, which conflicts with another Circuit codegen function. Rename one of the functions.

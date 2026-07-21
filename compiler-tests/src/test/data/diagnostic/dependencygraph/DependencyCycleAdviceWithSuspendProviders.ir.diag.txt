@@ -1,0 +1,15 @@
+/DependencyCycleAdviceWithSuspendProviders.kt:7:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing CycleGraph
+
+  cycle:
+      +-> Second -> First --+
+      +---------------------+
+
+  trace (in CycleGraph):
+      Second is injected at First(…, second)
+      First is injected at Second(…, first)
+      Second is injected at First(…, second)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> Second` or
+        `Lazy<Second>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

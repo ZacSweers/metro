@@ -316,7 +316,11 @@ if $DRY_RUN; then
     echo "  7. Tag: $NEW_VERSION"
     echo "  8. Run ./metrow publish"
     echo "  9. Update gradle.properties to $NEXT_SNAPSHOT_VERSION"
-    echo "  10. Run ./metrow regen"
+    if is_stable_version "$NEW_VERSION"; then
+        echo "  10. Run ./metrow regen --release-baselines"
+    else
+        echo "  10. Run ./metrow regen (retain stable release baselines)"
+    fi
     echo "  11. Commit: 'Prepare next development version.'"
     echo "  12. Push main and $NEW_VERSION to origin ($ORIGIN_URL)"
     echo "  13. Create GitHub release:"
@@ -354,7 +358,11 @@ git tag -a "$NEW_VERSION" -m "Version $NEW_VERSION"
 echo "Setting next snapshot version $NEXT_SNAPSHOT_VERSION"
 update_gradle_properties "$NEXT_SNAPSHOT_VERSION"
 
-./metrow regen
+if is_stable_version "$NEW_VERSION"; then
+    ./metrow regen --release-baselines
+else
+    ./metrow regen
+fi
 
 git commit -am "Prepare next development version."
 

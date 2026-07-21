@@ -39,7 +39,7 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
   }
 
   /** A builder for [MapFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) :
+  public class Builder<K : Any, V> internal constructor(size: Int) :
     AbstractMapFactory.Builder<K, V, V>(size) {
 
     public override fun put(key: K, providerOfValue: Provider<V>): Builder<K, V> = apply {
@@ -60,7 +60,7 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
@@ -78,12 +78,12 @@ public class MapFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>
      */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> singleton(key: K, provider: Provider<V>): Factory<Map<K, V>> =
+    public fun <K : Any, V> singleton(key: K, provider: Provider<V>): Factory<Map<K, V>> =
       SingletonMapFactory(key, provider)
   }
 }
 
-private class SingletonMapFactory<K : Any, V : Any>(
+private class SingletonMapFactory<K : Any, V>(
   private val key: K,
   private val provider: Provider<V>,
 ) : Factory<Map<K, V>> {

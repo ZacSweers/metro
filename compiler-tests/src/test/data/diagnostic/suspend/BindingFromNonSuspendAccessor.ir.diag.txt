@@ -1,0 +1,11 @@
+/BindingFromNonSuspendAccessor.kt:12:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] String bindings must be a suspend function or suspend () -> String because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    String is requested at
+        [ExampleGraph] ExampleGraph.value // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> String`.

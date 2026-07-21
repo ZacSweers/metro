@@ -1,0 +1,32 @@
+/SuspendDependencyCycleAdvice.kt:11:16: error: [Metro/DependencyCycle] Found a dependency cycle while processing DirectCycleGraph
+
+  cycle:
+      +-> Consumer -> Provided --+
+      +--------------------------+
+
+  trace (in DirectCycleGraph):
+      Consumer is injected at suspend DirectCycleGraph.provideProvided(…, consumer)
+      Provided is injected at Consumer(…, provided)
+      Consumer is injected at suspend DirectCycleGraph.provideProvided(…, consumer)
+      ...
+
+  help: this cycle requires suspend initialization. Defer one edge with `suspend () -> Consumer` or
+        `SuspendLazy<Consumer>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/SuspendDependencyCycleAdvice.kt:24:16: error: [Metro/DependencyCycle] Found a dependency cycle while processing TransitiveCycleGraph
+
+  cycle:
+      +-> Second -> First --+
+      +---------------------+
+
+  trace (in TransitiveCycleGraph):
+      Second is injected at First(…, second)
+      First is injected at Second(…, first)
+      Second is injected at First(…, second)
+      ...
+
+  help: this cycle requires suspend initialization. Defer one edge with `suspend () -> Second` or
+        `SuspendLazy<Second>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

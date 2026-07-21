@@ -48,19 +48,8 @@ apiValidation {
       }
     }
   }
-  ignoredPackages +=
-    listOf(
-      "dev.zacsweers.metro.internal",
-      "dev.zacsweers.metro.compiler.compat",
-      "dev.zacsweers.metro.interop.dagger.internal",
-      "dev.zacsweers.metro.interop.guice.internal",
-      "dev.zacsweers.metro.trace.internal",
-    )
-  nonPublicMarkers +=
-    listOf(
-      "dev.zacsweers.metro.ExperimentalMetroApi",
-      "dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi",
-    )
+  ignoredPackages += metroApiIgnoredPackages
+  nonPublicMarkers += metroApiNonPublicMarkers
   @OptIn(ExperimentalBCVApi::class)
   klib {
     // This is only really possible to run on macOS
@@ -98,4 +87,5 @@ dependencies {
   dokka(project(":metrox-viewmodel"))
   dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
+  dokka(project(":runtime-coroutines"))
 }

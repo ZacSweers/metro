@@ -68,6 +68,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeProjection
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWith
+import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.addChild
 import org.jetbrains.kotlin.ir.util.addFakeOverrides
@@ -240,8 +241,8 @@ internal class AssistedFactoryTransformer(
           visibility = DescriptorVisibilities.PUBLIC
         }
         .apply {
-          superTypes = listOf(declaration.defaultType)
-          typeParameters = copyTypeParametersFrom(declaration)
+          val copiedTypeParameters = copyTypeParametersFrom(declaration)
+          superTypes = listOf(declaration.symbol.typeWithParameters(copiedTypeParameters))
           createThisReceiverParameter()
           // Only add as child for in-compilation, not for external
           if (!isExternal) {
@@ -300,11 +301,18 @@ internal class AssistedFactoryTransformer(
           visibility = DescriptorVisibilities.PUBLIC
           modality = Modality.FINAL
           origin = Origins.Default
-          returnType = metroSymbols.metroProvider.typeWith(declaration.defaultType)
+          returnType = irBuiltIns.unitType
         }
         .apply {
           setDispatchReceiver(companionReceiver.copyTo(this))
-          typeParameters = copyTypeParametersFrom(samFunction)
+          val copiedTypeParameters = copyTypeParametersFrom(declaration)
+          val factoryType = declaration.symbol.typeWithParameters(copiedTypeParameters)
+          returnType = metroSymbols.metroProvider.typeWith(factoryType)
+          val typeRemapper =
+            typeRemapperFor(
+              copiedTypeParameters.map { it.defaultType },
+              declaration,
+            )
 
           val targetFactory =
             injectedClassTransformer.getOrGenerateFactory(
@@ -317,9 +325,7 @@ internal class AssistedFactoryTransformer(
               )
 
           val factoryTypeArguments =
-            samFunction.returnType.targetTypeArguments(
-              remapper = samFunction.typeParameterRemapperTo(this)
-            )
+            samFunction.returnType.targetTypeArguments(remapper = typeRemapper)
 
           val factoryParamType =
             targetFactory.factoryClass.typeWith(*factoryTypeArguments.toTypedArray())
@@ -343,21 +349,7 @@ internal class AssistedFactoryTransformer(
   }
 
   private fun IrClass.typeParameterRemapperTo(targetClass: IrClass): TypeRemapper {
-    return typeRemapperFor(
-      typeParameters.zip(targetClass.typeParameters).associate { (source, target) ->
-        source.symbol to target.defaultType
-      }
-    )
-  }
-
-  private fun IrSimpleFunction.typeParameterRemapperTo(
-    targetFunction: IrSimpleFunction
-  ): TypeRemapper {
-    return typeRemapperFor(
-      typeParameters.zip(targetFunction.typeParameters).associate { (source, target) ->
-        source.symbol to target.defaultType
-      }
-    )
+    return typeRemapperFor(targetClass.typeParameters.map { it.defaultType }, this)
   }
 
   private fun IrType.targetTypeArguments(remapper: TypeRemapper): List<IrType> {
@@ -399,11 +391,11 @@ internal class AssistedFactoryTransformer(
         }
       }
 
-      // Also map factory type parameters to the same concrete types
-      implClass.typeParameters.zip(returnType.arguments).forEach { (factoryParam, arg) ->
-        if (arg is IrTypeProjection) {
-          typeSubstitutions[factoryParam.symbol] = arg.type
-        }
+      // Map the source factory's parameters to the copied parameters on the impl. These do not
+      // necessarily line up with the target type's parameters (for example, Factory2<T> can
+      // return Target<Int, T>).
+      declaration.typeParameters.zip(implClass.typeParameters).forEach { (source, copied) ->
+        typeSubstitutions[source.symbol] = copied.defaultType
       }
     }
 
@@ -469,6 +461,7 @@ internal class AssistedFactoryTransformer(
               dispatchReceiver =
                 irGetField(irGet(dispatchReceiverParameter!!), delegateFactoryField),
               callee = generatedFactory.invokeFunctionSymbol,
+              typeHint = returnType,
               args = argumentList,
             )
           )
@@ -477,13 +470,20 @@ internal class AssistedFactoryTransformer(
 
     companionDeclarations.createFunction.apply {
       val factoryParam = regularParameters.single()
+      val factoryType = declaration.symbol.typeWithParameters(typeParameters)
+      val implType = implClass.symbol.typeWithParameters(typeParameters)
       // InstanceFactory(Impl(delegateFactory))
       body =
         pluginContext.createIrBuilder(symbol).run {
           irExprBodySafe(
             instanceFactory(
-              declaration.typeWith(),
-              irInvoke(callee = ctor.symbol, args = listOf(irGet(factoryParam))),
+              factoryType,
+              irInvoke(
+                callee = ctor.symbol,
+                typeHint = implType,
+                typeArgs = typeParameters.map { it.defaultType },
+                args = listOf(irGet(factoryParam)),
+              ),
             )
           )
         }
@@ -547,18 +547,29 @@ internal class AssistedFactoryTransformer(
 internal sealed interface AssistedFactoryImpl {
   /** Invoke the create method with the given delegate factory provider */
   context(context: IrMetroContext)
-  fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression
+  fun IrBuilderWithScope.invokeCreate(
+    delegateFactory: IrExpression,
+    factoryType: IrType,
+  ): IrExpression
 
   /** Metro implementation of AssistedFactoryHandler */
   class Metro(private val createFunction: IrSimpleFunction) : AssistedFactoryImpl {
 
     context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
+    override fun IrBuilderWithScope.invokeCreate(
+      delegateFactory: IrExpression,
+      factoryType: IrType,
+    ): IrExpression {
+      val typeArguments =
+        (factoryType as? IrSimpleType)?.arguments.orEmpty().map { argument ->
+          (argument as IrTypeProjection).type
+        }
       return irInvoke(
         dispatchReceiver = irGetObject(createFunction.parentAsClass.symbol),
         callee = createFunction.symbol,
         args = listOf(delegateFactory),
-        typeHint = createFunction.returnType,
+        typeHint = context.metroSymbols.metroProvider.typeWith(factoryType),
+        typeArgs = typeArguments,
       )
     }
   }
@@ -574,7 +585,10 @@ internal sealed interface AssistedFactoryImpl {
     }
 
     context(context: IrMetroContext)
-    override fun IrBuilderWithScope.invokeCreate(delegateFactory: IrExpression): IrExpression {
+    override fun IrBuilderWithScope.invokeCreate(
+      delegateFactory: IrExpression,
+      factoryType: IrType,
+    ): IrExpression {
       return with(context.metroSymbols.providerTypeConverter) {
         val targetType = IrContextualTypeKey.from(createFunction)
         irInvoke(

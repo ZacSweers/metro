@@ -7,13 +7,13 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.canBeInlined
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
@@ -31,10 +31,8 @@ import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.setExtensionReceiver
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
 import dev.zacsweers.metro.compiler.ir.stubExpression
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
-import dev.zacsweers.metro.compiler.ir.wrapInProvider
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -54,6 +52,8 @@ import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.IrTypeSubstitutor
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.typeWithParameters
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
@@ -91,6 +91,7 @@ internal fun generateStaticCreateFunction(
   sourceFunction: IrFunction?,
   patchCreationParams: Boolean = true,
   isAssistedInject: Boolean = false,
+  wrapInSuspendProvider: Boolean = false,
   stubDefaults: Boolean = true,
 ): IrSimpleFunction {
   val createFunction =
@@ -119,6 +120,7 @@ internal fun generateStaticCreateFunction(
           copyQualifiers = true,
           stubDefaults = stubDefaults,
           typeRemapper = { type -> typeRemapper.remapType(type) },
+          wrapInSuspendProvider = wrapInSuspendProvider,
         )
         addHiddenFromObjCAnnotation(this)
         addStaticAnnotations(this)
@@ -244,6 +246,7 @@ internal fun generateStaticNewInstanceFunction(
   sourceParameters: List<IrValueParameter>,
   functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
+  isSuspend: Boolean = false,
   buildBody: IrBuilderWithScope.(IrSimpleFunction) -> IrExpression,
 ): IrSimpleFunction {
   val newInstanceFunction =
@@ -253,6 +256,7 @@ internal fun generateStaticNewInstanceFunction(
         // Placeholder, replaced in body
         returnType = context.irBuiltIns.unitType,
         origin = Origins.FactoryNewInstanceFunction,
+        isSuspend = isSuspend,
         // inline can only work if the target is visible
         isInline = targetFunction?.canBeInlined() == true,
       )
@@ -336,38 +340,64 @@ internal fun generateMetadataVisibleMirrorFunction(
         this.isInline = target?.canBeInlined() == true
       }
       .apply {
-        if (target is IrConstructor) {
-          val sourceClass = factoryClass.parentAsClass
-          val scopeAndQualifierAnnotations = buildList {
-            val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
-            classMetroAnnotations.scope?.ir?.let(::add)
-            classMetroAnnotations.qualifier?.ir?.let(::add)
-          }
-          if (scopeAndQualifierAnnotations.isNotEmpty()) {
-            addAnnotationsCompat(scopeAndQualifierAnnotations)
-          }
-          copyTypeParametersFrom(sourceClass)
-        } else {
-          // Copy type parameters from the factory class (e.g., generic binding containers)
-          copyTypeParametersFrom(factoryClass)
+        val typeSubstitution =
+          if (target is IrConstructor) {
+            val sourceClass = factoryClass.parentAsClass
+            val scopeAndQualifierAnnotations = buildList {
+              val classMetroAnnotations =
+                sourceClass.metroAnnotations(context.metroSymbols.classIds)
+              classMetroAnnotations.scope?.ir?.let(::add)
+              classMetroAnnotations.qualifier?.ir?.let(::add)
+            }
+            if (scopeAndQualifierAnnotations.isNotEmpty()) {
+              addAnnotationsCompat(scopeAndQualifierAnnotations)
+            }
+            val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
+            sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
+              source.symbol to copied.defaultType
+            }
+          } else {
+            // Copy type parameters from the factory class (e.g., generic binding containers)
+            val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
 
-          // If it's a regular (provides) function or backing field, just always copy its
-          // annotations
-          replaceAnnotationsCompat(
-            annotations
-              .mirrorIrConstructorCalls(symbol)
-              .filterNot {
-                // Exclude @Provides to avoid reentrant factory gen
-                it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+            // If it's a regular (provides) function or backing field, just always copy its
+            // annotations
+            replaceAnnotationsCompat(
+              annotations
+                .mirrorIrConstructorCalls(symbol)
+                .filterNot {
+                  // Exclude @Provides to avoid reentrant factory gen
+                  it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+                }
+                .map { it.deepCopyWithSymbols() }
+            )
+            buildMap {
+              factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
+                put(source.symbol, copied.defaultType)
               }
-              .map { it.deepCopyWithSymbols() }
-          )
-        }
+              factoryClass.parentAsClass.typeParameters.zip(copiedTypeParameters).forEach {
+                (source, copied) ->
+                put(source.symbol, copied.defaultType)
+              }
+            }
+          }
         if (target != null) {
-          copyParametersFrom(target)
-          target.extensionReceiverParameterCompat?.let { setExtensionReceiver(it.copyTo(this)) }
+          if (typeSubstitution.isNotEmpty()) {
+            copyParametersFrom(target, typeSubstitution)
+          } else {
+            copyParametersFrom(target)
+          }
+          target.extensionReceiverParameterCompat?.let { receiver ->
+            val receiverType = IrTypeSubstitutor(typeSubstitution).substitute(receiver.type)
+            setExtensionReceiver(receiver.copyTo(this, type = receiverType))
+          }
         }
         setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+        typeSubstitution
+          .takeIf { it.isNotEmpty() }
+          ?.let {
+            this.returnType = IrTypeSubstitutor(it).substitute(returnType)
+          }
 
         regularParameters.forEach {
           // If it has a default value expression, just replace it with a stub. We don't need it to
@@ -424,7 +454,12 @@ internal fun generateStubCreatorFunctions(
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(params, wrapInProvider = true, copyQualifiers = true)
+    addParameters(
+      params,
+      wrapInProvider = true,
+      copyQualifiers = true,
+      wrapInSuspendProvider = sourceFunction.isSuspend,
+    )
     addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
@@ -445,19 +480,22 @@ internal fun IrFunction.addParameters(
   copyQualifiers: Boolean = false,
   typeRemapper: ((IrType) -> IrType)? = null,
   stubDefaults: Boolean = true,
-  onParam: (IrTypeKey, IrValueParameter) -> Unit = { _, _ -> },
+  /**
+   * Wrap non-dispatch-receiver params in `SuspendProvider<…>` instead of `Provider<…>`. Used when
+   * generating constructors / `create()` / etc. for a factory that backs a suspend `@Provides`, so
+   * the field type can be invoked from the suspend `invoke()` body and so the graph can pass a
+   * `SuspendProvider<…>` directly when the dep is itself suspend.
+   */
+  wrapInSuspendProvider: Boolean = false,
+  onParam: (Parameter, IrValueParameter) -> Unit = { _, _ -> },
 ) {
   for (param in params) {
     val isInstanceParam = param.asValueParameter.kind == IrParameterKind.DispatchReceiver
     val baseType =
       if (wrapInProvider && !isInstanceParam) {
-        // Strip all outer Provider/Lazy layers (e.g. Provider<Lazy<T>> → T) but preserve
-        // inner structure like Map<K, Provider<V>>, then wrap in a single Provider.
-        var stripped = param.contextualTypeKey
-        while (stripped.isWrapped) {
-          stripped = stripped.stripOuterProviderOrLazy()
-        }
-        stripped.wrapInProvider().toIrType()
+        val ctxKey = param.contextualTypeKey
+        val usesSuspendProvider = ctxKey.wrappedType.usesSuspendProvider(wrapInSuspendProvider)
+        ctxKey.asCanonicalProviderKey(usesSuspendProvider).toIrType()
       } else {
         param.contextualTypeKey.toIrType()
       }
@@ -494,6 +532,6 @@ internal fun IrFunction.addParameters(
           param.typeKey.qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }
       }
-      .also { onParam(param.typeKey, it) }
+      .also { onParam(param, it) }
   }
 }

@@ -82,6 +82,7 @@ if (metroLocalClone != null) {
     dependencySubstitution {
       substitute(module("dev.zacsweers.metro:compiler")).using(project(":compiler"))
       substitute(module("dev.zacsweers.metro:runtime")).using(project(":runtime"))
+      substitute(module("dev.zacsweers.metro:runtime-coroutines")).using(project(":runtime-coroutines"))
       substitute(module("dev.zacsweers.metro:gradle-plugin")).using(project(":gradle-plugin"))
       substitute(module("dev.zacsweers.metro:interop-dagger")).using(project(":interop-dagger"))
       // Add any other substitutions you need (interop-guice, metrox-*, etc)

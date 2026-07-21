@@ -404,9 +404,9 @@ constructor(
     objects.booleanProperty("metro.generateContributionProviders", false)
 
   /**
-   * Generates Metro-native Circuit bindings for `@CircuitInject` classes and functions. Metro will
-   * generate `Ui.Factory` and `Presenter.Factory` implementations for `@CircuitInject`-annotated
-   * classes and functions.
+   * Generates Metro-native Circuit bindings for `@CircuitInject` and `@SubCircuitInject` classes
+   * and functions. Metro will generate `Ui.Factory`, `Presenter.Factory`, `SubUiFactory`, and
+   * `SubPresenterFactory` implementations for annotated declarations.
    *
    * Note this will eventually move to a separate plugin.
    *
@@ -424,6 +424,18 @@ constructor(
   @ExperimentalMetroGradleApi
   public val enableRuntimeTracing: Property<Boolean> =
     objects.booleanProperty("metro.enableRuntimeTracing", false)
+
+  /**
+   * Enables experimental suspend `@Provides` functions, graph accessors, and provider types.
+   *
+   * When automatic runtime dependencies are enabled, this also adds Metro's `runtime-coroutines`
+   * artifact.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableSuspendProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableSuspendProviders", false)
 
   /**
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API

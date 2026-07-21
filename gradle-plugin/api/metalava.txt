@@ -1,0 +1,240 @@
+// Signature format: 4.0
+package dev.zacsweers.metro.gradle {
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.ERROR, message="This is a dangerous API and its use requires extreme caution. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface DangerousMetroGradleApi {
+    ctor @KotlinOnly public DangerousMetroGradleApi(String message);
+    method @InaccessibleFromKotlin public abstract String message();
+    property public abstract String message;
+  }
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface DelicateMetroGradleApi {
+    ctor @KotlinOnly public DelicateMetroGradleApi(String message);
+    method @InaccessibleFromKotlin public abstract String message();
+    property public abstract String message;
+  }
+
+  public enum DiagnosticSeverity {
+    method @InaccessibleFromKotlin public boolean isEnabled();
+    method @InaccessibleFromKotlin public boolean isIdeOnly();
+    property public boolean isEnabled;
+    property public boolean isIdeOnly;
+    enum_constant public static final dev.zacsweers.metro.gradle.DiagnosticSeverity ERROR;
+    enum_constant public static final dev.zacsweers.metro.gradle.DiagnosticSeverity IDE_ERROR;
+    enum_constant public static final dev.zacsweers.metro.gradle.DiagnosticSeverity IDE_WARN;
+    enum_constant public static final dev.zacsweers.metro.gradle.DiagnosticSeverity NONE;
+    enum_constant public static final dev.zacsweers.metro.gradle.DiagnosticSeverity WARN;
+  }
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is an experimental API and may change or be removed in the future. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface ExperimentalMetroGradleApi {
+  }
+
+  @kotlin.DslMarker public @interface MetroExtensionMarker {
+  }
+
+  public final class MetroGradleSubplugin implements org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin {
+    ctor @javax.inject.Inject public MetroGradleSubplugin(org.gradle.api.problems.Problems problems);
+    method public void apply(org.gradle.api.Project target);
+    method public org.gradle.api.provider.Provider<java.util.List<org.jetbrains.kotlin.gradle.plugin.SubpluginOption>> applyToCompilation(org.jetbrains.kotlin.gradle.plugin.KotlinCompilation<? extends java.lang.Object?> kotlinCompilation);
+    method public String getCompilerPluginId();
+    method public org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact getPluginArtifact();
+    method public boolean isApplicable(org.jetbrains.kotlin.gradle.plugin.KotlinCompilation<? extends java.lang.Object?> kotlinCompilation);
+  }
+
+  @dev.zacsweers.metro.gradle.MetroExtensionMarker public abstract class MetroPluginExtension {
+    ctor @javax.inject.Inject public MetroPluginExtension(org.gradle.api.provider.Provider<org.jetbrains.kotlin.tooling.core.KotlinToolingVersion> compilerVersion, org.gradle.api.file.ProjectLayout layout, org.gradle.api.model.ObjectFactory objects, org.gradle.api.provider.ProviderFactory providers);
+    method public final void compilerOptions(org.gradle.api.Action<dev.zacsweers.metro.gradle.MetroPluginExtension.CompilerOptionsHandler> action);
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getAutomaticallyAddRuntimeDependencies();
+    method @InaccessibleFromKotlin public final dev.zacsweers.metro.gradle.MetroPluginExtension.CompilerOptionsHandler getCompilerOptions();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.String> getCompilerVersion();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.MapProperty<java.lang.String,java.lang.String> getCompilerVersionAliases();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getContributesAsInject();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getDebug();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getDesugaredProviderSeverity();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableFunctionProviders();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableGraphSharding();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableKClassToClassMapKeyInterop();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableKotlinVersionCompatibilityChecks();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableSwitchingProviders();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableTopLevelFunctionInjection();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnabled();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getForceEnableFirInIde();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getGenerateAssistedFactories();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getGenerateContributionHints();
+    method @InaccessibleFromKotlin public final dev.zacsweers.metro.gradle.MetroPluginExtension.InteropHandler getInterop();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getInteropAnnotationsNamedArgSeverity();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Integer> getKeysPerGraphShard();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Integer> getMaxIrErrors();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getNonPublicContributionSeverity();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.OptionalBindingBehavior> getOptionalBindingBehavior();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getPublicScopedProviderSeverity();
+    method @InaccessibleFromKotlin public final org.gradle.api.file.DirectoryProperty getReportsDestination();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Integer> getStatementsPerInitFun();
+    method @InaccessibleFromKotlin public final org.gradle.api.file.DirectoryProperty getTraceDestination();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getUnusedGraphInputsSeverity();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getWarnOnInjectAnnotationPlacement();
+    method public final void interop(org.gradle.api.Action<dev.zacsweers.metro.gradle.MetroPluginExtension.InteropHandler> action);
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> automaticallyAddRuntimeDependencies;
+    property public final dev.zacsweers.metro.gradle.MetroPluginExtension.CompilerOptionsHandler compilerOptions;
+    property @dev.zacsweers.metro.gradle.DangerousMetroGradleApi(message="This could break Metro\'s compatibility layer!") public final org.gradle.api.provider.Property<java.lang.String> compilerVersion;
+    property public final org.gradle.api.provider.MapProperty<java.lang.String,java.lang.String> compilerVersionAliases;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> contributesAsInject;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> debug;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> desugaredProviderSeverity;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableFunctionProviders;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableGraphSharding;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableKClassToClassMapKeyInterop;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableKotlinVersionCompatibilityChecks;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableSwitchingProviders;
+    property @dev.zacsweers.metro.gradle.DelicateMetroGradleApi(message="Top-level function injection is experimental and does not work yet in all cases. See the kdoc.") @dev.zacsweers.metro.gradle.RequiresIdeSupport public final org.gradle.api.provider.Property<java.lang.Boolean> enableTopLevelFunctionInjection;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enabled;
+    property @dev.zacsweers.metro.gradle.DangerousMetroGradleApi(message="This could break analysis in your IDE if you force-enable!") public final org.gradle.api.provider.Property<java.lang.Boolean> forceEnableFirInIde;
+    property @dev.zacsweers.metro.gradle.RequiresIdeSupport public final org.gradle.api.provider.Property<java.lang.Boolean> generateAssistedFactories;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> generateContributionHints;
+    property public final dev.zacsweers.metro.gradle.MetroPluginExtension.InteropHandler interop;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> interopAnnotationsNamedArgSeverity;
+    property public final org.gradle.api.provider.Property<java.lang.Integer> keysPerGraphShard;
+    property public final org.gradle.api.provider.Property<java.lang.Integer> maxIrErrors;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> nonPublicContributionSeverity;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.OptionalBindingBehavior> optionalBindingBehavior;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> publicScopedProviderSeverity;
+    property @dev.zacsweers.metro.gradle.DelicateMetroGradleApi(message="This should only be used for debugging purposes and is not intended to be always enabled.") public final org.gradle.api.file.DirectoryProperty reportsDestination;
+    property public final org.gradle.api.provider.Property<java.lang.Integer> statementsPerInitFun;
+    property public final org.gradle.api.file.DirectoryProperty traceDestination;
+    property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> unusedGraphInputsSeverity;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> warnOnInjectAnnotationPlacement;
+  }
+
+  @dev.zacsweers.metro.gradle.MetroExtensionMarker public abstract static class MetroPluginExtension.CompilerOptionsHandler {
+    ctor @javax.inject.Inject public MetroPluginExtension.CompilerOptionsHandler(org.gradle.api.model.ObjectFactory objects);
+    method public final void disable(String key);
+    method public final void enable(String key);
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.MapProperty<java.lang.String,java.lang.String> getRawOptions();
+    method public final void put(String key, boolean value);
+    method public final void put(String key, dev.zacsweers.metro.gradle.DiagnosticSeverity severity);
+    method public final void put(String key, String value);
+    method public final void put(String key, org.gradle.api.provider.Provider<java.lang.String> value);
+    property public final org.gradle.api.provider.MapProperty<java.lang.String,java.lang.String> rawOptions;
+  }
+
+  @dev.zacsweers.metro.gradle.MetroExtensionMarker public abstract static class MetroPluginExtension.InteropHandler {
+    ctor @javax.inject.Inject public MetroPluginExtension.InteropHandler(org.gradle.api.model.ObjectFactory objects);
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getAssisted();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getAssistedFactory();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getAssistedInject();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getBindingContainer();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getBinds();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getContributesBinding();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getContributesIntoSet();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getContributesTo();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getDependencyGraph();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getDependencyGraphFactory();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getElementsIntoSet();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getEnableDaggerAnvilInterop();
+    method @InaccessibleFromKotlin public abstract org.gradle.api.provider.Property<java.lang.Boolean> getEnableDaggerRuntimeInterop();
+    method @InaccessibleFromKotlin public abstract org.gradle.api.provider.Property<java.lang.Boolean> getEnableGuiceRuntimeInterop();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getGraphExtension();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getGraphExtensionFactory();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeAnvilAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeDaggerAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeGuiceAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeJakartaAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeJavaxAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeKotlinInjectAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getIncludeKotlinInjectAnvilAnnotations();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getInject();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getIntoMap();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getIntoSet();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getLazy();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getMapKey();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getMultibinds();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getOptionalBinding();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getOrigin();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getProvider();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getProvides();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getQualifier();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.SetProperty<java.lang.String> getScope();
+    method public final void includeAnvilForDagger();
+    method public final void includeAnvilForDagger(optional boolean includeJavax);
+    method public final void includeAnvilForDagger(optional boolean includeJavax, optional boolean includeJakarta);
+    method public final void includeAnvilForKotlinInject();
+    method public final void includeDagger(optional boolean includeJavax, optional boolean includeJakarta);
+    method public final void includeGuice();
+    method public final void includeJakarta();
+    method public final void includeJavax();
+    method public final void includeKotlinInject();
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> assisted;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> assistedFactory;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> assistedInject;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> bindingContainer;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> binds;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> contributesBinding;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> contributesIntoSet;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> contributesTo;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> dependencyGraph;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> dependencyGraphFactory;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> elementsIntoSet;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> enableDaggerAnvilInterop;
+    property public abstract org.gradle.api.provider.Property<java.lang.Boolean> enableDaggerRuntimeInterop;
+    property public abstract org.gradle.api.provider.Property<java.lang.Boolean> enableGuiceRuntimeInterop;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> graphExtension;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> graphExtensionFactory;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeAnvilAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeDaggerAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeGuiceAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeJakartaAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeJavaxAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeKotlinInjectAnnotations;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> includeKotlinInjectAnvilAnnotations;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> inject;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> intoMap;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> intoSet;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> lazy;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> mapKey;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> multibinds;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> optionalBinding;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> origin;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> provider;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> provides;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> qualifier;
+    property public final org.gradle.api.provider.SetProperty<java.lang.String> scope;
+  }
+
+  public enum OptionalBindingBehavior {
+    enum_constant public static final dev.zacsweers.metro.gradle.OptionalBindingBehavior DEFAULT;
+    enum_constant public static final dev.zacsweers.metro.gradle.OptionalBindingBehavior DISABLED;
+    enum_constant public static final dev.zacsweers.metro.gradle.OptionalBindingBehavior REQUIRE_OPTIONAL_BINDING;
+  }
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="Marks declarations in the Metro Gradle API that require IDE support to be enabled to be useful in a project. If you are willing to do this, you can opt in this annotation! See https://zacsweers.github.io/metro/latest/installation/#ide-support for setup instructions.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface RequiresIdeSupport {
+  }
+
+}
+
+package dev.zacsweers.metro.gradle.artifacts {
+
+  @org.gradle.api.tasks.CacheableTask public abstract class GenerateGraphMetadataTask extends org.gradle.api.DefaultTask {
+    ctor public GenerateGraphMetadataTask();
+    method @org.gradle.api.tasks.TaskAction public final void generate();
+    method @InaccessibleFromKotlin @org.gradle.api.tasks.Input @org.gradle.api.tasks.Optional public abstract org.gradle.api.provider.Property<java.lang.String> getCompilationName();
+    method @InaccessibleFromKotlin @org.gradle.api.tasks.InputFiles @org.gradle.api.tasks.PathSensitive(org.gradle.api.tasks.PathSensitivity.RELATIVE) public abstract org.gradle.api.file.ConfigurableFileCollection getGraphJsonFiles();
+    method @InaccessibleFromKotlin @org.gradle.api.tasks.OutputFile public abstract org.gradle.api.file.RegularFileProperty getOutputFile();
+    method @InaccessibleFromKotlin @org.gradle.api.tasks.Input public abstract org.gradle.api.provider.Property<java.lang.String> getProjectPath();
+    property @org.gradle.api.tasks.Input @org.gradle.api.tasks.Optional public abstract org.gradle.api.provider.Property<java.lang.String> compilationName;
+    property @org.gradle.api.tasks.InputFiles @org.gradle.api.tasks.PathSensitive(org.gradle.api.tasks.PathSensitivity.RELATIVE) public abstract org.gradle.api.file.ConfigurableFileCollection graphJsonFiles;
+    property @org.gradle.api.tasks.OutputFile public abstract org.gradle.api.file.RegularFileProperty outputFile;
+    property @org.gradle.api.tasks.Input public abstract org.gradle.api.provider.Property<java.lang.String> projectPath;
+    field public static final String NAME = "generateMetroGraphMetadata";
+  }
+
+  public interface MetroArtifacts {
+    method @InaccessibleFromKotlin public org.gradle.api.provider.Provider<org.gradle.api.file.Directory> getReportsDir();
+    property public abstract org.gradle.api.provider.Provider<org.gradle.api.file.Directory> reportsDir;
+  }
+
+  public final class MetroArtifactsKt {
+    method @InaccessibleFromKotlin public static org.gradle.api.provider.Provider<org.gradle.api.file.Directory> getGraphMetadataDir(dev.zacsweers.metro.gradle.artifacts.MetroArtifacts);
+    property public static org.gradle.api.provider.Provider<org.gradle.api.file.Directory> dev.zacsweers.metro.gradle.artifacts.MetroArtifacts.graphMetadataDir;
+  }
+
+}
+

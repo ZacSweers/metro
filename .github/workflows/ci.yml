@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - parallel:
           - name: Configure JDK
@@ -51,13 +51,25 @@ jobs:
     runs-on: ubuntu-slim
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
+      default_kotlin_version: ${{ steps.generate.outputs.default_kotlin_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Generate matrix
         id: generate
-        run: ./scripts/generate-ci-matrix.sh
+        run: |
+          ./scripts/generate-ci-matrix.sh
+          default_kotlin_version=$(sed -n 's/^kotlin = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+          if [[ -z "$default_kotlin_version" ]]; then
+            echo "::error::Could not read the default Kotlin version"
+            exit 1
+          fi
+          if ! grep -Fxq "$default_kotlin_version" compiler-compat/version-aliases.txt; then
+            echo "::error::Default Kotlin version $default_kotlin_version is not in the compiler matrix"
+            exit 1
+          fi
+          echo "default_kotlin_version=$default_kotlin_version" >> "$GITHUB_OUTPUT"
 
   core:
     name: "core artifacts / ${{ matrix.kotlin-compiler }}"
@@ -72,14 +84,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          # Keep one Linux Gradle cache writer, using the repository's default Kotlin version.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler != needs.generate-matrix.outputs.default_kotlin_version }}
           konan: true
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
 
       - name: Check root project
@@ -116,13 +130,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
 
       - name: Generate tests
         run: ./gradlew :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
@@ -179,19 +193,16 @@ jobs:
 
       - name: Checkout
         if: github.ref == 'refs/heads/main'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         if: github.ref == 'refs/heads/main'
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
+          # These jobs restore the versioned Konan cache written by the default Kotlin core lane.
           konan: true
-          # All 3 matrix targets here run against the default Kotlin version (from libs.versions.toml)
-          # so they share the same `<os>-konan-klibs-default` cache key. Only the linuxX64 target
-          # actually populates `~/.konan/kotlin-native-prebuilt-linux-*/`; the js and wasmJs entries
-          # don't touch ~/.konan/ but cleanly read whatever the linuxX64 entry saved.
 
       - name: ':gradle-plugin:functionalTest'
         if: github.ref == 'refs/heads/main'
@@ -220,13 +231,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
           konan: true
 
       - name: Check samples
@@ -258,13 +269,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
 
       - name: Test idea-plugin
         run: ./gradlew -p idea-plugin test --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
@@ -310,7 +321,7 @@ jobs:
 
       - name: Checkout
         if: github.ref == 'refs/heads/main'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # https://github.com/gradle/actions/issues/1013
       - name: Setup Gradle
@@ -318,14 +329,16 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          # The core job writes Linux caches; these lanes only write their host-specific caches.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' }}
           konan: true
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.os == 'ubuntu-latest' }}
 
       - name: Check runtime and IC tests
         if: github.ref == 'refs/heads/main'
         # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
         # mingwX64, etc.), so each runner covers a different native target naturally.
-        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
+        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
 
       - name: Check samples
         if: github.ref == 'refs/heads/main'
@@ -353,13 +366,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
           konan: true
 
       - name: Build Metro benchmark
@@ -405,13 +418,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: true
           konan: true
 
       - name: Upload snapshot

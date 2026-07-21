@@ -4,7 +4,6 @@ package dev.zacsweers.metro.compiler.circuit
 
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -49,6 +48,7 @@ import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.builders.irSamConversion
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irWhen
@@ -77,7 +77,6 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
-import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.starProjectedType
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.SYNTHETIC_OFFSET
@@ -99,18 +98,61 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 
+/** Generates Circuit factory class declarations before Metro's IR pipeline consumes them. */
+public class CircuitIrDeclarationGenerationExtension
+private constructor(
+  private val function0Types: Set<ClassId>,
+  private val assistedFactoryAnnotations: Set<ClassId>,
+  private val injectAnnotations: Set<ClassId>,
+  private val qualifierAnnotations: Set<ClassId>,
+  private val compatContext: CompatContext,
+) : IrGenerationExtension {
+  public companion object {
+    public fun create(
+      classIds: ClassIds,
+      compatContext: CompatContext,
+    ): CircuitIrDeclarationGenerationExtension {
+      return CircuitIrDeclarationGenerationExtension(
+        function0Types = classIds.function0Types,
+        assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
+        injectAnnotations = classIds.allInjectAnnotations,
+        qualifierAnnotations = classIds.qualifierAnnotations,
+        compatContext = compatContext,
+      )
+    }
+  }
+
+  override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+    val targetResolver =
+      CircuitIrFactoryTargetResolver(
+        pluginContext = pluginContext,
+        function0Types = function0Types,
+        assistedFactoryAnnotations = assistedFactoryAnnotations,
+        injectAnnotations = injectAnnotations,
+        qualifierAnnotations = qualifierAnnotations,
+        compatContext = compatContext,
+      )
+    CircuitIrDeclarationGenerator(
+        pluginContext = pluginContext,
+        targetResolver = targetResolver,
+        compatContext = compatContext,
+      )
+      .generateFactoryShells(moduleFragment)
+  }
+}
+
 /**
  * IR extension for Circuit-generated factories.
  *
- * In the legacy path, FIR still creates the factory class signatures and this extension only fills
- * in backing fields plus `create()` bodies. When Metro is generating classes directly in IR, this
- * extension first creates the factory class shells as metadata-visible declarations, then runs the
- * same body-fill pass over those new classes.
+ * This fills in backing fields plus `create()` bodies for factory declarations generated in FIR or
+ * by [CircuitIrDeclarationGenerationExtension].
  *
- * This extension should run after the Compose compiler IR plugin.
+ * This extension must run before Compose because it creates composable lambdas that Compose then
+ * transforms.
  */
 public class CircuitIrExtension(
   private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
@@ -124,6 +166,7 @@ public class CircuitIrExtension(
     ): CircuitIrExtension {
       return CircuitIrExtension(
         generateClassesInIr = generateClassesInIr,
+        function0Types = classIds.function0Types,
         assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
         injectAnnotations = classIds.allInjectAnnotations,
         qualifierAnnotations = classIds.qualifierAnnotations,
@@ -137,35 +180,265 @@ public class CircuitIrExtension(
     // the DI-provided Symbols instance. Keep this local helper Circuit-focused and pass only the
     // Metro configuration bits this extension actually needs.
     val symbols = CircuitSymbols.Ir(with(compatContext) { pluginContext.finderForBuiltinsCompat() })
-    val transformer =
-      CircuitIrTransformer(
+    val targetResolver =
+      CircuitIrFactoryTargetResolver(
         pluginContext = pluginContext,
-        symbols = symbols,
-        generateClassesInIr = generateClassesInIr,
+        function0Types = function0Types,
         assistedFactoryAnnotations = assistedFactoryAnnotations,
         injectAnnotations = injectAnnotations,
         qualifierAnnotations = qualifierAnnotations,
         compatContext = compatContext,
       )
-    if (generateClassesInIr) {
-      // Metro's main IR transformer expects contributed classes to already exist. Create Circuit
-      // factories before the normal visitor pass so they look like FIR-generated factories by the
-      // time their bodies and Metro contribution classes are generated.
-      transformer.generateFactoryShells(moduleFragment)
-    }
+    val transformer =
+      CircuitIrTransformer(
+        pluginContext = pluginContext,
+        symbols = symbols,
+        generateClassesInIr = generateClassesInIr,
+        function0Types = function0Types,
+        targetResolver = targetResolver,
+        compatContext = compatContext,
+      )
     moduleFragment.transformChildrenVoid(transformer)
   }
 }
 
-private class CircuitIrTransformer(
+private class CircuitIrFactoryTargetResolver(
   private val pluginContext: IrPluginContext,
-  private val symbols: CircuitSymbols.Ir,
-  private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
   private val assistedFactoryAnnotations: Set<ClassId>,
   private val injectAnnotations: Set<ClassId>,
   private val qualifierAnnotations: Set<ClassId>,
   private val compatContext: CompatContext,
-) : IrElementTransformerVoid(), CompatContext by compatContext {
+) : CompatContext by compatContext {
+  private val builtinsFinder by lazy {
+    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
+  }
+
+  fun resolve(
+    targetClass: IrClass,
+    codegenTarget: CircuitCodegenTarget,
+  ): CircuitIrFactoryTarget? {
+    val annotation =
+      targetClass.annotationsCompat().firstOrNull { annotation ->
+        annotation.codegenTarget() == codegenTarget
+      } ?: return null
+    val (screenType, scopeType) = annotation.extractCircuitInjectArgs() ?: return null
+    val factoryClassId =
+      targetClass.classIdOrFail.createNestedClassId(codegenTarget.nestedFactoryName)
+    val factoryType = determineFactoryTypeForTarget(targetClass, codegenTarget) ?: return null
+    val constructorParams =
+      if (targetClass.isAnnotatedWithAny(assistedFactoryAnnotations)) {
+        listOf(CircuitIrConstructorParam(CircuitNames.factoryField, targetClass.defaultType))
+      } else {
+        val constructor =
+          targetClass.findInjectableConstructor(
+            onlyUsePrimaryConstructor = true,
+            injectAnnotations = injectAnnotations,
+          )
+        constructor
+          ?.regularParameters
+          .orEmpty()
+          .filterNot { it.isClassProvidedParam(codegenTarget, factoryType) }
+          .map { param ->
+            CircuitIrConstructorParam(
+              name = param.name,
+              type = injectableParamType(param.type),
+              qualifier = param.qualifierAnnotation(),
+            )
+          }
+      }
+    return CircuitIrFactoryTarget(
+      originClassId = targetClass.classIdOrFail,
+      codegenTarget = codegenTarget,
+      factoryClassId = factoryClassId,
+      screenType = screenType.owner.classIdOrFail,
+      scopeClassId = scopeType.owner.classIdOrFail,
+      scopeClass = scopeType,
+      factoryType = factoryType,
+      instantiationType = InstantiationType.CLASS,
+      constructorParams = constructorParams,
+      qualifier = targetClass.qualifierAnnotation(),
+    )
+  }
+
+  fun resolve(
+    function: IrSimpleFunction,
+    codegenTarget: CircuitCodegenTarget,
+  ): CircuitIrFactoryTarget? {
+    val annotation =
+      function.annotationsCompat().firstOrNull { annotation ->
+        annotation.codegenTarget() == codegenTarget
+      } ?: return null
+    val (screenType, scopeType) = annotation.extractCircuitInjectArgs() ?: return null
+    val factoryType =
+      codegenTarget.functionFactoryType(function.returnType == pluginContext.irBuiltIns.unitType)
+    val factoryClassId =
+      ClassId(
+        function.file.packageFqName,
+        codegenTarget.functionFactoryName(function.name.asString()),
+      )
+    val constructorParams =
+      function.regularParameters
+        .filterNot { it.isFunctionProvidedParam(codegenTarget, factoryType) }
+        .map { param ->
+          CircuitIrConstructorParam(
+            name = param.name,
+            type = injectableParamType(param.type),
+            qualifier = param.qualifierAnnotation(),
+          )
+        }
+    return CircuitIrFactoryTarget(
+      originClassId = null,
+      codegenTarget = codegenTarget,
+      factoryClassId = factoryClassId,
+      screenType = screenType.owner.classIdOrFail,
+      scopeClassId = scopeType.owner.classIdOrFail,
+      scopeClass = scopeType,
+      factoryType = factoryType,
+      instantiationType = InstantiationType.FUNCTION,
+      originalFunctionSymbol = function.symbol,
+      constructorParams = constructorParams,
+      qualifier = function.qualifierAnnotation(),
+    )
+  }
+
+  fun isCircuitInjectAnnotation(annotation: IrConstructorCall): Boolean {
+    return annotation.codegenTarget() != null
+  }
+
+  fun classifyCircuitType(
+    paramClass: IrClass,
+    target: CircuitCodegenTarget,
+  ): CircuitProvidedType? {
+    return when (paramClass.classId) {
+      target.screenClassId -> CircuitProvidedType.SCREEN
+      CircuitClassIds.Navigator ->
+        if (target == CircuitCodegenTarget.CIRCUIT) CircuitProvidedType.NAVIGATOR else null
+      CircuitClassIds.Modifier -> CircuitProvidedType.MODIFIER
+      target.uiStateClassId -> CircuitProvidedType.UI_STATE
+      else -> {
+        for (superInterface in paramClass.allSuperInterfaces()) {
+          when (superInterface.classId) {
+            target.screenClassId -> return CircuitProvidedType.SCREEN
+            target.uiStateClassId -> return CircuitProvidedType.UI_STATE
+          }
+        }
+        null
+      }
+    }
+  }
+
+  private fun determineFactoryTypeForTarget(
+    targetClass: IrClass,
+    target: CircuitCodegenTarget,
+  ): FactoryType? {
+    bfsForFactoryType(targetClass, target)?.let {
+      return it
+    }
+    return (targetClass.parent as? IrClass)?.let { bfsForFactoryType(it, target) }
+  }
+
+  private fun bfsForFactoryType(
+    root: IrClass,
+    target: CircuitCodegenTarget,
+  ): FactoryType? {
+    val queue = ArrayDeque<IrClass>()
+    val seen = mutableSetOf<ClassId>()
+    queue.add(root)
+    while (queue.isNotEmpty()) {
+      val clazz = queue.removeFirst()
+      val classId = clazz.classId ?: continue
+      if (!seen.add(classId)) continue
+      for (supertype in clazz.superTypes) {
+        val superClass = supertype.classOrNull?.owner ?: continue
+        when (superClass.classId) {
+          target.presenterClassId -> return FactoryType.PRESENTER
+          target.uiClassId -> return FactoryType.UI
+          else -> queue.add(superClass)
+        }
+      }
+    }
+    return null
+  }
+
+  private fun IrConstructorCall.extractCircuitInjectArgs(): Pair<IrClassSymbol, IrClassSymbol>? {
+    val screenArg =
+      arguments[0] as? IrClassReference
+        ?: argument(CircuitNames.screen) as? IrClassReference
+        ?: return null
+    val scopeArg =
+      arguments[1] as? IrClassReference
+        ?: argument(Symbols.Names.scope) as? IrClassReference
+        ?: return null
+    val screenSymbol = screenArg.symbol as? IrClassSymbol ?: return null
+    val scopeSymbol = scopeArg.symbol as? IrClassSymbol ?: return null
+    return screenSymbol to scopeSymbol
+  }
+
+  private fun IrConstructorCall.argument(name: Name): IrExpression? {
+    val parameter = symbol.owner.parameters.firstOrNull { it.name == name } ?: return null
+    return arguments[parameter.indexInParameters]
+  }
+
+  private fun IrValueParameter.isFunctionProvidedParam(
+    target: CircuitCodegenTarget,
+    factoryType: FactoryType,
+  ): Boolean {
+    val paramClass = type.classOrNull?.owner ?: return false
+    val circuitType = classifyCircuitType(paramClass, target) ?: return false
+    if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+      return circuitType == CircuitProvidedType.MODIFIER ||
+        circuitType == CircuitProvidedType.UI_STATE
+    }
+    return circuitType.isProvidedFor(factoryType)
+  }
+
+  private fun IrValueParameter.isClassProvidedParam(
+    target: CircuitCodegenTarget,
+    factoryType: FactoryType,
+  ): Boolean {
+    val paramClass = type.classOrNull?.owner ?: return false
+    val circuitType = classifyCircuitType(paramClass, target) ?: return false
+    if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+      return circuitType == CircuitProvidedType.SCREEN
+    }
+    return circuitType.isProvidedFor(factoryType)
+  }
+
+  private fun CircuitProvidedType.isProvidedFor(factoryType: FactoryType): Boolean {
+    return when (this) {
+      CircuitProvidedType.SCREEN -> true
+      CircuitProvidedType.NAVIGATOR -> factoryType == FactoryType.PRESENTER
+      CircuitProvidedType.MODIFIER -> factoryType == FactoryType.UI
+      CircuitProvidedType.UI_STATE -> factoryType == FactoryType.UI
+    }
+  }
+
+  private fun IrConstructorCall.codegenTarget(): CircuitCodegenTarget? =
+    CircuitCodegenTarget.forInjectAnnotation(symbol.owner.parentAsClass.classId)
+
+  private fun injectableParamType(paramType: IrType): IrType {
+    val paramClassId = paramType.classOrNull?.owner?.classId
+    val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
+    return if (isAlreadyWrapped) {
+      paramType
+    } else {
+      builtinsFinder.findClass(Symbols.ClassIds.metroProvider)!!.typeWith(paramType)
+    }
+  }
+
+  private fun IrAnnotationContainer.qualifierAnnotation(): IrConstructorCall? {
+    return annotationsCompat().firstOrNull { annotation ->
+      annotation.symbol.owner.parentAsClass.isAnnotatedWithAny(qualifierAnnotations)
+    }
+  }
+}
+
+private class CircuitIrDeclarationGenerator(
+  private val pluginContext: IrPluginContext,
+  private val targetResolver: CircuitIrFactoryTargetResolver,
+  private val compatContext: CompatContext,
+) : CompatContext by compatContext {
   private val builtinsFinder by lazy {
     with(compatContext) { pluginContext.finderForBuiltinsCompat() }
   }
@@ -176,20 +449,12 @@ private class CircuitIrTransformer(
 
   private val irTypeSystemContext by lazy { IrTypeSystemContextImpl(pluginContext.irBuiltIns) }
 
-  // Target data for factories created in this IR pass. Legacy factories read equivalent data from
-  // their FIR metadata source; see circuitFactoryTargetData().
-  private val generatedTargets = mutableMapOf<IrClass, CircuitIrFactoryTarget>()
-
   private val injectAnnotationCtor by lazy {
     builtinsFinder.findClass(Symbols.ClassIds.metroInject)!!.constructors.first()
   }
 
   private val contributesIntoSetAnnotationCtor by lazy {
     builtinsFinder.findClass(CONTRIBUTES_INTO_SET_CLASS_ID)!!.constructors.first()
-  }
-
-  private val composableAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
   }
 
   private val originAnnotationCtor by lazy {
@@ -213,16 +478,7 @@ private class CircuitIrTransformer(
       .symbol
   }
 
-  /** Cached invoke() symbol for metro's Provider type. */
-  private val providerInvokeFunction: IrSimpleFunctionSymbol by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroProvider)!!.functions.first {
-      it.owner.name.asString() == "invoke"
-    }
-  }
-
   fun generateFactoryShells(moduleFragment: IrModuleFragment) {
-    // Walk source declarations only. Newly generated factories are added to these files/classes but
-    // are not themselves scanned as @CircuitInject targets.
     for (file in moduleFragment.files) {
       for (declaration in file.declarations.toList()) {
         when (declaration) {
@@ -230,6 +486,194 @@ private class CircuitIrTransformer(
           is IrSimpleFunction -> generateTopLevelFunctionFactoryShell(declaration)
         }
       }
+    }
+  }
+
+  private fun generateNestedFactoryShells(targetClass: IrClass) {
+    val nestedClasses = targetClass.declarations.filterIsInstance<IrClass>().toList()
+    if (!targetClass.isExpect) {
+      for (codegenTarget in CircuitCodegenTarget.entries) {
+        if (targetClass.hasFactoryClass(codegenTarget.nestedFactoryName)) continue
+        targetResolver.resolve(targetClass, codegenTarget)?.let { target ->
+          createFactoryClass(
+            parent = targetClass,
+            name = codegenTarget.nestedFactoryName,
+            target = target,
+            origin =
+              IrDeclarationOrigin.GeneratedByPlugin(
+                CircuitOrigins.FactoryClass(codegenTarget, target.factoryType)
+              ),
+          )
+        }
+      }
+    }
+
+    for (nestedClass in nestedClasses) {
+      generateNestedFactoryShells(nestedClass)
+    }
+  }
+
+  private fun IrClass.hasFactoryClass(name: Name): Boolean {
+    return declarations.filterIsInstance<IrClass>().any { it.name == name }
+  }
+
+  private fun generateTopLevelFunctionFactoryShell(function: IrSimpleFunction) {
+    if (!function.isTopLevelDeclaration || function.isExpect) return
+    if (function.annotationsCompat().none(targetResolver::isCircuitInjectAnnotation)) return
+
+    for (codegenTarget in CircuitCodegenTarget.entries) {
+      val target = targetResolver.resolve(function, codegenTarget) ?: continue
+      val file = function.file
+      if (file.hasTopLevelFactoryClass(target.factoryClassId)) continue
+
+      createFactoryClass(
+        parent = file,
+        name = target.factoryClassId.shortClassName,
+        target = target,
+        origin =
+          IrDeclarationOrigin.GeneratedByPlugin(
+            CircuitOrigins.FactoryClass(codegenTarget, target.factoryType)
+          ),
+      )
+    }
+  }
+
+  private fun IrFile.hasTopLevelFactoryClass(classId: ClassId): Boolean {
+    return declarations.filterIsInstance<IrClass>().any { it.classIdOrFail == classId }
+  }
+
+  private fun createFactoryClass(
+    parent: IrDeclarationParent,
+    name: Name,
+    target: CircuitIrFactoryTarget,
+    origin: IrDeclarationOrigin,
+  ) {
+    val factoryClass =
+      pluginContext.irFactory
+        .buildClass {
+          this.name = name
+          this.origin = origin
+          kind = ClassKind.CLASS
+          visibility = DescriptorVisibilities.PUBLIC
+          modality = Modality.FINAL
+        }
+        .apply {
+          this.parent = parent
+          createThisReceiverParameter()
+        }
+
+    when (parent) {
+      is IrClass -> parent.addChild(factoryClass)
+      is IrFile -> parent.addChild(factoryClass)
+      else -> error("Unsupported Circuit factory parent: $parent")
+    }
+
+    val factoryType = requireNotNull(target.factoryType)
+    factoryClass.apply {
+      superTypes += target.codegenTarget.factoryClassId(factoryType).type()
+      addFactoryAnnotations(target)
+      markAsDeprecatedHidden()
+      addFakeOverrides(irTypeSystemContext)
+    }
+
+    // Kotlin 2.4 requires the class shell to be registered without a constructor. The constructor
+    // is then added and registered separately so both declarations receive valid FIR metadata.
+    metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(factoryClass)
+    factoryClass
+      .addConstructor {
+        this.origin = CircuitOrigins.IrFactoryConstructor
+        isPrimary = true
+        visibility = DescriptorVisibilities.PUBLIC
+      }
+      .apply constructor@{
+        for (param in target.constructorParams) {
+          addValueParameter(param.name, param.type).apply {
+            param.qualifier?.let { addAnnotationCompat(it) }
+          }
+        }
+        body = context(pluginContext) { this@constructor.generateDefaultConstructorBody() }
+        metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+      }
+  }
+
+  private fun IrClass.addFactoryAnnotations(target: CircuitIrFactoryTarget) {
+    addAnnotationCompat(context(pluginContext) { buildAnnotation(symbol, injectAnnotationCtor) })
+    val scopeClass = requireNotNull(target.scopeClass)
+    addAnnotationCompat(
+      context(pluginContext) {
+        buildAnnotation(symbol, contributesIntoSetAnnotationCtor) { annotation ->
+          annotation.arguments[0] = kClassReference(scopeClass)
+        }
+      }
+    )
+    target.qualifier?.let { addAnnotationCompat(it) }
+    target.originClassId?.let { originClassId ->
+      addAnnotationCompat(
+        context(pluginContext) {
+          buildAnnotation(symbol, originAnnotationCtor) { annotation ->
+            annotation.arguments[0] =
+              kClassReference(
+                with(compatContext) {
+                  pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
+                } ?: error("Could not find Circuit origin class $originClassId")
+              )
+          }
+        }
+      )
+    }
+  }
+
+  private fun ClassId.type(): IrType {
+    return builtinsFinder.findClass(this)?.defaultType ?: error("Could not find $this")
+  }
+
+  private fun IrClass.markAsDeprecatedHidden() {
+    addAnnotationCompat(
+      context(pluginContext) {
+        buildAnnotation(symbol, deprecatedAnnotationCtor) { annotation ->
+          annotation.arguments[0] =
+            irString("This synthesized declaration should not be used directly")
+          annotation.arguments[2] =
+            IrGetEnumValueImpl(
+              SYNTHETIC_OFFSET,
+              SYNTHETIC_OFFSET,
+              deprecationLevel.defaultType,
+              hiddenDeprecationLevel,
+            )
+        }
+      }
+    )
+  }
+}
+
+private class CircuitIrTransformer(
+  private val pluginContext: IrPluginContext,
+  private val symbols: CircuitSymbols.Ir,
+  private val generateClassesInIr: Boolean,
+  private val function0Types: Set<ClassId>,
+  private val targetResolver: CircuitIrFactoryTargetResolver,
+  private val compatContext: CompatContext,
+) : IrElementTransformerVoid(), CompatContext by compatContext {
+  private val builtinsFinder by lazy {
+    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
+  }
+
+  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
+    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
+  }
+
+  private val composableAnnotationCtor by lazy {
+    builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
+  }
+
+  private val originAnnotationCtor by lazy {
+    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
+  }
+
+  /** Cached invoke() symbol for metro's Provider type. */
+  private val providerInvokeFunction: IrSimpleFunctionSymbol by lazy {
+    builtinsFinder.findClass(Symbols.ClassIds.metroProvider)!!.functions.first {
+      it.owner.name.asString() == "invoke"
     }
   }
 
@@ -277,355 +721,27 @@ private class CircuitIrTransformer(
     return super.visitClass(declaration)
   }
 
-  private fun generateNestedFactoryShells(targetClass: IrClass) {
-    // Recurse through every class because assisted factories are often nested inside an
-    // unannotated Presenter/Ui class. Only annotated classes get a generated CircuitFactory.
-    if (targetClass.shouldGenerateNestedFactory()) {
-      val target = targetClass.toCircuitFactoryTarget()
-      if (target != null) {
-        val factoryClass =
-          createFactoryClass(
-            parent = targetClass,
-            name = CircuitNames.Factory,
-            target = target,
-            origin =
-              IrDeclarationOrigin.GeneratedByPlugin(
-                CircuitOrigins.FactoryClass(target.factoryType)
-              ),
-          )
-        targetClass.addChild(factoryClass)
-        generatedTargets[factoryClass] = target
-      }
-    }
-
-    for (nestedClass in targetClass.declarations.filterIsInstance<IrClass>().toList()) {
-      generateNestedFactoryShells(nestedClass)
-    }
-  }
-
-  private fun IrClass.shouldGenerateNestedFactory(): Boolean {
-    return !isExpect &&
-      annotationsCompat().any(::isCircuitInjectAnnotation) &&
-      !hasFactoryClass(CircuitNames.Factory)
-  }
-
-  private fun IrClass.hasFactoryClass(name: Name): Boolean {
-    return declarations.filterIsInstance<IrClass>().any { it.name == name }
-  }
-
-  private fun generateTopLevelFunctionFactoryShell(function: IrSimpleFunction) {
-    if (!function.isTopLevelDeclaration || function.isExpect) return
-    if (function.annotationsCompat().none(::isCircuitInjectAnnotation)) return
-
-    val target = function.toCircuitFactoryTarget() ?: return
-    val file = function.file
-    if (file.hasTopLevelFactoryClass(target.factoryClassId)) return
-
-    val factoryClass =
-      createFactoryClass(
-        parent = file,
-        name = target.factoryClassId.shortClassName,
-        target = target,
-        origin =
-          IrDeclarationOrigin.GeneratedByPlugin(CircuitOrigins.FactoryClass(target.factoryType)),
-      )
-    file.addChild(factoryClass)
-    generatedTargets[factoryClass] = target
-  }
-
-  private fun IrFile.hasTopLevelFactoryClass(classId: ClassId): Boolean {
-    return declarations.filterIsInstance<IrClass>().any { it.classIdOrFail == classId }
-  }
-
-  private fun createFactoryClass(
-    parent: IrDeclarationParent,
-    name: Name,
-    target: CircuitIrFactoryTarget,
-    origin: IrDeclarationOrigin,
-  ): IrClass {
-    /*
-     * Keep this shell aligned with CircuitFirExtension.generateFactoryClass():
-     * - @Inject lets Metro generate the factory's own provider
-     * - @ContributesIntoSet makes the factory a graph contribution
-     * - Deprecated(HIDDEN) keeps the class out of normal source use
-     * - metadata-visible registration lets downstream modules see the generated class
-     */
-    return pluginContext.irFactory
-      .buildClass {
-        this.name = name
-        this.origin = origin
-        kind = ClassKind.CLASS
-        visibility = DescriptorVisibilities.PUBLIC
-        modality = Modality.FINAL
-      }
-      .apply {
-        this.parent = parent
-        createThisReceiverParameter()
-        superTypes += target.factoryType!!.factoryClassId.type()
-        addFactoryAnnotations(target)
-        markAsDeprecatedHidden()
-        addConstructor {
-          this.origin = CircuitOrigins.IrFactoryConstructor
-          isPrimary = true
-          visibility = DescriptorVisibilities.PUBLIC
-        }
-          .apply constructor@{
-            for (param in target.constructorParams) {
-              addValueParameter(param.name, param.type).apply {
-                param.qualifier?.let { addAnnotationCompat(it) }
-              }
-            }
-            body = context(pluginContext) { this@constructor.generateDefaultConstructorBody() }
-            metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
-          }
-        addFakeOverrides(irTypeSystemContext)
-        metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
-      }
-  }
-
-  /**
-   * Creates the annotations Metro and downstream modules depend on to treat the Circuit factory as
-   * an ordinary contributed binding. These are added directly to the generated class so both
-   * metadata and the later Metro IR contribution pass see the same information.
-   */
-  private fun IrClass.addFactoryAnnotations(target: CircuitIrFactoryTarget) {
-    addAnnotationCompat(context(pluginContext) { buildAnnotation(symbol, injectAnnotationCtor) })
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, contributesIntoSetAnnotationCtor) { annotation ->
-          annotation.arguments[0] = kClassReference(target.scopeClass!!)
-        }
-      }
-    )
-    target.qualifier?.let { addAnnotationCompat(it) }
-    target.originClassId?.let { originClassId ->
-      addAnnotationCompat(
-        context(pluginContext) {
-          buildAnnotation(symbol, originAnnotationCtor) { annotation ->
-            annotation.arguments[0] =
-              kClassReference(
-                with(compatContext) {
-                  pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
-                } ?: error("Could not find Circuit origin class $originClassId")
-              )
-          }
-        }
-      )
-    }
-  }
-
-  /**
-   * Converts an annotated Presenter/Ui class, or an assisted factory nested under one, into the
-   * information needed to generate `Target.CircuitFactory`.
-   *
-   * The constructor parameter list is the DI-facing constructor for the generated factory, not the
-   * target class constructor. Circuit-supplied parameters are excluded because `create()` receives
-   * them at runtime.
-   */
-  private fun IrClass.toCircuitFactoryTarget(): CircuitIrFactoryTarget? {
-    val annotation = annotationsCompat().firstOrNull(::isCircuitInjectAnnotation) ?: return null
-    val (screenType, scopeType) = annotation.extractCircuitInjectArgs() ?: return null
-    val factoryClassId = classIdOrFail.createNestedClassId(CircuitNames.Factory)
-    val factoryType = determineFactoryTypeForTarget(this) ?: return null
-    val constructorParams =
-      if (isAnnotatedWithAny(assistedFactoryAnnotations)) {
-        // For assisted factories, Metro injects the assisted factory itself. The create() body will
-        // delegate to that field instead of directly constructing the target Presenter/Ui.
-        listOf(CircuitIrConstructorParam(CircuitNames.factoryField, defaultType))
-      } else {
-        val constructor =
-          findInjectableConstructor(
-            onlyUsePrimaryConstructor = true,
-            injectAnnotations = injectAnnotations,
-          )
-        constructor
-          ?.regularParameters
-          .orEmpty()
-          // Match legacy behavior: classes with no injectable constructor still get a factory
-          // shell, but it has no DI parameters and the checker owns reporting invalid uses.
-          .filterNot { it.isCircuitProvidedParam(factoryType) }
-          .map { param ->
-            CircuitIrConstructorParam(
-              name = param.name,
-              type = injectableParamType(param.type),
-              qualifier = param.qualifierAnnotation(),
-            )
-          }
-      }
-    return CircuitIrFactoryTarget(
-      originClassId = classIdOrFail,
-      factoryClassId = factoryClassId,
-      screenType = screenType.owner.classIdOrFail,
-      scopeClassId = scopeType.owner.classIdOrFail,
-      scopeClass = scopeType,
-      factoryType = factoryType,
-      instantiationType = InstantiationType.CLASS,
-      constructorParams = constructorParams,
-      qualifier = qualifierAnnotation(),
-    )
-  }
-
-  /**
-   * Converts a top-level `@CircuitInject` function into its generated `<FunctionName>Factory`.
-   *
-   * Unlike class targets, function targets have no stable origin class. We keep the original IR
-   * function symbol so the body generator can call it directly after the shell is created.
-   */
-  private fun IrSimpleFunction.toCircuitFactoryTarget(): CircuitIrFactoryTarget? {
-    val annotation = annotationsCompat().firstOrNull(::isCircuitInjectAnnotation) ?: return null
-    val (screenType, scopeType) = annotation.extractCircuitInjectArgs() ?: return null
-    val factoryType =
-      if (returnType == pluginContext.irBuiltIns.unitType) FactoryType.UI else FactoryType.PRESENTER
-    val factoryClassId =
-      ClassId(file.packageFqName, Name.identifier("${name.asString().capitalizeUS()}Factory"))
-    val constructorParams =
-      regularParameters
-        .filterNot { it.isCircuitProvidedParam(factoryType) }
-        .map { param ->
-          CircuitIrConstructorParam(
-            name = param.name,
-            type = injectableParamType(param.type),
-            qualifier = param.qualifierAnnotation(),
-          )
-        }
-    return CircuitIrFactoryTarget(
-      originClassId = null,
-      factoryClassId = factoryClassId,
-      screenType = screenType.owner.classIdOrFail,
-      scopeClassId = scopeType.owner.classIdOrFail,
-      scopeClass = scopeType,
-      factoryType = factoryType,
-      instantiationType = InstantiationType.FUNCTION,
-      originalFunctionSymbol = symbol,
-      constructorParams = constructorParams,
-      qualifier = qualifierAnnotation(),
-    )
-  }
-
-  /**
-   * Finds whether a class target should produce a Presenter.Factory or Ui.Factory. Assisted factory
-   * annotations live on the nested factory interface, while the Presenter/Ui supertype usually
-   * lives on the containing class, so this checks both places.
-   */
-  private fun determineFactoryTypeForTarget(targetClass: IrClass): FactoryType? {
-    bfsForFactoryType(targetClass)?.let {
-      return it
-    }
-    return (targetClass.parent as? IrClass)?.let(::bfsForFactoryType)
-  }
-
-  private fun bfsForFactoryType(root: IrClass): FactoryType? {
-    val queue = ArrayDeque<IrClass>()
-    val seen = mutableSetOf<ClassId>()
-    queue.add(root)
-    while (queue.isNotEmpty()) {
-      val clazz = queue.removeFirst()
-      val classId = clazz.classId ?: continue
-      if (!seen.add(classId)) continue
-      for (supertype in clazz.superTypes) {
-        val superClass = supertype.classOrNull?.owner ?: continue
-        when (superClass.classId) {
-          FactoryType.PRESENTER.classId -> return FactoryType.PRESENTER
-          FactoryType.UI.classId -> return FactoryType.UI
-          else -> queue.add(superClass)
-        }
-      }
-    }
-    return null
-  }
-
-  /** Reads the positional or named `screen`/`scope` class references from `@CircuitInject`. */
-  private fun IrConstructorCall.extractCircuitInjectArgs(): Pair<IrClassSymbol, IrClassSymbol>? {
-    val screenArg =
-      arguments[0] as? IrClassReference
-        ?: argument(CircuitNames.screen) as? IrClassReference
-        ?: return null
-    val scopeArg =
-      arguments[1] as? IrClassReference
-        ?: argument(Symbols.Names.scope) as? IrClassReference
-        ?: return null
-    val screenSymbol = screenArg.symbol as? IrClassSymbol ?: return null
-    val scopeSymbol = scopeArg.symbol as? IrClassSymbol ?: return null
-    return screenSymbol to scopeSymbol
-  }
-
-  private fun IrConstructorCall.argument(name: Name): IrExpression? {
-    val parameter = symbol.owner.parameters.firstOrNull { it.name == name } ?: return null
-    return arguments[parameter.indexInParameters]
-  }
-
-  private fun IrValueParameter.isCircuitProvidedParam(factoryType: FactoryType): Boolean {
-    val paramClass = type.classOrNull?.owner ?: return false
-    val circuitType = classifyCircuitType(paramClass) ?: return false
-    return when (circuitType) {
-      CircuitProvidedType.SCREEN -> true
-      CircuitProvidedType.NAVIGATOR -> factoryType == FactoryType.PRESENTER
-      CircuitProvidedType.MODIFIER -> factoryType == FactoryType.UI
-      CircuitProvidedType.UI_STATE -> factoryType == FactoryType.UI
-    }
-  }
-
-  /**
-   * Mirrors the FIR constructor signature rule: DI parameters are stored as Provider<T> fields
-   * unless the target already expects a provider-like wrapper.
-   */
-  private fun injectableParamType(paramType: IrType): IrType {
-    val paramClassId = paramType.classOrNull?.owner?.classId
-    val isAlreadyWrapped =
-      paramClassId != null &&
-        (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-          paramClassId == Symbols.ClassIds.Lazy ||
-          paramClassId == Symbols.ClassIds.function0)
-    return if (isAlreadyWrapped) {
-      paramType
-    } else {
-      builtinsFinder.findClass(Symbols.ClassIds.metroProvider)!!.typeWith(paramType)
-    }
-  }
-
-  private fun IrAnnotationContainer.qualifierAnnotation(): IrConstructorCall? {
-    return annotationsCompat().firstOrNull { annotation ->
-      annotation.symbol.owner.parentAsClass.isAnnotatedWithAny(qualifierAnnotations)
-    }
-  }
-
-  private fun isCircuitInjectAnnotation(annotation: IrConstructorCall): Boolean {
-    return annotation.symbol.owner.parentAsClass.classId == CircuitClassIds.CircuitInject
-  }
-
-  private fun ClassId.type(): IrType {
-    return builtinsFinder.findClass(this)?.defaultType ?: error("Could not find $this")
-  }
-
-  /** Adds the same `Deprecated(HIDDEN)` marker used by the FIR-generated hidden classes. */
-  private fun IrClass.markAsDeprecatedHidden() {
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, deprecatedAnnotationCtor) { annotation ->
-          annotation.arguments[0] =
-            irString("This synthesized declaration should not be used directly")
-          annotation.arguments[2] =
-            IrGetEnumValueImpl(
-              SYNTHETIC_OFFSET,
-              SYNTHETIC_OFFSET,
-              deprecationLevel.defaultType,
-              hiddenDeprecationLevel,
-            )
-        }
-      }
-    )
-  }
-
-  /**
-   * Produces the unified target model for the body generator. New IR-generated factories read from
-   * [generatedTargets]; legacy FIR-generated factories bridge their FIR declaration data here.
-   */
+  /** Produces the unified target model for the body generator without cross-extension state. */
   private fun IrClass.circuitFactoryTargetData(): CircuitIrFactoryTarget {
-    generatedTargets[this]?.let {
-      return it
+    if (generateClassesInIr) {
+      val origin =
+        origin.expectAsOrNull<IrDeclarationOrigin.GeneratedByPlugin>()?.pluginKey
+          as? CircuitOrigins.FactoryClass
+          ?: error("Circuit factory class $classId is missing its generated origin.")
+      val target =
+        when (val factoryParent = parent) {
+          is IrClass -> targetResolver.resolve(factoryParent, origin.target)
+          is IrFile ->
+            factoryParent.declarations
+              .asSequence()
+              .filterIsInstance<IrSimpleFunction>()
+              .mapNotNull { targetResolver.resolve(it, origin.target) }
+              .singleOrNull { it.factoryClassId == classIdOrFail }
+          else -> null
+        }
+      return target ?: error("Circuit factory class ${classId} is missing target data.")
     }
-    // Non-IR-only mode still gets factory signatures from FIR. Bridge that FIR declaration data
-    // into the same IR target model used by generatedTargets so the body generation stays shared.
+
     return circuitFactoryTargetData?.toCircuitIrFactoryTarget()
       ?: error("Circuit factory class ${classId} is missing target data.")
   }
@@ -634,6 +750,7 @@ private class CircuitIrTransformer(
   private fun CircuitFactoryTarget.toCircuitIrFactoryTarget(): CircuitIrFactoryTarget {
     return CircuitIrFactoryTarget(
       originClassId = originClassId,
+      codegenTarget = codegenTarget,
       factoryClassId = factoryClassId,
       screenType = screenType,
       scopeClassId = scopeClassId,
@@ -676,21 +793,13 @@ private class CircuitIrTransformer(
     fieldsByName: Map<Name, IrField>,
   ): IrBody {
     val factoryClass = function.parentAsClass
-    val factoryType = determineFactoryType(factoryClass)
     val screenParam = function.regularParameters.first { it.name == CircuitNames.screen }
     val targetInfo = TargetInfo(screenClass)
-
-    val returnType =
-      when (factoryType) {
-        FactoryType.UI -> symbols.ui.typeWith(pluginContext.irBuiltIns.anyNType).makeNullable()
-        FactoryType.PRESENTER ->
-          symbols.presenter.typeWith(pluginContext.irBuiltIns.anyNType).makeNullable()
-      }
 
     return pluginContext.createIrBuilder(function.symbol).irBlockBody {
       +irReturn(
         irWhen(
-          returnType,
+          function.returnType,
           branches =
             listOf(
               irBranch(
@@ -732,13 +841,19 @@ private class CircuitIrTransformer(
     return when {
       factoryField != null -> {
         // factory.create(...) - call the assisted factory
-        generateAssistedFactoryCall(function, factoryField, targetInfo)
+        generateAssistedFactoryCall(
+          function,
+          factoryField,
+          targetInfo,
+          circuitTargetInfo.codegenTarget,
+        )
       }
       circuitTargetInfo.instantiationType == InstantiationType.FUNCTION -> {
         // Function-based factory: call presenterOf{}/ui{}
-        val factoryType = determineFactoryType(factoryClass)
+        val factoryType = determineFactoryType(factoryClass, circuitTargetInfo.codegenTarget)
         generateFunctionFactoryCall(
           function,
+          circuitTargetInfo.codegenTarget,
           factoryType,
           originalFunctionSymbol(function, factoryClass, circuitTargetInfo),
           fieldsByName,
@@ -747,7 +862,7 @@ private class CircuitIrTransformer(
       else -> {
         // Class-based factory: instantiate the target class directly, wiring circuit-provided
         // params from create() and injectable params from factory fields (Provider.invoke()).
-        val factoryType = determineFactoryType(factoryClass)
+        val factoryType = determineFactoryType(factoryClass, circuitTargetInfo.codegenTarget)
         generateClassInstantiation(function, factoryClass, factoryType, fieldsByName)
       }
     }
@@ -771,6 +886,9 @@ private class CircuitIrTransformer(
     val targetClass =
       with(compatContext) { pluginContext.finderFor(factoryClass).findClass(targetClassId) }
         ?: error("Could not find target class: $targetClassId")
+    if (targetClass.owner.kind == ClassKind.OBJECT) {
+      return irGetObject(targetClass)
+    }
     val constructor = targetClass.constructors.first()
     val ctorParams = constructor.owner.regularParameters
     if (ctorParams.isEmpty()) {
@@ -782,7 +900,12 @@ private class CircuitIrTransformer(
     return irCall(constructor).apply {
       for (ctorParam in ctorParams) {
         val matchingCreateParam =
-          findMatchingCircuitParam(ctorParam, createParamsByName, factoryType)
+          findMatchingCircuitParam(
+            ctorParam,
+            createParamsByName,
+            circuitTargetInfo.codegenTarget,
+            factoryType,
+          )
         if (matchingCreateParam != null) {
           // Circuit-provided: pass from create() param, casting if needed
           arguments[ctorParam.indexInParameters] =
@@ -792,11 +915,7 @@ private class CircuitIrTransformer(
           val field = fieldsByName[ctorParam.name] ?: continue
           val fieldGet = irGetField(irGet(thisReceiver), field)
           val paramClassId = ctorParam.type.classOrNull?.owner?.classId
-          val isAlreadyWrapped =
-            paramClassId != null &&
-              (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-                paramClassId == Symbols.ClassIds.Lazy ||
-                paramClassId == Symbols.ClassIds.function0)
+          val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
           arguments[ctorParam.indexInParameters] =
             if (isAlreadyWrapped) {
               fieldGet
@@ -819,32 +938,18 @@ private class CircuitIrTransformer(
    * matching create() param if the constructor param type is a circuit-provided type (Screen
    * subtype, Navigator, Modifier, CircuitUiState subtype), or null if it's an injectable param.
    */
-  private fun classifyCircuitType(paramClass: IrClass): CircuitProvidedType? {
-    return when (paramClass.classId) {
-      CircuitClassIds.Screen -> CircuitProvidedType.SCREEN
-      CircuitClassIds.Navigator -> CircuitProvidedType.NAVIGATOR
-      CircuitClassIds.Modifier -> CircuitProvidedType.MODIFIER
-      CircuitClassIds.CircuitUiState -> CircuitProvidedType.UI_STATE
-      else -> {
-        // Screen and CircuitUiState are always subtyped — single walk checking both
-        for (superInterface in paramClass.allSuperInterfaces()) {
-          when (superInterface.classId) {
-            CircuitClassIds.Screen -> return CircuitProvidedType.SCREEN
-            CircuitClassIds.CircuitUiState -> return CircuitProvidedType.UI_STATE
-          }
-        }
-        null
-      }
-    }
-  }
-
   private fun findMatchingCircuitParam(
     ctorParam: IrValueParameter,
     createParamsByName: Map<Name, IrValueParameter>,
+    target: CircuitCodegenTarget,
     factoryType: FactoryType,
   ): IrValueParameter? {
     val paramClass = ctorParam.type.classOrNull?.owner ?: return null
-    val type = classifyCircuitType(paramClass) ?: return null
+    val type = targetResolver.classifyCircuitType(paramClass, target) ?: return null
+
+    if (target == CircuitCodegenTarget.SUBCIRCUIT && type != CircuitProvidedType.SCREEN) {
+      return null
+    }
 
     val name =
       when (type) {
@@ -874,28 +979,34 @@ private class CircuitIrTransformer(
   private fun IrBuilderWithScope.generateAssistedFactoryCall(
     function: IrSimpleFunction,
     factoryField: IrField,
-    @Suppress("UNUSED_PARAMETER") targetInfo: TargetInfo,
+    targetInfo: TargetInfo,
+    target: CircuitCodegenTarget,
   ): IrExpression {
     val thisReceiver = function.dispatchReceiverParameter ?: return irNull()
 
     // Get the factory field
     val factoryGet = irGetField(irGet(thisReceiver), factoryField)
 
-    // Find the create function on the factory
+    // Find the assisted factory's single abstract function. Its name is user-defined.
     val factoryClass = factoryField.type.classOrNull?.owner ?: return irNull()
-    val createFunction =
-      factoryClass.functions.find {
-        it.name.asString() == "create" || it.name.asString() == "invoke"
-      } ?: return irNull()
+    val createFunction = factoryClass.abstractFunctions().singleOrNull() ?: return irNull()
+    val outerParamsByName = function.regularParameters.associateBy { it.name }
 
     // Build the call with assisted parameters
     return irCall(createFunction).apply {
       dispatchReceiver = factoryGet
 
-      // Pass through screen, navigator, context as needed, using indexInParameters
-      // to correctly skip the dispatch receiver slot
+      // Match the annotated screen by type so the assisted parameter can use any name. Keep
+      // Circuit's existing name matching for Navigator and CircuitContext parameters.
       for (param in createFunction.regularParameters) {
-        val matchingParam = function.regularParameters.find { it.name == param.name }
+        val paramClassId = param.type.classOrNull?.owner?.classId
+        val isTargetScreen = paramClassId == targetInfo.screenClassSymbol.owner.classId
+        val matchingParam =
+          when {
+            isTargetScreen -> outerParamsByName[CircuitNames.screen]
+            target == CircuitCodegenTarget.CIRCUIT -> outerParamsByName[param.name]
+            else -> null
+          }
         if (matchingParam != null) {
           // Wasm requires precise reference types; cast when the outer create() supplies a wider
           // type (e.g. Screen) than the assisted factory expects (e.g. CounterScreen).
@@ -935,6 +1046,7 @@ private class CircuitIrTransformer(
    */
   private fun IrBuilderWithScope.generateFunctionFactoryCall(
     createFunction: IrSimpleFunction,
+    target: CircuitCodegenTarget,
     factoryType: FactoryType,
     originalFunctionSymbol: IrSimpleFunctionSymbol,
     fieldsByName: Map<Name, IrField>,
@@ -943,6 +1055,9 @@ private class CircuitIrTransformer(
     // Build parameter mapping from create() params
     val availableValueParams = buildMap {
       for (param in createFunction.regularParameters) {
+        if (target == CircuitCodegenTarget.SUBCIRCUIT && param.name == CircuitNames.screen) {
+          continue
+        }
         put(param.name, param)
       }
     }
@@ -962,11 +1077,7 @@ private class CircuitIrTransformer(
         // If so, the field type matches and we pass it through without invoking.
         val paramType = param.type
         val paramClassId = paramType.classOrNull?.owner?.classId
-        val isAlreadyWrapped =
-          paramClassId != null &&
-            (paramClassId in Symbols.ClassIds.commonMetroProviders ||
-              paramClassId == Symbols.ClassIds.Lazy ||
-              paramClassId == Symbols.ClassIds.function0)
+        val isAlreadyWrapped = paramClassId.isCircuitProviderParameterType(function0Types)
 
         val localVar =
           if (isAlreadyWrapped) {
@@ -995,45 +1106,73 @@ private class CircuitIrTransformer(
       val factoryCall =
         when (factoryType) {
           FactoryType.PRESENTER -> {
-            val stateType = originalFunction.returnType
-            irCall(symbols.presenterOfFun).apply {
-              typeArguments[0] = stateType
-              arguments[0] =
-                buildComposableLambda(
-                  createFunction = createFunction,
-                  originalFunction = originalFunction,
-                  originalFunctionSymbol = originalFunctionSymbol,
-                  returnType = stateType,
-                  lambdaParamTypes = emptyList(),
-                  capturedParams = allAvailableParams,
-                )
+            check(target == CircuitCodegenTarget.CIRCUIT) {
+              "SubCircuit does not support function-based presenters."
             }
+            val stateType = originalFunction.returnType
+            irInvoke(
+              callee = symbols.presenterOfFun,
+              typeArgs = listOf(stateType),
+              args =
+                listOf(
+                  buildComposableLambda(
+                    createFunction = createFunction,
+                    originalFunction = originalFunction,
+                    originalFunctionSymbol = originalFunctionSymbol,
+                    returnType = stateType,
+                    lambdaParamTypes = emptyList(),
+                    capturedParams = allAvailableParams,
+                  )
+                ),
+            )
           }
           FactoryType.UI -> {
-            val stateType =
-              originalFunction.regularParameters
-                .firstOrNull { param ->
-                  param.type.classOrNull?.owner?.superTypes?.any {
-                    it.classOrNull?.owner?.name?.asString() == "CircuitUiState"
-                  } == true
-                }
-                ?.type ?: pluginContext.irBuiltIns.anyNType
+            val stateParam =
+              originalFunction.regularParameters.firstOrNull { param ->
+                val paramClass = param.type.classOrNull?.owner ?: return@firstOrNull false
+                targetResolver.classifyCircuitType(paramClass, target) ==
+                  CircuitProvidedType.UI_STATE
+              }
+            val modifierParam =
+              originalFunction.regularParameters.firstOrNull { param ->
+                val paramClass = param.type.classOrNull?.owner ?: return@firstOrNull false
+                targetResolver.classifyCircuitType(paramClass, target) ==
+                  CircuitProvidedType.MODIFIER
+              }
+            val defaultStateType =
+              if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+                symbols.uiState(target).defaultType
+              } else {
+                pluginContext.irBuiltIns.anyNType
+              }
+            val stateType = stateParam?.type ?: defaultStateType
+            val lambdaParamBindings = buildMap {
+              stateParam?.let { put(it.name, CircuitNames.state) }
+              modifierParam?.let { put(it.name, CircuitNames.modifier) }
+            }
 
-            irCall(symbols.uiFun).apply {
-              typeArguments[0] = stateType
-              arguments[0] =
-                buildComposableLambda(
-                  createFunction = createFunction,
-                  originalFunction = originalFunction,
-                  originalFunctionSymbol = originalFunctionSymbol,
-                  returnType = pluginContext.irBuiltIns.unitType,
-                  lambdaParamTypes =
-                    listOf(
-                      CircuitNames.state to stateType,
-                      CircuitNames.modifier to symbols.modifier.defaultType,
-                    ),
-                  capturedParams = allAvailableParams,
-                )
+            val lambda =
+              buildComposableLambda(
+                createFunction = createFunction,
+                originalFunction = originalFunction,
+                originalFunctionSymbol = originalFunctionSymbol,
+                returnType = pluginContext.irBuiltIns.unitType,
+                lambdaParamTypes =
+                  listOf(
+                    CircuitNames.state to stateType,
+                    CircuitNames.modifier to symbols.modifier.defaultType,
+                  ),
+                capturedParams = allAvailableParams,
+                lambdaParamBindings = lambdaParamBindings,
+              )
+            if (target == CircuitCodegenTarget.SUBCIRCUIT) {
+              irSamConversion(lambda, symbols.ui(target).typeWith(stateType))
+            } else {
+              irInvoke(
+                callee = symbols.uiFun,
+                typeArgs = listOf(stateType),
+                args = listOf(lambda),
+              )
             }
           }
         }
@@ -1054,6 +1193,7 @@ private class CircuitIrTransformer(
     returnType: IrType,
     lambdaParamTypes: List<Pair<Name, IrType>>,
     capturedParams: Map<Name, IrValueDeclaration>,
+    lambdaParamBindings: Map<Name, Name> = emptyMap(),
   ): IrFunctionExpression {
     // TODO irLambda
     val lambda =
@@ -1080,11 +1220,13 @@ private class CircuitIrTransformer(
             addValueParameter(paramName.asString(), paramType)
           }
 
-          // Merge all available params: captured from create() scope + lambda's own params
+          // Merge all available params. Lambda parameters are keyed by the corresponding source
+          // function parameter name so source declarations do not need to use `state`/`modifier`.
           val allParams = buildMap {
             putAll(capturedParams)
-            for (param in regularParameters) {
-              put(param.name, param)
+            val lambdaParamsByName = regularParameters.associateBy { it.name }
+            for ((sourceName, lambdaName) in lambdaParamBindings) {
+              put(sourceName, lambdaParamsByName.getValue(lambdaName))
             }
           }
 
@@ -1121,11 +1263,14 @@ private class CircuitIrTransformer(
     )
   }
 
-  private fun determineFactoryType(factoryClass: IrClass): FactoryType {
+  private fun determineFactoryType(
+    factoryClass: IrClass,
+    target: CircuitCodegenTarget,
+  ): FactoryType {
     for (supertype in factoryClass.allSuperInterfaces()) {
       return when (supertype.classId) {
-        FactoryType.UI.factoryClassId -> FactoryType.UI
-        FactoryType.PRESENTER.factoryClassId -> FactoryType.PRESENTER
+        target.uiFactoryClassId -> FactoryType.UI
+        target.presenterFactoryClassId -> FactoryType.PRESENTER
         else -> continue
       }
     }
@@ -1139,6 +1284,14 @@ private class CircuitIrTransformer(
   }
 }
 
+private fun ClassId?.isCircuitProviderParameterType(function0Types: Set<ClassId>): Boolean {
+  val classId = this ?: return false
+  if (classId in Symbols.ClassIds.commonMetroProviders) return true
+  if (classId == Symbols.ClassIds.Lazy) return true
+  if (classId == Symbols.ClassIds.metroSuspendProvider) return true
+  return classId in function0Types
+}
+
 private data class CircuitIrConstructorParam(
   val name: Name,
   val type: IrType,
@@ -1147,6 +1300,7 @@ private data class CircuitIrConstructorParam(
 
 private data class CircuitIrFactoryTarget(
   val originClassId: ClassId?,
+  val codegenTarget: CircuitCodegenTarget,
   val factoryClassId: ClassId,
   val screenType: ClassId,
   val scopeClassId: ClassId,
