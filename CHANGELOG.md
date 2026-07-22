@@ -65,6 +65,7 @@ _2026-07-13_
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@kevinguitar](https://github.com/kevinguitar)
 - [@kyay10](https://github.com/kyay10)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)

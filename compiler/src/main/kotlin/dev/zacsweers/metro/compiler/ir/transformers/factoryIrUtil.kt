@@ -25,6 +25,7 @@ import dev.zacsweers.metro.compiler.ir.irCallConstructorWithSameParameters
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
@@ -450,13 +451,20 @@ internal fun generateStubCreatorFunctions(
 ) {
   val creatorClass = factoryClass.requireStaticIshDeclarationContainer()
 
-  val params = sourceFunction.parameters().nonDispatchParameters
+  val sourceParameters = sourceFunction.parameters()
+  val createParameters =
+    sourceParameters.copy(
+      regularParameters =
+        sourceParameters.regularParameters.dedupeParameters(
+          defaultUsesSuspendProvider = sourceFunction.isSuspend
+        )
+    )
 
   // create() function, parameters are Provider-wrapped
   creatorClass.addFunction(Symbols.StringNames.CREATE, factoryClass.defaultType).apply {
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
     addParameters(
-      params,
+      createParameters.nonDispatchParameters,
       wrapInProvider = true,
       copyQualifiers = true,
       wrapInSuspendProvider = sourceFunction.isSuspend,
@@ -469,7 +477,11 @@ internal fun generateStubCreatorFunctions(
   creatorClass.addFunction(callableName, returnType).apply {
     isSuspend = sourceFunction.isSuspend
     setDispatchReceiver(creatorClass.thisReceiverOrFail.copyTo(this))
-    addParameters(params, wrapInProvider = false, copyQualifiers = true)
+    addParameters(
+      sourceParameters.nonDispatchParameters,
+      wrapInProvider = false,
+      copyQualifiers = true,
+    )
     addStaticAnnotations(this)
     body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
   }
