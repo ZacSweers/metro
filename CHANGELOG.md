@@ -59,7 +59,7 @@ _2026-07-13_
 ### Changes
 
 - Support Kotlin `2.5.0-dev-498`.
-- Test Kotlin `2.4.20-Beta2`.
+- Support Kotlin `2.4.20-Beta2`.
 - Update embedded Wire dependency to `6.4.5`.
 
 ### Contributors
