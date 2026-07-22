@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784741496126,
+  "lastUpdate": 1784743812994,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19376,6 +19376,62 @@ window.BENCHMARK_DATA = {
             "value": 16037.024,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -11.57%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e61d1f0a~1",
+          "message": "[before] Fix suspend param deduping (#2574)",
+          "timestamp": "2026-07-22T17:35:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e61d1f0a118d3442253ba9a8b111752dc1552674"
+        },
+        "date": 1784743812994,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22169.858,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e61d1f0a118d3442253ba9a8b111752dc1552674",
+          "message": "[after] Fix suspend param deduping (#2574)",
+          "timestamp": "2026-07-22T17:35:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e61d1f0a118d3442253ba9a8b111752dc1552674"
+        },
+        "date": 1784743812995,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20860.773999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -5.90%"
           }
         ]
       }

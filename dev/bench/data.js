@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784741495912,
+  "lastUpdate": 1784743812621,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -19376,6 +19376,62 @@ window.BENCHMARK_DATA = {
             "value": 0.2156233976414736,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +1.23%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e61d1f0a~1",
+          "message": "[before] Fix suspend param deduping (#2574)",
+          "timestamp": "2026-07-22T17:35:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e61d1f0a118d3442253ba9a8b111752dc1552674"
+        },
+        "date": 1784743812621,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2183857478512806,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "e61d1f0a118d3442253ba9a8b111752dc1552674",
+          "message": "[after] Fix suspend param deduping (#2574)",
+          "timestamp": "2026-07-22T17:35:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/e61d1f0a118d3442253ba9a8b111752dc1552674"
+        },
+        "date": 1784743812622,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21067282244900226,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -3.53%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
