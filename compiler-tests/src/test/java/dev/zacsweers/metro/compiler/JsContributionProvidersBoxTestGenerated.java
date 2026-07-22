@@ -2605,6 +2605,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DuplicatedDepInBinding.kt")
+    public void testDuplicatedDepInBinding() {
+      run("DuplicatedDepInBinding.kt");
+    }
+
+    @Test
     @TestMetadata("FullBindingGraphValidationSuspendPropagation.kt")
     public void testFullBindingGraphValidationSuspendPropagation() {
       run("FullBindingGraphValidationSuspendPropagation.kt");
