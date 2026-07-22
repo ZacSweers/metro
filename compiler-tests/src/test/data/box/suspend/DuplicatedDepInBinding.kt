@@ -24,6 +24,7 @@ interface AppGraph
 
 @GraphExtension(Unit::class, bindingContainers = [BarProvider::class])
 interface FeatureGraph {
+  val viewModel: ViewModel
 
   @ContributesTo(AppScope::class)
   @GraphExtension.Factory
@@ -32,10 +33,17 @@ interface FeatureGraph {
   }
 }
 
+interface ViewModel
+
+@SingleIn(Unit::class)
+@Inject
+@ContributesBinding(Unit::class)
+class ViewModelImpl(foo: Foo): ViewModel
+
 fun box(): String {
   val appGraph = createGraph<AppGraph>()
   val featureGraph = appGraph.createFeatureGraph()
-  assertNotNull(featureGraph)
+  assertNotNull(featureGraph.viewModel)
 
   return "OK"
 }
