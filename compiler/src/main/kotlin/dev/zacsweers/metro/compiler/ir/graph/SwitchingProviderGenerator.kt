@@ -103,6 +103,17 @@ internal class SwitchingProviderGenerator(
     val contextKey: IrContextualTypeKey,
   )
 
+  /**
+   * Groups switching bindings that route through the same helper function.
+   *
+   * @param selector The quotient produced by dividing each binding ID by the chunk size
+   * @param bindings The bindings dispatched by the helper selected by [selector]
+   */
+  private data class SwitchingBindingGroup(
+    val selector: Int,
+    val bindings: List<SwitchingBinding>,
+  )
+
   data class SwitchingProvider(val irClass: IrClass, val constructor: IrConstructor)
 
   /**
@@ -199,8 +210,9 @@ internal class SwitchingProviderGenerator(
   /**
    * Adds the `invoke(): T` function that implements Provider<T>.
    *
-   * If there are more bindings than [MetroOptions.statementsPerInitFun], the switch branches are
-   * chunked across multiple private helper functions to avoid JVM method size limits.
+   * If there are more bindings than [MetroOptions.statementsPerInitFun], bindings are grouped by
+   * their ID divided by that limit. The main function selects one private helper directly to avoid
+   * both JVM method size limits and a linear chain of helper calls.
    */
   private fun IrClass.addInvokeFunction(
     typeParam: IrTypeParameter,
@@ -208,53 +220,56 @@ internal class SwitchingProviderGenerator(
     idProperty: IrProperty,
   ) {
     val chunkSize = options.statementsPerInitFun
-    val bindingChunks = switchingBindings.chunked(chunkSize)
 
-    // Create helper functions for overflow chunks (in reverse order to wire up else -> calls)
-    val chunkFunctions = ArrayList<IrSimpleFunction>(bindingChunks.size)
+    if (switchingBindings.size <= chunkSize) {
+      addMainInvokeFunction(
+        bindings = switchingBindings,
+        typeParam = typeParam,
+        graphProperty = graphProperty,
+        idProperty = idProperty,
+      )
+      return
+    }
+
+    val bindingGroups =
+      switchingBindings
+        .groupBy { it.id / chunkSize }
+        .map { (selector, bindings) -> SwitchingBindingGroup(selector, bindings) }
+        .sortedBy { it.selector }
+
     val invokeNameAllocator =
       NameAllocator(mode = NameAllocator.Mode.COUNT).apply {
         // reserve the initial invoke() function name that we'll override
         reserveName(Symbols.StringNames.INVOKE)
       }
+    val groupFunctions = ArrayList<Pair<Int, IrSimpleFunction>>(bindingGroups.size)
 
-    for (chunkIndex in (1 until bindingChunks.size).reversed()) {
-      val chunk = bindingChunks[chunkIndex]
-      val isLast = chunkIndex == bindingChunks.lastIndex
-      val nextFunction = chunkFunctions.firstOrNull()
-
-      val chunkFunction =
+    for ((selector, bindings) in bindingGroups) {
+      val groupFunction =
         addInvokeChunkFunction(
-          chunk = chunk,
+          bindings = bindings,
           typeParam = typeParam,
           graphProperty = graphProperty,
           idProperty = idProperty,
-          isLast = isLast,
-          nextFunction = nextFunction,
           nameAllocator = invokeNameAllocator,
         )
-      chunkFunctions.add(0, chunkFunction)
+      groupFunctions += selector to groupFunction
     }
 
-    // Create main invoke function with first chunk
-    addMainInvokeFunction(
-      firstChunk = bindingChunks.first(),
+    addRoutingInvokeFunction(
+      groupFunctions = groupFunctions,
+      chunkSize = chunkSize,
       typeParam = typeParam,
-      graphProperty = graphProperty,
       idProperty = idProperty,
-      nextFunction = chunkFunctions.firstOrNull(),
-      isOnly = bindingChunks.size == 1,
     )
   }
 
-  /** Adds the main `invoke(): T` function with the first chunk of bindings. */
+  /** Adds the main `invoke(): T` function when all bindings fit in one switch. */
   private fun IrClass.addMainInvokeFunction(
-    firstChunk: List<SwitchingBinding>,
+    bindings: List<SwitchingBinding>,
     typeParam: IrTypeParameter,
     graphProperty: IrProperty,
     idProperty: IrProperty,
-    nextFunction: IrSimpleFunction?,
-    isOnly: Boolean,
   ) {
     addFunction {
       name = Symbols.Names.invoke
@@ -273,28 +288,59 @@ internal class SwitchingProviderGenerator(
         body =
           withIrBuilder(symbol) {
             irExprBodySafe(
-              generateChunkedWhenExpression(
-                bindings = firstChunk,
+              generateBindingWhenExpression(
+                bindings = bindings,
                 switchingProviderThisReceiver = localDispatchReceiver,
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-                isLast = isOnly,
-                nextFunction = nextFunction,
               )
             )
           }
       }
   }
 
-  /** Adds a private helper function for a chunk of bindings beyond the first. */
+  /** Adds the main `invoke(): T` function that routes directly to one binding group. */
+  private fun IrClass.addRoutingInvokeFunction(
+    groupFunctions: List<Pair<Int, IrSimpleFunction>>,
+    chunkSize: Int,
+    typeParam: IrTypeParameter,
+    idProperty: IrProperty,
+  ) {
+    addFunction {
+      name = Symbols.Names.invoke
+      returnType = typeParam.defaultType
+    }
+      .apply {
+        val localDispatchReceiver =
+          this@addRoutingInvokeFunction.thisReceiverOrFail.copyTo(
+            this,
+            type = this@addRoutingInvokeFunction.defaultType,
+          )
+        setDispatchReceiver(localDispatchReceiver)
+        overriddenSymbols = listOf(metroSymbols.providerInvoke)
+
+        body =
+          withIrBuilder(symbol) {
+            irExprBodySafe(
+              generateRoutingWhenExpression(
+                groupFunctions = groupFunctions,
+                chunkSize = chunkSize,
+                switchingProviderThisReceiver = localDispatchReceiver,
+                idProperty = idProperty,
+                typeParam = typeParam,
+              )
+            )
+          }
+      }
+  }
+
+  /** Adds a private helper function for one binding group. */
   private fun IrClass.addInvokeChunkFunction(
-    chunk: List<SwitchingBinding>,
+    bindings: List<SwitchingBinding>,
     typeParam: IrTypeParameter,
     graphProperty: IrProperty,
     idProperty: IrProperty,
-    isLast: Boolean,
-    nextFunction: IrSimpleFunction?,
     nameAllocator: NameAllocator,
   ): IrSimpleFunction {
     return addFunction {
@@ -313,36 +359,74 @@ internal class SwitchingProviderGenerator(
         body =
           withIrBuilder(symbol) {
             irExprBodySafe(
-              generateChunkedWhenExpression(
-                bindings = chunk,
+              generateBindingWhenExpression(
+                bindings = bindings,
                 switchingProviderThisReceiver = localDispatchReceiver,
                 graphProperty = graphProperty,
                 idProperty = idProperty,
                 typeParam = typeParam,
-                isLast = isLast,
-                nextFunction = nextFunction,
               )
             )
           }
       }
   }
 
-  /**
-   * Generates a `when` expression for a chunk of bindings.
-   *
-   * @param bindings The bindings to include in this chunk
-   * @param isLast If true, the else branch throws an error; otherwise it calls [nextFunction]
-   * @param nextFunction The function to call in the else branch (only used if [isLast] is false)
-   */
+  /** Generates a `when` expression that routes directly to one binding group. */
   context(scope: IrBuilderWithScope)
-  private fun generateChunkedWhenExpression(
+  private fun generateRoutingWhenExpression(
+    groupFunctions: List<Pair<Int, IrSimpleFunction>>,
+    chunkSize: Int,
+    switchingProviderThisReceiver: IrValueParameter,
+    idProperty: IrProperty,
+    typeParam: IrTypeParameter,
+  ): IrExpression =
+    with(scope) {
+      return irBlock(resultType = typeParam.defaultType) {
+        val idLocal =
+          irTemporaryVariable(
+            value = irGetProperty(irGet(switchingProviderThisReceiver), idProperty),
+            nameHint = "id",
+          )
+        +idLocal
+
+        val selectorLocal =
+          irTemporaryVariable(
+            value =
+              irInvoke(
+                dispatchReceiver = irGet(idLocal),
+                callee = metroSymbols.intDiv,
+                args = listOf(irInt(chunkSize)),
+                typeHint = irBuiltIns.intType,
+              ),
+            nameHint = "selector",
+          )
+        +selectorLocal
+
+        val branches = ArrayList<IrBranch>(groupFunctions.size + 1)
+        branches += groupFunctions.map { (selector, function) ->
+          irBranch(
+            condition = irEquals(irGet(selectorLocal), irInt(selector)),
+            result =
+              irInvoke(
+                dispatchReceiver = irGet(switchingProviderThisReceiver),
+                callee = function.symbol,
+              ),
+          )
+        }
+        branches += irElseBranch(generateUnexpectedIdExpression(irGet(idLocal)))
+
+        +irWhen(typeParam.defaultType, branches)
+      }
+    }
+
+  /** Generates a `when` expression for the supplied bindings. */
+  context(scope: IrBuilderWithScope)
+  private fun generateBindingWhenExpression(
     bindings: List<SwitchingBinding>,
     switchingProviderThisReceiver: IrValueParameter,
     graphProperty: IrProperty,
     idProperty: IrProperty,
     typeParam: IrTypeParameter,
-    isLast: Boolean,
-    nextFunction: IrSimpleFunction?,
   ): IrExpression =
     with(scope) {
       // Create a ShardExpressionContext for SwitchingProvider that ensures all property access
@@ -388,23 +472,18 @@ internal class SwitchingProviderGenerator(
           irBranch(condition, result)
         }
 
-        val elseBranchExpr =
-          if (isLast) {
-            val errorString = irConcat()
-            errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
-            errorString.addArgument(irGet(idLocal))
-            irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
-          } else {
-            irInvoke(
-              dispatchReceiver = irGet(switchingProviderThisReceiver),
-              callee = nextFunction!!.symbol,
-            )
-          }
-        branches += irElseBranch(elseBranchExpr)
+        branches += irElseBranch(generateUnexpectedIdExpression(irGet(idLocal)))
 
         +irWhen(typeParam.defaultType, branches)
       }
     }
+
+  private fun IrBuilderWithScope.generateUnexpectedIdExpression(id: IrExpression): IrExpression {
+    val errorString = irConcat()
+    errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
+    errorString.addArgument(id)
+    return irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
+  }
 
   /** Generates the expression to create the binding instance. */
   private fun IrBuilderWithScope.generateBindingExpression(

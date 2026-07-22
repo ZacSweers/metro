@@ -262,10 +262,12 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_selector: Int = tmp0_id.div(other = 2)
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 4) -> ClassA() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
-            else -> <this>.invoke3()
+            EQEQ(arg0 = tmp1_selector, arg1 = 0) -> <this>.invoke2()
+            EQEQ(arg0 = tmp1_selector, arg1 = 1) -> <this>.invoke3()
+            EQEQ(arg0 = tmp1_selector, arg1 = 2) -> <this>.invoke4()
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -274,6 +276,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> ClassE() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
@@ -284,9 +287,19 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 2) -> ClassC() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
-            else -> <this>.invoke2()
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private fun invoke4(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 4) -> ClassA() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }

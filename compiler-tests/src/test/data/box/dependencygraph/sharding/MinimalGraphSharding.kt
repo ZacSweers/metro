@@ -1,5 +1,6 @@
 // KEYS_PER_GRAPH_SHARD: 2
 // ENABLE_GRAPH_SHARDING: true
+// STATEMENTS_PER_INIT_FUN: 1
 
 /*
  * This test verifies basic graph sharding with a linear dependency chain.
@@ -8,6 +9,8 @@
  * Expected shards: 2 shards
  * - Shard1: Service1, Service2
  * - Shard2: Service3
+ *
+ * The FastInit variant also forces direct multi-chunk routing inside the two-binding shard.
  *
  * Validation: Dependency chain works correctly across shard boundaries
  */
