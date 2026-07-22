@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -1923,33 +1924,11 @@ internal class IrBindingGraph(
               }
               ?.let { IrTypeKey(it.defaultType) }
           }
-      // Report an error for anything that isn't an assisted binding depending on this
-      val notes = buildList {
-        add(Note.help("inject a corresponding @AssistedFactory type instead"))
-        if (assistedFactory != null) {
-          add(
-            Note.note(
-              buildText {
-                append("it looks like the @AssistedFactory for ")
-                append(binding.typeKey.toText())
-                append(" is ")
-                append(assistedFactory.toText())
-              }
-            )
-          )
-        }
-      }
       val diagnostic =
-        MetroDiagnostic(
-          id = MetroDiagnosticId.INVALID_BINDING,
-          severity = MetroSeverity.ERROR,
-          title =
-            buildText {
-              append(binding.typeKey.toText())
-              append(" uses assisted injection and cannot be injected directly into ")
-              append("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS)
-            },
-          notes = notes,
+        invalidAssistedBindingDiagnostic(
+          assistedType = binding.typeKey.toText(),
+          injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
+          assistedFactory = assistedFactory?.toText(),
         )
       collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
     }

@@ -34,3 +34,10 @@ class CanonicalSuspendConsumer(
   // A suspend function in map-value position is a real suspend spelling and stays gated.
   val map: <!SUSPEND_PROVIDERS_NOT_ENABLED!>Map<String, suspend () -> String><!>,
 )
+
+class MemberConsumer {
+  @Inject lateinit var provider: <!SUSPEND_PROVIDERS_NOT_ENABLED!>SuspendProvider<String><!>
+
+  @Inject
+  fun injectProvider(provider: <!SUSPEND_PROVIDERS_NOT_ENABLED!>suspend () -> String<!>) = Unit
+}

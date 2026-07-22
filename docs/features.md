@@ -37,9 +37,7 @@ Metro’s user-facing API is similar to kotlin-inject: focused on simplicity and
 
 ## Coroutines Support
 
-Metro supports suspend bindings and graph accessors, deferred initialization, scoping, and lazy
-initialization. Coroutines support is experimental and disabled by default. See
-[Coroutines Support](coroutines.md) for details.
+Metro supports suspend bindings and graph accessors, deferred initialization, scoping, and lazy initialization. Coroutines support is experimental and disabled by default. See [Coroutines Support](coroutines.md) for details.
 
 ## Anvil-esque aggregation
 

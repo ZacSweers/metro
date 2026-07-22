@@ -1,11 +1,12 @@
-/InjectingAssistedInjectClassesIsAnError.kt:25:8: error: 'ClassAnnotated' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+/InjectingAssistedInjectClassesIsAnError.kt:25:8: error: ClassAnnotated uses assisted injection and cannot be injected directly here
 
-(Hint)
-It looks like the @AssistedFactory for 'ClassAnnotated' may be 'ClassAnnotated.Factory'.
+  help: inject a corresponding @AssistedFactory type instead
+  note: it looks like the @AssistedFactory for ClassAnnotated is Factory
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
 
+/InjectingAssistedInjectClassesIsAnError.kt:26:8: error: ConstructorAnnotated uses assisted injection and cannot be injected directly
+    here
 
-/InjectingAssistedInjectClassesIsAnError.kt:26:8: error: 'ConstructorAnnotated' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
-
-(Hint)
-It looks like the @AssistedFactory for 'ConstructorAnnotated' may be 'ConstructorAnnotated.Factory'.
-
+  help: inject a corresponding @AssistedFactory type instead
+  note: it looks like the @AssistedFactory for ConstructorAnnotated is Factory
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding

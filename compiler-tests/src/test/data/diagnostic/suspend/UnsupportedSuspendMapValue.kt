@@ -13,3 +13,13 @@ interface ExampleGraph {
 
   @Provides @IntoMap @StringKey("value") suspend fun provideInt(): Int = 1
 }
+
+class MemberConsumer {
+  @Inject
+  lateinit var directLazy: Map<String, <!UNSUPPORTED_SUSPEND_MAP_VALUE!>SuspendLazy<Int><!>>
+
+  @Inject
+  fun injectNestedLazy(
+    nestedLazy: Map<String, <!UNSUPPORTED_SUSPEND_MAP_VALUE!>() -> SuspendLazy<Int><!>>
+  ) = Unit
+}

@@ -6,6 +6,13 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.ERROR
 import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.NONE
 import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.WARN
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
+import dev.zacsweers.metro.compiler.diagnostics.Style
+import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
+import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
+import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -108,6 +115,7 @@ internal fun validateInjectionSiteType(
   typeRef: FirTypeRef,
   qualifier: MetroFirAnnotation?,
   source: KtSourceElement?,
+  injectionSite: String? = null,
   isAccessor: Boolean = false,
   isOptionalBinding: Boolean = false,
   hasDefault: Boolean = false,
@@ -166,23 +174,32 @@ internal fun validateInjectionSiteType(
               .find { it.isAnnotatedWithAny(session, session.classIds.assistedFactoryAnnotations) }
               ?.symbol
 
-        val message = buildString {
-          val fqName = clazz.classId.diagnosticString
-          append(
-            "'$fqName' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead."
-          )
-          if (nestedFactory != null) {
-            appendLine()
-            appendLine()
-            appendLine("(Hint)")
-            appendLine(
-              "It looks like the @AssistedFactory for '$fqName' may be '${nestedFactory.classId.diagnosticString}'."
-            )
+        val assistedType = buildText {
+          val fqName = clazz.classId.asSingleFqName().asString()
+          appendType(fqName)
+        }
+        val assistedFactory = nestedFactory?.let {
+          buildText {
+            val fqName = it.classId.asSingleFqName().asString()
+            appendType(fqName)
           }
         }
+        val diagnostic =
+          invalidAssistedBindingDiagnostic(
+            assistedType = assistedType,
+            injectionSite = injectionSite?.let { textOf(it, Style.EMPHASIS) },
+            assistedFactory = assistedFactory,
+          )
+        val prepared = DiagnosticBatch.prepare(listOf(diagnostic)).single()
+        val renderedMessage =
+          DiagnosticRenderer(RenderProfile.PLAIN)
+            .render(prepared.diagnostic, prepared.renderContext)
+        val message = renderedMessage.removePrefix("[${diagnostic.id.fullId}] ")
+        val reportSource =
+          if (injectionSite == null) typeRef.source ?: source else source ?: typeRef.source
         reporter.reportOn(
-          typeRef.source ?: source,
-          MetroDiagnostics.ASSISTED_INJECTION_ERROR,
+          reportSource,
+          diagnostic.id.factory,
           message,
         )
       }

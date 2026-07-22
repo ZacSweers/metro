@@ -35,13 +35,11 @@ Provider functions can be freely mixed with `Lazy<T>`, and also work with multib
 !!! tip "Opting out"
     Function provider support is enabled by default and can be disabled via the `enableFunctionProviders` compiler option. Disabling it reverts to using `Provider<T>` exclusively.
 
-For suspend bindings, use `suspend () -> T` to defer initialization. See
-[Coroutines Support](coroutines.md).
+For suspend bindings, use `suspend () -> T` to defer initialization. See [Coroutines Support](coroutines.md).
 
 ## `Lazy`
 
-`Lazy` is Kotlin’s standard library `Lazy`. It initializes a value on first access, caches it, and
-is thread-safe.
+`Lazy` is Kotlin’s standard library `Lazy`. It initializes a value on first access, caches it, and is thread-safe.
 
 ```kotlin
 @Inject
@@ -81,8 +79,4 @@ When the function provider feature is enabled (the default), Metro emits a diagn
 
 ## Nested providers and lazy values
 
-Provider and lazy wrappers can be nested to any depth. For example, Metro supports
-`() -> Lazy<T>`, `Provider<Lazy<T>>`, `Lazy<() -> T>`, and `Lazy<Provider<T>>`. Each wrapper keeps
-its normal behavior: a provider call returns its immediate inner value, while a `Lazy` caches its
-immediate inner value. Suspending provider and lazy wrappers follow the same recursive model; see
-[Coroutines Support](coroutines.md).
+Provider and lazy wrappers can be nested to any depth. For example, Metro supports `() -> Lazy<T>`, `Provider<Lazy<T>>`, `Lazy<() -> T>`, and `Lazy<Provider<T>>`. Each wrapper keeps its normal behavior: a provider call returns its immediate inner value, while a `Lazy` caches its immediate inner value. Suspending provider and lazy wrappers follow the same recursive model; see [Coroutines Support](coroutines.md).

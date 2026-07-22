@@ -334,6 +334,16 @@ val generateTests =
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 
+if (excludeJsBoxTests) {
+  sourceSets.test {
+    java.exclude(
+      "dev/zacsweers/metro/compiler/JsBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsFastInitBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsContributionProvidersBoxTestGenerated.java",
+    )
+  }
+}
+
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
   dependsOn(runtimeTracingClasspath)
