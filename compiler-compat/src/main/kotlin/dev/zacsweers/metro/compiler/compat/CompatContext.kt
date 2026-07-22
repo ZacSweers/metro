@@ -659,9 +659,9 @@ public interface CompatContext {
 
   /** Builds a fully qualified resolved qualifier for [classSymbol]. */
   @CompatApi(
-    since = "2.5.0-dev-498",
+    since = "2.4.20-Beta2",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.5 renamed FirResolvedQualifier.symbol and removed its isFullyQualified property",
+    message = "FirResolvedQualifier.symbol was renamed and isFullyQualified was removed",
   )
   public fun buildResolvedQualifierCompat(
     classId: ClassId,
