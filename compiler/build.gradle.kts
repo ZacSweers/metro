@@ -164,8 +164,11 @@ val shadowJar =
       exclude(dependency("dev.zacsweers.metro:compiler-compat.*:.*"))
       exclude(dependency("dev.zacsweers.metro:metro-common:.*"))
       r8 {
+        // Compat implementations receive callbacks from Kotlin compiler classes on the library
+        // classpath, so R8 cannot discover these usages itself.
         keepRules.add(
           """
+          -keep class dev.zacsweers.metro.compiler.compat.** { *; }
           -keepattributes AnnotationDefault,EnclosingMethod,Exceptions,InnerClasses,RuntimeInvisibleAnnotations,RuntimeVisibleAnnotations,Signature
           -dontwarn com.intellij.**
           -dontwarn org.intellij.**
