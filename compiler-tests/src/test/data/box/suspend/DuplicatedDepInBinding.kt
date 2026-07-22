@@ -1,36 +1,27 @@
 // ENABLE_SUSPEND_PROVIDERS
 
-// MODULE: api
+// MODULE: lib
 interface Foo
-interface Bar
 
-@BindingContainer
-object BarProvider {
-  @Provides
-  fun provideBar(): Bar = object : Bar {}
-}
-
-// MODULE: impl(api)
 @Inject
 @ContributesBinding(Unit::class)
 class FooImpl(
-  private val bar: Bar,
-  duplicatedBar: Bar,
+  private val int: Int,
+  duplicatedInt: Int,
 ) : Foo
 
-// MODULE: main(api, impl)
+// MODULE: main(lib)
 @DependencyGraph(AppScope::class)
-interface AppGraph
+interface AppGraph {
+  val featureGraph: FeatureGraph
+}
 
-@GraphExtension(Unit::class, bindingContainers = [BarProvider::class])
+@GraphExtension(Unit::class)
 interface FeatureGraph {
   val viewModel: ViewModel
 
-  @ContributesTo(AppScope::class)
-  @GraphExtension.Factory
-  interface Factory {
-    fun createFeatureGraph(): FeatureGraph
-  }
+  @Provides
+  fun provideInt(): Int = 3
 }
 
 interface ViewModel
@@ -42,8 +33,7 @@ class ViewModelImpl(foo: Foo): ViewModel
 
 fun box(): String {
   val appGraph = createGraph<AppGraph>()
-  val featureGraph = appGraph.createFeatureGraph()
-  assertNotNull(featureGraph.viewModel)
+  assertNotNull(appGraph.featureGraph.viewModel)
 
   return "OK"
 }
