@@ -8,6 +8,20 @@ private const val INT_MAX_POWER_OF_TWO: Int = 1 shl (Int.SIZE_BITS - 2)
 public const val REPORT_METRO_MESSAGE: String =
   "This is possibly a bug in the Metro compiler, please report it with details and/or a reproducer to https://github.com/zacsweers/metro."
 
+/**
+ * Thread-safety mode used by [memoize]. Defaults to [LazyThreadSafetyMode.PUBLICATION] so callers
+ * remain safe under the compiler's parallel transformation pool. The compiler registrar swaps this
+ * to [LazyThreadSafetyMode.NONE] when `parallelThreads == 0`, removing the per-access CAS/volatile
+ * cost from memoized properties on the hot compile path.
+ *
+ * Treated as process-global mutable state, matching the existing single-compilation-per-process
+ * assumption.
+ */
+@Volatile
+public var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION
+
+public fun <T> memoize(initializer: () -> T): Lazy<T> = lazy(memoizeThreadSafetyMode, initializer)
+
 public fun String.suffixIfNot(suffix: String): String =
   if (this.endsWith(suffix)) this else "$this$suffix"
 

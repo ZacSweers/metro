@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import dev.zacsweers.metro.compiler.ir.IrDependencyGraph
 import java.util.Locale
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -30,20 +29,6 @@ internal fun ClassId.isPlatformType(): Boolean {
 }
 
 internal const val LOG_PREFIX = "[METRO]"
-
-/**
- * Thread-safety mode used by [memoize]. Default is [LazyThreadSafetyMode.PUBLICATION] so callers
- * remain safe under the parallel transformation pool wired up in [IrDependencyGraph]. The plugin
- * registrar swaps this to [LazyThreadSafetyMode.NONE] when `parallelThreads == 0`, which removes
- * the per-access CAS/volatile cost for the 100+ memoized properties in the hot compile path.
- *
- * Treated as process-global mutable state, matching the existing single-compilation-per-process
- * assumption (see [dev.zacsweers.metro.compiler.ir.cache.IrThreadUnsafeCachesFactory]).
- */
-@Volatile
-internal var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION
-
-internal fun <T> memoize(initializer: () -> T) = lazy(memoizeThreadSafetyMode, initializer)
 
 internal inline fun <reified T : Any> Any.expectAs(): T {
   contract { returns() implies (this@expectAs is T) }

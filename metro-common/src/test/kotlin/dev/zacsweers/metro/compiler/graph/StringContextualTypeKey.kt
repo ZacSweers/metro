@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.drewhamilton.poko.Poko
-import org.jetbrains.kotlin.name.ClassId
+import dev.zacsweers.metro.compiler.MetroClassIds
 
 @Poko
 internal class StringContextualTypeKey
@@ -50,19 +50,16 @@ private constructor(
       )
     }
 
-    private val PROVIDER_CLASS_ID = ClassId.fromString("dev/zacsweers/metro/Provider")
-    private val LAZY_CLASS_ID = ClassId.fromString("kotlin/Lazy")
-
     private fun parseWrappedType(type: String): WrappedType<String> {
       return when {
         type.startsWith("() ->") -> {
           val inner = type.removePrefix("() -> ")
-          WrappedType.Provider(parseWrappedType(inner), PROVIDER_CLASS_ID)
+          WrappedType.Provider(parseWrappedType(inner), MetroClassIds.provider)
         }
 
         type.startsWith("Lazy<") -> {
           val inner = type.removeSurrounding("Lazy<", ">")
-          WrappedType.Lazy(parseWrappedType(inner), LAZY_CLASS_ID)
+          WrappedType.Lazy(parseWrappedType(inner), MetroClassIds.lazy)
         }
 
         type.startsWith("Map<") -> {

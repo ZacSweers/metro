@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -20,8 +21,8 @@ import org.jetbrains.kotlin.name.ClassId
 public sealed interface WrappedType<T : Any> {
   /** The canonical type with no wrapping. */
   public class Canonical<T : Any>(public val type: T) : WrappedType<T> {
-    private val cachedHashCode by lazy(LazyThreadSafetyMode.PUBLICATION) { type.hashCode() }
-    private val cachedToString by lazy(LazyThreadSafetyMode.PUBLICATION) { type.toString() }
+    private val cachedHashCode by memoize { type.hashCode() }
+    private val cachedToString by memoize { type.toString() }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -44,17 +45,13 @@ public sealed interface WrappedType<T : Any> {
     public val innerType: WrappedType<T>,
     public val providerType: ClassId,
   ) : WrappedType<T> {
-    private val cachedHashCode by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        var result = innerType.hashCode()
-        result = 31 * result + providerType.hashCode()
-        result
-      }
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + providerType.hashCode()
+      result
+    }
 
-    private val cachedToString by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        "${providerType.asFqNameString()}<$innerType>"
-      }
+    private val cachedToString by memoize { "${providerType.asFqNameString()}<$innerType>" }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -80,17 +77,13 @@ public sealed interface WrappedType<T : Any> {
     public val innerType: WrappedType<T>,
     public val providerType: ClassId,
   ) : WrappedType<T> {
-    private val cachedHashCode by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        var result = innerType.hashCode()
-        result = 31 * result + providerType.hashCode()
-        result
-      }
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + providerType.hashCode()
+      result
+    }
 
-    private val cachedToString by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        "${providerType.asFqNameString()}<$innerType>"
-      }
+    private val cachedToString by memoize { "${providerType.asFqNameString()}<$innerType>" }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -116,17 +109,13 @@ public sealed interface WrappedType<T : Any> {
     public val innerType: WrappedType<T>,
     public val lazyType: ClassId,
   ) : WrappedType<T> {
-    private val cachedHashCode by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        var result = innerType.hashCode()
-        result = 31 * result + lazyType.hashCode()
-        result
-      }
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + lazyType.hashCode()
+      result
+    }
 
-    private val cachedToString by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        "${lazyType.asFqNameString()}<$innerType>"
-      }
+    private val cachedToString by memoize { "${lazyType.asFqNameString()}<$innerType>" }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -152,17 +141,13 @@ public sealed interface WrappedType<T : Any> {
     public val innerType: WrappedType<T>,
     public val lazyType: ClassId,
   ) : WrappedType<T> {
-    private val cachedHashCode by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        var result = innerType.hashCode()
-        result = 31 * result + lazyType.hashCode()
-        result
-      }
+    private val cachedHashCode by memoize {
+      var result = innerType.hashCode()
+      result = 31 * result + lazyType.hashCode()
+      result
+    }
 
-    private val cachedToString by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        "${lazyType.asFqNameString()}<$innerType>"
-      }
+    private val cachedToString by memoize { "${lazyType.asFqNameString()}<$innerType>" }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -189,17 +174,13 @@ public sealed interface WrappedType<T : Any> {
     public val valueType: WrappedType<T>,
     public val type: () -> T,
   ) : WrappedType<T> {
-    private val cachedHashCode by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        var result = keyType.hashCode()
-        result = 31 * result + valueType.hashCode()
-        result
-      }
+    private val cachedHashCode by memoize {
+      var result = keyType.hashCode()
+      result = 31 * result + valueType.hashCode()
+      result
+    }
 
-    private val cachedToString by
-      lazy(LazyThreadSafetyMode.PUBLICATION) {
-        "Map<$keyType, $valueType>"
-      }
+    private val cachedToString by memoize { "Map<$keyType, $valueType>" }
 
     public override fun equals(other: Any?): Boolean {
       if (this === other) return true

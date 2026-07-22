@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.symbols
 
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.asName
@@ -147,20 +148,19 @@ internal class Symbols(
 
   object ClassIds {
     val Composable = ClassId(FqNames.composeRuntime, StringNames.COMPOSABLE.asName())
-    val ExposeImplBinding = ClassId(FqNames.metroRuntimePackage, "ExposeImplBinding".asName())
+    val ExposeImplBinding = MetroClassIds.exposeImplBinding
     val HiddenFromObjC = ClassId(FqName("kotlin.native"), "HiddenFromObjC".asName())
     val GraphFactoryInvokeFunctionMarkerClass =
       ClassId(FqNames.metroRuntimeInternalPackage, "GraphFactoryInvokeFunctionMarker".asName())
-    val HasMemberInjections = ClassId(FqNames.metroRuntimePackage, "HasMemberInjections".asName())
+    val HasMemberInjections = MetroClassIds.hasMemberInjections
     val JavaOptional = ClassId(FqNames.javaUtil, Names.Optional)
     val JavaLangClass = ClassId(FqName("java.lang"), "Class".asName())
     val JvmField = JvmStandardClassIds.Annotations.JvmField
     val JvmStatic = JvmStandardClassIds.Annotations.JvmStatic
     val JsStatic = JsStandardClassIds.Annotations.JsStatic
-    val Lazy = StandardClassIds.byName("Lazy")
+    val Lazy = MetroClassIds.lazy
     val MembersInjector = ClassId(FqNames.metroRuntimePackage, Names.membersInjector)
-    val MultibindingElement =
-      ClassId(FqNames.metroRuntimeInternalPackage, "MultibindingElement".asName())
+    val MultibindingElement = MetroClassIds.multibindingElement
     val NonRestartableComposable =
       ClassId(FqNames.composeRuntime, StringNames.NON_RESTARTABLE_COMPOSABLE.asName())
     val CallableMetadata =
@@ -178,35 +178,35 @@ internal class Symbols(
     val Throws = ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "Throws".asName())
     val IllegalStateException =
       ClassId(StandardClassIds.BASE_KOTLIN_PACKAGE, "IllegalStateException".asName())
-    val graphExtension = ClassId(FqNames.metroRuntimePackage, "GraphExtension".asName())
-    val graphExtensionFactory = graphExtension.createNestedClassId(Names.FactoryClass)
-    val metroAssisted = ClassId(FqNames.metroRuntimePackage, StringNames.ASSISTED.asName())
+    val graphExtension = MetroClassIds.graphExtension
+    val graphExtensionFactory = MetroClassIds.graphExtensionFactory
+    val metroAssisted = MetroClassIds.assisted
     val metroAssistedMarker =
       ClassId(FqNames.metroRuntimeInternalPackage, "AssistedMarker".asName())
-    val metroBinds = ClassId(FqNames.metroRuntimePackage, Names.Binds)
+    val metroBinds = MetroClassIds.binds
     val metroContribution =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.METRO_CONTRIBUTION.asName())
     val metroFactory = ClassId(FqNames.metroRuntimeInternalPackage, Names.FactoryClass)
     val metroSuspendFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, Names.SuspendFactoryClass)
-    val metroIncludes = ClassId(FqNames.metroRuntimePackage, StringNames.INCLUDES.asName())
-    val metroInject = ClassId(FqNames.metroRuntimePackage, StringNames.INJECT.asName())
+    val metroIncludes = MetroClassIds.includes
+    val metroInject = MetroClassIds.inject
     val metroInjectedFunctionClass =
       ClassId(FqNames.metroRuntimeInternalPackage, StringNames.INJECTED_FUNCTION_CLASS.asName())
-    val metroIntoMap = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_MAP.asName())
-    val metroIntoSet = ClassId(FqNames.metroRuntimePackage, StringNames.INTO_SET.asName())
+    val metroIntoMap = MetroClassIds.intoMap
+    val metroIntoSet = MetroClassIds.intoSet
     val metroImplMarker = ClassId(FqNames.metroRuntimeInternalPackage, "MetroImplMarker".asName())
     val mergeContributionsInIr =
       ClassId(FqNames.metroRuntimePackage, "MergeContributionsInIr".asName())
     val irOnlyFactories = ClassId(FqNames.metroRuntimeInternalPackage, "IROnlyFactories".asName())
-    val metroOrigin = ClassId(FqNames.metroRuntimePackage, "Origin".asName())
-    val metroProvider = ClassId(FqNames.metroRuntimePackage, Names.ProviderClass)
-    val metroSuspendProvider = ClassId(FqNames.metroRuntimePackage, Names.SuspendProviderClass)
-    val metroSuspendLazy = ClassId(FqNames.metroRuntimePackage, "SuspendLazy".asName())
+    val metroOrigin = MetroClassIds.origin
+    val metroProvider = MetroClassIds.provider
+    val metroSuspendProvider = MetroClassIds.suspendProvider
+    val metroSuspendLazy = MetroClassIds.suspendLazy
     val metroSyncSuspendProvider =
       ClassId(FqNames.metroRuntimeInternalPackage, "SyncSuspendProvider".asName())
-    val metroProvides = ClassId(FqNames.metroRuntimePackage, StringNames.PROVIDES.asName())
-    val metroSingleIn = ClassId(FqNames.metroRuntimePackage, StringNames.SINGLE_IN.asName())
+    val metroProvides = MetroClassIds.provides
+    val metroSingleIn = MetroClassIds.singleIn
     val metroInstanceFactory =
       ClassId(FqNames.metroRuntimeInternalPackage, "InstanceFactory".asName())
     val metroTraceContext = ClassId(FqNames.metroTraceInternalPackage, "MetroTraceContext".asName())
@@ -217,8 +217,8 @@ internal class Symbols(
     val tracedSuspendProvider =
       ClassId(FqNames.metroTraceInternalPackage, "TracedSuspendProvider".asName())
 
-    val function0 = StandardClassIds.FunctionN(0)
-    val suspendFunction0 = ClassId(FqName("kotlin.coroutines"), "SuspendFunction0".asName())
+    val function0 = MetroClassIds.function0
+    val suspendFunction0 = MetroClassIds.suspendFunction0
 
     val commonMetroProviders by lazy {
       setOf(metroProvider, metroFactory, metroSuspendFactory, metroInstanceFactory)
