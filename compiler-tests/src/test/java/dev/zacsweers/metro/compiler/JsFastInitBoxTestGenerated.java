@@ -679,6 +679,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DuplicatedDepInBinding.kt")
+    public void testDuplicatedDepInBinding() {
+      run("DuplicatedDepInBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
     public void testParentIncludesArePropgatedToExtensions() {
       run("ParentIncludesArePropgatedToExtensions.kt");
@@ -2602,12 +2608,6 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("DepInConstructorInjectedAccessor.kt")
     public void testDepInConstructorInjectedAccessor() {
       run("DepInConstructorInjectedAccessor.kt");
-    }
-
-    @Test
-    @TestMetadata("DuplicatedDepInBinding.kt")
-    public void testDuplicatedDepInBinding() {
-      run("DuplicatedDepInBinding.kt");
     }
 
     @Test

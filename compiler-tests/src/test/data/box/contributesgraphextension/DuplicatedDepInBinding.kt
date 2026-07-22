@@ -1,5 +1,3 @@
-// ENABLE_SUSPEND_PROVIDERS
-
 // MODULE: lib
 interface Foo
 
