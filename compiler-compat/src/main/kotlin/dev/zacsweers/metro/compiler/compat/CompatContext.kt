@@ -681,10 +681,9 @@ public interface CompatContext {
   ): IrPackageFragment
 
   @CompatApi(
-    since = "2.5.0-dev-498",
+    since = "2.4.20-Beta2",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message =
-      "2.5 replaced IrConstructorCall.getValueArgument(Name) with IrAnnotation.argumentMapping",
+    message = "IrAnnotation arguments moved from getValueArgument(Name) to argumentMapping",
   )
   public fun IrConstructorCall.getAnnotationArgumentCompat(name: Name): IrExpression?
 }

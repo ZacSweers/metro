@@ -6,8 +6,8 @@ plugins {
 }
 
 metroArtifact {
-  artifactId.set("compiler-compat-k250_dev_498")
-  name.set("Metro Compiler Compat (Kotlin 2.5.0-dev-498)")
+  artifactId.set("compiler-compat-k2420_beta2")
+  name.set("Metro Compiler Compat (Kotlin 2.4.20-Beta2)")
 }
 
 dependencies {
@@ -16,5 +16,5 @@ dependencies {
   compileOnly(kotlinVersion.map { "org.jetbrains.kotlin:kotlin-compiler:$it" })
   compileOnly(libs.kotlin.stdlib)
   api(project(":compiler-compat"))
-  implementation(project(":compiler-compat:k2420_beta2"))
+  implementation(project(":compiler-compat:k2420_beta1"))
 }
