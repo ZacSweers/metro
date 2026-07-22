@@ -166,10 +166,6 @@ val shadowJar =
       r8 {
         keepRules.add(
           """
-          -keep class dev.zacsweers.metro.compiler.shaded.kotlinx.serialization.** { *; }
-          -keepclassmembers class kotlinx.coroutines.** {
-            volatile <fields>;
-          }
           -keepattributes AnnotationDefault,EnclosingMethod,Exceptions,InnerClasses,RuntimeInvisibleAnnotations,RuntimeVisibleAnnotations,Signature
           -dontwarn com.intellij.**
           -dontwarn org.intellij.**
@@ -191,13 +187,6 @@ val shadowJar =
         )
       }
     }
-
-    // TODO(https://github.com/GradleUp/shadow/pull/2115): Remove these exclusions once fixed.
-    // Shadow 9.6.0 de-duplicates these files line-by-line when extracting R8 rules, which removes
-    // repeated closing braces and produces invalid rules. The relevant rules are supplied above.
-    exclude("META-INF/proguard/*.pro")
-    exclude("META-INF/com.android.tools/proguard/*.pro")
-    exclude("META-INF/com.android.tools/r8/*.pro")
 
     // TODO these are relocated, do we need to/can we exclude these?
     //  exclude("META-INF/wire-runtime.kotlin_module")
