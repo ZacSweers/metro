@@ -163,6 +163,8 @@ val shadowJar =
     minimize {
       exclude(dependency("dev.zacsweers.metro:compiler-compat.*:.*"))
       exclude(dependency("dev.zacsweers.metro:metro-common:.*"))
+      // Mordant selects its terminal interface via runtime probing and native (JNA) loading
+      exclude(dependency("com.github.ajalt.mordant:.*:.*"))
       r8 {
         // Compat implementations receive callbacks from Kotlin compiler classes on the library
         // classpath, so R8 cannot discover these usages itself.
@@ -173,6 +175,9 @@ val shadowJar =
           -dontwarn com.intellij.**
           -dontwarn org.intellij.**
           -dontwarn org.jetbrains.**
+          # Mordant's native-image/FFM terminal interfaces reference GraalVM SDK and SVM classes
+          -dontwarn org.graalvm.**
+          -dontwarn com.oracle.svm.**
           """
             .trimIndent()
         )
