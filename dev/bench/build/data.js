@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784778746666,
+  "lastUpdate": 1784780932483,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19488,6 +19488,62 @@ window.BENCHMARK_DATA = {
             "value": 17806.811999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +5.41%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2e524100~1",
+          "message": "[before] Do not minimize mordant with R8 (#2581)",
+          "timestamp": "2026-07-22T23:55:54-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2e5241006c59f5939ba851a7657ac686b6671798"
+        },
+        "date": 1784780932483,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19842.167999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "2e5241006c59f5939ba851a7657ac686b6671798",
+          "message": "[after] Do not minimize mordant with R8 (#2581)",
+          "timestamp": "2026-07-22T23:55:54-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/2e5241006c59f5939ba851a7657ac686b6671798"
+        },
+        "date": 1784780932484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19820.756,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.11%"
           }
         ]
       }
