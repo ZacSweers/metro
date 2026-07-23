@@ -1,0 +1,5 @@
+/MapKeyRequiresContributesIntoMap.kt:6:1: error: `@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.
+
+/MapKeyRequiresContributesIntoMap.kt:10:1: error: `@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.
+
+/MapKeyRequiresContributesIntoMap.kt:19:21: error: `@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.

@@ -1159,6 +1159,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MapKeyRequiresContributesIntoMap.kt")
+    public void testMapKeyRequiresContributesIntoMap() {
+      run("MapKeyRequiresContributesIntoMap.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       run("MissingBindingFunctionType.kt");
