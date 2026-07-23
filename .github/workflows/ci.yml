@@ -178,6 +178,67 @@ jobs:
           report_paths: '**/build/test-results/**/TEST-*.xml'
           check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
 
+  shaded-compiler-smoke:
+    name: shaded compiler / macOS JDK 21
+    runs-on: macos-latest
+    timeout-minutes: 40
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Keep the build and R8 on the project's JDK 25 while making JDK 21 available for the
+      # compiler-test and TestKit workers that execute the shaded compiler.
+      - name: Configure test JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Capture test JDK home
+        run: echo "METRO_TEST_JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Test shaded compiler
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            -Pmetro.testJavaVersion=21 \
+            "-Dorg.gradle.java.installations.paths=$METRO_TEST_JAVA_HOME" \
+            --tests 'dev.zacsweers.metro.compiler.ShadedCompilerTest.optional terminal providers initialize from the shaded compiler jar' \
+            --tests 'dev.zacsweers.metro.compiler.DiagnosticTestGenerated$Rich.testMissingBindingRich' \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test shaded compiler through Gradle
+        run: |
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --quiet \
+            -Pmetro.testJavaVersion=21 \
+            "-Dorg.gradle.java.installations.paths=$METRO_TEST_JAVA_HOME" \
+            --tests 'dev.zacsweers.metro.gradle.MetroArtifactsTest.shaded compiler renders rich diagnostics' \
+            --tests 'dev.zacsweers.metro.gradle.MetroArtifactsTest.diagnosticsRenderMode is not a compilation input' \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-shaded-compiler-smoke
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - shaded compiler / macOS JDK 21'
+
   js-box:
     name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
     runs-on: ubuntu-latest
@@ -455,6 +516,7 @@ jobs:
       - generate-matrix
       - core
       - compatibility
+      - shaded-compiler-smoke
       - js-box
       - kmp-functional
       - benchmarks

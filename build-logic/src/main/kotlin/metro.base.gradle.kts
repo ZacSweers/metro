@@ -4,6 +4,7 @@ import com.vanniktech.maven.publish.DeploymentValidation
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
@@ -43,13 +44,28 @@ pluginManager.withPlugin("java") {
 
 // Suppress native access warnings and ReservedStackAccess warnings in forked JVMs
 val ciVerbose = providers.gradleProperty("metro.ciVerbose").map { it.toBoolean() }.orElse(false)
+val configuredTestJavaVersion = providers.gradleProperty("metro.testJavaVersion").map(String::toInt)
+val effectiveTestJavaVersion = configuredTestJavaVersion.orElse(jdkVersion.toInt())
+
+pluginManager.withPlugin("java-base") {
+  if (configuredTestJavaVersion.isPresent) {
+    val javaToolchains = extensions.getByType<JavaToolchainService>()
+    tasks.withType<Test>().configureEach {
+      javaLauncher.set(
+        javaToolchains.launcherFor {
+          languageVersion.set(configuredTestJavaVersion.map(JavaLanguageVersion::of))
+        }
+      )
+    }
+  }
+}
 
 tasks.withType<Test>().configureEach {
-  jvmArgs(
-    "--enable-native-access=ALL-UNNAMED",
-    "--sun-misc-unsafe-memory-access=allow",
-    "-XX:StackReservedPages=0",
-  )
+  jvmArgs("--enable-native-access=ALL-UNNAMED")
+  if (effectiveTestJavaVersion.get() >= 23) {
+    jvmArgs("--sun-misc-unsafe-memory-access=allow")
+  }
+  jvmArgs("-XX:StackReservedPages=0")
 
   // metro.ciVerbose surfaces test-lifecycle events (started/passed/skipped/failed) and stdout/err
   // so CI logs show in-flight test progress instead of just batch-completion summaries. Useful
