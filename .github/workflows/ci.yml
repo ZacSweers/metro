@@ -179,8 +179,8 @@ jobs:
           check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
 
   shaded-compiler-smoke:
-    name: shaded compiler / macOS JDK 21
-    runs-on: macos-latest
+    name: shaded compiler / JDK 21
+    runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
       checks: write
@@ -237,7 +237,7 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - shaded compiler / macOS JDK 21'
+          check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
     name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
