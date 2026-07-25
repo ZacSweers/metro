@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Metro Locally"
+  short_description: "Verify local Metro builds in downstream projects"
+  default_prompt: "Use $test-metro-locally to publish this Metro checkout and verify the change in a downstream project."
