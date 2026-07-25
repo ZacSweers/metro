@@ -1962,15 +1962,17 @@
 <li>enum values become enum entry reads</li>
 <li>class literal values become <code>KClass</code> references</li>
 </ul>
-<p>The materialized expression is then adapted to the requested access type. For normal graph accessors this means returning the scalar value directly. For provider access, Metro wraps the materialized value in the appropriate factory.</p>
-<p>Materialization can still fail for class-referencing values: the class may not be resolvable in the consuming compilation (e.g. an object behind an implementation dependency of the providing module). <code>materialize(...)</code> returns null in that case and the generator falls back to the factory paths. The fallback factory survives R8 despite <code>@ComptimeOnly</code> because <code>-assumenosideeffects</code> only removes calls whose results are unused.</p>
+<p>The materialized expression is then adapted to the requested access type. For normal graph accessors this means returning the scalar value directly. For provider access, literal values are wrapped in the appropriate instance factory. Class-referencing values use their generated provider factory so they are not evaluated until the provider is invoked.</p>
+<p>Materialization can still fail for class-referencing values: the class may not be resolvable in the consuming compilation (e.g. an object behind an implementation dependency of the providing module). <code>materialize(...)</code> returns null in that case and the generator falls back to the factory paths. Class-referencing factories remain available at runtime for this fallback and for provider access.</p>
 <h2 id="provider-wrappers">Provider Wrappers<a class="headerlink" href="#provider-wrappers" title="Permanent link">&para;</a></h2>
-<p>Provider access to already-known values uses <code>instanceFactory(...)</code>. That helper chooses the smallest runtime wrapper from the expression type:</p>
+<p>Provider access to already-known literal values uses <code>instanceFactory(...)</code>. That helper chooses the smallest runtime wrapper from the expression type:</p>
 <ul>
 <li>primitive values use <code>ByteFactory</code>, <code>IntFactory</code>, <code>LongFactory</code>, etc.</li>
 <li>booleans use <code>BooleanFactory</code>, which reuses the two singleton boolean factories</li>
 <li>other values use <code>InstanceFactory</code></li>
 </ul>
+<p>Object, enum, and class-literal values use their generated provider factory instead. Evaluating those expressions while constructing an <code>InstanceFactory</code> would move their class loading or initialization ahead of the provider invocation. These generated factories are not marked <code>@ComptimeOnly</code> because provider access can reference them at runtime.</p>
+<p><code>SuspendProvider</code> adapts the generated provider through <code>SyncSuspendProvider</code>. <code>SuspendLazy</code> wraps that adapter with <code>SuspendDoubleCheck.lazy(...)</code>.</p>
 <p>The declared field type is taken from the returned expression instead of being computed separately. This keeps primitive factories and other concrete wrapper types visible in generated code instead of hiding them behind <code>Provider&lt;T&gt;</code> when a concrete factory type is available.</p>
 <h2 id="generated-factories">Generated Factories<a class="headerlink" href="#generated-factories" title="Permanent link">&para;</a></h2>
 <p>Generated factory <code>create()</code> functions return the concrete generated factory type, not <code>Factory&lt;T&gt;</code>. Any metadata-backed or phantom factory declarations used for cross-module lookups must mirror that same return type so JVM call descriptors match the real generated factory. Inlined constants do not change factory creation; inlining remains a graph expression optimization.</p>
