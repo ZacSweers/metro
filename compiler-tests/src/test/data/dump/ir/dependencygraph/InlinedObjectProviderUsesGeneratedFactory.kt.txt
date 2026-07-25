@@ -1,0 +1,98 @@
+@DependencyGraph(bindingContainers = [Bindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val objectProvider: Provider<InlinedObject>
+      override get(): Provider<InlinedObject> {
+        return Bindings.ProvideObjectMetroFactory.create()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val objectProvider: Provider<InlinedObject>
+    abstract get
+
+}
+
+@BindingContainer
+object Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideObject", propertyName = "", startOffset = 89, endOffset = 149, newInstanceName = "provideObject")
+  object ProvideObjectMetroFactory : Factory<InlinedObject> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): ProvideObjectMetroFactory {
+      return ProvideObjectMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun provideObject(): InlinedObject {
+      return Bindings.provideObject()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): InlinedObject {
+      return ProvideObjectMetroFactory.provideObject()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): InlinedObject {
+      return error(message = "Never called")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun provideObject(): InlinedObject {
+    return InlinedObject
+  }
+
+}
+
+object InlinedObject {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}

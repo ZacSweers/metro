@@ -2415,6 +2415,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("InlinedObjectProvidersRemainLazy.kt")
+    public void testInlinedObjectProvidersRemainLazy() {
+      run("InlinedObjectProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
     public void testInlinedProviderValueNotOnConsumerClasspath() {
       run("InlinedProviderValueNotOnConsumerClasspath.kt");
@@ -2668,6 +2674,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("IncludedGraphSuspendLazyAccessor.kt")
     public void testIncludedGraphSuspendLazyAccessor() {
       run("IncludedGraphSuspendLazyAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersRemainLazy.kt")
+    public void testInlinedObjectSuspendProvidersRemainLazy() {
+      run("InlinedObjectSuspendProvidersRemainLazy.kt");
     }
 
     @Test

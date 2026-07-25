@@ -211,6 +211,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("InlinedObjectProviderUsesGeneratedFactory.kt")
+    public void testInlinedObjectProviderUsesGeneratedFactory() {
+      run("InlinedObjectProviderUsesGeneratedFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersUseGeneratedFactory.kt")
+    public void testInlinedObjectSuspendProvidersUseGeneratedFactory() {
+      run("InlinedObjectSuspendProvidersUseGeneratedFactory.kt");
+    }
+
+    @Test
     @TestMetadata("LazyPropertiesHaveDeterministicOrder.kt")
     public void testLazyPropertiesHaveDeterministicOrder() {
       run("LazyPropertiesHaveDeterministicOrder.kt");

@@ -1,0 +1,109 @@
+@DependencyGraph(bindingContainers = [Bindings::class])
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val provideObjectProvider: Provider<InlinedObject>
+      field = Bindings.ProvideObjectMetroFactory.create()
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val lazyObject: SuspendLazy<InlinedObject>
+      override get(): SuspendLazy<InlinedObject> {
+        return SuspendDoubleCheck/* companion */.lazy<InlinedObject>(delegate = SyncSuspendProvider<InlinedObject>(delegate = <this>.#provideObjectProvider))
+      }
+
+    override val objectProvider: SuspendProvider<InlinedObject>
+      override get(): SuspendProvider<InlinedObject> {
+        return SyncSuspendProvider<InlinedObject>(delegate = <this>.#provideObjectProvider)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val lazyObject: SuspendLazy<InlinedObject>
+    abstract get
+
+  abstract val objectProvider: SuspendProvider<InlinedObject>
+    abstract get
+
+}
+
+@BindingContainer
+object Bindings {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideObject", propertyName = "", startOffset = 118, endOffset = 178, newInstanceName = "provideObject")
+  object ProvideObjectMetroFactory : Factory<InlinedObject> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): ProvideObjectMetroFactory {
+      return ProvideObjectMetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun provideObject(): InlinedObject {
+      return Bindings.provideObject()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): InlinedObject {
+      return ProvideObjectMetroFactory.provideObject()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): InlinedObject {
+      return error(message = "Never called")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun provideObject(): InlinedObject {
+    return InlinedObject
+  }
+
+}
+
+object InlinedObject {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
