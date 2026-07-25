@@ -416,15 +416,27 @@ private constructor(
               )
 
           if (options.enableProviderInlining) {
-            // Materialization can fail if the value references a class that isn't resolvable in
-            // this compilation (e.g. an object from an implementation dependency of the providing
-            // module). In that case, fall through to the standard factory paths below.
-            providerFactory.inlinedValue?.materialize(binding.typeKey.type)?.let { materialized ->
-              return materialized.toTargetType(
-                actual = AccessType.INSTANCE,
-                contextualTypeKey = contextualTypeKey,
-                bindingKind = bindingKind,
-              )
+            val inlinedValue = providerFactory.inlinedValue
+            if (inlinedValue != null) {
+              // Object, enum, and class-literal values remain inlineable for direct instance
+              // access. Provider access uses the generated factory so evaluating the provider is
+              // what resolves the class reference.
+              val canInlineAccess =
+                accessType == AccessType.INSTANCE || inlinedValue.canInlineProviderAccess
+              if (canInlineAccess) {
+                // Materialization can fail if the value references a class that isn't resolvable
+                // in this compilation (e.g. an object from an implementation dependency of the
+                // providing module). In that case, fall through to the standard factory paths
+                // below.
+                val materialized = inlinedValue.materialize(binding.typeKey.type)
+                if (materialized != null) {
+                  return materialized.toTargetType(
+                    actual = AccessType.INSTANCE,
+                    contextualTypeKey = contextualTypeKey,
+                    bindingKind = bindingKind,
+                  )
+                }
+              }
             }
           }
 

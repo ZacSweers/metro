@@ -29,6 +29,7 @@ This release introduces experimental support for suspend providers. This is disa
 
 ### Fixes
 
+- **[IR]** Don't inline `object`, enum, or class-literal provider bindings when they're requested through `Provider`, `Lazy`, or provider-based multibindings.
 - **[FIR]** Report an error when a map key is applied (via type argument) to a binding without a corresponding `@IntoMap` or `@ContributesIntoMap` annotation.
 - **[IR]** Enforce `enableSuspendProviders` for suspend-provider signatures read from upstream modules.
 - **[IR]** Report a missing `runtime-coroutines` dependency from generated provider factories, including factories not used by a graph.

@@ -55,17 +55,21 @@ Materialization happens per value kind:
 - enum values become enum entry reads
 - class literal values become `KClass` references
 
-The materialized expression is then adapted to the requested access type. For normal graph accessors this means returning the scalar value directly. For provider access, Metro wraps the materialized value in the appropriate factory.
+The materialized expression is then adapted to the requested access type. For normal graph accessors this means returning the scalar value directly. For provider access, literal values are wrapped in the appropriate instance factory. Class-referencing values use their generated provider factory so they are not evaluated until the provider is invoked.
 
-Materialization can still fail for class-referencing values: the class may not be resolvable in the consuming compilation (e.g. an object behind an implementation dependency of the providing module). `materialize(...)` returns null in that case and the generator falls back to the factory paths. The fallback factory survives R8 despite `@ComptimeOnly` because `-assumenosideeffects` only removes calls whose results are unused.
+Materialization can still fail for class-referencing values: the class may not be resolvable in the consuming compilation (e.g. an object behind an implementation dependency of the providing module). `materialize(...)` returns null in that case and the generator falls back to the factory paths. Class-referencing factories remain available at runtime for this fallback and for provider access.
 
 ## Provider Wrappers
 
-Provider access to already-known values uses `instanceFactory(...)`. That helper chooses the smallest runtime wrapper from the expression type:
+Provider access to already-known literal values uses `instanceFactory(...)`. That helper chooses the smallest runtime wrapper from the expression type:
 
 - primitive values use `ByteFactory`, `IntFactory`, `LongFactory`, etc.
 - booleans use `BooleanFactory`, which reuses the two singleton boolean factories
 - other values use `InstanceFactory`
+
+Object, enum, and class-literal values use their generated provider factory instead. Evaluating those expressions while constructing an `InstanceFactory` would move their class loading or initialization ahead of the provider invocation. These generated factories are not marked `@ComptimeOnly` because provider access can reference them at runtime.
+
+`SuspendProvider` adapts the generated provider through `SyncSuspendProvider`. `SuspendLazy` wraps that adapter with `SuspendDoubleCheck.lazy(...)`.
 
 The declared field type is taken from the returned expression instead of being computed separately. This keeps primitive factories and other concrete wrapper types visible in generated code instead of hiding them behind `Provider<T>` when a concrete factory type is available.
 

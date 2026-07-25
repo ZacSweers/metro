@@ -1245,7 +1245,8 @@ internal class BindingContainerTransformer(
   private fun markComptimeOnlyIfInlined(providerFactory: ProviderFactory) {
     if (!pluginContext.platform.isJvm()) return
     if (providerFactory !is ProviderFactory.Metro) return
-    if (providerFactory.inlinedValue == null) return
+    val inlinedValue = providerFactory.inlinedValue ?: return
+    if (!inlinedValue.canInlineProviderAccess) return
 
     val factoryClass = providerFactory.factoryClass
     // TODO the if check here is if/when we move factory gen totally to IR
