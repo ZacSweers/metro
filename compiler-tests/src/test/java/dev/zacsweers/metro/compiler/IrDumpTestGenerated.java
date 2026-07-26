@@ -32,6 +32,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("GeneratedCompanionSupertypes.kt")
+  public void testGeneratedCompanionSupertypes() {
+    run("GeneratedCompanionSupertypes.kt");
+  }
+
+  @Test
   @TestMetadata("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt")
   public void testMultibindingsHaveConsistentOrderAcrossContributedGraph() {
     run("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt");
