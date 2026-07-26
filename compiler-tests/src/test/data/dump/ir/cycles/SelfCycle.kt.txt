@@ -51,7 +51,7 @@ class S {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(sProvider: Function0<S>): S {
+    fun declarationMirror(sProvider: Function0<S>): S {
       return error(message = "Never called")
     }
 

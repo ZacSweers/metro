@@ -31,7 +31,7 @@ object Bindings {
 
     @ComptimeOnly
     @HiddenFromObjC
-    inline fun mirrorFunction(): Boolean {
+    inline fun declarationMirror(): Boolean {
       return error(message = "Never called")
     }
 
@@ -68,7 +68,7 @@ object Bindings {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Float {
+    fun declarationMirror(): Float {
       return error(message = "Never called")
     }
 
@@ -105,7 +105,7 @@ object Bindings {
 
     @ComptimeOnly
     @HiddenFromObjC
-    inline fun mirrorFunction(): Int {
+    inline fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -142,7 +142,7 @@ object Bindings {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Long {
+    fun declarationMirror(): Long {
       return error(message = "Never called")
     }
 

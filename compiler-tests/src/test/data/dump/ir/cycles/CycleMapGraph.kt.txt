@@ -44,7 +44,7 @@ class X {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(y: Y): X {
+    fun declarationMirror(y: Y): X {
       return error(message = "Never called")
     }
 
@@ -109,7 +109,7 @@ class Y {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
+    fun declarationMirror(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
       return error(message = "Never called")
     }
 

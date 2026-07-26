@@ -116,7 +116,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -165,7 +165,7 @@ interface AppGraph {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(string: String): Long {
+    fun declarationMirror(string: String): Long {
       return error(message = "Never called")
     }
 
@@ -215,7 +215,7 @@ interface AppGraph {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int, long: Lazy<Long>): String {
+    fun declarationMirror(int: Int, long: Lazy<Long>): String {
       return error(message = "Never called")
     }
 

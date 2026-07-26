@@ -101,7 +101,7 @@ interface AppGraph : LoggedInGraph.Factory {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 

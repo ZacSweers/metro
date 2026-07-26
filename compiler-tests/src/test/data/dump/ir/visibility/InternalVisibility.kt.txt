@@ -81,7 +81,7 @@ abstract class AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -137,7 +137,7 @@ class InternalClass {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): InternalClass {
+    fun declarationMirror(): InternalClass {
       return error(message = "Never called")
     }
 

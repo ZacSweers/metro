@@ -49,7 +49,7 @@ class FooImpl : Foo {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): FooImpl {
+    fun declarationMirror(): FooImpl {
       return error(message = "Never called")
     }
 

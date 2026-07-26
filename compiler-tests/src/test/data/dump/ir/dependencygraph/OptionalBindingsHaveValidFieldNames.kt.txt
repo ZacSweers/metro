@@ -80,7 +80,7 @@ interface AppGraph {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 

@@ -44,7 +44,7 @@ interface IntProvider {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(stringValue: String? = error(message = "Never called")): Int {
+    fun declarationMirror(stringValue: String? = error(message = "Never called")): Int {
       return error(message = "Never called")
     }
 

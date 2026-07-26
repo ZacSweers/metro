@@ -89,7 +89,7 @@ abstract class ImplContributions {
 
       @ComptimeOnly
       @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+      fun declarationMirror(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
         return error(message = "Never called")
       }
 

@@ -46,7 +46,7 @@ class Config {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(example: ProvidedExample): Config {
+    fun declarationMirror(example: ProvidedExample): Config {
       return error(message = "Never called")
     }
 
@@ -117,7 +117,7 @@ class Repository {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(config: Config): Repository {
+    fun declarationMirror(config: Config): Repository {
       return error(message = "Never called")
     }
 
@@ -179,7 +179,7 @@ class Service {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(repository: Repository): Service {
+    fun declarationMirror(repository: Repository): Service {
       return error(message = "Never called")
     }
 
@@ -244,7 +244,7 @@ class SharedWorker {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(service: Service, @Assisted name: String): SharedWorker {
+    fun declarationMirror(service: Service, @Assisted name: String): SharedWorker {
       return error(message = "Never called")
     }
 

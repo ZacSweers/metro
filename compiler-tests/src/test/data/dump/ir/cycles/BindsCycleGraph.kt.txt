@@ -44,7 +44,7 @@ class Bar : Foo {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(fooProvider: Function0<Foo>): Bar {
+    fun declarationMirror(fooProvider: Function0<Foo>): Bar {
       return error(message = "Never called")
     }
 

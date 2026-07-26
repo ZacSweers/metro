@@ -47,7 +47,7 @@ class Base1Impl : Base1, Base2, Base3 {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Base1Impl {
+    fun declarationMirror(): Base1Impl {
       return error(message = "Never called")
     }
 

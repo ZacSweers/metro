@@ -30,7 +30,7 @@ class NotReused {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): NotReused {
+    fun declarationMirror(): NotReused {
       return error(message = "Never called")
     }
 
@@ -76,7 +76,7 @@ class Reused {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Reused {
+    fun declarationMirror(): Reused {
       return error(message = "Never called")
     }
 

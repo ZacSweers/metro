@@ -33,7 +33,7 @@ class AppService1 {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService1 {
+    fun declarationMirror(): AppService1 {
       return error(message = "Never called")
     }
 
@@ -80,7 +80,7 @@ class AppService2 {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService2 {
+    fun declarationMirror(): AppService2 {
       return error(message = "Never called")
     }
 
@@ -127,7 +127,7 @@ class AppService3 {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService3 {
+    fun declarationMirror(): AppService3 {
       return error(message = "Never called")
     }
 
@@ -174,7 +174,7 @@ class AppService4 {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService4 {
+    fun declarationMirror(): AppService4 {
       return error(message = "Never called")
     }
 
@@ -230,7 +230,7 @@ class Feature1Service1 {
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Feature1Service1 {
+    fun declarationMirror(): Feature1Service1 {
       return error(message = "Never called")
     }
 
@@ -292,7 +292,7 @@ class Feature1Service2 {
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f1s1: Feature1Service1): Feature1Service2 {
+    fun declarationMirror(f1s1: Feature1Service1): Feature1Service2 {
       return error(message = "Never called")
     }
 
@@ -354,7 +354,7 @@ class Feature1Service3 {
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f1s2: Feature1Service2): Feature1Service3 {
+    fun declarationMirror(f1s2: Feature1Service2): Feature1Service3 {
       return error(message = "Never called")
     }
 
@@ -425,7 +425,7 @@ class Feature2Service1 {
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(app: AppService1): Feature2Service1 {
+    fun declarationMirror(app: AppService1): Feature2Service1 {
       return error(message = "Never called")
     }
 
@@ -487,7 +487,7 @@ class Feature2Service2 {
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f2s1: Feature2Service1): Feature2Service2 {
+    fun declarationMirror(f2s1: Feature2Service1): Feature2Service2 {
       return error(message = "Never called")
     }
 
@@ -549,7 +549,7 @@ class Feature2Service3 {
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f2s2: Feature2Service2): Feature2Service3 {
+    fun declarationMirror(f2s2: Feature2Service2): Feature2Service3 {
       return error(message = "Never called")
     }
 

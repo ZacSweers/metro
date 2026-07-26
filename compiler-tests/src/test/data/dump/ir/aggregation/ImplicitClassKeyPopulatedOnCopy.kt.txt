@@ -33,7 +33,7 @@ class ExplicitKeyImpl : Base {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ExplicitKeyImpl {
+    fun declarationMirror(): ExplicitKeyImpl {
       return error(message = "Never called")
     }
 
@@ -115,7 +115,7 @@ class ImplicitKeyImpl : Base {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ImplicitKeyImpl {
+    fun declarationMirror(): ImplicitKeyImpl {
       return error(message = "Never called")
     }
 

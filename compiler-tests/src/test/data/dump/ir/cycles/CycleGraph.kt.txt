@@ -49,7 +49,7 @@ class A {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(b: B, e: E): A {
+    fun declarationMirror(b: B, e: E): A {
       return error(message = "Never called")
     }
 
@@ -109,7 +109,7 @@ class B {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(c: C): B {
+    fun declarationMirror(c: C): B {
       return error(message = "Never called")
     }
 
@@ -181,7 +181,7 @@ class C {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(aProvider: Function0<A>): C {
+    fun declarationMirror(aProvider: Function0<A>): C {
       return error(message = "Never called")
     }
 
@@ -286,7 +286,7 @@ class D {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(b: B): D {
+    fun declarationMirror(b: B): D {
       return error(message = "Never called")
     }
 
@@ -346,7 +346,7 @@ class E {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(d: D): E {
+    fun declarationMirror(d: D): E {
       return error(message = "Never called")
     }
 
@@ -532,7 +532,7 @@ interface CycleGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(obj: Function0<Any>): Any {
+    fun declarationMirror(obj: Function0<Any>): Any {
       return error(message = "Never called")
     }
 

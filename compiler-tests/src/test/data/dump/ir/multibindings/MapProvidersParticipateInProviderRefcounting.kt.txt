@@ -140,7 +140,7 @@ interface AppGraph {
     @StringKey(value = "first")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(sharedDependency: SharedDependency): String {
+    fun declarationMirror(sharedDependency: SharedDependency): String {
       return error(message = "Never called")
     }
 
@@ -187,7 +187,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -237,7 +237,7 @@ interface AppGraph {
     @StringKey(value = "second")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(sharedDependency: SharedDependency): String {
+    fun declarationMirror(sharedDependency: SharedDependency): String {
       return error(message = "Never called")
     }
 
@@ -284,7 +284,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): SharedDependency {
+    fun declarationMirror(): SharedDependency {
       return error(message = "Never called")
     }
 

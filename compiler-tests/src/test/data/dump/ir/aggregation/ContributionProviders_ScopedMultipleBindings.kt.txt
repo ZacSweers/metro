@@ -91,7 +91,7 @@ abstract class ImplContributions {
 
       @ComptimeOnly
       @HiddenFromObjC
-      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+      fun declarationMirror(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
         return error(message = "Never called")
       }
 
@@ -137,7 +137,7 @@ abstract class ImplContributions {
 
       @ComptimeOnly
       @HiddenFromObjC
-      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+      fun declarationMirror(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
         return error(message = "Never called")
       }
 
@@ -188,7 +188,7 @@ abstract class ImplContributions {
       @Named(name = "metro_scoped_Impl")
       @ComptimeOnly
       @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
+      fun declarationMirror(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
         return error(message = "Never called")
       }
 

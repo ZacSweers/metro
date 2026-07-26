@@ -31,7 +31,7 @@ class TaskImpl1 : Task {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): TaskImpl1 {
+    fun declarationMirror(): TaskImpl1 {
       return error(message = "Never called")
     }
 
@@ -76,7 +76,7 @@ class TaskImpl2 : Task {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): TaskImpl2 {
+    fun declarationMirror(): TaskImpl2 {
       return error(message = "Never called")
     }
 
@@ -260,7 +260,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Task {
+    fun declarationMirror(): Task {
       return error(message = "Never called")
     }
 
@@ -308,7 +308,7 @@ interface ExampleGraph : LoggedInGraph.Factory1.MetroContributionToAppScope {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Task {
+    fun declarationMirror(): Task {
       return error(message = "Never called")
     }
 

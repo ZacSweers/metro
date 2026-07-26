@@ -48,7 +48,7 @@ class ChildDependency {
     @SingleIn(scope = LoggedInScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(dep: Dependency): ChildDependency {
+    fun declarationMirror(dep: Dependency): ChildDependency {
       return error(message = "Never called")
     }
 
@@ -94,7 +94,7 @@ class Dependency {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Dependency {
+    fun declarationMirror(): Dependency {
       return error(message = "Never called")
     }
 

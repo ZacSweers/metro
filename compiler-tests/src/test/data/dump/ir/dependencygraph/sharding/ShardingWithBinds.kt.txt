@@ -33,7 +33,7 @@ class RepositoryImpl : Repository {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): RepositoryImpl {
+    fun declarationMirror(): RepositoryImpl {
       return error(message = "Never called")
     }
 
@@ -95,7 +95,7 @@ class Service {
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(repo: Repository): Service {
+    fun declarationMirror(repo: Repository): Service {
       return error(message = "Never called")
     }
 

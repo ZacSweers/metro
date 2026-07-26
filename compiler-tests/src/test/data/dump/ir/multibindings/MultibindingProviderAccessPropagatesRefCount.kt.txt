@@ -44,7 +44,7 @@ class A {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(x: X): A {
+    fun declarationMirror(x: X): A {
       return error(message = "Never called")
     }
 
@@ -104,7 +104,7 @@ class B {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(x: X): B {
+    fun declarationMirror(x: X): B {
       return error(message = "Never called")
     }
 
@@ -164,7 +164,7 @@ class C {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(x: X): C {
+    fun declarationMirror(x: X): C {
       return error(message = "Never called")
     }
 
@@ -224,7 +224,7 @@ class MapConsumer {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(map: Function0<Map<Int, B>>): MapConsumer {
+    fun declarationMirror(map: Function0<Map<Int, B>>): MapConsumer {
       return error(message = "Never called")
     }
 
@@ -284,7 +284,7 @@ class ProviderMapConsumer {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(map: Map<Int, Function0<C>>): ProviderMapConsumer {
+    fun declarationMirror(map: Map<Int, Function0<C>>): ProviderMapConsumer {
       return error(message = "Never called")
     }
 
@@ -344,7 +344,7 @@ class SetConsumer {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(set: Function0<Set<A>>): SetConsumer {
+    fun declarationMirror(set: Function0<Set<A>>): SetConsumer {
       return error(message = "Never called")
     }
 
@@ -389,7 +389,7 @@ class XImpl : X {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): XImpl {
+    fun declarationMirror(): XImpl {
       return error(message = "Never called")
     }
 

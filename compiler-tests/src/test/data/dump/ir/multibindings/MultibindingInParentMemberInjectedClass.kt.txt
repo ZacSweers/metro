@@ -98,7 +98,7 @@ class AFragmentInjector : Injector {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
+    fun declarationMirror(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
       return error(message = "Never called")
     }
 
@@ -180,7 +180,7 @@ class AViewModel : ViewModel {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AViewModel {
+    fun declarationMirror(): AViewModel {
       return error(message = "Never called")
     }
 
@@ -336,7 +336,7 @@ class BFragmentInjector : Injector {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
+    fun declarationMirror(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
       return error(message = "Never called")
     }
 
@@ -418,7 +418,7 @@ class BViewModel : ViewModel {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): BViewModel {
+    fun declarationMirror(): BViewModel {
       return error(message = "Never called")
     }
 
@@ -573,7 +573,7 @@ class FragmentInjector {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(injectors: Map<KClass<*>, Injector>): FragmentInjector {
+    fun declarationMirror(injectors: Map<KClass<*>, Injector>): FragmentInjector {
       return error(message = "Never called")
     }
 
@@ -651,7 +651,7 @@ class ViewModelFactory {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
+    fun declarationMirror(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
       return error(message = "Never called")
     }
 

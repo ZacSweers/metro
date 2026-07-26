@@ -49,7 +49,7 @@ class AccountCreator {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(database: String, tlsConnection: Int): AccountCreator {
+    fun declarationMirror(database: String, tlsConnection: Int): AccountCreator {
       return error(message = "Never called")
     }
 
@@ -140,7 +140,7 @@ interface ExampleGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    suspend fun mirrorFunction(): String {
+    suspend fun declarationMirror(): String {
       return error(message = "Never called")
     }
 
@@ -187,7 +187,7 @@ interface ExampleGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    suspend fun mirrorFunction(): Int {
+    suspend fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 

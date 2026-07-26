@@ -151,7 +151,7 @@ interface AppGraph : ChildGraph.Factory {
     @Named(name = "special")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 
@@ -198,7 +198,7 @@ interface AppGraph : ChildGraph.Factory {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 
@@ -295,7 +295,7 @@ interface ChildGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 

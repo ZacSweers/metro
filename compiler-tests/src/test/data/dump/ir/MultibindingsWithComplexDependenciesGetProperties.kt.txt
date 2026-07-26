@@ -83,7 +83,7 @@ interface AppGraph {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(string: String): Int {
+    fun declarationMirror(string: String): Int {
       return error(message = "Never called")
     }
 
@@ -130,7 +130,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 

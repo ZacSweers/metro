@@ -92,7 +92,7 @@ interface Bindings {
     @IntKey(value = 1)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 

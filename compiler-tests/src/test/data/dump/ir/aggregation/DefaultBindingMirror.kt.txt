@@ -32,7 +32,7 @@ class Impl : Base<Impl>, Other {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Impl {
+    fun declarationMirror(): Impl {
       return error(message = "Never called")
     }
 

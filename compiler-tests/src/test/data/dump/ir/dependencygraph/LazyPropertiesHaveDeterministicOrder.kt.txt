@@ -121,7 +121,7 @@ interface AppGraph {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int): Double {
+    fun declarationMirror(int: Int): Double {
       return error(message = "Never called")
     }
 
@@ -170,7 +170,7 @@ interface AppGraph {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int): Long {
+    fun declarationMirror(int: Int): Long {
       return error(message = "Never called")
     }
 
@@ -217,7 +217,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 

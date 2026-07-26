@@ -86,7 +86,7 @@ abstract class AppGraph : BaseGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
     }
 
@@ -156,7 +156,7 @@ open class BaseGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -206,7 +206,7 @@ class ProtectedConstructorClass {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ProtectedConstructorClass {
+    fun declarationMirror(): ProtectedConstructorClass {
       return error(message = "Never called")
     }
 

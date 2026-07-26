@@ -29,7 +29,7 @@ class NonReused {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): NonReused {
+    fun declarationMirror(): NonReused {
       return error(message = "Never called")
     }
 
@@ -89,7 +89,7 @@ class Reused {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(nonReused: NonReused): Reused {
+    fun declarationMirror(nonReused: NonReused): Reused {
       return error(message = "Never called")
     }
 
@@ -202,7 +202,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(long: Long, long2: Long): Double {
+    fun declarationMirror(long: Long, long2: Long): Double {
       return error(message = "Never called")
     }
 
@@ -249,7 +249,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
     }
 
@@ -297,7 +297,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int, int2: Int): Long {
+    fun declarationMirror(int: Int, int2: Int): Long {
       return error(message = "Never called")
     }
 

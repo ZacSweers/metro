@@ -29,7 +29,7 @@ class Bar : Base {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Bar {
+    fun declarationMirror(): Bar {
       return error(message = "Never called")
     }
 
@@ -83,7 +83,7 @@ class Foo : Base {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Foo {
+    fun declarationMirror(): Foo {
       return error(message = "Never called")
     }
 

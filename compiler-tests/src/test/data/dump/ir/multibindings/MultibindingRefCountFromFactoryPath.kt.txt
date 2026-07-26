@@ -68,7 +68,7 @@ class Entry {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
+    fun declarationMirror(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
       return error(message = "Never called")
     }
 
@@ -128,7 +128,7 @@ class SetConsumerA {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(set: Set<Int>): SetConsumerA {
+    fun declarationMirror(set: Set<Int>): SetConsumerA {
       return error(message = "Never called")
     }
 
@@ -188,7 +188,7 @@ class SetConsumerB {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(set: Set<Int>): SetConsumerB {
+    fun declarationMirror(set: Set<Int>): SetConsumerB {
       return error(message = "Never called")
     }
 
@@ -248,7 +248,7 @@ class WrapperA1 {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA1 {
+    fun declarationMirror(consumer: Function0<SetConsumerA>): WrapperA1 {
       return error(message = "Never called")
     }
 
@@ -308,7 +308,7 @@ class WrapperA2 {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA2 {
+    fun declarationMirror(consumer: Function0<SetConsumerA>): WrapperA2 {
       return error(message = "Never called")
     }
 
@@ -368,7 +368,7 @@ class WrapperB1 {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB1 {
+    fun declarationMirror(consumer: Function0<SetConsumerB>): WrapperB1 {
       return error(message = "Never called")
     }
 
@@ -428,7 +428,7 @@ class WrapperB2 {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB2 {
+    fun declarationMirror(consumer: Function0<SetConsumerB>): WrapperB2 {
       return error(message = "Never called")
     }
 
@@ -539,7 +539,7 @@ interface TestGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Base {
+    fun declarationMirror(): Base {
       return error(message = "Never called")
     }
 
@@ -588,7 +588,7 @@ interface TestGraph {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(base: Base): Int {
+    fun declarationMirror(base: Base): Int {
       return error(message = "Never called")
     }
 
@@ -637,7 +637,7 @@ interface TestGraph {
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(base: Base): Int {
+    fun declarationMirror(base: Base): Int {
       return error(message = "Never called")
     }
 

@@ -69,7 +69,7 @@ object Bindings {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): InlinedObject {
+    fun declarationMirror(): InlinedObject {
       return error(message = "Never called")
     }
 

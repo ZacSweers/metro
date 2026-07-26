@@ -33,7 +33,7 @@ class IntHolder {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): IntHolder {
+    fun declarationMirror(): IntHolder {
       return error(message = "Never called")
     }
 
@@ -131,7 +131,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(holder: IntHolder): Long {
+    fun declarationMirror(holder: IntHolder): Long {
       return error(message = "Never called")
     }
 
@@ -179,7 +179,7 @@ interface AppGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(holder: IntHolder): String {
+    fun declarationMirror(holder: IntHolder): String {
       return error(message = "Never called")
     }
 
