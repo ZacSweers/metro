@@ -37,8 +37,12 @@ import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
+import org.jetbrains.kotlin.ir.builders.declarations.addGetter
+import org.jetbrains.kotlin.ir.builders.declarations.addProperty
 import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.irExprBody
 import org.jetbrains.kotlin.ir.builders.irGetObject
@@ -47,6 +51,7 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.IrParameterKind
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrTypeParameter
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
@@ -67,6 +72,7 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -317,12 +323,12 @@ private fun transformStaticNewInstanceFunction(
 }
 
 /**
- * Generates a metadata-visible function in the factory class that matches the signature of the
- * target function. This function is used in downstream compilations to read the function's
- * signature and also dirty IC.
+ * Generates a metadata-visible declaration in the factory class that matches the target callable.
+ * This declaration is used in downstream compilations to read the callable's signature and also
+ * dirty IC.
  */
 context(context: IrMetroContext)
-internal fun generateMetadataVisibleMirrorFunction(
+internal fun generateMetadataVisibleDeclarationMirror(
   factoryClass: IrClass,
   target: IrFunction?,
   backingField: IrField?,
@@ -333,97 +339,127 @@ internal fun generateMetadataVisibleMirrorFunction(
     target?.returnType
       ?: backingField?.type
       ?: error("Either target or backingField must be non-null")
+
+  val sourceProperty =
+    target?.propertyIfAccessor as? IrProperty ?: backingField?.correspondingPropertySymbol?.owner
+  val shouldGeneratePropertyMirror =
+    context.options.enablePrivateProviderProperties &&
+      sourceProperty?.visibility == DescriptorVisibilities.PRIVATE
+  val property =
+    if (shouldGeneratePropertyMirror) {
+      factoryClass.addProperty {
+        name = Symbols.Names.declarationMirror
+        visibility = DescriptorVisibilities.PUBLIC
+        modality = Modality.FINAL
+        origin = Origins.Default
+      }
+    } else {
+      null
+    }
+
   val function =
-    factoryClass
-      .addFunction {
-        name = Symbols.Names.mirrorFunction
+    if (property != null) {
+      property.addGetter {
+        this.returnType = returnType
+        visibility = DescriptorVisibilities.PUBLIC
+        modality = Modality.FINAL
+        origin = Origins.Default
+        isInline = target?.canBeInlined() == true
+        isSuspend = target is IrSimpleFunction && target.isSuspend
+      }
+    } else {
+      factoryClass.addFunction {
+        name = Symbols.Names.declarationMirror
         this.returnType = returnType
         this.isInline = target?.canBeInlined() == true
         this.isSuspend = target is IrSimpleFunction && target.isSuspend
       }
-      .apply {
-        val typeSubstitution =
-          if (target is IrConstructor) {
-            val sourceClass = factoryClass.parentAsClass
-            val scopeAndQualifierAnnotations = buildList {
-              val classMetroAnnotations =
-                sourceClass.metroAnnotations(context.metroSymbols.classIds)
-              classMetroAnnotations.scope?.ir?.let(::add)
-              classMetroAnnotations.qualifier?.ir?.let(::add)
-            }
-            if (scopeAndQualifierAnnotations.isNotEmpty()) {
-              addAnnotationsCompat(scopeAndQualifierAnnotations)
-            }
-            val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
-            sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
-              source.symbol to copied.defaultType
-            }
-          } else {
-            // Copy type parameters from the factory class (e.g., generic binding containers)
-            val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
-
-            // If it's a regular (provides) function or backing field, just always copy its
-            // annotations
-            replaceAnnotationsCompat(
-              annotations
-                .mirrorIrConstructorCalls(symbol)
-                .filterNot {
-                  // Exclude @Provides to avoid reentrant factory gen
-                  it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
-                }
-                .map { it.deepCopyWithSymbols() }
-            )
-            buildMap {
-              factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
-                put(source.symbol, copied.defaultType)
-              }
-              factoryClass.parentAsClass.typeParameters.zip(copiedTypeParameters).forEach {
-                (source, copied) ->
-                put(source.symbol, copied.defaultType)
-              }
-            }
-          }
-        if (target != null) {
-          if (typeSubstitution.isNotEmpty()) {
-            copyParametersFrom(target, typeSubstitution)
-          } else {
-            copyParametersFrom(target)
-          }
-          target.extensionReceiverParameterCompat?.let { receiver ->
-            val receiverType = IrTypeSubstitutor(typeSubstitution).substitute(receiver.type)
-            setExtensionReceiver(receiver.copyTo(this, type = receiverType))
-          }
+    }
+  function.apply {
+    val typeSubstitution =
+      if (target is IrConstructor) {
+        val sourceClass = factoryClass.parentAsClass
+        val scopeAndQualifierAnnotations = buildList {
+          val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
+          classMetroAnnotations.scope?.ir?.let(::add)
+          classMetroAnnotations.qualifier?.ir?.let(::add)
         }
-        setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
-        typeSubstitution
-          .takeIf { it.isNotEmpty() }
-          ?.let {
-            this.returnType = IrTypeSubstitutor(it).substitute(returnType)
-          }
-
-        regularParameters.forEach {
-          // If it has a default value expression, just replace it with a stub. We don't need it to
-          // be functional, we just need it to be indicated
-          if (it.hasMetroDefault()) {
-            it.defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
-          } else {
-            it.defaultValue = null
-          }
+        if (scopeAndQualifierAnnotations.isNotEmpty()) {
+          addAnnotationsCompat(scopeAndQualifierAnnotations)
         }
-        // The function's signature already matches the target function's signature, all we need
-        // this for
-        body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+        val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
+        sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
+          source.symbol to copied.defaultType
+        }
+      } else {
+        // Copy type parameters from the factory class (e.g., generic binding containers)
+        val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
 
-        // On JVM, mark as @ComptimeOnly so R8 can strip the mirror function from runtime jars
-        if (context.pluginContext.platform.isJvm()) {
-          addAnnotationCompat(
-            buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor)
-          )
+        // If it's a regular (provides) function or backing field, just always copy its
+        // annotations
+        replaceAnnotationsCompat(
+          annotations
+            .mirrorIrConstructorCalls(symbol)
+            .filterNot {
+              // Exclude @Provides to avoid reentrant factory gen
+              it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+            }
+            .map { it.deepCopyWithSymbols() }
+        )
+        buildMap {
+          factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
+            put(source.symbol, copied.defaultType)
+          }
+          factoryClass.parentAsClass.typeParameters.zip(copiedTypeParameters).forEach {
+            (source, copied) ->
+            put(source.symbol, copied.defaultType)
+          }
         }
       }
+    if (target != null) {
+      if (typeSubstitution.isNotEmpty()) {
+        copyParametersFrom(target, typeSubstitution)
+      } else {
+        copyParametersFrom(target)
+      }
+      target.extensionReceiverParameterCompat?.let { receiver ->
+        val receiverType = IrTypeSubstitutor(typeSubstitution).substitute(receiver.type)
+        setExtensionReceiver(receiver.copyTo(this, type = receiverType))
+      }
+    }
+    setDispatchReceiver(factoryClass.thisReceiverOrFail.copyTo(this))
+    typeSubstitution
+      .takeIf { it.isNotEmpty() }
+      ?.let {
+        this.returnType = IrTypeSubstitutor(it).substitute(returnType)
+      }
+
+    regularParameters.forEach {
+      // If it has a default value expression, just replace it with a stub. We don't need it to
+      // be functional, we just need it to be indicated
+      if (it.hasMetroDefault()) {
+        it.defaultValue = context.createIrBuilder(symbol).run { irExprBody(stubExpression()) }
+      } else {
+        it.defaultValue = null
+      }
+    }
+    // The declaration's signature already matches the target callable's signature.
+    body = context.createIrBuilder(symbol).run { irExprBodySafe(stubExpression()) }
+
+    // On JVM, mark as @ComptimeOnly so R8 can strip the declaration mirror from runtime jars
+    if (context.pluginContext.platform.isJvm()) {
+      addAnnotationCompat(
+        buildAnnotation(symbol, context.metroSymbols.comptimeOnlyAnnotationConstructor)
+      )
+    }
+  }
   addHiddenFromObjCAnnotation(function)
   if (registerAsMetadataVisible) {
-    context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+    if (property != null) {
+      context.metadataDeclarationRegistrarCompat.registerPropertyAsMetadataVisible(property)
+    } else {
+      context.metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
+    }
   }
   return function
 }
