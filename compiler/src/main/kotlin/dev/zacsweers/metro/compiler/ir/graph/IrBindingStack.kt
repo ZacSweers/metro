@@ -196,7 +196,7 @@ internal interface IrBindingStack :
               var treatAsConstructor = functionToUse is IrConstructor
               val parentClassToReport =
                 if (functionToUse is IrSimpleFunction && isMirrorFunction) {
-                  treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
+                  treatAsConstructor = functionToUse.name == Symbols.Names.declarationMirror
                   functionToUse.parentAsClass.parent
                 } else {
                   functionToUse.parent

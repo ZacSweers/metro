@@ -87,6 +87,7 @@ import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrExternalPackageFragment
 import org.jetbrains.kotlin.ir.declarations.IrField
@@ -1712,6 +1713,28 @@ internal fun IrClass.requireSimpleFunction(name: String) =
     ?: reportCompilerBug(
       "No function $name in class $classId. Available: ${functions.joinToString { it.name.asString() }}"
     )
+
+internal fun IrClass.declarationMirrorFunctionOrNull(): IrSimpleFunction? {
+  val declaration =
+    declarations.filterIsInstance<IrDeclarationWithName>().singleOrNull {
+      it.name == Symbols.Names.declarationMirror
+    } ?: return null
+  return when (declaration) {
+    is IrProperty ->
+      declaration.getter
+        ?: reportCompilerBug("Declaration mirror property in class $classId has no getter.")
+    is IrSimpleFunction -> declaration
+    else ->
+      reportCompilerBug(
+        "Declaration mirror in class $classId is neither a property nor a function: $declaration"
+      )
+  }
+}
+
+internal fun IrClass.requireDeclarationMirrorFunction(): IrSimpleFunction {
+  return declarationMirrorFunctionOrNull()
+    ?: reportCompilerBug("No declaration mirror found in class $classId.")
+}
 
 internal fun IrClassSymbol.requireSimpleFunction(name: String) =
   getSimpleFunction(name)

@@ -66,7 +66,7 @@ import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -98,6 +98,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irInt
@@ -395,7 +396,7 @@ internal class BindingContainerTransformer(
     val invokeFunction =
       trace("Add factory supertype + invoke shell") {
         // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to
-        // read directly since we'll read the mirror function to get the target type
+        // read it directly since we'll read the declaration mirror to get the target type
         factoryCls.superTypes += factorySuperTypeSymbol.typeWith(factoryTargetType)
         // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
         // the invoke override directly later
@@ -530,15 +531,16 @@ internal class BindingContainerTransformer(
         }
     }
 
-    // Generate a metadata-visible function that matches the signature of the target provider
-    // This is used in downstream compilations to read the provider's signature
+    // Generate a metadata-visible declaration that matches the target provider. This is used in
+    // downstream compilations to read the provider's signature.
     val sourceFunction = reference.callee?.owner as? IrSimpleFunction
+    val backingField = reference.backingField
     val mirrorFunction =
-      trace("Generate mirror function") {
-        generateMetadataVisibleMirrorFunction(
+      trace("Generate declaration mirror") {
+        generateMetadataVisibleDeclarationMirror(
           factoryClass = factoryCls,
           target = sourceFunction,
-          backingField = reference.backingField,
+          backingField = backingField,
           annotations = reference.annotations,
           registerAsMetadataVisible =
             options.generateClassesInIr ||
@@ -557,12 +559,13 @@ internal class BindingContainerTransformer(
             annotations = reference.annotations,
             isPropertyAccessor = reference.isPropertyAccessor,
           )
-        } else if (reference.backingField != null) {
+        } else if (backingField != null) {
           val sourceFunction =
             mirrorFunction.deepCopyWithSymbols().apply {
               name = reference.callableId.callableName
               setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
               parent = reference.parent.owner
+              correspondingPropertySymbol = backingField.correspondingPropertySymbol
             }
           IrCallableMetadata(
             callableId = reference.callableId,
@@ -579,7 +582,7 @@ internal class BindingContainerTransformer(
       }
 
     // For in-compilation, we already have the real declaration from the reference
-    val realDeclaration = reference.callee?.owner ?: reference.backingField
+    val realDeclaration = reference.callee?.owner ?: backingField
 
     val providerFactory =
       trace("Construct ProviderFactory") {
@@ -890,7 +893,7 @@ internal class BindingContainerTransformer(
   ): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val mirrorFunction = factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+    val mirrorFunction = factoryCls.requireDeclarationMirrorFunction()
     val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
     val callableMetadata =
       factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
@@ -1155,9 +1158,9 @@ internal class BindingContainerTransformer(
   }
 
   /**
-   * Loads an invisible provider factory from proto metadata. Creates a stub class with a mirror
-   * function and builds a [ProviderFactory] from proto values without needing a `@CallableMetadata`
-   * annotation.
+   * Loads an invisible provider factory from proto metadata. Creates a stub class with a
+   * declaration mirror and builds a [ProviderFactory] from proto values without needing a
+   * `@CallableMetadata` annotation.
    */
   private fun loadInvisibleProviderFactory(
     container: IrClass,
@@ -1173,10 +1176,10 @@ internal class BindingContainerTransformer(
 
     val mirrorFunction =
       if (existingFactory != null) {
-        existingFactory.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+        existingFactory.requireDeclarationMirrorFunction()
       } else {
         val target = providesFunction ?: return null
-        generateMetadataVisibleMirrorFunction(
+        generateMetadataVisibleDeclarationMirror(
           factoryClass = stub,
           target = target,
           backingField = null,
@@ -1192,6 +1195,15 @@ internal class BindingContainerTransformer(
           setDispatchReceiver(container.thisReceiverOrFail.copyTo(this))
           parent = container
         }
+    if (providesFunction == null && entry.property_name.isNotEmpty()) {
+      mirrorFunction.factory
+        .buildProperty { name = Name.identifier(entry.property_name) }
+        .apply {
+          parent = container
+          getter = sourceFunction
+          sourceFunction.correspondingPropertySymbol = symbol
+        }
+    }
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
     // Add creator functions to the stub so IrMetroFactory can find them
