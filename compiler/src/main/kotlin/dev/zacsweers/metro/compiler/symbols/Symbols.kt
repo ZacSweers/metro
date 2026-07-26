@@ -97,7 +97,7 @@ internal class Symbols(
     // Weird but here to defeat shadow jar
     val METRO_RUNTIME_PACKAGE = listOf("dev", "zacsweers", "metro").joinToString(".")
     val METRO_RUNTIME_INTERNAL_PACKAGE = "${METRO_RUNTIME_PACKAGE}.internal"
-    const val MIRROR_FUNCTION = "mirrorFunction"
+    const val DECLARATION_MIRROR = "declarationMirror"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
     const val PROVIDER = "provider"
@@ -269,7 +269,7 @@ internal class Symbols(
     val instance = "instance".asName()
     val invoke = StringNames.INVOKE.asName()
     val membersInjector = "MembersInjector".asName()
-    val mirrorFunction = StringNames.MIRROR_FUNCTION.asName()
+    val declarationMirror = StringNames.DECLARATION_MIRROR.asName()
     val multibinding = StringNames.MULTIBINDING.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
