@@ -188,6 +188,8 @@ class MetroArtifactsTest {
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
     val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
+    val privateProviderPropertiesEnabled =
+      testCompilerVersion >= KotlinToolingVersion("2.4.20-Beta1")
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -254,6 +256,7 @@ class MetroArtifactsTest {
                 "generateContributionHints": true,
                 "generateContributionHintsInFir": ${topLevelFirGenEnabled && !generateClassesInIrEnabled},
                 "generateClassesInIr": $generateClassesInIrEnabled,
+                "enablePrivateProviderProperties": $privateProviderPropertiesEnabled,
                 "shrinkUnusedBindings": true,
                 "statementsPerInitFun": 25,
                 "enableGraphSharding": true,
