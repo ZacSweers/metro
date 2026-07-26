@@ -1303,6 +1303,7 @@ internal class BindingContainerTransformer(
             }
             .apply {
               factoryCls.addChild(this)
+              superTypes = listOf(irBuiltIns.anyType)
               createThisReceiverParameter()
               addSimpleDelegatingConstructor(
                 irBuiltIns.anyClass.owner.primaryConstructor!!,
