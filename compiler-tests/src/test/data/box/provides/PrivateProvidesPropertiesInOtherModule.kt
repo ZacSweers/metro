@@ -6,22 +6,30 @@
 
 @Qualifier annotation class IntValue
 
+@Qualifier annotation class LongValue
+
 interface Providers {
   @Provides @StringValue private val providedString: String get() = "Hello"
 
   @get:Provides @get:IntValue private val providedInt: Int get() = 42
 }
 
+abstract class FieldProviders {
+  @Provides @LongValue private val providedLong: Long = 3L
+}
+
 // MODULE: main(lib)
 @DependencyGraph
-interface AppGraph : Providers {
-  @StringValue val string: String
-  @IntValue val int: Int
+abstract class AppGraph : FieldProviders(), Providers {
+  @StringValue abstract val string: String
+  @IntValue abstract val int: Int
+  @LongValue abstract val long: Long
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
   assertEquals("Hello", graph.string)
   assertEquals(42, graph.int)
+  assertEquals(3L, graph.long)
   return "OK"
 }

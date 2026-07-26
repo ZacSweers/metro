@@ -701,6 +701,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("PrivateProviderPropertyMirror.kt")
+    public void testPrivateProviderPropertyMirror() {
+      run("PrivateProviderPropertyMirror.kt");
+    }
+
+    @Test
     @TestMetadata("ProviderInliningDisabled.kt")
     public void testProviderInliningDisabled() {
       run("ProviderInliningDisabled.kt");

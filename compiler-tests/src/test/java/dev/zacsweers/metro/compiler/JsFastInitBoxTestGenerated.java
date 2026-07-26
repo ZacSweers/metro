@@ -2445,6 +2445,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
+    public void testPrivateProvidesPropertiesInOtherModule() {
+      run("PrivateProvidesPropertiesInOtherModule.kt");
+    }
+
+    @Test
     @TestMetadata("PropertyProvidersAreRespected.kt")
     public void testPropertyProvidersAreRespected() {
       run("PropertyProvidersAreRespected.kt");
