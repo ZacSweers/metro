@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.ExampleGraph
 import dev.zacsweers.metro.compiler.MetroCompilerTest
 import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
+import dev.zacsweers.metro.compiler.assertNoWarningsOrErrors
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
@@ -2457,14 +2458,103 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types into map must declare map key`() {
+  fun `map keys in multiple locations are an error`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+        interface RouteScreen<T : RouteKey>
+        class HomeKey : RouteKey
+
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey RouteScreen<HomeKey>>())
+        @ClassKey
+        @Inject
+        class ExplicitAndClass : RouteScreen<HomeKey>
+
+        @ContributesIntoMap(AppScope::class)
+        @ClassKey
+        @Inject
+        class ClassAndGeneric : RouteScreen<@ClassKey HomeKey>
+
+        @ContributesIntoMap(AppScope::class, binding<@ClassKey RouteScreen<HomeKey>>())
+        @Inject
+        class ExplicitAndGeneric : RouteScreen<@ClassKey HomeKey>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertDiagnostics(
+        """
+        e: RouteKey.kt:11:1 `@ContributesIntoMap` found multiple map keys: @ClassKey; @ClassKey. Declare a map key in only one location: the explicit bound type, contributed class, or bound type generic argument.
+        e: RouteKey.kt:16:1 `@ContributesIntoMap` found multiple map keys: @ClassKey; @ClassKey(value=test.HomeKey::class). Declare a map key in only one location: the explicit bound type, contributed class, or bound type generic argument.
+        e: RouteKey.kt:21:1 `@ContributesIntoMap` found multiple map keys: @ClassKey; @ClassKey(value=test.HomeKey::class). Declare a map key in only one location: the explicit bound type, contributed class, or bound type generic argument.
+        """
+          .trimIndent()
+      )
+    }
+  }
+
+  @Test
+  fun `map keys on multiple bound type arguments are an error`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+        interface RouteScreen<A : RouteKey, B : RouteKey>
+        class HomeKey : RouteKey
+        class SettingsKey : RouteKey
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class InvalidScreen :
+          RouteScreen<@ClassKey HomeKey, @ClassKey SettingsKey>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertContains(
+        "`@ContributesIntoMap` found multiple map keys: @ClassKey(value=test.HomeKey::class); @ClassKey(value=test.SettingsKey::class)."
+      )
+    }
+  }
+
+  @Test
+  fun `map keys on multiple DefaultBinding type parameters are an error`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+        class HomeKey : RouteKey
+        class SettingsKey : RouteKey
+
+        @DefaultBinding<RouteScreen<*, *>>
+        interface RouteScreen<@ClassKey A : RouteKey, @ClassKey B : RouteKey>
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class InvalidScreen : RouteScreen<HomeKey, SettingsKey>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertContains(
+        "`@ContributesIntoMap` found multiple default map keys: @ClassKey(value=test.HomeKey::class); @ClassKey(value=test.SettingsKey::class)."
+      )
+    }
+  }
+
+  @Test
+  fun `explicit bound types into map may declare map key on class`() {
     compile(
       source(
         """
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<ContributedInterface>())
-        @ClassKey // Class key is ignored if bound is explicit
+        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """
@@ -2474,7 +2564,7 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
-  fun `explicit bound types into map must declare map key - class is ok`() {
+  fun `explicit bound types into map must declare map key`() {
     compile(
       source(
         """
@@ -2490,6 +2580,48 @@ class AggregationTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         "e: ContributedInterface.kt:9:46 `@ContributesIntoMap`-annotated class @test.Impl must declare a map key but doesn't. Add one on the explicit bound type or the class."
+      )
+    }
+  }
+
+  @Test
+  fun `generic explicit map key matching contributed class is not redundant`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+        interface RouteScreen<T : RouteKey>
+        class HomeKey : RouteKey
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class HomeScreen : RouteScreen<@ClassKey(HomeScreen::class) HomeKey>
+        """
+          .trimIndent()
+      )
+    ) {
+      assertNoWarningsOrErrors()
+    }
+  }
+
+  @Test
+  fun `generic explicit map key matching type argument is redundant`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+        interface RouteScreen<T : RouteKey>
+        class HomeKey : RouteKey
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class HomeScreen : RouteScreen<@ClassKey(HomeKey::class) HomeKey>
+        """
+          .trimIndent()
+      )
+    ) {
+      assertContains(
+        "Explicit class key value 'test.HomeKey::class' is the same as the implicit class key and can be omitted."
       )
     }
   }
@@ -2572,7 +2704,6 @@ class AggregationTest : MetroCompilerTest() {
         interface ContributedInterface
 
         @ContributesIntoMap(AppScope::class, binding<@ClassKey Any>())
-        @ClassKey
         @Inject
         class Impl : ContributedInterface
         """

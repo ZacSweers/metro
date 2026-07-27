@@ -150,7 +150,10 @@ interface MapMultibinding {
 ```
 
 !!! idea
-    In Metro, class-based map keys like `@ClassKey` do not require you to explicitly specify a value if used on a class or `@Binds` declaration as they can be inferred by the compiler.
+    In Metro, class-based map keys like `@ClassKey` do not require you to explicitly specify a
+    value when used on a class, `@Binds` declaration, bound type generic argument, or
+    `@DefaultBinding` type parameter. Metro infers the appropriate class from the annotated
+    declaration or concrete type argument.
 
 Alternatively, they can be declared with an `@Multibinds`-annotated accessor property/function in a component. This member will be implemented by the Metro compiler and is useful for scenarios where the multibinding may be empty.
 

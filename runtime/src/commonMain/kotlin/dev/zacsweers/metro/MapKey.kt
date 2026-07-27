@@ -100,6 +100,10 @@ public annotation class MapKey(
    * Requirements:
    * - Must have a single value parameter of type [kotlin.reflect.KClass].
    * - It must have a default value of `Nothing::class`.
+   *
+   * On [ContributesIntoMap] bindings, an implicit class key may annotate a direct generic type
+   * argument. A [DefaultBinding] may instead declare it on a type parameter for its implementations.
+   * A map key declared by an implementation takes precedence over the default binding's key.
    */
   val implicitClassKey: Boolean = false,
 )

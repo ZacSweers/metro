@@ -35,6 +35,8 @@ import dev.zacsweers.metro.compiler.ir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.ir.mapKeyAnnotationFromBoundSupertype
+import dev.zacsweers.metro.compiler.ir.mapKeyAnnotationFromTypeArguments
 import dev.zacsweers.metro.compiler.ir.originClassId
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
@@ -556,6 +558,8 @@ internal class ContributionIrTransformer(
               val mapKey =
                 explicitBindingType?.originalType?.mapKeyAnnotation()
                   ?: originClass.mapKeyAnnotation()
+                  ?: explicitBindingType?.originalType?.mapKeyAnnotationFromTypeArguments()
+                  ?: originClass.mapKeyAnnotationFromBoundSupertype(bindingTypeKey.classId)
               mapKey?.let { mk ->
                 val copied = mk.ir.deepCopyWithSymbols()
                 if (isImplicitClassKeySentinel(copied)) {
@@ -868,6 +872,8 @@ internal class ContributionIrTransformer(
           val mapKey =
             explicitBindingType?.originalType?.mapKeyAnnotation()
               ?: annotatedType.mapKeyAnnotation()
+              ?: explicitBindingType?.originalType?.mapKeyAnnotationFromTypeArguments()
+              ?: annotatedType.mapKeyAnnotationFromBoundSupertype(bindingTypeKey.classId)
 
           // For map key hashing, use the effective key value. For implicit class keys
           // (sentinel Nothing::class), incorporate the annotated type's class ID instead
