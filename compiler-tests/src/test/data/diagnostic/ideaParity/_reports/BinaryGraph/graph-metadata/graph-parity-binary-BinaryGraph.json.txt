@@ -48,6 +48,7 @@
     "generateContributionHints": true,
     "generateContributionHintsInFir": true,
     "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
     "shrinkUnusedBindings": true,
     "statementsPerInitFun": 25,
     "enableGraphSharding": true,
