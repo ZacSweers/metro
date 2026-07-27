@@ -164,6 +164,7 @@ abstract class MetroProject(
               withBuildScript {
                 if (config.plugins.isNotEmpty()) {
                   plugins(*config.plugins.toTypedArray())
+                  withKotlin(buildMetroBlock())
                 } else {
                   applyMetroDefault()
                 }
@@ -276,6 +277,11 @@ abstract class MetroProject(
       }
       metroOptions.generateContributionProviders?.let {
         add("generateContributionProviders.set($it)")
+      }
+      val optimizedIc = metroOptions.enableOptimizedIc ?: getTestOptimizedIcOverride()
+      optimizedIc?.let {
+        val method = if (it) "enable" else "disable"
+        add("compilerOptions.$method(\"enable-optimized-ic\")")
       }
     }
     if (options.isNotEmpty()) {

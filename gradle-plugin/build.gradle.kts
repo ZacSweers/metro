@@ -152,6 +152,7 @@ dependencies {
   functionalTestRuntimeOnly(project(":compiler"))
   functionalTestRuntimeOnly(project(":runtime"))
   functionalTestRuntimeOnly(project(":interop-dagger"))
+  functionalTestRuntimeOnly(libs.circuit.runtime.presenter)
 }
 
 val testCompilerVersion =
@@ -172,6 +173,7 @@ fun androidHomeOrNull(): File? {
 // Forwarded to KmpTarget.selectedTargets() to scope IC test parameterization. PR/branch CI leaves
 // this unset (JVM only); main runs use a per-target value or `all` to fan out across targets.
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
+val testOptimizedIc = providers.gradleProperty("metro.testOptimizedIc").orNull
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
@@ -181,8 +183,10 @@ tasks.withType<Test>().configureEach {
   )
   systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
   systemProperty("metro.agpVersion", libs.versions.agp.get())
+  systemProperty("metro.circuitVersion", libs.versions.circuit.get())
   systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
+  testOptimizedIc?.let { systemProperty("metro.testOptimizedIc", it) }
 }
 
 tasks

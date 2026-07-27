@@ -139,6 +139,7 @@ class MetroArtifactsTest {
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
     val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
+    val enableOptimizedIc = getTestOptimizedIcOverride() == true
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -257,6 +258,7 @@ class MetroArtifactsTest {
                 "compilerVersionAliases": {},
                 "parallelThreads": 0,
                 "bufferedIcTracking": true,
+                "enableOptimizedIc": $enableOptimizedIc,
                 "enableProviderInlining": true,
                 "enableFunctionProviders": true,
                 "desugaredProviderSeverity": "WARN",

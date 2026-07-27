@@ -7,10 +7,12 @@ package dev.zacsweers.metro.gradle.incremental
 import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.KmpTarget
+import dev.zacsweers.metro.gradle.KotlinToolingVersion
 import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.cleanOutputLine
+import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.toKotlinVersion
@@ -1680,6 +1682,88 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
         """
           .trimIndent()
       )
+  }
+
+  @Test
+  fun multibindsQualifierArgumentChangeDetectedWithOptimizedIc() {
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
+
+    val fixture =
+      object : MetroProject(metroOptions = MetroOptionOverrides(enableOptimizedIc = true)) {
+        override fun sources() = listOf(appGraph, bindingContainer, target)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MyBindingContainer::class])
+            interface AppGraph {
+              val target: Target
+            }
+            """
+              .trimIndent()
+          )
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            interface MyBindingContainer {
+              @Named("expected")
+              @Multibinds(allowEmpty = true)
+              fun provideStrings(): Set<String>
+            }
+            """
+              .trimIndent()
+          )
+
+        private val target =
+          source(
+            """
+            @Inject
+            class Target(@Named("expected") val strings: Set<String>)
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+        @Named("changed")
+        @Multibinds(allowEmpty = true)
+        fun provideStrings(): Set<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlinAndFail()
+    assertThat(secondBuildResult.output)
+      .contains("No binding found for @Named(\"expected\") Set<String>")
+
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      interface MyBindingContainer {
+        // Restored after the intentionally failing compilation.
+        @Named("expected")
+        @Multibinds(allowEmpty = true)
+        fun provideStrings(): Set<String>
+      }
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = project.compileKotlin()
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   @Test
