@@ -77,9 +77,7 @@ class IrTest {
   fun `signature carrier mismatch check returns true for Wasm platform when enabled`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
-    assertThat(
-        shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) { false }
-      )
+    assertThat(shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) { false })
       .isTrue()
   }
 

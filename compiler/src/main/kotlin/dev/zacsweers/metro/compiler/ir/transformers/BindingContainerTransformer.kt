@@ -924,9 +924,7 @@ internal class BindingContainerTransformer(
       SignatureCarrier.MIRROR_FUNCTION ->
         requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
       SignatureCarrier.CREATOR_FUNCTION ->
-        requireStaticIshDeclarationContainer()
-          .requireSimpleFunction(entry.new_instance_name)
-          .owner
+        requireStaticIshDeclarationContainer().requireSimpleFunction(entry.new_instance_name).owner
     }
   }
 

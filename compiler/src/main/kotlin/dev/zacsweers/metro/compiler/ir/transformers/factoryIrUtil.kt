@@ -444,11 +444,8 @@ context(context: IrMetroContext)
 internal fun shouldUseCreatorSignatureCarrier(): Boolean {
   val supportsIrGeneratedClasses = context.icCapabilities.irGeneratedClasses
   val annotationsAreReadable = context.icCapabilities.readableAnnotationMetadata
-  val annotationChangesInvalidateLookups =
-    context.icCapabilities.annotationArgumentInvalidation
-  return supportsIrGeneratedClasses &&
-    annotationsAreReadable &&
-    annotationChangesInvalidateLookups
+  val annotationChangesInvalidateLookups = context.icCapabilities.annotationArgumentInvalidation
+  return supportsIrGeneratedClasses && annotationsAreReadable && annotationChangesInvalidateLookups
 }
 
 context(context: IrMetroContext)

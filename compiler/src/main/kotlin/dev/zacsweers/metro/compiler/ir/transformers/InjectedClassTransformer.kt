@@ -56,8 +56,8 @@ import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
-import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
+import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
@@ -826,5 +826,4 @@ internal class InjectedClassTransformer(
       }
     return newInstanceFunction
   }
-
 }

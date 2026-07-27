@@ -21,8 +21,8 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.isObject
+import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.propertyIfAccessor
@@ -121,9 +121,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
 ): IrCallableMetadata {
   val signatureParent = signatureFunction.parentAsClass
   val clazz =
-    if (
-      signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && signatureParent.isCompanion
-    ) {
+    if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && signatureParent.isCompanion) {
       signatureParent.parentAsClass
     } else {
       signatureParent
