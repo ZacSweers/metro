@@ -50,12 +50,14 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
+import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -116,6 +118,9 @@ internal class ContributionsFirGenerator(
 
   private val generateContributionProviders: Boolean
     get() = session.metroFirBuiltIns.options.generateContributionProviders
+
+  private val useDirectBindingDeclarations =
+    session.shouldUseDirectBindingDeclarations(supportsAnnotationArgumentInvalidation)
 
   /** Lazily resolves binding contributions for a holder. */
   private fun ContributionsHolder.bindingContributions(): Set<Contribution.BindingContribution> {
@@ -780,7 +785,10 @@ internal class ContributionsFirGenerator(
             externalScopesFor(it.classId).isNotEmpty()
         } ?: false
 
-      return if (!isSupertypeContribution) {
+      val canReadContributionDirectly =
+        useDirectBindingDeclarations &&
+          classSymbol.effectiveVisibility.toVisibility() == Visibilities.Public
+      return if (!isSupertypeContribution && !canReadContributionDirectly) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
         emptySet()

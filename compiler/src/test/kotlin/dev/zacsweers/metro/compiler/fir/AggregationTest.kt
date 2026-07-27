@@ -3313,6 +3313,12 @@ class AggregationTest : MetroCompilerTest() {
         ),
         compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
       )
+    val bindsMirrorFunctionName =
+      featureCompilation.classLoader
+        .loadClass("feature.TestClass\$MetroContributionToAppScope\$BindsMirror")
+        .declaredMethods
+        .single()
+        .name
 
     // Module "main" - depends only on feature (not common), defines the graph
     // This should fail because ServiceKey is not visible to this compilation
@@ -3341,7 +3347,7 @@ class AggregationTest : MetroCompilerTest() {
         e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
 
         (context)
-        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable18543831191854383119_intomap' (no source location available)
+        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.$bindsMirrorFunctionName' (no source location available)
         - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
         """
           .trimIndent()
@@ -3399,6 +3405,12 @@ class AggregationTest : MetroCompilerTest() {
         ),
         compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
       )
+    val bindsMirrorFunctionName =
+      featureCompilation.classLoader
+        .loadClass("feature.Bindings\$BindsMirror")
+        .declaredMethods
+        .single()
+        .name
 
     // Module "main" - depends only on feature (not common), defines the graph
     // This should fail because ServiceKey is not visible to this compilation
@@ -3427,7 +3439,7 @@ class AggregationTest : MetroCompilerTest() {
         e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
 
         (context)
-        Encountered while processing declaration 'feature.Bindings.BindsMirror.bind_property1854383119_intomap' (no source location available)
+        Encountered while processing declaration 'feature.Bindings.BindsMirror.$bindsMirrorFunctionName' (no source location available)
         - This is Metro-generated code for 'feature.Bindings.bind' (where the problem is).
         """
           .trimIndent()
