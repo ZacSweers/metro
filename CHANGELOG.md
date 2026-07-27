@@ -8,6 +8,10 @@ Changelog
 
 - **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
 
+### Enhancements
+
+- **[IR]** Improve IC on Kotlin `2.3.20` by backporting compat support for the compiler's new declaration finder APIs.
+
 ### Fixes
 
 - **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
