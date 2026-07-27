@@ -7459,11 +7459,13 @@
 <li><code>runtime-coroutines</code> uses kotlinx-coroutines on every platform.</li>
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
-<p>Support private <code>@Provides</code> properties on Kotlin <code>2.4.20-Beta1</code> and newer.<br />
-- <strong>[IR]</strong> Avoid generating unused provider fields for included graph accessors that can be read directly.<br />
-- <strong>[IR]</strong> Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.<br />
-- <strong>[runtime]</strong> If the input function to <code>provider()</code> is already a <code>Provider</code> instance, return it directly rather than needlessly wrap it.<br />
-- <strong>[runtime]</strong> Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.</p>
+<ul>
+<li>Support private <code>@Provides</code> properties on Kotlin <code>2.4.20-Beta1</code> and newer.</li>
+<li><strong>[IR]</strong> Avoid generating unused provider fields for included graph accessors that can be read directly.</li>
+<li><strong>[IR]</strong> Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.</li>
+<li><strong>[runtime]</strong> If the input function to <code>provider()</code> is already a <code>Provider</code> instance, return it directly rather than needlessly wrap it.</li>
+<li><strong>[runtime]</strong> Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.</li>
+</ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Report a diagnostic when private <code>@Provides</code> properties are used without compiler support (i.e. pre-<code>2.4.20</code>).</li>
@@ -7480,7 +7482,8 @@
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Build against Kotlin <code>2.4.10</code>. Note the runtime artifacts still target Kotlin <code>2.3.0</code> and Metro supports a wide range of compiler versions. See the <a href="https://zacsweers.github.io/metro/latest/compatibility/">compatibility docs</a> for a full table of compatible versions.</li>
-<li>Test Android Studio Quail 4 canaries</li>
+<li>Test IntelliJ <code>2026.2</code> stable.</li>
+<li>Test Android Studio Quail 4 canaries.</li>
 </ul>
 <h2 id="132">1.3.2<a class="headerlink" href="#132" title="Permanent link">&para;</a></h2>
 <p><em>2026-07-13</em></p>
