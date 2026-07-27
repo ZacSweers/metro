@@ -24,15 +24,15 @@ object Bindings {
       return Bindings.provideBoolean()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Boolean {
-      return ProvideBooleanMetroFactory.provideBoolean()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     inline fun declarationMirror(): Boolean {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Boolean {
+      return ProvideBooleanMetroFactory.provideBoolean()
     }
 
   }
@@ -61,15 +61,15 @@ object Bindings {
       return Bindings.provideFloat()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Float {
-      return ProvideFloatMetroFactory.provideFloat()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Float {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Float {
+      return ProvideFloatMetroFactory.provideFloat()
     }
 
   }
@@ -98,15 +98,15 @@ object Bindings {
       return Bindings.provideInt()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideIntMetroFactory.provideInt()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     inline fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory.provideInt()
     }
 
   }
@@ -135,15 +135,15 @@ object Bindings {
       return Bindings.provideLong()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Long {
-      return ProvideLongMetroFactory.provideLong()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Long {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return ProvideLongMetroFactory.provideLong()
     }
 
   }

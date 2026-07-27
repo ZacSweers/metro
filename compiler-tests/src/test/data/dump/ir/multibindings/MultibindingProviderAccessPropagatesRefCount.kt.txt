@@ -37,15 +37,15 @@ class A {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): A {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(x: X): A {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): A {
+      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
   }
@@ -97,15 +97,15 @@ class B {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): B {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(x: X): B {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): B {
+      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
   }
@@ -157,15 +157,15 @@ class C {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): C {
-      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(x: X): C {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): C {
+      return MetroFactory/* companion */.newInstance(x = <this>.#x.invoke())
     }
 
   }
@@ -217,15 +217,15 @@ class MapConsumer {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): MapConsumer {
-      return MetroFactory/* companion */.newInstance(map = <this>.#map)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(map: Function0<Map<Int, B>>): MapConsumer {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): MapConsumer {
+      return MetroFactory/* companion */.newInstance(map = <this>.#map)
     }
 
   }
@@ -277,15 +277,15 @@ class ProviderMapConsumer {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ProviderMapConsumer {
-      return MetroFactory/* companion */.newInstance(map = <this>.#map.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(map: Map<Int, Function0<C>>): ProviderMapConsumer {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ProviderMapConsumer {
+      return MetroFactory/* companion */.newInstance(map = <this>.#map.invoke())
     }
 
   }
@@ -337,15 +337,15 @@ class SetConsumer {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): SetConsumer {
-      return MetroFactory/* companion */.newInstance(set = <this>.#set)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(set: Function0<Set<A>>): SetConsumer {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SetConsumer {
+      return MetroFactory/* companion */.newInstance(set = <this>.#set)
     }
 
   }
@@ -382,15 +382,15 @@ class XImpl : X {
       return XImpl()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): XImpl {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): XImpl {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): XImpl {
+      return MetroFactory.newInstance()
     }
 
   }

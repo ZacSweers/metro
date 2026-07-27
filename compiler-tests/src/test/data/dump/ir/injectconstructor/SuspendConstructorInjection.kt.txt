@@ -42,15 +42,15 @@ class AccountCreator {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): AccountCreator {
-      return MetroFactory/* companion */.newInstance(database = <this>.#database.invoke(), tlsConnection = <this>.#tlsConnection.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(database: String, tlsConnection: Int): AccountCreator {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AccountCreator {
+      return MetroFactory/* companion */.newInstance(database = <this>.#database.invoke(), tlsConnection = <this>.#tlsConnection.invoke())
     }
 
   }
@@ -133,15 +133,15 @@ interface ExampleGraph {
 
     }
 
-    @HiddenFromObjC
-    override suspend operator fun invoke(): String {
-      return ProvideDatabaseMetroFactory/* companion */.provideDatabase(instance = <this>.#instance)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     suspend fun declarationMirror(): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): String {
+      return ProvideDatabaseMetroFactory/* companion */.provideDatabase(instance = <this>.#instance)
     }
 
   }
@@ -180,15 +180,15 @@ interface ExampleGraph {
 
     }
 
-    @HiddenFromObjC
-    override suspend operator fun invoke(): Int {
-      return ProvideTlsMetroFactory/* companion */.provideTls(instance = <this>.#instance)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     suspend fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): Int {
+      return ProvideTlsMetroFactory/* companion */.provideTls(instance = <this>.#instance)
     }
 
   }
@@ -206,3 +206,4 @@ interface ExampleGraph {
   }
 
 }
+

@@ -74,15 +74,15 @@ class TestIntProvider {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
   }
@@ -171,15 +171,15 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
   }

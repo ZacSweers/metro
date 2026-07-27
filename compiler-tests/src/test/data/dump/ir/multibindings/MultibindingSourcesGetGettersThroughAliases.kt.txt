@@ -22,15 +22,15 @@ class Bar : Base {
       return Bar()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Bar {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Bar {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Bar {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -76,15 +76,15 @@ class Foo : Base {
       return Foo()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Foo {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Foo {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Foo {
+      return MetroFactory.newInstance()
     }
 
   }

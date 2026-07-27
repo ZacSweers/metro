@@ -33,15 +33,15 @@ class ClientDevice {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClientDevice {
-      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(userAgentProvider: UserAgentProvider): ClientDevice {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClientDevice {
+      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
   }
@@ -78,15 +78,15 @@ class ClientId {
       return ClientId()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClientId {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): ClientId {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClientId {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -135,15 +135,15 @@ class CommonAppHeadersInterceptor {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): CommonAppHeadersInterceptor {
-      return MetroFactory/* companion */.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = DoubleCheck/* companion */.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(additionalHeaders: Set<Pair<String, String>>, lazyDelegate: Lazy<CommonAppHeadersInterceptor>): CommonAppHeadersInterceptor {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): CommonAppHeadersInterceptor {
+      return MetroFactory/* companion */.newInstance(additionalHeaders = <this>.#additionalHeaders.invoke(), lazyDelegate = DoubleCheck/* companion */.lazy<Provider<CommonAppHeadersInterceptor>, CommonAppHeadersInterceptor>(provider = <this>.#lazyDelegate))
     }
 
   }
@@ -199,15 +199,15 @@ class InternalHeader {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): InternalHeader {
-      return MetroFactory/* companion */.newInstance(key = <this>.#key.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(key: String): InternalHeader {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): InternalHeader {
+      return MetroFactory/* companion */.newInstance(key = <this>.#key.invoke())
     }
 
   }
@@ -255,15 +255,15 @@ class UserAgent {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): UserAgent {
-      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(userAgentProvider: UserAgentProvider): UserAgent {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): UserAgent {
+      return MetroFactory/* companion */.newInstance(userAgentProvider = <this>.#userAgentProvider.invoke())
     }
 
   }
@@ -300,15 +300,15 @@ class UserAgentProvider {
       return UserAgentProvider()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): UserAgentProvider {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): UserAgentProvider {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): UserAgentProvider {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -425,16 +425,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Set<Pair<String, String>> {
-      return ProvideHeadersMetroFactory/* companion */.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
-    }
-
     @ElementsIntoSet
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(@Named(name = "other") otherHeaders: Set<Pair<String, String>>): Set<Pair<String, String>> {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Set<Pair<String, String>> {
+      return ProvideHeadersMetroFactory/* companion */.provideHeaders(instance = <this>.#instance, otherHeaders = <this>.#otherHeaders.invoke())
     }
 
   }
@@ -474,17 +474,17 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Pair<String, String> {
-      return ProvideInternalHeaderMetroFactory/* companion */.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
-    }
-
     @IntoSet
     @Named(name = "other")
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(header: InternalHeader): Pair<String, String> {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Pair<String, String> {
+      return ProvideInternalHeaderMetroFactory/* companion */.provideInternalHeader(instance = <this>.#instance, header = <this>.#header.invoke())
     }
 
   }
@@ -523,17 +523,17 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Set<Pair<String, String>> {
-      return ProvideOtherHeadersMetroFactory/* companion */.provideOtherHeaders(instance = <this>.#instance)
-    }
-
     @ElementsIntoSet
     @Named(name = "other")
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Set<Pair<String, String>> {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Set<Pair<String, String>> {
+      return ProvideOtherHeadersMetroFactory/* companion */.provideOtherHeaders(instance = <this>.#instance)
     }
 
   }
@@ -572,15 +572,15 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
   }

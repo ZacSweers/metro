@@ -25,15 +25,15 @@ class InternalClass {
       return InternalClass()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): InternalClass {
-      return MetroFactory.newInstance()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): InternalClass {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): InternalClass {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -72,15 +72,15 @@ object IntProvider {
       return IntProvider.provideInt()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideIntMetroFactory.provideInt()
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory.provideInt()
     }
 
   }

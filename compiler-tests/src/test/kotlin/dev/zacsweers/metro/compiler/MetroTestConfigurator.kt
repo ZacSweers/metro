@@ -89,7 +89,10 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       compilerVersion = COMPILER_VERSION,
       compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
-      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
+      minVersion =
+        directives[MetroDirectives.MIN_COMPILER_VERSION].maxByOrNull {
+          toolingVersionDirective(it).first
+        },
       maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
     )
   }

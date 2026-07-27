@@ -37,15 +37,15 @@ class Config {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Config {
-      return MetroFactory/* companion */.newInstance(example = <this>.#example.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(example: ProvidedExample): Config {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Config {
+      return MetroFactory/* companion */.newInstance(example = <this>.#example.invoke())
     }
 
   }
@@ -106,15 +106,15 @@ class Repository {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Repository {
-      return MetroFactory/* companion */.newInstance(config = <this>.#config.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(config: Config): Repository {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Repository {
+      return MetroFactory/* companion */.newInstance(config = <this>.#config.invoke())
     }
 
   }
@@ -166,15 +166,15 @@ class Service {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Service {
-      return MetroFactory/* companion */.newInstance(repository = <this>.#repository.invoke())
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(repository: Repository): Service {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service {
+      return MetroFactory/* companion */.newInstance(repository = <this>.#repository.invoke())
     }
 
   }
@@ -231,15 +231,15 @@ class SharedWorker {
 
     }
 
-    @HiddenFromObjC
-    operator fun invoke(name: String): SharedWorker {
-      return MetroFactory/* companion */.newInstance(service = <this>.#service.invoke(), name = name)
-    }
-
     @ComptimeOnly
     @HiddenFromObjC
     fun declarationMirror(service: Service, @Assisted name: String): SharedWorker {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    operator fun invoke(name: String): SharedWorker {
+      return MetroFactory/* companion */.newInstance(service = <this>.#service.invoke(), name = name)
     }
 
   }
