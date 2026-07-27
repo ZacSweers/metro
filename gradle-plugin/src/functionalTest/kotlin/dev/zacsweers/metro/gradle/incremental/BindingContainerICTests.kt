@@ -1685,11 +1685,11 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
   }
 
   @Test
-  fun multibindsQualifierArgumentChangeDetectedWithOptimizedIc() {
+  fun multibindsQualifierArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
 
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides(enableOptimizedIc = true)) {
+      object : MetroProject(metroOptions = MetroOptionOverrides(omitRedundantMirrors = true)) {
         override fun sources() = listOf(appGraph, bindingContainer, target)
 
         private val appGraph =

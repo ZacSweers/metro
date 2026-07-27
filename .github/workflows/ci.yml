@@ -152,7 +152,7 @@ jobs:
         run: |
           ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
-            '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
+            '-Pmetro.testOmitRedundantMirrors=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
             -Pmetro.excludeJsBoxTests \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
@@ -161,7 +161,7 @@ jobs:
         run: |
           ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
-            '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
+            '-Pmetro.testOmitRedundantMirrors=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
             -Pmetro.functionalTestKmpTarget=jvm \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 

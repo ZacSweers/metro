@@ -10,7 +10,7 @@ import dev.zacsweers.metro.gradle.MetroProject
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Test
 
-class OptimizedIcBoundaryTests :
+class MirrorRemovalBoundaryTests :
   BaseIncrementalCompilationTest(
     target = KmpTarget.JVM,
     requiresMultiplatformIc = false,
@@ -21,7 +21,7 @@ class OptimizedIcBoundaryTests :
     val fixture =
       object :
         MetroProject(
-          metroOptions = MetroOptionOverrides(enableOptimizedIc = true),
+          metroOptions = MetroOptionOverrides(omitRedundantMirrors = true),
           multiplatform = false,
         ) {
         val appGraph =

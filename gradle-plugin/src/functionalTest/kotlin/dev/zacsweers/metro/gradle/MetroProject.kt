@@ -278,10 +278,11 @@ abstract class MetroProject(
       metroOptions.generateContributionProviders?.let {
         add("generateContributionProviders.set($it)")
       }
-      val optimizedIc = metroOptions.enableOptimizedIc ?: getTestOptimizedIcOverride()
-      optimizedIc?.let {
+      val omitRedundantMirrors =
+        metroOptions.omitRedundantMirrors ?: getTestOmitRedundantMirrorsOverride()
+      omitRedundantMirrors?.let {
         val method = if (it) "enable" else "disable"
-        add("compilerOptions.$method(\"enable-optimized-ic\")")
+        add("compilerOptions.$method(\"omit-redundant-mirrors\")")
       }
     }
     if (options.isNotEmpty()) {

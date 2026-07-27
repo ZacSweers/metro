@@ -174,7 +174,8 @@ fun androidHomeOrNull(): File? {
 // Forwarded to KmpTarget.selectedTargets() to scope IC test parameterization. PR/branch CI leaves
 // this unset (JVM only); main runs use a per-target value or `all` to fan out across targets.
 val functionalTestKmpTarget = providers.gradleProperty("metro.functionalTestKmpTarget").orNull
-val testOptimizedIc = providers.gradleProperty("metro.testOptimizedIc").orNull
+val testOmitRedundantMirrors =
+  providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
 tasks.withType<Test>().configureEach {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
@@ -187,7 +188,7 @@ tasks.withType<Test>().configureEach {
   systemProperty("metro.circuitVersion", libs.versions.circuit.get())
   systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
-  testOptimizedIc?.let { systemProperty("metro.testOptimizedIc", it) }
+  testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 }
 
 tasks

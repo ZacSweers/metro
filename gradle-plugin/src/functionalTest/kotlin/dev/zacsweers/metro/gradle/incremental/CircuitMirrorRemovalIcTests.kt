@@ -18,7 +18,7 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-class CircuitOptimizedIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
+class CircuitMirrorRemovalIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
   @Test
   fun classAndFunctionScreenArgumentChangesAreDetected() {
     val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
@@ -39,7 +39,7 @@ class CircuitOptimizedIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
       )
       metro {
         enableCircuitCodegen.set(true)
-        compilerOptions.enable("enable-optimized-ic")
+        compilerOptions.enable("omit-redundant-mirrors")
       }
       """
         .trimIndent()

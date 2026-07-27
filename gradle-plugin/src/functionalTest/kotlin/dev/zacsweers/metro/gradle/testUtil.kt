@@ -34,8 +34,8 @@ private val FILE_PATH_REGEX = Regex("file://.*?/(?=[^/]+\\.kt)")
 const val DEBUGGING_ARGS =
   """-Dkotlin.daemon.jvm.options="-agentlib:jdwp=transport=dt_socket\,server=n\,suspend=y\,address=5005""""
 
-fun getTestOptimizedIcOverride(): Boolean? =
-  System.getProperty("metro.testOptimizedIc")?.toBooleanStrict()
+fun getTestOmitRedundantMirrorsOverride(): Boolean? =
+  System.getProperty("metro.testOmitRedundantMirrors")?.toBooleanStrict()
 
 fun getTestCircuitVersion(): String = System.getProperty("metro.circuitVersion")
 

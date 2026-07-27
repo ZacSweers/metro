@@ -21,7 +21,7 @@ import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
-import dev.zacsweers.metro.gradle.getTestOptimizedIcOverride
+import dev.zacsweers.metro.gradle.getTestOmitRedundantMirrorsOverride
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -1150,11 +1150,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       }
     }
 
-    val optimizedIcEnabled = getTestOptimizedIcOverride() == true
+    val omitRedundantMirrorsEnabled = getTestOmitRedundantMirrorsOverride() == true
     val annotationArgumentChangesSupported =
       getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0")
     val requiresAnnotationRemovalWorkaround =
-      !optimizedIcEnabled || !annotationArgumentChangesSupported
+      !omitRedundantMirrorsEnabled || !annotationArgumentChangesSupported
     if (requiresAnnotationRemovalWorkaround) {
       project.modify(
         fixture.exampleClass,
@@ -3201,11 +3201,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   @Test
-  fun mapKeyArgumentChangeDetectedWithOptimizedIc() {
+  fun mapKeyArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
 
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides(enableOptimizedIc = true)) {
+      object : MetroProject(metroOptions = MetroOptionOverrides(omitRedundantMirrors = true)) {
         override fun sources() = listOf(bindingContainer, graph)
 
         val bindingContainer =
@@ -3291,11 +3291,11 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   @Test
-  fun defaultBindingTypeArgumentChangeDetectedWithOptimizedIc() {
+  fun defaultBindingTypeArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
 
     val fixture =
-      object : MetroProject(metroOptions = MetroOptionOverrides(enableOptimizedIc = true)) {
+      object : MetroProject(metroOptions = MetroOptionOverrides(omitRedundantMirrors = true)) {
         override fun sources() = listOf(baseInterface, impl, graph)
 
         val baseInterface =
