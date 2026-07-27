@@ -1,3 +1,5 @@
+// FILE: GeneratedCompanionSupertypes.kt
+
 @AssistedInject
 class AssistedTarget {
   val value: String
@@ -116,6 +118,204 @@ class Injected {
 
 }
 
+@ExposeImplBinding
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class MarkerContribution : MarkerBinding {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<MarkerContribution> {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): MetroFactory {
+        return MetroFactory()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(): MarkerContribution {
+        return MarkerContribution()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): MarkerContribution {
+      return MetroFactory/* companion */.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): MarkerContribution {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = MarkerContribution::class, context = "contribution_provider")
+  @ComptimeOnly
+  interface MetroContributionToDevzacsweersmetroappScopeocf15 {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      @Binds
+      @CallableMetadata(callableName = "bindsAsMarkerBinding", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindsAsMarkerBinding(instance: MarkerContribution): MarkerBinding {
+        return error(message = "Never called")
+      }
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    fun bindsAsMarkerBinding(instance: MarkerContribution): MarkerBinding {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class ProviderContribution : ProviderBinding {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ProviderContribution> {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): MetroFactory {
+        return MetroFactory()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(): ProviderContribution {
+        return ProviderContribution()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ProviderContribution {
+      return MetroFactory/* companion */.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): ProviderContribution {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ProviderContributionContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @ContributesTo(scope = AppScope::class)
+  @Origin(value = ProviderContribution::class, context = "contribution_provider")
+  object ToAppScope {
+    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+    object ProvidesProviderContributionMetroFactory : Factory<ProviderBinding> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): ProvidesProviderContributionMetroFactory {
+        return ProvidesProviderContributionMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun providesProviderContribution(): ProviderBinding {
+        return providesProviderContribution()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): ProviderBinding {
+        return ProvidesProviderContributionMetroFactory.providesProviderContribution()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): ProviderBinding {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    /* static */ fun providesProviderContribution(): ProviderBinding {
+      return ProviderContribution()
+    }
+
+  }
+
+}
+
 @AssistedFactory
 fun interface AssistedTargetFactory {
   class Impl : AssistedTargetFactory {
@@ -151,9 +351,15 @@ fun interface AssistedTargetFactory {
 
 }
 
+interface MarkerBinding {
+}
+
+interface ProviderBinding {
+}
+
 @BindingContainer
 object Bindings {
-  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 190, endOffset = 246, newInstanceName = "provideString")
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
   class ProvideStringMetroFactory : Factory<String> {
     private /* final field */ val value: Provider<Int> = value
     companion object Companion {
@@ -211,3 +417,18 @@ object Bindings {
   }
 
 }
+
+// FILE: markerContributionDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: MarkerContribution) {
+  return error(message = "Never called")
+}
+
+// FILE: providerContributionContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: ProviderContributionContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+

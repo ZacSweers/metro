@@ -184,6 +184,261 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
       overridden:
         public open fun toString (): kotlin.String declared in kotlin.Any
+  CLASS CLASS name:MarkerContribution modality:FINAL visibility:public superTypes:[<root>.MarkerBinding]
+    annotations:
+      ExposeImplBinding
+      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>)
+      Inject
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution
+    CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.MarkerContribution>]
+      annotations:
+        Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+      thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution.MetroFactory
+      CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]
+        annotations:
+          Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+        thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution.MetroFactory.Companion
+        CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] visibility:private returnType:<root>.MarkerContribution.MetroFactory.Companion [primary]
+          BLOCK_BODY
+            DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+            INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=kotlin.Unit
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryCreateFunction] name:create visibility:public modality:FINAL returnType:<root>.MarkerContribution.MetroFactory
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory.Companion
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun create (): <root>.MarkerContribution.MetroFactory declared in <root>.MarkerContribution.MetroFactory.Companion'
+              CONSTRUCTOR_CALL 'private constructor <init> () declared in <root>.MarkerContribution.MetroFactory' type=<root>.MarkerContribution.MetroFactory origin=null
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryNewInstanceFunction] name:newInstance visibility:public modality:FINAL returnType:<root>.MarkerContribution
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory.Companion
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun newInstance (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory.Companion'
+              CONSTRUCTOR_CALL 'public constructor <init> () declared in <root>.MarkerContribution' type=<root>.MarkerContribution origin=null
+      CONSTRUCTOR visibility:private returnType:<root>.MarkerContribution.MetroFactory [primary]
+        annotations:
+          HiddenFromObjC
+        BLOCK_BODY
+          DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+          INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.MarkerContribution>]' type=<root>.MarkerContribution.MetroFactory
+      FUN name:invoke visibility:public modality:FINAL returnType:<root>.MarkerContribution [operator]
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory
+        annotations:
+          HiddenFromObjC
+        overridden:
+          public abstract fun invoke (): T of dev.zacsweers.metro.Provider declared in dev.zacsweers.metro.Provider
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory'
+            CALL 'public final fun newInstance (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory.Companion' type=<root>.MarkerContribution origin=null
+              ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=<root>.MarkerContribution.MetroFactory.Companion
+      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.MarkerContribution
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
+    CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] INTERFACE name:MetroContributionToDevzacsweersmetroappScopeocf15 modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
+      annotations:
+        Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+        MetroContribution(scope = AppScope::class)
+        BindingContainer(includes = <null>)
+        Origin(value = MarkerContribution::class, context = "contribution_provider")
+        ComptimeOnly
+      thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15
+      CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.BindingMirrorClassDeclaration] CLASS name:BindsMirror modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
+        annotations:
+          Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+          ComptimeOnly
+        thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15.BindsMirror
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] name:bindsAsMarkerBinding visibility:public modality:FINAL returnType:<root>.MarkerBinding
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15
+          VALUE_PARAMETER kind:Regular name:instance index:1 type:<root>.MarkerContribution
+          annotations:
+            Binds
+            CallableMetadata(callableName = "bindsAsMarkerBinding", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = <null>)
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun bindsAsMarkerBinding (instance: <root>.MarkerContribution): <root>.MarkerBinding declared in <root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15.BindsMirror'
+              CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                ARG message: CONST String type=kotlin.String value="Never called"
+      FUN name:bindsAsMarkerBinding visibility:public modality:OPEN returnType:<root>.MarkerBinding
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15
+        VALUE_PARAMETER kind:Regular name:instance index:1 type:<root>.MarkerContribution
+        annotations:
+          Binds
+          ComptimeOnly
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public open fun bindsAsMarkerBinding (instance: <root>.MarkerContribution): <root>.MarkerBinding declared in <root>.MarkerContribution.MetroContributionToDevzacsweersmetroappScopeocf15'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
+    CONSTRUCTOR visibility:public returnType:<root>.MarkerContribution [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:MarkerContribution modality:FINAL visibility:public superTypes:[<root>.MarkerBinding]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in <root>.MarkerBinding
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in <root>.MarkerBinding
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in <root>.MarkerBinding
+  CLASS CLASS name:ProviderContribution modality:FINAL visibility:public superTypes:[<root>.ProviderBinding]
+    annotations:
+      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>)
+      Inject
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContribution
+    CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.ProviderContribution>]
+      annotations:
+        Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+      thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContribution.MetroFactory
+      CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]
+        annotations:
+          Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+        thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContribution.MetroFactory.Companion
+        CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] visibility:private returnType:<root>.ProviderContribution.MetroFactory.Companion [primary]
+          BLOCK_BODY
+            DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+            INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=kotlin.Unit
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryCreateFunction] name:create visibility:public modality:FINAL returnType:<root>.ProviderContribution.MetroFactory
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory.Companion
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun create (): <root>.ProviderContribution.MetroFactory declared in <root>.ProviderContribution.MetroFactory.Companion'
+              CONSTRUCTOR_CALL 'private constructor <init> () declared in <root>.ProviderContribution.MetroFactory' type=<root>.ProviderContribution.MetroFactory origin=null
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryNewInstanceFunction] name:newInstance visibility:public modality:FINAL returnType:<root>.ProviderContribution
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory.Companion
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun newInstance (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory.Companion'
+              CONSTRUCTOR_CALL 'public constructor <init> () declared in <root>.ProviderContribution' type=<root>.ProviderContribution origin=null
+      CONSTRUCTOR visibility:private returnType:<root>.ProviderContribution.MetroFactory [primary]
+        annotations:
+          HiddenFromObjC
+        BLOCK_BODY
+          DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+          INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.ProviderContribution>]' type=<root>.ProviderContribution.MetroFactory
+      FUN name:invoke visibility:public modality:FINAL returnType:<root>.ProviderContribution [operator]
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory
+        annotations:
+          HiddenFromObjC
+        overridden:
+          public abstract fun invoke (): T of dev.zacsweers.metro.Provider declared in dev.zacsweers.metro.Provider
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory'
+            CALL 'public final fun newInstance (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory.Companion' type=<root>.ProviderContribution origin=null
+              ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=<root>.ProviderContribution.MetroFactory.Companion
+      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.ProviderContribution
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
+    CONSTRUCTOR visibility:public returnType:<root>.ProviderContribution [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:ProviderContribution modality:FINAL visibility:public superTypes:[<root>.ProviderBinding]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in <root>.ProviderBinding
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in <root>.ProviderBinding
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in <root>.ProviderBinding
+  CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ContributionProviderHolderDeclaration] CLASS name:ProviderContributionContributions modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
+    annotations:
+      Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContributionContributions
+    CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] OBJECT name:ToAppScope modality:FINAL visibility:public superTypes:[kotlin.Any]
+      annotations:
+        Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
+        MetroContribution(scope = AppScope::class)
+        BindingContainer(includes = <null>)
+        ContributesTo(scope = AppScope::class, replaces = <null>)
+        Origin(value = ProviderContribution::class, context = "contribution_provider")
+      thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContributionContributions.ToAppScope
+      CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]
+        annotations:
+          CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+        thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+        CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] visibility:private returnType:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory [primary]
+          BLOCK_BODY
+            DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+            INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]' type=kotlin.Unit
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryCreateFunction] name:create visibility:public modality:FINAL returnType:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun create (): <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
+              GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]' type=<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+        FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.FactoryNewInstanceFunction] name:providesProviderContribution visibility:public modality:FINAL returnType:<root>.ProviderBinding
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          annotations:
+            HiddenFromObjC
+            JvmStatic
+            JsStatic
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
+              CALL 'public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope' type=<root>.ProviderBinding origin=null
+        FUN name:invoke visibility:public modality:FINAL returnType:<root>.ProviderBinding [operator]
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          annotations:
+            HiddenFromObjC
+          overridden:
+            public abstract fun invoke (): T of dev.zacsweers.metro.Provider declared in dev.zacsweers.metro.Provider
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
+              CALL 'public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory' type=<root>.ProviderBinding origin=null
+                ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]' type=<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+        FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.ProviderBinding
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          annotations:
+            ComptimeOnly
+            HiddenFromObjC
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
+              CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                ARG message: CONST String type=kotlin.String value="Never called"
+      CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] visibility:private returnType:<root>.ProviderContributionContributions.ToAppScope [primary]
+        BLOCK_BODY
+          DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+          INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] OBJECT name:ToAppScope modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionCallableDeclaration] name:providesProviderContribution visibility:public modality:FINAL returnType:<root>.ProviderBinding
+        annotations:
+          Provides
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope'
+            CONSTRUCTOR_CALL 'public constructor <init> () declared in <root>.ProviderContribution' type=<root>.ProviderContribution origin=null
   CLASS INTERFACE name:AssistedTargetFactory modality:ABSTRACT visibility:public [fun] superTypes:[kotlin.Any]
     annotations:
       AssistedFactory
@@ -257,13 +512,43 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
     FUN name:create visibility:public modality:ABSTRACT returnType:<root>.AssistedTarget
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:<root>.AssistedTargetFactory
       VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+  CLASS INTERFACE name:MarkerBinding modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerBinding
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+  CLASS INTERFACE name:ProviderBinding modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderBinding
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
   CLASS OBJECT name:Bindings modality:FINAL visibility:public superTypes:[kotlin.Any]
     annotations:
       BindingContainer(includes = <null>)
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] CLASS name:ProvideStringMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<kotlin.String>]
       annotations:
-        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 190, endOffset = 246, newInstanceName = "provideString")
+        CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
       thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.Bindings.ProvideStringMetroFactory
       FIELD name:value type:dev.zacsweers.metro.Provider<kotlin.Int> visibility:private [final]
         EXPRESSION_BODY
@@ -353,3 +638,17 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         RETURN type=kotlin.Nothing from='public final fun provideString (value: kotlin.Int): kotlin.String declared in <root>.Bindings'
           CALL 'public open fun toString (): kotlin.String declared in kotlin.Int' type=kotlin.String origin=null
             ARG <this>: GET_VAR 'value: kotlin.Int declared in <root>.Bindings.provideString' type=kotlin.Int origin=null
+FILE fqName:metro.hints fileName:/markerContributionDev_zacsweers_metro_AppScope.kt
+  FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] name:dev_zacsweers_metro_AppScope visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:contributed index:0 type:<root>.MarkerContribution
+    BLOCK_BODY
+      RETURN type=kotlin.Nothing from='public final fun dev_zacsweers_metro_AppScope (contributed: <root>.MarkerContribution): kotlin.Unit declared in metro.hints'
+        CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+          ARG message: CONST String type=kotlin.String value="Never called"
+FILE fqName:metro.hints fileName:/providerContributionContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
+  FUN GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] name:dev_zacsweers_metro_AppScope visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:contributed index:0 type:<root>.ProviderContributionContributions.ToAppScope
+    BLOCK_BODY
+      RETURN type=kotlin.Nothing from='public final fun dev_zacsweers_metro_AppScope (contributed: <root>.ProviderContributionContributions.ToAppScope): kotlin.Unit declared in metro.hints'
+        CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+          ARG message: CONST String type=kotlin.String value="Never called"

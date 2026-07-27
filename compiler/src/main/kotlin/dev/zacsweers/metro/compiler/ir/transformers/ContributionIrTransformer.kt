@@ -321,6 +321,7 @@ internal class ContributionIrTransformer(
             modality = Modality.ABSTRACT
           }
           .apply {
+            superTypes = listOf(irBuiltIns.anyType)
             createThisReceiverParameter()
             addDeprecatedHiddenAnnotation()
             sourceFile.addChild(this)
@@ -345,6 +346,7 @@ internal class ContributionIrTransformer(
         modality = Modality.FINAL
       }
       .apply {
+        superTypes = listOf(irBuiltIns.anyType)
         createThisReceiverParameter()
         addDeprecatedHiddenAnnotation()
         holder.addChild(this)
@@ -389,6 +391,7 @@ internal class ContributionIrTransformer(
         modality = Modality.ABSTRACT
       }
       .apply {
+        superTypes = listOf(irBuiltIns.anyType)
         createThisReceiverParameter()
         addDeprecatedHiddenAnnotation()
         this@getOrCreateIrContributionMarker.addChild(this)
