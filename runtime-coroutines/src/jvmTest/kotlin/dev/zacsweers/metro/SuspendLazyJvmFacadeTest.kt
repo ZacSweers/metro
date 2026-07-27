@@ -11,7 +11,7 @@ import kotlinx.coroutines.runBlocking
 class SuspendLazyJvmFacadeTest {
   @Test
   fun `suspend lazy helpers from both runtime artifacts are callable`() = runBlocking {
-    assertEquals("initialized", suspendLazyOf("initialized").value())
-    assertEquals("deferred", suspendLazy { "deferred" }.value())
+    assertEquals("initialized", suspendLazyOf("initialized").await())
+    assertEquals("deferred", suspendLazy { "deferred" }.await())
   }
 }

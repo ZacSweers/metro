@@ -31,8 +31,8 @@ class SuspendLazyConcurrentTest {
           value
         }
 
-      val first = async(Dispatchers.Default) { lazy.value() }
-      val second = async(Dispatchers.Default) { lazy.value() }
+      val first = async(Dispatchers.Default) { lazy.await() }
+      val second = async(Dispatchers.Default) { lazy.await() }
       try {
         assertTrue(
           initializersEntered.await(10, TimeUnit.SECONDS),
@@ -45,7 +45,7 @@ class SuspendLazyConcurrentTest {
 
       val published = first.await()
       assertEquals(published, second.await())
-      assertEquals(published, lazy.value())
+      assertEquals(published, lazy.await())
       assertTrue(lazy.isInitialized())
     }
 }

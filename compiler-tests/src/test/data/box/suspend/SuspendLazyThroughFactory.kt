@@ -25,15 +25,15 @@ interface ExampleGraph {
   }
 
   @Provides
-  suspend fun provideReportLength(db: SuspendLazy<String>): Int = db.value().length
+  suspend fun provideReportLength(db: SuspendLazy<String>): Int = db.await().length
 }
 
 fun box(): String {
   val graph = createGraph<ExampleGraph>()
   return runBlocking {
     val consumer = graph.consumer
-    assertEquals("db", consumer.database.value())
-    assertEquals("db", consumer.database.value())
+    assertEquals("db", consumer.database.await())
+    assertEquals("db", consumer.database.await())
     assertEquals(1, dbComputations)
 
     assertEquals(2, graph.reportLength())

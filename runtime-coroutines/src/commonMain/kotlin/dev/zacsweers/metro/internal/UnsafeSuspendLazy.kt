@@ -15,9 +15,9 @@ internal class UnsafeSuspendLazy<T>(initializer: suspend () -> T) :
   private var initializer: (suspend () -> T)? = initializer
   private var _value: Any? = UNINITIALIZED
 
-  override suspend fun invoke(): T = value()
+  override suspend fun invoke(): T = await()
 
-  override suspend fun value(): T {
+  override suspend fun await(): T {
     if (_value === UNINITIALIZED) {
       _value = initializer!!()
       initializer = null

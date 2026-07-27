@@ -96,10 +96,10 @@ fun box(): String =
     val firstLazy = graph.providerOfLazy()
     val secondLazy = graph.providerOfLazy()
     assertEquals(0, unscopedComputations)
-    assertEquals(1, firstLazy.value().index)
-    assertEquals(1, firstLazy.value().index)
+    assertEquals(1, firstLazy.await().index)
+    assertEquals(1, firstLazy.await().index)
     assertEquals(1, unscopedComputations)
-    assertEquals(2, secondLazy.value().index)
+    assertEquals(2, secondLazy.await().index)
     assertEquals(2, unscopedComputations)
 
     unscopedComputations = 0
@@ -110,8 +110,8 @@ fun box(): String =
 
     unscopedComputations = 0
     val lazyOfFunction = graph.lazyOfFunction
-    val cachedFunction: suspend () -> UnscopedValue = lazyOfFunction.value()
-    val sameCachedFunction: suspend () -> UnscopedValue = lazyOfFunction.value()
+    val cachedFunction: suspend () -> UnscopedValue = lazyOfFunction.await()
+    val sameCachedFunction: suspend () -> UnscopedValue = lazyOfFunction.await()
     assertSame(cachedFunction, sameCachedFunction)
     assertEquals(0, unscopedComputations)
     assertEquals(1, cachedFunction().index)
@@ -119,8 +119,8 @@ fun box(): String =
 
     unscopedComputations = 0
     val lazyOfSuspendProvider = graph.lazyOfSuspendProvider
-    val cachedProvider: suspend () -> UnscopedValue = lazyOfSuspendProvider.value()
-    assertSame(cachedProvider, lazyOfSuspendProvider.value())
+    val cachedProvider: suspend () -> UnscopedValue = lazyOfSuspendProvider.await()
+    assertSame(cachedProvider, lazyOfSuspendProvider.await())
     assertEquals(0, unscopedComputations)
     assertEquals(1, cachedProvider.invoke().index)
     assertEquals(2, cachedProvider.invoke().index)
@@ -129,16 +129,16 @@ fun box(): String =
     val deepLazy = graph.deep()
     val deepSuspendLazy = deepLazy.value
     assertSame(deepSuspendLazy, deepLazy.value)
-    val deepFunction: suspend () -> UnscopedValue = deepSuspendLazy.value()
-    assertSame(deepFunction, deepSuspendLazy.value())
+    val deepFunction: suspend () -> UnscopedValue = deepSuspendLazy.await()
+    assertSame(deepFunction, deepSuspendLazy.await())
     assertEquals(0, unscopedComputations)
     assertEquals(1, deepFunction().index)
     assertEquals(2, deepFunction().index)
 
     unscopedComputations = 0
     val lazyMap = graph.providerOfLazyMap()
-    val map = lazyMap.value()
-    assertSame(map, lazyMap.value())
+    val map = lazyMap.await()
+    assertSame(map, lazyMap.await())
     val mapFunction: suspend () -> UnscopedValue = map.getValue("nested")
     assertEquals(0, unscopedComputations)
     assertEquals(1, mapFunction().index)
@@ -146,22 +146,22 @@ fun box(): String =
 
     unscopedComputations = 0
     val consumer = graph.consumer
-    assertEquals(1, consumer.providerOfLazy().value().index)
+    assertEquals(1, consumer.providerOfLazy().await().index)
     assertEquals(2, consumer.functionOfFunction()().index)
-    assertEquals(3, consumer.lazyOfFunction.value()().index)
-    assertEquals(4, consumer.functionOfLazy().value().index)
-    assertEquals(5, consumer.lazyOfLazy.value().value().index)
+    assertEquals(3, consumer.lazyOfFunction.await()().index)
+    assertEquals(4, consumer.functionOfLazy().await().index)
+    assertEquals(5, consumer.lazyOfLazy.await().await().index)
     assertEquals(6, consumer.lazyOfSuspendFunction.value().index)
-    assertEquals(7, consumer.deep().value.value()().index)
+    assertEquals(7, consumer.deep().value.await()().index)
 
     scopedComputations = 0
-    assertEquals(1, graph.scopedProviderOfLazy().value().index)
-    assertEquals(1, graph.scopedProviderOfLazy().value().index)
+    assertEquals(1, graph.scopedProviderOfLazy().await().index)
+    assertEquals(1, graph.scopedProviderOfLazy().await().index)
     assertEquals(1, graph.scopedFunctionOfFunction()().index)
-    assertEquals(1, graph.scopedLazyOfFunction.value()().index)
+    assertEquals(1, graph.scopedLazyOfFunction.await()().index)
     assertEquals(1, scopedComputations)
 
-    assertNull(graph.nullableProviderOfLazy().value())
+    assertNull(graph.nullableProviderOfLazy().await())
 
     synchronousComputations = 0
     val synchronousProvider: () -> SynchronousValue = graph.suspendFunctionOfProvider()
@@ -171,8 +171,8 @@ fun box(): String =
 
     synchronousComputations = 0
     val suspendLazyOfProvider = graph.suspendLazyOfProvider
-    val cachedSynchronousProvider: () -> SynchronousValue = suspendLazyOfProvider.value()
-    assertSame(cachedSynchronousProvider, suspendLazyOfProvider.value())
+    val cachedSynchronousProvider: () -> SynchronousValue = suspendLazyOfProvider.await()
+    assertSame(cachedSynchronousProvider, suspendLazyOfProvider.await())
     assertEquals(0, synchronousComputations)
     assertEquals(1, cachedSynchronousProvider().index)
     assertEquals(2, cachedSynchronousProvider().index)
@@ -195,8 +195,8 @@ fun box(): String =
 
     synchronousComputations = 0
     val nestedSynchronousLazy = graph.providerOfSuspendLazyOfProvider()
-    val nestedSynchronousProvider: () -> SynchronousValue = nestedSynchronousLazy.value()
-    assertSame(nestedSynchronousProvider, nestedSynchronousLazy.value())
+    val nestedSynchronousProvider: () -> SynchronousValue = nestedSynchronousLazy.await()
+    assertSame(nestedSynchronousProvider, nestedSynchronousLazy.await())
     assertEquals(0, synchronousComputations)
     assertEquals(1, nestedSynchronousProvider().index)
     assertEquals(2, nestedSynchronousProvider().index)

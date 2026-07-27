@@ -25,13 +25,13 @@ class SuspendInstanceFactoryTest {
   fun `suspendLazyOf is already initialized`() = runTest {
     val lazy = suspendLazyOf("value")
     assertTrue(lazy.isInitialized())
-    assertEquals("value", lazy.value())
+    assertEquals("value", lazy.await())
   }
 
   @Test
   fun `suspendLazyOf supports nullable values`() = runTest {
     val lazy = suspendLazyOf<String?>(null)
     assertTrue(lazy.isInitialized())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
   }
 }

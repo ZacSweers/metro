@@ -98,12 +98,12 @@ Each invocation initializes the binding again, or returns the cached instance if
 
 ## Deferring and memoizing with `SuspendLazy<T>`
 
-`SuspendLazy<T>` is a cached value obtained in a suspend context. When Metro injects one, it defers initialization until `value()` is called and caches the first successful result for that wrapper instance.
+`SuspendLazy<T>` is a cached value obtained in a suspend context. When Metro injects one, it defers initialization until `await()` is called and caches the first successful result for that wrapper instance.
 
 ```kotlin
 @Inject
 class Repository(val database: SuspendLazy<Database>) {
-  suspend fun load(id: String): Row = database.value().query(id)
+  suspend fun load(id: String): Row = database.await().query(id)
 }
 
 @DependencyGraph

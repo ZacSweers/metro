@@ -36,11 +36,11 @@ class SuspendLazyPublicationConcurrentTest {
         value
       }
 
-    val results = List(2) { async(Dispatchers.Default) { lazy.value() } }.awaitAll()
+    val results = List(2) { async(Dispatchers.Default) { lazy.await() } }.awaitAll()
 
     assertEquals(2, attempts.load())
     assertEquals(1, results.toSet().size)
-    assertEquals(results.first(), lazy.value())
+    assertEquals(results.first(), lazy.await())
     assertTrue(lazy.isInitialized())
   }
 }

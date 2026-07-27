@@ -1006,7 +1006,7 @@ private constructor(
               is WrappedType.SuspendLazy ->
                 irInvoke(
                   dispatchReceiver = expression,
-                  callee = metroSymbols.suspendLazyValue,
+                  callee = metroSymbols.suspendLazyAwait,
                   typeHint = innerIrType,
                 )
               is WrappedType.Canonical,
