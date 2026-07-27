@@ -10,7 +10,7 @@ class Taco(@Assisted val seasoning: String) {
 
 @DependencyGraph
 interface AppGraph {
-  val taco: <!ASSISTED_INJECTION_ERROR!>Taco<!>
+  val taco: <!INVALID_ASSISTED_BINDING!>Taco<!>
 
   @Provides
   fun provideTaco(factory: Taco.Factory): Taco = factory.create("spicy")

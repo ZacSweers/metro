@@ -1,0 +1,434 @@
+// FILE: GeneratedCompanionSupertypes.kt
+
+@AssistedInject
+class AssistedTarget {
+  val value: String
+    field = value
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @AssistedMarker
+  class MetroFactory {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): MetroFactory {
+        return MetroFactory()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(value: String): AssistedTarget {
+        return AssistedTarget(value = value)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    operator fun invoke(value: String): AssistedTarget {
+      return MetroFactory/* companion */.newInstance(value = value)
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(@Assisted value: String): AssistedTarget {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(@Assisted value: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class Injected {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<Injected> {
+    private /* final field */ val value: Provider<Int> = value
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(value: Provider<Int>): MetroFactory {
+        return MetroFactory(value = value)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(value: Int): Injected {
+        return Injected(value = value)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(value: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Injected {
+      return MetroFactory/* companion */.newInstance(value = <this>.#value.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(value: Int): Injected {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor(value: Int) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@ExposeImplBinding
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class MarkerContribution : MarkerBinding {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<MarkerContribution> {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): MetroFactory {
+        return MetroFactory()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(): MarkerContribution {
+        return MarkerContribution()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): MarkerContribution {
+      return MetroFactory/* companion */.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): MarkerContribution {
+      return error(message = "Never called")
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @Origin(value = MarkerContribution::class, context = "contribution_provider")
+  @ComptimeOnly
+  interface MetroContributionToDevzacsweersmetroappScopeocf15 {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      @Binds
+      @CallableMetadata(callableName = "bindsAsMarkerBinding", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindsAsMarkerBinding(instance: MarkerContribution): MarkerBinding {
+        return error(message = "Never called")
+      }
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    fun bindsAsMarkerBinding(instance: MarkerContribution): MarkerBinding {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@ContributesBinding(scope = AppScope::class)
+@Inject
+class ProviderContribution : ProviderBinding {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<ProviderContribution> {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): MetroFactory {
+        return MetroFactory()
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(): ProviderContribution {
+        return ProviderContribution()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ProviderContribution {
+      return MetroFactory/* companion */.newInstance()
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(): ProviderContribution {
+      return error(message = "Never called")
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ProviderContributionContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AppScope::class)
+  @BindingContainer
+  @ContributesTo(scope = AppScope::class)
+  @Origin(value = ProviderContribution::class, context = "contribution_provider")
+  object ToAppScope {
+    @CallableMetadata(callableName = "providesProviderContribution", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "providesProviderContribution")
+    object ProvidesProviderContributionMetroFactory : Factory<ProviderBinding> {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(): ProvidesProviderContributionMetroFactory {
+        return ProvidesProviderContributionMetroFactory
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun providesProviderContribution(): ProviderBinding {
+        return providesProviderContribution()
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): ProviderBinding {
+        return ProvidesProviderContributionMetroFactory.providesProviderContribution()
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun mirrorFunction(): ProviderBinding {
+        return error(message = "Never called")
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    /* static */ fun providesProviderContribution(): ProviderBinding {
+      return ProviderContribution()
+    }
+
+  }
+
+}
+
+@AssistedFactory
+fun interface AssistedTargetFactory {
+  class Impl : AssistedTargetFactory {
+    private /* final field */ val delegateFactory: AssistedTarget.MetroFactory = delegateFactory
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @JvmStatic
+      @JsStatic
+      fun create(delegateFactory: AssistedTarget.MetroFactory): Provider<AssistedTargetFactory> {
+        return InstanceFactory/* companion */.invoke<AssistedTargetFactory>(value = Impl(delegateFactory = delegateFactory))
+      }
+
+    }
+
+    private constructor(delegateFactory: AssistedTarget.MetroFactory) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun create(value: String): AssistedTarget {
+      return <this>.#delegateFactory.invoke(value = value)
+    }
+
+  }
+
+  abstract fun create(value: String): AssistedTarget
+
+}
+
+interface MarkerBinding {
+}
+
+interface ProviderBinding {
+}
+
+@BindingContainer
+object Bindings {
+  @CallableMetadata(callableName = "provideString", propertyName = "", startOffset = 231, endOffset = 287, newInstanceName = "provideString")
+  class ProvideStringMetroFactory : Factory<String> {
+    private /* final field */ val value: Provider<Int> = value
+    companion object Companion {
+      constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(value: Provider<Int>): ProvideStringMetroFactory {
+        return ProvideStringMetroFactory(value = value)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun provideString(value: Int): String {
+        return Bindings.provideString(value = value)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(value: Provider<Int>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(value = <this>.#value.invoke())
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun mirrorFunction(value: Int): String {
+      return error(message = "Never called")
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  fun provideString(value: Int): String {
+    return value.toString()
+  }
+
+}
+
+// FILE: markerContributionDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: MarkerContribution) {
+  return error(message = "Never called")
+}
+
+// FILE: providerContributionContributionsToAppScopeDev_zacsweers_metro_AppScope.kt
+package metro.hints
+
+fun dev_zacsweers_metro_AppScope(contributed: ProviderContributionContributions.ToAppScope) {
+  return error(message = "Never called")
+}
+

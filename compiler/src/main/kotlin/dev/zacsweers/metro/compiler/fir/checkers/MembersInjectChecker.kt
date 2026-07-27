@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isDependencyGraph
 import dev.zacsweers.metro.compiler.fir.isGraphFactory
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
+import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -96,6 +97,17 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
 
       // Track that this class has valid declared member injections
       hasDeclaredMemberInjections = true
+      val injectionSite = callable.callableId?.asSingleFqName()?.asString()
+
+      if (callable is FirPropertySymbol) {
+        validateInjectionSiteType(
+          session,
+          callable.resolvedReturnTypeRef,
+          annotations.qualifier,
+          callable.source,
+          injectionSite = injectionSite,
+        )
+      }
 
       if (
         callable is FirPropertySymbol &&
@@ -141,6 +153,15 @@ internal object MembersInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         }
 
         for (param in callable.valueParameterSymbols) {
+          val paramAnnotations = param.metroAnnotations()
+          validateInjectionSiteType(
+            session,
+            param.resolvedReturnTypeRef,
+            paramAnnotations.qualifier,
+            param.source ?: callable.source,
+            injectionSite = injectionSite,
+          )
+
           if (param.hasMetroDefault(session)) {
             reporter.reportOn(
               param.defaultValueSource ?: param.source,

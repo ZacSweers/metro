@@ -32,6 +32,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Test
+  @TestMetadata("GeneratedCompanionSupertypes.kt")
+  public void testGeneratedCompanionSupertypes() {
+    run("GeneratedCompanionSupertypes.kt");
+  }
+
+  @Test
   @TestMetadata("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt")
   public void testMultibindingsHaveConsistentOrderAcrossContributedGraph() {
     run("MultibindingsHaveConsistentOrderAcrossContributedGraph.kt");
@@ -208,6 +214,18 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     @TestMetadata("InitsAreChunked.kt")
     public void testInitsAreChunked() {
       run("InitsAreChunked.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectProviderUsesGeneratedFactory.kt")
+    public void testInlinedObjectProviderUsesGeneratedFactory() {
+      run("InlinedObjectProviderUsesGeneratedFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersUseGeneratedFactory.kt")
+    public void testInlinedObjectSuspendProvidersUseGeneratedFactory() {
+      run("InlinedObjectSuspendProvidersUseGeneratedFactory.kt");
     }
 
     @Test

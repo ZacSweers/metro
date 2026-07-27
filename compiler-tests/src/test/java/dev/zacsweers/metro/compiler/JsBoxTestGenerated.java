@@ -679,6 +679,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("DuplicatedDepInBinding.kt")
+    public void testDuplicatedDepInBinding() {
+      run("DuplicatedDepInBinding.kt");
+    }
+
+    @Test
     @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
     public void testParentIncludesArePropgatedToExtensions() {
       run("ParentIncludesArePropgatedToExtensions.kt");
@@ -2409,6 +2415,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedObjectProvidersRemainLazy.kt")
+    public void testInlinedObjectProvidersRemainLazy() {
+      run("InlinedObjectProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
     public void testInlinedProviderValueNotOnConsumerClasspath() {
       run("InlinedProviderValueNotOnConsumerClasspath.kt");
@@ -2665,6 +2677,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedObjectSuspendProvidersRemainLazy.kt")
+    public void testInlinedObjectSuspendProvidersRemainLazy() {
+      run("InlinedObjectSuspendProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("MapFunctionValuesMixed.kt")
     public void testMapFunctionValuesMixed() {
       run("MapFunctionValuesMixed.kt");
@@ -2740,6 +2758,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("ParallelSuspendPropagationAcrossGraphExtensions.kt")
     public void testParallelSuspendPropagationAcrossGraphExtensions() {
       run("ParallelSuspendPropagationAcrossGraphExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateSuspendProvidesInOtherModule.kt")
+    public void testPrivateSuspendProvidesInOtherModule() {
+      run("PrivateSuspendProvidesInOtherModule.kt");
     }
 
     @Test

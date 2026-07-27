@@ -21,8 +21,8 @@ class ConstructorAnnotated(input: Int) {
 @Inject
 class Injected(
   // Invalid
-  one: <!ASSISTED_INJECTION_ERROR!>ClassAnnotated<!>,
-  two: <!ASSISTED_INJECTION_ERROR!>ConstructorAnnotated<!>,
+  one: <!INVALID_ASSISTED_BINDING!>ClassAnnotated<!>,
+  two: <!INVALID_ASSISTED_BINDING!>ConstructorAnnotated<!>,
   // Valid
   @Named("qualified") three: ClassAnnotated,
   @Named("qualified") four: ConstructorAnnotated,

@@ -140,7 +140,7 @@ interface ExampleGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    suspend fun mirrorFunction(): String {
       return error(message = "Never called")
     }
 
@@ -187,7 +187,7 @@ interface ExampleGraph {
 
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    suspend fun mirrorFunction(): Int {
       return error(message = "Never called")
     }
 

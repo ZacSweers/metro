@@ -23,17 +23,21 @@ This release introduces experimental support for suspend providers. This is disa
 ### Enhancements
 
 - **[IR]** Avoid generating unused provider fields for included graph accessors that can be read directly.
+- **[IR]** Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.
 - **[runtime]** If the input function to `provider()` is already a `Provider` instance, return it directly rather than needlessly wrap it.
 - **[runtime]** Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.
 
 ### Fixes
 
+- **[FIR]** Report an error when a map key is applied (via type argument) to a binding without a corresponding `@IntoMap` or `@ContributesIntoMap` annotation.
+- **[IR]** Fix Kotlin/Native compilation failures when generated hidden classes were missing their `Any` supertype.
 - **[IR]** Enforce `enableSuspendProviders` for suspend-provider signatures read from upstream modules.
 - **[IR]** Report a missing `runtime-coroutines` dependency from generated provider factories, including factories not used by a graph.
 - **[IR]** Prevent directly provided maps from satisfying suspend-provider-valued map requests unless the provided map uses that exact value type.
 - **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
 - **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
 - **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
+- **[IR]** Don't inline `object`, enum, or class-literal provider bindings when they're requested through `Provider`, `Lazy`, or provider-based multibindings.
 
 ### Changes
 
@@ -59,12 +63,14 @@ _2026-07-13_
 ### Changes
 
 - Support Kotlin `2.5.0-dev-498`.
+- Support Kotlin `2.4.20-Beta2`.
 - Update embedded Wire dependency to `6.4.5`.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@kevinguitar](https://github.com/kevinguitar)
 - [@kyay10](https://github.com/kyay10)
 
 ### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)

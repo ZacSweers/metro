@@ -328,15 +328,14 @@ abstract class MetroProject(
     /**
      * Extra gradle.properties entries layered onto every generated TestKit project via
      * [RootProject.Builder.gradleProperties]. Order matters: these are appended after the
-     * testkit-support defaults so any duplicate key here wins (last-write-wins for `.properties`),
-     * which is how the bigger `org.gradle.jvmargs` override takes effect.
+     * testkit-support defaults, so duplicate keys here take precedence.
      */
     private val METRO_TESTKIT_GRADLE_PROPERTIES =
       listOf(
-        // Daemon JVM tuning: bigger heap up front avoids slow ramp-up across the per-test
-        // compile/IC cycles, MaxMetaspaceSize caps growth in tests that exercise many classloaders.
-        "org.gradle.jvmargs=-Xmx4g -Xms1g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=1024m",
+        "org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:+HeapDumpOnOutOfMemoryError -XX:MaxMetaspaceSize=512m",
+        "kotlin.daemon.jvmargs=-Xmx2g",
         "org.gradle.parallel=true",
+        "org.gradle.workers.max=4",
         "systemProp.org.gradle.configuration-cache.read-only=true",
         // Allow producing klibs for non-host Kotlin/Native targets without that host present.
         "kotlin.native.enableKlibsCrossCompilation=true",

@@ -290,8 +290,7 @@ class MyApplication : Application(), AbstractTraceDriver.Factory {
 }
 ```
 
-`AbstractTraceDriver.Factory` lets AndroidX's profiler tooling discover the same driver that Metro uses. `Tracer.setGlobalTracer(...)` also makes the tracer available to other libraries using AndroidX's global tracer discovery.
-Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.profiler.ConnectedProfilerTracingInitializer`) so it does not eagerly set `Tracer.setGlobalTracer(...)`.
+`AbstractTraceDriver.Factory` lets AndroidX's profiler tooling discover the same driver that Metro uses. `Tracer.setGlobalTracer(...)` also makes the tracer available to other libraries using AndroidX's global tracer discovery. Also, disable the default `TraceDriver` initialization hook (`androidx.tracing.profiler.ConnectedProfilerTracingInitializer`) so it does not eagerly set `Tracer.setGlobalTracer(...)`.
 
 ```xml
 <!-- Use MyApplications's TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. -->
@@ -315,10 +314,7 @@ With AndroidX Tracing 2.0.0-alpha09 and newer, `TraceSink` defers file setup. Gr
       }
     ```
 
-Suspend bindings use coroutine-aware trace sections, so their spans remain connected across
-suspension points and thread changes. Suspend accessors emit the same instant events as other
-accessors. A scoped suspend binding emits a span only when it computes the value; cache hits emit
-none. See [Coroutines Support](coroutines.md).
+Suspend bindings use coroutine-aware trace sections, so their spans remain connected across suspension points and thread changes. Suspend accessors emit the same instant events as other accessors. A scoped suspend binding emits a span only when it computes the value; cache hits emit none. See [Coroutines Support](coroutines.md).
 
 Generated binding spans use the short rendered binding name, including the qualifier when present. Entry-point markers, such as accessors and member injectors, are emitted as instant events named after the implemented graph callable. Requested `MembersInjector<T>` values also emit instant events named like `MembersInjector<T>` when `injectMembers(...)` is called. Metro also attaches string metadata for filtering and grouping:
 

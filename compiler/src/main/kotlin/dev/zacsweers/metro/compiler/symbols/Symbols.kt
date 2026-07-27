@@ -803,6 +803,20 @@ internal class Symbols(
       .symbol
   }
 
+  val intDiv by lazy {
+    pluginContext.irBuiltIns.intClass.owner.functions
+      .single {
+        it.name.asString() == "div" &&
+          it.hasShape(
+            dispatchReceiver = true,
+            regularParameters = 1,
+            parameterTypes =
+              listOf(pluginContext.irBuiltIns.intType, pluginContext.irBuiltIns.intType),
+          )
+      }
+      .symbol
+  }
+
   val buildMapWithCapacity by lazy {
     builtinsFinder
       .findFunctions(CallableId(stdlibCollections.packageFqName, "buildMap".asName()))

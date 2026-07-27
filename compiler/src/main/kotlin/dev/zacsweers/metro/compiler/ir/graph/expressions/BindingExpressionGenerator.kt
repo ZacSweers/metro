@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 
 internal abstract class BindingExpressionGenerator<T : IrBinding>(
   context: IrMetroContext,
@@ -225,6 +226,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       irLambda(parent = this.parent, receiverParameter = null, emptyList(), type, suspend = false) {
         +irReturn(returnExpression(it))
       }
+    lambda.function.body?.patchDeclarationParents(lambda.function)
     return irInvoke(
       dispatchReceiver = null,
       callee = metroSymbols.metroProviderFunction,
@@ -242,6 +244,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
       irLambda(parent = this.parent, receiverParameter = null, emptyList(), type, suspend = true) {
         +irReturn(returnExpression(it))
       }
+    lambda.function.body?.patchDeclarationParents(lambda.function)
     return irInvoke(
       dispatchReceiver = null,
       callee = metroSymbols.metroSuspendProviderFunction,
