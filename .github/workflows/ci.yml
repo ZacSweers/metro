@@ -104,7 +104,9 @@ jobs:
           echo "Running checks..."
           # metro.functionalTestKmpTarget=jvm scopes IC test parameterization to JVM only here. The
           # kmp-functional job (main only) fans the remaining targets out into parallel runners.
-          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' -Pmetro.excludeJsBoxTests -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          # Run existing suites gate-on at the stable 2.4 boundary and the newest compiler. Other
+          # compiler versions retain the default gate-off coverage without duplicating CI jobs.
+          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' -Pmetro.excludeJsBoxTests -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
