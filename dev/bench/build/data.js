@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785116868865,
+  "lastUpdate": 1785130398727,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19824,6 +19824,62 @@ window.BENCHMARK_DATA = {
             "value": 17226.935999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.46%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6cc6b1bb~1",
+          "message": "[before] Rename SuspendLazy.value to await (#2593)",
+          "timestamp": "2026-07-27T00:59:04-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6cc6b1bbf855da48b9de672381751c2daf50ec76"
+        },
+        "date": 1785130398727,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20971.778,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6cc6b1bbf855da48b9de672381751c2daf50ec76",
+          "message": "[after] Rename SuspendLazy.value to await (#2593)",
+          "timestamp": "2026-07-27T00:59:04-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6cc6b1bbf855da48b9de672381751c2daf50ec76"
+        },
+        "date": 1785130398728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20270.253999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.35%"
           }
         ]
       }
