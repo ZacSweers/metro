@@ -802,9 +802,22 @@ internal fun FirAnnotationContainer.mapKeyAnnotation(session: FirSession): Metro
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
 
+internal fun FirBasedSymbol<*>.mapKeyAnnotations(session: FirSession): List<MetroFirAnnotation> =
+  resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotations(session)
+
+internal fun List<FirAnnotation>.mapKeyAnnotations(
+  session: FirSession
+): List<MetroFirAnnotation> =
+  asSequence()
+    .annotationsAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
+    .toList()
+
 internal data class FirTypeArgumentMapKey(
   val annotation: MetroFirAnnotation,
   val argumentClassId: ClassId,
+  val argumentType: ConeKotlinType,
+  val argumentSource: KtSourceElement?,
+  val usesImplicitClassKey: Boolean,
 )
 
 internal fun FirTypeRef.mapKeyAnnotationFromDefaultBindingTypeParameter(
@@ -825,18 +838,28 @@ internal fun FirTypeRef.mapKeyAnnotationsFromDefaultBindingTypeParameters(
   val sourceArguments =
     sourceTypeRef.qualifier.lastOrNull()?.typeArgumentList?.typeArguments ?: return emptyList()
   val resolvedArguments = (resolvedTypeRef.coneType as? ConeClassLikeType)?.typeArguments.orEmpty()
-  return boundClass.typeParameterSymbols.withIndex().mapNotNull { (index, typeParameter) ->
-    val mapKey = typeParameter.mapKeyAnnotation(session) ?: return@mapNotNull null
+  return boundClass.typeParameterSymbols.withIndex().flatMap { (index, typeParameter) ->
+    val mapKeys = typeParameter.mapKeyAnnotations(session)
+    if (mapKeys.isEmpty()) return@flatMap emptyList()
     val argumentTypeRef =
       (sourceArguments.getOrNull(index) as? FirTypeProjectionWithVariance)?.typeRef
+    val argumentType =
+      argumentTypeRef?.coneTypeOrNull
+        ?: resolvedArguments.getOrNull(index)?.type
+        ?: return@flatMap emptyList()
     val argumentClassId =
-      argumentTypeRef?.coneTypeOrNull?.toRegularClassSymbol(session)?.classId
-        ?: resolvedArguments.getOrNull(index)?.type?.toRegularClassSymbol(session)?.classId
-        ?: return@mapNotNull null
-    FirTypeArgumentMapKey(
-      mapKey.withImplicitClassKeyValue(session, argumentClassId),
-      argumentClassId,
-    )
+      argumentType.toRegularClassSymbol(session)?.classId ?: return@flatMap emptyList()
+    mapKeys.map { mapKey ->
+      val usesImplicitClassKey =
+        mapKey.hasImplicitClassKey(session) && mapKey.mapKeyClassValueExpression() == null
+      FirTypeArgumentMapKey(
+        annotation = mapKey.withImplicitClassKeyValue(session, argumentClassId),
+        argumentClassId = argumentClassId,
+        argumentType = argumentType,
+        argumentSource = argumentTypeRef?.source,
+        usesImplicitClassKey = usesImplicitClassKey,
+      )
+    }
   }
 }
 
@@ -854,21 +877,29 @@ internal fun FirTypeRef.mapKeyAnnotationsFromTypeArguments(
   val resolvedArguments =
     (coneTypeOrNull as? ConeClassLikeType)?.typeArguments ?: return emptyList()
 
-  return sourceArguments.zip(resolvedArguments).mapNotNull { (sourceArgument, resolvedArgument) ->
+  return sourceArguments.zip(resolvedArguments).flatMap { (sourceArgument, resolvedArgument) ->
     val argumentTypeRef =
       (sourceArgument as? FirTypeProjectionWithVariance)?.typeRef
-        ?: return@mapNotNull null
-    val mapKey =
-      argumentTypeRef.annotations.mapKeyAnnotation(session)
-        ?: return@mapNotNull null
+        ?: return@flatMap emptyList()
+    val mapKeys = argumentTypeRef.annotations.mapKeyAnnotations(session)
+    if (mapKeys.isEmpty()) return@flatMap emptyList()
+    val argumentType =
+      argumentTypeRef.coneTypeOrNull
+        ?: resolvedArgument.type
+        ?: return@flatMap emptyList()
     val argumentClassId =
-      argumentTypeRef.coneTypeOrNull?.toRegularClassSymbol(session)?.classId
-        ?: resolvedArgument.type?.toRegularClassSymbol(session)?.classId
-        ?: return@mapNotNull null
-    FirTypeArgumentMapKey(
-      mapKey.withImplicitClassKeyValue(session, argumentClassId),
-      argumentClassId,
-    )
+      argumentType.toRegularClassSymbol(session)?.classId ?: return@flatMap emptyList()
+    mapKeys.map { mapKey ->
+      val usesImplicitClassKey =
+        mapKey.hasImplicitClassKey(session) && mapKey.mapKeyClassValueExpression() == null
+      FirTypeArgumentMapKey(
+        annotation = mapKey.withImplicitClassKeyValue(session, argumentClassId),
+        argumentClassId = argumentClassId,
+        argumentType = argumentType,
+        argumentSource = argumentTypeRef.source,
+        usesImplicitClassKey = usesImplicitClassKey,
+      )
+    }
   }
 }
 

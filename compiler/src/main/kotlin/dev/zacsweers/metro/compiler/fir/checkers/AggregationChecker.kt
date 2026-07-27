@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.fir.FirTypeArgumentMapKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -42,6 +43,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
@@ -56,8 +59,11 @@ import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
+import org.jetbrains.kotlin.fir.types.isSubtypeOf
+import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -477,6 +483,12 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           )
           return false
         }
+        if (
+          boundTypeArgumentMapKey != null &&
+            !checkImplicitClassKeyType(session, boundTypeArgumentMapKey)
+        ) {
+          return false
+        }
 
         val defaultBindingMapKeys =
           if (declarationSiteMapKeys.isEmpty()) {
@@ -486,22 +498,17 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           } else {
             emptyList()
           }
-        if (defaultBindingMapKeys.size > 1) {
-          val foundMapKeys =
-            defaultBindingMapKeys.joinToString(separator = "; ") {
-              it.annotation.simpleString()
-            }
-          reporter.reportOn(
-            annotation.source,
-            MetroDiagnostics.AGGREGATION_ERROR,
-            "`@$kind` found multiple default map keys: $foundMapKeys. Declare a map key on only one `@DefaultBinding` type parameter.",
-          )
+
+        val defaultBindingMapKey = defaultBindingMapKeys.firstOrNull()
+        if (
+          defaultBindingMapKey != null && !checkImplicitClassKeyType(session, defaultBindingMapKey)
+        ) {
           return false
         }
 
         val resolvedKey =
           declarationSiteMapKeys.singleOrNull()
-            ?: defaultBindingMapKeys.singleOrNull()?.annotation
+            ?: defaultBindingMapKey?.annotation
         if (resolvedKey == null) {
           if (explicitBindingType == null) {
             reporter.reportOn(
@@ -676,6 +683,37 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         else -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImplicitClassKeyType(
+    session: FirSession,
+    mapKey: FirTypeArgumentMapKey,
+  ): Boolean {
+    if (!mapKey.usesImplicitClassKey) return true
+
+    val annotationClass = mapKey.annotation.fir.toAnnotationClass(session) ?: return true
+    val parameterType =
+      annotationClass
+        .primaryConstructorIfAny(session)
+        ?.valueParameterSymbols
+        ?.singleOrNull()
+        ?.resolvedReturnTypeRef
+        ?.coneType ?: return true
+    val implicitKClassType =
+      ConeClassLikeTypeImpl(
+        StandardClassIds.KClass.toLookupTag(),
+        arrayOf(mapKey.argumentType),
+        isMarkedNullable = false,
+      )
+    if (implicitKClassType.isSubtypeOf(parameterType, session)) return true
+
+    reporter.reportOn(
+      mapKey.argumentSource,
+      MetroDiagnostics.AGGREGATION_ERROR,
+      "Implicit class key type `${mapKey.argumentType.renderReadableWithFqNames()}` is not compatible with map key parameter type `${parameterType.renderReadableWithFqNames()}`.",
+    )
+    return false
   }
 
   sealed interface DefaultBindingResult {

@@ -2521,6 +2521,28 @@ class AggregationTest : MetroCompilerTest() {
   }
 
   @Test
+  fun `multiple map keys on one bound type argument are an error`() {
+    compile(
+      source(
+        """
+        interface RouteScreen<T>
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class InvalidScreen :
+          RouteScreen<@ClassKey @StringKey("home") String>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertContains(
+        "`@ContributesIntoMap` found multiple map keys: @ClassKey(value=kotlin.String::class); @StringKey(\"home\")."
+      )
+    }
+  }
+
+  @Test
   fun `map keys on multiple DefaultBinding type parameters are an error`() {
     compile(
       source(
@@ -2541,7 +2563,66 @@ class AggregationTest : MetroCompilerTest() {
       expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
     ) {
       assertContains(
-        "`@ContributesIntoMap` found multiple default map keys: @ClassKey(value=test.HomeKey::class); @ClassKey(value=test.SettingsKey::class)."
+        "`@DefaultBinding` type parameters declare multiple map keys: @ClassKey; @ClassKey."
+      )
+    }
+  }
+
+  @Test
+  fun `implicit map key type must accept bound type argument`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+
+        @MapKey(implicitClassKey = true)
+        @Target(AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
+        annotation class RouteMapKey(
+          val value: KClass<out RouteKey> = Nothing::class
+        )
+
+        interface RouteScreen<T>
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class InvalidScreen : RouteScreen<@RouteMapKey String>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertContains(
+        "Implicit class key type `kotlin.String` is not compatible with map key parameter type `kotlin.reflect.KClass<out test.RouteKey>`."
+      )
+    }
+  }
+
+  @Test
+  fun `implicit map key type must accept DefaultBinding type argument`() {
+    compile(
+      source(
+        """
+        interface RouteKey
+
+        @MapKey(implicitClassKey = true)
+        @Target(AnnotationTarget.FUNCTION, AnnotationTarget.TYPE_PARAMETER)
+        annotation class RouteMapKey(
+          val value: KClass<out RouteKey> = Nothing::class
+        )
+
+        @DefaultBinding<RouteScreen<*>>
+        interface RouteScreen<@RouteMapKey T>
+
+        @ContributesIntoMap(AppScope::class)
+        @Inject
+        class InvalidScreen : RouteScreen<String>
+        """
+          .trimIndent()
+      ),
+      expectedExitCode = KotlinCompilation.ExitCode.COMPILATION_ERROR,
+    ) {
+      assertContains(
+        "Implicit class key type `kotlin.String` is not compatible with map key parameter type `kotlin.reflect.KClass<out test.RouteKey>`."
       )
     }
   }
