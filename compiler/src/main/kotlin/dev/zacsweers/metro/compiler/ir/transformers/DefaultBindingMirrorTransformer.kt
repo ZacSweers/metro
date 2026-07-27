@@ -15,11 +15,9 @@ import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
-import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
-import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -27,7 +25,6 @@ import kotlin.jvm.optionals.getOrNull
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.declarations.IrClass
-import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
@@ -95,18 +92,6 @@ internal class DefaultBindingMirrorTransformer(context: IrMetroContext) :
         Optional.ofNullable(defaultBindingType)
       }
       .getOrNull()
-  }
-
-  /**
-   * Tracks an IC lookup from [callingDeclaration] to [defaultBindingClass]'s DefaultBindingMirror.
-   * This ensures that if `@DefaultBinding` changes on the supertype, dependents recompile.
-   */
-  fun trackDefaultBindingLookup(callingDeclaration: IrDeclaration, defaultBindingClass: IrClass) {
-    val mirrorClassId =
-      defaultBindingClass.classIdOrFail.createNestedClassId(Symbols.Names.DefaultBindingMirrorClass)
-    trackClassLookup(callingDeclaration, mirrorClassId)
-    // Also link the compilation units so structural changes are detected
-    linkDeclarationsInCompilation(callingDeclaration, defaultBindingClass)
   }
 
   private fun resolveDefaultBindingType(

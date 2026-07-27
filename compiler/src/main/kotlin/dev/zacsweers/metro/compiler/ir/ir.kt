@@ -2464,6 +2464,11 @@ internal fun IrMetroContext.builtinsFinderCompat(): CompatContext.DeclarationFin
 
 context(context: IrMetroContext)
 internal fun IrDeclaration.lookupClass(classId: ClassId): IrClassSymbol? {
+  if (
+    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+  ) {
+    trackClassLookup(this, classId)
+  }
   return with(context) { pluginContext.finderFor(this@lookupClass).findClass(classId) }
 }
 
@@ -2471,11 +2476,21 @@ context(context: IrMetroContext)
 internal fun IrDeclaration.lookupFunctions(
   callableId: CallableId
 ): Collection<IrSimpleFunctionSymbol> {
+  if (
+    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+  ) {
+    trackCallableLookup(this, callableId)
+  }
   return with(context) { pluginContext.finderFor(this@lookupFunctions).findFunctions(callableId) }
 }
 
 context(context: IrMetroContext)
 internal fun IrDeclaration.lookupProperties(callableId: CallableId): Collection<IrPropertySymbol> {
+  if (
+    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+  ) {
+    trackCallableLookup(this, callableId)
+  }
   return with(context) { pluginContext.finderFor(this@lookupProperties).findProperties(callableId) }
 }
 
