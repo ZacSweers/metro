@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785022827863,
+  "lastUpdate": 1785115629899,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19712,6 +19712,62 @@ window.BENCHMARK_DATA = {
             "value": 19969.604,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -7.81%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ee0cd34c~1",
+          "message": "[before] Fix missing Any supertypes in IR generated classes",
+          "timestamp": "2026-07-27T00:53:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ee0cd34ccc675b164ee58aab50a9defb82c04943"
+        },
+        "date": 1785115629899,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20333.134,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ee0cd34ccc675b164ee58aab50a9defb82c04943",
+          "message": "[after] Fix missing Any supertypes in IR generated classes",
+          "timestamp": "2026-07-27T00:53:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ee0cd34ccc675b164ee58aab50a9defb82c04943"
+        },
+        "date": 1785115629900,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20919.944,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.89%"
           }
         ]
       }
