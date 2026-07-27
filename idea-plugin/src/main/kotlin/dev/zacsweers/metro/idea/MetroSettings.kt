@@ -15,6 +15,7 @@ import com.intellij.openapi.util.ModificationTracker
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
+import com.intellij.ui.layout.ComponentPredicate
 
 class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
@@ -55,7 +56,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
             "usages are in generated code"
         )
     }
-    lateinit var resolutionSelected: com.intellij.ui.layout.ComponentPredicate
+    lateinit var resolutionSelected: ComponentPredicate
     row {
       val cell =
         checkBox("Show binding navigation (gutter icons, code vision, inlay hints)")
