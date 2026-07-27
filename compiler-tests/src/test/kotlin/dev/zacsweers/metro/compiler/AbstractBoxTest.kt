@@ -101,3 +101,13 @@ open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
     }
   }
 }
+
+open class AbstractOptimizedIcIrOnlyClassesBoxTest : AbstractIrOnlyClassesBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) {
+      defaultDirectives { MetroDirectives.ENABLE_OPTIMIZED_IC.with(true) }
+    }
+  }
+}

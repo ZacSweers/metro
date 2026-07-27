@@ -27,6 +27,7 @@ fun main() {
     AbstractJsFastInitBoxTest,
     AbstractJsContributionProvidersBoxTest,
     AbstractIrOnlyClassesBoxTest,
+    AbstractOptimizedIcIrOnlyClassesBoxTest,
     AbstractDiagnosticTest,
     AbstractJsDiagnosticTest,
     AbstractFirDumpTest,

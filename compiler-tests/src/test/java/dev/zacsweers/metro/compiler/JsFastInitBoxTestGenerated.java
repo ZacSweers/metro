@@ -1760,6 +1760,44 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/ic")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Ic {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/ic/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInIc() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/ic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("LegacyCapabilityFallbackCarriers.kt")
+    public void testLegacyCapabilityFallbackCarriers() {
+      run("LegacyCapabilityFallbackCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("LegacySignatureCarriers.kt")
+    public void testLegacySignatureCarriers() {
+      run("LegacySignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("ModernSignatureCarriers.kt")
+    public void testModernSignatureCarriers() {
+      run("ModernSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("OptimizedBindsCarriers.kt")
+    public void testOptimizedBindsCarriers() {
+      run("OptimizedBindsCarriers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/inject")
   @TestDataPath("$PROJECT_ROOT")
   public class Inject {

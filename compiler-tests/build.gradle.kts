@@ -301,6 +301,7 @@ val generateTests =
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
+val testOptimizedIc = providers.gradleProperty("metro.testOptimizedIc").orNull
 
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
@@ -410,6 +411,7 @@ tasks.withType<Test> {
   )
 
   systemProperty("metro.shortLocations", "true")
+  testOptimizedIc?.let { systemProperty("metro.testOptimizedIc", it) }
 
   // Regenerate golden files in place: ./gradlew :compiler-tests:test -PupdateTestData=true
   if (providers.gradleProperty("updateTestData").isPresent) {

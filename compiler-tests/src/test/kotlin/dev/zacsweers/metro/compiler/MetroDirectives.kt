@@ -27,6 +27,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable generation of metadata-visible hidden classes in IR.") {
       it.toBoolean()
     }
+  val ENABLE_OPTIMIZED_IC by
+    valueDirective("Enable/disable optimized incremental-compilation support.") { it.toBoolean() }
   val PUBLIC_SCOPED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public scoped providers."

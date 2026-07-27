@@ -41,7 +41,11 @@ abstract class MetroCompilerTest {
     get() = emptyList()
 
   protected open val metroOptions: MetroOptions
-    get() = MetroOptions()
+    get() =
+      MetroOptions(
+        enableOptimizedIc =
+          testOptimizedIc ?: MetroOption.ENABLE_OPTIMIZED_IC.raw.defaultValue.expectAs<Boolean>()
+      )
 
   protected val debugOutputDir: Path
     get() =
@@ -66,7 +70,17 @@ abstract class MetroCompilerTest {
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val finalOptions = options.toBuilder().debug(debug || options.debug).build()
+    val optimizedIcOverride = testOptimizedIc
+    val finalOptions =
+      options
+        .toBuilder()
+        .debug(debug || options.debug)
+        .apply {
+          if (optimizedIcOverride != null) {
+            enableOptimizedIc = optimizedIcOverride
+          }
+        }
+        .build()
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
@@ -343,6 +357,9 @@ abstract class MetroCompilerTest {
             BUFFERED_IC_TRACKING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
             }
+            ENABLE_OPTIMIZED_IC -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.enableOptimizedIc)
+            }
             ENABLE_PROVIDER_INLINING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
             }
@@ -391,6 +408,9 @@ abstract class MetroCompilerTest {
     }
       .toList()
   }
+
+  private val testOptimizedIc: Boolean?
+    get() = System.getProperty("metro.testOptimizedIc")?.toBooleanStrict()
 
   protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())

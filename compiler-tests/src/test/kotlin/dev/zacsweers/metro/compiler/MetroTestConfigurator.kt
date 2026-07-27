@@ -24,6 +24,14 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     val directives = testServices.moduleStructure.allDirectives
     if (MetroDirectives.METRO_IGNORE in directives) return true
 
+    val testClassName = testServices.testInfo.className.substringAfterLast('.').substringBefore('$')
+    if (
+      testClassName == "OptimizedIcIrOnlyClassesBoxTestGenerated" &&
+        System.getProperty("metro.testOptimizedIc")?.toBooleanStrictOrNull() != true
+    ) {
+      return true
+    }
+
     if (
       testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION
     ) {
@@ -66,8 +74,8 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     val generateClassesInIr =
       generateClassesInIrDirectives.lastOrNull()?.toString()?.toBoolean() == true
     val irOnlyClassesSuite =
-      testServices.testInfo.className.substringAfterLast('.').substringBefore('$') ==
-        "IrOnlyClassesBoxTestGenerated"
+      testClassName == "IrOnlyClassesBoxTestGenerated" ||
+        testClassName == "OptimizedIcIrOnlyClassesBoxTestGenerated"
     if (
       irOnlyClassesSuite &&
         shouldSkipForCompilerVersion(
@@ -87,9 +95,9 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
       compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
-      targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
-      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
-      maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
+      targetVersion = directives[MetroDirectives.COMPILER_VERSION].lastOrNull(),
+      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].lastOrNull(),
+      maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].lastOrNull(),
     )
   }
 

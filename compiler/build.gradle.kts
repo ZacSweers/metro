@@ -87,6 +87,9 @@ tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
   systemProperty("metro.diagnosticsRenderMode", "PLAIN")
+  providers.gradleProperty("metro.testOptimizedIc").orNull?.let {
+    systemProperty("metro.testOptimizedIc", it)
+  }
 }
 
 val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")

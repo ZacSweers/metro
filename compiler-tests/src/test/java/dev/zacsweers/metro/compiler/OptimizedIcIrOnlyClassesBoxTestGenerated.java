@@ -15,14 +15,14 @@ import java.util.regex.Pattern;
 @SuppressWarnings("all")
 @TestMetadata("compiler-tests/src/test/data/box")
 @TestDataPath("$PROJECT_ROOT")
-public class JsContributionProvidersBoxTestGenerated extends AbstractJsContributionProvidersBoxTest {
+public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedIcIrOnlyClassesBoxTest {
   private void run(String fileName) {
     runTest("compiler-tests/src/test/data/box/" + fileName);
   }
 
   @Test
   public void testAllFilesPresentInBox() {
-    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
   @Nested
@@ -35,7 +35,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInAggregation() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -324,7 +324,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInContributionproviders() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/contributionproviders"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -429,6 +429,104 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
         run("secondaryConstructor.kt");
       }
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/aggregation/interop")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Interop {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/aggregation/interop/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInInterop() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/aggregation/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ContributedBindingContainerExclusions.kt")
+      public void testContributedBindingContainerExclusions() {
+        run("ContributedBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphBindingContainerExclusions.kt")
+      public void testContributedGraphBindingContainerExclusions() {
+        run("ContributedGraphBindingContainerExclusions.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphExtensionGetsExcluded.kt")
+      public void testContributedGraphExtensionGetsExcluded() {
+        run("ContributedGraphExtensionGetsExcluded.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphsSupportIgnoreQualifier.kt")
+      public void testContributedGraphsSupportIgnoreQualifier() {
+        run("ContributedGraphsSupportIgnoreQualifier.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributedGraphsSupportRankings.kt")
+      public void testContributedGraphsSupportRankings() {
+        run("ContributedGraphsSupportRankings.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesBindingMixedRegularAndMultibinding.kt")
+      public void testContributesBindingMixedRegularAndMultibinding() {
+        run("ContributesBindingMixedRegularAndMultibinding.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesBindingMultibindingInterop.kt")
+      public void testContributesBindingMultibindingInterop() {
+        run("ContributesBindingMultibindingInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesBindingMultibindingWithExplicitBoundType.kt")
+      public void testContributesBindingMultibindingWithExplicitBoundType() {
+        run("ContributesBindingMultibindingWithExplicitBoundType.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt")
+      public void testContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey() {
+        run("ContributesMultibindingInteropAnnotationsAddBindingToSetOrMapWithMapKey.kt");
+      }
+
+      @Test
+      @TestMetadata("ExcludesWithOriginInterop.kt")
+      public void testExcludesWithOriginInterop() {
+        run("ExcludesWithOriginInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt")
+      public void testQualifiedContributesBindingAndIgnoreQualifierMultibinding() {
+        run("QualifiedContributesBindingAndIgnoreQualifierMultibinding.kt");
+      }
+
+      @Test
+      @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt")
+      public void testRankBasedReplacementFromClassWithMultipleBindingsInGraphExtension() {
+        run("RankBasedReplacementFromClassWithMultipleBindingsInGraphExtension.kt");
+      }
+
+      @Test
+      @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt")
+      public void testRankBasedReplacementFromClassWithMultipleBindingsInRootGraph() {
+        run("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt")
+      public void testRepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier() {
+        run("RepeatedContributesBindingAnvilInteropWorksForBoundTypeAndIgnoreQualifier.kt");
+      }
+    }
   }
 
   @Nested
@@ -441,7 +539,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInApi() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -491,6 +589,182 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     public void testProvidesInGeneratedContributesTo_SeparateCompilation() {
       run("ProvidesInGeneratedContributesTo_SeparateCompilation.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/api/circuit")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuit {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/api/circuit/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInCircuit() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api/circuit"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("CircuitFactoryInvocationWithInjection.kt")
+      public void testCircuitFactoryInvocationWithInjection() {
+        run("CircuitFactoryInvocationWithInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("CircuitFactoryInvocationWithSubtypeScreen.kt")
+      public void testCircuitFactoryInvocationWithSubtypeScreen() {
+        run("CircuitFactoryInvocationWithSubtypeScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("OptimizedIcScreenAnnotationArguments.kt")
+      public void testOptimizedIcScreenAnnotationArguments() {
+        run("OptimizedIcScreenAnnotationArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("ParameterOrderDoesNotMatter.kt")
+      public void testParameterOrderDoesNotMatter() {
+        run("ParameterOrderDoesNotMatter.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjection.kt")
+      public void testPresenterClassAssistedInjection() {
+        run("PresenterClassAssistedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjectionWithComplexSupertype.kt")
+      public void testPresenterClassAssistedInjectionWithComplexSupertype() {
+        run("PresenterClassAssistedInjectionWithComplexSupertype.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassAssistedInjectionWithSupertype.kt")
+      public void testPresenterClassAssistedInjectionWithSupertype() {
+        run("PresenterClassAssistedInjectionWithSupertype.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassMultiModule.kt")
+      public void testPresenterClassMultiModule() {
+        run("PresenterClassMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjection.kt")
+      public void testPresenterClassNoInjection() {
+        run("PresenterClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassNoInjectionWithCircuitParams.kt")
+      public void testPresenterClassNoInjectionWithCircuitParams() {
+        run("PresenterClassNoInjectionWithCircuitParams.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassQualifiedClass.kt")
+      public void testPresenterClassQualifiedClass() {
+        run("PresenterClassQualifiedClass.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassQualifiedInjection.kt")
+      public void testPresenterClassQualifiedInjection() {
+        run("PresenterClassQualifiedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassSimpleInjection.kt")
+      public void testPresenterClassSimpleInjection() {
+        run("PresenterClassSimpleInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterClassWithContributionProviders.kt")
+      public void testPresenterClassWithContributionProviders() {
+        run("PresenterClassWithContributionProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionClassScreen.kt")
+      public void testPresenterFunctionClassScreen() {
+        run("PresenterFunctionClassScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionInjectedScreen.kt")
+      public void testPresenterFunctionInjectedScreen() {
+        run("PresenterFunctionInjectedScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionObjectScreen.kt")
+      public void testPresenterFunctionObjectScreen() {
+        run("PresenterFunctionObjectScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedFunction.kt")
+      public void testPresenterFunctionQualifiedFunction() {
+        run("PresenterFunctionQualifiedFunction.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionQualifiedInjection.kt")
+      public void testPresenterFunctionQualifiedInjection() {
+        run("PresenterFunctionQualifiedInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("PresenterFunctionWithContributionProviders.kt")
+      public void testPresenterFunctionWithContributionProviders() {
+        run("PresenterFunctionWithContributionProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("SubCircuitMultiModule.kt")
+      public void testSubCircuitMultiModule() {
+        run("SubCircuitMultiModule.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassNoInjection.kt")
+      public void testUiClassNoInjection() {
+        run("UiClassNoInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("UiClassSimpleInjection.kt")
+      public void testUiClassSimpleInjection() {
+        run("UiClassSimpleInjection.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionClassScreenWithState.kt")
+      public void testUiFunctionClassScreenWithState() {
+        run("UiFunctionClassScreenWithState.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionInjectedScreen.kt")
+      public void testUiFunctionInjectedScreen() {
+        run("UiFunctionInjectedScreen.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionObjectScreenNoState.kt")
+      public void testUiFunctionObjectScreenNoState() {
+        run("UiFunctionObjectScreenNoState.kt");
+      }
+
+      @Test
+      @TestMetadata("UiFunctionObjectScreenWithState.kt")
+      public void testUiFunctionObjectScreenWithState() {
+        run("UiFunctionObjectScreenWithState.kt");
+      }
+    }
   }
 
   @Nested
@@ -503,7 +777,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInBindingcontainers() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -613,7 +887,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInBytecode() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bytecode"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -633,7 +907,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInContributesgraphextension() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/contributesgraphextension"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -731,7 +1005,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInCycles() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/cycles"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -811,7 +1085,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInDependencygraph() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1076,7 +1350,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInBindingcontainers() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1162,7 +1436,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInDynamic() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/dynamic"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1266,7 +1540,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInExtensions() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/extensions"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1562,7 +1836,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInLeniency() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/leniency"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1594,7 +1868,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInOptional() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/optional"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1638,7 +1912,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInParallel() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/parallel"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/parallel"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1676,7 +1950,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInSharding() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/dependencygraph/sharding"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -1769,7 +2043,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInIc() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/ic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/ic"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1807,7 +2081,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInInject() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -1874,7 +2148,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInAssisted() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/assisted"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -2014,7 +2288,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInFunction() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/function"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -2064,7 +2338,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
       @Test
       public void testAllFilesPresentInMember() {
-        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/inject/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
 
       @Test
@@ -2166,6 +2440,548 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/interop")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Interop {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/interop/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInInterop() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/dagger")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Dagger {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/interop/dagger/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInDagger() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("AnotherBindsOptionalPresentTest.kt")
+      public void testAnotherBindsOptionalPresentTest() {
+        run("AnotherBindsOptionalPresentTest.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerAnnotationsAlwaysUseParamNames.kt")
+      public void testAssistedDaggerAnnotationsAlwaysUseParamNames() {
+        run("AssistedDaggerAnnotationsAlwaysUseParamNames.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerFactoryClass.kt")
+      public void testAssistedDaggerFactoryClass() {
+        run("AssistedDaggerFactoryClass.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerFactoryClassGeneratedByAnvil.kt")
+      public void testAssistedDaggerFactoryClassGeneratedByAnvil() {
+        run("AssistedDaggerFactoryClassGeneratedByAnvil.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerFactoryClassWithDifferentInputs.kt")
+      public void testAssistedDaggerFactoryClassWithDifferentInputs() {
+        run("AssistedDaggerFactoryClassWithDifferentInputs.kt");
+      }
+
+      @Test
+      @TestMetadata("AssistedDaggerLazyParameterInteropRegression.kt")
+      public void testAssistedDaggerLazyParameterInteropRegression() {
+        run("AssistedDaggerLazyParameterInteropRegression.kt");
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalInAMultibindingCycle.kt")
+      public void testBindsOptionalInAMultibindingCycle() {
+        run("BindsOptionalInAMultibindingCycle.kt");
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfInterop.kt")
+      public void testBindsOptionalOfInterop() {
+        run("BindsOptionalOfInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("BindsOptionalOfUnused.kt")
+      public void testBindsOptionalOfUnused() {
+        run("BindsOptionalOfUnused.kt");
+      }
+
+      @Test
+      @TestMetadata("ComponentDependenciesAreNotMistakenForScopes.kt")
+      public void testComponentDependenciesAreNotMistakenForScopes() {
+        run("ComponentDependenciesAreNotMistakenForScopes.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerComponentModulesAnnotationInterop.kt")
+      public void testDaggerComponentModulesAnnotationInterop() {
+        run("DaggerComponentModulesAnnotationInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassCanBeLoaded.kt")
+      public void testDaggerFactoryClassCanBeLoaded() {
+        run("DaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassCanBeLoadedJakarta.kt")
+      public void testDaggerFactoryClassCanBeLoadedJakarta() {
+        run("DaggerFactoryClassCanBeLoadedJakarta.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerFactoryClassWithDifferentInputs.kt")
+      public void testDaggerFactoryClassWithDifferentInputs() {
+        run("DaggerFactoryClassWithDifferentInputs.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerLazySubtypeInterop.kt")
+      public void testDaggerLazySubtypeInterop() {
+        run("DaggerLazySubtypeInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerMemberInjectorCanBeLoaded.kt")
+      public void testDaggerMemberInjectorCanBeLoaded() {
+        run("DaggerMemberInjectorCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerMemberInjectorCanBeLoadedFromKotlin.kt")
+      public void testDaggerMemberInjectorCanBeLoadedFromKotlin() {
+        run("DaggerMemberInjectorCanBeLoadedFromKotlin.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerMemberInjectorInheritance.kt")
+      public void testDaggerMemberInjectorInheritance() {
+        run("DaggerMemberInjectorInheritance.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerModulesAnnotationInterop.kt")
+      public void testDaggerModulesAnnotationInterop() {
+        run("DaggerModulesAnnotationInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerModulesWithPropertyProviders.kt")
+      public void testDaggerModulesWithPropertyProviders() {
+        run("DaggerModulesWithPropertyProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerMultibindsAllowEmptyByDefault.kt")
+      public void testDaggerMultibindsAllowEmptyByDefault() {
+        run("DaggerMultibindsAllowEmptyByDefault.kt");
+      }
+
+      @Test
+      @TestMetadata("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt")
+      public void testDaggerProviderFactoryClassInKotlinCanBeLoaded() {
+        run("DaggerProviderFactoryClassInKotlinCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("FunctionProviderWithDaggerInterop.kt")
+      public void testFunctionProviderWithDaggerInterop() {
+        run("FunctionProviderWithDaggerInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerFactoryClassCanBeLoaded.kt")
+      public void testGenericDaggerFactoryClassCanBeLoaded() {
+        run("GenericDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerModuleCanBeLoaded.kt")
+      public void testGenericDaggerModuleCanBeLoaded() {
+        run("GenericDaggerModuleCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericDaggerModuleCanBeLoadedAnvil.kt")
+      public void testGenericDaggerModuleCanBeLoadedAnvil() {
+        run("GenericDaggerModuleCanBeLoadedAnvil.kt");
+      }
+
+      @Test
+      @TestMetadata("IncludesContainersCanTransitivelyIncludeOthers.kt")
+      public void testIncludesContainersCanTransitivelyIncludeOthers() {
+        run("IncludesContainersCanTransitivelyIncludeOthers.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedDaggerLazyInteropWorks.kt")
+      public void testInjectedDaggerLazyInteropWorks() {
+        run("InjectedDaggerLazyInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedJavaxProviderInteropWorks.kt")
+      public void testInjectedJavaxProviderInteropWorks() {
+        run("InjectedJavaxProviderInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("JavaxProviderShouldWorkInMap.kt")
+      public void testJavaxProviderShouldWorkInMap() {
+        run("JavaxProviderShouldWorkInMap.kt");
+      }
+
+      @Test
+      @TestMetadata("JavaxProviderShouldWorkInSet.kt")
+      public void testJavaxProviderShouldWorkInSet() {
+        run("JavaxProviderShouldWorkInSet.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerFactoryClassCanBeLoaded() {
+        run("KotlinDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("KotlinDaggerObjectFactoryClassCanBeLoaded.kt")
+      public void testKotlinDaggerObjectFactoryClassCanBeLoaded() {
+        run("KotlinDaggerObjectFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("MapMultibindingLazyWithDaggerInterop.kt")
+      public void testMapMultibindingLazyWithDaggerInterop() {
+        run("MapMultibindingLazyWithDaggerInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("MapMultibindingWithProvidesAndDaggerInterop.kt")
+      public void testMapMultibindingWithProvidesAndDaggerInterop() {
+        run("MapMultibindingWithProvidesAndDaggerInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingEmptyDaggerSetProvider.kt")
+      public void testMultibindingEmptyDaggerSetProvider() {
+        run("MultibindingEmptyDaggerSetProvider.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingMapOfProviders.kt")
+      public void testMultibindingMapOfProviders() {
+        run("MultibindingMapOfProviders.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingMapOfProvidersEmpty.kt")
+      public void testMultibindingMapOfProvidersEmpty() {
+        run("MultibindingMapOfProvidersEmpty.kt");
+      }
+
+      @Test
+      @TestMetadata("MultibindingsFromExternalDaggerModule.kt")
+      public void testMultibindingsFromExternalDaggerModule() {
+        run("MultibindingsFromExternalDaggerModule.kt");
+      }
+
+      @Test
+      @TestMetadata("NamedAnnotationArgumentClassRef.kt")
+      public void testNamedAnnotationArgumentClassRef() {
+        run("NamedAnnotationArgumentClassRef.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalInACycle.kt")
+      public void testOptionalInACycle() {
+        run("OptionalInACycle.kt");
+      }
+
+      @Test
+      @TestMetadata("OptionalInNestedGraphExtensionCanBeLoaded.kt")
+      public void testOptionalInNestedGraphExtensionCanBeLoaded() {
+        run("OptionalInNestedGraphExtensionCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedDaggerFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerFactoryClassCanBeLoaded() {
+        run("QualifiedDaggerFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiedDaggerProviderFactoryClassCanBeLoaded.kt")
+      public void testQualifiedDaggerProviderFactoryClassCanBeLoaded() {
+        run("QualifiedDaggerProviderFactoryClassCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerConstructorParametersAreCarried.kt")
+      public void testQualifiersFromDaggerConstructorParametersAreCarried() {
+        run("QualifiersFromDaggerConstructorParametersAreCarried.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerMemberInjectorCanBeLoaded.kt")
+      public void testQualifiersFromDaggerMemberInjectorCanBeLoaded() {
+        run("QualifiersFromDaggerMemberInjectorCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerMemberInjectorCanBeLoadedFromKotlin.kt")
+      public void testQualifiersFromDaggerMemberInjectorCanBeLoadedFromKotlin() {
+        run("QualifiersFromDaggerMemberInjectorCanBeLoadedFromKotlin.kt");
+      }
+
+      @Test
+      @TestMetadata("QualifiersFromDaggerProviderParamsAreCarried.kt")
+      public void testQualifiersFromDaggerProviderParamsAreCarried() {
+        run("QualifiersFromDaggerProviderParamsAreCarried.kt");
+      }
+
+      @Test
+      @TestMetadata("ScopedProvidesProviderCanBeLoaded.kt")
+      public void testScopedProvidesProviderCanBeLoaded() {
+        run("ScopedProvidesProviderCanBeLoaded.kt");
+      }
+
+      @Test
+      @TestMetadata("ZeroArgConstructorInjectionGeneratedByAnvil.kt")
+      public void testZeroArgConstructorInjectionGeneratedByAnvil() {
+        run("ZeroArgConstructorInjectionGeneratedByAnvil.kt");
+      }
+
+      @Nested
+      @TestMetadata("compiler-tests/src/test/data/box/interop/dagger/anvil")
+      @TestDataPath("$PROJECT_ROOT")
+      public class Anvil {
+        private void run(String fileName) {
+          runTest("compiler-tests/src/test/data/box/interop/dagger/anvil/" + fileName);
+        }
+
+        @Test
+        public void testAllFilesPresentInAnvil() {
+          KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/dagger/anvil"), Pattern.compile("^(.+)\\.kt$"), null, true);
+        }
+
+        @Test
+        @TestMetadata("AnotherAssistedFactoryTest.kt")
+        public void testAnotherAssistedFactoryTest() {
+          run("AnotherAssistedFactoryTest.kt");
+        }
+
+        @Test
+        @TestMetadata("ContributesSubcomponentFactoryContributedAndExposedByParent.kt")
+        public void testContributesSubcomponentFactoryContributedAndExposedByParent() {
+          run("ContributesSubcomponentFactoryContributedAndExposedByParent.kt");
+        }
+
+        @Test
+        @TestMetadata("DaggerMergeComponentModulesAnnotationInterop.kt")
+        public void testDaggerMergeComponentModulesAnnotationInterop() {
+          run("DaggerMergeComponentModulesAnnotationInterop.kt");
+        }
+
+        @Test
+        @TestMetadata("DuplicateMultibindingSourcesFromSharedIncludedModule.kt")
+        public void testDuplicateMultibindingSourcesFromSharedIncludedModule() {
+          run("DuplicateMultibindingSourcesFromSharedIncludedModule.kt");
+        }
+
+        @Test
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates() {
+          run("InheritedBindingsDoNotCauseDuplicates.kt");
+        }
+
+        @Test
+        @TestMetadata("InheritedBindingsDoNotCauseDuplicates2.kt")
+        public void testInheritedBindingsDoNotCauseDuplicates2() {
+          run("InheritedBindingsDoNotCauseDuplicates2.kt");
+        }
+
+        @Test
+        @TestMetadata("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt")
+        public void testUnscopedInjectAsDaggerLazyMemberInjectionAcrossModules() {
+          run("UnscopedInjectAsDaggerLazyMemberInjectionAcrossModules.kt");
+        }
+
+        @Test
+        @TestMetadata("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt")
+        public void testUnscopedParentProvidesAsDaggerLazyInChildGraph() {
+          run("UnscopedParentProvidesAsDaggerLazyInChildGraph.kt");
+        }
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/guice")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Guice {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/interop/guice/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGuice() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/guice"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("GuiceSmokeTest.kt")
+      public void testGuiceSmokeTest() {
+        run("GuiceSmokeTest.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedGuiceProviderInteropWorks.kt")
+      public void testInjectedGuiceProviderInteropWorks() {
+        run("InjectedGuiceProviderInteropWorks.kt");
+      }
+
+      @Test
+      @TestMetadata("InjectedKotlinLazyFromGuiceProviderWorks.kt")
+      public void testInjectedKotlinLazyFromGuiceProviderWorks() {
+        run("InjectedKotlinLazyFromGuiceProviderWorks.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/hilt")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Hilt {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/interop/hilt/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInHilt() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/hilt"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("HiltCrossModuleEntryPointViaMetro.kt")
+      public void testHiltCrossModuleEntryPointViaMetro() {
+        run("HiltCrossModuleEntryPointViaMetro.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltDefineComponentScope.kt")
+      public void testHiltDefineComponentScope() {
+        run("HiltDefineComponentScope.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltEntryPointInSingletonComponent.kt")
+      public void testHiltEntryPointInSingletonComponent() {
+        run("HiltEntryPointInSingletonComponent.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltInRoundInstallIn.kt")
+      public void testHiltInRoundInstallIn() {
+        run("HiltInRoundInstallIn.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltModuleInSingletonComponent.kt")
+      public void testHiltModuleInSingletonComponent() {
+        run("HiltModuleInSingletonComponent.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltModuleViaRealKsp.kt")
+      public void testHiltModuleViaRealKsp() {
+        run("HiltModuleViaRealKsp.kt");
+      }
+
+      @Test
+      @TestMetadata("HiltNestedInstallIn.kt")
+      public void testHiltNestedInstallIn() {
+        run("HiltNestedInstallIn.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/kclass")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Kclass {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/interop/kclass/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInKclass() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/kclass"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyInjectConstructorInterop.kt")
+      public void testClassMapKeyInjectConstructorInterop() {
+        run("ClassMapKeyInjectConstructorInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyInterop.kt")
+      public void testClassMapKeyInterop() {
+        run("ClassMapKeyInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyProviderInterop.kt")
+      public void testClassMapKeyProviderInterop() {
+        run("ClassMapKeyProviderInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("KClassMapKeyInterop.kt")
+      public void testKClassMapKeyInterop() {
+        run("KClassMapKeyInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("MixedClassKClassMapKeyInterop.kt")
+      public void testMixedClassKClassMapKeyInterop() {
+        run("MixedClassKClassMapKeyInterop.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/interop/kotlinInject")
+    @TestDataPath("$PROJECT_ROOT")
+    public class KotlinInject {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/interop/kotlinInject/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInKotlinInject() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/interop/kotlinInject"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("FunctionProviderWithKotlinInject.kt")
+      public void testFunctionProviderWithKotlinInject() {
+        run("FunctionProviderWithKotlinInject.kt");
+      }
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/member")
   @TestDataPath("$PROJECT_ROOT")
   public class Member {
@@ -2175,7 +2991,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInMember() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/member"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -2273,7 +3089,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInMultibindings() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -2359,7 +3175,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInProvides() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/provides"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -2541,7 +3357,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInReports() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
@@ -2567,7 +3383,7 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
 
     @Test
     public void testAllFilesPresentInTracing() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/tracing"), Pattern.compile("^(.+)\\.kt$"), null, true);
     }
 
     @Test
