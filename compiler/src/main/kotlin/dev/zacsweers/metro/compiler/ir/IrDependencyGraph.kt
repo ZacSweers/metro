@@ -96,6 +96,14 @@ internal interface IrDependencyGraph {
   ): IrGeneratedDeclarationsRegistrarCompat =
     compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
 
+  @Provides
+  @SingleIn(IrScope::class)
+  fun provideIcCapabilities(
+    options: MetroOptions,
+    compatContext: CompatContext,
+    pluginContext: IrPluginContext,
+  ): IcCapabilities = IcCapabilities.create(options, compatContext, pluginContext)
+
   /**
    * Base [MemberNamer] for generated graph/factory/members-injector members in this compilation,
    * derived from [MetroOptions.memberNamingStrategy]. Nested-shard generation may override locally

@@ -49,6 +49,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
   val options: MetroOptions
+  val icCapabilities: IcCapabilities
 
   /**
    * Base namer for generated graph/factory/members-injector members. Nested-shard generation may
@@ -171,6 +172,7 @@ internal class IrMetroContextImpl(
   override val messageCollector: MessageCollector,
   symbols: Symbols,
   override val options: MetroOptions,
+  override val icCapabilities: IcCapabilities,
   override val memberNamer: MemberNamer,
   rawLookupTracker: LookupTracker?,
   rawExpectActualTracker: ExpectActualTracker,

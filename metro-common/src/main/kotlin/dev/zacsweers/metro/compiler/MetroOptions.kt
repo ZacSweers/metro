@@ -902,6 +902,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_OPTIMIZED_IC(
+    RawMetroOption.boolean(
+      name = "enable-optimized-ic",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable optimized incremental-compilation tracking and code generation.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   ENABLE_PROVIDER_INLINING(
     RawMetroOption.boolean(
       name = "enable-provider-inlining",
@@ -1190,6 +1200,8 @@ public class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val bufferedIcTracking: Boolean =
     MetroOption.BUFFERED_IC_TRACKING.raw.defaultValue.expectAs(),
+  public val enableOptimizedIc: Boolean =
+    MetroOption.ENABLE_OPTIMIZED_IC.raw.defaultValue.expectAs(),
   public val enableProviderInlining: Boolean =
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
@@ -1503,6 +1515,7 @@ public class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
+    public var enableOptimizedIc: Boolean = base.enableOptimizedIc
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
@@ -1553,6 +1566,10 @@ public class MetroOptions(
 
     public fun enableFunctionProviders(enableFunctionProviders: Boolean): Builder = apply {
       this.enableFunctionProviders = enableFunctionProviders
+    }
+
+    public fun enableOptimizedIc(enableOptimizedIc: Boolean): Builder = apply {
+      this.enableOptimizedIc = enableOptimizedIc
     }
 
     public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
@@ -1852,6 +1869,7 @@ public class MetroOptions(
         MetroOption.COMPILER_VERSION_ALIASES -> compilerVersionAliases = value.expectAs()
         MetroOption.PARALLEL_THREADS -> parallelThreads = value.expectAs()
         MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
+        MetroOption.ENABLE_OPTIMIZED_IC -> enableOptimizedIc = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
         MetroOption.DESUGARED_PROVIDER_SEVERITY ->
@@ -1939,6 +1957,7 @@ public class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         bufferedIcTracking = bufferedIcTracking,
+        enableOptimizedIc = enableOptimizedIc,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
         desugaredProviderSeverity =

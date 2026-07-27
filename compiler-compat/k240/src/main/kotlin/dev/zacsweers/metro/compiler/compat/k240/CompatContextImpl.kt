@@ -52,6 +52,8 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override val supportsAnnotationArgumentInvalidation: Boolean = true
+
   context(_: CompilerPluginRegistrar)
   override fun CompilerPluginRegistrar.ExtensionStorage.registerFirExtensionCompat(
     extension: FirExtensionRegistrar

@@ -415,6 +415,31 @@ public interface CompatContext {
     get() = false
 
   @CompatApi(
+    since = "2.3.20",
+    reason = CompatApi.Reason.COMPAT,
+    message =
+      "2.3.20 introduced source-aware declaration finders that automatically record backend plugin lookups for incremental compilation",
+  )
+  public val supportsAutomaticDeclarationFinderTracking: Boolean
+    get() = false
+
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.4.0 invalidates incremental compilation when annotation arguments change",
+  )
+  public val supportsAnnotationArgumentInvalidation: Boolean
+    get() = false
+
+  @CompatApi(
+    since = "2.4.20-dev-6138",
+    reason = CompatApi.Reason.COMPAT,
+    message = "2.4.20-dev-6138 supports Metro's metadata-visible IR-generated classes",
+  )
+  public val supportsIrGeneratedClasses: Boolean
+    get() = false
+
+  @CompatApi(
     since = "2.3.20-dev-7621",
     reason = CompatApi.Reason.COMPAT,
     message =
@@ -562,16 +587,18 @@ public interface CompatContext {
   }
 
   @CompatApi(
-    since = "2.4.0",
+    since = "2.3.20",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4 replaced reference* APIs with DeclarationFinder APIs",
+    message =
+      "2.3.20 introduced source-aware declaration finders; 2.4 replaced reference* APIs with DeclarationFinder APIs",
   )
   public fun IrPluginContext.finderForBuiltinsCompat(): DeclarationFinderCompat
 
   @CompatApi(
-    since = "2.4.0",
+    since = "2.3.20",
     reason = CompatApi.Reason.ABI_CHANGE,
-    message = "2.4 replaced reference* APIs with DeclarationFinder APIs",
+    message =
+      "2.3.20 introduced source-aware declaration finders; 2.4 replaced reference* APIs with DeclarationFinder APIs",
   )
   public fun IrPluginContext.finderForSourceCompat(fromFile: IrFile): DeclarationFinderCompat
 

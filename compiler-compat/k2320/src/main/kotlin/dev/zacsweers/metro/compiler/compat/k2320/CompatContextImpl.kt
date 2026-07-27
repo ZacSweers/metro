@@ -57,6 +57,8 @@ import org.jetbrains.kotlin.name.Name
 
 public class CompatContextImpl : CompatContext by DelegateType() {
 
+  override val supportsAutomaticDeclarationFinderTracking: Boolean = true
+
   override fun FirFunction.isNamedFunction(): Boolean {
     return this is FirNamedFunction
   }

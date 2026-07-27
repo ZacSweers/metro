@@ -95,6 +95,7 @@
     "compilerVersionAliases": {},
     "parallelThreads": 0,
     "bufferedIcTracking": true,
+    "enableOptimizedIc": false,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
     "desugaredProviderSeverity": "WARN",
