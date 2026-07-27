@@ -32,15 +32,15 @@ class ClassWithBackRefs<T : Any?, V : Any?, E : V> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?, V : Any?, E : V> declarationMirror(): ClassWithBackRefs<T, V, E> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ClassWithBackRefs<T, V, E> {
       return MetroFactory/* companion */.newInstance<T, V, E>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithBackRefs<T, V, E> {
-      return error(message = "Never called")
     }
 
   }
@@ -87,15 +87,15 @@ class ClassWithBounds<T : Any> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any> declarationMirror(): ClassWithBounds<T> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ClassWithBounds<T> {
       return MetroFactory/* companion */.newInstance<T>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any> mirrorFunction(): ClassWithBounds<T> {
-      return error(message = "Never called")
     }
 
   }
@@ -142,15 +142,15 @@ class ClassWithMultiple<T : Any?, V : Any?, E : Any?> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?, V : Any?, E : Any?> declarationMirror(): ClassWithMultiple<T, V, E> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ClassWithMultiple<T, V, E> {
       return MetroFactory/* companion */.newInstance<T, V, E>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any?, V : Any?, E : Any?> mirrorFunction(): ClassWithMultiple<T, V, E> {
-      return error(message = "Never called")
     }
 
   }
@@ -197,15 +197,15 @@ class ClassWithNullable<T : Any?, E : T?> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?, E : T?> declarationMirror(): ClassWithNullable<T, E> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ClassWithNullable<T, E> {
       return MetroFactory/* companion */.newInstance<T, E>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any?, E : T?> mirrorFunction(): ClassWithNullable<T, E> {
-      return error(message = "Never called")
     }
 
   }
@@ -252,15 +252,15 @@ class ClassWithWheres<T : Any?, V : Any?, E : V> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?, V : Any?, E : V> declarationMirror(): ClassWithWheres<T, V, E> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ClassWithWheres<T, V, E> {
       return MetroFactory/* companion */.newInstance<T, V, E>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any?, V : Any?, E : V> mirrorFunction(): ClassWithWheres<T, V, E> {
-      return error(message = "Never called")
     }
 
   }
@@ -307,15 +307,15 @@ class ComplexMonster<T : Any, V : T, E : V, LongName : Any?, NullableLongName : 
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> declarationMirror(): ComplexMonster<T, V, E, LongName, NullableLongName> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ComplexMonster<T, V, E, LongName, NullableLongName> {
       return MetroFactory/* companion */.newInstance<T, V, E, LongName, NullableLongName>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any, V : T, E : V, LongName : Any?, NullableLongName : LongName?> mirrorFunction(): ComplexMonster<T, V, E, LongName, NullableLongName> {
-      return error(message = "Never called")
     }
 
   }
@@ -362,15 +362,15 @@ class SimpleClass<T : Any?> {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun <T : Any?> declarationMirror(): SimpleClass<T> {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): SimpleClass<T> {
       return MetroFactory/* companion */.newInstance<T>()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun <T : Any?> mirrorFunction(): SimpleClass<T> {
-      return error(message = "Never called")
     }
 
   }
@@ -382,3 +382,4 @@ class SimpleClass<T : Any?> {
   }
 
 }
+

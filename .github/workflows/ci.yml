@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - parallel:
           - name: Configure JDK
@@ -54,7 +54,7 @@ jobs:
       default_kotlin_version: ${{ steps.generate.outputs.default_kotlin_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Generate matrix
         id: generate
@@ -72,7 +72,50 @@ jobs:
           echo "default_kotlin_version=$default_kotlin_version" >> "$GITHUB_OUTPUT"
 
   core:
-    name: "core artifacts / ${{ matrix.kotlin-compiler }}"
+    name: core artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Keep one Linux Gradle cache writer on main.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan: true
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Check root project
+        run: |
+          ./scripts/run-ci-gradle.sh check --continue --quiet \
+            -x :compiler:test \
+            -x :compiler-tests:test \
+            -x :gradle-plugin:functionalTest \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-core
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - core'
+
+  compatibility:
+    name: "compiler compatibility / ${{ matrix.kotlin-compiler }}"
     runs-on: ubuntu-latest
     needs: generate-matrix
     timeout-minutes: 40
@@ -84,35 +127,49 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
         with:
           encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Keep one Linux Gradle cache writer, using the repository's default Kotlin version.
-          cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler != needs.generate-matrix.outputs.default_kotlin_version }}
+          cache-read-only: true
+          # NativeICTests runs independently of the JVM-only parameterized IC tests. Preserve its
+          # per-version toolchain coverage while avoiding a second writer for the default version.
           konan: true
-          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          konan-cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version }}
           kotlin-compiler-version: ${{ matrix.kotlin-compiler }}
 
-      - name: Check root project
+      - name: Generate compiler tests
+        id: generate_tests
         run: |
-          # Regenerate tests per-run on CI to support exclusions, which are unfortunately code-gen level right now
-          echo "Generating tests..."
-          ./gradlew :compiler-tests:generateTests --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
-          echo "Running checks..."
-          # metro.functionalTestKmpTarget=jvm scopes IC test parameterization to JVM only here. The
-          # kmp-functional job (main only) fans the remaining targets out into parallel runners.
-          # Run existing suites gate-on at the stable 2.4 boundary and the newest compiler. Other
-          # compiler versions retain the default gate-off coverage without duplicating CI jobs.
-          ./gradlew check --continue --quiet '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' -Pmetro.excludeJsBoxTests -Pmetro.functionalTestKmpTarget=jvm ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+          ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            -Pmetro.excludeJsBoxTests \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test compiler
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
+            -Pmetro.excludeJsBoxTests \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test Gradle plugin
+        if: ${{ !cancelled() && steps.generate_tests.outcome == 'success' }}
+        run: |
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
+            '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            '-Pmetro.testOptimizedIc=${{ (matrix.kotlin-compiler == '2.4.0' || matrix.kotlin-compiler == '2.5.0-dev-498') && 'true' || 'false' }}' \
+            -Pmetro.functionalTestKmpTarget=jvm \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: (Fail-only) Upload reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports-core-${{ matrix.kotlin-compiler }}
+          name: reports-compatibility-${{ matrix.kotlin-compiler }}
           path: |
             **/build/reports/**
 
@@ -121,7 +178,68 @@ jobs:
         if: failure()
         with:
           report_paths: '**/build/test-results/**/TEST-*.xml'
-          check_name: 'Test Report - core / ${{ matrix.kotlin-compiler }}'
+          check_name: 'Test Report - compatibility / ${{ matrix.kotlin-compiler }}'
+
+  shaded-compiler-smoke:
+    name: shaded compiler / JDK 21
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Keep the build and R8 on the project's JDK 25 while making JDK 21 available for the
+      # compiler-test and TestKit workers that execute the shaded compiler.
+      - name: Configure test JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Capture test JDK home
+        run: echo "METRO_TEST_JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+
+      - name: Setup Gradle
+        uses: ./.github/actions/setup-gradle
+        with:
+          encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: true
+
+      - name: Test shaded compiler
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            -Pmetro.testJavaVersion=21 \
+            "-Dorg.gradle.java.installations.paths=$METRO_TEST_JAVA_HOME" \
+            --tests 'dev.zacsweers.metro.compiler.ShadedCompilerTest.optional terminal providers initialize from the shaded compiler jar' \
+            --tests 'dev.zacsweers.metro.compiler.DiagnosticTestGenerated$Rich.testMissingBindingRich' \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Test shaded compiler through Gradle
+        run: |
+          ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --quiet \
+            -Pmetro.testJavaVersion=21 \
+            "-Dorg.gradle.java.installations.paths=$METRO_TEST_JAVA_HOME" \
+            --tests 'dev.zacsweers.metro.gradle.MetroArtifactsTest.shaded compiler renders rich diagnostics' \
+            --tests 'dev.zacsweers.metro.gradle.MetroArtifactsTest.diagnosticsRenderMode is not a compilation input' \
+            ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: (Fail-only) Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-shaded-compiler-smoke
+          path: |
+            **/build/reports/**
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6
+        if: failure()
+        with:
+          report_paths: '**/build/test-results/**/TEST-*.xml'
+          check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
     name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
@@ -132,7 +250,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -149,6 +267,7 @@ jobs:
           ./gradlew :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box tests
@@ -176,8 +295,8 @@ jobs:
 
   # Main-only: run each non-JVM target of :gradle-plugin:functionalTest in its own runner so
   # the slow IC test classes (BindingContainerICTests, ICTests, GenerateContributionProvidersICTests)
-  # parallelize across targets instead of serializing inside one job. PR/branch runs stay JVM-only
-  # via the `core` job above.
+  # parallelize across targets instead of serializing inside one job. The `compatibility` job keeps
+  # these parameterized tests JVM-only on PR/branch runs.
   kmp-functional:
     name: ${{ format('kmp functional / {0}{1}', matrix.target, github.ref != 'refs/heads/main' && ' (skipped)' || '') }}
     runs-on: ubuntu-latest
@@ -195,7 +314,7 @@ jobs:
 
       - name: Checkout
         if: github.ref == 'refs/heads/main'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         if: github.ref == 'refs/heads/main'
@@ -233,7 +352,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -271,7 +390,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -323,7 +442,7 @@ jobs:
 
       - name: Checkout
         if: github.ref == 'refs/heads/main'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # https://github.com/gradle/actions/issues/1013
       - name: Setup Gradle
@@ -340,7 +459,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         # `all` exercises every KmpTarget entry on this OS — host native is OS-specific (macosArm64,
         # mingwX64, etc.), so each runner covers a different native target naturally.
-        run: ./gradlew :runtime:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
+        run: ./gradlew :runtime:allTests :runtime-coroutines:allTests :gradle-plugin:functionalTest --continue --quiet -Pmetro.functionalTestKmpTarget=all
 
       - name: Check samples
         if: github.ref == 'refs/heads/main'
@@ -368,7 +487,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle
@@ -396,7 +515,10 @@ jobs:
     runs-on: ubuntu-slim
     needs:
       - format
+      - generate-matrix
       - core
+      - compatibility
+      - shaded-compiler-smoke
       - js-box
       - kmp-functional
       - benchmarks
@@ -420,7 +542,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Gradle
         uses: ./.github/actions/setup-gradle

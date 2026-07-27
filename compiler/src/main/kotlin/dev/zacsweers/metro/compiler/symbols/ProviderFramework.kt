@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
+import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.irLambda
@@ -14,8 +15,11 @@ import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.toIrType
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irBlock
+import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetObject
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.parent
@@ -26,6 +30,7 @@ import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
+import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.platform.isJs
@@ -112,7 +117,9 @@ internal class MetroProviderFramework(
   override fun isApplicable(classId: ClassId): Boolean {
     return classId == metroFrameworkSymbols.canonicalProviderType.owner.classId ||
       classId == kotlinLazyClassId ||
-      (enableFunctionProviders && classId == Symbols.ClassIds.function0)
+      classId == Symbols.ClassIds.metroSuspendProvider ||
+      (enableFunctionProviders && classId == Symbols.ClassIds.function0) ||
+      (enableFunctionProviders && classId == Symbols.ClassIds.suspendFunction0)
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
@@ -129,13 +136,10 @@ internal class MetroProviderFramework(
     }
 
     // Provider -> Function0 (but not Function0 -> Function0, which is a no-op)
-    // Skip if isLazyWrappedInProvider — that case is handled by typeAsProviderArgument
-    // which wraps the raw Provider before the Function0 conversion.
     if (
       enableFunctionProviders &&
         targetClassId == Symbols.ClassIds.function0 &&
-        sourceClassId != Symbols.ClassIds.function0 &&
-        !targetKey.isLazyWrappedInProvider
+        sourceClassId != Symbols.ClassIds.function0
     ) {
       return provider.toFunctionType(targetKey)
     }
@@ -149,7 +153,25 @@ internal class MetroProviderFramework(
       return provider.toMetroProvider(providerType = provider.type, sourceClassId = sourceClassId)
     }
 
-    // Otherwise, no conversion needed (Provider -> Provider, or Function0 -> Function0)
+    // SuspendProvider -> SuspendFunction0
+    if (
+      enableFunctionProviders &&
+        targetClassId == Symbols.ClassIds.suspendFunction0 &&
+        sourceClassId != Symbols.ClassIds.suspendFunction0
+    ) {
+      return provider.toSuspendFunctionType(targetKey)
+    }
+
+    // SuspendFunction0 -> SuspendProvider
+    if (
+      enableFunctionProviders &&
+        sourceClassId == Symbols.ClassIds.suspendFunction0 &&
+        targetClassId == Symbols.ClassIds.metroSuspendProvider
+    ) {
+      return provider.fromSuspendFunctionToSuspendProvider(targetKey)
+    }
+
+    // Otherwise, no conversion needed (Provider -> Provider, Function0 -> Function0, etc.)
     return provider
   }
 
@@ -166,14 +188,12 @@ internal class MetroProviderFramework(
     }
 
     // Metro Provider -> Function0
-    // Skip if isLazyWrappedInProvider — handled by typeAsProviderArgument
-    if (
-      enableFunctionProviders &&
-        targetClassId == Symbols.ClassIds.function0 &&
-        !targetKey.isLazyWrappedInProvider
-    ) {
+    if (enableFunctionProviders && targetClassId == Symbols.ClassIds.function0) {
       return provider.toFunctionType(targetKey)
     }
+
+    // Metro Provider -> SuspendFunction0 (not a valid conversion path,
+    // SuspendProvider conversions go through handleSameFramework)
 
     // Metro Provider -> Metro Provider (no conversion)
     return provider
@@ -219,25 +239,105 @@ internal class MetroProviderFramework(
     val provider = this
     return if (context.platform.isJs()) {
       // JS: Provider does not implement () -> T, wrap in a lambda
-      // Use the provider's type argument (what invoke() actually returns) rather than
-      // targetKey.typeKey.type which is the fully unwrapped inner type.
       // For Provider<Lazy<Int>>, invoke() returns Lazy<Int>, not Int.
       val valueType =
         (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
-          ?: targetKey.typeKey.type
-      irLambda(
-        parent = scope.parent,
-        receiverParameter = null,
-        valueParameters = emptyList(),
-        returnType = valueType,
-      ) {
-        +irReturn(
-          irInvoke(provider, callee = context.metroSymbols.providerInvoke, typeHint = valueType)
-        )
+          ?: targetKey.immediateValueType()
+      with(scope) {
+        irBlock(resultType = targetKey.toIrType()) {
+          val capturedProvider = createAndAddTemporaryVariable(provider, nameHint = "provider")
+          +irLambda(
+              parent = scope.parent,
+              receiverParameter = null,
+              valueParameters = emptyList(),
+              returnType = valueType,
+            ) {
+              +irReturn(
+                irInvoke(
+                  irGet(capturedProvider),
+                  callee = context.metroSymbols.providerInvoke,
+                  typeHint = valueType,
+                )
+              )
+            }
+            .also { it.function.body?.patchDeclarationParents(it.function) }
+        }
       }
     } else {
       // Non-JS: Provider implements () -> T, no conversion needed
       provider
+    }
+  }
+
+  /**
+   * Converts a SuspendProvider to SuspendFunction0 (`suspend () -> T`).
+   *
+   * On non-JS platforms, a SuspendProvider IS-A `suspend () -> T`, so no conversion is needed. On
+   * JS, invocation through a function TYPE compiles to a direct JS call, and a class instance
+   * implementing the fun interface is not a callable JS function. It throws TypeError at runtime.
+   * Wrap it in a real suspend lambda so the value handed to `suspend () -> T` sites is directly
+   * callable.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  private fun IrExpression.toSuspendFunctionType(targetKey: IrContextualTypeKey): IrExpression {
+    val provider = this
+    return if (context.platform.isJs()) {
+      // JS: a SuspendProvider instance is not a callable JS function, wrap in a suspend lambda
+      val valueType =
+        (provider.type as? IrSimpleType)?.arguments?.firstOrNull()?.typeOrNull
+          ?: targetKey.immediateValueType()
+      with(scope) {
+        irBlock(resultType = targetKey.toIrType()) {
+          val capturedProvider =
+            createAndAddTemporaryVariable(provider, nameHint = "suspendProvider")
+          +irLambda(
+              parent = scope.parent,
+              receiverParameter = null,
+              valueParameters = emptyList(),
+              returnType = valueType,
+              suspend = true,
+            ) {
+              +irReturn(
+                irInvoke(
+                  irGet(capturedProvider),
+                  callee = context.metroSymbols.suspendProviderInvoke,
+                  typeHint = valueType,
+                )
+              )
+            }
+            .also { it.function.body?.patchDeclarationParents(it.function) }
+        }
+      }
+    } else {
+      // Non-JS: SuspendProvider implements suspend () -> T, no conversion needed
+      provider
+    }
+  }
+
+  /**
+   * Converts a SuspendFunction0 (`suspend () -> T`) to a SuspendProvider.
+   *
+   * Wraps the suspend function with `suspendProvider(fn)`.
+   */
+  context(context: IrMetroContext, scope: IrBuilderWithScope)
+  private fun IrExpression.fromSuspendFunctionToSuspendProvider(
+    targetKey: IrContextualTypeKey
+  ): IrExpression {
+    val fn = this
+    val valueType =
+      (fn.type as IrSimpleType).arguments[0].typeOrNull
+        ?: reportCompilerBug(
+          "SuspendFunction0 type missing type argument: ${fn.type.dumpKotlinLike()}"
+        )
+
+    return with(scope) {
+      irInvoke(
+        dispatchReceiver = null,
+        callee = context.metroSymbols.metroSuspendProviderFunction,
+        typeHint = targetKey.toIrType(),
+        typeArgs = listOf(valueType),
+        args = listOf(fn),
+      )
     }
   }
 
@@ -253,7 +353,7 @@ internal class MetroProviderFramework(
         callee = metroFrameworkSymbols.doubleCheckLazy,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(providerType, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.immediateValueType()),
       )
     }
 }
@@ -286,7 +386,7 @@ internal class JavaxProviderFramework(private val symbols: JavaxSymbols) : Provi
       return irInvoke(
         extensionReceiver = provider,
         callee = symbols.asJavaxProvider,
-        typeArgs = listOf(targetKey.typeKey.type),
+        typeArgs = listOf(targetKey.immediateValueType()),
       )
     }
 
@@ -352,7 +452,7 @@ internal class JakartaProviderFramework(private val symbols: JakartaSymbols) : P
       return irInvoke(
         extensionReceiver = provider,
         callee = symbols.asJakartaProvider,
-        typeArgs = listOf(targetKey.typeKey.type),
+        typeArgs = listOf(targetKey.immediateValueType()),
       )
     }
 
@@ -437,7 +537,7 @@ internal class GuiceProviderFramework(
         return irInvoke(
           extensionReceiver = provider,
           callee = symbols.asGuiceProvider,
-          typeArgs = listOf(targetKey.typeKey.type),
+          typeArgs = listOf(targetKey.immediateValueType()),
         )
       }
 
@@ -501,7 +601,7 @@ internal class GuiceProviderFramework(
         callee = lazyFunction,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(providerType, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.immediateValueType()),
       )
     }
 }
@@ -614,7 +714,7 @@ internal class DaggerProviderFramework(
         return irInvoke(
           extensionReceiver = provider,
           callee = symbols.asDaggerInternalProvider,
-          typeArgs = listOf(targetKey.typeKey.type),
+          typeArgs = listOf(targetKey.immediateValueType()),
         )
       }
 
@@ -689,7 +789,13 @@ internal class DaggerProviderFramework(
         callee = lazyFunction,
         args = listOf(provider),
         typeHint = targetKey.toIrType(),
-        typeArgs = listOf(providerType, targetKey.typeKey.type),
+        typeArgs = listOf(providerType, targetKey.immediateValueType()),
       )
     }
+}
+
+context(context: IrMetroContext)
+private fun IrContextualTypeKey.immediateValueType(): IrType {
+  return wrappedType.immediateInnerType()?.toIrType()
+    ?: reportCompilerBug("Wrapper type missing its value type: ${toIrType().dumpKotlinLike()}")
 }

@@ -116,6 +116,10 @@ open annotation class dev.zacsweers.metro/ExperimentalMetroApi : kotlin/Annotati
     constructor <init>() // dev.zacsweers.metro/ExperimentalMetroApi.<init>|<init>(){}[0]
 }
 
+open annotation class dev.zacsweers.metro/ExperimentalMetroCoroutinesApi : kotlin/Annotation { // dev.zacsweers.metro/ExperimentalMetroCoroutinesApi|null[0]
+    constructor <init>() // dev.zacsweers.metro/ExperimentalMetroCoroutinesApi.<init>|<init>(){}[0]
+}
+
 open annotation class dev.zacsweers.metro/ExposeImplBinding : kotlin/Annotation { // dev.zacsweers.metro/ExposeImplBinding|null[0]
     constructor <init>() // dev.zacsweers.metro/ExposeImplBinding.<init>|<init>(){}[0]
 }

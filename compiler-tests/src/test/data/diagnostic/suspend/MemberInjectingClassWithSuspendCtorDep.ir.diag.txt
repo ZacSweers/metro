@@ -1,0 +1,7 @@
+/MemberInjectingClassWithSuspendCtorDep.kt:15:25: error: [Metro/MemberInjectionOverSuspendBinding] 'Foo' has @Inject members and depends on suspend binding 'String', but member injection cannot combine with suspend bindings. Defer the dependency as `suspend () -> String` (or `SuspendLazy<String>`) instead.
+
+Trace:
+    String is injected at
+        [ExampleGraph] Foo(…, dep) // ❌ needs suspend support
+    String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideString(…)

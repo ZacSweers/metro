@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.compat
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
@@ -37,8 +38,9 @@ public interface IrGeneratedDeclarationsRegistrarCompat {
     error("registerClassAsMetadataVisible is not supported by this Kotlin compiler version.")
   }
 
-  // TODO: KT-63881
-  // public fun registerPropertyAsMetadataVisible(irProperty: IrProperty)
+  public fun registerPropertyAsMetadataVisible(irProperty: IrProperty) {
+    error("registerPropertyAsMetadataVisible is not supported by this Kotlin compiler version.")
+  }
 
   public fun addCustomMetadataExtension(
     irDeclaration: IrDeclaration,

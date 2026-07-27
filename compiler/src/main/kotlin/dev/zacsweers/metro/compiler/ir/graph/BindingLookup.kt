@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.ParentContextReader
 import dev.zacsweers.metro.compiler.ir.allowEmpty
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.asMemberOf
+import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
@@ -48,7 +49,6 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -60,7 +60,6 @@ import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
-import org.jetbrains.kotlin.ir.util.getSimpleFunction
 import org.jetbrains.kotlin.ir.util.isNullable
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.name.CallableId
@@ -624,11 +623,15 @@ internal class BindingLookup(
 
       // First check cached bindings
       bindingsCache[key]?.let { binding ->
-        // Don't satisfy Map<K, Provider<V>>/Map<K, Lazy<V>> from a direct (non-multibinding)
-        // Map<K, V> binding. Only multibinding contributions can provide wrapped map values.
+        // Don't satisfy wrapped map-value requests (Provider, Lazy, or SuspendProvider) from a
+        // direct (non-multibinding) Map<K, V> binding. Only multibinding contributions can provide
+        // wrapped map values.
         // However, a directly provided Map<K, Provider<V>> can satisfy Map<K, Provider<V>>
         // requests since the Provider wrapping is explicit in the return type.
-        if ((contextKey.isMapProvider || contextKey.isMapLazy) && key in directMapTypeKeys) {
+        if (
+          (contextKey.isMapProvider || contextKey.isMapLazy || contextKey.isMapSuspendProvider) &&
+            key in directMapTypeKeys
+        ) {
           val originallyWrapped =
             when (binding) {
               is Provided -> binding.providerFactory.contextualTypeKey.isDeferrable
@@ -831,7 +834,7 @@ internal class BindingLookup(
       val classAnnotations = irClass.metroAnnotations(context.metroSymbols.classIds)
 
       if (irClass.isObject) {
-        irClass.getSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION)?.owner?.let {
+        irClass.declarationMirrorFunctionOrNull()?.let {
           // We don't actually call this function but it stores information about qualifier/scope
           // annotations, so reference it here so IC triggers
           trackFunctionCall(sourceGraph, it)
@@ -929,7 +932,10 @@ internal class BindingLookup(
         val targetAnnotations = targetClass.metroAnnotations(context.metroSymbols.classIds)
         val targetRemapper = targetClass.deepRemapperFor(targetType)
 
-        // Create the target's ConstructorInjected binding (NOT added to graph)
+        // Create the target's ConstructorInjected binding (NOT added to graph). Its @Inject members
+        // are tracked so the assisted factory depends on them: the generated factory injects them
+        // after construction, and graph validation can reject suspend member deps (which cannot be
+        // awaited during member injection).
         val targetBinding =
           bindingLookupCache.getOrPutConstructorInjected(
             targetClass.takeIf { targetRemapper == NOOP_TYPE_REMAPPER }
@@ -939,8 +945,10 @@ internal class BindingLookup(
               classFactory = targetClassFactory.remapTypes(targetRemapper),
               annotations = targetAnnotations,
               typeKey = targetKey,
-              // Assisted-inject classes don't have member injections in this context
-              injectedMembers = emptySet(),
+              injectedMembers =
+                targetClass.computeMembersInjectorBindings(targetRemapper).mapToSet {
+                  it.contextualTypeKey
+                },
             )
           }
 

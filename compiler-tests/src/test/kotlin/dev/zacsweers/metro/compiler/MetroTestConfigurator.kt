@@ -33,10 +33,11 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     }
 
     if (
-      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION
+      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION < BUILD_COMPILER_TOOLING_VERSION
     ) {
       // JS box tests compile against Metro's runtime KLIB. KLIB compatibility depends on the
-      // producing compiler, so only run these tests against the compiler version that built it.
+      // producing compiler, so only run these tests against the compiler version that built it or
+      // higher
       return true
     }
 
@@ -95,9 +96,12 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     return shouldSkipForCompilerVersion(
       compilerVersion = COMPILER_VERSION,
       compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
-      targetVersion = directives[MetroDirectives.COMPILER_VERSION].lastOrNull(),
-      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].lastOrNull(),
-      maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].lastOrNull(),
+      targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
+      minVersion =
+        directives[MetroDirectives.MIN_COMPILER_VERSION].maxByOrNull {
+          toolingVersionDirective(it).first
+        },
+      maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
     )
   }
 
@@ -148,6 +152,7 @@ private val TEST_COMPILER_TOOLING_VERSION = KotlinToolingVersion(TEST_COMPILER_V
 
 fun RegisteredDirectivesBuilder.commonMetroTestDirectives() {
   OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroApi")
+  OPT_IN.with("dev.zacsweers.metro.ExperimentalMetroCoroutinesApi")
   OPT_IN.with("dev.zacsweers.metro.DelicateMetroApi")
 }
 

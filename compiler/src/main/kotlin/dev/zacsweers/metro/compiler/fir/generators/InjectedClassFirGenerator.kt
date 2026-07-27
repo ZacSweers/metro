@@ -442,14 +442,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
             function.contextParameterSymbols
               .plus(function.valueParameterSymbols)
               .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
-              .map {
-                MetroFirValueParameter(
-                  session,
-                  it,
-                  wrapInProvider = true,
-                  stripLazyIfWrappedInProvider = true,
-                )
-              }
+              .map { symbol -> MetroFirValueParameter(session, symbol) }
           InjectedClass(classSymbol, true, params, false)
         } else {
           // If the class is annotated with @Inject, look for its primary constructor
@@ -630,6 +623,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
           .filterNot { it.isAnnotatedWithAny(session, session.classIds.assistedAnnotations) }
           .map { MetroFirValueParameter(session, it) }
       val typeParamSubstitutor = typeParameterSubstitutor(function, context.owner)
+      val defaultUsesSuspendProvider = function.isSuspend
       return createConstructor(
           context.owner,
           Keys.Default,
@@ -643,7 +637,10 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
               typeProvider = {
                 typeParamSubstitutor
                   .substituteOrSelf(param.contextKey.typeKey.type)
-                  .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+                  .wrapInProviderIfNecessary(
+                    session,
+                    param.canonicalProviderClassId(defaultUsesSuspendProvider),
+                  )
               },
               key = Keys.RegularParameter,
             )

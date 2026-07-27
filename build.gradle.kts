@@ -87,4 +87,5 @@ dependencies {
   dokka(project(":metrox-viewmodel"))
   dokka(project(":metrox-viewmodel-compose"))
   dokka(project(":runtime"))
+  dokka(project(":runtime-coroutines"))
 }

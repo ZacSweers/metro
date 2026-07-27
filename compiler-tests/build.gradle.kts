@@ -81,9 +81,35 @@ buildConfig {
 }
 
 val metroRuntimeClasspath = configurations.create("metroRuntimeClasspath") { isTransitive = false }
+val metroRuntimeCoroutinesClasspath =
+  configurations.create("metroRuntimeCoroutinesClasspath") { isTransitive = false }
+val coroutinesClasspath = configurations.create("coroutinesClasspath") { isTransitive = false }
 val metroRuntimeKlibClasspath =
   configurations.create("metroRuntimeKlibClasspath") {
     isTransitive = false
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
+  }
+val metroRuntimeCoroutinesKlibClasspath =
+  configurations.create("metroRuntimeCoroutinesKlibClasspath") {
+    isTransitive = false
+    attributes {
+      attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+      attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
+      attribute(KotlinPlatformType.attribute, KotlinPlatformType.js)
+      attribute(KotlinJsCompilerAttribute.jsCompilerAttribute, KotlinJsCompilerAttribute.ir)
+    }
+  }
+val coroutinesKlibClasspath =
+  configurations.create("coroutinesKlibClasspath") {
+    // Coroutines' JS implementation depends on atomicfu. Keep that dependency while allowing the
+    // compiler test framework to supply the Kotlin libraries for the compiler under test.
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-js")
     attributes {
       attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
       attribute(Usage.USAGE_ATTRIBUTE, objects.named(KotlinUsages.KOTLIN_RUNTIME))
@@ -222,7 +248,13 @@ dependencies {
   testImplementation(libs.hilt.core)
 
   metroRuntimeClasspath(project(":runtime"))
+  metroRuntimeCoroutinesClasspath(project(":runtime-coroutines"))
+  coroutinesClasspath(libs.coroutines)
   metroRuntimeKlibClasspath(project(path = ":runtime", configuration = "jsRuntimeElements"))
+  metroRuntimeCoroutinesKlibClasspath(
+    project(path = ":runtime-coroutines", configuration = "jsRuntimeElements")
+  )
+  coroutinesKlibClasspath(libs.coroutines)
   runtimeTracingClasspath(project(":metro-trace"))
 
   daggerInteropClasspath(project(":interop-dagger"))
@@ -303,6 +335,16 @@ val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
 val testOptimizedIc = providers.gradleProperty("metro.testOptimizedIc").orNull
 
+if (excludeJsBoxTests) {
+  sourceSets.test {
+    java.exclude(
+      "dev/zacsweers/metro/compiler/JsBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsFastInitBoxTestGenerated.java",
+      "dev/zacsweers/metro/compiler/JsContributionProvidersBoxTestGenerated.java",
+    )
+  }
+}
+
 tasks.withType<Test> {
   outputs.upToDateWhen { false }
   dependsOn(runtimeTracingClasspath)
@@ -320,6 +362,10 @@ tasks.withType<Test> {
   )
 
   dependsOn(metroRuntimeClasspath)
+  dependsOn(metroRuntimeCoroutinesClasspath)
+  dependsOn(metroRuntimeCoroutinesKlibClasspath)
+  dependsOn(coroutinesClasspath)
+  dependsOn(coroutinesKlibClasspath)
   dependsOn(metroRuntimeKlibClasspath)
   dependsOn(daggerInteropClasspath)
   dependsOn(hiltCoreClasspath)
@@ -419,7 +465,14 @@ tasks.withType<Test> {
   }
 
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  systemProperty("metroRuntimeCoroutines.classpath", metroRuntimeCoroutinesClasspath.asPath)
   systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
+  systemProperty(
+    "metroRuntimeCoroutines.klibClasspath",
+    metroRuntimeCoroutinesKlibClasspath.asPath,
+  )
+  systemProperty("coroutines.classpath", coroutinesClasspath.asPath)
+  systemProperty("coroutines.klibClasspath", coroutinesKlibClasspath.asPath)
   systemProperty("runtimeTracing.classpath", runtimeTracingClasspath.asPath)
   systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
   systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)

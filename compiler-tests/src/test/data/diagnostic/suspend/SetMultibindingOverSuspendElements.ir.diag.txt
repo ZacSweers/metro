@@ -1,0 +1,7 @@
+/SetMultibindingOverSuspendElements.kt:13:15: error: [Metro/MultibindingOverSuspendBindings] Set<String> aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly.
+
+Trace:
+    Set<String> is requested at
+        [ExampleGraph] ExampleGraph.values() // ❌ needs suspend support
+    @MultibindingElement("kotlin.String", "1020704780") String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideOne(…)

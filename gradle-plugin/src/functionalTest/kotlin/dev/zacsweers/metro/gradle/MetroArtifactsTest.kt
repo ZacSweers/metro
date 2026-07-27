@@ -5,6 +5,7 @@
 package dev.zacsweers.metro.gradle
 
 import com.autonomousapps.kit.GradleBuilder.build
+import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
@@ -101,14 +102,24 @@ class MetroArtifactsTest {
 
   @Test
   fun `diagnosticsRenderMode is not a compilation input`() {
+    val testJavaHome = File(System.getProperty("java.home")).invariantSeparatorsPath
     val fixture =
-      object : MetroProject(multiplatform = false) {
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.java.home=$testJavaHome"),
+        ) {
         override fun sources() =
           listOf(
             source(
               """
               @DependencyGraph
-              interface AppGraph
+              interface AppGraph {
+                @DependencyGraph.Factory
+                fun interface Factory {
+                  fun create(@Provides unused: String): AppGraph
+                }
+              }
               """,
               "AppGraph",
             )
@@ -117,13 +128,51 @@ class MetroArtifactsTest {
 
     val project = fixture.gradleProject
 
-    build(project.rootDir, "compileKotlin", "--console=plain")
+    build(project.rootDir, "compileKotlin", "-PdiagnosticsRenderMode=RICH")
 
     // Render mode is presentation-only; switching it (IDE vs CLI environments) must not
     // invalidate compilation or split build caches.
-    val secondBuild = build(project.rootDir, "compileKotlin", "-PdiagnosticsRenderMode=RICH")
+    val secondBuild = build(project.rootDir, "compileKotlin", "-PdiagnosticsRenderMode=PLAIN")
     assertThat(secondBuild.task(":compileKotlin")?.outcome)
       .isEqualTo(org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE)
+  }
+
+  @Test
+  fun `shaded compiler renders rich diagnostics`() {
+    val testJavaHome = File(System.getProperty("java.home")).invariantSeparatorsPath
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.java.home=$testJavaHome"),
+        ) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              interface Dependency
+
+              @Inject
+              class Example(val dependency: Dependency)
+
+              @DependencyGraph
+              interface AppGraph {
+                val example: Example
+              }
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val result =
+      buildAndFail(
+        fixture.gradleProject.rootDir,
+        "compileKotlin",
+        "-PdiagnosticsRenderMode=RICH",
+      )
+
+    assertThat(result.output).contains("No binding found for Dependency")
   }
 
   @Test
@@ -140,6 +189,8 @@ class MetroArtifactsTest {
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
     val generateClassesInIrEnabled = testCompilerVersion >= KotlinToolingVersion("2.4.20-dev-6138")
     val enableOptimizedIc = getTestOptimizedIcOverride() == true
+    val privateProviderPropertiesEnabled =
+      testCompilerVersion >= KotlinToolingVersion("2.4.20-Beta1")
 
     val fixture =
       object : MetroProject(multiplatform = false) {
@@ -206,6 +257,7 @@ class MetroArtifactsTest {
                 "generateContributionHints": true,
                 "generateContributionHintsInFir": ${topLevelFirGenEnabled && !generateClassesInIrEnabled},
                 "generateClassesInIr": $generateClassesInIrEnabled,
+                "enablePrivateProviderProperties": $privateProviderPropertiesEnabled,
                 "shrinkUnusedBindings": true,
                 "statementsPerInitFun": 25,
                 "enableGraphSharding": true,
@@ -261,6 +313,7 @@ class MetroArtifactsTest {
                 "enableOptimizedIc": $enableOptimizedIc,
                 "enableProviderInlining": true,
                 "enableFunctionProviders": true,
+                "enableSuspendProviders": false,
                 "desugaredProviderSeverity": "WARN",
                 "enableKClassToClassInterop": false,
                 "generateContributionProviders": false,

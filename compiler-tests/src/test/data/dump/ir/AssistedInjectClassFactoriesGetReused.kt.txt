@@ -23,15 +23,15 @@ class NotReused {
       return NotReused()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): NotReused {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     operator fun invoke(): NotReused {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): NotReused {
-      return error(message = "Never called")
     }
 
   }
@@ -69,15 +69,15 @@ class Reused {
       return Reused()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Reused {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     operator fun invoke(): Reused {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Reused {
-      return error(message = "Never called")
     }
 
   }

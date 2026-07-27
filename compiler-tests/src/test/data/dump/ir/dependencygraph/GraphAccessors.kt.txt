@@ -16,13 +16,7 @@ interface ExampleGraph {
       field = accessors
 
     private val accessorsIntProvider: Provider<Int>
-      field = <this>.#accessorsInstance.<get-intProvider>()
-
-    private val accessorsStringProvider: Provider<String>
-      field = provider<String>(provider = local fun <anonymous>(): String {
-        return <this>.#accessorsInstance.<get-string>()
-      }
-)
+      field = provider<Int>(provider = <this>.#accessorsInstance.<get-intProvider>())
 
     private constructor(@Includes accessors: Accessors) /* primary */ {
       super/*Any*/()
@@ -37,7 +31,7 @@ interface ExampleGraph {
 
     override val string: String
       override get(): String {
-        return <this>.#accessorsStringProvider.invoke()
+        return <this>.#accessorsInstance.<get-string>()
       }
 
   }
@@ -87,4 +81,3 @@ interface ExampleGraph {
     abstract get
 
 }
-

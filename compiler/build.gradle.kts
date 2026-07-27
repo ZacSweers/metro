@@ -140,6 +140,17 @@ val embedded = configurations.dependencyScope("embedded")
 
 val embeddedClasspath = configurations.resolvable("embeddedClasspath") { extendsFrom(embedded) }
 
+val shadowR8 =
+  configurations.register("shadowR8") {
+    isCanBeConsumed = false
+    isCanBeResolved = false
+  }
+
+val r8Libraries = configurations.dependencyScope("r8Libraries")
+
+val r8LibraryClasspath =
+  configurations.resolvable("r8LibraryClasspath") { extendsFrom(r8Libraries) }
+
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 
 configurations.named("testImplementation").configure { extendsFrom(embedded) }
@@ -150,6 +161,39 @@ val shadowJar =
   tasks.register("shadowJar", ShadowJar::class.java) {
     from(java.sourceSets.main.map { it.output })
     configurations.add(embeddedClasspath)
+
+    minimize {
+      exclude(dependency("dev.zacsweers.metro:compiler-compat.*:.*"))
+      exclude(dependency("dev.zacsweers.metro:metro-common:.*"))
+      r8 {
+        // Compat implementations receive callbacks from Kotlin compiler classes on the library
+        // classpath, so R8 cannot discover these usages itself.
+        keepRules.add(
+          """
+          -keep class dev.zacsweers.metro.compiler.compat.** { *; }
+          -keepattributes AnnotationDefault,EnclosingMethod,Exceptions,InnerClasses,RuntimeInvisibleAnnotations,RuntimeVisibleAnnotations,Signature
+          -dontwarn com.intellij.**
+          -dontwarn org.intellij.**
+          -dontwarn org.jetbrains.**
+          """
+            .trimIndent()
+        )
+        args.add("--no-minification")
+        // Extracted dependency rules and relocated signatures emit expected info diagnostics.
+        args.addAll(listOf("--map-diagnostics", "info", "none"))
+        args.addAll(
+          providers.provider {
+            r8LibraryClasspath
+              .get()
+              .files
+              .sortedBy { it.name }
+              .flatMap {
+                listOf("--lib", it.absolutePath)
+              }
+          }
+        )
+      }
+    }
 
     // TODO these are relocated, do we need to/can we exclude these?
     //  exclude("META-INF/wire-runtime.kotlin_module")
@@ -224,6 +268,9 @@ for (c in arrayOf("apiElements", "runtimeElements")) {
 }
 
 dependencies {
+  add(shadowR8.name, libs.r8)
+  add(r8Libraries.name, libs.kotlin.stdlib)
+
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
@@ -234,7 +281,7 @@ dependencies {
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
-  add(embedded.name, libs.mordant)
+  add(embedded.name, libs.mordant.core)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
   add(embedded.name, project(":compiler-compat"))

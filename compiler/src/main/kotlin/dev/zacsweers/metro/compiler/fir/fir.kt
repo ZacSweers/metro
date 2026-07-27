@@ -1467,6 +1467,9 @@ internal fun StringBuilder.renderType(
     // the native renderer changes this format in later versions, so short-hand it for consistency
     append("() -> ")
     renderType(short, type.typeArguments[0].type!!, includeAbbreviation)
+  } else if (type.classId == Symbols.ClassIds.suspendFunction0) {
+    append("suspend () -> ")
+    renderType(short, type.typeArguments[0].type!!, includeAbbreviation)
   } else {
     val renderer =
       object :
@@ -1862,6 +1865,8 @@ internal fun ClassId?.isIntrinsicType(session: FirSession): Boolean {
   val classIds = session.metroFirBuiltIns.classIds
   return when (this) {
     in classIds.providerTypes,
+    in classIds.suspendProviderTypes,
+    in classIds.suspendLazyTypes,
     in classIds.lazyTypes -> true
     else -> false
   }

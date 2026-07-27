@@ -33,7 +33,13 @@ constructor(
   /** Enables Metro for this project. */
   public val enabled: Property<Boolean> = objects.booleanProperty("metro.enabled", true)
 
-  /** Automatically adds Metro runtime artifact dependencies. */
+  /**
+   * Automatically adds the dependencies required by enabled Metro features.
+   *
+   * See the
+   * [manual dependency setup](https://zacsweers.github.io/metro/latest/installation/#manual-dependency-management)
+   * when disabling this.
+   */
   public val automaticallyAddRuntimeDependencies: Property<Boolean> =
     objects.booleanProperty("metro.automaticallyAddRuntimeDependencies", true)
 
@@ -129,6 +135,18 @@ constructor(
     objects
       .booleanProperty("metro.generateClassesInIr", false)
       .convention(compilerVersion.map { KotlinVersions.supportsIrClassGeneration(it) })
+
+  /**
+   * Allows `@Provides` properties to be private when supported by the Kotlin compiler.
+   *
+   * Enabled by default on Kotlin 2.4.20-Beta1 and newer. Will eventually be removed after the
+   * minimum for metro meets this.
+   */
+  @ExperimentalMetroGradleApi
+  public val enablePrivateProviderProperties: Property<Boolean> =
+    objects
+      .booleanProperty()
+      .convention(compilerVersion.map { KotlinVersions.supportsPrivateProviderProperties(it) })
 
   /**
    * Sets the platforms for which contribution hints will be generated. If not set, defaults are
@@ -424,6 +442,18 @@ constructor(
   @ExperimentalMetroGradleApi
   public val enableRuntimeTracing: Property<Boolean> =
     objects.booleanProperty("metro.enableRuntimeTracing", false)
+
+  /**
+   * Enables experimental suspend `@Provides` functions, graph accessors, and provider types.
+   *
+   * When automatic runtime dependencies are enabled, this also adds Metro's `runtime-coroutines`
+   * artifact.
+   *
+   * Disabled by default.
+   */
+  @ExperimentalMetroGradleApi
+  public val enableSuspendProviders: Property<Boolean> =
+    objects.booleanProperty("metro.enableSuspendProviders", false)
 
   /**
    * Configures Metro options for misc compiler options that don't necessarily warrant dedicated API

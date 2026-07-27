@@ -18,7 +18,9 @@ import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
 import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.allocateName
+import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -52,7 +54,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.suspendDoubleCheck
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.toProto
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
@@ -60,6 +62,7 @@ import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.usesKlib
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
+import dev.zacsweers.metro.compiler.ir.wrapInSuspendProvider
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
 import dev.zacsweers.metro.compiler.isSyntheticGeneratedGraph
 import dev.zacsweers.metro.compiler.letIf
@@ -419,6 +422,10 @@ internal class IrGraphGenerator(
     return bindingPropertyContext
   }
 
+  private val suspendFactoryGenerator by lazy {
+    GraphSuspendFactoryGenerator(this, graphClass, bindingGraph)
+  }
+
   private fun createExpressionGeneratorFactory(
     ancestorGraphProperties: Map<IrTypeKey, List<IrProperty>>,
     traceContextProperty: IrProperty?,
@@ -435,6 +442,7 @@ internal class IrGraphGenerator(
       graphExtensionGenerator = graphExtensionGenerator,
       codegenStats = codegenStats,
       bindingExpressionDecorator = bindingExpressionDecorator,
+      suspendFactoryGenerator = suspendFactoryGenerator,
     )
   }
 
@@ -917,7 +925,7 @@ internal class IrGraphGenerator(
 
     // Expose the graph dep as a provider property only if it was reserved by a child graph.
     val graphDepProviderContextKey =
-      param.contextualTypeKey.stripOuterProviderOrLazy().wrapInProvider()
+      param.contextualTypeKey.asCanonicalProviderKey(usesSuspendProvider = false)
     // Only create the provider property if it was reserved (requested by a child graph)
     if (bindingGraph.isContextKeyReserved(graphDepProviderContextKey)) {
       val providerInitializer =
@@ -966,7 +974,7 @@ internal class IrGraphGenerator(
 
       // Link both the graph typekey and the (possibly-impl type)
       bindingPropertyContext.put(
-        param.contextualTypeKey.stripOuterProviderOrLazy(),
+        param.contextualTypeKey.canonicalize(),
         providerWrapperProperty.initFinal(providerInitializer),
       )
       bindingPropertyContext.put(IrContextualTypeKey(graphDep.typeKey), providerWrapperProperty)
@@ -1382,19 +1390,27 @@ internal class IrGraphGenerator(
       val isDeferred = shardBinding.isDeferred
       val switchingId = shardBinding.switchingId
 
-      val requiresDoubleCheck = isScoped && isProviderType
+      val isSuspendBinding = binding.isSuspendInGraph
+      val requiresDoubleCheck = isScoped && (isProviderType || isSuspendBinding)
 
       context(scope: IrBuilderWithScope)
       fun IrExpression.applyScoping(): IrExpression {
         return if (requiresDoubleCheck) {
-          doubleCheck(metroSymbols, binding.typeKey)
+          if (isSuspendBinding) {
+            suspendDoubleCheck(metroSymbols, binding.typeKey)
+          } else {
+            doubleCheck(metroSymbols, binding.typeKey)
+          }
         } else {
           this
         }
       }
 
       val accessType =
-        if (isProviderType) {
+        if (isSuspendBinding && shardBinding.propertyKind == PropertyKind.FIELD) {
+          // Suspend bindings with FIELD properties use SuspendProvider<T>
+          BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
+        } else if (isProviderType) {
           BindingExpressionGenerator.AccessType.PROVIDER
         } else {
           BindingExpressionGenerator.AccessType.INSTANCE
@@ -1430,17 +1446,22 @@ internal class IrGraphGenerator(
       shardPropertiesToTypeKeys[property] = binding.typeKey
 
       if (isDeferred) {
-        // Deferred properties are initialized with empty DelegateFactory(),
-        // then setDelegate is called after all properties in this shard are initialized
-        shardDeferredProperties += DeferredPropertyInfo(contextKey.typeKey, property, switchingId)
+        // Deferred properties are initialized with empty DelegateFactory()
+        // (or SuspendDelegateFactory() for suspend bindings), then setDelegate is called
+        // after all properties in this shard are initialized.
+        shardDeferredProperties +=
+          DeferredPropertyInfo(contextKey.typeKey, property, switchingId, isSuspendBinding)
         val deferredType = contextKey.typeKey.type
+        val delegateCtor =
+          if (isSuspendBinding) {
+            metroSymbols.metroSuspendDelegateFactoryConstructor
+          } else {
+            metroSymbols.metroDelegateFactoryConstructor
+          }
         val init: PropertyInitializer = { _, _ ->
           irInvoke(
-            callee = metroSymbols.metroDelegateFactoryConstructor,
-            typeHint =
-              metroSymbols.metroDelegateFactoryConstructor.owner.returnType
-                .rawType()
-                .typeWith(deferredType),
+            callee = delegateCtor,
+            typeHint = delegateCtor.owner.returnType.rawType().typeWith(deferredType),
             typeArgs = listOf(deferredType),
           )
         }
@@ -1506,19 +1527,28 @@ internal class IrGraphGenerator(
       thisReceiver: IrValueParameter,
       switchingProvider: SwitchingProviderGenerator.SwitchingProvider?,
     ): List<IrStatement> = buildList {
-      for ((deferredTypeKey, deferredProperty, switchingId) in shardDeferredProperties) {
+      for ((deferredTypeKey, deferredProperty, switchingId, isSuspend) in shardDeferredProperties) {
         val binding = bindingGraph.requireBinding(deferredTypeKey)
+        val companion =
+          if (isSuspend) metroSymbols.metroSuspendDelegateFactoryCompanion
+          else metroSymbols.metroDelegateFactoryCompanion
+        val setDelegate =
+          if (isSuspend) metroSymbols.metroSuspendDelegateFactorySetDelegate
+          else metroSymbols.metroDelegateFactorySetDelegate
+        val wrappedContextKey =
+          if (isSuspend) binding.contextualTypeKey.wrapInSuspendProvider()
+          else binding.contextualTypeKey.wrapInProvider()
         add(
           irInvoke(
-            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
-            callee = metroSymbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(companion),
+            callee = setDelegate,
             typeArgs = listOf(deferredTypeKey.type),
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
                 generateProviderExpression(
                   binding = binding,
-                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  contextKey = wrappedContextKey,
                   switchingId = switchingId,
                   switchingProvider = switchingProvider,
                   thisReceiver = thisReceiver,
@@ -1679,19 +1709,28 @@ internal class IrGraphGenerator(
     constructorStatements: MutableList<InitStatement>,
   ) {
     constructorStatements +=
-      shardDeferredProperties.map { (deferredTypeKey, deferredProperty, switchingId) ->
+      shardDeferredProperties.map { (deferredTypeKey, deferredProperty, switchingId, isSuspend) ->
         val initStatement: InitStatement = { thisReceiver ->
           val binding = bindingGraph.requireBinding(deferredTypeKey)
+          val companion =
+            if (isSuspend) metroSymbols.metroSuspendDelegateFactoryCompanion
+            else metroSymbols.metroDelegateFactoryCompanion
+          val setDelegate =
+            if (isSuspend) metroSymbols.metroSuspendDelegateFactorySetDelegate
+            else metroSymbols.metroDelegateFactorySetDelegate
+          val wrappedContextKey =
+            if (isSuspend) binding.contextualTypeKey.wrapInSuspendProvider()
+            else binding.contextualTypeKey.wrapInProvider()
           irInvoke(
-            dispatchReceiver = irGetObject(metroSymbols.metroDelegateFactoryCompanion),
-            callee = metroSymbols.metroDelegateFactorySetDelegate,
+            dispatchReceiver = irGetObject(companion),
+            callee = setDelegate,
             typeArgs = listOf(deferredTypeKey.type),
             args =
               listOf(
                 irGetProperty(irGet(thisReceiver), deferredProperty),
                 generateProviderExpression(
                   binding = binding,
-                  contextKey = binding.contextualTypeKey.wrapInProvider(),
+                  contextKey = wrappedContextKey,
                   switchingId = switchingId,
                   switchingProvider = switchingProvider,
                   thisReceiver = thisReceiver,
@@ -1707,6 +1746,15 @@ internal class IrGraphGenerator(
       }
   }
 
+  /**
+   * Returns true if this binding must be resolved in a suspend context in this graph. Either it's
+   * directly provided by a `suspend fun` or it transitively depends on one (unwrapped). Drives all
+   * suspend-flavored codegen decisions: `SuspendProvider<T>` field storage, `SuspendDoubleCheck`
+   * scoping, and `SuspendDelegateFactory` cycle-breaking.
+   */
+  private val IrBinding.isSuspendInGraph: Boolean
+    get() = isSuspend || bindingGraph.isTransitivelySuspend(typeKey)
+
   /** Computes binding metadata for property generation. */
   private fun computeBindingMetadata(
     binding: IrBinding,
@@ -1716,7 +1764,13 @@ internal class IrGraphGenerator(
   ): BindingMetadata {
     val key = binding.typeKey
     var isProviderType = collectedIsProviderType
-    val finalContextKey = collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
+    val isSuspendBinding = binding.isSuspendInGraph
+    val finalContextKey =
+      if (isSuspendBinding && propertyType == PropertyKind.FIELD) {
+        collectedContextKey.wrapInSuspendProvider()
+      } else {
+        collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
+      }
     val suffix: String
     val kind: MemberNamer.Kind
     val irType =
@@ -1734,6 +1788,11 @@ internal class IrGraphGenerator(
           kind = MemberNamer.Kind.INSTANCE
         }
         finalContextKey.toIrType()
+      } else if (isSuspendBinding) {
+        // Suspend bindings use SuspendProvider<T> for field storage
+        suffix = "SuspendProvider"
+        kind = MemberNamer.Kind.PROVIDER
+        metroSymbols.metroSuspendProvider.typeWith(key.type)
       } else {
         suffix = "Provider"
         kind = MemberNamer.Kind.PROVIDER
@@ -1749,6 +1808,7 @@ internal class IrGraphGenerator(
       kind = kind,
       isProviderType = isProviderType,
       isScoped = binding.isScoped(),
+      isSuspend = isSuspendBinding,
     )
   }
 
@@ -1762,6 +1822,7 @@ internal class IrGraphGenerator(
     val kind: MemberNamer.Kind,
     val isProviderType: Boolean,
     val isScoped: Boolean,
+    val isSuspend: Boolean = false,
   )
 
   /**
@@ -1772,6 +1833,8 @@ internal class IrGraphGenerator(
     val typeKey: IrTypeKey,
     val property: IrProperty,
     val switchingId: Int?,
+    /** True when the bound type is suspend; the delegate is a SuspendDelegateFactory then. */
+    val isSuspend: Boolean,
   )
 
   /**
@@ -1802,18 +1865,28 @@ internal class IrGraphGenerator(
               arguments[1] = irInt(switchingId)
             }
         } else {
+          val accessType =
+            if (binding.isSuspendInGraph) {
+              BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
+            } else {
+              BindingExpressionGenerator.AccessType.PROVIDER
+            }
           expressionGeneratorFactory
             .create(thisReceiver, shardContext = shardExprContext)
             .generateBindingCode(
               binding = binding,
               contextualTypeKey = contextKey,
-              accessType = BindingExpressionGenerator.AccessType.PROVIDER,
+              accessType = accessType,
               fieldInitKey = fieldInitKey,
             )
         }
 
       return if (applyScoping) {
-        providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+        if (binding.isSuspendInGraph) {
+          providerExpr.suspendDoubleCheck(metroSymbols, binding.typeKey)
+        } else {
+          providerExpr.doubleCheck(metroSymbols, binding.typeKey)
+        }
       } else {
         providerExpr
       }
@@ -1870,6 +1943,8 @@ internal class IrGraphGenerator(
                     .generateBindingCode(binding, contextualTypeKey = contextualTypeKey),
                   isAssisted = false,
                   isGraphInstance = false,
+                  actualIsSuspendProvider =
+                    BindingExpressionGenerator.AccessType.of(contextualTypeKey).isSuspendProvider,
                 )
               }
             )
@@ -1960,6 +2035,9 @@ internal class IrGraphGenerator(
                               ),
                             isAssisted = false,
                             isGraphInstance = false,
+                            actualIsSuspendProvider =
+                              BindingExpressionGenerator.AccessType.of(parameter.contextualTypeKey)
+                                .isSuspendProvider,
                           )
                         )
                       }
@@ -2044,9 +2122,16 @@ internal class IrGraphGenerator(
                     kind = TRACE_KIND_ACCESSOR,
                     returnType = irFunction.returnType,
                   ) {
-                    expressionGeneratorFactory
-                      .create(irFunction.dispatchReceiverParameter!!)
-                      .generateBindingCode(binding = binding, contextualTypeKey = contextKey)
+                    typeAsProviderArgument(
+                      contextKey,
+                      expressionGeneratorFactory
+                        .create(irFunction.dispatchReceiverParameter!!)
+                        .generateBindingCode(binding = binding, contextualTypeKey = contextKey),
+                      isAssisted = false,
+                      isGraphInstance = false,
+                      actualIsSuspendProvider =
+                        BindingExpressionGenerator.AccessType.of(contextKey).isSuspendProvider,
+                    )
                   }
                 )
               }

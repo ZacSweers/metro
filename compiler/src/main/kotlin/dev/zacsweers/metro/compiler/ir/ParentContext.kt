@@ -88,7 +88,11 @@ internal class ParentContextSnapshot(
   private val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
 ) {
   /** Ownership information for a key - which graph owns it and how to access it. */
-  data class KeyOwnership(val ownerGraphKey: IrTypeKey, val receiverParameter: IrValueParameter)
+  data class KeyOwnership(
+    val ownerGraphKey: IrTypeKey,
+    val receiverParameter: IrValueParameter,
+    val isSuspend: (IrTypeKey) -> Boolean,
+  )
 
   /** Information about a level for scope matching. */
   data class LevelInfo(val scopes: Set<IrAnnotation>, val ownership: KeyOwnership)
@@ -136,6 +140,7 @@ internal class ParentContextSnapshot(
         contextKey = contextKey,
         ownerGraphKey = ownership.ownerGraphKey,
         receiverParameter = ownership.receiverParameter,
+        isSuspend = ownership.isSuspend(key),
       )
     }
 
@@ -148,6 +153,7 @@ internal class ParentContextSnapshot(
             contextKey = contextKey,
             ownerGraphKey = levelInfo.ownership.ownerGraphKey,
             receiverParameter = levelInfo.ownership.receiverParameter,
+            isSuspend = levelInfo.ownership.isSuspend(key),
           )
         }
       }
@@ -217,6 +223,8 @@ internal class ParentContext(
     val ownerGraphKey: IrTypeKey,
     /** The receiver parameter for the parent graph (for generating access expressions). */
     val receiverParameter: IrValueParameter,
+    /** Whether resolving the underlying binding requires a suspend context in the owner graph. */
+    val isSuspend: Boolean,
   )
 
   /**
@@ -249,6 +257,8 @@ internal class ParentContext(
     private val shardGraphProperty: IrProperty? = null,
     // TODO use AccessType
     val isProviderProperty: Boolean,
+    /** Whether the property stores a SuspendProvider (suspend binding fields). */
+    val isSuspendProviderProperty: Boolean = false,
   ) {
 
     private val ancestorPropertiesChain by memoize {
@@ -283,6 +293,7 @@ internal class ParentContext(
 
   private data class Level(
     val node: GraphNode,
+    val isSuspend: (IrTypeKey) -> Boolean,
     val deltaProvided: MutableSet<IrTypeKey> = mutableSetOf(),
     /** Tracks which contextual keys were used (preserving instance vs provider distinction) */
     val usedContextKeys: MutableSet<IrContextualTypeKey> = mutableSetOf(),
@@ -359,6 +370,7 @@ internal class ParentContext(
         contextKey = contextKey,
         ownerGraphKey = providerLevel.node.typeKey,
         receiverParameter = providerLevel.node.metroGraphOrFail.thisReceiverOrFail,
+        isSuspend = providerLevel.isSuspend(key),
       )
     }
 
@@ -383,6 +395,7 @@ internal class ParentContext(
             contextKey = contextKey,
             ownerGraphKey = level.node.typeKey,
             receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
+            isSuspend = level.isSuspend(key),
           )
         }
       }
@@ -424,9 +437,9 @@ internal class ParentContext(
     }
   }
 
-  fun pushParentGraph(node: GraphNode) {
+  fun pushParentGraph(node: GraphNode, isSuspend: (IrTypeKey) -> Boolean) {
     val idx = levels.size
-    val level = Level(node)
+    val level = Level(node, isSuspend)
     levels.addLast(level)
     parentScopes.addAll(node.scopes)
     _graphPrivateKeys.addAll(node.graphPrivateKeys)
@@ -513,6 +526,7 @@ internal class ParentContext(
         ParentContextSnapshot.KeyOwnership(
           ownerGraphKey = level.node.typeKey,
           receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
+          isSuspend = level.isSuspend,
         )
     }
 
@@ -523,6 +537,7 @@ internal class ParentContext(
         ParentContextSnapshot.KeyOwnership(
           ownerGraphKey = currentLevel.node.typeKey,
           receiverParameter = currentLevel.node.metroGraphOrFail.thisReceiverOrFail,
+          isSuspend = currentLevel.isSuspend,
         )
       for (key in pending) {
         keyOwnership[key] = currentOwnership
@@ -537,6 +552,7 @@ internal class ParentContext(
           ParentContextSnapshot.KeyOwnership(
             ownerGraphKey = level.node.typeKey,
             receiverParameter = level.node.metroGraphOrFail.thisReceiverOrFail,
+            isSuspend = level.isSuspend,
           ),
       )
     }

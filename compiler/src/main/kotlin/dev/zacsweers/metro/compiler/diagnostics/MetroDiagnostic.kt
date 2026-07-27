@@ -48,6 +48,45 @@ internal enum class NoteKind {
   NOTE,
 }
 
+/** Builds the invalid-assisted-binding diagnostic shared by FIR and IR validation. */
+internal fun invalidAssistedBindingDiagnostic(
+  assistedType: Text,
+  injectionSite: Text?,
+  assistedFactory: Text?,
+): MetroDiagnostic {
+  val notes = buildList {
+    add(Note.help("inject a corresponding @AssistedFactory type instead"))
+    if (assistedFactory != null) {
+      add(
+        Note.note(
+          buildText {
+            append("it looks like the @AssistedFactory for ")
+            append(assistedType)
+            append(" is ")
+            append(assistedFactory)
+          }
+        )
+      )
+    }
+  }
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.INVALID_BINDING,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append(assistedType)
+        append(" uses assisted injection and cannot be injected directly")
+        if (injectionSite == null) {
+          append(" here")
+        } else {
+          append(" into ")
+          append(injectionSite)
+        }
+      },
+    notes = notes,
+  )
+}
+
 /**
  * A resolved source location. Lines and columns are 1-based.
  *

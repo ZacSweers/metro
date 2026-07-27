@@ -23,7 +23,7 @@ import kotlin.jvm.JvmStatic
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
  * Lazy<V>>` when calling [.get] (as specified by [Factory]).
  */
-public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Provider<V>>) :
+public class MapLazyFactory<K : Any, V> private constructor(map: Map<K, Provider<V>>) :
   AbstractMapFactory<K, V, Lazy<V>>(map) {
   /**
    * Returns a `Map<K, Lazy<V>>` whose iteration order is that of the elements given by each of the
@@ -38,7 +38,7 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Pr
   }
 
   /** A builder for [MapLazyFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) :
+  public class Builder<K : Any, V> internal constructor(size: Int) :
     AbstractMapFactory.Builder<K, V, Lazy<V>>(size) {
     public override fun put(key: K, providerOfValue: Provider<V>): Builder<K, V> = apply {
       super.put(key, providerOfValue)
@@ -60,7 +60,7 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Pr
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
@@ -79,14 +79,14 @@ public class MapLazyFactory<K : Any, V : Any> private constructor(map: Map<K, Pr
      */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> singleton(
+    public fun <K : Any, V> singleton(
       key: K,
       provider: Provider<V>,
     ): Factory<Map<K, Lazy<V>>> = SingletonMapLazyFactory(key, provider)
   }
 }
 
-private class SingletonMapLazyFactory<K : Any, V : Any>(
+private class SingletonMapLazyFactory<K : Any, V>(
   private val key: K,
   private val provider: Provider<V>,
 ) : Factory<Map<K, Lazy<V>>> {

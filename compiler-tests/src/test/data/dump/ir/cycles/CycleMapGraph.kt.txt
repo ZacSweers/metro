@@ -37,15 +37,15 @@ class X {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(y: Y): X {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): X {
       return MetroFactory/* companion */.newInstance(y = <this>.#y.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(y: Y): X {
-      return error(message = "Never called")
     }
 
   }
@@ -102,15 +102,15 @@ class Y {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Y {
       return MetroFactory/* companion */.newInstance(mapOfProvidersOfX = <this>.#mapOfProvidersOfX.invoke(), mapOfProvidersOfY = <this>.#mapOfProvidersOfY.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(mapOfProvidersOfX: Map<String, Function0<X>>, mapOfProvidersOfY: Map<String, Function0<Y>>): Y {
-      return error(message = "Never called")
     }
 
   }

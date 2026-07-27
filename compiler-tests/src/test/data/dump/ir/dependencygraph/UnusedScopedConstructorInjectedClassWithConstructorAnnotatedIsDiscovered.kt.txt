@@ -40,16 +40,16 @@ class ChildDependency {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ChildDependency {
-      return MetroFactory/* companion */.newInstance(dep = <this>.#dep.invoke())
-    }
-
     @SingleIn(scope = LoggedInScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(dep: Dependency): ChildDependency {
+    fun declarationMirror(dep: Dependency): ChildDependency {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ChildDependency {
+      return MetroFactory/* companion */.newInstance(dep = <this>.#dep.invoke())
     }
 
   }
@@ -86,16 +86,16 @@ class Dependency {
       return Dependency()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Dependency {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Dependency {
+    fun declarationMirror(): Dependency {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Dependency {
+      return MetroFactory.newInstance()
     }
 
   }

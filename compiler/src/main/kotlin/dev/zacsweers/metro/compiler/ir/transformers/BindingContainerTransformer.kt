@@ -60,10 +60,13 @@ import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.dedupeParameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.toCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.parametersAsProviderArguments
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
+import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
+import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
@@ -98,6 +101,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
+import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irGetField
 import org.jetbrains.kotlin.ir.builders.irInt
@@ -358,6 +362,8 @@ internal class BindingContainerTransformer(
 
     checkNotLocked()
 
+    reportMissingRuntimeCoroutinesIfNeeded(reference)
+
     val generatedClassId = reference.generatedClassId
 
     val factoryCls =
@@ -387,17 +393,26 @@ internal class BindingContainerTransformer(
       }
     val factoryTargetType = factoryTypeRemapper.remapType(reference.typeKey.type)
 
+    val factorySuperTypeSymbol =
+      if (reference.isSuspend) metroSymbols.metroSuspendFactory else metroSymbols.metroFactory
+    val invokeOverriddenSymbol =
+      if (reference.isSuspend) metroSymbols.suspendProviderInvoke else metroSymbols.providerInvoke
     val invokeFunction =
       trace("Add factory supertype + invoke shell") {
         // Add factory supertype. It won't be visible in metadata, so downstream compilations read
         // the generated signature carrier to get the target type.
-        factoryCls.superTypes += metroSymbols.metroFactory.typeWith(factoryTargetType)
+        factoryCls.superTypes += factorySuperTypeSymbol.typeWith(factoryTargetType)
         // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
         // the invoke override directly later
         factoryCls
-          .addFunction(Symbols.StringNames.INVOKE, factoryTargetType, isFakeOverride = true)
+          .addFunction(
+            Symbols.StringNames.INVOKE,
+            factoryTargetType,
+            isFakeOverride = true,
+            isSuspend = reference.isSuspend,
+          )
           .apply {
-            overriddenSymbols = listOf(metroSymbols.providerInvoke)
+            overriddenSymbols = listOf(invokeOverriddenSymbol)
             isOperator = true
           }
           .also {
@@ -435,18 +450,22 @@ internal class BindingContainerTransformer(
       }
 
     // De-duped source params used by the constructor and create() function
+    val defaultUsesSuspendProvider = reference.isSuspend
     val dedupedSourceParameters =
       trace("Dedupe parameters") {
         sourceParameters.copy(
-          regularParameters = sourceParameters.regularParameters.dedupeParameters()
+          regularParameters =
+            sourceParameters.regularParameters.dedupeParameters(
+              defaultUsesSuspendProvider = defaultUsesSuspendProvider
+            )
         )
       }
 
     // Use parameter name as the primary field key to correctly handle multiple parameters
     // with the same type key (e.g., two String params with different defaults).
-    // The typeKey map is kept as a fallback for dedup cases.
+    // The contextual-key map is kept as a fallback for dedup cases.
     val nameToField = mutableMapOf<Name, IrField>()
-    val typeKeyToField = mutableMapOf<IrTypeKey, IrField>()
+    val providerFieldsByKey = mutableMapOf<IrContextualTypeKey, IrField>()
     val ctor: IrConstructor
     if (factoryCls.isObject) {
       // If it's got no parameters we'll generate it in FIR as an object
@@ -467,14 +486,16 @@ internal class BindingContainerTransformer(
             wrapInProvider = true,
             stubDefaults = false,
             typeRemapper = { type -> factoryTypeRemapper.remapType(type) },
-          ) { typeKey, irParam ->
+            wrapInSuspendProvider = reference.isSuspend,
+          ) { parameter, irParam ->
             val fieldName =
               fieldNameAllocator.allocateName(memberNamer, MemberNamer.Kind.PROVIDER) {
                 irParam.name.asString()
               }
             val field = irParam.addBackingFieldTo(factoryCls, fieldName)
             nameToField[irParam.name] = field
-            typeKeyToField[typeKey] = field
+            providerFieldsByKey[parameter.toCanonicalProviderKey(defaultUsesSuspendProvider)] =
+              field
           }
           addHiddenFromObjCAnnotation(this)
           body = generateDefaultConstructorBody()
@@ -511,8 +532,9 @@ internal class BindingContainerTransformer(
                 parametersAsProviderArguments(
                   parameters = sourceParameters,
                   receiver = invokeFunction.dispatchReceiverParameter!!,
-                  fields = typeKeyToField,
+                  providerFieldsByKey = providerFieldsByKey,
                   nameToField = nameToField,
+                  defaultUsesSuspendProvider = defaultUsesSuspendProvider,
                   typeRemapper = factoryTypeRemapper,
                 ),
             )
@@ -521,6 +543,7 @@ internal class BindingContainerTransformer(
     }
 
     val sourceFunction = reference.callee?.owner as? IrSimpleFunction
+    val backingField = reference.backingField
     val signatureCarrier =
       if (useCreatorSignatureCarrier) {
         SignatureCarrier.CREATOR_FUNCTION
@@ -531,11 +554,11 @@ internal class BindingContainerTransformer(
       if (useCreatorSignatureCarrier) {
         bytecodeFunction
       } else {
-        trace("Generate mirror function") {
-          generateMetadataVisibleMirrorFunction(
+        trace("Generate declaration mirror") {
+          generateMetadataVisibleDeclarationMirror(
             factoryClass = factoryCls,
             target = sourceFunction,
-            backingField = reference.backingField,
+            backingField = backingField,
             annotations = reference.annotations,
             registerAsMetadataVisible =
               options.generateClassesInIr ||
@@ -561,7 +584,7 @@ internal class BindingContainerTransformer(
                 sourceFunction.name
               },
           )
-        } else if (reference.backingField != null) {
+        } else if (backingField != null) {
           if (useCreatorSignatureCarrier) {
             factoryCls.irCallableMetadata(
               signatureFunction,
@@ -575,6 +598,7 @@ internal class BindingContainerTransformer(
                 name = reference.callableId.callableName
                 setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
                 parent = reference.parent.owner
+                correspondingPropertySymbol = backingField.correspondingPropertySymbol
               }
             IrCallableMetadata(
               callableId = reference.callableId,
@@ -597,7 +621,7 @@ internal class BindingContainerTransformer(
       }
 
     // For in-compilation, we already have the real declaration from the reference
-    val realDeclaration = reference.callee?.owner ?: reference.backingField
+    val realDeclaration = reference.callee?.owner ?: backingField
 
     val providerFactory =
       trace("Construct ProviderFactory") {
@@ -661,6 +685,7 @@ internal class BindingContainerTransformer(
         callee = function.symbol,
         backingField = null,
         annotations = annotations,
+        isSuspend = function.isSuspend,
       )
     }
   }
@@ -713,6 +738,8 @@ internal class BindingContainerTransformer(
         callee = callee,
         backingField = useBackingField,
         annotations = annotations,
+        // Properties cannot be suspend in Kotlin
+        isSuspend = false,
       )
     }
   }
@@ -745,6 +772,7 @@ internal class BindingContainerTransformer(
         factoryCls.symbol.typeWithParameters(typeParams)
       },
       sourceTypeParameters = reference.parent.owner,
+      wrapInSuspendProvider = reference.isSuspend,
     )
 
     // Generate the named newInstance function
@@ -767,6 +795,7 @@ internal class BindingContainerTransformer(
           typeRemapper.remapType(reference.returnType)
         },
         functionName = reference.name.asString(),
+        isSuspend = reference.isSuspend,
       ) { function ->
         val parameters = function.regularParameters
 
@@ -814,6 +843,20 @@ internal class BindingContainerTransformer(
     )
   }
 
+  /** Reports a missing coroutines runtime before generating a factory that would require it. */
+  private fun reportMissingRuntimeCoroutinesIfNeeded(reference: CallableReference) {
+    if (!options.enableSuspendProviders) return
+    if (coroutinesRuntimeAvailability.isAvailable) return
+    val parameter =
+      reference.parameters.nonDispatchParameters.firstOrNull {
+        it.contextualTypeKey.wrappedType.containsSuspendLazy()
+      } ?: return
+    val declaration =
+      parameter.ir ?: reference.callee?.owner ?: reference.backingField ?: reference.parent.owner
+    val callableName = reference.callableId.asSingleFqName().asString()
+    reportMissingRuntimeCoroutines(declaration, "`$callableName`")
+  }
+
   internal class CallableReference(
     val callableId: CallableId,
     val name: Name,
@@ -833,6 +876,8 @@ internal class BindingContainerTransformer(
      */
     val backingField: IrField?,
     val annotations: MetroAnnotations<IrAnnotation>,
+    /** True if the source provider is a `suspend fun`. Properties are never suspend. */
+    val isSuspend: Boolean,
   ) {
     val isInObject: Boolean
       get() = parent.owner.isObject
@@ -921,8 +966,7 @@ internal class BindingContainerTransformer(
     signatureCarrier: SignatureCarrier,
   ): IrSimpleFunction {
     return when (signatureCarrier) {
-      SignatureCarrier.MIRROR_FUNCTION ->
-        requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+      SignatureCarrier.MIRROR_FUNCTION -> requireDeclarationMirrorFunction()
       SignatureCarrier.CREATOR_FUNCTION ->
         requireStaticIshDeclarationContainer().requireSimpleFunction(entry.new_instance_name).owner
     }
@@ -1177,9 +1221,9 @@ internal class BindingContainerTransformer(
   }
 
   /**
-   * Loads an invisible provider factory from proto metadata. Creates a stub class with a mirror
-   * function and builds a [ProviderFactory] from proto values without needing a `@CallableMetadata`
-   * annotation.
+   * Loads an invisible provider factory from proto metadata. Creates a stub class with a
+   * declaration mirror and builds a [ProviderFactory] from proto values without needing a
+   * `@CallableMetadata` annotation.
    */
   private fun loadInvisibleProviderFactory(
     container: IrClass,
@@ -1195,10 +1239,10 @@ internal class BindingContainerTransformer(
 
     val mirrorFunction =
       if (existingFactory != null) {
-        existingFactory.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+        existingFactory.requireDeclarationMirrorFunction()
       } else {
         val target = providesFunction ?: return null
-        generateMetadataVisibleMirrorFunction(
+        generateMetadataVisibleDeclarationMirror(
           factoryClass = stub,
           target = target,
           backingField = null,
@@ -1214,6 +1258,15 @@ internal class BindingContainerTransformer(
           setDispatchReceiver(container.thisReceiverOrFail.copyTo(this))
           parent = container
         }
+    if (providesFunction == null && entry.property_name.isNotEmpty()) {
+      mirrorFunction.factory
+        .buildProperty { name = Name.identifier(entry.property_name) }
+        .apply {
+          parent = container
+          getter = sourceFunction
+          sourceFunction.correspondingPropertySymbol = symbol
+        }
+    }
     val sourceAnnotations = sourceFunction.metroAnnotations(metroSymbols.classIds)
 
     // Add creator functions to the stub so IrMetroFactory can find them
@@ -1268,7 +1321,8 @@ internal class BindingContainerTransformer(
   private fun markComptimeOnlyIfInlined(providerFactory: ProviderFactory) {
     if (!pluginContext.platform.isJvm()) return
     if (providerFactory !is ProviderFactory.Metro) return
-    if (providerFactory.inlinedValue == null) return
+    val inlinedValue = providerFactory.inlinedValue ?: return
+    if (!inlinedValue.canInlineProviderAccess) return
 
     val factoryClass = providerFactory.factoryClass
     // TODO the if check here is if/when we move factory gen totally to IR
@@ -1325,6 +1379,7 @@ internal class BindingContainerTransformer(
             }
             .apply {
               factoryCls.addChild(this)
+              superTypes = listOf(irBuiltIns.anyType)
               createThisReceiverParameter()
               addSimpleDelegatingConstructor(
                 irBuiltIns.anyClass.owner.primaryConstructor!!,

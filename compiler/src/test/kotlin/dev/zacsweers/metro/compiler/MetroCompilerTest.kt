@@ -128,6 +128,8 @@ abstract class MetroCompilerTest {
                 this@toPluginOptions.generateContributionHintsInFir,
               )
             GENERATE_CLASSES_IN_IR -> processor.option(entry.raw.cliOption, generateClassesInIr)
+            ENABLE_PRIVATE_PROVIDER_PROPERTIES ->
+              processor.option(entry.raw.cliOption, enablePrivateProviderProperties)
             SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
             STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
             ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
@@ -365,6 +367,9 @@ abstract class MetroCompilerTest {
             }
             ENABLE_FUNCTION_PROVIDERS -> {
               processor.option(entry.raw.cliOption, enableFunctionProviders)
+            }
+            ENABLE_SUSPEND_PROVIDERS -> {
+              processor.option(entry.raw.cliOption, enableSuspendProviders)
             }
             DESUGARED_PROVIDER_SEVERITY -> {
               processor.option(entry.raw.cliOption, desugaredProviderSeverity)

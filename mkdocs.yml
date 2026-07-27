@@ -137,6 +137,7 @@ nav:
       - 'Injection Types': injection-types.md
       - 'Scopes': scopes.md
       - 'Metro Intrinsics': metro-intrinsics.md
+      - 'Coroutines Support': coroutines.md
       - 'Bindings': bindings.md
       - 'Aggregation (aka "Anvil")': aggregation.md
       - 'Multiplatform': multiplatform.md

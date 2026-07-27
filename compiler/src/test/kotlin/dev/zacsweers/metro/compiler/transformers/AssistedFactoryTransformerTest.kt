@@ -296,10 +296,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:25:34 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:25:34 ExampleClass uses assisted injection and cannot be injected directly here
 
-        (Hint)
-        It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
+          help: inject a corresponding @AssistedFactory type instead
+          note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
           .trimIndent()
       )
@@ -338,10 +339,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:22:47 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:22:47 ExampleClass uses assisted injection and cannot be injected directly here
 
-        (Hint)
-        It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
+          help: inject a corresponding @AssistedFactory type instead
+          note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
           .trimIndent()
       )
@@ -381,7 +383,7 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:25:24 [Metro/InvalidBinding] ExampleClass uses assisted injection and cannot be injected directly into
+        e: ExampleClass.kt:25:24 ExampleClass uses assisted injection and cannot be injected directly into
             test.Consumer.exampleClass
 
           help: inject a corresponding @AssistedFactory type instead
@@ -422,10 +424,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:19:21 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:19:21 ExampleClass uses assisted injection and cannot be injected directly here
 
-        (Hint)
-        It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
+          help: inject a corresponding @AssistedFactory type instead
+          note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
           .trimIndent()
       )
@@ -463,10 +466,11 @@ class AssistedFactoryTransformerTest : MetroCompilerTest() {
     ) {
       assertDiagnostics(
         """
-        e: ExampleClass.kt:21:21 'test.ExampleClass' uses assisted injection and cannot be injected directly here. You must inject a corresponding @AssistedFactory type or provide a qualified instance on the graph instead.
+        e: ExampleClass.kt:21:21 ExampleClass uses assisted injection and cannot be injected directly here
 
-        (Hint)
-        It looks like the @AssistedFactory for 'test.ExampleClass' may be 'test.ExampleClassFactory'.
+          help: inject a corresponding @AssistedFactory type instead
+          note: it looks like the @AssistedFactory for ExampleClass is ExampleClassFactory
+          docs: https://zacsweers.github.io/metro/latest/diagnostics/#invalidbinding
         """
           .trimIndent()
       )

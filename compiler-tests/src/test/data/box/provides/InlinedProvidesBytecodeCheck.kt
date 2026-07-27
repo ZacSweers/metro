@@ -79,27 +79,40 @@ fun box(): String {
 }
 
 /*
-Most inlineable values appear twice:
-1. Provides declaration
-2. Accessor
-
-The extra boolean/null/enum constants come from Kotlin's generated enum and graph companion code.
+Each inlineable value appears in both the provides declaration and the graph accessor.
 */
 
 // <count> <instruction>
 // CHECK_BYTECODE_TEXT
-// 2 BIPUSH 7
-// 2 SIPUSH 300
-// 4 LDC 123456
-// 2 LDC 12345678901
-// 3 ICONST_1
-// 2 BIPUSH 90
-// 2 LDC 12.5
-// 2 LDC 12.25
-// 2 LDC "inline-string"
-// 2 LDC "const-prop-read"
-// 3 ACONST_NULL
-// 2 GETSTATIC ObjectValue.INSTANCE : LObjectValue;
-// 3 GETSTATIC EnumValue.Entry : LEnumValue;
-// 2 LDC LClassLiteralValue;.class
-// 2 INVOKESTATIC kotlin/jvm/internal/Reflection.getOrCreateKotlinClass
+// @Bindings.class:
+// 1 BIPUSH 7
+// 1 SIPUSH 300
+// 2 LDC 123456
+// 1 LDC 12345678901
+// 1 ICONST_1
+// 1 BIPUSH 90
+// 1 LDC 12.5
+// 1 LDC 12.25
+// 1 LDC "inline-string"
+// 1 LDC "const-prop-read"
+// 1 ACONST_NULL
+// 1 GETSTATIC ObjectValue.INSTANCE : LObjectValue;
+// 1 GETSTATIC EnumValue.Entry : LEnumValue;
+// 1 LDC LClassLiteralValue;.class
+// 1 INVOKESTATIC kotlin/jvm/internal/Reflection.getOrCreateKotlinClass
+// @AppGraph$Impl.class:
+// 1 BIPUSH 7
+// 1 SIPUSH 300
+// 2 LDC 123456
+// 1 LDC 12345678901
+// 1 ICONST_1
+// 1 BIPUSH 90
+// 1 LDC 12.5
+// 1 LDC 12.25
+// 1 LDC "inline-string"
+// 1 LDC "const-prop-read"
+// 1 ACONST_NULL
+// 1 GETSTATIC ObjectValue.INSTANCE : LObjectValue;
+// 1 GETSTATIC EnumValue.Entry : LEnumValue;
+// 1 LDC LClassLiteralValue;.class
+// 1 INVOKESTATIC kotlin/jvm/internal/Reflection.getOrCreateKotlinClass

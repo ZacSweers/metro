@@ -24,7 +24,7 @@ private constructor(private val contributingMap: Map<K, () -> V>) :
   override fun isInitialized(): Boolean = true
 
   /** A builder for [MapFunctionFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) {
+  public class Builder<K : Any, V> internal constructor(size: Int) {
     private val map: LinkedHashMap<K, () -> V> = newLinkedHashMapWithExpectedSize(size)
 
     public fun put(key: K, fn: () -> V): Builder<K, V> = apply { map[key] = fn }
@@ -36,24 +36,23 @@ private constructor(private val contributingMap: Map<K, () -> V>) :
     private val EMPTY: Provider<Map<Any, () -> Any>> = InstanceFactory(emptyMap())
 
     /** Returns a new [Builder]. */
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> = Builder(size)
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> = Builder(size)
 
     /** Returns a provider of an empty map. */
     @Suppress("UNCHECKED_CAST")
-    public fun <K : Any, V : Any> empty(): Provider<Map<K, () -> V>> =
-      EMPTY as Provider<Map<K, () -> V>>
+    public fun <K : Any, V> empty(): Provider<Map<K, () -> V>> = EMPTY as Provider<Map<K, () -> V>>
 
     /**
      * Returns a [Factory] for a single-entry `Map<K, () -> V>`. The lambda is preserved as-is,
      * matching the existing builder-based contract. Skips the [Builder] allocation for the size-1
      * case.
      */
-    public fun <K : Any, V : Any> singleton(key: K, fn: () -> V): Factory<Map<K, () -> V>> =
+    public fun <K : Any, V> singleton(key: K, fn: () -> V): Factory<Map<K, () -> V>> =
       SingletonMapFunctionFactory(key, fn)
   }
 }
 
-private class SingletonMapFunctionFactory<K : Any, V : Any>(key: K, fn: () -> V) :
+private class SingletonMapFunctionFactory<K : Any, V>(key: K, fn: () -> V) :
   Factory<Map<K, () -> V>> {
   private val map: Map<K, () -> V> = SingletonMap(key, fn)
 

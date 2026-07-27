@@ -22,15 +22,18 @@ abstract class ImportsPreprocessor(testServices: TestServices) :
 
     val lines = content.lines().toMutableList()
     when (val packageIndex = lines.indexOfFirst { it.startsWith("package ") }) {
-      // No package declaration found.
-      -1 ->
-        when (val nonBlankIndex = lines.indexOfFirst { it.isNotBlank() }) {
-          // No non-blank lines? Place imports at the very beginning...
-          -1 -> lines.add(0, additionalImportsString)
-
-          // Place imports before first non-blank line.
-          else -> lines.add(nonBlankIndex, additionalImportsString)
-        }
+      -1 -> {
+        val fileAnnotationIndex = lines.indexOfLast { it.trimStart().startsWith("@file:") }
+        val importIndex =
+          if (fileAnnotationIndex >= 0) {
+            // File annotations must precede imports.
+            fileAnnotationIndex + 1
+          } else {
+            val nonBlankIndex = lines.indexOfFirst { it.isNotBlank() }
+            if (nonBlankIndex >= 0) nonBlankIndex else 0
+          }
+        lines.add(importIndex, additionalImportsString)
+      }
 
       // Place imports just after package declaration.
       else -> lines.add(packageIndex + 1, additionalImportsString)

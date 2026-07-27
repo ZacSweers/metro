@@ -6,7 +6,7 @@ import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.stripOuterProviderOrLazy
+import dev.zacsweers.metro.compiler.ir.canonicalize
 import dev.zacsweers.metro.compiler.ir.wrapInProvider
 
 private const val INITIAL_VALUE = 512
@@ -22,7 +22,7 @@ private const val INITIAL_VALUE = 512
  * 1. The binding has a property (scoped, assisted, or factoryRefCount > 1)
  * 2. The binding is accessed via Provider/Lazy (factoryRefCount > 0)
  *
- * Multibindings are tracked by their [IrContextualTypeKey] (stripped of outer Provider/Lazy) to
+ * Multibindings are tracked by their [IrContextualTypeKey] (stripped of outer scalar wrappers) to
  * distinguish variants like `Map<K, V>` vs `Map<K, Provider<V>>`, which require different code
  * generation.
  */
@@ -78,8 +78,9 @@ internal class BindingPropertyCollector(
   )
 
   /**
-   * Nodes tracked by stripped contextual type key. For regular bindings, this is effectively the
-   * type key. For map multibindings, this distinguishes Map<K, V> from Map<K, Provider<V>>.
+   * Nodes tracked by canonical contextual type key. For regular bindings, this is effectively the
+   * type key. For map multibindings, this preserves and distinguishes Map<K, V> from Map<K,
+   * Provider<V>>.
    */
   private val nodes = HashMap<IrContextualTypeKey, Node>(INITIAL_VALUE)
 
@@ -89,6 +90,9 @@ internal class BindingPropertyCollector(
    * this distinction since they don't have provider value variants.
    */
   private val mapMultibindingContextKeys = HashMap<IrTypeKey, MutableSet<IrContextualTypeKey>>()
+
+  /** Child graph property requests indexed by their canonical binding key. */
+  private val reservedContextKeysByType = graph.reservedContextKeys().groupBy { it.typeKey }
 
   /** Cache of alias type keys to their resolved non-alias target type keys. */
   private val resolvedAliasTargets = HashMap<IrTypeKey, IrTypeKey>()
@@ -114,6 +118,9 @@ internal class BindingPropertyCollector(
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
     if (!metroContext.options.enableSwitchingProviders) return false
     if (propertyKind != PropertyKind.FIELD) return false
+    // Suspend bindings can't be dispatched through SwitchingProvider. Its invoke() is not a
+    // suspend function. They get SuspendProvider<T> fields instead.
+    if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) return false
 
     return when (binding) {
       // These use specialized initialization, not SwitchingProvider
@@ -195,8 +202,16 @@ internal class BindingPropertyCollector(
             }
           }
         } else {
-          // Regular bindings use a simple context key
-          processBindingNode(binding, binding.contextualTypeKey, keysWithBackingProperties)
+          // Graph dependency accessors may declare a wrapper type that differs from the binding's
+          // canonical key. Property collection and lookup use the canonical key; markAccess
+          // classifies requests based on whether that declared value can pass through unchanged.
+          val contextKey =
+            if (binding is IrBinding.GraphDependency) {
+              context(metroContext) { binding.contextualTypeKey.canonicalize() }
+            } else {
+              binding.contextualTypeKey
+            }
+          processBindingNode(binding, contextKey, keysWithBackingProperties)
         }
       }
     }
@@ -356,8 +371,16 @@ internal class BindingPropertyCollector(
             switchingId = switchingId,
           )
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
-        keysWithBackingProperties[contextKey] =
-          CollectedProperty(binding, PropertyKind.GETTER, contextKey)
+        if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) {
+          // A GETTER property is a non-suspend function and can't await suspend resolutions.
+          // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
+          // it in its own suspend context.
+          keysWithBackingProperties[contextKey] =
+            CollectedProperty(binding, PropertyKind.FIELD, contextKey)
+        } else {
+          keysWithBackingProperties[contextKey] =
+            CollectedProperty(binding, PropertyKind.GETTER, contextKey)
+        }
       }
     }
 
@@ -387,6 +410,7 @@ internal class BindingPropertyCollector(
           node.factoryRefCount > 0 ||
           contextKey.isMapProvider ||
           contextKey.isMapLazy ||
+          contextKey.isMapSuspendProvider ||
           contextKey.isMapProviderLazy ||
           isMembersInjectedInFactoryPath)
 
@@ -421,8 +445,7 @@ internal class BindingPropertyCollector(
     if (binding.isScoped()) return PropertyKind.FIELD
 
     return when (binding) {
-      // Graph dependencies always need fields, unless it's accessing a parent's property
-      is GraphDependency if (binding.token == null) -> PropertyKind.FIELD
+      is GraphDependency if (binding.token == null) -> graphDependencyPropertyKind(binding)
       // Assisted factories are stateless (they just wrap the target's MetroFactory),
       // so they don't need their own cached field. The target's MetroFactory field
       // is added separately in processBindingNode when Assisted bindings are encountered.
@@ -438,8 +461,17 @@ internal class BindingPropertyCollector(
     }
   }
 
+  /** Returns the property required to expose a local graph dependency to a child graph. */
+  private fun graphDependencyPropertyKind(binding: IrBinding.GraphDependency): PropertyKind? {
+    val reservedKeys = reservedContextKeysByType[binding.typeKey] ?: return null
+    val needsField = reservedKeys.any { reservedKey ->
+      reservedKey.requiresProviderInstance || !binding.canPassThrough(reservedKey)
+    }
+    return if (needsField) PropertyKind.FIELD else PropertyKind.GETTER
+  }
+
   /**
-   * Marks an access to a binding, tracking refcounts by stripped contextual type key. For map
+   * Marks an access to a binding, tracking refcounts by canonical contextual type key. For map
    * multibindings, also records the contextual variant for later processing.
    */
   private fun markAccess(contextualTypeKey: IrContextualTypeKey, isFactory: Boolean) {
@@ -459,27 +491,38 @@ internal class BindingPropertyCollector(
         binding
       }
 
-    // Strip outer Provider/Lazy to get the normalized key for tracking
-    // This preserves inner structure like Map<K, Provider<V>>
-    // Strip outer Provider/Lazy from the REQUESTED key, not target binding's key
-    val strippedKey =
+    // Strip every outer scalar wrapper from the requested key while preserving inner structure
+    // such as Map<K, Provider<V>>.
+    val canonicalKey =
       context(metroContext) {
-        contextualTypeKey.stripOuterProviderOrLazy().withIrTypeKey(targetBinding.typeKey)
+        contextualTypeKey.canonicalize().withIrTypeKey(targetBinding.typeKey)
       }
+    val graphDependency = targetBinding as? IrBinding.GraphDependency
+    val localGraphDependency = if (graphDependency?.token == null) graphDependency else null
+    val canPassThrough = localGraphDependency?.canPassThrough(contextualTypeKey) == true
+    val flattensDeferredGraphAccessor =
+      localGraphDependency?.contextualTypeKey?.isDeferrable == true && !canPassThrough
 
     // For map multibindings, track the contextual variant
     if (targetBinding is IrBinding.Multibinding && !targetBinding.isSet) {
-      mapMultibindingContextKeys.getAndAdd(targetBinding.typeKey, strippedKey)
+      mapMultibindingContextKeys.getAndAdd(targetBinding.typeKey, canonicalKey)
     }
 
     // Create node lazily if needed (the target may not have been processed yet in reverse order)
     nodes
-      .getOrPut(strippedKey) { Node(targetBinding) }
+      .getOrPut(canonicalKey) { Node(targetBinding) }
       .apply {
-        if (isFactory) {
-          factoryRefCount++
-        } else {
-          scalarRefCount++
+        when {
+          // Exact graph accessor values bypass generated properties.
+          canPassThrough -> Unit
+          // Flattening a deferred accessor reads its provider handle and initializes its scalar
+          // value. Counting both lets the normal mixed-access rule select a provider field.
+          flattensDeferredGraphAccessor -> {
+            factoryRefCount++
+            scalarRefCount++
+          }
+          isFactory -> factoryRefCount++
+          else -> scalarRefCount++
         }
       }
   }

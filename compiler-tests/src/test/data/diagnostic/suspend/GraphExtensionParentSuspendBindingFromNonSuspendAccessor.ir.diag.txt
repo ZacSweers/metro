@@ -1,0 +1,9 @@
+/GraphExtensionParentSuspendBindingFromNonSuspendAccessor.kt:18:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] String bindings must be a suspend function or suspend () -> String because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    String is requested at
+        [ParentGraph.Impl.ChildGraphImpl] ChildGraph.value // ❌ needs suspend support
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> String`.

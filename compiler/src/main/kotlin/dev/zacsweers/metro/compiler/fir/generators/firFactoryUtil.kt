@@ -44,6 +44,7 @@ import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 
 internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
   context: MemberGenerationContext,
@@ -104,7 +105,10 @@ internal fun FirDeclarationGenerationExtension.buildFactoryConstructor(
 
           valueParameter(
             valueParameter.name,
-            substitutedType.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider),
+            substitutedType.wrapInProviderIfNecessary(
+              session,
+              valueParameter.canonicalProviderClassId(defaultUsesSuspendProvider = false),
+            ),
             key = Keys.RegularParameter,
           )
         }
@@ -192,7 +196,10 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
           val copiedType = substitutor.substituteOrNull(type) ?: type
           this.returnTypeRef =
             copiedType
-              .wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+              .wrapInProviderIfNecessary(
+                session,
+                original.canonicalProviderClassId(defaultUsesSuspendProvider = false),
+              )
               .toFirResolvedTypeRef()
         }
       }
@@ -207,6 +214,16 @@ internal fun FirDeclarationGenerationExtension.buildFactoryCreateFunction(
       }
       .symbol as FirNamedFunctionSymbol
   }
+
+internal fun MetroFirValueParameter.canonicalProviderClassId(
+  defaultUsesSuspendProvider: Boolean
+): ClassId {
+  return if (contextKey.wrappedType.usesSuspendProvider(defaultUsesSuspendProvider)) {
+    Symbols.ClassIds.metroSuspendProvider
+  } else {
+    Symbols.ClassIds.metroProvider
+  }
+}
 
 internal fun FirClassSymbol<*>.findSamFunction(session: FirSession): FirFunctionSymbol<*>? {
   return collectAbstractFunctions(session, exitOnAbstractProperties = true)?.singleOrNull()

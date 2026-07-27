@@ -286,6 +286,7 @@ class MetroIdeSmokeTest {
           addSystemProperty("ide.show.tips.on.startup.default.value", false)
 
           if (asConsentDirs != null) {
+            addSystemProperty("google.login.enable.startup.sign.in.dialog", false)
             addSystemProperty(
               "idea.common.data.path",
               asConsentDirs.commonDataDir.toAbsolutePath().toString(),

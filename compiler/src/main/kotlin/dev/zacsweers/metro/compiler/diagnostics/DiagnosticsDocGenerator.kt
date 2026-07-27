@@ -55,7 +55,11 @@ internal object DiagnosticsDocGenerator {
       appendLine()
       appendLine("**Summary:** ${id.brief}")
       appendLine()
-      appendLine(id.explanation.trimIndent().trim())
+      val explanation =
+        id.explanation.trimIndent().trim().split("\n\n").joinToString("\n\n") { paragraph ->
+          paragraph.lines().joinToString(" ") { it.trim() }
+        }
+      appendLine(explanation)
     }
   }
 

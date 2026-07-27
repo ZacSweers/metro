@@ -92,16 +92,16 @@ class ScopedClass {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ScopedClass {
-      return MetroFactory/* companion */.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
+    fun declarationMirror(injectable: MembersInjector<Injectable>, injectable2: MembersInjector<Injectable>): ScopedClass {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ScopedClass {
+      return MetroFactory/* companion */.newInstance(injectable = <this>.#injectable.invoke(), injectable2 = <this>.#injectable.invoke())
     }
 
   }
@@ -219,16 +219,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
     }
 
   }

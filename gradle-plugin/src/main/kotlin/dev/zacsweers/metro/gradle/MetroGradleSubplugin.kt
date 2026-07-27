@@ -249,13 +249,23 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       val implConfig = kotlinCompilation.defaultSourceSet.implementationConfigurationName
       val circuitEnabled = extension.enableCircuitCodegen.getOrElse(false)
       val runtimeTracingEnabled = extension.enableRuntimeTracing.getOrElse(false)
+      val suspendProvidersEnabled = extension.enableSuspendProviders.getOrElse(false)
       project.dependencies.add(implConfig, "$METRO_GROUP:runtime:$VERSION")
+      if (suspendProvidersEnabled) {
+        project.dependencies.add(implConfig, "$METRO_GROUP:runtime-coroutines:$VERSION")
+      }
       if (circuitEnabled) {
         project.dependencies.add(implConfig, CIRCUIT_ANNOTATIONS_DEP)
       }
 
       if (implConfig == "metadataCompilationImplementation") {
         project.dependencies.add("commonMainImplementation", "$METRO_GROUP:runtime:$VERSION")
+        if (suspendProvidersEnabled) {
+          project.dependencies.add(
+            "commonMainImplementation",
+            "$METRO_GROUP:runtime-coroutines:$VERSION",
+          )
+        }
         if (circuitEnabled) {
           project.dependencies.add("commonMainImplementation", CIRCUIT_ANNOTATIONS_DEP)
         }

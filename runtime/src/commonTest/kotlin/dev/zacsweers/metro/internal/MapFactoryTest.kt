@@ -6,6 +6,8 @@ import dev.zacsweers.metro.providerOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MapFactoryTest {
 
@@ -32,6 +34,21 @@ class MapFactoryTest {
     assertEquals(2, result.size)
     assertEquals(100, result["key1"])
     assertEquals(200, result["key2"])
+  }
+
+  @Test
+  fun `builder and singleton support nullable values`() {
+    val built =
+      MapFactory.builder<String, String?>(1)
+        .put("built", providerOf<String?>(null))
+        .build()
+        .invoke()
+    assertTrue(built.containsKey("built"))
+    assertNull(built["built"])
+
+    val singleton = MapFactory.singleton("singleton", providerOf<String?>(null)).invoke()
+    assertTrue(singleton.containsKey("singleton"))
+    assertNull(singleton["singleton"])
   }
 
   @Test
@@ -71,6 +88,14 @@ class MapFactoryTest {
     assertEquals(2, result.size)
     assertEquals(100, result["key1"])
     assertEquals(200, result["key2"])
+  }
+
+  @Test
+  fun `putAll supports nullable values`() {
+    val provider = providerOf<Map<String, String?>>(mapOf("null" to null))
+    val result = MapFactory.builder<String, String?>(1).putAll(provider).build()()
+    assertTrue(result.containsKey("null"))
+    assertNull(result["null"])
   }
 
   @Test

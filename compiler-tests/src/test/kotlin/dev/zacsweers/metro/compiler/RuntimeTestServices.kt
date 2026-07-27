@@ -16,9 +16,25 @@ private val metroRuntimeClasspath =
   System.getProperty("metroRuntime.classpath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
 
+private val metroRuntimeCoroutinesClasspath =
+  System.getProperty("metroRuntimeCoroutines.classpath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'metroRuntimeCoroutines.classpath' property")
+
 private val metroRuntimeKlibClasspath =
   System.getProperty("metroRuntime.klibClasspath")?.split(File.pathSeparator)?.map(::File)
     ?: error("Unable to get a valid classpath from 'metroRuntime.klibClasspath' property")
+
+private val metroRuntimeCoroutinesKlibClasspath =
+  System.getProperty("metroRuntimeCoroutines.klibClasspath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'metroRuntimeCoroutines.klibClasspath' property")
+
+private val coroutinesClasspath =
+  System.getProperty("coroutines.classpath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'coroutines.classpath' property")
+
+private val coroutinesKlibClasspath =
+  System.getProperty("coroutines.klibClasspath")?.split(File.pathSeparator)?.map(::File)
+    ?: error("Unable to get a valid classpath from 'coroutines.klibClasspath' property")
 
 private val runtimeTracingClasspath =
   System.getProperty("runtimeTracing.classpath")?.split(File.pathSeparator)?.map(::File)
@@ -40,6 +56,18 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
     for (file in metroRuntimeClasspath) {
       configuration.addJvmClasspathRoot(file)
     }
+    val withMetroRuntimeCoroutines =
+      MetroDirectives.includeMetroRuntimeCoroutines(module.directives)
+    if (withMetroRuntimeCoroutines) {
+      for (file in metroRuntimeCoroutinesClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
+    }
+    if (withMetroRuntimeCoroutines) {
+      for (file in coroutinesClasspath) {
+        configuration.addJvmClasspathRoot(file)
+      }
+    }
     if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
       for (file in runtimeTracingClasspath) {
         configuration.addJvmClasspathRoot(file)
@@ -51,9 +79,23 @@ class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
 class MetroRuntimeClassPathProvider(testServices: TestServices) :
   RuntimeClasspathProvider(testServices) {
   override fun runtimeClassPaths(module: TestModule): List<File> {
-    if (testServices.isJsBackend()) return metroRuntimeKlibClasspath
+    val withMetroRuntimeCoroutines =
+      MetroDirectives.includeMetroRuntimeCoroutines(module.directives)
+    if (testServices.isJsBackend()) {
+      return if (withMetroRuntimeCoroutines) {
+        metroRuntimeKlibClasspath + metroRuntimeCoroutinesKlibClasspath + coroutinesKlibClasspath
+      } else {
+        metroRuntimeKlibClasspath
+      }
+    }
     return buildList {
       addAll(metroRuntimeClasspath)
+      if (withMetroRuntimeCoroutines) {
+        addAll(metroRuntimeCoroutinesClasspath)
+      }
+      if (withMetroRuntimeCoroutines) {
+        addAll(coroutinesClasspath)
+      }
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
         addAll(runtimeTracingClasspath)
       }

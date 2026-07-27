@@ -35,7 +35,7 @@ jobs:
     if: github.repository == 'zacsweers/metro' && github.event_name != 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
@@ -52,7 +52,7 @@ jobs:
           GRADLE_OPTS: -Xmx4g # Dokka can be memory intensive, so we increase the heap size
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
@@ -151,7 +151,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0 # Full history needed for git-revision-date-localized plugin
 
@@ -162,7 +162,7 @@ jobs:
           cache-read-only: true
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 

@@ -247,14 +247,11 @@ By default, all bindings in a graph are implicitly available to its graph extens
 - Private `@Provides` and `@Binds` bindings **may not** be exposed directly via an accessor.
 - The binding **will not** be visible to extensions of this graph.
 
-Private bindings _may_ be depended on by other bindings within the same graph as an implementation detail.
-`@GraphPrivate @Multibinds` declarations may also be requested from the graph that declares them;
-the privacy boundary only prevents them from being inherited by extensions.
+Private bindings _may_ be depended on by other bindings within the same graph as an implementation detail. `@GraphPrivate @Multibinds` declarations may also be requested from the graph that declares them; the privacy boundary only prevents them from being inherited by extensions.
 
 #### Private Implementation Bindings
 
-Use `@GraphPrivate` when a binding should be available as an implementation detail of its graph,
-but should not become part of that graph's public accessor surface or extension surface.
+Use `@GraphPrivate` when a binding should be available as an implementation detail of its graph, but should not become part of that graph's public accessor surface or extension surface.
 
 ```kotlin
 @Inject
@@ -283,9 +280,7 @@ interface LoggedInGraph {
 
 #### Same-typed Scoped Bindings
 
-`@GraphPrivate` is also useful when parent and child graphs both provide the same scoped type. The
-private binding remains available inside the graph that provides it, so consumers can request the
-plain type without qualifiers that only exist to distinguish graph ownership.
+`@GraphPrivate` is also useful when parent and child graphs both provide the same scoped type. The private binding remains available inside the graph that provides it, so consumers can request the plain type without qualifiers that only exist to distinguish graph ownership.
 
 Compare a qualifier-based version with the same graph-local binding expressed with `@GraphPrivate`:
 
@@ -355,10 +350,7 @@ Compare a qualifier-based version with the same graph-local binding expressed wi
 
 #### Graph-private Multibindings
 
-Graph-local multibindings use the same pattern, but the private binding is the collection declaration
-plus its local contributions. This is useful for graph-local registries such as menu actions,
-navigation entries, or feature handlers. You can leave individual contributions public when they
-should continue to be visible to extensions.
+Graph-local multibindings use the same pattern, but the private binding is the collection declaration plus its local contributions. This is useful for graph-local registries such as menu actions, navigation entries, or feature handlers. You can leave individual contributions public when they should continue to be visible to extensions.
 
 ```kotlin
 data class MenuAction(val label: String)
@@ -707,10 +699,8 @@ The compiler will dynamically generate a hidden graph impl _within the enclosing
 - All containers must be instances (or objects) of _binding containers_.
 - It's an error to pass no containers.
 - All containers must be non-local, canonical classes. i.e., they must be something with a name!
-- This overload may be called in a member function body, top-level function body, or property
-  initializer.
-- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a
-  valid graph on its own.
+- This overload may be called in a member function body, top-level function body, or property initializer.
+- The target [T] graph _must_ be annotated with `@DependencyGraph` and must be a valid graph on its own.
 
 ??? note "Implementation Notes"
 

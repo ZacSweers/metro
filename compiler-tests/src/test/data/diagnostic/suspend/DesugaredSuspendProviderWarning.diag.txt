@@ -1,0 +1,1 @@
+/DesugaredSuspendProviderWarning.kt:12:18: warning: Using the desugared `SuspendProvider<T>` type is discouraged. Prefer the function syntax form `suspend () -> T` instead.

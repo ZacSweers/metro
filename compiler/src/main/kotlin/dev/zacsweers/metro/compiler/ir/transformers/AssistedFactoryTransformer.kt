@@ -275,6 +275,7 @@ internal class AssistedFactoryTransformer(
           isCompanion = true
         }
         .apply {
+          superTypes = listOf(irBuiltIns.anyType)
           createThisReceiverParameter()
           implClass.addChild(this)
         }

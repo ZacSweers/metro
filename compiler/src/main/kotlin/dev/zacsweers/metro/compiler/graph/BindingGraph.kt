@@ -80,6 +80,15 @@ internal open class MutableBindingGraph<
   private val missingBindingHints: (key: TypeKey) -> MissingBindingHints = {
     MissingBindingHints()
   },
+  /**
+   * Returns a key in a hard cycle that requires suspend initialization, or null when the cycle is
+   * synchronous. Called only after a hard cycle has been found.
+   */
+  private val findSuspendCycleKey:
+    (cycleKeys: List<TypeKey>, currentBindings: ScatterMap<TypeKey, Binding>) -> TypeKey? =
+    { _, _ ->
+      null
+    },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings = MutableScatterMap<TypeKey, Binding>(256)
@@ -330,7 +339,8 @@ internal open class MutableBindingGraph<
               }
             }
 
-            reportCycle(entriesInCycle, stack)
+            val suspendCycleKey = findSuspendCycleKey(cyclePath, bindings)
+            reportCycle(entriesInCycle, stack, suspendCycleKey)
           },
           isImplicitlyDeferrable = { key -> bindings.getValue(key).isImplicitlyDeferrable },
         )
@@ -373,7 +383,11 @@ internal open class MutableBindingGraph<
     return null
   }
 
-  private fun reportCycle(fullCycle: List<BindingStackEntry>, stack: BindingStack): Nothing {
+  private fun reportCycle(
+    fullCycle: List<BindingStackEntry>,
+    stack: BindingStack,
+    suspendCycleKey: TypeKey?,
+  ): Nothing {
     // The cycle list closes back on its first key; the loop drawing makes that explicit, so drop
     // the repeated final node.
     val isSelfCycle = fullCycle.size == 2
@@ -406,7 +420,10 @@ internal open class MutableBindingGraph<
           },
       )
 
-    val deferredExample = nodes.first().name
+    val suspendDeferredExample = suspendCycleKey?.let { key ->
+      nodeEntries.first { it.typeKey == key }.contextKey.toText()
+    }
+    val deferredExample = suspendDeferredExample ?: nodes.first().name
     val diagnostic =
       MetroDiagnostic(
         id = MetroDiagnosticId.DEPENDENCY_CYCLE,
@@ -423,10 +440,19 @@ internal open class MutableBindingGraph<
             add(
               Note.help(
                 buildText {
-                  append("you can break the cycle by injecting a deferred type at one edge, e.g. ")
-                  appendCode("() -> $deferredExample")
-                  append(" or ")
-                  appendCode("Lazy<$deferredExample>")
+                  if (suspendDeferredExample != null) {
+                    append("this cycle requires suspend initialization. Defer one edge with ")
+                    appendCode("suspend () -> $deferredExample")
+                    append(" or ")
+                    appendCode("SuspendLazy<$deferredExample>")
+                  } else {
+                    append(
+                      "you can break the cycle by injecting a deferred type at one edge, e.g. "
+                    )
+                    appendCode("() -> $deferredExample")
+                    append(" or ")
+                    appendCode("Lazy<$deferredExample>")
+                  }
                   append(". Only do this if you know what you're doing though!")
                 }
               )

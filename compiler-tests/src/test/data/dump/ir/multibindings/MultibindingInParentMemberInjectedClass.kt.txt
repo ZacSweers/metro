@@ -91,15 +91,15 @@ class AFragmentInjector : Injector {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): AFragmentInjector {
       return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(memberInjector: MembersInjector<AFragment>): AFragmentInjector {
-      return error(message = "Never called")
     }
 
   }
@@ -173,15 +173,15 @@ class AViewModel : ViewModel {
       return AViewModel()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): AViewModel {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): AViewModel {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): AViewModel {
-      return error(message = "Never called")
     }
 
   }
@@ -329,15 +329,15 @@ class BFragmentInjector : Injector {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): BFragmentInjector {
       return MetroFactory/* companion */.newInstance(memberInjector = <this>.#memberInjector.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(memberInjector: MembersInjector<BFragment>): BFragmentInjector {
-      return error(message = "Never called")
     }
 
   }
@@ -411,15 +411,15 @@ class BViewModel : ViewModel {
       return BViewModel()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): BViewModel {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): BViewModel {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): BViewModel {
-      return error(message = "Never called")
     }
 
   }
@@ -566,15 +566,15 @@ class FragmentInjector {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(injectors: Map<KClass<*>, Injector>): FragmentInjector {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): FragmentInjector {
       return MetroFactory/* companion */.newInstance(injectors = <this>.#injectors.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(injectors: Map<KClass<*>, Injector>): FragmentInjector {
-      return error(message = "Never called")
     }
 
   }
@@ -644,15 +644,15 @@ class ViewModelFactory {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ViewModelFactory {
       return MetroFactory/* companion */.newInstance(viewModels = <this>.#viewModels.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(viewModels: Map<KClass<*>, Function0<ViewModel>>): ViewModelFactory {
-      return error(message = "Never called")
     }
 
   }

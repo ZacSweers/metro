@@ -1,0 +1,5 @@
+org.jetbrains.kotlin:kotlin-stdlib:2.4.0
+org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.11.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0
+org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0
+org.jetbrains:annotations:23.0.0

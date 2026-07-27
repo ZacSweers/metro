@@ -25,16 +25,16 @@ class RepositoryImpl : Repository {
       return RepositoryImpl()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): RepositoryImpl {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): RepositoryImpl {
+    fun declarationMirror(): RepositoryImpl {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): RepositoryImpl {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -87,16 +87,16 @@ class Service {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Service {
-      return MetroFactory/* companion */.newInstance(repo = <this>.#repo.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(repo: Repository): Service {
+    fun declarationMirror(repo: Repository): Service {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service {
+      return MetroFactory/* companion */.newInstance(repo = <this>.#repo.invoke())
     }
 
   }

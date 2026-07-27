@@ -23,7 +23,7 @@ import kotlin.jvm.JvmStatic
  * A [Factory] implementation used to implement [Map] bindings. This factory returns a `Map<K,
  * Provider<Lazy<V>>>` when calling [.get] (as specified by [Factory]).
  */
-public class MapProviderLazyFactory<K : Any, V : Any>
+public class MapProviderLazyFactory<K : Any, V>
 private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provider<Lazy<V>>>(map) {
   /**
    * Returns a `Map<K, Provider<Lazy<V>>>` whose iteration order is that of the elements given by
@@ -38,7 +38,7 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
   }
 
   /** A builder for [MapProviderLazyFactory]. */
-  public class Builder<K : Any, V : Any> internal constructor(size: Int) :
+  public class Builder<K : Any, V> internal constructor(size: Int) :
     AbstractMapFactory.Builder<K, V, Provider<Lazy<V>>>(size) {
     public override fun put(key: K, providerOfValue: Provider<V>): Builder<K, V> = apply {
       super.put(key, providerOfValue)
@@ -61,14 +61,14 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
     /** Returns a new [Builder] */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> builder(size: Int): Builder<K, V> {
+    public fun <K : Any, V> builder(size: Int): Builder<K, V> {
       return Builder(size)
     }
 
     /** Returns a provider of an empty map. */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> empty(): Provider<Map<K, Provider<Lazy<V>>>> {
+    public fun <K : Any, V> empty(): Provider<Map<K, Provider<Lazy<V>>>> {
     // safe contravariant cast
       @Suppress("UNCHECKED_CAST")
       return EMPTY as Provider<Map<K, Provider<Lazy<V>>>>
@@ -80,14 +80,14 @@ private constructor(map: Map<K, Provider<V>>) : AbstractMapFactory<K, V, Provide
      */
     @JvmStatic
     @JsStatic
-    public fun <K : Any, V : Any> singleton(
+    public fun <K : Any, V> singleton(
       key: K,
       provider: Provider<V>,
     ): Factory<Map<K, Provider<Lazy<V>>>> = SingletonMapProviderLazyFactory(key, provider)
   }
 }
 
-private class SingletonMapProviderLazyFactory<K : Any, V : Any>(
+private class SingletonMapProviderLazyFactory<K : Any, V>(
   private val key: K,
   private val provider: Provider<V>,
 ) : Factory<Map<K, Provider<Lazy<V>>>> {

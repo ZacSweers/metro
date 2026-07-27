@@ -22,6 +22,11 @@ internal fun IrType.wrapInProvider(providerType: IrClassSymbol): IrType {
   return providerType.typeWith(this)
 }
 
+context(context: IrMetroContext)
+internal fun IrType.wrapInSuspendProvider(): IrType {
+  return wrapIn(context.metroSymbols.metroSuspendProvider)
+}
+
 internal fun IrType.wrapInLazy(symbols: Symbols): IrType {
   return wrapIn(symbols.stdlibLazy)
 }

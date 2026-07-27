@@ -89,6 +89,8 @@ class MetroExtensionRegistrarConfigurator(
     val options = MetroOptions.buildOptions {
       // Set non-annotation properties (only when directive is present or value is non-default)
       enabled = MetroDirectives.DISABLE_METRO !in module.directives
+      enablePrivateProviderProperties =
+        MetroDirectives.ENABLE_PRIVATE_PROVIDER_PROPERTIES in module.directives
       generateAssistedFactories = MetroDirectives.GENERATE_ASSISTED_FACTORIES in module.directives
       enableTopLevelFunctionInjection =
         MetroDirectives.ENABLE_TOP_LEVEL_FUNCTION_INJECTION in module.directives
@@ -247,6 +249,10 @@ class MetroExtensionRegistrarConfigurator(
 
       if (MetroDirectives.ENABLE_RUNTIME_TRACING in module.directives) {
         enableRuntimeTracing = true
+      }
+
+      if (MetroDirectives.ENABLE_SUSPEND_PROVIDERS in module.directives) {
+        enableSuspendProviders = true
       }
     }
 

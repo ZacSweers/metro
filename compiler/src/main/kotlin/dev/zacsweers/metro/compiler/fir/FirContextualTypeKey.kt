@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.types.constructType
 import org.jetbrains.kotlin.fir.types.hasFlexibleMarkedNullability
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.types.withNullability
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** A class that represents a type with contextual information. */
@@ -38,6 +39,12 @@ internal class FirContextualTypeKey(
   // For backward compatibility
   val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
+
+  val isWrappedInSuspendProvider: Boolean
+    get() = wrappedType is WrappedType.SuspendProvider
+
+  val isWrappedInSuspendLazy: Boolean
+    get() = wrappedType is WrappedType.SuspendLazy
 
   val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
@@ -57,7 +64,19 @@ internal class FirContextualTypeKey(
             .originalType(session)
         innerType.wrapInProviderIfNecessary(session, wt.providerType)
       }
+      is WrappedType.SuspendProvider -> {
+        val innerType =
+          FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
+            .originalType(session)
+        innerType.wrapInProviderIfNecessary(session, wt.providerType)
+      }
       is WrappedType.Lazy -> {
+        val innerType =
+          FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
+            .originalType(session)
+        innerType.wrapInLazyIfNecessary(session, wt.lazyType)
+      }
+      is WrappedType.SuspendLazy -> {
         val innerType =
           FirContextualTypeKey(typeKey, wt.innerType, hasDefault, isDeferrable)
             .originalType(session)
@@ -117,6 +136,7 @@ internal class FirContextualTypeKey(
       callable: FirCallableSymbol<*>,
       type: ConeKotlinType = callable.resolvedTypeSafe(session),
       wrapInProvider: Boolean = false,
+      providerClassId: ClassId = Symbols.ClassIds.metroProvider,
       stripLazyIfWrappedInProvider: Boolean = false,
       /**
        * Optional source for qualifier resolution, e.g. a property symbol for setter-based
@@ -136,7 +156,7 @@ internal class FirContextualTypeKey(
             } else {
               it
             }
-          toWrap.wrapInProviderIfNecessary(session, Symbols.ClassIds.metroProvider)
+          toWrap.wrapInProviderIfNecessary(session, providerClassId)
         }
         .asFirContextualTypeKey(
           session = session,
@@ -206,20 +226,30 @@ private fun ConeKotlinType.asWrappedType(session: FirSession): WrappedType<ConeK
   if (rawClassId in session.classIds.providerTypes) {
     val innerType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
 
-    // Check if the inner type is a Lazy type
-    val innerRawClassId = innerType.classId
-    if (innerRawClassId in session.classIds.lazyTypes) {
-      val lazyInnerType = innerType.typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
-      return WrappedType.Provider(
-        WrappedType.Lazy(WrappedType.Canonical(lazyInnerType), innerRawClassId!!),
-        rawClassId!!,
-      )
-    }
-
     // Recursively analyze the inner type
     val innerWrappedType = innerType.asWrappedType(session)
 
     return WrappedType.Provider(innerWrappedType, rawClassId!!)
+  }
+
+  // Check if this is a SuspendProvider type
+  if (rawClassId in session.classIds.suspendProviderModelingTypes) {
+    val innerType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
+
+    // Recursively analyze the inner type
+    val innerWrappedType = innerType.asWrappedType(session)
+
+    return WrappedType.SuspendProvider(innerWrappedType, rawClassId!!)
+  }
+
+  // Check if this is a SuspendLazy type
+  if (rawClassId in session.classIds.suspendLazyTypes) {
+    val innerType = typeArguments[0].expectAs<ConeKotlinTypeProjection>().type
+
+    // Recursively analyze the inner type
+    val innerWrappedType = innerType.asWrappedType(session)
+
+    return WrappedType.SuspendLazy(innerWrappedType, rawClassId!!)
   }
 
   // Check if this is a Lazy type

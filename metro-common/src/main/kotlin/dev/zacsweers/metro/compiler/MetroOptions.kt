@@ -230,6 +230,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_PRIVATE_PROVIDER_PROPERTIES(
+    RawMetroOption.boolean(
+      name = "enable-private-provider-properties",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Allow private `@Provides` properties.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
@@ -934,6 +944,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_SUSPEND_PROVIDERS(
+    RawMetroOption.boolean(
+      name = "enable-suspend-providers",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Enable experimental suspend bindings, graph accessors, and provider types.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   DESUGARED_PROVIDER_SEVERITY(
     RawMetroOption(
       name = "desugared-provider-severity",
@@ -1070,6 +1090,8 @@ public class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   public val generateClassesInIr: Boolean =
     MetroOption.GENERATE_CLASSES_IN_IR.raw.defaultValue.expectAs(),
+  public val enablePrivateProviderProperties: Boolean =
+    MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
@@ -1206,6 +1228,8 @@ public class MetroOptions(
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
     MetroOption.ENABLE_FUNCTION_PROVIDERS.raw.defaultValue.expectAs(),
+  public val enableSuspendProviders: Boolean =
+    MetroOption.ENABLE_SUSPEND_PROVIDERS.raw.defaultValue.expectAs(),
   public val desugaredProviderSeverity: DiagnosticSeverity =
     MetroOption.DESUGARED_PROVIDER_SEVERITY.raw.defaultValue.expectAs<String>().let {
       DiagnosticSeverity.valueOf(it)
@@ -1437,6 +1461,7 @@ public class MetroOptions(
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
     public var generateClassesInIr: Boolean = base.generateClassesInIr
+    public var enablePrivateProviderProperties: Boolean = base.enablePrivateProviderProperties
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
@@ -1518,6 +1543,7 @@ public class MetroOptions(
     public var enableOptimizedIc: Boolean = base.enableOptimizedIc
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
+    public var enableSuspendProviders: Boolean = base.enableSuspendProviders
     public var desugaredProviderSeverity: DiagnosticSeverity = base.desugaredProviderSeverity
     public var enableKClassToClassInterop: Boolean = base.enableKClassToClassInterop
     public var generateContributionProviders: Boolean = base.generateContributionProviders
@@ -1570,6 +1596,10 @@ public class MetroOptions(
 
     public fun enableOptimizedIc(enableOptimizedIc: Boolean): Builder = apply {
       this.enableOptimizedIc = enableOptimizedIc
+    }
+
+    public fun enableSuspendProviders(enableSuspendProviders: Boolean): Builder = apply {
+      this.enableSuspendProviders = enableSuspendProviders
     }
 
     public fun unusedGraphInputsSeverity(unusedGraphInputsSeverity: DiagnosticSeverity): Builder =
@@ -1773,6 +1803,8 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
           generateContributionHintsInFir = value.expectAs()
         MetroOption.GENERATE_CLASSES_IN_IR -> generateClassesInIr = value.expectAs()
+        MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES ->
+          enablePrivateProviderProperties = value.expectAs()
         MetroOption.SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = value.expectAs()
         MetroOption.STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = value.expectAs()
         MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
@@ -1872,6 +1904,7 @@ public class MetroOptions(
         MetroOption.ENABLE_OPTIMIZED_IC -> enableOptimizedIc = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
+        MetroOption.ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = value.expectAs()
         MetroOption.DESUGARED_PROVIDER_SEVERITY ->
           desugaredProviderSeverity = value.diagnosticSeverity()
         MetroOption.ENABLE_KCLASS_TO_CLASS_INTEROP -> enableKClassToClassInterop = value.expectAs()
@@ -1904,6 +1937,7 @@ public class MetroOptions(
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
         generateClassesInIr = generateClassesInIr,
+        enablePrivateProviderProperties = enablePrivateProviderProperties,
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
@@ -1960,6 +1994,7 @@ public class MetroOptions(
         enableOptimizedIc = enableOptimizedIc,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
+        enableSuspendProviders = enableSuspendProviders,
         desugaredProviderSeverity =
           if (enableFunctionProviders) {
             desugaredProviderSeverity

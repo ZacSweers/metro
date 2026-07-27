@@ -41,7 +41,6 @@ object StatsModule {
   @Provides fun provideG(f: F): G = G(f)
 }
 
-@Suppress("OPT_IN_USAGE")
 @MergeContributionsInIr
 @DependencyGraph(AppScope::class)
 interface AppGraph {

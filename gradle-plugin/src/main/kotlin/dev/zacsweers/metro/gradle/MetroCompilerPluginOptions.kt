@@ -68,6 +68,12 @@ internal fun Project.metroCompilerPluginOptions(
       )
     )
     add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))
+    add(
+      metroOption(
+        MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES,
+        extension.enablePrivateProviderProperties,
+      )
+    )
     add(metroOption(MetroOption.STATEMENTS_PER_INIT_FUN, extension.statementsPerInitFun))
     add(metroOption(MetroOption.ENABLE_GRAPH_SHARDING, extension.enableGraphSharding))
     add(metroOption(MetroOption.KEYS_PER_GRAPH_SHARD, extension.keysPerGraphShard))
@@ -139,6 +145,7 @@ internal fun Project.metroCompilerPluginOptions(
       )
     )
     add(metroOption(MetroOption.ENABLE_FUNCTION_PROVIDERS, extension.enableFunctionProviders))
+    add(metroOption(MetroOption.ENABLE_SUSPEND_PROVIDERS, extension.enableSuspendProviders))
     add(metroOption(MetroOption.DESUGARED_PROVIDER_SEVERITY, extension.desugaredProviderSeverity))
     add(
       metroOption(
