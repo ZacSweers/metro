@@ -33,14 +33,14 @@ fun box(): String {
   val graph = createGraph<ExampleGraph>()
   return runBlocking {
     val lazyDb = graph.database
-    assertEquals("db", lazyDb.value())
+    assertEquals("db", lazyDb.await())
     // Scoped: the suspend accessor shares the same cached instance, no recomputation
     assertEquals("db", graph.databaseValue())
 
     val mixed = graph.mixed()
     assertEquals("db", mixed.db)
-    assertEquals("db", mixed.lazyDb.value())
-    assertEquals("db", graph.otherMixed().lazyDb.value())
+    assertEquals("db", mixed.lazyDb.await())
+    assertEquals("db", graph.otherMixed().lazyDb.await())
 
     assertEquals(1, dbComputations)
     "OK"

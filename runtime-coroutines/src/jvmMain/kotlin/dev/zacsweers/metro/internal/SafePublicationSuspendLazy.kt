@@ -26,10 +26,10 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
   // it is shared through a data race. Matches Kotlin stdlib's SafePublicationLazyImpl.
   private val final: Any = UNINITIALIZED
 
-  override suspend fun invoke(): T = value()
+  override suspend fun invoke(): T = await()
 
   @Suppress("UNCHECKED_CAST")
-  override suspend fun value(): T {
+  override suspend fun await(): T {
     val result = _value
     if (result !== UNINITIALIZED) {
       return result as T

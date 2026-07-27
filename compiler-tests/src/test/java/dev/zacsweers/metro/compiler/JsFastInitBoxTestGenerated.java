@@ -2415,6 +2415,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("InlinedObjectProvidersRemainLazy.kt")
+    public void testInlinedObjectProvidersRemainLazy() {
+      run("InlinedObjectProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
     public void testInlinedProviderValueNotOnConsumerClasspath() {
       run("InlinedProviderValueNotOnConsumerClasspath.kt");
@@ -2436,6 +2442,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
+    public void testPrivateProvidesPropertiesInOtherModule() {
+      run("PrivateProvidesPropertiesInOtherModule.kt");
     }
 
     @Test
@@ -2668,6 +2680,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     @TestMetadata("IncludedGraphSuspendLazyAccessor.kt")
     public void testIncludedGraphSuspendLazyAccessor() {
       run("IncludedGraphSuspendLazyAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersRemainLazy.kt")
+    public void testInlinedObjectSuspendProvidersRemainLazy() {
+      run("InlinedObjectSuspendProvidersRemainLazy.kt");
     }
 
     @Test

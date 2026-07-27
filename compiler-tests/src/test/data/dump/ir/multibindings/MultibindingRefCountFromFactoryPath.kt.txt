@@ -61,15 +61,15 @@ class Entry {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Entry {
       return MetroFactory/* companion */.newInstance(a1 = <this>.#a1.invoke(), a2 = <this>.#a2.invoke(), b1 = <this>.#b1.invoke(), b2 = <this>.#b2.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(a1: WrapperA1, a2: WrapperA2, b1: WrapperB1, b2: WrapperB2): Entry {
-      return error(message = "Never called")
     }
 
   }
@@ -121,15 +121,15 @@ class SetConsumerA {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(set: Set<Int>): SetConsumerA {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): SetConsumerA {
       return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(set: Set<Int>): SetConsumerA {
-      return error(message = "Never called")
     }
 
   }
@@ -181,15 +181,15 @@ class SetConsumerB {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(set: Set<Int>): SetConsumerB {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): SetConsumerB {
       return MetroFactory/* companion */.newInstance(set = <this>.#set.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(set: Set<Int>): SetConsumerB {
-      return error(message = "Never called")
     }
 
   }
@@ -241,15 +241,15 @@ class WrapperA1 {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(consumer: Function0<SetConsumerA>): WrapperA1 {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): WrapperA1 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA1 {
-      return error(message = "Never called")
     }
 
   }
@@ -301,15 +301,15 @@ class WrapperA2 {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(consumer: Function0<SetConsumerA>): WrapperA2 {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): WrapperA2 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerA>): WrapperA2 {
-      return error(message = "Never called")
     }
 
   }
@@ -361,15 +361,15 @@ class WrapperB1 {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(consumer: Function0<SetConsumerB>): WrapperB1 {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): WrapperB1 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB1 {
-      return error(message = "Never called")
     }
 
   }
@@ -421,15 +421,15 @@ class WrapperB2 {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(consumer: Function0<SetConsumerB>): WrapperB2 {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): WrapperB2 {
       return MetroFactory/* companion */.newInstance(consumer = <this>.#consumer)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(consumer: Function0<SetConsumerB>): WrapperB2 {
-      return error(message = "Never called")
     }
 
   }
@@ -532,15 +532,15 @@ interface TestGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Base {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Base {
       return ProvideBaseMetroFactory/* companion */.provideBase(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Base {
-      return error(message = "Never called")
     }
 
   }
@@ -580,16 +580,16 @@ interface TestGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideInt1MetroFactory/* companion */.provideInt1(instance = <this>.#instance, base = <this>.#base.invoke())
-    }
-
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(base: Base): Int {
+    fun declarationMirror(base: Base): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideInt1MetroFactory/* companion */.provideInt1(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
   }
@@ -629,16 +629,16 @@ interface TestGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideInt2MetroFactory/* companion */.provideInt2(instance = <this>.#instance, base = <this>.#base.invoke())
-    }
-
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(base: Base): Int {
+    fun declarationMirror(base: Base): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideInt2MetroFactory/* companion */.provideInt2(instance = <this>.#instance, base = <this>.#base.invoke())
     }
 
   }

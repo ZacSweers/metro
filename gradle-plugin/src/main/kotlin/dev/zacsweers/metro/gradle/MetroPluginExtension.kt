@@ -137,6 +137,18 @@ constructor(
       .convention(compilerVersion.map { KotlinVersions.supportsIrClassGeneration(it) })
 
   /**
+   * Allows `@Provides` properties to be private when supported by the Kotlin compiler.
+   *
+   * Enabled by default on Kotlin 2.4.20-Beta1 and newer. Will eventually be removed after the
+   * minimum for metro meets this.
+   */
+  @ExperimentalMetroGradleApi
+  public val enablePrivateProviderProperties: Property<Boolean> =
+    objects
+      .booleanProperty()
+      .convention(compilerVersion.map { KotlinVersions.supportsPrivateProviderProperties(it) })
+
+  /**
    * Sets the platforms for which contribution hints will be generated. If not set, defaults are
    * computed per-platform and per Kotlin version based on known compatible combinations.
    *

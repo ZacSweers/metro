@@ -1345,6 +1345,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MapKeyRequiresContributesIntoMap.kt")
+    public void testMapKeyRequiresContributesIntoMap() {
+      run("MapKeyRequiresContributesIntoMap.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingFunctionType.kt")
     public void testMissingBindingFunctionType() {
       run("MissingBindingFunctionType.kt");
@@ -1476,6 +1482,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     @TestMetadata("PrivateProviderOption_None.kt")
     public void testPrivateProviderOption_None() {
       run("PrivateProviderOption_None.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProvidesPropertiesUnsupported.kt")
+    public void testPrivateProvidesPropertiesUnsupported() {
+      run("PrivateProvidesPropertiesUnsupported.kt");
     }
 
     @Test

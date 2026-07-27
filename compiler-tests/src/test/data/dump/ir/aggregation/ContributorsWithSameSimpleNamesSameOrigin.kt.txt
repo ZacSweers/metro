@@ -42,15 +42,15 @@ class FooImpl : Foo {
       return FooImpl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): FooImpl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): FooImpl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): FooImpl {
-      return error(message = "Never called")
     }
 
   }

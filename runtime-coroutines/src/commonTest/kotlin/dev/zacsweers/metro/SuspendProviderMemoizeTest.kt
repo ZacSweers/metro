@@ -56,8 +56,8 @@ class SuspendProviderMemoizeTest {
       .memoizeAsLazy()
 
     assertFalse(lazy.isInitialized())
-    val first = lazy.value()
-    assertSame(first, lazy.value())
+    val first = lazy.await()
+    assertSame(first, lazy.await())
     assertTrue(lazy.isInitialized())
     assertEquals(1, count.load())
   }
@@ -72,8 +72,8 @@ class SuspendProviderMemoizeTest {
         }
         .memoizeAsLazy()
 
-    assertNull(lazy.value())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
+    assertNull(lazy.await())
     assertEquals(1, count.load())
   }
 }

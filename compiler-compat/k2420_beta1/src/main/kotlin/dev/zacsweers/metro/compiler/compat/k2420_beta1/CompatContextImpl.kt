@@ -3,9 +3,19 @@
 package dev.zacsweers.metro.compiler.compat.k2420_beta1
 
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.compat.k2420_dev_6138.CompatContextImpl as DelegateType
+import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override fun createIrGeneratedDeclarationsRegistrar(
+    pluginContext: IrPluginContext
+  ): IrGeneratedDeclarationsRegistrarCompat {
+    return RegisterPropertyIrGeneratedDeclarationsRegistrarCompat(
+      pluginContext.metadataDeclarationRegistrar
+    )
+  }
+
   public class Factory : CompatContext.Factory {
     override val minVersion: String = "2.4.20-Beta1"
 

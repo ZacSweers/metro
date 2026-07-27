@@ -2602,6 +2602,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("InlinedObjectMultibindingRemainsLazy.kt")
+      public void testInlinedObjectMultibindingRemainsLazy() {
+        run("InlinedObjectMultibindingRemainsLazy.kt");
+      }
+
+      @Test
       @TestMetadata("JavaxProviderShouldWorkInMap.kt")
       public void testJavaxProviderShouldWorkInMap() {
         run("JavaxProviderShouldWorkInMap.kt");
@@ -3231,6 +3237,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("InlinedObjectProvidersRemainLazy.kt")
+    public void testInlinedObjectProvidersRemainLazy() {
+      run("InlinedObjectProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
     public void testInlinedProviderValueNotOnConsumerClasspath() {
       run("InlinedProviderValueNotOnConsumerClasspath.kt");
@@ -3252,6 +3264,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
+    public void testPrivateProvidesPropertiesInOtherModule() {
+      run("PrivateProvidesPropertiesInOtherModule.kt");
     }
 
     @Test
@@ -3484,6 +3502,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("IncludedGraphSuspendLazyAccessor.kt")
     public void testIncludedGraphSuspendLazyAccessor() {
       run("IncludedGraphSuspendLazyAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersRemainLazy.kt")
+    public void testInlinedObjectSuspendProvidersRemainLazy() {
+      run("InlinedObjectSuspendProvidersRemainLazy.kt");
     }
 
     @Test

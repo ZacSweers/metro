@@ -230,6 +230,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_PRIVATE_PROVIDER_PROPERTIES(
+    RawMetroOption.boolean(
+      name = "enable-private-provider-properties",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Allow private `@Provides` properties.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   SHRINK_UNUSED_BINDINGS(
     RawMetroOption.boolean(
       name = "shrink-unused-bindings",
@@ -1070,6 +1080,8 @@ public class MetroOptions(
     MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.defaultValue.expectAs(),
   public val generateClassesInIr: Boolean =
     MetroOption.GENERATE_CLASSES_IN_IR.raw.defaultValue.expectAs(),
+  public val enablePrivateProviderProperties: Boolean =
+    MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES.raw.defaultValue.expectAs(),
   public val shrinkUnusedBindings: Boolean =
     MetroOption.SHRINK_UNUSED_BINDINGS.raw.defaultValue.expectAs(),
   public val statementsPerInitFun: Int =
@@ -1437,6 +1449,7 @@ public class MetroOptions(
     public var generateContributionHints: Boolean = base.generateContributionHints
     public var generateContributionHintsInFir: Boolean = base.generateContributionHintsInFir
     public var generateClassesInIr: Boolean = base.generateClassesInIr
+    public var enablePrivateProviderProperties: Boolean = base.enablePrivateProviderProperties
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
@@ -1773,6 +1786,8 @@ public class MetroOptions(
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR ->
           generateContributionHintsInFir = value.expectAs()
         MetroOption.GENERATE_CLASSES_IN_IR -> generateClassesInIr = value.expectAs()
+        MetroOption.ENABLE_PRIVATE_PROVIDER_PROPERTIES ->
+          enablePrivateProviderProperties = value.expectAs()
         MetroOption.SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = value.expectAs()
         MetroOption.STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = value.expectAs()
         MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
@@ -1904,6 +1919,7 @@ public class MetroOptions(
         generateContributionHints = generateContributionHints,
         generateContributionHintsInFir = generateContributionHintsInFir,
         generateClassesInIr = generateClassesInIr,
+        enablePrivateProviderProperties = enablePrivateProviderProperties,
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,

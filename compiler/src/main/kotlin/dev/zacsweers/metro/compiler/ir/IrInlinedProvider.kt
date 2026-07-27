@@ -36,6 +36,16 @@ import org.jetbrains.kotlin.name.Name
 
 internal class IrInlinedProvider private constructor(private val value: Value) {
 
+  /** Whether provider access can use an instance factory without evaluating the value early. */
+  val canInlineProviderAccess: Boolean
+    get() =
+      when (value) {
+        is ObjectValue,
+        is EnumValue,
+        is ClassLiteralValue -> false
+        else -> true
+      }
+
   fun toProto(): InlinedProviderProto = InlinedProviderProto(value_ = value.toProto())
 
   /**

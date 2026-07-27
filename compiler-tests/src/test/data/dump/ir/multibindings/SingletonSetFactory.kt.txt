@@ -92,15 +92,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): String {
       return ProvideOnlyMetroFactory/* companion */.provideOnly(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): String {
-      return error(message = "Never called")
     }
 
   }

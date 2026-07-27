@@ -25,7 +25,7 @@ fun box(): String {
   return runBlocking {
     assertEquals(setOf(1, 2), graph.ints())
     assertEquals(mapOf("a" to 1, "b" to 2), graph.labels())
-    assertEquals(setOf(1, 2), graph.lazyInts.value())
+    assertEquals(setOf(1, 2), graph.lazyInts.await())
     "OK"
   }
 }

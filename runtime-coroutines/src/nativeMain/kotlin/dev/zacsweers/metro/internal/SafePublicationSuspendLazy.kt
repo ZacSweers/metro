@@ -23,10 +23,10 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
   @Volatile private var initializer: (suspend () -> T)? = initializer
   private val atomicValue = AtomicReference<Any?>(UNINITIALIZED)
 
-  override suspend fun invoke(): T = value()
+  override suspend fun invoke(): T = await()
 
   @Suppress("UNCHECKED_CAST")
-  override suspend fun value(): T {
+  override suspend fun await(): T {
     val result = atomicValue.value
     if (result !== UNINITIALIZED) {
       return result as T

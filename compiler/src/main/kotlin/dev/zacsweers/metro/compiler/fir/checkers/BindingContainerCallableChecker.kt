@@ -412,6 +412,20 @@ internal object BindingContainerCallableChecker :
       }
 
       val isPrivate = declaration.visibility == Visibilities.Private
+      val isUnsupportedPrivateProviderProperty =
+        declaration is FirProperty &&
+          annotations.isProvides &&
+          isPrivate &&
+          !session.metroFirBuiltIns.options.enablePrivateProviderProperties
+      if (isUnsupportedPrivateProviderProperty) {
+        reporter.reportOn(
+          source,
+          MetroDiagnostics.PROVIDES_PROPERTIES_CANNOT_BE_PRIVATE,
+          "`@Provides` properties cannot be private yet.",
+        )
+        return
+      }
+
       val publicScopedProviderSeverity =
         session.metroFirBuiltIns.options.publicScopedProviderSeverity.resolve(session.isIde())
       val shouldReportForPublic =

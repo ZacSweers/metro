@@ -113,16 +113,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Double {
-      return BindDoubleMetroFactory/* companion */.bindDouble(instance = <this>.#instance, int = <this>.#int2.invoke())
-    }
-
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int): Double {
+    fun declarationMirror(int: Int): Double {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Double {
+      return BindDoubleMetroFactory/* companion */.bindDouble(instance = <this>.#instance, int = <this>.#int2.invoke())
     }
 
   }
@@ -162,16 +162,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Long {
-      return BindLongMetroFactory/* companion */.bindLong(instance = <this>.#instance, int = <this>.#int2.invoke())
-    }
-
     @IntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(int: Int): Long {
+    fun declarationMirror(int: Int): Long {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Long {
+      return BindLongMetroFactory/* companion */.bindLong(instance = <this>.#instance, int = <this>.#int2.invoke())
     }
 
   }
@@ -210,15 +210,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }

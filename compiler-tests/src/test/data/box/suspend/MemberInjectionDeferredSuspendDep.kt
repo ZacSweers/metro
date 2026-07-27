@@ -21,7 +21,7 @@ fun box(): String {
   graph.inject(target)
   return runBlocking {
     assertEquals("db", target.database())
-    assertEquals("db", target.lazyDatabase.value())
+    assertEquals("db", target.lazyDatabase.await())
     "OK"
   }
 }

@@ -177,6 +177,8 @@ val shadowJar =
             .trimIndent()
         )
         args.add("--no-minification")
+        // Extracted dependency rules and relocated signatures emit expected info diagnostics.
+        args.addAll(listOf("--map-diagnostics", "info", "none"))
         args.addAll(
           providers.provider {
             r8LibraryClasspath
@@ -277,7 +279,7 @@ dependencies {
   add(embedded.name, libs.androidx.collection)
   add(embedded.name, libs.androidx.tracing.wire)
   add(embedded.name, libs.picnic)
-  add(embedded.name, libs.mordant)
+  add(embedded.name, libs.mordant.core)
   add(embedded.name, libs.wire.runtime)
   add(embedded.name, libs.kotlinx.serialization.json)
   add(embedded.name, project(":compiler-compat"))

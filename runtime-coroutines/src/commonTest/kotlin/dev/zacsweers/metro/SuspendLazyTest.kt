@@ -42,9 +42,9 @@ class SuspendLazyTest {
       }
 
     assertFalse(lazy.isInitialized())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
     assertTrue(lazy.isInitialized())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
     assertEquals(1, count.load())
   }
 
@@ -58,9 +58,9 @@ class SuspendLazyTest {
       }
 
     assertFalse(lazy.isInitialized())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
     assertTrue(lazy.isInitialized())
-    assertNull(lazy.value())
+    assertNull(lazy.await())
     assertEquals(1, count.load())
   }
 
@@ -75,8 +75,8 @@ class SuspendLazyTest {
         value
       }
 
-    val first = async { lazy.value() }
-    val second = async { lazy.value() }
+    val first = async { lazy.await() }
+    val second = async { lazy.await() }
     runCurrent()
     assertEquals(2, count.load())
     releaseInitializers.complete(Unit)
@@ -105,14 +105,14 @@ class SuspendLazyTest {
           }
         }
 
-      val failed = async { runCatching { lazy.value() } }
+      val failed = async { runCatching { lazy.await() } }
       runCurrent()
-      val succeeded = async { lazy.value() }
+      val succeeded = async { lazy.await() }
 
       assertTrue(failed.await().exceptionOrNull() is IllegalStateException)
       assertEquals("value", succeeded.await())
       assertTrue(lazy.isInitialized())
-      assertEquals("value", lazy.value())
+      assertEquals("value", lazy.await())
       assertEquals(2, attempts.load())
     }
 
@@ -139,9 +139,9 @@ class SuspendLazyTest {
           }
         }
 
-      val cancelled = async { lazy.value() }
+      val cancelled = async { lazy.await() }
       firstInitializerEntered.await()
-      val succeeded = async { lazy.value() }
+      val succeeded = async { lazy.await() }
       secondInitializerEntered.await()
 
       cancelled.cancelAndJoin()
@@ -150,7 +150,7 @@ class SuspendLazyTest {
       assertTrue(cancelled.isCancelled)
       assertEquals("value", succeeded.await())
       assertTrue(lazy.isInitialized())
-      assertEquals("value", lazy.value())
+      assertEquals("value", lazy.await())
       assertEquals(2, attempts.load())
     }
 
@@ -180,10 +180,10 @@ class SuspendLazyTest {
         "value"
       }
 
-    assertFailsWith<IllegalStateException> { lazy.value() }
+    assertFailsWith<IllegalStateException> { lazy.await() }
     // A failed initializer is not cached, so the next caller retries.
     assertFalse(lazy.isInitialized())
-    assertEquals("value", lazy.value())
+    assertEquals("value", lazy.await())
     assertTrue(lazy.isInitialized())
     assertEquals(2, count.load())
   }
@@ -202,13 +202,13 @@ class SuspendLazyTest {
         "value"
       }
 
-    val job = launch { lazy.value() }
+    val job = launch { lazy.await() }
     entered.await()
     job.cancelAndJoin()
 
     // Cancellation mid-initialization leaves the lazy uninitialized, so the next caller recomputes.
     assertFalse(lazy.isInitialized())
-    assertEquals("value", lazy.value())
+    assertEquals("value", lazy.await())
     assertEquals(2, count.load())
   }
 
@@ -220,9 +220,9 @@ class SuspendLazyTest {
         "value"
       }
     assertFalse(lazy.isInitialized())
-    assertEquals("value", lazy.value())
+    assertEquals("value", lazy.await())
     assertTrue(lazy.isInitialized())
-    assertEquals("value", lazy.value())
+    assertEquals("value", lazy.await())
     assertEquals(1, count.load())
   }
 }

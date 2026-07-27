@@ -74,25 +74,38 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
   override fun check(declaration: FirClass) {
     declaration.source ?: return
     val session = context.session
-    if (
-      !declaration.isAnnotatedWithAny(
+    val classMapKey = declaration.annotations.mapKeyAnnotation(session)
+    val hasContributionAnnotation =
+      declaration.isAnnotatedWithAny(
         session,
         session.classIds.allContributesAnnotationsWithContainers,
       )
-    ) {
-      return
-    }
+    if (!hasContributionAnnotation && classMapKey == null) return
     session.trace(name = { "AggregationChecker(${declaration.classId})" }) {
-      checkImpl(declaration)
+      checkImpl(declaration, classMapKey)
     }
   }
 
   context(context: CheckerContext, reporter: DiagnosticReporter)
-  private fun checkImpl(declaration: FirClass) {
+  private fun checkImpl(declaration: FirClass, classMapKey: MetroFirAnnotation?) {
     val session = context.session
     val classIds = session.classIds
-    // TODO
-    //  validate map key with intomap (class or bound type)
+    if (classMapKey != null) {
+      val mapContributionAnnotations =
+        classIds.contributesIntoMapAnnotations + classIds.customContributesIntoSetAnnotations
+      val hasMapContribution =
+        declaration.symbol
+          .annotationsIn(session, classIds.allContributesAnnotationsWithContainers)
+          .any { it.toAnnotationClassId(session) in mapContributionAnnotations }
+      if (!hasMapContribution) {
+        reporter.reportOn(
+          classMapKey.fir.source ?: declaration.source,
+          MetroDiagnostics.MULTIBINDS_ERROR,
+          "`@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.",
+        )
+        return
+      }
+    }
 
     val contributesToAnnotations = mutableSetOf<Contribution.ContributesTo>()
     val contributesBindingAnnotations = mutableSetOf<Contribution.ContributesBinding>()
@@ -308,6 +321,15 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val hasSupertypes = supertypesExcludingAny.isNotEmpty()
 
     val explicitBindingType = annotation.resolvedBindingArgument(session)
+    val explicitBindingMapKey = explicitBindingType?.annotations?.mapKeyAnnotation(session)
+    if (!isMapBinding && explicitBindingMapKey != null) {
+      reporter.reportOn(
+        explicitBindingMapKey.fir.source ?: explicitBindingType?.source ?: annotation.source,
+        MetroDiagnostics.MULTIBINDS_ERROR,
+        "`@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.",
+      )
+      return false
+    }
 
     val typeKey =
       if (explicitBindingType != null) {

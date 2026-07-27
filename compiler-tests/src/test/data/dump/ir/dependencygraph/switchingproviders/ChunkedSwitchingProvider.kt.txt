@@ -23,16 +23,16 @@ class ClassA {
       return ClassA()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassA {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassA {
+    fun declarationMirror(): ClassA {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassA {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -70,16 +70,16 @@ class ClassB {
       return ClassB()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassB {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassB {
+    fun declarationMirror(): ClassB {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassB {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -117,16 +117,16 @@ class ClassC {
       return ClassC()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassC {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassC {
+    fun declarationMirror(): ClassC {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassC {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -164,16 +164,16 @@ class ClassD {
       return ClassD()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassD {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassD {
+    fun declarationMirror(): ClassD {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassD {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -211,16 +211,16 @@ class ClassE {
       return ClassE()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassE {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassE {
+    fun declarationMirror(): ClassE {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassE {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -262,10 +262,12 @@ interface AppGraph {
       override fun invoke(): T {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
+          val tmp1_selector: Int = tmp0_id.div(other = 2)
           when {
-            EQEQ(arg0 = tmp0_id, arg1 = 4) -> ClassA() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
-            else -> <this>.invoke3()
+            EQEQ(arg0 = tmp1_selector, arg1 = 0) -> <this>.invoke2()
+            EQEQ(arg0 = tmp1_selector, arg1 = 1) -> <this>.invoke3()
+            EQEQ(arg0 = tmp1_selector, arg1 = 2) -> <this>.invoke4()
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }
@@ -274,6 +276,7 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 0) -> ClassE() /*as T */
             else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
@@ -284,9 +287,19 @@ interface AppGraph {
         return { // BLOCK
           val tmp0_id: Int = <this>.#id
           when {
+            EQEQ(arg0 = tmp0_id, arg1 = 3) -> ClassB() /*as T */
             EQEQ(arg0 = tmp0_id, arg1 = 2) -> ClassC() /*as T */
-            EQEQ(arg0 = tmp0_id, arg1 = 1) -> ClassD() /*as T */
-            else -> <this>.invoke2()
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private fun invoke4(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 4) -> ClassA() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
           }
         }
       }

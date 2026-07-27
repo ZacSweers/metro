@@ -27,6 +27,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable generation of metadata-visible hidden classes in IR.") {
       it.toBoolean()
     }
+  val ENABLE_PRIVATE_PROVIDER_PROPERTIES by
+    directive("Enable private @Provides properties and their property mirrors.")
   val PUBLIC_SCOPED_PROVIDER_SEVERITY by
     enumDirective<MetroOptions.DiagnosticSeverity>(
       "Control diagnostic severity reporting of public scoped providers."

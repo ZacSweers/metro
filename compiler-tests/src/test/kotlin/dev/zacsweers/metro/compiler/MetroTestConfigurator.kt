@@ -25,10 +25,11 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
     if (MetroDirectives.METRO_IGNORE in directives) return true
 
     if (
-      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION != BUILD_COMPILER_TOOLING_VERSION
+      testServices.isJsBackend() && TEST_COMPILER_TOOLING_VERSION < BUILD_COMPILER_TOOLING_VERSION
     ) {
       // JS box tests compile against Metro's runtime KLIB. KLIB compatibility depends on the
-      // producing compiler, so only run these tests against the compiler version that built it.
+      // producing compiler, so only run these tests against the compiler version that built it or
+      // higher
       return true
     }
 
@@ -88,7 +89,10 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       compilerVersion = COMPILER_VERSION,
       compilerToolingVersion = KotlinToolingVersion(COMPILER_TOOLING_VERSION),
       targetVersion = directives[MetroDirectives.COMPILER_VERSION].firstOrNull(),
-      minVersion = directives[MetroDirectives.MIN_COMPILER_VERSION].firstOrNull(),
+      minVersion =
+        directives[MetroDirectives.MIN_COMPILER_VERSION].maxByOrNull {
+          toolingVersionDirective(it).first
+        },
       maxVersion = directives[MetroDirectives.MAX_COMPILER_VERSION].firstOrNull(),
     )
   }

@@ -11,7 +11,7 @@ public interface SuspendLazy<out T> {
    * Returns the cached value, suspending while initialization runs when necessary. A failed or
    * cancelled initialization is not cached.
    */
-  public suspend fun value(): T
+  public suspend fun await(): T
 
   /** Returns `true` when a cached value is available. */
   public fun isInitialized(): Boolean

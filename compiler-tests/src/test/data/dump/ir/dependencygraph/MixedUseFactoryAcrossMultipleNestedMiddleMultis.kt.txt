@@ -38,15 +38,15 @@ class FinalThing {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(@Named(name = "final") ints: Function0<Set<Int>>): FinalThing {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): FinalThing {
       return MetroFactory/* companion */.newInstance(ints = <this>.#ints)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(@Named(name = "final") ints: Function0<Set<Int>>): FinalThing {
-      return error(message = "Never called")
     }
 
   }
@@ -199,15 +199,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }

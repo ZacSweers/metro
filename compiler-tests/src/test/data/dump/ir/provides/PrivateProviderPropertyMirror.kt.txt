@@ -1,0 +1,101 @@
+@DependencyGraph
+abstract class AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private constructor() /* primary */ {
+      super/*AppGraph*/()
+      /* <init>() */
+
+    }
+
+    override val int: Int
+      override get(): Int {
+        return ProvidedIntMetroFactory/* companion */.providedInt(instance = <this>.#thisGraphInstance)
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "providedInt", propertyName = "providedInt", startOffset = 151, endOffset = 200, newInstanceName = "providedInt")
+  class ProvidedIntMetroFactory : Factory<Int> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvidedIntMetroFactory {
+        return ProvidedIntMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun providedInt(instance: AppGraph): Int {
+        return instance.<get-providedInt>()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvidedIntMetroFactory/* companion */.providedInt(instance = <this>.#instance)
+    }
+
+    val declarationMirror: Int
+      @ComptimeOnly
+      @HiddenFromObjC
+      get(): Int {
+        return error(message = "Never called")
+      }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  abstract val int: Int
+    abstract get
+
+  @Provides
+  private val providedInt: Int
+    private get(): Int {
+      return 42
+    }
+
+}

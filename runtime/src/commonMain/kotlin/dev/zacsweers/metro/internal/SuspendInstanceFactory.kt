@@ -14,7 +14,7 @@ internal value class SuspendInstanceFactory<T>(private val value: T) :
   SuspendFactory<T>, SuspendLazy<T> {
   override suspend fun invoke(): T = value
 
-  override suspend fun value(): T = value
+  override suspend fun await(): T = value
 
   override fun isInitialized(): Boolean = true
 

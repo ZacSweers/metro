@@ -84,15 +84,15 @@ abstract class ImplContributions {
 
       }
 
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
+        return error(message = "Never called")
+      }
+
       @HiddenFromObjC
       override operator fun invoke(): Bar {
         return ProvideImplAsBarMetroFactory/* companion */.provideImplAsBar(instance = <this>.#instance.invoke())
-      }
-
-      @ComptimeOnly
-      @HiddenFromObjC
-      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Bar {
-        return error(message = "Never called")
       }
 
     }
@@ -130,15 +130,15 @@ abstract class ImplContributions {
 
       }
 
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
+        return error(message = "Never called")
+      }
+
       @HiddenFromObjC
       override operator fun invoke(): Foo {
         return ProvideImplAsFooMetroFactory/* companion */.provideImplAsFoo(instance = <this>.#instance.invoke())
-      }
-
-      @ComptimeOnly
-      @HiddenFromObjC
-      fun mirrorFunction(@Named(name = "metro_scoped_Impl") instance: Any?): Foo {
-        return error(message = "Never called")
       }
 
     }
@@ -179,17 +179,17 @@ abstract class ImplContributions {
 
       }
 
-      @HiddenFromObjC
-      override operator fun invoke(): Any? {
-        return ProvideScopedInstanceImplMetroFactory/* companion */.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
-      }
-
       @SingleIn(scope = AppScope::class)
       @Named(name = "metro_scoped_Impl")
       @ComptimeOnly
       @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
+      fun declarationMirror(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Any? {
         return error(message = "Never called")
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Any? {
+        return ProvideScopedInstanceImplMetroFactory/* companion */.provideScopedInstanceImpl(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
       }
 
     }

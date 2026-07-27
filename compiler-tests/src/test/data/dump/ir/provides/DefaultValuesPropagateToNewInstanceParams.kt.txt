@@ -37,15 +37,15 @@ interface IntProvider {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(stringValue: String? = error(message = "Never called")): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance, stringValue = <this>.#stringValue.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(stringValue: String? = error(message = "Never called")): Int {
-      return error(message = "Never called")
     }
 
   }

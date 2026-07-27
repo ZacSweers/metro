@@ -37,15 +37,15 @@ class Bar : Foo {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(fooProvider: Function0<Foo>): Bar {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Bar {
       return MetroFactory/* companion */.newInstance(fooProvider = <this>.#fooProvider)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(fooProvider: Function0<Foo>): Bar {
-      return error(message = "Never called")
     }
 
   }

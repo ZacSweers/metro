@@ -31,7 +31,7 @@ internal fun IrClass.getOrCreateMetadataVisibleHiddenNestedClass(
   name: Name,
   origin: IrDeclarationOrigin,
   kind: ClassKind = ClassKind.CLASS,
-  superTypesProvider: IrClass.() -> List<IrType> = { emptyList() },
+  superTypesProvider: IrClass.() -> List<IrType> = { listOf(context.irBuiltIns.anyType) },
   copyTypeParameters: Boolean = true,
   isCompanion: Boolean = false,
 ): IrClass {
@@ -51,7 +51,7 @@ internal fun IrClass.createMetadataVisibleHiddenNestedClass(
   name: Name,
   origin: IrDeclarationOrigin,
   kind: ClassKind = ClassKind.CLASS,
-  superTypesProvider: IrClass.() -> List<IrType> = { emptyList() },
+  superTypesProvider: IrClass.() -> List<IrType> = { listOf(context.irBuiltIns.anyType) },
   copyTypeParameters: Boolean = true,
   isCompanion: Boolean = false,
 ): IrClass {

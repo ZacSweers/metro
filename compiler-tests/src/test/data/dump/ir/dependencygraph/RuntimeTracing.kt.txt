@@ -143,16 +143,16 @@ interface AppGraph : ChildGraph.Factory {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideQualifiedStringMetroFactory/* companion */.provideQualifiedString(instance = <this>.#instance)
-    }
-
     @Named(name = "special")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideQualifiedStringMetroFactory/* companion */.provideQualifiedString(instance = <this>.#instance)
     }
 
   }
@@ -191,15 +191,15 @@ interface AppGraph : ChildGraph.Factory {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): String {
       return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): String {
-      return error(message = "Never called")
     }
 
   }
@@ -288,15 +288,15 @@ interface ChildGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideCountMetroFactory/* companion */.provideCount(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }

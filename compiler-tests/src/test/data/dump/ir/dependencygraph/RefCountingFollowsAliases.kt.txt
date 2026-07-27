@@ -37,15 +37,15 @@ class BarA {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(foo: Function0<Foo>): BarA {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): BarA {
       return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(foo: Function0<Foo>): BarA {
-      return error(message = "Never called")
     }
 
   }
@@ -97,15 +97,15 @@ class BarB {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(foo: Function0<Foo>): BarB {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): BarB {
       return MetroFactory/* companion */.newInstance(foo = <this>.#foo)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(foo: Function0<Foo>): BarB {
-      return error(message = "Never called")
     }
 
   }
@@ -143,15 +143,15 @@ class BazImpl : BazMiddle {
       return BazImpl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): BazImpl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): BazImpl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): BazImpl {
-      return error(message = "Never called")
     }
 
   }
@@ -220,15 +220,15 @@ class FooImpl : Foo {
       return FooImpl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): FooImpl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): FooImpl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): FooImpl {
-      return error(message = "Never called")
     }
 
   }
@@ -327,16 +327,16 @@ class Main {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Main {
-      return MetroFactory/* companion */.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
+    fun declarationMirror(barA: Function0<BarA>, barB: Function0<BarB>, quxA: Function0<QuxA>, quxB: Function0<QuxB>): Main {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Main {
+      return MetroFactory/* companion */.newInstance(barA = <this>.#barA, barB = <this>.#barB, quxA = <this>.#quxA, quxB = <this>.#quxB)
     }
 
   }
@@ -388,15 +388,15 @@ class QuxA {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(baz: Function0<Baz>): QuxA {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): QuxA {
       return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(baz: Function0<Baz>): QuxA {
-      return error(message = "Never called")
     }
 
   }
@@ -448,15 +448,15 @@ class QuxB {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(baz: Function0<Baz>): QuxB {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): QuxB {
       return MetroFactory/* companion */.newInstance(baz = <this>.#baz)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(baz: Function0<Baz>): QuxB {
-      return error(message = "Never called")
     }
 
   }

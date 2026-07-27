@@ -25,16 +25,16 @@ class AppService1 {
       return AppService1()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): AppService1 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService1 {
+    fun declarationMirror(): AppService1 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AppService1 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -72,16 +72,16 @@ class AppService2 {
       return AppService2()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): AppService2 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService2 {
+    fun declarationMirror(): AppService2 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AppService2 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -119,16 +119,16 @@ class AppService3 {
       return AppService3()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): AppService3 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService3 {
+    fun declarationMirror(): AppService3 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AppService3 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -166,16 +166,16 @@ class AppService4 {
       return AppService4()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): AppService4 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): AppService4 {
+    fun declarationMirror(): AppService4 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): AppService4 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -222,16 +222,16 @@ class Feature1Service1 {
       return Feature1Service1()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature1Service1 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Feature1Service1 {
+    fun declarationMirror(): Feature1Service1 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature1Service1 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -284,16 +284,16 @@ class Feature1Service2 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature1Service2 {
-      return MetroFactory/* companion */.newInstance(f1s1 = <this>.#f1s1.invoke())
-    }
-
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f1s1: Feature1Service1): Feature1Service2 {
+    fun declarationMirror(f1s1: Feature1Service1): Feature1Service2 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature1Service2 {
+      return MetroFactory/* companion */.newInstance(f1s1 = <this>.#f1s1.invoke())
     }
 
   }
@@ -346,16 +346,16 @@ class Feature1Service3 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature1Service3 {
-      return MetroFactory/* companion */.newInstance(f1s2 = <this>.#f1s2.invoke())
-    }
-
     @SingleIn(scope = Feature1Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f1s2: Feature1Service2): Feature1Service3 {
+    fun declarationMirror(f1s2: Feature1Service2): Feature1Service3 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature1Service3 {
+      return MetroFactory/* companion */.newInstance(f1s2 = <this>.#f1s2.invoke())
     }
 
   }
@@ -417,16 +417,16 @@ class Feature2Service1 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature2Service1 {
-      return MetroFactory/* companion */.newInstance(app = <this>.#app.invoke())
-    }
-
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(app: AppService1): Feature2Service1 {
+    fun declarationMirror(app: AppService1): Feature2Service1 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature2Service1 {
+      return MetroFactory/* companion */.newInstance(app = <this>.#app.invoke())
     }
 
   }
@@ -479,16 +479,16 @@ class Feature2Service2 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature2Service2 {
-      return MetroFactory/* companion */.newInstance(f2s1 = <this>.#f2s1.invoke())
-    }
-
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f2s1: Feature2Service1): Feature2Service2 {
+    fun declarationMirror(f2s1: Feature2Service1): Feature2Service2 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature2Service2 {
+      return MetroFactory/* companion */.newInstance(f2s1 = <this>.#f2s1.invoke())
     }
 
   }
@@ -541,16 +541,16 @@ class Feature2Service3 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Feature2Service3 {
-      return MetroFactory/* companion */.newInstance(f2s2 = <this>.#f2s2.invoke())
-    }
-
     @SingleIn(scope = Feature2Scope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(f2s2: Feature2Service2): Feature2Service3 {
+    fun declarationMirror(f2s2: Feature2Service2): Feature2Service3 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Feature2Service3 {
+      return MetroFactory/* companion */.newInstance(f2s2 = <this>.#f2s2.invoke())
     }
 
   }
