@@ -23,16 +23,16 @@ class ClassA {
       return ClassA()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassA {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassA {
+    fun declarationMirror(): ClassA {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassA {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -70,16 +70,16 @@ class ClassB {
       return ClassB()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassB {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassB {
+    fun declarationMirror(): ClassB {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassB {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -117,16 +117,16 @@ class ClassC {
       return ClassC()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassC {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassC {
+    fun declarationMirror(): ClassC {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassC {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -164,16 +164,16 @@ class ClassD {
       return ClassD()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassD {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassD {
+    fun declarationMirror(): ClassD {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassD {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -211,16 +211,16 @@ class ClassE {
       return ClassE()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): ClassE {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): ClassE {
+    fun declarationMirror(): ClassE {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): ClassE {
+      return MetroFactory.newInstance()
     }
 
   }

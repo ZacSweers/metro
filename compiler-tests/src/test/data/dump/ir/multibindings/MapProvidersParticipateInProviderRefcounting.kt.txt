@@ -131,17 +131,17 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideFirstMetroFactory/* companion */.provideFirst(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
-    }
-
     @IntoMap
     @StringKey(value = "first")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(sharedDependency: SharedDependency): String {
+    fun declarationMirror(sharedDependency: SharedDependency): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideFirstMetroFactory/* companion */.provideFirst(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
     }
 
   }
@@ -180,15 +180,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }
@@ -228,17 +228,17 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return ProvideSecondMetroFactory/* companion */.provideSecond(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
-    }
-
     @IntoMap
     @StringKey(value = "second")
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(sharedDependency: SharedDependency): String {
+    fun declarationMirror(sharedDependency: SharedDependency): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideSecondMetroFactory/* companion */.provideSecond(instance = <this>.#instance, sharedDependency = <this>.#sharedDependency.invoke())
     }
 
   }
@@ -277,15 +277,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): SharedDependency {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): SharedDependency {
       return ProvideSharedDependencyMetroFactory/* companion */.provideSharedDependency(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): SharedDependency {
-      return error(message = "Never called")
     }
 
   }

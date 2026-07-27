@@ -62,15 +62,15 @@ object Bindings {
       return Bindings.provideObject()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): InlinedObject {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): InlinedObject {
       return ProvideObjectMetroFactory.provideObject()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): InlinedObject {
-      return error(message = "Never called")
     }
 
   }
@@ -96,3 +96,4 @@ object InlinedObject {
   }
 
 }
+

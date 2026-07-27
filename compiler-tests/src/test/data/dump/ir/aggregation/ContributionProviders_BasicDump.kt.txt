@@ -82,15 +82,15 @@ abstract class ImplContributions {
 
       }
 
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
+        return error(message = "Never called")
+      }
+
       @HiddenFromObjC
       override operator fun invoke(): Base {
         return ProvideImplAsBaseMetroFactory/* companion */.provideImplAsBase(string = <this>.#string.invoke(), longProvider = <this>.#longProvider, longFun = <this>.#longProvider, lazyBool = DoubleCheck/* companion */.lazy<Provider<Boolean>, Boolean>(provider = <this>.#lazyBool), providerOfLazyDouble = ProviderOfLazy/* companion */.create<Double>(provider = <this>.#providerOfLazyDouble))
-      }
-
-      @ComptimeOnly
-      @HiddenFromObjC
-      fun mirrorFunction(string: String, longProvider: Function0<Long>, longFun: Function0<Long>, lazyBool: Lazy<Boolean>, providerOfLazyDouble: Function0<Lazy<Double>>): Base {
-        return error(message = "Never called")
       }
 
     }

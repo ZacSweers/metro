@@ -1385,6 +1385,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("PrivateProvidesPropertiesUnsupported.kt")
+    public void testPrivateProvidesPropertiesUnsupported() {
+      run("PrivateProvidesPropertiesUnsupported.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt")
     public void testProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified() {
       run("ProvidedInjectedClassesWithMatchingTypeKeysAreREportedAsWarnings_Qualified.kt");

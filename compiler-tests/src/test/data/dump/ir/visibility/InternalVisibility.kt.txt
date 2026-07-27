@@ -74,15 +74,15 @@ abstract class AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }
@@ -130,15 +130,15 @@ class InternalClass {
       return InternalClass()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): InternalClass {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): InternalClass {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): InternalClass {
-      return error(message = "Never called")
     }
 
   }

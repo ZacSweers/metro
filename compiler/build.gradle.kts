@@ -180,6 +180,8 @@ val shadowJar =
             .trimIndent()
         )
         args.add("--no-minification")
+        // Extracted dependency rules and relocated signatures emit expected info diagnostics.
+        args.addAll(listOf("--map-diagnostics", "info", "none"))
         args.addAll(
           providers.provider {
             r8LibraryClasspath

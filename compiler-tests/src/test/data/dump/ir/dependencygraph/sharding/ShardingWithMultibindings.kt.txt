@@ -40,16 +40,16 @@ class Collector {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Collector {
-      return MetroFactory/* companion */.newInstance(services = <this>.#services.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(services: Set<Any>): Collector {
+    fun declarationMirror(services: Set<Any>): Collector {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Collector {
+      return MetroFactory/* companion */.newInstance(services = <this>.#services.invoke())
     }
 
   }
@@ -87,16 +87,16 @@ class Service1 {
       return Service1()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Service1 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Service1 {
+    fun declarationMirror(): Service1 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service1 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -134,16 +134,16 @@ class Service2 {
       return Service2()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Service2 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Service2 {
+    fun declarationMirror(): Service2 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service2 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -282,17 +282,17 @@ object Module1 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Any {
-      return ProvideService1MetroFactory/* companion */.provideService1(s1 = <this>.#s1.invoke())
-    }
-
     @IntoSet
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(s1: Service1): Any {
+    fun declarationMirror(s1: Service1): Any {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Any {
+      return ProvideService1MetroFactory/* companion */.provideService1(s1 = <this>.#s1.invoke())
     }
 
   }
@@ -349,17 +349,17 @@ object Module2 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Any {
-      return ProvideService2MetroFactory/* companion */.provideService2(s2 = <this>.#s2.invoke())
-    }
-
     @IntoSet
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(s2: Service2): Any {
+    fun declarationMirror(s2: Service2): Any {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Any {
+      return ProvideService2MetroFactory/* companion */.provideService2(s2 = <this>.#s2.invoke())
     }
 
   }

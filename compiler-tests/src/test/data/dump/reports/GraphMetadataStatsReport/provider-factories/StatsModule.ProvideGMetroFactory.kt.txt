@@ -51,7 +51,7 @@ class ProvideGMetroFactory : Factory<G> {
   private /* final field */ val f: Provider<F> = f
   @ComptimeOnly
   @HiddenFromObjC
-  fun mirrorFunction(f: F): G {
+  fun declarationMirror(f: F): G {
     return error(message = "Never called")
   }
 

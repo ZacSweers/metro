@@ -3512,7 +3512,7 @@ class AggregationTest : MetroCompilerTest() {
         e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
 
         (context)
-        Encountered while processing declaration 'feature.Bindings.ProvideCloseableMetroFactory.mirrorFunction' (no source location available)
+        Encountered while processing declaration 'feature.Bindings.ProvideCloseableMetroFactory.declarationMirror' (no source location available)
         - This is Metro-generated code for 'feature.Bindings.provideCloseable(...)' (where the problem is).
         """
           .trimIndent()

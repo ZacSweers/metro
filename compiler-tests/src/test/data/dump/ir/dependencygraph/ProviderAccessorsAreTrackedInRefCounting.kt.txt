@@ -90,15 +90,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }
@@ -137,15 +137,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Long {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Long {
       return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Long {
-      return error(message = "Never called")
     }
 
   }
@@ -173,3 +173,4 @@ interface AppGraph {
     abstract get
 
 }
+

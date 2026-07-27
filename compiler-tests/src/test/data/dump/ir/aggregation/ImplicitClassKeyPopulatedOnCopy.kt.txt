@@ -26,15 +26,15 @@ class ExplicitKeyImpl : Base {
       return ExplicitKeyImpl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ExplicitKeyImpl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ExplicitKeyImpl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): ExplicitKeyImpl {
-      return error(message = "Never called")
     }
 
   }
@@ -108,15 +108,15 @@ class ImplicitKeyImpl : Base {
       return ImplicitKeyImpl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ImplicitKeyImpl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ImplicitKeyImpl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): ImplicitKeyImpl {
-      return error(message = "Never called")
     }
 
   }

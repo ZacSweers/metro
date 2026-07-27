@@ -80,16 +80,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Set<Int> {
-      return ProvideIntsMetroFactory/* companion */.provideInts(instance = <this>.#instance)
-    }
-
     @ElementsIntoSet
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Set<Int> {
+    fun declarationMirror(): Set<Int> {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Set<Int> {
+      return ProvideIntsMetroFactory/* companion */.provideInts(instance = <this>.#instance)
     }
 
   }

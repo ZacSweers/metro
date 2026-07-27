@@ -1,10 +1,5 @@
 @DependencyGraph
 abstract class AppGraph {
-  @Provides
-  val stringField: String
-    field = "Hello"
-    get
-
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
   @MetroImplMarker
   class Impl : AppGraph {
@@ -17,9 +12,9 @@ abstract class AppGraph {
 
     }
 
-    override val string: String
-      override get(): String {
-        return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#thisGraphInstance)
+    override val int: Int
+      override get(): Int {
+        return ProvidedIntMetroFactory/* companion */.providedInt(instance = <this>.#thisGraphInstance)
       }
 
   }
@@ -41,8 +36,8 @@ abstract class AppGraph {
   }
 
   @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
-  @CallableMetadata(callableName = "stringField", propertyName = "stringField", startOffset = 285, endOffset = 338, newInstanceName = "stringField")
-  class StringFieldMetroFactory : Factory<String> {
+  @CallableMetadata(callableName = "providedInt", propertyName = "providedInt", startOffset = 151, endOffset = 200, newInstanceName = "providedInt")
+  class ProvidedIntMetroFactory : Factory<Int> {
     private /* final field */ val instance: AppGraph = instance
     companion object Companion {
       private constructor() /* primary */ {
@@ -54,15 +49,15 @@ abstract class AppGraph {
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun create(instance: AppGraph): StringFieldMetroFactory {
-        return StringFieldMetroFactory(instance = instance)
+      fun create(instance: AppGraph): ProvidedIntMetroFactory {
+        return ProvidedIntMetroFactory(instance = instance)
       }
 
       @HiddenFromObjC
       @JvmStatic
       @JsStatic
-      fun stringField(instance: AppGraph): String {
-        return instance.#stringField
+      fun providedInt(instance: AppGraph): Int {
+        return instance.<get-providedInt>()
       }
 
     }
@@ -74,16 +69,17 @@ abstract class AppGraph {
 
     }
 
-    @ComptimeOnly
     @HiddenFromObjC
-    fun declarationMirror(): String {
-      return error(message = "Never called")
+    override operator fun invoke(): Int {
+      return ProvidedIntMetroFactory/* companion */.providedInt(instance = <this>.#instance)
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return StringFieldMetroFactory/* companion */.stringField(instance = <this>.#instance)
-    }
+    val declarationMirror: Int
+      @ComptimeOnly
+      @HiddenFromObjC
+      get(): Int {
+        return error(message = "Never called")
+      }
 
   }
 
@@ -93,8 +89,13 @@ abstract class AppGraph {
 
   }
 
-  abstract val string: String
+  abstract val int: Int
     abstract get
 
-}
+  @Provides
+  private val providedInt: Int
+    private get(): Int {
+      return 42
+    }
 
+}

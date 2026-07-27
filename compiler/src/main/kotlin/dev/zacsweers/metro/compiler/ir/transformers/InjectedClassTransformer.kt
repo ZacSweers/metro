@@ -48,7 +48,7 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
-import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
@@ -176,8 +176,7 @@ internal class InjectedClassTransformer(
               ?: reportCompilerBug(
                 "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
               )
-          val mirrorFunction =
-            factoryCls.requireSimpleFunction(Symbols.StringNames.MIRROR_FUNCTION).owner
+          val mirrorFunction = factoryCls.requireDeclarationMirrorFunction()
           val parameters = mirrorFunction.parameters()
 
           // Look up the injectable constructor for direct invocation optimization
@@ -294,7 +293,7 @@ internal class InjectedClassTransformer(
 
     if (!isAssistedInject) {
       // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
-      // directly since we'll read the mirror function to get the target type
+      // it directly since we'll read the declaration mirror to get the target type
       factoryCls.superTypes += metroSymbols.metroFactory.typeWith(factoryTargetType)
     }
 
@@ -414,10 +413,10 @@ internal class InjectedClassTransformer(
 
     possiblyImplementInvoke(declaration, constructorParameters)
 
-    // Generate a metadata-visible function that matches the signature of the target constructor
-    // This is used in downstream compilations to read the constructor's signature
+    // Generate a metadata-visible declaration that matches the target constructor. This is used in
+    // downstream compilations to read the constructor's signature.
     val mirrorFunction =
-      generateMetadataVisibleMirrorFunction(
+      generateMetadataVisibleDeclarationMirror(
         factoryClass = factoryCls,
         target = targetConstructor,
         backingField = null,

@@ -38,16 +38,16 @@ class Config {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Config {
-      return MetroFactory/* companion */.newInstance(example = <this>.#example.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(example: ProvidedExample): Config {
+    fun declarationMirror(example: ProvidedExample): Config {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Config {
+      return MetroFactory/* companion */.newInstance(example = <this>.#example.invoke())
     }
 
   }
@@ -109,16 +109,16 @@ class Repository {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Repository {
-      return MetroFactory/* companion */.newInstance(config = <this>.#config.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(config: Config): Repository {
+    fun declarationMirror(config: Config): Repository {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Repository {
+      return MetroFactory/* companion */.newInstance(config = <this>.#config.invoke())
     }
 
   }
@@ -171,16 +171,16 @@ class Service {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Service {
-      return MetroFactory/* companion */.newInstance(repository = <this>.#repository.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(repository: Repository): Service {
+    fun declarationMirror(repository: Repository): Service {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Service {
+      return MetroFactory/* companion */.newInstance(repository = <this>.#repository.invoke())
     }
 
   }
@@ -237,15 +237,15 @@ class SharedWorker {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(service: Service, @Assisted name: String): SharedWorker {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     operator fun invoke(name: String): SharedWorker {
       return MetroFactory/* companion */.newInstance(service = <this>.#service.invoke(), name = name)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(service: Service, @Assisted name: String): SharedWorker {
-      return error(message = "Never called")
     }
 
   }

@@ -104,16 +104,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): Int {
-      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): Int {
+    fun declarationMirror(): Int {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): Int {
+      return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
     }
 
   }

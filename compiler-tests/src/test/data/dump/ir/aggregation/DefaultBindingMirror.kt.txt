@@ -25,15 +25,15 @@ class Impl : Base<Impl>, Other {
       return Impl()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Impl {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Impl {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Impl {
-      return error(message = "Never called")
     }
 
   }

@@ -22,15 +22,15 @@ class NonReused {
       return NonReused()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): NonReused {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): NonReused {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): NonReused {
-      return error(message = "Never called")
     }
 
   }
@@ -82,15 +82,15 @@ class Reused {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(nonReused: NonReused): Reused {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Reused {
       return MetroFactory/* companion */.newInstance(nonReused = <this>.#nonReused.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(nonReused: NonReused): Reused {
-      return error(message = "Never called")
     }
 
   }
@@ -195,15 +195,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(long: Long, long2: Long): Double {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Double {
       return ProvideDoubleMetroFactory/* companion */.provideDouble(instance = <this>.#instance, long = <this>.#long2.invoke(), long2 = <this>.#long2.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(long: Long, long2: Long): Double {
-      return error(message = "Never called")
     }
 
   }
@@ -242,15 +242,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }
@@ -290,15 +290,15 @@ interface AppGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(int: Int, int2: Int): Long {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Long {
       return ProvideLongMetroFactory/* companion */.provideLong(instance = <this>.#instance, int = <this>.#int2.invoke(), int2 = <this>.#int2.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(int: Int, int2: Int): Long {
-      return error(message = "Never called")
     }
 
   }

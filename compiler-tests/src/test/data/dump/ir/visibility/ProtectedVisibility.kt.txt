@@ -79,15 +79,15 @@ abstract class AppGraph : BaseGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): String {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): String {
       return ProvideStringMetroFactory/* companion */.provideString(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): String {
-      return error(message = "Never called")
     }
 
   }
@@ -149,15 +149,15 @@ open class BaseGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): Int {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Int {
       return ProvideIntMetroFactory/* companion */.provideInt(instance = <this>.#instance)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): Int {
-      return error(message = "Never called")
     }
 
   }
@@ -199,15 +199,15 @@ class ProtectedConstructorClass {
       return ProtectedConstructorClass()
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ProtectedConstructorClass {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ProtectedConstructorClass {
       return MetroFactory.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): ProtectedConstructorClass {
-      return error(message = "Never called")
     }
 
   }

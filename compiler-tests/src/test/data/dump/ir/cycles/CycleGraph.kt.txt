@@ -42,15 +42,15 @@ class A {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(b: B, e: E): A {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): A {
       return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke(), e = <this>.#e.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(b: B, e: E): A {
-      return error(message = "Never called")
     }
 
   }
@@ -102,15 +102,15 @@ class B {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(c: C): B {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): B {
       return MetroFactory/* companion */.newInstance(c = <this>.#c.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(c: C): B {
-      return error(message = "Never called")
     }
 
   }
@@ -171,18 +171,18 @@ class C {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(aProvider: Function0<A>): C {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): C {
       val tmp0: C = C.MetroFactory/* companion */.newInstance(aProvider = <this>.#aProvider)
       MetroMembersInjector/* companion */.injectALazy(instance = tmp0, aLazy = DoubleCheck/* companion */.lazy<Provider<A>, A>(provider = <this>.#aProvider))
       MetroMembersInjector/* companion */.injectALazyProvider(instance = tmp0, aLazyProvider = ProviderOfLazy/* companion */.create<A>(provider = <this>.#aProvider))
       return tmp0
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(aProvider: Function0<A>): C {
-      return error(message = "Never called")
     }
 
   }
@@ -279,15 +279,15 @@ class D {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(b: B): D {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): D {
       return MetroFactory/* companion */.newInstance(b = <this>.#b.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(b: B): D {
-      return error(message = "Never called")
     }
 
   }
@@ -339,15 +339,15 @@ class E {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(d: D): E {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): E {
       return MetroFactory/* companion */.newInstance(d = <this>.#d.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(d: D): E {
-      return error(message = "Never called")
     }
 
   }
@@ -525,15 +525,15 @@ interface CycleGraph {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(obj: Function0<Any>): Any {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Any {
       return ProvideObjectWithCycleMetroFactory/* companion */.provideObjectWithCycle(instance = <this>.#instance, obj = <this>.#obj)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(obj: Function0<Any>): Any {
-      return error(message = "Never called")
     }
 
   }

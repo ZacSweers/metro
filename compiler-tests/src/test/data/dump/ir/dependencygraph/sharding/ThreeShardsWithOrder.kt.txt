@@ -23,16 +23,16 @@ class S1 {
       return S1()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): S1 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): S1 {
+    fun declarationMirror(): S1 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): S1 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -70,16 +70,16 @@ class S2 {
       return S2()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): S2 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): S2 {
+    fun declarationMirror(): S2 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): S2 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -117,16 +117,16 @@ class S3 {
       return S3()
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): S3 {
-      return MetroFactory.newInstance()
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): S3 {
+    fun declarationMirror(): S3 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): S3 {
+      return MetroFactory.newInstance()
     }
 
   }
@@ -179,16 +179,16 @@ class S4 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): S4 {
-      return MetroFactory/* companion */.newInstance(s1 = <this>.#s1.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(s1: S1): S4 {
+    fun declarationMirror(s1: S1): S4 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): S4 {
+      return MetroFactory/* companion */.newInstance(s1 = <this>.#s1.invoke())
     }
 
   }
@@ -241,16 +241,16 @@ class S5 {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): S5 {
-      return MetroFactory/* companion */.newInstance(s4 = <this>.#s4.invoke())
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(s4: S4): S5 {
+    fun declarationMirror(s4: S4): S5 {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): S5 {
+      return MetroFactory/* companion */.newInstance(s4 = <this>.#s4.invoke())
     }
 
   }

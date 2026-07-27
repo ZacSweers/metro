@@ -42,17 +42,17 @@ class S {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(sProvider: Function0<S>): S {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): S {
       val tmp0: S = S.MetroFactory/* companion */.newInstance(sProvider = <this>.#sProvider)
       MetroMembersInjector/* companion */.injectSLazy(instance = tmp0, sLazy = DoubleCheck/* companion */.lazy<Provider<S>, S>(provider = <this>.#sProvider))
       return tmp0
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(sProvider: Function0<S>): S {
-      return error(message = "Never called")
     }
 
   }

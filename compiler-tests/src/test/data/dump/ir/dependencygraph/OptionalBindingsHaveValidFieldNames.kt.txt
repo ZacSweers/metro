@@ -72,16 +72,16 @@ interface AppGraph {
 
     }
 
-    @HiddenFromObjC
-    override operator fun invoke(): String {
-      return StringMetroFactory/* companion */.string(instance = <this>.#instance)
-    }
-
     @SingleIn(scope = AppScope::class)
     @ComptimeOnly
     @HiddenFromObjC
-    fun mirrorFunction(): String {
+    fun declarationMirror(): String {
       return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return StringMetroFactory/* companion */.string(instance = <this>.#instance)
     }
 
   }
