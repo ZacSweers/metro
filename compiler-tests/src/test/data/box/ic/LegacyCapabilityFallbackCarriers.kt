@@ -1,7 +1,7 @@
 // IGNORE_BACKEND: JS_IR
 // MIN_COMPILER_VERSION: 2.4.20-dev-6138
 // GENERATE_CLASSES_IN_IR: true
-// ENABLE_OPTIMIZED_IC: true
+// OMIT_REDUNDANT_MIRRORS: true
 // LANGUAGE: -AnnotationsInMetadata
 
 interface FallbackService

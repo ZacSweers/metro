@@ -1,6 +1,6 @@
 // MIN_COMPILER_VERSION: 2.4.20-dev-6138
 // GENERATE_CLASSES_IN_IR: true
-// ENABLE_OPTIMIZED_IC: true
+// OMIT_REDUNDANT_MIRRORS: true
 
 interface SignatureService
 
@@ -14,7 +14,7 @@ class SignatureServiceImpl(@Named("value") val value: String) : SignatureService
 object SignatureProviders {
   @Provides
   @Named("value")
-  fun provideValue(): String = "modern"
+  fun provideValue(): String = "creator"
 }
 
 @BindingContainer

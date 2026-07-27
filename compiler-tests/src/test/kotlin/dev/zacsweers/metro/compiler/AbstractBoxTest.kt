@@ -104,12 +104,12 @@ open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
   }
 }
 
-open class AbstractOptimizedIcIrOnlyClassesBoxTest : AbstractIrOnlyClassesBoxTest() {
+open class AbstractOmitRedundantMirrorsIrOnlyClassesBoxTest : AbstractIrOnlyClassesBoxTest() {
   override fun configure(builder: TestConfigurationBuilder) {
     super.configure(builder)
 
     with(builder) {
-      defaultDirectives { MetroDirectives.ENABLE_OPTIMIZED_IC.with(true) }
+      defaultDirectives { MetroDirectives.OMIT_REDUNDANT_MIRRORS.with(true) }
     }
   }
 }

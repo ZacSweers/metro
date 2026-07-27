@@ -43,8 +43,9 @@ abstract class MetroCompilerTest {
   protected open val metroOptions: MetroOptions
     get() =
       MetroOptions(
-        enableOptimizedIc =
-          testOptimizedIc ?: MetroOption.ENABLE_OPTIMIZED_IC.raw.defaultValue.expectAs<Boolean>()
+        omitRedundantMirrors =
+          testOmitRedundantMirrors
+            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>()
       )
 
   protected val debugOutputDir: Path
@@ -70,14 +71,14 @@ abstract class MetroCompilerTest {
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val optimizedIcOverride = testOptimizedIc
+    val omitRedundantMirrorsOverride = testOmitRedundantMirrors
     val finalOptions =
       options
         .toBuilder()
         .debug(debug || options.debug)
         .apply {
-          if (optimizedIcOverride != null) {
-            enableOptimizedIc = optimizedIcOverride
+          if (omitRedundantMirrorsOverride != null) {
+            omitRedundantMirrors = omitRedundantMirrorsOverride
           }
         }
         .build()
@@ -359,8 +360,8 @@ abstract class MetroCompilerTest {
             BUFFERED_IC_TRACKING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
             }
-            ENABLE_OPTIMIZED_IC -> {
-              processor.option(entry.raw.cliOption, this@toPluginOptions.enableOptimizedIc)
+            OMIT_REDUNDANT_MIRRORS -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.omitRedundantMirrors)
             }
             ENABLE_PROVIDER_INLINING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
@@ -414,8 +415,8 @@ abstract class MetroCompilerTest {
       .toList()
   }
 
-  private val testOptimizedIc: Boolean?
-    get() = System.getProperty("metro.testOptimizedIc")?.toBooleanStrict()
+  private val testOmitRedundantMirrors: Boolean?
+    get() = System.getProperty("metro.testOmitRedundantMirrors")?.toBooleanStrict()
 
   protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())

@@ -91,7 +91,7 @@ interface SignatureGraph {
     override val service: SignatureService
       @Named(name = "service")
       override get(): SignatureService {
-        return SignatureServiceImpl(value = "modern")
+        return SignatureServiceImpl(value = "creator")
       }
 
   }
@@ -123,7 +123,7 @@ interface SignatureService {
 
 @BindingContainer
 object SignatureProviders {
-  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 404, endOffset = 441, newInstanceName = "provideValue")
+  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 407, endOffset = 445, newInstanceName = "provideValue")
   @ComptimeOnly
   object ProvideValueMetroFactory : Factory<String> {
     private constructor() /* primary */ {
@@ -163,7 +163,7 @@ object SignatureProviders {
   @Provides
   @Named(name = "value")
   fun provideValue(): String {
-    return "modern"
+    return "creator"
   }
 
 }

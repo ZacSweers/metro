@@ -1,10 +1,11 @@
 // ENABLE_CIRCUIT
-// ENABLE_OPTIMIZED_IC: true
+// OMIT_REDUNDANT_MIRRORS: true
 // GENERATE_CLASSES_IN_IR: true
 // MIN_COMPILER_VERSION: 2.4.20-dev-6138
 
 // Incremental mutation is covered by the Gradle functional-test infrastructure. This cold
-// compilation verifies that optimized IR codegen supports class and function screen arguments.
+// compilation verifies that creator-signature-carrier codegen supports class and function screen
+// arguments.
 
 import androidx.compose.runtime.Composable
 import com.slack.circuit.codegen.annotations.CircuitInject

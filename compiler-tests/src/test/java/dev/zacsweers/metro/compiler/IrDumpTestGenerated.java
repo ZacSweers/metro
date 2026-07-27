@@ -553,9 +553,9 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
-    @TestMetadata("OptimizedSignatureCarriers.kt")
-    public void testOptimizedSignatureCarriers() {
-      run("OptimizedSignatureCarriers.kt");
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
     }
   }
 

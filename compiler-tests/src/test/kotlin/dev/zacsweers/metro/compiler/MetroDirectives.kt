@@ -27,8 +27,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Enable/disable generation of metadata-visible hidden classes in IR.") {
       it.toBoolean()
     }
-  val ENABLE_OPTIMIZED_IC by
-    valueDirective("Enable/disable optimized incremental-compilation support.") { it.toBoolean() }
+  val OMIT_REDUNDANT_MIRRORS by
+    valueDirective("Omit redundant generated declaration mirrors.") { it.toBoolean() }
   val ENABLE_PRIVATE_PROVIDER_PROPERTIES by
     directive("Enable private @Provides properties and their property mirrors.")
   val PUBLIC_SCOPED_PROVIDER_SEVERITY by

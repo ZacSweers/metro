@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 @SuppressWarnings("all")
 @TestMetadata("compiler-tests/src/test/data/box")
 @TestDataPath("$PROJECT_ROOT")
-public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedIcIrOnlyClassesBoxTest {
+public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractOmitRedundantMirrorsIrOnlyClassesBoxTest {
   private void run(String fileName) {
     runTest("compiler-tests/src/test/data/box/" + fileName);
   }
@@ -616,9 +616,9 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
       }
 
       @Test
-      @TestMetadata("OptimizedIcScreenAnnotationArguments.kt")
-      public void testOptimizedIcScreenAnnotationArguments() {
-        run("OptimizedIcScreenAnnotationArguments.kt");
+      @TestMetadata("CreatorSignatureCarrierScreenArguments.kt")
+      public void testCreatorSignatureCarrierScreenArguments() {
+        run("CreatorSignatureCarrierScreenArguments.kt");
       }
 
       @Test
@@ -950,6 +950,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     @TestMetadata("ContributingMultipleGraphsToSameParent.kt")
     public void testContributingMultipleGraphsToSameParent() {
       run("ContributingMultipleGraphsToSameParent.kt");
+    }
+
+    @Test
+    @TestMetadata("DuplicatedDepInBinding.kt")
+    public void testDuplicatedDepInBinding() {
+      run("DuplicatedDepInBinding.kt");
     }
 
     @Test
@@ -2047,6 +2053,18 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     }
 
     @Test
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectBindsDeclarations.kt")
+    public void testDirectBindsDeclarations() {
+      run("DirectBindsDeclarations.kt");
+    }
+
+    @Test
     @TestMetadata("LegacyCapabilityFallbackCarriers.kt")
     public void testLegacyCapabilityFallbackCarriers() {
       run("LegacyCapabilityFallbackCarriers.kt");
@@ -2056,18 +2074,6 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     @TestMetadata("LegacySignatureCarriers.kt")
     public void testLegacySignatureCarriers() {
       run("LegacySignatureCarriers.kt");
-    }
-
-    @Test
-    @TestMetadata("ModernSignatureCarriers.kt")
-    public void testModernSignatureCarriers() {
-      run("ModernSignatureCarriers.kt");
-    }
-
-    @Test
-    @TestMetadata("OptimizedBindsCarriers.kt")
-    public void testOptimizedBindsCarriers() {
-      run("OptimizedBindsCarriers.kt");
     }
   }
 
@@ -2640,6 +2646,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
       }
 
       @Test
+      @TestMetadata("InlinedObjectMultibindingRemainsLazy.kt")
+      public void testInlinedObjectMultibindingRemainsLazy() {
+        run("InlinedObjectMultibindingRemainsLazy.kt");
+      }
+
+      @Test
       @TestMetadata("JavaxProviderShouldWorkInMap.kt")
       public void testJavaxProviderShouldWorkInMap() {
         run("JavaxProviderShouldWorkInMap.kt");
@@ -2703,6 +2715,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
       @TestMetadata("NamedAnnotationArgumentClassRef.kt")
       public void testNamedAnnotationArgumentClassRef() {
         run("NamedAnnotationArgumentClassRef.kt");
+      }
+
+      @Test
+      @TestMetadata("NestedSuspendWrapperInterop.kt")
+      public void testNestedSuspendWrapperInterop() {
+        run("NestedSuspendWrapperInterop.kt");
       }
 
       @Test
@@ -3263,6 +3281,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     }
 
     @Test
+    @TestMetadata("InlinedObjectProvidersRemainLazy.kt")
+    public void testInlinedObjectProvidersRemainLazy() {
+      run("InlinedObjectProvidersRemainLazy.kt");
+    }
+
+    @Test
     @TestMetadata("InlinedProviderValueNotOnConsumerClasspath.kt")
     public void testInlinedProviderValueNotOnConsumerClasspath() {
       run("InlinedProviderValueNotOnConsumerClasspath.kt");
@@ -3284,6 +3308,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     @TestMetadata("JvmFieldProvidersAreRespected.kt")
     public void testJvmFieldProvidersAreRespected() {
       run("JvmFieldProvidersAreRespected.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateProvidesPropertiesInOtherModule.kt")
+    public void testPrivateProvidesPropertiesInOtherModule() {
+      run("PrivateProvidesPropertiesInOtherModule.kt");
     }
 
     @Test
@@ -3374,6 +3404,326 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/suspend")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Suspend {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/suspend/" + fileName);
+    }
+
+    @Test
+    @TestMetadata("AccessorDirect.kt")
+    public void testAccessorDirect() {
+      run("AccessorDirect.kt");
+    }
+
+    @Test
+    public void testAllFilesPresentInSuspend() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("AssistedInjectSuspendMemberInjection.kt")
+    public void testAssistedInjectSuspendMemberInjection() {
+      run("AssistedInjectSuspendMemberInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("AssistedInjectSuspendSam.kt")
+    public void testAssistedInjectSuspendSam() {
+      run("AssistedInjectSuspendSam.kt");
+    }
+
+    @Test
+    @TestMetadata("ConstructorInjection.kt")
+    public void testConstructorInjection() {
+      run("ConstructorInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingConsumesSuspend.kt")
+    public void testContributedBindingConsumesSuspend() {
+      run("ContributedBindingConsumesSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedBindingContainerSuspendProvides.kt")
+    public void testContributedBindingContainerSuspendProvides() {
+      run("ContributedBindingContainerSuspendProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedGraphExtensionParentSuspend.kt")
+    public void testContributedGraphExtensionParentSuspend() {
+      run("ContributedGraphExtensionParentSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributedIntoMapSuspendValue.kt")
+    public void testContributedIntoMapSuspendValue() {
+      run("ContributedIntoMapSuspendValue.kt");
+    }
+
+    @Test
+    @TestMetadata("CycleViaDelegateFactory.kt")
+    public void testCycleViaDelegateFactory() {
+      run("CycleViaDelegateFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("DeepChainDiamondPropagation.kt")
+    public void testDeepChainDiamondPropagation() {
+      run("DeepChainDiamondPropagation.kt");
+    }
+
+    @Test
+    @TestMetadata("DeferredMapDoesNotPropagateSuspend.kt")
+    public void testDeferredMapDoesNotPropagateSuspend() {
+      run("DeferredMapDoesNotPropagateSuspend.kt");
+    }
+
+    @Test
+    @TestMetadata("DepInConstructorInjectedAccessor.kt")
+    public void testDepInConstructorInjectedAccessor() {
+      run("DepInConstructorInjectedAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("FullBindingGraphValidationSuspendPropagation.kt")
+    public void testFullBindingGraphValidationSuspendPropagation() {
+      run("FullBindingGraphValidationSuspendPropagation.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionProvider.kt")
+    public void testFunctionProvider() {
+      run("FunctionProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("FunctionTypeInvocationOnAllPlatforms.kt")
+    public void testFunctionTypeInvocationOnAllPlatforms() {
+      run("FunctionTypeInvocationOnAllPlatforms.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericAssistedFactorySuspendDep.kt")
+    public void testGenericAssistedFactorySuspendDep() {
+      run("GenericAssistedFactorySuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericSuspendChain.kt")
+    public void testGenericSuspendChain() {
+      run("GenericSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionChildSuspendProvides.kt")
+    public void testGraphExtensionChildSuspendProvides() {
+      run("GraphExtensionChildSuspendProvides.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionConsumesParentSuspendMultibinding.kt")
+    public void testGraphExtensionConsumesParentSuspendMultibinding() {
+      run("GraphExtensionConsumesParentSuspendMultibinding.kt");
+    }
+
+    @Test
+    @TestMetadata("GraphExtensionParentSuspendBinding.kt")
+    public void testGraphExtensionParentSuspendBinding() {
+      run("GraphExtensionParentSuspendBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendAccessor.kt")
+    public void testIncludedGraphSuspendAccessor() {
+      run("IncludedGraphSuspendAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("IncludedGraphSuspendLazyAccessor.kt")
+    public void testIncludedGraphSuspendLazyAccessor() {
+      run("IncludedGraphSuspendLazyAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("InlinedObjectSuspendProvidersRemainLazy.kt")
+    public void testInlinedObjectSuspendProvidersRemainLazy() {
+      run("InlinedObjectSuspendProvidersRemainLazy.kt");
+    }
+
+    @Test
+    @TestMetadata("MapFunctionValuesMixed.kt")
+    public void testMapFunctionValuesMixed() {
+      run("MapFunctionValuesMixed.kt");
+    }
+
+    @Test
+    @TestMetadata("MapSuspendProviderValues.kt")
+    public void testMapSuspendProviderValues() {
+      run("MapSuspendProviderValues.kt");
+    }
+
+    @Test
+    @TestMetadata("MemberInjectionDeferredSuspendDep.kt")
+    public void testMemberInjectionDeferredSuspendDep() {
+      run("MemberInjectionDeferredSuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedSuspendChain.kt")
+    public void testMixedSuspendChain() {
+      run("MixedSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedSuspendNonSuspendDeps.kt")
+    public void testMixedSuspendNonSuspendDeps() {
+      run("MixedSuspendNonSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsEmptySuspendMap.kt")
+    public void testMultibindsEmptySuspendMap() {
+      run("MultibindsEmptySuspendMap.kt");
+    }
+
+    @Test
+    @TestMetadata("MultibindsSuspendMap.kt")
+    public void testMultibindsSuspendMap() {
+      run("MultibindsSuspendMap.kt");
+    }
+
+    @Test
+    @TestMetadata("MultipleSuspendDeps.kt")
+    public void testMultipleSuspendDeps() {
+      run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendFunctionWrappersWithoutRuntime.kt")
+    public void testNestedSuspendFunctionWrappersWithoutRuntime() {
+      run("NestedSuspendFunctionWrappersWithoutRuntime.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrapperInjectionPaths.kt")
+    public void testNestedSuspendWrapperInjectionPaths() {
+      run("NestedSuspendWrapperInjectionPaths.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedSuspendWrappers.kt")
+    public void testNestedSuspendWrappers() {
+      run("NestedSuspendWrappers.kt");
+    }
+
+    @Test
+    @TestMetadata("NullableSynchronousDependency.kt")
+    public void testNullableSynchronousDependency() {
+      run("NullableSynchronousDependency.kt");
+    }
+
+    @Test
+    @TestMetadata("ParallelSuspendPropagationAcrossGraphExtensions.kt")
+    public void testParallelSuspendPropagationAcrossGraphExtensions() {
+      run("ParallelSuspendPropagationAcrossGraphExtensions.kt");
+    }
+
+    @Test
+    @TestMetadata("PrivateSuspendProvidesInOtherModule.kt")
+    public void testPrivateSuspendProvidesInOtherModule() {
+      run("PrivateSuspendProvidesInOtherModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ProvidedWithSuspendDep.kt")
+    public void testProvidedWithSuspendDep() {
+      run("ProvidedWithSuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderAccessor.kt")
+    public void testProviderAccessor() {
+      run("ProviderAccessor.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderBreaksSuspendChain.kt")
+    public void testProviderBreaksSuspendChain() {
+      run("ProviderBreaksSuspendChain.kt");
+    }
+
+    @Test
+    @TestMetadata("ProviderTransitiveDep.kt")
+    public void testProviderTransitiveDep() {
+      run("ProviderTransitiveDep.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifiedSuspendBindings.kt")
+    public void testQualifiedSuspendBindings() {
+      run("QualifiedSuspendBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("Scoped.kt")
+    public void testScoped() {
+      run("Scoped.kt");
+    }
+
+    @Test
+    @TestMetadata("SharedUnscopedSuspendDep.kt")
+    public void testSharedUnscopedSuspendDep() {
+      run("SharedUnscopedSuspendDep.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLazyInjection.kt")
+    public void testSuspendLazyInjection() {
+      run("SuspendLazyInjection.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLazyScoped.kt")
+    public void testSuspendLazyScoped() {
+      run("SuspendLazyScoped.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendLazyThroughFactory.kt")
+    public void testSuspendLazyThroughFactory() {
+      run("SuspendLazyThroughFactory.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderOfMultibinding.kt")
+    public void testSuspendProviderOfMultibinding() {
+      run("SuspendProviderOfMultibinding.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendProviderParam.kt")
+    public void testSuspendProviderParam() {
+      run("SuspendProviderParam.kt");
+    }
+
+    @Test
+    @TestMetadata("TransitiveConstructorInjected.kt")
+    public void testTransitiveConstructorInjected() {
+      run("TransitiveConstructorInjected.kt");
+    }
+
+    @Test
+    @TestMetadata("ViaSuspendProviderAccess.kt")
+    public void testViaSuspendProviderAccess() {
+      run("ViaSuspendProviderAccess.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/tracing")
   @TestDataPath("$PROJECT_ROOT")
   public class Tracing {
@@ -3450,6 +3800,12 @@ public class OptimizedIcIrOnlyClassesBoxTestGenerated extends AbstractOptimizedI
     @TestMetadata("RuntimeTracingScopedProvider.kt")
     public void testRuntimeTracingScopedProvider() {
       run("RuntimeTracingScopedProvider.kt");
+    }
+
+    @Test
+    @TestMetadata("RuntimeTracingSuspend.kt")
+    public void testRuntimeTracingSuspend() {
+      run("RuntimeTracingSuspend.kt");
     }
   }
 }

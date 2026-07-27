@@ -96,7 +96,7 @@
     "compilerVersionAliases": {},
     "parallelThreads": 0,
     "bufferedIcTracking": true,
-    "enableOptimizedIc": false,
+    "omitRedundantMirrors": false,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
     "enableSuspendProviders": false,

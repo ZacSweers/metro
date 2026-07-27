@@ -1779,6 +1779,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectBindsDeclarations.kt")
+    public void testDirectBindsDeclarations() {
+      run("DirectBindsDeclarations.kt");
+    }
+
+    @Test
     @TestMetadata("LegacyCapabilityFallbackCarriers.kt")
     public void testLegacyCapabilityFallbackCarriers() {
       run("LegacyCapabilityFallbackCarriers.kt");
@@ -1788,18 +1800,6 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("LegacySignatureCarriers.kt")
     public void testLegacySignatureCarriers() {
       run("LegacySignatureCarriers.kt");
-    }
-
-    @Test
-    @TestMetadata("ModernSignatureCarriers.kt")
-    public void testModernSignatureCarriers() {
-      run("ModernSignatureCarriers.kt");
-    }
-
-    @Test
-    @TestMetadata("OptimizedBindsCarriers.kt")
-    public void testOptimizedBindsCarriers() {
-      run("OptimizedBindsCarriers.kt");
     }
   }
 

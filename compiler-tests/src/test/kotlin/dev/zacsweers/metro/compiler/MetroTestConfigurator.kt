@@ -26,8 +26,8 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
 
     val testClassName = testServices.testInfo.className.substringAfterLast('.').substringBefore('$')
     if (
-      testClassName == "OptimizedIcIrOnlyClassesBoxTestGenerated" &&
-        System.getProperty("metro.testOptimizedIc")?.toBooleanStrictOrNull() != true
+      testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated" &&
+        System.getProperty("metro.testOmitRedundantMirrors")?.toBooleanStrictOrNull() != true
     ) {
       return true
     }
@@ -76,7 +76,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
       generateClassesInIrDirectives.lastOrNull()?.toString()?.toBoolean() == true
     val irOnlyClassesSuite =
       testClassName == "IrOnlyClassesBoxTestGenerated" ||
-        testClassName == "OptimizedIcIrOnlyClassesBoxTestGenerated"
+        testClassName == "OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated"
     if (
       irOnlyClassesSuite &&
         shouldSkipForCompilerVersion(

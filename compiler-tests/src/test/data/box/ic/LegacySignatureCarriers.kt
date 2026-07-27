@@ -1,5 +1,5 @@
 // IGNORE_BACKEND: JS_IR
-// ENABLE_OPTIMIZED_IC: false
+// OMIT_REDUNDANT_MIRRORS: false
 
 interface SignatureService
 

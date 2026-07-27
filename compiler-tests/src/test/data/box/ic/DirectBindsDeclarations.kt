@@ -1,6 +1,6 @@
 // IGNORE_BACKEND: JS_IR
 // MIN_COMPILER_VERSION: 2.4.0
-// ENABLE_OPTIMIZED_IC: true
+// OMIT_REDUNDANT_MIRRORS: true
 
 // MODULE: lib
 
@@ -9,18 +9,18 @@ interface MixedPublicBindsTarget
 interface PrivateBindsTarget
 
 @Inject
-class OptimizedBindsImpl : PublicBindsTarget, MixedPublicBindsTarget, PrivateBindsTarget
+class DirectBindsImpl : PublicBindsTarget, MixedPublicBindsTarget, PrivateBindsTarget
 
 @BindingContainer
 interface PublicBindsAliases {
-  @Binds fun bindPublic(impl: OptimizedBindsImpl): PublicBindsTarget
+  @Binds fun bindPublic(impl: DirectBindsImpl): PublicBindsTarget
 }
 
 @BindingContainer
 interface MixedBindsAliases {
-  @Binds fun bindVisible(impl: OptimizedBindsImpl): MixedPublicBindsTarget
+  @Binds fun bindVisible(impl: DirectBindsImpl): MixedPublicBindsTarget
 
-  @Binds private fun bindPrivate(impl: OptimizedBindsImpl): PrivateBindsTarget = impl
+  @Binds private fun bindPrivate(impl: DirectBindsImpl): PrivateBindsTarget = impl
 }
 
 // MODULE: main(lib)
@@ -28,17 +28,17 @@ interface MixedBindsAliases {
 @DependencyGraph(
   bindingContainers = [PublicBindsAliases::class, MixedBindsAliases::class]
 )
-interface OptimizedBindsGraph {
+interface DirectBindsGraph {
   val publicTarget: PublicBindsTarget
   val mixedPublicTarget: MixedPublicBindsTarget
   val privateTarget: PrivateBindsTarget
 }
 
 fun box(): String {
-  val graph = createGraph<OptimizedBindsGraph>()
-  assertTrue(graph.publicTarget is OptimizedBindsImpl)
-  assertTrue(graph.mixedPublicTarget is OptimizedBindsImpl)
-  assertTrue(graph.privateTarget is OptimizedBindsImpl)
+  val graph = createGraph<DirectBindsGraph>()
+  assertTrue(graph.publicTarget is DirectBindsImpl)
+  assertTrue(graph.mixedPublicTarget is DirectBindsImpl)
+  assertTrue(graph.privateTarget is DirectBindsImpl)
 
   assertFalse(
     PublicBindsAliases::class.java.declaredClasses.any { it.simpleName == "BindsMirror" }
