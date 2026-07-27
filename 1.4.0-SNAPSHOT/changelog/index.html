@@ -7459,14 +7459,14 @@
 <li><code>runtime-coroutines</code> uses kotlinx-coroutines on every platform.</li>
 </ul>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>[IR]</strong> Avoid generating unused provider fields for included graph accessors that can be read directly.</li>
-<li><strong>[IR]</strong> Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.</li>
-<li><strong>[runtime]</strong> If the input function to <code>provider()</code> is already a <code>Provider</code> instance, return it directly rather than needlessly wrap it.</li>
-<li><strong>[runtime]</strong> Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.</li>
-</ul>
+<p>Support private <code>@Provides</code> properties on Kotlin <code>2.4.20-Beta1</code> and newer.<br />
+- <strong>[IR]</strong> Avoid generating unused provider fields for included graph accessors that can be read directly.<br />
+- <strong>[IR]</strong> Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.<br />
+- <strong>[runtime]</strong> If the input function to <code>provider()</code> is already a <code>Provider</code> instance, return it directly rather than needlessly wrap it.<br />
+- <strong>[runtime]</strong> Support nullable values in ordinary map multibinding factories, including provider and lazy map value forms.</p>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Report a diagnostic when private <code>@Provides</code> properties are used without compiler support (i.e. pre-<code>2.4.20</code>).</li>
 <li><strong>[FIR]</strong> Report an error when a map key is applied (via type argument) to a binding without a corresponding <code>@IntoMap</code> or <code>@ContributesIntoMap</code> annotation.</li>
 <li><strong>[IR]</strong> Fix Kotlin/Native compilation failures when generated hidden classes were missing their <code>Any</code> supertype.</li>
 <li><strong>[IR]</strong> Enforce <code>enableSuspendProviders</code> for suspend-provider signatures read from upstream modules.</li>
