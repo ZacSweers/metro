@@ -75,8 +75,7 @@ buildConfig {
       providers.gradleProperty("VERSION_NAME").map { "\"$it\"" },
     )
     buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-    // Metadata version for compatibility checking. Increment when making breaking changes to
-    // metro_metadata.proto
+    // Metadata version written into Metro's custom metadata.
     buildConfigField("Int", "METADATA_VERSION", 1)
   }
   sourceSets.named("test") {

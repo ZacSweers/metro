@@ -203,7 +203,7 @@ internal class BindingGraphGenerator(
         trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
         trackFunctionCall(node.sourceGraph, providerFactory.function)
         if (providerFactory is ProviderFactory.Metro) {
-          trackFunctionCall(node.sourceGraph, providerFactory.mirrorFunction)
+          trackFunctionCall(node.sourceGraph, providerFactory.signatureFunction)
         }
 
         val isInherited = typeKey in inheritedProviderFactoryKeys
@@ -277,9 +277,9 @@ internal class BindingGraphGenerator(
         batchTrackForCallingDeclaration(node.sourceGraph) {
           for ((_, bindsCallable) in bindsCallablesToAdd) {
             trackFunctionCall(bindsCallable.function)
-            trackFunctionCall(bindsCallable.callableMetadata.mirrorFunction)
+            trackFunctionCall(bindsCallable.callableMetadata.signatureFunction)
             trackClassLookup(bindsCallable.function.parentAsClass)
-            trackClassLookup(bindsCallable.callableMetadata.mirrorFunction.parentAsClass)
+            trackClassLookup(bindsCallable.callableMetadata.signatureFunction.parentAsClass)
           }
         }
       }
@@ -328,9 +328,9 @@ internal class BindingGraphGenerator(
               bindingLookup.createExplicitConstructorInjectedBinding(bindsCallable)
             }
           } else {
-            val mirrorFunction = bindsCallable.callableMetadata.mirrorFunction
+            val signatureFunction = bindsCallable.callableMetadata.signatureFunction
             // Use cached binding if available, otherwise create and cache
-            mirrorFunction.cachedAliasBinding
+            signatureFunction.cachedAliasBinding
               ?: trace("Resolve binds alias binding") {
                 val parameters = bindsCallable.function.parameters()
                 IrBinding.Alias(
@@ -339,7 +339,7 @@ internal class BindingGraphGenerator(
                     bindsCallable = bindsCallable,
                     parameters = parameters,
                   )
-                  .also { mirrorFunction.cachedAliasBinding = it }
+                  .also { signatureFunction.cachedAliasBinding = it }
               }
           }
 
@@ -466,7 +466,7 @@ internal class BindingGraphGenerator(
         val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)
         registerMultibindsDeclaration(
           contextKey,
-          multibindsCallable.callableMetadata.mirrorFunction,
+          multibindsCallable.callableMetadata.signatureFunction,
           multibindsCallable.callableMetadata.annotations.multibinds!!,
         )
       }

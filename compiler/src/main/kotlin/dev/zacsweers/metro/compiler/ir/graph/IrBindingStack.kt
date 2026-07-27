@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.compiler.graph.BaseTypeKey
+import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack.Entry
@@ -20,7 +21,6 @@ import dev.zacsweers.metro.compiler.ir.resolveOverriddenTypeIfAny
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.withoutLineBreaks
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -152,7 +152,7 @@ internal interface IrBindingStack :
         declaration: IrDeclarationWithName? = param,
         displayTypeKey: IrTypeKey = contextKey.typeKey,
         isSynthetic: Boolean = false,
-        isMirrorFunction: Boolean = false,
+        isSignatureFunction: Boolean = false,
         diagnosticNotes: List<Note> = emptyList(),
       ): Entry {
         return Entry(
@@ -176,9 +176,16 @@ internal interface IrBindingStack :
               // If it's a synthetic signature holder in a ClassFactory, use the parent class
               var treatAsConstructor = functionToUse is IrConstructor
               val parentClassToReport =
-                if (functionToUse is IrSimpleFunction && isMirrorFunction) {
-                  treatAsConstructor = functionToUse.name == Symbols.Names.mirrorFunction
-                  functionToUse.parentAsClass.parent
+                if (functionToUse is IrSimpleFunction && isSignatureFunction) {
+                  treatAsConstructor = true
+                  val signatureContainer = functionToUse.parentAsClass
+                  val factoryClass =
+                    if (signatureContainer.isCompanion) {
+                      signatureContainer.parentAsClass
+                    } else {
+                      signatureContainer
+                    }
+                  factoryClass.parent
                 } else {
                   functionToUse.parent
                 }
@@ -469,7 +476,7 @@ internal fun bindingStackEntryForDependency(
         callingBinding.classFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
-        isMirrorFunction = true,
+        isSignatureFunction = callingBinding.classFactory is ClassFactory.MetroFactory,
         diagnosticNotes = callingBinding.diagnosticNotes,
       )
     }
@@ -496,7 +503,7 @@ internal fun bindingStackEntryForDependency(
         originConstructor ?: callingBinding.providerFactory.function,
         callingBinding.parameterFor(targetKey),
         displayTypeKey = targetKey,
-        isMirrorFunction = false,
+        isSignatureFunction = false,
       )
     }
     is AssistedFactory -> {

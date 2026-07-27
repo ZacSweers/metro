@@ -1957,7 +1957,7 @@ internal fun patchQualifierAnnotation(
 }
 
 /**
- * Checks and optionally patches mismatches between mirror function parameters and their
+ * Checks and optionally patches mismatches between signature-carrier parameters and their
  * corresponding generated function parameters.
  *
  * This is used to work around https://github.com/ZacSweers/metro/issues/1556 where klib
@@ -1965,23 +1965,23 @@ internal fun patchQualifierAnnotation(
  *
  * @param factoryClass the factory class containing the create/newInstance functions
  * @param newInstanceFunctionName the name of the newInstance function to look up
- * @param mirrorParams the parameters from the mirror function to compare against
+ * @param signatureParams the parameters from the signature carrier to compare against
  * @param reportingFunction the function to report diagnostics on (for error messages)
  * @param primaryConstructorParamOffset offset when indexing into primary constructor params
  * @param extractParams function to extract the list of [Parameter]s from a function
  * @return true if there was an unpatched mismatch, false otherwise
  */
 context(context: IrMetroContext)
-internal fun checkMirrorParamMismatches(
+internal fun checkSignatureCarrierParamMismatches(
   factoryClass: IrClass,
   newInstanceFunctionName: String,
-  mirrorFunction: IrSimpleFunction,
-  mirrorParams: () -> List<Parameter>,
+  signatureFunction: IrSimpleFunction,
+  signatureParams: () -> List<Parameter>,
   reportingFunction: IrFunction?,
   primaryConstructorParamOffset: Int,
   extractParams: (IrFunction) -> List<Parameter>,
 ): Boolean {
-  if (!factoryClass.shouldCheckMirrorParamMismatches()) return false
+  if (!factoryClass.shouldCheckSignatureCarrierParamMismatches()) return false
 
   val staticContainer = factoryClass.requireStaticIshDeclarationContainer()
 
@@ -1994,13 +1994,17 @@ internal fun checkMirrorParamMismatches(
   val createFunctionParams = extractParams(createFunction)
 
   var hadUnpatchedMismatch = false
-  for ((i, mirrorP) in mirrorParams().withIndex()) {
+  for ((i, signatureParameter) in signatureParams().withIndex()) {
     val createP = createFunctionParams[i]
-    if (createP.typeKey != mirrorP.typeKey) {
-      reportMirrorParamMismatch(reportingFunction ?: mirrorFunction, mirrorP, createP)
+    if (createP.typeKey != signatureParameter.typeKey) {
+      reportSignatureCarrierParamMismatch(
+        reportingFunction ?: signatureFunction,
+        signatureParameter,
+        createP,
+      )
 
       if (context.options.patchKlibParams) {
-        val correctQualifier = mirrorP.contextualTypeKey.typeKey.qualifier?.ir
+        val correctQualifier = signatureParameter.contextualTypeKey.typeKey.qualifier?.ir
         patchQualifierAnnotation(createFunctionParams[i].asValueParameter, correctQualifier)
         patchQualifierAnnotation(newInstanceFunctionParams[i].asValueParameter, correctQualifier)
         factoryClass.primaryConstructor
@@ -2018,14 +2022,14 @@ internal fun checkMirrorParamMismatches(
 }
 
 context(context: IrMetroContext)
-internal fun IrDeclarationParent.shouldCheckMirrorParamMismatches(): Boolean {
+internal fun IrDeclarationParent.shouldCheckSignatureCarrierParamMismatches(): Boolean {
   return isExternalParent &&
-    shouldCheckMirrorParamMismatches(context.options, context.platform) {
+    shouldCheckSignatureCarrierParamMismatches(context.options, context.platform) {
       context.languageVersionSettings.supportsFeature(LanguageFeature.AnnotationsInMetadata)
     }
 }
 
-internal inline fun shouldCheckMirrorParamMismatches(
+internal inline fun shouldCheckSignatureCarrierParamMismatches(
   options: MetroOptions,
   platform: TargetPlatform?,
   annotationsInMetadataEnabled: () -> Boolean,
@@ -2046,9 +2050,9 @@ internal fun TargetPlatform?.supportsTracing(): Boolean {
 }
 
 context(context: IrMetroContext)
-private fun reportMirrorParamMismatch(
+private fun reportSignatureCarrierParamMismatch(
   function: IrFunction?,
-  mirrorParameter: Parameter,
+  signatureParameter: Parameter,
   createParameter: Parameter,
 ): Unit =
   with(context) {
@@ -2064,10 +2068,10 @@ private fun reportMirrorParamMismatch(
       }
 
     val message = buildString {
-      appendLine("Mirror/create function parameter type mismatch:")
-      appendLine("  - Source:         ${function?.kotlinFqName?.asString()}")
-      appendLine("  - Mirror param:   ${mirrorParameter.typeKey}")
-      appendLine("  - create() param: ${createParameter.typeKey}")
+      appendLine("Signature carrier/create function parameter type mismatch:")
+      appendLine("  - Source:                  ${function?.kotlinFqName?.asString()}")
+      appendLine("  - Signature carrier param: ${signatureParameter.typeKey}")
+      appendLine("  - create() param:          ${createParameter.typeKey}")
       appendLine()
       appendLine(
         "This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/metro/issues/1556"

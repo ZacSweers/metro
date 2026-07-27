@@ -15,6 +15,7 @@ import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.MetroMetadata
 import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -23,15 +24,7 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
-/**
- * Factory function that ensures [METADATA_VERSION] is always set correctly.
- *
- * **Important:** When making breaking changes to [MetroMetadata] or related proto types in
- * `metro_metadata.proto`, you must increment `METADATA_VERSION` in `compiler/build.gradle.kts`.
- *
- * @see MetroMetadata
- * @see METADATA_VERSION
- */
+/** Factory function that ensures [METADATA_VERSION] is always set correctly. */
 internal fun createMetroMetadata(
   dependency_graph: DependencyGraphProto? = null,
   injected_class: InjectedClassProto? = null,
@@ -152,6 +145,11 @@ private fun createGraphProto(
               if (factory.isPropertyAccessor) factory.callableId.callableName.asString() else "",
             new_instance_name = factory.newInstanceName.asString(),
             inlined = factory.inlinedValue?.toProto(),
+            signature_carrier =
+              when (factory) {
+                is ProviderFactory.Metro -> factory.signatureCarrier
+                is ProviderFactory.Dagger -> SignatureCarrier.MIRROR_FUNCTION
+              },
           )
         }
         .sortedBy { it.class_id },

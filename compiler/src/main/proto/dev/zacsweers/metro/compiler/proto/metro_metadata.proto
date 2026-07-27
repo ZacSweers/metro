@@ -42,6 +42,14 @@ message ProviderFactoryProto {
   string new_instance_name = 6;
   // If present, callers should materialize this value instead of invoking the factory.
   InlinedProviderProto inlined = 7;
+  // The generated function that carries the source callable's signature.
+  SignatureCarrier signature_carrier = 8;
+}
+
+// Identifies which generated function carries the source callable's signature.
+enum SignatureCarrier {
+  MIRROR_FUNCTION = 0;
+  CREATOR_FUNCTION = 1;
 }
 
 message InlinedProviderProto {
@@ -88,6 +96,8 @@ message InjectedClassProto {
   optional string factory_class_name = 1;
   // Optional member injections (if any)
   optional MemberInjectionsProto member_injections = 2;
+  // The generated function that carries the injectable constructor's signature.
+  SignatureCarrier signature_carrier = 3;
 }
 
 message MemberInjectionsProto {
@@ -97,10 +107,8 @@ message MemberInjectionsProto {
   repeated string member_inject_functions = 2;
 }
 
-// IMPORTANT: When making breaking changes to this file, you must increment
-// METADATA_VERSION in compiler/build.gradle.kts
 message MetroMetadata {
-  // Metadata version for compatibility checking. Must match METADATA_VERSION in buildconfig.
+  // Metadata version written by the current compiler. Must match METADATA_VERSION in buildconfig.
   int32 version = 1;
 
   DependencyGraphProto dependency_graph = 2;

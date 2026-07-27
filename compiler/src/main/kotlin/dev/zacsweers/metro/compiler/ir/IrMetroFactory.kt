@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes as remapParameterTypes
 import dev.zacsweers.metro.compiler.ir.parameters.wrapInProvider
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -184,6 +185,7 @@ internal sealed class ClassFactory : IrMetroFactory {
     override val factoryClass: IrClass,
     override val targetFunctionParameters: Parameters,
     override val targetConstructor: IrConstructor?,
+    val signatureCarrier: SignatureCarrier,
   ) : ClassFactory() {
     override val function: IrSimpleFunction = targetFunctionParameters.ir!! as IrSimpleFunction
     override val isDaggerFactory: Boolean = false
@@ -211,7 +213,12 @@ internal sealed class ClassFactory : IrMetroFactory {
           function,
         )
       val remappedParameters = targetFunctionParameters.remapParameterTypes(functionTypeRemapper)
-      return MetroFactory(factoryClass, remappedParameters, targetConstructor)
+      return MetroFactory(
+        factoryClass,
+        remappedParameters,
+        targetConstructor,
+        signatureCarrier,
+      )
     }
   }
 
