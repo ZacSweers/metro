@@ -14,6 +14,7 @@ import dev.zacsweers.metro.gradle.assertOutputContains
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
+import dev.zacsweers.metro.gradle.getTestOmitRedundantMirrorsOverride
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.toKotlinVersion
 import org.gradle.testkit.runner.TaskOutcome
@@ -1826,10 +1827,19 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
 
     // Second build should fail - Set is now empty and not allowed
     val secondBuildResult = project.compileKotlinAndFail()
+    val expectedColumn =
+      if (
+        getTestOmitRedundantMirrorsOverride() == true &&
+          getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0")
+      ) {
+        7
+      } else {
+        3
+      }
     assertThat(secondBuildResult.output.cleanOutputLine())
       .contains(
         """
-        e: MyBindingContainer.kt:8:3 [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
+        e: MyBindingContainer.kt:8:$expectedColumn [Metro/EmptyMultibinding] Multibinding Set<String> was unexpectedly empty
 
           help: annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be
                 empty
@@ -2162,6 +2172,8 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
         val bindingContainer =
           source(
             """
+            class AnotherScope
+
             @BindingContainer
             @ContributesTo(AppScope::class)
             class StringModule {
@@ -2205,7 +2217,8 @@ class BindingContainerICTests(target: KmpTarget) : BaseIncrementalCompilationTes
     libProject.modify(project.rootDir, fixture.bindingContainer, fixture.changedContribution)
 
     // Build is expected to fail, because module is contributed to wrong scope
-    project.compileKotlinAndFail()
+    val secondBuildResult = project.compileKotlinAndFail()
+    assertThat(secondBuildResult.output).contains("[Metro/MissingBinding]")
   }
 
   @Test

@@ -36,8 +36,8 @@ fun box(): String {
     SignatureProviders::class.java.declaredClasses.single {
       it.simpleName.endsWith("MetroFactory")
     }
-  assertTrue(injectFactory.declaredMethods.any { it.name == "mirrorFunction" })
-  assertTrue(providerFactory.declaredMethods.any { it.name == "mirrorFunction" })
+  assertTrue(injectFactory.declaredMethods.any { it.name == "declarationMirror" })
+  assertTrue(providerFactory.declaredMethods.any { it.name == "declarationMirror" })
 
   val bindsMirror =
     SignatureAliases::class.java.declaredClasses.single { it.simpleName == "BindsMirror" }

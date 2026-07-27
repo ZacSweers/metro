@@ -59,8 +59,8 @@ fun box(): String {
     CreatorSignatureProviders::class.java.declaredClasses.single {
       it.simpleName.endsWith("MetroFactory")
     }
-  assertFalse(injectFactory.declaredMethods.any { it.name == "mirrorFunction" })
-  assertFalse(providerFactory.declaredMethods.any { it.name == "mirrorFunction" })
+  assertFalse(injectFactory.declaredMethods.any { it.name == "declarationMirror" })
+  assertFalse(providerFactory.declaredMethods.any { it.name == "declarationMirror" })
 
   assertFalse(
     CreatorSignatureAliases::class.java.declaredClasses.any { it.simpleName == "BindsMirror" }

@@ -133,12 +133,18 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
   val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
   val newInstanceName = constArgumentOfTypeAt<String>(4)?.asName()
-  val callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
+  val sourceCallableName = propertyName.ifBlank { callableName }.asName()
+  val callableId =
+    CallableId(
+      clazz.classIdOrFail.parentClassId!!,
+      sourceCallableName,
+    )
 
   // Fake a reference to the real function by making a copy of its generated signature carrier.
   val function =
     signatureFunction.deepCopyWithSymbols().apply {
-      name = callableId.callableName
+      // Property carriers are functions, so keep the getter name on the reconstructed function.
+      name = callableName.asName()
       if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject) {
         val instanceParameter = regularParameters.firstOrNull()
         if (instanceParameter?.name != Symbols.Names.instance) {

@@ -8,7 +8,6 @@ import dev.zacsweers.metro.compiler.fir.Keys
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -43,11 +42,17 @@ import org.jetbrains.kotlin.platform.konan.isNative
  * Generates mirror class declarations for `@Binds` and `@Multibinds`-annotated members, as well as
  * `@DefaultBinding`-annotated classes.
  */
-internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class BindingMirrorClassFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  omitRedundantMirrors: Boolean,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
   private val useDirectBindingDeclarations =
-    session.shouldUseDirectBindingDeclarations(supportsAnnotationArgumentInvalidation)
+    session.shouldUseDirectBindingDeclarations(
+      omitRedundantMirrors,
+      supportsAnnotationArgumentInvalidation,
+    )
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.bindsAnnotationPredicate)
@@ -150,9 +155,10 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
 }
 
 internal fun FirSession.shouldUseDirectBindingDeclarations(
-  supportsAnnotationArgumentInvalidation: Boolean
+  omitRedundantMirrors: Boolean,
+  supportsAnnotationArgumentInvalidation: Boolean,
 ): Boolean {
-  if (!metroFirBuiltIns.options.omitRedundantMirrors) return false
+  if (!omitRedundantMirrors) return false
   if (!supportsAnnotationArgumentInvalidation) return false
 
   val platform = moduleData.platform

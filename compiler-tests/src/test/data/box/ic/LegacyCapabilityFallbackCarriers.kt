@@ -38,8 +38,8 @@ fun box(): String {
     FallbackProviders::class.java.declaredClasses.single {
       it.simpleName.endsWith("MetroFactory")
     }
-  assertTrue(injectFactory.declaredMethods.any { it.name == "mirrorFunction" })
-  assertTrue(providerFactory.declaredMethods.any { it.name == "mirrorFunction" })
+  assertTrue(injectFactory.declaredMethods.any { it.name == "declarationMirror" })
+  assertTrue(providerFactory.declaredMethods.any { it.name == "declarationMirror" })
 
   val bindsMirror =
     FallbackAliases::class.java.declaredClasses.single { it.simpleName == "BindsMirror" }
