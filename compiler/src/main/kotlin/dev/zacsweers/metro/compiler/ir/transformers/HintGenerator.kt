@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.name
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
@@ -69,6 +68,8 @@ import org.jetbrains.kotlin.name.Name
 internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModuleFragment) :
   IrMetroContext by context {
 
+  private val hintFilesByMetadataSourceClassId = mutableMapOf<ClassId, IrFileImpl>()
+
   @IgnorableReturnValue
   fun generateHint(
     sourceClass: IrClass,
@@ -96,46 +97,52 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
           body = stubExpressionBody()
         }
 
-    val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
-
-    val firFile = buildFile {
-      val metadataSource = metadataSourceClass.metadata as? FirMetadataSource.Class
-      if (metadataSource == null) {
-        reportCompat(
-          metadataSourceClass,
-          MetroDiagnostics.METRO_ERROR,
-          "Class ${metadataSourceClass.classId} does not have a valid metadata source. Found ${metadataSourceClass.metadata?.javaClass?.canonicalName}.",
-        )
-      }
-      moduleData = (metadataSourceClass.metadata as FirMetadataSource.Class).fir.moduleData
-      origin = FirDeclarationOrigin.Synthetic.PluginFile
-      packageDirective = buildPackageDirective { packageFqName = Symbols.FqNames.metroHintsPackage }
-      name = fileName
-    }
-
-    /*
-    This is weird! In short, kotlinc's incremental compilation support _wants_ this to be an
-    absolute path. We obviously don't have a real path to offer it here though since this is a
-    synthetic file. However, if we just... make up a file path (in this case — a deterministic
-    synthetic sibling file in the same directory as the source file), it seems to work fine.
-
-    Is this good? Heeeeeell no. Will it probably some day break? Maybe. But for now, this works
-    and we can keep an eye on https://youtrack.jetbrains.com/issue/KT-74778 for a better long term
-    solution.
-    */
-    val fakeNewPath = Path(sourceClass.fileEntry.name).parent.resolve(fileName)
+    val metadataSourceClassId = metadataSourceClass.classIdOrFail
+    val fileName = irHintFileName(metadataSourceClassId)
     val hintFile =
-      IrFileImpl(
-          fileEntry = NaiveSourceBasedFileEntryImpl(fakeNewPath.absolutePathString()),
-          packageFragmentDescriptor =
-            EmptyPackageFragmentDescriptor(
-              moduleFragment.descriptor,
-              Symbols.FqNames.metroHintsPackage,
-            ),
-          module = moduleFragment,
-        )
-        .also { it.metadata = FirMetadataSource.File(firFile) }
-    moduleFragment.addFile(hintFile)
+      hintFilesByMetadataSourceClassId.getOrPut(metadataSourceClassId) {
+        val firFile = buildFile {
+          val metadataSource = metadataSourceClass.metadata as? FirMetadataSource.Class
+          if (metadataSource == null) {
+            reportCompat(
+              metadataSourceClass,
+              MetroDiagnostics.METRO_ERROR,
+              "Class ${metadataSourceClass.classId} does not have a valid metadata source. Found ${metadataSourceClass.metadata?.javaClass?.canonicalName}.",
+            )
+          }
+          moduleData = (metadataSourceClass.metadata as FirMetadataSource.Class).fir.moduleData
+          origin = FirDeclarationOrigin.Synthetic.PluginFile
+          packageDirective = buildPackageDirective {
+            packageFqName = Symbols.FqNames.metroHintsPackage
+          }
+          name = fileName
+        }
+
+        /*
+        This is weird! In short, kotlinc's incremental compilation support _wants_ this to be an
+        absolute path. We obviously don't have a real path to offer it here though since this is a
+        synthetic file. However, if we just... make up a file path (in this case — a deterministic
+        synthetic sibling file in the same directory as the source file), it seems to work fine.
+
+        Is this good? Heeeeeell no. Will it probably some day break? Maybe. But for now, this works
+        and we can keep an eye on https://youtrack.jetbrains.com/issue/KT-74778 for a better long term
+        solution.
+        */
+        val fakeNewPath = Path(metadataSourceClass.fileEntry.name).parent.resolve(fileName)
+        IrFileImpl(
+            fileEntry = NaiveSourceBasedFileEntryImpl(fakeNewPath.absolutePathString()),
+            packageFragmentDescriptor =
+              EmptyPackageFragmentDescriptor(
+                moduleFragment.descriptor,
+                Symbols.FqNames.metroHintsPackage,
+              ),
+            module = moduleFragment,
+          )
+          .also {
+            it.metadata = FirMetadataSource.File(firFile)
+            moduleFragment.addFile(it)
+          }
+      }
     hintFile.addChild(function)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
     // Link the hint back to the source class so source class changes in IC also mark this hint
@@ -146,12 +153,16 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     // for this scenario.
     // https://github.com/ZacSweers/metro/pull/1637
     // https://github.com/ZacSweers/metro/issues/1393
-    linkDeclarationsInCompilation(callingFile = hintFile, sourceClass)
-    hintFile.dumpToMetroLog(fakeNewPath.name)
+    linkDeclarationsInCompilation(callingFile = hintFile, metadataSourceClass)
+    hintFile.dumpToMetroLog(fileName)
     return function
   }
 
   companion object {
+    private fun irHintFileName(sourceClassId: ClassId): String {
+      return hintFileName(sourceClassId, Name.identifier("metroHints"))
+    }
+
     fun hintFileName(sourceClassId: ClassId, hintName: Name): String {
       val fileNameWithoutExtension = sequence {
         yieldAll(sourceClassId.packageFqName.pathSegments())
