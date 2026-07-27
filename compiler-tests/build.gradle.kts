@@ -333,8 +333,7 @@ val generateTests =
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
-val testOmitRedundantMirrors =
-  providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
+val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
 if (excludeJsBoxTests) {
   sourceSets.test {
