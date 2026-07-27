@@ -20,7 +20,7 @@ internal data class IcCapabilities(
       compatContext: CompatContext,
       pluginContext: IrPluginContext,
     ): IcCapabilities {
-      if (!options.enableOptimizedIc) return None
+      if (!options.omitRedundantMirrors) return None
 
       val platform = pluginContext.platform
       val readableAnnotationMetadata =

@@ -2793,7 +2793,8 @@ internal fun IrMetroContext.builtinsFinderCompat(): CompatContext.DeclarationFin
 context(context: IrMetroContext)
 internal fun IrDeclaration.lookupClass(classId: ClassId): IrClassSymbol? {
   if (
-    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+    context.options.omitRedundantMirrors &&
+      !context.icCapabilities.automaticDeclarationFinderTracking
   ) {
     trackClassLookup(this, classId)
   }
@@ -2805,7 +2806,8 @@ internal fun IrDeclaration.lookupFunctions(
   callableId: CallableId
 ): Collection<IrSimpleFunctionSymbol> {
   if (
-    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+    context.options.omitRedundantMirrors &&
+      !context.icCapabilities.automaticDeclarationFinderTracking
   ) {
     trackCallableLookup(this, callableId)
   }
@@ -2828,7 +2830,8 @@ internal fun IrClass.injectedFunctionOrNull(): IrSimpleFunctionSymbol? {
 context(context: IrMetroContext)
 internal fun IrDeclaration.lookupProperties(callableId: CallableId): Collection<IrPropertySymbol> {
   if (
-    context.options.enableOptimizedIc && !context.icCapabilities.automaticDeclarationFinderTracking
+    context.options.omitRedundantMirrors &&
+      !context.icCapabilities.automaticDeclarationFinderTracking
   ) {
     trackCallableLookup(this, callableId)
   }

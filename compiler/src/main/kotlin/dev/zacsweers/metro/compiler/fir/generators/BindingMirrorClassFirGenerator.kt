@@ -152,7 +152,7 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
 internal fun FirSession.shouldUseDirectBindingDeclarations(
   supportsAnnotationArgumentInvalidation: Boolean
 ): Boolean {
-  if (!metroFirBuiltIns.options.enableOptimizedIc) return false
+  if (!metroFirBuiltIns.options.omitRedundantMirrors) return false
   if (!supportsAnnotationArgumentInvalidation) return false
 
   val platform = moduleData.platform

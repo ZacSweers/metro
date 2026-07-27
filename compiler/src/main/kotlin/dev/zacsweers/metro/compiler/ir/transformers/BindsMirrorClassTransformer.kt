@@ -77,9 +77,9 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
           }
         val mirrorClass = declaration.bindsMirrorClassOrNull(createIfMissing = createMirror)
 
-        // External declarations may have been produced with optimized IC enabled even when the
-        // current compilation has it disabled. Read their visible originals alongside any mirror
-        // functions so gate-on and gate-off modules can be mixed.
+        // External declarations may have been produced with redundant mirrors omitted even when
+        // the current compilation still generates them. Read their visible originals alongside
+        // any mirror functions so modules using either setting can be mixed.
         if (mirrorClass == null && !useDirectDeclarations && !isExternal) {
           // If there's no mirror class, there's no bindings.
           // TODO what if they forgot to run the metro compiler? Should we put something in
