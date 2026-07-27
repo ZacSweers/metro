@@ -29,7 +29,8 @@ if [[ "$versions_only" != true ]]; then
 fi
 
 # Read versions from version-aliases.txt (skip comments and blank lines)
-versions=$(grep -v '^#' "$ALIASES_FILE" | grep -v '^[[:space:]]*$' | sort)
+declared_versions=$(grep -v '^#' "$ALIASES_FILE" | grep -v '^[[:space:]]*$')
+versions=$(echo "$declared_versions" | sort)
 
 if [ -z "$versions" ]; then
     if [[ "$versions_only" != true ]]; then
@@ -37,6 +38,8 @@ if [ -z "$versions" ]; then
     fi
     exit 1
 fi
+
+latest_kotlin_version=$(echo "$declared_versions" | tail -n 1)
 
 if [[ "$versions_only" == true ]]; then
     # Just output the versions, one per line
@@ -80,5 +83,6 @@ fi
 # Output for GitHub Actions (if running in CI)
 if [ "${GITHUB_OUTPUT:-}" ]; then
     echo "matrix=$matrix_json" >> "$GITHUB_OUTPUT"
+    echo "latest_kotlin_version=$latest_kotlin_version" >> "$GITHUB_OUTPUT"
     echo "🚀 Matrix written to GITHUB_OUTPUT"
 fi
