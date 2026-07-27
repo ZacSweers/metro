@@ -40,15 +40,15 @@ class AssistedTarget {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(@Assisted value: String): AssistedTarget {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     operator fun invoke(value: String): AssistedTarget {
       return MetroFactory/* companion */.newInstance(value = value)
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(@Assisted value: String): AssistedTarget {
-      return error(message = "Never called")
     }
 
   }
@@ -97,15 +97,15 @@ class Injected {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(value: Int): Injected {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): Injected {
       return MetroFactory/* companion */.newInstance(value = <this>.#value.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(value: Int): Injected {
-      return error(message = "Never called")
     }
 
   }
@@ -155,15 +155,15 @@ class MarkerContribution : MarkerBinding {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): MarkerContribution {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): MarkerContribution {
       return MetroFactory/* companion */.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): MarkerContribution {
-      return error(message = "Never called")
     }
 
   }
@@ -237,15 +237,15 @@ class ProviderContribution : ProviderBinding {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): ProviderContribution {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): ProviderContribution {
       return MetroFactory/* companion */.newInstance()
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(): ProviderContribution {
-      return error(message = "Never called")
     }
 
   }
@@ -288,15 +288,15 @@ abstract class ProviderContributionContributions {
         return providesProviderContribution()
       }
 
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(): ProviderBinding {
+        return error(message = "Never called")
+      }
+
       @HiddenFromObjC
       override operator fun invoke(): ProviderBinding {
         return ProvidesProviderContributionMetroFactory.providesProviderContribution()
-      }
-
-      @ComptimeOnly
-      @HiddenFromObjC
-      fun mirrorFunction(): ProviderBinding {
-        return error(message = "Never called")
       }
 
     }
@@ -392,15 +392,15 @@ object Bindings {
 
     }
 
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(value: Int): String {
+      return error(message = "Never called")
+    }
+
     @HiddenFromObjC
     override operator fun invoke(): String {
       return ProvideStringMetroFactory/* companion */.provideString(value = <this>.#value.invoke())
-    }
-
-    @ComptimeOnly
-    @HiddenFromObjC
-    fun mirrorFunction(value: Int): String {
-      return error(message = "Never called")
     }
 
   }

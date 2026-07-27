@@ -53,6 +53,18 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any]' type=<root>.AssistedTarget.MetroFactory
+      FUN name:declarationMirror visibility:public modality:FINAL returnType:<root>.AssistedTarget
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.AssistedTarget.MetroFactory
+        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
+          annotations:
+            Assisted
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun declarationMirror (value: kotlin.String): <root>.AssistedTarget declared in <root>.AssistedTarget.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
       FUN name:invoke visibility:public modality:FINAL returnType:<root>.AssistedTarget [operator]
         VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.AssistedTarget.MetroFactory
         VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
@@ -63,18 +75,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
             CALL 'public final fun newInstance (value: kotlin.String): <root>.AssistedTarget declared in <root>.AssistedTarget.MetroFactory.Companion' type=<root>.AssistedTarget origin=null
               ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=<root>.AssistedTarget.MetroFactory.Companion
               ARG value: GET_VAR 'value: kotlin.String declared in <root>.AssistedTarget.MetroFactory.invoke' type=kotlin.String origin=null
-      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.AssistedTarget
-        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.AssistedTarget.MetroFactory
-        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.String
-          annotations:
-            Assisted
-        annotations:
-          ComptimeOnly
-          HiddenFromObjC
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (value: kotlin.String): <root>.AssistedTarget declared in <root>.AssistedTarget.MetroFactory'
-            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-              ARG message: CONST String type=kotlin.String value="Never called"
     CONSTRUCTOR visibility:public returnType:<root>.AssistedTarget [primary]
       VALUE_PARAMETER kind:Regular name:value index:0 type:kotlin.String
         annotations:
@@ -143,6 +143,16 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.Injected>]' type=<root>.Injected.MetroFactory
+      FUN name:declarationMirror visibility:public modality:FINAL returnType:<root>.Injected
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Injected.MetroFactory
+        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.Int
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun declarationMirror (value: kotlin.Int): <root>.Injected declared in <root>.Injected.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
       FUN name:invoke visibility:public modality:FINAL returnType:<root>.Injected [operator]
         VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Injected.MetroFactory
         annotations:
@@ -156,16 +166,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
               ARG value: CALL 'public abstract fun invoke (): T of dev.zacsweers.metro.Provider declared in dev.zacsweers.metro.Provider' type=kotlin.Int origin=null
                 ARG <this>: GET_FIELD 'FIELD name:value type:dev.zacsweers.metro.Provider<kotlin.Int> visibility:private [final] declared in <root>.Injected.MetroFactory' type=dev.zacsweers.metro.Provider<kotlin.Int> origin=null
                   receiver: GET_VAR '<this>: <root>.Injected.MetroFactory declared in <root>.Injected.MetroFactory.invoke' type=<root>.Injected.MetroFactory origin=null
-      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.Injected
-        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Injected.MetroFactory
-        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.Int
-        annotations:
-          ComptimeOnly
-          HiddenFromObjC
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (value: kotlin.Int): <root>.Injected declared in <root>.Injected.MetroFactory'
-            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-              ARG message: CONST String type=kotlin.String value="Never called"
     CONSTRUCTOR visibility:public returnType:<root>.Injected [primary]
       VALUE_PARAMETER kind:Regular name:value index:0 type:kotlin.Int
       BLOCK_BODY
@@ -226,6 +226,15 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.MarkerContribution>]' type=<root>.MarkerContribution.MetroFactory
+      FUN name:declarationMirror visibility:public modality:FINAL returnType:<root>.MarkerContribution
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun declarationMirror (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
       FUN name:invoke visibility:public modality:FINAL returnType:<root>.MarkerContribution [operator]
         VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory
         annotations:
@@ -236,15 +245,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
           RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory'
             CALL 'public final fun newInstance (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory.Companion' type=<root>.MarkerContribution origin=null
               ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=<root>.MarkerContribution.MetroFactory.Companion
-      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.MarkerContribution
-        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.MarkerContribution.MetroFactory
-        annotations:
-          ComptimeOnly
-          HiddenFromObjC
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.MarkerContribution declared in <root>.MarkerContribution.MetroFactory'
-            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-              ARG message: CONST String type=kotlin.String value="Never called"
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] INTERFACE name:MetroContributionToDevzacsweersmetroappScopeocf15 modality:ABSTRACT visibility:public superTypes:[kotlin.Any]
       annotations:
         Deprecated(message = "This synthesized declaration should not be used directly", replaceWith = <null>, level = DeprecationLevel.HIDDEN)
@@ -336,6 +336,15 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.ProviderContribution>]' type=<root>.ProviderContribution.MetroFactory
+      FUN name:declarationMirror visibility:public modality:FINAL returnType:<root>.ProviderContribution
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun declarationMirror (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
       FUN name:invoke visibility:public modality:FINAL returnType:<root>.ProviderContribution [operator]
         VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory
         annotations:
@@ -346,15 +355,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
           RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory'
             CALL 'public final fun newInstance (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory.Companion' type=<root>.ProviderContribution origin=null
               ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.Default] OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=<root>.ProviderContribution.MetroFactory.Companion
-      FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.ProviderContribution
-        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContribution.MetroFactory
-        annotations:
-          ComptimeOnly
-          HiddenFromObjC
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.ProviderContribution declared in <root>.ProviderContribution.MetroFactory'
-            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-              ARG message: CONST String type=kotlin.String value="Never called"
     CONSTRUCTOR visibility:public returnType:<root>.ProviderContribution [primary]
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
@@ -410,6 +410,15 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
           BLOCK_BODY
             RETURN type=kotlin.Nothing from='public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
               CALL 'public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope' type=<root>.ProviderBinding origin=null
+        FUN name:declarationMirror visibility:public modality:FINAL returnType:<root>.ProviderBinding
+          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
+          annotations:
+            ComptimeOnly
+            HiddenFromObjC
+          BLOCK_BODY
+            RETURN type=kotlin.Nothing from='public final fun declarationMirror (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
+              CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                ARG message: CONST String type=kotlin.String value="Never called"
         FUN name:invoke visibility:public modality:FINAL returnType:<root>.ProviderBinding [operator]
           VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
           annotations:
@@ -420,15 +429,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
             RETURN type=kotlin.Nothing from='public final fun invoke (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
               CALL 'public final fun providesProviderContribution (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory' type=<root>.ProviderBinding origin=null
                 ARG <this>: GET_OBJECT 'CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] OBJECT name:ProvidesProviderContributionMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<<root>.ProviderBinding>]' type=<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
-        FUN name:mirrorFunction visibility:public modality:FINAL returnType:<root>.ProviderBinding
-          VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory
-          annotations:
-            ComptimeOnly
-            HiddenFromObjC
-          BLOCK_BODY
-            RETURN type=kotlin.Nothing from='public final fun mirrorFunction (): <root>.ProviderBinding declared in <root>.ProviderContributionContributions.ToAppScope.ProvidesProviderContributionMetroFactory'
-              CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-                ARG message: CONST String type=kotlin.String value="Never called"
       CONSTRUCTOR GENERATED[dev.zacsweers.metro.compiler.fir.Keys.MetroContributionClassDeclaration] visibility:private returnType:<root>.ProviderContributionContributions.ToAppScope [primary]
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
@@ -589,6 +589,16 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         BLOCK_BODY
           DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
           INSTANCE_INITIALIZER_CALL classDescriptor='CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.ProviderFactoryClassDeclaration] CLASS name:ProvideStringMetroFactory modality:FINAL visibility:public superTypes:[dev.zacsweers.metro.internal.Factory<kotlin.String>]' type=<root>.Bindings.ProvideStringMetroFactory
+      FUN name:declarationMirror visibility:public modality:FINAL returnType:kotlin.String
+        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Bindings.ProvideStringMetroFactory
+        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.Int
+        annotations:
+          ComptimeOnly
+          HiddenFromObjC
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun declarationMirror (value: kotlin.Int): kotlin.String declared in <root>.Bindings.ProvideStringMetroFactory'
+            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+              ARG message: CONST String type=kotlin.String value="Never called"
       FUN name:invoke visibility:public modality:FINAL returnType:kotlin.String [operator]
         VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Bindings.ProvideStringMetroFactory
         annotations:
@@ -602,16 +612,6 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
               ARG value: CALL 'public abstract fun invoke (): T of dev.zacsweers.metro.Provider declared in dev.zacsweers.metro.Provider' type=kotlin.Int origin=null
                 ARG <this>: GET_FIELD 'FIELD name:value type:dev.zacsweers.metro.Provider<kotlin.Int> visibility:private [final] declared in <root>.Bindings.ProvideStringMetroFactory' type=dev.zacsweers.metro.Provider<kotlin.Int> origin=null
                   receiver: GET_VAR '<this>: <root>.Bindings.ProvideStringMetroFactory declared in <root>.Bindings.ProvideStringMetroFactory.invoke' type=<root>.Bindings.ProvideStringMetroFactory origin=null
-      FUN name:mirrorFunction visibility:public modality:FINAL returnType:kotlin.String
-        VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:<root>.Bindings.ProvideStringMetroFactory
-        VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.Int
-        annotations:
-          ComptimeOnly
-          HiddenFromObjC
-        BLOCK_BODY
-          RETURN type=kotlin.Nothing from='public final fun mirrorFunction (value: kotlin.Int): kotlin.String declared in <root>.Bindings.ProvideStringMetroFactory'
-            CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
-              ARG message: CONST String type=kotlin.String value="Never called"
     CONSTRUCTOR visibility:private returnType:<root>.Bindings [primary]
       BLOCK_BODY
         DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
