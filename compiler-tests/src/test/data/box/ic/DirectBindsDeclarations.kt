@@ -7,9 +7,14 @@
 interface PublicBindsTarget
 interface MixedPublicBindsTarget
 interface PrivateBindsTarget
+interface InheritedInternalBindsTarget
 
 @Inject
-class DirectBindsImpl : PublicBindsTarget, MixedPublicBindsTarget, PrivateBindsTarget
+class DirectBindsImpl :
+  PublicBindsTarget,
+  MixedPublicBindsTarget,
+  PrivateBindsTarget,
+  InheritedInternalBindsTarget
 
 @BindingContainer
 interface PublicBindsAliases {
@@ -23,15 +28,31 @@ interface MixedBindsAliases {
   @Binds private fun bindPrivate(impl: DirectBindsImpl): PrivateBindsTarget = impl
 }
 
+abstract class InternalBindsBase {
+  internal abstract fun bindInternal(impl: DirectBindsImpl): InheritedInternalBindsTarget
+}
+
+@BindingContainer
+abstract class InheritedInternalBindsAliases : InternalBindsBase() {
+  @Binds abstract override fun bindInternal(
+    impl: DirectBindsImpl
+  ): InheritedInternalBindsTarget
+}
+
 // MODULE: main(lib)
 
 @DependencyGraph(
-  bindingContainers = [PublicBindsAliases::class, MixedBindsAliases::class]
+  bindingContainers = [
+    PublicBindsAliases::class,
+    MixedBindsAliases::class,
+    InheritedInternalBindsAliases::class,
+  ]
 )
 interface DirectBindsGraph {
   val publicTarget: PublicBindsTarget
   val mixedPublicTarget: MixedPublicBindsTarget
   val privateTarget: PrivateBindsTarget
+  val inheritedInternalTarget: InheritedInternalBindsTarget
 }
 
 fun box(): String {
@@ -39,6 +60,7 @@ fun box(): String {
   assertTrue(graph.publicTarget is DirectBindsImpl)
   assertTrue(graph.mixedPublicTarget is DirectBindsImpl)
   assertTrue(graph.privateTarget is DirectBindsImpl)
+  assertTrue(graph.inheritedInternalTarget is DirectBindsImpl)
 
   assertFalse(
     PublicBindsAliases::class.java.declaredClasses.any { it.simpleName == "BindsMirror" }
@@ -46,5 +68,13 @@ fun box(): String {
   val privateMirror =
     MixedBindsAliases::class.java.declaredClasses.single { it.simpleName == "BindsMirror" }
   assertEquals(setOf("bindPrivate"), privateMirror.declaredMethods.mapTo(mutableSetOf()) { it.name })
+  val inheritedInternalMirror =
+    InheritedInternalBindsAliases::class.java.declaredClasses.single {
+      it.simpleName == "BindsMirror"
+    }
+  assertEquals(
+    setOf("bindInternal"),
+    inheritedInternalMirror.declaredMethods.mapTo(mutableSetOf()) { it.name },
+  )
   return "OK"
 }

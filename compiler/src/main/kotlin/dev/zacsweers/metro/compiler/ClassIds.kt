@@ -83,6 +83,9 @@ public class ClassIds(private val options: MetroOptions = MetroOptions()) {
   internal val contributesBindingAnnotationsWithContainers =
     contributesBindingAnnotations + contributesBindingAnnotations.toContainerAnnotations()
 
+  internal val contributesToAnnotationsWithContainers =
+    contributesToAnnotations + contributesToAnnotations.toContainerAnnotations()
+
   /** All binding-like contributes annotations (everything except `@ContributesTo`). */
   internal val contributesBindingLikeAnnotations = options.contributesBindingLikeAnnotations
 

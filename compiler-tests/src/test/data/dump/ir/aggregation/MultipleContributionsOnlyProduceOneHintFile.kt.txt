@@ -1,5 +1,14 @@
 // FILE: file0.kt
 
+abstract class OtherScope {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
 interface Base1 {
 }
 
@@ -12,6 +21,7 @@ interface Base3 {
 // FILE: file1.kt
 
 @SingleIn(scope = AppScope::class)
+@ContributesBinding(scope = OtherScope::class, binding = binding<Base1>())
 @ContributesIntoSet(scope = AppScope::class, binding = binding<Base3>())
 @ContributesIntoSet(scope = AppScope::class, binding = binding<Base2>())
 @ContributesBinding(scope = AppScope::class, binding = binding<Base1>())
@@ -112,6 +122,37 @@ class Base1Impl : Base1, Base2, Base3 {
 
   }
 
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = OtherScope::class)
+  @BindingContainer
+  @Origin(value = Base1Impl::class)
+  @ComptimeOnly
+  interface MetroContributionToOtherScope {
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    @ComptimeOnly
+    abstract class BindsMirror {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @Binds
+      @CallableMetadata(callableName = "bindsAsBase1", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindsAsBase1(instance: Base1Impl): Base1 {
+        return error(message = "Never called")
+      }
+
+    }
+
+    @Binds
+    @ComptimeOnly
+    fun bindsAsBase1(instance: Base1Impl): Base1 {
+      return error(message = "Never called")
+    }
+
+  }
+
   constructor() /* primary */ {
     super/*Any*/()
     /* <init>() */
@@ -194,6 +235,13 @@ interface ExampleGraph {
 package metro.hints
 
 fun dev_zacsweers_metro_AppScope(contributed: Base1Impl) {
+  return error(message = "Never called")
+}
+
+// FILE: base1ImplOtherScope.kt
+package metro.hints
+
+fun OtherScope(contributed: Base1Impl) {
   return error(message = "Never called")
 }
 

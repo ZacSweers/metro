@@ -12,6 +12,9 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
+import dev.zacsweers.metro.compiler.fir.resolveClassId
+import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
@@ -166,9 +169,29 @@ internal class IrContributionData(
   }
 
   private fun IrClass.isDirectContributionTo(scope: Scope): Boolean {
-    return annotationsIn(metroContext.metroSymbols.classIds.contributesToAnnotations).any {
-      it.scopeOrNull() == scope
+    return scope in directContributionScopes()
+  }
+
+  private fun IrClass.directContributionScopes(): Set<Scope> {
+    return with(metroContext) {
+      repeatableAnnotationsIn(
+          metroSymbols.classIds.contributesToAnnotationsWithContainers,
+          irBody = { annotations -> annotations.mapNotNull { it.scopeOrNull() } },
+          firBody = { session, annotations ->
+            val typeResolver = MetroFirTypeResolver.forIrUse()
+            annotations.mapNotNull {
+              it.scopeArgument(session)?.resolveClassId(typeResolver)
+            }
+          },
+        )
+        .toSet()
     }
+  }
+
+  private fun IrClass.bindingContainerHintMatches(scope: Scope): Boolean {
+    val declaredScopes = directContributionScopes()
+    // Hint extensions such as Hilt can supply containers without Metro's @ContributesTo.
+    return declaredScopes.isEmpty() || scope in declaredScopes
   }
 
   /**
@@ -349,7 +372,7 @@ internal class IrContributionData(
         with(metroContext) {
           if (irClass.isBindingContainer()) {
             // Top-level @BindingContainer class
-            if (bindingContainersOnly) {
+            if (bindingContainersOnly && irClass.bindingContainerHintMatches(scope)) {
               setOf(irClass.defaultType)
             } else {
               emptySet()

@@ -41,9 +41,11 @@ class ContributionHintICTests :
           source(
             """
             class AnotherScope
+            class RetainedScope
 
             @BindingContainer
             @ContributesTo(AppScope::class)
+            @ContributesTo(RetainedScope::class)
             class StringModule {
               @Provides fun provideString(): String = "test"
             }
@@ -54,14 +56,27 @@ class ContributionHintICTests :
         val changedContribution =
           """
           class AnotherScope
+          class RetainedScope
 
           @BindingContainer
           @ContributesTo(AnotherScope::class)
+          @ContributesTo(RetainedScope::class)
           class StringModule {
             @Provides fun provideString(): String = "test"
           }
           """
             .trimIndent()
+
+        val retainedGraph =
+          source(
+            """
+            @DependencyGraph(RetainedScope::class)
+            interface RetainedGraph {
+              val string: String
+            }
+            """
+              .trimIndent()
+          )
 
         override fun StringBuilder.onBuildScript() {
           appendLine(
@@ -84,6 +99,10 @@ class ContributionHintICTests :
             dependencies(Dependency.implementation(":lib"))
           }
           subproject("lib") { sources(bindingContainer) }
+          subproject("retained") {
+            sources(retainedGraph)
+            dependencies(Dependency.implementation(":lib"))
+          }
         }
       }
 
@@ -92,6 +111,9 @@ class ContributionHintICTests :
 
     val firstBuild = project.compileKotlin(task = ":compileKotlin")
     assertThat(firstBuild.task(":compileKotlin")?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    val firstRetainedBuild = project.compileKotlin(task = ":retained:compileKotlin")
+    assertThat(firstRetainedBuild.task(":retained:compileKotlin")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
 
     libProject.modify(
       rootDir = project.rootDir,
@@ -102,5 +124,8 @@ class ContributionHintICTests :
 
     val secondBuild = project.compileKotlinAndFail(task = ":compileKotlin")
     assertThat(secondBuild.output).contains("[Metro/MissingBinding]")
+    val secondRetainedBuild = project.compileKotlin(task = ":retained:compileKotlin")
+    assertThat(secondRetainedBuild.task(":retained:compileKotlin")?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
   }
 }
