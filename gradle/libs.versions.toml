@@ -142,7 +142,7 @@ dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = 
 hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "dagger" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "dagger" }
 
-foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.35.2"
+foundry-betterProps = "com.slack.foundry:better-gradle-properties:0.36.0"
 
 guice = "com.google.inject:guice:7.0.0"
 guice-assistedInject = "com.google.inject.extensions:guice-assistedinject:7.0.0"
