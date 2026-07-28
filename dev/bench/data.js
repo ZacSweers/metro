@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785130398598,
+  "lastUpdate": 1785278853357,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -19880,6 +19880,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21411970979821793,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.40%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cea837e9~1",
+          "message": "[before] Add option to disable redundant IC helpers in newe",
+          "timestamp": "2026-07-28T22:12:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cea837e9b4df7dc637d2edf1864b69e870400090"
+        },
+        "date": 1785278853357,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22602697867721472,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cea837e9b4df7dc637d2edf1864b69e870400090",
+          "message": "[after] Add option to disable redundant IC helpers in newe",
+          "timestamp": "2026-07-28T22:12:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cea837e9b4df7dc637d2edf1864b69e870400090"
+        },
+        "date": 1785278853358,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22659773820176826,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.25%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

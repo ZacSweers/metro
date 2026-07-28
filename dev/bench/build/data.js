@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785130398727,
+  "lastUpdate": 1785278853567,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19880,6 +19880,62 @@ window.BENCHMARK_DATA = {
             "value": 20270.253999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.35%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cea837e9~1",
+          "message": "[before] Add option to disable redundant IC helpers in newe",
+          "timestamp": "2026-07-28T22:12:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cea837e9b4df7dc637d2edf1864b69e870400090"
+        },
+        "date": 1785278853567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19349.374,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "cea837e9b4df7dc637d2edf1864b69e870400090",
+          "message": "[after] Add option to disable redundant IC helpers in newe",
+          "timestamp": "2026-07-28T22:12:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/cea837e9b4df7dc637d2edf1864b69e870400090"
+        },
+        "date": 1785278853568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19997.214,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +3.35%"
           }
         ]
       }
