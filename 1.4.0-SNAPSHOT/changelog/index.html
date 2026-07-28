@@ -7461,6 +7461,7 @@
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Support private <code>@Provides</code> properties on Kotlin <code>2.4.20-Beta1</code> and newer.</li>
+<li><strong>[IR]</strong> Improve IC on Kotlin <code>2.3.20</code> by backporting compat support for the compiler&rsquo;s new declaration finder APIs.</li>
 <li><strong>[IR]</strong> Avoid generating unused provider fields for included graph accessors that can be read directly.</li>
 <li><strong>[IR]</strong> Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.</li>
 <li><strong>[runtime]</strong> If the input function to <code>provider()</code> is already a <code>Provider</code> instance, return it directly rather than needlessly wrap it.</li>
@@ -7470,6 +7471,7 @@
 <ul>
 <li><strong>[FIR]</strong> Report a diagnostic when private <code>@Provides</code> properties are used without compiler support (i.e. pre-<code>2.4.20</code>).</li>
 <li><strong>[FIR]</strong> Report an error when a map key is applied (via type argument) to a binding without a corresponding <code>@IntoMap</code> or <code>@ContributesIntoMap</code> annotation.</li>
+<li><strong>[IR]</strong> Fix stale contribution hints after changing a contribution&rsquo;s scope during incremental compilation. This only affects Kotlin versions prior to <code>2.3.20</code>.</li>
 <li><strong>[IR]</strong> Fix Kotlin/Native compilation failures when generated hidden classes were missing their <code>Any</code> supertype.</li>
 <li><strong>[IR]</strong> Enforce <code>enableSuspendProviders</code> for suspend-provider signatures read from upstream modules.</li>
 <li><strong>[IR]</strong> Report a missing <code>runtime-coroutines</code> dependency from generated provider factories, including factories not used by a graph.</li>
