@@ -161,13 +161,18 @@ private fun FirCallableSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
     return false
   }
 
-  var containingClass = getContainingClassSymbol()
-  while (containingClass != null) {
-    val classVisibility = containingClass.fir.status.visibility
+  return getContainingClassSymbol()?.isEffectivelyPublicInRawFir() != false
+}
+
+@OptIn(SymbolInternals::class)
+internal fun FirClassLikeSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
+  var current: FirClassLikeSymbol<*>? = this
+  while (current != null) {
+    val classVisibility = current.fir.status.visibility
     if (classVisibility != Visibilities.Public && classVisibility != Visibilities.Unknown) {
       return false
     }
-    containingClass = containingClass.getContainingClassSymbol()
+    current = current.getContainingClassSymbol()
   }
   return true
 }

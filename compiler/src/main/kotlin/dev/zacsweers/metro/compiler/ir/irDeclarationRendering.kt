@@ -82,10 +82,16 @@ internal fun IrDeclaration.humanReadableDiagnosticMetadata(): DiagnosticMetadata
     val parent = parentClass.parent
 
     if (parent !is IrClass) {
-      metadata +=
-        "Parent declaration of '${parent.kotlinFqName}' is not readable. " +
-          "This may be a sign that it is used but not in the compile classpath." +
-          "\n\nKotlin-like dump:\n${dumpKotlinLike()}"
+      val expectsGeneratedParent =
+        hasAnnotation(Symbols.ClassIds.CallableMetadata) ||
+          parentClass.hasAnnotation(Symbols.ClassIds.metroContribution) ||
+          parentClass.hasAnnotation(Symbols.ClassIds.CallableMetadata)
+      if (expectsGeneratedParent) {
+        metadata +=
+          "Parent declaration of '${parent.kotlinFqName}' is not readable. " +
+            "This may be a sign that it is used but not in the compile classpath." +
+            "\n\nKotlin-like dump:\n${dumpKotlinLike()}"
+      }
       return@let
     }
 

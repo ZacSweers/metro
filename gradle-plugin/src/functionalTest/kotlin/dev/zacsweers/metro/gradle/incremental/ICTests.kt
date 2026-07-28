@@ -640,9 +640,22 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   @Test
-  fun internalBindings() {
+  fun internalBindingsWithRedundantMirrors() {
+    internalBindings(omitRedundantMirrors = false)
+  }
+
+  @Test
+  fun internalBindingsWithoutRedundantMirrors() {
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
+    internalBindings(omitRedundantMirrors = true)
+  }
+
+  private fun internalBindings(omitRedundantMirrors: Boolean) {
     val fixture =
-      object : MetroProject() {
+      object :
+        MetroProject(
+          metroOptions = MetroOptionOverrides(omitRedundantMirrors = omitRedundantMirrors)
+        ) {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(exampleGraph)

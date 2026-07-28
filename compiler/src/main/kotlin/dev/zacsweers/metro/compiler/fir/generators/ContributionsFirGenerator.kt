@@ -50,14 +50,12 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.native.interop.parentsWithSelf
 import org.jetbrains.kotlin.fir.caches.FirCache
 import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
-import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
@@ -790,8 +788,7 @@ internal class ContributionsFirGenerator(
         } ?: false
 
       val canReadContributionDirectly =
-        useDirectBindingDeclarations &&
-          classSymbol.effectiveVisibility.toVisibility() == Visibilities.Public
+        useDirectBindingDeclarations && classSymbol.isEffectivelyPublicInRawFir()
       return if (!isSupertypeContribution && !canReadContributionDirectly) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
