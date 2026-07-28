@@ -17,7 +17,6 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
-import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -26,6 +25,8 @@ import org.jetbrains.kotlin.fir.languageVersionSettings
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -107,9 +108,7 @@ internal class BindingMirrorClassFirGenerator(
           )
         val isBinding =
           annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
-        isBinding &&
-          (!useDirectBindingDeclarations ||
-            callable.effectiveVisibility.toVisibility() != Visibilities.Public)
+        isBinding && (!useDirectBindingDeclarations || !callable.isEffectivelyPublicInRawFir())
       }
 
     if (hasBindingMembers) {
@@ -152,6 +151,25 @@ internal class BindingMirrorClassFirGenerator(
       else -> null
     }
   }
+}
+
+@OptIn(SymbolInternals::class)
+private fun FirCallableSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
+  val callableVisibility = fir.status.visibility
+  if (callableVisibility == Visibilities.Unknown && rawStatus.isOverride) return false
+  if (callableVisibility != Visibilities.Public && callableVisibility != Visibilities.Unknown) {
+    return false
+  }
+
+  var containingClass = getContainingClassSymbol()
+  while (containingClass != null) {
+    val classVisibility = containingClass.fir.status.visibility
+    if (classVisibility != Visibilities.Public && classVisibility != Visibilities.Unknown) {
+      return false
+    }
+    containingClass = containingClass.getContainingClassSymbol()
+  }
+  return true
 }
 
 internal fun FirSession.shouldUseDirectBindingDeclarations(
