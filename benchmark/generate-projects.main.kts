@@ -762,6 +762,7 @@ plugins {
 
 koinCompiler {
   strictSafety = false
+  logSeverity = "info"
 }
 
 val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
@@ -799,6 +800,7 @@ plugins {
 
 koinCompiler {
   strictSafety = false
+  logSeverity = "info"
 }
 
 dependencies {
