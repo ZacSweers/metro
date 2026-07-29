@@ -49,6 +49,7 @@ This release introduces experimental support for suspend providers. This is disa
 - Build against Kotlin `2.4.10`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
 - Test IntelliJ `2026.2` stable.
 - Test Android Studio Quail 4 canaries.
+- Update androidx.tracing to `2.0.0-rc01`.
 
 1.3.2
 -----
