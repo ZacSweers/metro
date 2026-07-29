@@ -370,7 +370,7 @@ mode_display_name() {
         metro) echo "Metro" ;;
         dagger-ksp) echo "Dagger (KSP)" ;;
         dagger-kapt) echo "Dagger (KAPT)" ;;
-        kotlin-inject-anvil) echo "kotlin-inject-anvil" ;;
+        kotlin-inject-anvil) echo "kotlin-inject" ;;
         koin) echo "Koin**" ;;
         *) return 1 ;;
     esac
@@ -1325,8 +1325,14 @@ extract_android_micro_score() {
             # Extract median time in nanoseconds, convert to milliseconds
             local ns=$(jq -r '.benchmarks[] | select(.name | contains("graphCreationAndInitialization")) | .metrics.timeNs.median // empty' "$json_file" 2>/dev/null || echo "")
             if [ -n "$ns" ]; then
-                # Convert ns to ms
-                echo "scale=3; $ns / 1000000" | bc 2>/dev/null || echo ""
+                # Preserve the raw benchmark precision when converting ns to ms. Prefix
+                # fractional values so the result is valid JSON as well as JavaScript.
+                local ms
+                ms=$(echo "scale=20; $ns / 1000000" | bc 2>/dev/null || echo "")
+                if [[ "$ms" == .* ]]; then
+                    ms="0$ms"
+                fi
+                echo "$ms" | sed -e 's/0*$//' -e 's/\.$//'
             fi
         fi
     fi
@@ -1622,7 +1628,7 @@ EOF
 
             local display_score="${score:-N/A}"
             if [ -n "$score" ]; then
-                display_score=$(printf "%.3f" "$score")
+                display_score="$score"
             fi
 
             echo "| $(mode_display_name "$mode") | $display_score | $comparison |" >> "$summary_file"
@@ -1854,12 +1860,8 @@ let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
-    if (unit === 'ms') {
-        if (ms < 1) return ms.toFixed(3) + ' ms';
-        if (ms < 100) return ms.toFixed(2) + ' ms';
-        return ms.toFixed(0) + ' ms';
-    }
-    return ms.toFixed(2);
+    const exactValue = ms.toLocaleString('en-US', { useGrouping: false, maximumSignificantDigits: 21 });
+    return unit === 'ms' ? exactValue + ' ms' : exactValue;
 }
 
 function calculateVsBaseline(value, baselineValue) {
@@ -1906,7 +1908,7 @@ function renderBenchmarks() {
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better</div>
+            <div class="chart-hint">Lower is better · logarithmic time scale</div>
             <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
             <table><thead><tr><th></th><th>Framework</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
@@ -1921,10 +1923,10 @@ function renderChart(benchmark, idx) {
     const labels = [], data = [], backgroundColors = [];
     benchmark.results.forEach(result => {
         labels.push(result.framework);
-        data.push(result.value || 0);
+        data.push(result.value ?? null);
         backgroundColors.push(colors[result.key]);
     });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw.toFixed(2) + ' ' + (benchmark.unit || 'ms') } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ')' } } } } });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'logarithmic', title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', logarithmic scale)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
@@ -2169,7 +2171,7 @@ build_non_ref_benchmark_json() {
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
-                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
                 "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
@@ -2237,7 +2239,7 @@ build_non_ref_benchmark_json() {
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
-                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
                 "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
@@ -2667,7 +2669,7 @@ EOF
                 # Mode was run on ref2, use its result
                 score2=$(extract_jmh_score_for_ref "$ref2_label" "$mode")
                 if [ -n "$score2" ]; then
-                    display2=$(printf "%.3f ms" "$score2")
+                    display2="$score2 ms"
                 fi
             elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_jvm_score" ]; then
                 # Mode was NOT run on ref2 and it's not metro
@@ -2678,7 +2680,7 @@ EOF
 
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
-                display1=$(printf "%.3f ms" "$score1")
+                display1="$score1 ms"
                 if [ "$mode" = "control" ]; then
                     vs_control1="baseline"
                 elif [ -n "$control_jvm_score1" ] && [ "$control_jvm_score1" != "0" ]; then
@@ -2759,7 +2761,7 @@ EOF
                 if [ "$mode_ran_on_ref2" = true ]; then
                     score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "$mode")
                     if [ -n "$score2" ]; then
-                        display2=$(printf "%.3f ms" "$score2")
+                        display2="$score2 ms"
                     fi
                 elif [ "$mode" != "metro" ] && [ -n "$metro_jvm_r8_score2" ]; then
                     score2="$metro_jvm_r8_score2"
@@ -2768,7 +2770,7 @@ EOF
 
                 local display1="${score1:-N/A}"
                 if [ -n "$score1" ]; then
-                    display1=$(printf "%.3f ms" "$score1")
+                    display1="$score1 ms"
                     if [ "$mode" = "control" ]; then
                         vs_control1="baseline"
                     elif [ -n "$control_jvm_r8_score1" ] && [ "$control_jvm_r8_score1" != "0" ]; then
@@ -2922,7 +2924,7 @@ EOF
                 # Mode was run on ref2, use its result
                 score2=$(extract_android_micro_score_for_ref "$ref2_label" "$mode")
                 if [ -n "$score2" ]; then
-                    display2=$(printf "%.3f ms" "$score2")
+                    display2="$score2 ms"
                 fi
             elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_micro_score" ]; then
                 # Mode was NOT run on ref2 and it's not metro
@@ -2933,7 +2935,7 @@ EOF
 
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
-                display1=$(printf "%.3f ms" "$score1")
+                display1="$score1 ms"
                 if [ "$mode" = "control" ]; then
                     vs_control1="baseline"
                 elif [ -n "$control_micro_score1" ] && [ "$control_micro_score1" != "0" ]; then
@@ -3360,7 +3362,7 @@ EOF
             local vs_control="—"
 
             if [ -n "$score" ]; then
-                display=$(printf "%.3f" "$score")
+                display="$score"
                 if [ "$mode" = "control" ]; then
                     vs_control="baseline"
                 elif [ -n "$control_jvm_score" ] && [ "$control_jvm_score" != "0" ]; then
@@ -3405,7 +3407,7 @@ EOF
                     continue
                 fi
 
-                local display=$(printf "%.3f" "$score")
+                local display="$score"
                 local vs_control="—"
 
                 if [ "$mode" = "control" ]; then
@@ -3480,7 +3482,7 @@ EOF
             local vs_control="—"
 
             if [ -n "$score" ]; then
-                display=$(printf "%.3f" "$score")
+                display="$score"
                 if [ "$mode" = "control" ]; then
                     vs_control="baseline"
                 elif [ -n "$control_micro_score" ] && [ "$control_micro_score" != "0" ]; then
@@ -3648,7 +3650,7 @@ build_startup_benchmark_json() {
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
-                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
                 "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
@@ -3719,7 +3721,7 @@ build_startup_benchmark_json() {
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
-                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
+                    "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
                 "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
@@ -4104,12 +4106,8 @@ let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
-    if (unit === 'ms') {
-        if (ms < 1) return ms.toFixed(3) + ' ms';
-        if (ms < 100) return ms.toFixed(2) + ' ms';
-        return ms.toFixed(0) + ' ms';
-    }
-    return ms.toFixed(2);
+    const exactValue = ms.toLocaleString('en-US', { useGrouping: false, maximumSignificantDigits: 21 });
+    return unit === 'ms' ? exactValue + ' ms' : exactValue;
 }
 
 // Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
@@ -4180,7 +4178,7 @@ function renderBenchmarks() {
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better</div>
+            <div class="chart-hint">Lower is better · logarithmic time scale</div>
             <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
             <table><thead><tr><th></th><th>Framework</th>
@@ -4199,14 +4197,14 @@ function renderChart(benchmark, idx) {
     const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
     benchmark.results.forEach(result => {
         labels.push(result.framework);
-        ref1Data.push(result.ref1 || 0);
-        ref2Data.push(result.ref2 || 0);
+        ref1Data.push(result.ref1 ?? null);
+        ref2Data.push(result.ref2 ?? null);
         backgroundColors.push(colors[result.key]);
     });
     const datasets = [];
     if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
     if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(2) + ' ' + (benchmark.unit || 'ms') } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ')' } } } } });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'logarithmic', title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', logarithmic scale)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
