@@ -369,7 +369,8 @@ collect_build_metadata() {
     "gradle": "$gradle_version",
     "gradleProfiler": "$profiler_version",
     "jdk": "$java_version",
-    "jvmTarget": "$jvm_target"
+    "jvmTarget": "$jvm_target",
+    "kotlinCompilerExecutionStrategy": "in-process"
   },
   "workload": {
     "seed": $WORKLOAD_SEED,
@@ -1948,6 +1949,7 @@ function renderMetadata() {
                     <dt>Gradle Profiler</dt><dd>${m.build?.gradleProfiler || '—'}</dd>
                     <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
                     <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
+                    <dt>Kotlin Compiler Execution</dt><dd>${m.build?.kotlinCompilerExecutionStrategy || '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
