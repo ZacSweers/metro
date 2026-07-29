@@ -15,7 +15,10 @@ interface ChildGraph {
 }
 
 // MODULE: main(lib)
+@Inject
+class ChildCoordinator(<!MISSING_BINDING!>childGraphFactory: ChildGraph.Factory<!>)
+
 @DependencyGraph(ParentScope::class, excludes = [ChildGraph.Factory::class])
 interface ParentGraph {
-  val <!MISSING_BINDING!>childGraphFactory<!>: ChildGraph.Factory
+  val childCoordinator: ChildCoordinator
 }
