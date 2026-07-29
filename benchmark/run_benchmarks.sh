@@ -242,6 +242,10 @@ collect_build_metadata() {
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
     local versions_file="$repo_root/gradle/libs.versions.toml"
+    local metro_version="${METRO_VERSION:-}"
+    if [ -z "$metro_version" ]; then
+        metro_version=$(grep "^VERSION_NAME=" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- | head -1)
+    fi
 
     # Helper to extract version from libs.versions.toml
     get_version() {
@@ -313,6 +317,7 @@ collect_build_metadata() {
     "dirtyDiffFingerprint": "$dirty_diff_fingerprint"
   },
   "versions": {
+    "metro": "$metro_version",
     "kotlin": "$kotlin_version",
     "dagger": "$dagger_version",
     "ksp": "$ksp_version",
@@ -895,7 +900,7 @@ configure_report_scenarios() {
         case "$scenario" in
             abi_change)
                 REPORT_TEST_TYPES+=("abi_change")
-                REPORT_TEST_NAMES+=("ABI Change")
+                REPORT_TEST_NAMES+=("ABI Change†")
                 ;;
             non_abi_change)
                 REPORT_TEST_TYPES+=("non_abi_change")
@@ -1395,6 +1400,8 @@ EOF
 
 **Koin does not fully validate the dependency graph or generate its complete implementation.
 
+† Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.
+
 ## Raw Results
 
 Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
@@ -1508,6 +1515,7 @@ generate_html_report() {
             <h2>Framework Notes</h2>
             <p><strong>*</strong> Control performs no dependency injection or graph processing, including in the Graph Processing scenario.</p>
             <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation.</p>
+            <p><strong>†</strong> Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.</p>
         </div>
     </div>
 <script>
@@ -1571,7 +1579,9 @@ function calculateDiff(newVal, oldVal) {
 function renderRefsInfo() {
     const container = document.getElementById('refs-info');
     let html = '';
-    if (benchmarkData.refs.ref1) {
+    if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+    } else if (benchmarkData.refs.ref1) {
         html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
     }
     if (benchmarkData.refs.ref2) {
@@ -1610,18 +1620,43 @@ function getBaselineLabel() {
     return result?.framework || 'Baseline';
 }
 
+function frameworkVersion(key) {
+    const versions = benchmarkData.metadata?.versions || {};
+    switch (key) {
+        case 'control':
+            return versions.kotlin ? `Kotlin ${versions.kotlin}` : '—';
+        case 'metro':
+            return versions.metro || '—';
+        case 'dagger_ksp':
+        case 'dagger_kapt':
+            return versions.dagger || '—';
+        case 'kotlin_inject_anvil':
+            if (versions.kotlinInject && versions.kotlinInjectAnvil) {
+                return `${versions.kotlinInject} / anvil ${versions.kotlinInjectAnvil}`;
+            }
+            return versions.kotlinInject || versions.kotlinInjectAnvil || '—';
+        case 'koin':
+            if (versions.koin && versions.koinCompiler) {
+                return `${versions.koin} / compiler ${versions.koinCompiler}`;
+            }
+            return versions.koin || versions.koinCompiler || '—';
+        default:
+            return '—';
+    }
+}
+
 function renderBenchmarks() {
     const container = document.getElementById('benchmarks');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
             <div class="chart-hint">Lower is better</div>
             <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
-            <table><thead><tr><th></th><th>Framework</th>
-                ${benchmarkData.refs.ref1 ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
-                ${benchmarkData.refs.ref2 ? `<th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
-                ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? '<th>Difference</th>' : ''}
+            <table><thead><tr><th></th><th>Framework</th>${isComparison
+                ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>Difference</th>`
+                : `<th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
             </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
@@ -1631,6 +1666,7 @@ function renderBenchmarks() {
 const charts = [];
 function renderChart(benchmark, idx) {
     const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
     benchmark.results.forEach(result => {
         labels.push(result.framework);
@@ -1641,11 +1677,15 @@ function renderChart(benchmark, idx) {
     const datasets = [];
     if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
     if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + 's' } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
+        const label = isComparison ? ctx.dataset.label : frameworkVersion(benchmark.results[ctx.dataIndex].key);
+        return label + ': ' + ctx.raw.toFixed(1) + 's';
+    } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
     const tbody = document.getElementById(`table-${idx}`);
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     const baselineRef1 = benchmark.results.find(r => r.key === selectedBaseline)?.ref1;
     const baselineRef2 = benchmark.results.find(r => r.key === selectedBaseline)?.ref2;
     let html = '';
@@ -1657,9 +1697,9 @@ function renderTable(benchmark, idx) {
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
-            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
-            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
-            ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? `<td class="numeric diff ${diff.class}">${diff.text}</td>` : ''}</tr>`;
+            ${isComparison
+                ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
+                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
     });
     tbody.innerHTML = html;
 }
@@ -1693,13 +1733,14 @@ function renderMetadata() {
             <div class="metadata-group">
                 <h3>Repository State</h3>
                 <dl>
-                    <dt>${benchmarkData.refs.ref1?.label || 'Ref 1'}</dt><dd>${benchmarkData.refs.ref1?.dirtyDiffFingerprint || '—'}</dd>
+                    <dt>${benchmarkData.refs.ref2 ? benchmarkData.refs.ref1?.label : `Metro ${frameworkVersion('metro')}`}</dt><dd>${benchmarkData.refs.ref1?.dirtyDiffFingerprint || '—'}</dd>
                     ${benchmarkData.refs.ref2 ? `<dt>${benchmarkData.refs.ref2.label}</dt><dd>${benchmarkData.refs.ref2.dirtyDiffFingerprint || '—'}</dd>` : ''}
                 </dl>
             </div>
             <div class="metadata-group">
                 <h3>Library Versions</h3>
                 <dl>
+                    <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
                     <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                     <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                     <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -2100,6 +2141,8 @@ EOF
 *Control performs no dependency injection or graph processing, including in the Graph Processing scenario.
 
 **Koin does not fully validate the dependency graph or generate its complete implementation.
+
+† Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.
 
 ## Raw Results
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Script to run Metro startup benchmarks across multiple DI frameworks and generate comparison
-# Usage: ./run_startup_benchmarks.sh [jvm|jvm-r8|android|all] [--modes control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin]
+# Usage: ./run_startup_benchmarks.sh [jvm|jvm-r8|android|all] [--modes metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin]
 
 set -euo pipefail
 
@@ -22,8 +22,8 @@ START_TIME=$(date +%s)
 WORKLOAD_MANIFEST="$SCRIPT_DIR/workload-manifest.json"
 EXPECTED_WORKLOAD_FINGERPRINT=""
 
-# Default modes to benchmark
-MODES="control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+# DI modes to benchmark.
+MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -31,7 +31,7 @@ COMPARE_REF1=""
 COMPARE_REF2=""
 ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
-# Whether to re-run non-metro modes in ref2 (default: false to save time)
+# Whether to re-run non-baseline modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
 # Whether to include macrobenchmarks (disabled by default as startup time is low-signal for DI perf)
 INCLUDE_MACROBENCHMARK=false
@@ -212,8 +212,8 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
-    echo "                          Available: control, metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
-    echo "                          Default: control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+    echo "                          Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
+    echo "                          Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
     echo "  --count <n>             Number of modules to generate (default: 500)"
     echo "  --seed <n>              Deterministic workload seed (default: 0)"
     echo "  --timestamp <ts>        Use specific timestamp for results directory"
@@ -237,8 +237,8 @@ show_usage() {
     echo "  --ref1 <ref>        First ref (baseline) - git ref or Metro version"
     echo "  --ref2 <ref>        Second ref to compare - git ref or Metro version"
     echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: all)"
-    echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
-    echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
+    echo "  --rerun-non-metro   Re-run non-baseline modes on ref2 (default: only run the preferred baseline)"
+    echo "                      Metro is preferred; otherwise the first selected mode is the baseline"
     echo ""
     echo "Feature Compare Options:"
     echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, or all (default: jvm)"
@@ -301,9 +301,6 @@ get_generator_args() {
     local args=""
 
     case "$mode" in
-        control)
-            args="--mode CONTROL"
-            ;;
         metro)
             args="--mode metro"
             ;;
@@ -354,7 +351,6 @@ get_generator_args() {
 
 mode_key() {
     case "$1" in
-        control) echo "control" ;;
         metro) echo "metro" ;;
         dagger-ksp) echo "dagger_ksp" ;;
         dagger-kapt) echo "dagger_kapt" ;;
@@ -366,7 +362,6 @@ mode_key() {
 
 mode_display_name() {
     case "$1" in
-        control) echo "Control*" ;;
         metro) echo "Metro" ;;
         dagger-ksp) echo "Dagger (KSP)" ;;
         dagger-kapt) echo "Dagger (KAPT)" ;;
@@ -374,6 +369,24 @@ mode_display_name() {
         koin) echo "Koin**" ;;
         *) return 1 ;;
     esac
+}
+
+preferred_baseline_mode() {
+    local modes="${1:-$MODES}"
+    local first_mode=""
+    local mode
+    local -a baseline_mode_array
+    IFS=',' read -ra baseline_mode_array <<< "$modes"
+    for mode in "${baseline_mode_array[@]}"; do
+        if [ -z "$first_mode" ]; then
+            first_mode="$mode"
+        fi
+        if [ "$mode" = "metro" ]; then
+            echo "metro"
+            return
+        fi
+    done
+    echo "$first_mode"
 }
 
 json_quote() {
@@ -424,6 +437,10 @@ build_benchmark_metadata_json() {
     local repo_root
     repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
     local versions_file="$repo_root/gradle/libs.versions.toml"
+    local metro_version="${METRO_VERSION:-}"
+    if [ -z "$metro_version" ]; then
+        metro_version=$(grep "^VERSION_NAME=" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- | head -1)
+    fi
     local result_manifest="$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json"
     local manifest_metadata='{}'
     if [ -f "$result_manifest" ]; then
@@ -524,6 +541,7 @@ build_benchmark_metadata_json() {
 
     jq -n \
         --argjson workload "$manifest_metadata" \
+        --arg metro "$metro_version" \
         --arg kotlin "$kotlin_version" \
         --arg dagger "$dagger_version" \
         --arg ksp "$ksp_version" \
@@ -561,6 +579,7 @@ build_benchmark_metadata_json() {
         --argjson binary_metrics_only "$BINARY_METRICS_ONLY" \
         '{
           versions: {
+            metro: $metro,
             kotlin: $kotlin,
             dagger: $dagger,
             ksp: $ksp,
@@ -1427,6 +1446,10 @@ generate_summary() {
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/summary.md"
     local workload_fingerprint
     workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
+    local baseline_mode
+    baseline_mode=$(preferred_baseline_mode "$MODES")
+    local baseline_name
+    baseline_name=$(mode_display_name "$baseline_mode")
 
     print_header "Generating Comparison Summary"
 
@@ -1439,8 +1462,6 @@ generate_summary() {
 **Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 
-*Control performs no dependency injection or graph processing and returns a fresh empty component.
-
 **Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
 EOF
 
@@ -1451,14 +1472,14 @@ EOF
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
     # Collect JVM results
-    local control_jvm_score=""
-    if [ -f "$RESULTS_DIR/${TIMESTAMP}/jvm_control/results.json" ]; then
-        control_jvm_score=$(extract_jmh_score "$RESULTS_DIR/${TIMESTAMP}/jvm_control/results.json")
+    local baseline_jvm_score=""
+    if [ -f "$RESULTS_DIR/${TIMESTAMP}/jvm_${baseline_mode}/results.json" ]; then
+        baseline_jvm_score=$(extract_jmh_score "$RESULTS_DIR/${TIMESTAMP}/jvm_${baseline_mode}/results.json")
     fi
 
     for mode in "${MODE_ARRAY[@]}"; do
@@ -1482,11 +1503,11 @@ EOF
 
         # Calculate comparison
         local comparison="-"
-        if [ -n "$score" ] && [ -n "$control_jvm_score" ] && [ "$control_jvm_score" != "0" ]; then
-            if [ "$mode" = "control" ]; then
+        if [ -n "$score" ] && [ -n "$baseline_jvm_score" ] && [ "$baseline_jvm_score" != "0" ]; then
+            if [ "$mode" = "$baseline_mode" ]; then
                 comparison="baseline"
             else
-                comparison=$(format_pct_diff "$score" "$control_jvm_score")
+                comparison=$(format_pct_diff "$score" "$baseline_jvm_score")
             fi
         fi
 
@@ -1511,13 +1532,13 @@ EOF
     fi
 
     if [ "$has_r8_results" = true ]; then
-        local control_jvm_r8_score=""
-        local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_control"
+        local baseline_jvm_r8_score=""
+        local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${baseline_mode}"
         if [ -f "$r8_dir/results.json" ]; then
-            control_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
+            baseline_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
         fi
-        if [ -z "$control_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
-            control_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+        if [ -z "$baseline_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
+            baseline_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
         fi
 
         cat >> "$summary_file" << EOF
@@ -1526,7 +1547,7 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
@@ -1549,10 +1570,10 @@ EOF
             fi
 
             local r8_comparison="-"
-            if [ "$mode" = "control" ]; then
+            if [ "$mode" = "$baseline_mode" ]; then
                 r8_comparison="baseline"
-            elif [ -n "$control_jvm_r8_score" ] && [ "$control_jvm_r8_score" != "0" ]; then
-                r8_comparison=$(format_pct_diff "$r8_score" "$control_jvm_r8_score")
+            elif [ -n "$baseline_jvm_r8_score" ] && [ "$baseline_jvm_r8_score" != "0" ]; then
+                r8_comparison=$(format_pct_diff "$r8_score" "$baseline_jvm_r8_score")
             fi
 
             local r8_display_score=$(printf "%.2f" "$r8_score")
@@ -1562,20 +1583,20 @@ EOF
 
     # Only include macrobenchmark section if enabled or if results exist
     if { [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; } &&
-        { [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_metro/macro-benchmark-output.txt" ]; }; then
+        { [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_${baseline_mode}/macro-benchmark-output.txt" ]; }; then
         cat >> "$summary_file" << EOF
 
 ## Android Benchmarks (Macrobenchmark)
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
         # Collect Android macrobenchmark results
-        local control_android_score
-        control_android_score=$(extract_android_macro_score "$RESULTS_DIR/${TIMESTAMP}/android_control")
+        local baseline_android_score
+        baseline_android_score=$(extract_android_macro_score "$RESULTS_DIR/${TIMESTAMP}/android_${baseline_mode}")
 
         for mode in "${MODE_ARRAY[@]}"; do
             local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
@@ -1583,11 +1604,11 @@ EOF
 
             # Calculate comparison
             local comparison="-"
-            if [ -n "$score" ] && [ -n "$control_android_score" ] && [ "$control_android_score" != "0" ]; then
-                if [ "$mode" = "control" ]; then
+            if [ -n "$score" ] && [ -n "$baseline_android_score" ] && [ "$baseline_android_score" != "0" ]; then
+                if [ "$mode" = "$baseline_mode" ]; then
                     comparison="baseline"
                 else
-                    comparison=$(format_pct_diff "$score" "$control_android_score")
+                    comparison=$(format_pct_diff "$score" "$baseline_android_score")
                 fi
             fi
 
@@ -1607,13 +1628,13 @@ EOF
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
         # Collect Android microbenchmark results
-        local control_android_micro_score
-        control_android_micro_score=$(extract_android_micro_score "$RESULTS_DIR/${TIMESTAMP}/android_control")
+        local baseline_android_micro_score
+        baseline_android_micro_score=$(extract_android_micro_score "$RESULTS_DIR/${TIMESTAMP}/android_${baseline_mode}")
 
         for mode in "${MODE_ARRAY[@]}"; do
             local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
@@ -1621,11 +1642,11 @@ EOF
 
             # Calculate comparison
             local comparison="-"
-            if [ -n "$score" ] && [ -n "$control_android_micro_score" ] && [ "$control_android_micro_score" != "0" ]; then
-                if [ "$mode" = "control" ]; then
+            if [ -n "$score" ] && [ -n "$baseline_android_micro_score" ] && [ "$baseline_android_micro_score" != "0" ]; then
+                if [ "$mode" = "$baseline_mode" ]; then
                     comparison="baseline"
                 else
-                    comparison=$(format_pct_diff "$score" "$control_android_micro_score")
+                    comparison=$(format_pct_diff "$score" "$baseline_android_micro_score")
                 fi
             fi
 
@@ -1805,6 +1826,8 @@ generate_non_ref_html_report() {
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .chart-group-title { margin: 0 0 0.75rem 0; font-size: 0.95rem; font-weight: 600; color: #555; }
+        .chart-note { margin: 0 0 1rem 0; color: #666; font-size: 0.9rem; }
         .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
@@ -1843,7 +1866,6 @@ generate_non_ref_html_report() {
         <div id="benchmarks"></div>
         <div class="benchmark-section">
             <h2>Methodology notes</h2>
-            <p><strong>*</strong> Control performs no dependency injection or graph processing and returns a fresh empty component.</p>
             <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
         </div>
         <div class="metadata-section" id="metadata"></div>
@@ -1856,10 +1878,10 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
-let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'control')
-    ? 'control'
-    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'control');
+const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'metro')
+    ? 'metro'
+    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'metro');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -1906,30 +1928,79 @@ function getBaselineLabel() {
     return result?.framework || 'Baseline';
 }
 
+function frameworkVersion(key) {
+    const versions = benchmarkData.metadata?.versions || {};
+    switch (key) {
+        case 'metro':
+            return versions.metro || '—';
+        case 'dagger_ksp':
+        case 'dagger_kapt':
+            return versions.dagger || '—';
+        case 'kotlin_inject_anvil':
+            if (versions.kotlinInject && versions.kotlinInjectAnvil) {
+                return `${versions.kotlinInject} / anvil ${versions.kotlinInjectAnvil}`;
+            }
+            return versions.kotlinInject || versions.kotlinInjectAnvil || '—';
+        case 'koin':
+            if (versions.koin && versions.koinCompiler) {
+                return `${versions.koin} / compiler ${versions.koinCompiler}`;
+            }
+            return versions.koin || versions.koinCompiler || '—';
+        default:
+            return '—';
+    }
+}
+
+function chartGroupsFor(benchmark) {
+    if (benchmark.key !== 'android_micro') {
+        return [{ label: '', results: benchmark.results }];
+    }
+    const compiledKeys = new Set(['metro', 'dagger_ksp', 'dagger_kapt']);
+    const compiledResults = benchmark.results.filter(result => compiledKeys.has(result.key));
+    const slowerResults = benchmark.results.filter(result => !compiledKeys.has(result.key));
+    if (!compiledResults.length || !slowerResults.length) {
+        return [{ label: '', results: benchmark.results }];
+    }
+    return [
+        { label: 'Metro and Dagger', results: compiledResults },
+        { label: 'kotlin-inject and Koin', results: slowerResults },
+    ];
+}
+
 function renderBenchmarks() {
     const container = document.getElementById('benchmarks');
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        const chartGroups = chartGroupsFor(benchmark);
+        const splitNote = chartGroups.length > 1
+            ? '<p class="chart-note">Android is split into two charts because kotlin-inject and Koin take roughly two orders of magnitude longer on this workload. A single linear axis would make the differences among Metro and Dagger unreadable.</p>'
+            : '';
+        const chartsHtml = chartGroups.map((group, groupIdx) => `
+            ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
+            <div class="legend">${group.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}-${groupIdx}"></canvas></div>`).join('');
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better · logarithmic time scale</div>
-            <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
-            <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
-            <table><thead><tr><th></th><th>Framework</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+            <div class="chart-hint">Lower is better · linear time scale; see the table for exact values</div>
+            ${splitNote}${chartsHtml}
+            <table><thead><tr><th></th><th>Framework</th><th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
-    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        chartGroupsFor(benchmark).forEach((group, groupIdx) => renderChart(benchmark, idx, group, groupIdx));
+        renderTable(benchmark, idx);
+    });
 }
 
-const charts = [];
-function renderChart(benchmark, idx) {
-    const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+const charts = {};
+function renderChart(benchmark, idx, group, groupIdx) {
+    const ctx = document.getElementById(`chart-${idx}-${groupIdx}`).getContext('2d');
     const labels = [], data = [], backgroundColors = [];
-    benchmark.results.forEach(result => {
+    group.results.forEach(result => {
         labels.push(result.framework);
         data.push(result.value ?? null);
         backgroundColors.push(colors[result.key]);
     });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'logarithmic', title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', logarithmic scale)' } } } } });
+    charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => frameworkVersion(group.results[ctx.dataIndex].key) + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
@@ -1942,6 +2013,7 @@ function renderTable(benchmark, idx) {
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
+            <td class="numeric">${frameworkVersion(result.key)}</td>
             <td class="numeric">${result.value ? formatTime(result.value, benchmark.unit) : '<span class="no-data">N/A</span>'}</td>
             <td class="numeric vs-baseline ${vsBaseline.class}">${vsBaseline.text}</td></tr>`;
     });
@@ -1966,6 +2038,7 @@ function renderMetadata() {
             <div class="metadata-group">
                 <h3>Library Versions</h3>
                 <dl>
+                    <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
                     <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                     <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                     <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -2105,7 +2178,6 @@ build_non_ref_benchmark_json() {
         for mode in "${MODE_ARRAY[@]}"; do
             local mode_key mode_name
             case "$mode" in
-                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
@@ -2170,12 +2242,11 @@ build_non_ref_benchmark_json() {
             for mode in "${MODE_ARRAY[@]}"; do
                 local mode_key mode_name
                 case "$mode" in
-                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -2238,12 +2309,11 @@ build_non_ref_benchmark_json() {
             for mode in "${MODE_ARRAY[@]}"; do
                 local mode_key mode_name
                 case "$mode" in
-                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -2283,7 +2353,6 @@ build_non_ref_benchmark_json() {
         for mode in "${MODE_ARRAY[@]}"; do
             local mode_key mode_name
             case "$mode" in
-                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
@@ -2419,10 +2488,12 @@ run_benchmarks_for_ref() {
     fi
 
     local completed_modes=""
+    local ref2_baseline_mode
+    ref2_baseline_mode=$(preferred_baseline_mode "$MODES")
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
-        # Skip non-metro modes on second ref unless RERUN_NON_METRO is true
-        if [ "$is_second_ref" = true ] && [ "$mode" != "metro" ] && [ "$RERUN_NON_METRO" != true ]; then
+        # Skip non-baseline modes on second ref unless RERUN_NON_METRO is true.
+        if [ "$is_second_ref" = true ] && [ "$mode" != "$ref2_baseline_mode" ] && [ "$RERUN_NON_METRO" != true ]; then
             print_info "Skipping $mode for $ref_label (using ref1 results for comparison)"
             continue
         fi
@@ -2582,7 +2653,7 @@ mode_was_run_for_ref() {
 }
 
 # Generate comparison summary between two refs
-# When non-metro modes are not run on ref2, we compare ref2's metro against ref1's non-metro results
+# When other modes are not run on ref2, compare the preferred ref2 baseline against their ref1 results.
 generate_comparison_summary() {
     local ref1_label="$1"
     local ref2_label="$2"
@@ -2593,6 +2664,10 @@ generate_comparison_summary() {
     local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
     local workload_fingerprint
     workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
+    local baseline_mode
+    baseline_mode=$(preferred_baseline_mode "$MODES")
+    local baseline_name
+    baseline_name=$(mode_display_name "$baseline_mode")
 
     print_header "Generating Comparison Summary"
 
@@ -2608,11 +2683,11 @@ generate_comparison_summary() {
         fi
     done
 
-    # Get ref2 metro scores for comparison with ref1 non-metro modes
-    local ref2_metro_jvm_score=$(extract_jmh_score_for_ref "$ref2_label" "metro")
-    local metro_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "metro")
-    local ref2_metro_macro_score=$(extract_android_macro_score_for_ref "$ref2_label" "metro")
-    local ref2_metro_micro_score=$(extract_android_micro_score_for_ref "$ref2_label" "metro")
+    # Get ref2 baseline scores for comparisons with modes that only ran on ref1.
+    local ref2_baseline_jvm_score=$(extract_jmh_score_for_ref "$ref2_label" "$baseline_mode")
+    local baseline_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "$baseline_mode")
+    local ref2_baseline_macro_score=$(extract_android_macro_score_for_ref "$ref2_label" "$baseline_mode")
+    local ref2_baseline_micro_score=$(extract_android_micro_score_for_ref "$ref2_label" "$baseline_mode")
 
     cat > "$summary_file" << EOF
 # Benchmark Comparison: $ref1_label vs $ref2_label
@@ -2622,9 +2697,7 @@ generate_comparison_summary() {
 **Workload Seed:** $WORKLOAD_SEED
 **Workload Fingerprint:** $workload_fingerprint
 **Modes benchmarked on ref1:** $MODES
-**Modes benchmarked on ref2:** ${ref2_modes:-metro}
-
-*Control performs no dependency injection or graph processing and returns a fresh empty component.
+**Modes benchmarked on ref2:** ${ref2_modes:-$baseline_mode}
 
 **Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
 
@@ -2638,10 +2711,10 @@ generate_comparison_summary() {
 EOF
 
     if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
-        local control_jvm_score1=$(extract_jmh_score_for_ref "$ref1_label" "control")
-        local control_jvm_score2="$control_jvm_score1"
-        if mode_was_run_for_ref "$ref2_label" "control" "jvm"; then
-            control_jvm_score2=$(extract_jmh_score_for_ref "$ref2_label" "control")
+        local baseline_jvm_score1=$(extract_jmh_score_for_ref "$ref1_label" "$baseline_mode")
+        local baseline_jvm_score2="$ref2_baseline_jvm_score"
+        if [ -z "$baseline_jvm_score2" ]; then
+            baseline_jvm_score2="$baseline_jvm_score1"
         fi
 
         cat >> "$summary_file" << EOF
@@ -2649,7 +2722,7 @@ EOF
 
 Graph creation and initialization time (lower is better):
 
-| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+| Framework | $ref1_label | vs $baseline_name | $ref2_label | vs $baseline_name | Difference |
 |-----------|-------------|------------|-------------|------------|------------|
 EOF
 
@@ -2664,8 +2737,8 @@ EOF
 
             local score2=""
             local display2="N/A"
-            local vs_control1="—"
-            local vs_control2="—"
+            local vs_baseline1="—"
+            local vs_baseline2="—"
             local diff="-"
 
             if [ "$mode_ran_on_ref2" = true ]; then
@@ -2674,28 +2747,27 @@ EOF
                 if [ -n "$score2" ]; then
                     display2="$score2 ms"
                 fi
-            elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_jvm_score" ]; then
-                # Mode was NOT run on ref2 and it's not metro
-                # Compare ref2's metro against ref1's this mode
-                score2="$ref2_metro_jvm_score"
+            elif [ "$mode" != "$baseline_mode" ] && [ -n "$ref2_baseline_jvm_score" ]; then
+                # Compare the ref2 baseline against this mode's ref1 result.
+                score2="$ref2_baseline_jvm_score"
                 display2="-"
             fi
 
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1="$score1 ms"
-                if [ "$mode" = "control" ]; then
-                    vs_control1="baseline"
-                elif [ -n "$control_jvm_score1" ] && [ "$control_jvm_score1" != "0" ]; then
-                    vs_control1=$(format_vs_baseline "$score1" "$control_jvm_score1")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline1="baseline"
+                elif [ -n "$baseline_jvm_score1" ] && [ "$baseline_jvm_score1" != "0" ]; then
+                    vs_baseline1=$(format_vs_baseline "$score1" "$baseline_jvm_score1")
                 fi
             fi
 
             if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
-                if [ "$mode" = "control" ]; then
-                    vs_control2="baseline"
-                elif [ -n "$control_jvm_score2" ] && [ "$control_jvm_score2" != "0" ]; then
-                    vs_control2=$(format_vs_baseline "$score2" "$control_jvm_score2")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline2="baseline"
+                elif [ -n "$baseline_jvm_score2" ] && [ "$baseline_jvm_score2" != "0" ]; then
+                    vs_baseline2=$(format_vs_baseline "$score2" "$baseline_jvm_score2")
                 fi
             fi
 
@@ -2708,7 +2780,7 @@ EOF
                 fi
             fi
 
-            echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display1 | $vs_baseline1 | $display2 | $vs_baseline2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2726,10 +2798,9 @@ EOF
         done
 
         if [ "$has_r8_results" = true ]; then
-            local control_jvm_r8_score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "control")
-            local control_jvm_r8_score2="$control_jvm_r8_score1"
-            if mode_was_run_for_ref "$ref2_label" "control" "jvm-r8"; then
-                control_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "control")
+            local baseline_jvm_r8_score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "$baseline_mode")
+            if [ -z "$baseline_jvm_r8_score2" ]; then
+                baseline_jvm_r8_score2="$baseline_jvm_r8_score1"
             fi
 
             cat >> "$summary_file" << EOF
@@ -2737,7 +2808,7 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+| Framework | $ref1_label | vs $baseline_name | $ref2_label | vs $baseline_name | Difference |
 |-----------|-------------|------------|-------------|------------|------------|
 EOF
 
@@ -2757,8 +2828,8 @@ EOF
 
                 local score2=""
                 local display2="N/A"
-                local vs_control1="—"
-                local vs_control2="—"
+                local vs_baseline1="—"
+                local vs_baseline2="—"
                 local diff="-"
 
                 if [ "$mode_ran_on_ref2" = true ]; then
@@ -2766,26 +2837,26 @@ EOF
                     if [ -n "$score2" ]; then
                         display2="$score2 ms"
                     fi
-                elif [ "$mode" != "metro" ] && [ -n "$metro_jvm_r8_score2" ]; then
-                    score2="$metro_jvm_r8_score2"
+                elif [ "$mode" != "$baseline_mode" ] && [ -n "$baseline_jvm_r8_score2" ]; then
+                    score2="$baseline_jvm_r8_score2"
                     display2="-"
                 fi
 
                 local display1="${score1:-N/A}"
                 if [ -n "$score1" ]; then
                     display1="$score1 ms"
-                    if [ "$mode" = "control" ]; then
-                        vs_control1="baseline"
-                    elif [ -n "$control_jvm_r8_score1" ] && [ "$control_jvm_r8_score1" != "0" ]; then
-                        vs_control1=$(format_vs_baseline "$score1" "$control_jvm_r8_score1")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline1="baseline"
+                    elif [ -n "$baseline_jvm_r8_score1" ] && [ "$baseline_jvm_r8_score1" != "0" ]; then
+                        vs_baseline1=$(format_vs_baseline "$score1" "$baseline_jvm_r8_score1")
                     fi
                 fi
 
                 if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
-                    if [ "$mode" = "control" ]; then
-                        vs_control2="baseline"
-                    elif [ -n "$control_jvm_r8_score2" ] && [ "$control_jvm_r8_score2" != "0" ]; then
-                        vs_control2=$(format_vs_baseline "$score2" "$control_jvm_r8_score2")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline2="baseline"
+                    elif [ -n "$baseline_jvm_r8_score2" ] && [ "$baseline_jvm_r8_score2" != "0" ]; then
+                        vs_baseline2=$(format_vs_baseline "$score2" "$baseline_jvm_r8_score2")
                     fi
                 fi
 
@@ -2798,7 +2869,7 @@ EOF
                     fi
                 fi
 
-                echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display1 | $vs_baseline1 | $display2 | $vs_baseline2 | $diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -2808,19 +2879,19 @@ EOF
     if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
         # Only include macrobenchmark section if enabled or if results exist
         local has_macro_results=false
-        if [ -n "$ref2_metro_macro_score" ] || [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro" ]; then
+        if [ -n "$ref2_baseline_macro_score" ] || [ -d "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_${baseline_mode}" ]; then
             # Check if macro results actually exist
-            local macro_json=$(find "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_metro" -name "*benchmarkData.json" -not -path "*/microbenchmark/*" -type f 2>/dev/null | head -1)
+            local macro_json=$(find "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/android_${baseline_mode}" -name "*benchmarkData.json" -not -path "*/microbenchmark/*" -type f 2>/dev/null | head -1)
             if [ -n "$macro_json" ]; then
                 has_macro_results=true
             fi
         fi
 
         if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
-            local control_macro_score1=$(extract_android_macro_score_for_ref "$ref1_label" "control")
-            local control_macro_score2="$control_macro_score1"
-            if mode_was_run_for_ref "$ref2_label" "control" "android"; then
-                control_macro_score2=$(extract_android_macro_score_for_ref "$ref2_label" "control")
+            local baseline_macro_score1=$(extract_android_macro_score_for_ref "$ref1_label" "$baseline_mode")
+            local baseline_macro_score2="$ref2_baseline_macro_score"
+            if [ -z "$baseline_macro_score2" ]; then
+                baseline_macro_score2="$baseline_macro_score1"
             fi
 
             cat >> "$summary_file" << EOF
@@ -2828,7 +2899,7 @@ EOF
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+| Framework | $ref1_label | vs $baseline_name | $ref2_label | vs $baseline_name | Difference |
 |-----------|-------------|------------|-------------|------------|------------|
 EOF
 
@@ -2843,8 +2914,8 @@ EOF
 
                 local score2=""
                 local display2="N/A"
-                local vs_control1="—"
-                local vs_control2="—"
+                local vs_baseline1="—"
+                local vs_baseline2="—"
                 local diff="-"
 
                 if [ "$mode_ran_on_ref2" = true ]; then
@@ -2853,28 +2924,27 @@ EOF
                     if [ -n "$score2" ]; then
                         display2=$(printf "%.0f ms" "$score2")
                     fi
-                elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_macro_score" ]; then
-                    # Mode was NOT run on ref2 and it's not metro
-                    # Compare ref2's metro against ref1's this mode
-                    score2="$ref2_metro_macro_score"
+                elif [ "$mode" != "$baseline_mode" ] && [ -n "$ref2_baseline_macro_score" ]; then
+                    # Compare the ref2 baseline against this mode's ref1 result.
+                    score2="$ref2_baseline_macro_score"
                     display2="-"
                 fi
 
                 local display1="${score1:-N/A}"
                 if [ -n "$score1" ]; then
                     display1=$(printf "%.0f ms" "$score1")
-                    if [ "$mode" = "control" ]; then
-                        vs_control1="baseline"
-                    elif [ -n "$control_macro_score1" ] && [ "$control_macro_score1" != "0" ]; then
-                        vs_control1=$(format_vs_baseline "$score1" "$control_macro_score1")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline1="baseline"
+                    elif [ -n "$baseline_macro_score1" ] && [ "$baseline_macro_score1" != "0" ]; then
+                        vs_baseline1=$(format_vs_baseline "$score1" "$baseline_macro_score1")
                     fi
                 fi
 
                 if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
-                    if [ "$mode" = "control" ]; then
-                        vs_control2="baseline"
-                    elif [ -n "$control_macro_score2" ] && [ "$control_macro_score2" != "0" ]; then
-                        vs_control2=$(format_vs_baseline "$score2" "$control_macro_score2")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline2="baseline"
+                    elif [ -n "$baseline_macro_score2" ] && [ "$baseline_macro_score2" != "0" ]; then
+                        vs_baseline2=$(format_vs_baseline "$score2" "$baseline_macro_score2")
                     fi
                 fi
 
@@ -2887,16 +2957,16 @@ EOF
                     fi
                 fi
 
-                echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display1 | $vs_baseline1 | $display2 | $vs_baseline2 | $diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
         fi
 
-        local control_micro_score1=$(extract_android_micro_score_for_ref "$ref1_label" "control")
-        local control_micro_score2="$control_micro_score1"
-        if mode_was_run_for_ref "$ref2_label" "control" "android"; then
-            control_micro_score2=$(extract_android_micro_score_for_ref "$ref2_label" "control")
+        local baseline_micro_score1=$(extract_android_micro_score_for_ref "$ref1_label" "$baseline_mode")
+        local baseline_micro_score2="$ref2_baseline_micro_score"
+        if [ -z "$baseline_micro_score2" ]; then
+            baseline_micro_score2="$baseline_micro_score1"
         fi
 
         cat >> "$summary_file" << EOF
@@ -2904,7 +2974,7 @@ EOF
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+| Framework | $ref1_label | vs $baseline_name | $ref2_label | vs $baseline_name | Difference |
 |-----------|-------------|------------|-------------|------------|------------|
 EOF
 
@@ -2919,8 +2989,8 @@ EOF
 
             local score2=""
             local display2="N/A"
-            local vs_control1="—"
-            local vs_control2="—"
+            local vs_baseline1="—"
+            local vs_baseline2="—"
             local diff="-"
 
             if [ "$mode_ran_on_ref2" = true ]; then
@@ -2929,28 +2999,27 @@ EOF
                 if [ -n "$score2" ]; then
                     display2="$score2 ms"
                 fi
-            elif [ "$mode" != "metro" ] && [ -n "$ref2_metro_micro_score" ]; then
-                # Mode was NOT run on ref2 and it's not metro
-                # Compare ref2's metro against ref1's this mode
-                score2="$ref2_metro_micro_score"
+            elif [ "$mode" != "$baseline_mode" ] && [ -n "$ref2_baseline_micro_score" ]; then
+                # Compare the ref2 baseline against this mode's ref1 result.
+                score2="$ref2_baseline_micro_score"
                 display2="-"
             fi
 
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1="$score1 ms"
-                if [ "$mode" = "control" ]; then
-                    vs_control1="baseline"
-                elif [ -n "$control_micro_score1" ] && [ "$control_micro_score1" != "0" ]; then
-                    vs_control1=$(format_vs_baseline "$score1" "$control_micro_score1")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline1="baseline"
+                elif [ -n "$baseline_micro_score1" ] && [ "$baseline_micro_score1" != "0" ]; then
+                    vs_baseline1=$(format_vs_baseline "$score1" "$baseline_micro_score1")
                 fi
             fi
 
             if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
-                if [ "$mode" = "control" ]; then
-                    vs_control2="baseline"
-                elif [ -n "$control_micro_score2" ] && [ "$control_micro_score2" != "0" ]; then
-                    vs_control2=$(format_vs_baseline "$score2" "$control_micro_score2")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline2="baseline"
+                elif [ -n "$baseline_micro_score2" ] && [ "$baseline_micro_score2" != "0" ]; then
+                    vs_baseline2=$(format_vs_baseline "$score2" "$baseline_micro_score2")
                 fi
             fi
 
@@ -2963,7 +3032,7 @@ EOF
                 fi
             fi
 
-            echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display1 | $vs_baseline1 | $display2 | $vs_baseline2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -3326,6 +3395,10 @@ generate_single_summary() {
     local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
     local workload_fingerprint
     workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
+    local baseline_mode
+    baseline_mode=$(preferred_baseline_mode "$MODES")
+    local baseline_name
+    baseline_name=$(mode_display_name "$baseline_mode")
 
     print_header "Generating Single Ref Summary"
 
@@ -3339,8 +3412,6 @@ generate_single_summary() {
 **Modes:** $MODES
 **Commit:** $ref_commit
 
-*Control performs no dependency injection or graph processing and returns a fresh empty component.
-
 **Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
 
 EOF
@@ -3348,32 +3419,32 @@ EOF
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
 
     if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
-        local control_jvm_score=$(extract_jmh_score_for_ref "$ref_label" "control")
+        local baseline_jvm_score=$(extract_jmh_score_for_ref "$ref_label" "$baseline_mode")
 
         cat >> "$summary_file" << EOF
 ## JVM Benchmarks (JMH)
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_jmh_score_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
-            local vs_control="—"
+            local vs_baseline="—"
 
             if [ -n "$score" ]; then
                 display="$score"
-                if [ "$mode" = "control" ]; then
-                    vs_control="baseline"
-                elif [ -n "$control_jvm_score" ] && [ "$control_jvm_score" != "0" ]; then
-                    vs_control=$(format_vs_baseline "$score" "$control_jvm_score")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline="baseline"
+                elif [ -n "$baseline_jvm_score" ] && [ "$baseline_jvm_score" != "0" ]; then
+                    vs_baseline=$(format_vs_baseline "$score" "$baseline_jvm_score")
                 fi
             fi
 
-            echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display | $vs_baseline |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -3391,14 +3462,14 @@ EOF
         done
 
         if [ "$has_r8_results" = true ]; then
-            local control_jvm_r8_score=$(extract_jmh_r8_score_for_ref "$ref_label" "control")
+            local baseline_jvm_r8_score=$(extract_jmh_r8_score_for_ref "$ref_label" "$baseline_mode")
 
             cat >> "$summary_file" << EOF
 ## JVM Benchmarks - R8 Minified (JMH)
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
@@ -3411,15 +3482,15 @@ EOF
                 fi
 
                 local display="$score"
-                local vs_control="—"
+                local vs_baseline="—"
 
-                if [ "$mode" = "control" ]; then
-                    vs_control="baseline"
-                elif [ -n "$control_jvm_r8_score" ] && [ "$control_jvm_r8_score" != "0" ]; then
-                    vs_control=$(format_vs_baseline "$score" "$control_jvm_r8_score")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline="baseline"
+                elif [ -n "$baseline_jvm_r8_score" ] && [ "$baseline_jvm_r8_score" != "0" ]; then
+                    vs_baseline=$(format_vs_baseline "$score" "$baseline_jvm_r8_score")
                 fi
 
-                echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display | $vs_baseline |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -3438,61 +3509,61 @@ EOF
         done
 
         if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
-            local control_macro_score=$(extract_android_macro_score_for_ref "$ref_label" "control")
+            local baseline_macro_score=$(extract_android_macro_score_for_ref "$ref_label" "$baseline_mode")
 
             cat >> "$summary_file" << EOF
 ## Android Benchmarks (Macrobenchmark)
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
                 local score=$(extract_android_macro_score_for_ref "$ref_label" "$mode")
                 local display="${score:-N/A}"
-                local vs_control="—"
+                local vs_baseline="—"
 
                 if [ -n "$score" ]; then
                     display=$(printf "%.0f" "$score")
-                    if [ "$mode" = "control" ]; then
-                        vs_control="baseline"
-                    elif [ -n "$control_macro_score" ] && [ "$control_macro_score" != "0" ]; then
-                        vs_control=$(format_vs_baseline "$score" "$control_macro_score")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline="baseline"
+                    elif [ -n "$baseline_macro_score" ] && [ "$baseline_macro_score" != "0" ]; then
+                        vs_baseline=$(format_vs_baseline "$score" "$baseline_macro_score")
                     fi
                 fi
-                echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display | $vs_baseline |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
         fi
 
-        local control_micro_score=$(extract_android_micro_score_for_ref "$ref_label" "control")
+        local baseline_micro_score=$(extract_android_micro_score_for_ref "$ref_label" "$baseline_mode")
 
         cat >> "$summary_file" << EOF
 ## Android Benchmarks (Microbenchmark)
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | Time (ms) | vs Control |
+| Framework | Time (ms) | vs $baseline_name |
 |-----------|-----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_android_micro_score_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
-            local vs_control="—"
+            local vs_baseline="—"
 
             if [ -n "$score" ]; then
                 display="$score"
-                if [ "$mode" = "control" ]; then
-                    vs_control="baseline"
-                elif [ -n "$control_micro_score" ] && [ "$control_micro_score" != "0" ]; then
-                    vs_control=$(format_vs_baseline "$score" "$control_micro_score")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline="baseline"
+                elif [ -n "$baseline_micro_score" ] && [ "$baseline_micro_score" != "0" ]; then
+                    vs_baseline=$(format_vs_baseline "$score" "$baseline_micro_score")
                 fi
             fi
-            echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display | $vs_baseline |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -3584,7 +3655,6 @@ build_startup_benchmark_json() {
             local mode_key
             local mode_name
             case "$mode" in
-                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
@@ -3649,12 +3719,11 @@ build_startup_benchmark_json() {
                 local mode_key
                 local mode_name
                 case "$mode" in
-                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -3720,12 +3789,11 @@ build_startup_benchmark_json() {
                 local mode_key
                 local mode_name
                 case "$mode" in
-                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -3774,7 +3842,6 @@ build_startup_benchmark_json() {
             local mode_key
             local mode_name
             case "$mode" in
-                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
@@ -3826,12 +3893,11 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
-            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -3887,12 +3953,11 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
-            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -3945,12 +4010,11 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
-            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -4043,6 +4107,8 @@ generate_html_report() {
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .chart-group-title { margin: 0 0 0.75rem 0; font-size: 0.95rem; font-weight: 600; color: #555; }
+        .chart-note { margin: 0 0 1rem 0; color: #666; font-size: 0.9rem; }
         .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
@@ -4087,7 +4153,6 @@ generate_html_report() {
         <div id="binaryMetrics"></div>
         <div class="benchmark-section">
             <h2>Methodology notes</h2>
-            <p><strong>*</strong> Control performs no dependency injection or graph processing and returns a fresh empty component.</p>
             <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
         </div>
         <div id="metadata"></div>
@@ -4100,12 +4165,12 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
 
 // State for selectable baseline
-let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'control')
-    ? 'control'
-    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'control');
+let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'metro')
+    ? 'metro'
+    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'metro');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -4136,7 +4201,9 @@ function calculateDiff(newVal, oldVal) {
 function renderRefsInfo() {
     const container = document.getElementById('refs-info');
     let html = '';
-    if (benchmarkData.refs.ref1) {
+    if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+    } else if (benchmarkData.refs.ref1) {
         html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
     }
     if (benchmarkData.refs.ref2) {
@@ -4176,29 +4243,79 @@ function getBaselineLabel() {
     return result?.framework || 'Baseline';
 }
 
+function frameworkVersion(key) {
+    const versions = benchmarkData.metadata?.versions || {};
+    switch (key) {
+        case 'metro':
+            return versions.metro || '—';
+        case 'dagger_ksp':
+        case 'dagger_kapt':
+            return versions.dagger || '—';
+        case 'kotlin_inject_anvil':
+            if (versions.kotlinInject && versions.kotlinInjectAnvil) {
+                return `${versions.kotlinInject} / anvil ${versions.kotlinInjectAnvil}`;
+            }
+            return versions.kotlinInject || versions.kotlinInjectAnvil || '—';
+        case 'koin':
+            if (versions.koin && versions.koinCompiler) {
+                return `${versions.koin} / compiler ${versions.koinCompiler}`;
+            }
+            return versions.koin || versions.koinCompiler || '—';
+        default:
+            return '—';
+    }
+}
+
+function chartGroupsFor(benchmark) {
+    if (benchmark.key !== 'android_micro') {
+        return [{ label: '', results: benchmark.results }];
+    }
+    const compiledKeys = new Set(['metro', 'dagger_ksp', 'dagger_kapt']);
+    const compiledResults = benchmark.results.filter(result => compiledKeys.has(result.key));
+    const slowerResults = benchmark.results.filter(result => !compiledKeys.has(result.key));
+    if (!compiledResults.length || !slowerResults.length) {
+        return [{ label: '', results: benchmark.results }];
+    }
+    return [
+        { label: 'Metro and Dagger', results: compiledResults },
+        { label: 'kotlin-inject and Koin', results: slowerResults },
+    ];
+}
+
 function renderBenchmarks() {
     const container = document.getElementById('benchmarks');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        const chartGroups = chartGroupsFor(benchmark);
+        const splitNote = chartGroups.length > 1
+            ? '<p class="chart-note">Android is split into two charts because kotlin-inject and Koin take roughly two orders of magnitude longer on this workload. A single linear axis would make the differences among Metro and Dagger unreadable.</p>'
+            : '';
+        const chartsHtml = chartGroups.map((group, groupIdx) => `
+            ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
+            <div class="legend">${group.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}-${groupIdx}"></canvas></div>`).join('');
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better · logarithmic time scale</div>
-            <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
-            <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
-            <table><thead><tr><th></th><th>Framework</th>
-                ${benchmarkData.refs.ref1 ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
-                ${benchmarkData.refs.ref2 ? `<th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>` : ''}
-                ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? '<th>Difference</th>' : ''}
+            <div class="chart-hint">Lower is better · linear time scale; see the table for exact values</div>
+            ${splitNote}${chartsHtml}
+            <table><thead><tr><th></th><th>Framework</th>${isComparison
+                ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>Difference</th>`
+                : `<th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
             </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
-    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        chartGroupsFor(benchmark).forEach((group, groupIdx) => renderChart(benchmark, idx, group, groupIdx));
+        renderTable(benchmark, idx);
+    });
 }
 
-const charts = [];
-function renderChart(benchmark, idx) {
-    const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+const charts = {};
+function renderChart(benchmark, idx, group, groupIdx) {
+    const ctx = document.getElementById(`chart-${idx}-${groupIdx}`).getContext('2d');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
-    benchmark.results.forEach(result => {
+    group.results.forEach(result => {
         labels.push(result.framework);
         ref1Data.push(result.ref1 ?? null);
         ref2Data.push(result.ref2 ?? null);
@@ -4207,15 +4324,19 @@ function renderChart(benchmark, idx) {
     const datasets = [];
     if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
     if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
-    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'logarithmic', title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', logarithmic scale)' } } } } });
+    charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
+        const label = isComparison ? ctx.dataset.label : frameworkVersion(group.results[ctx.dataIndex].key);
+        return label + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms');
+    } } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
     const tbody = document.getElementById(`table-${idx}`);
+    const isComparison = Boolean(benchmarkData.refs.ref2);
     const baselineResult = benchmark.results.find(r => r.key === selectedBaseline);
     const baselineRef1 = baselineResult?.ref1;
     const baselineRef2 = baselineResult?.ref2 ?? baselineResult?.ref1;
-    // Get metro's ref2 value for comparing non-metro frameworks that weren't re-run
+    // Get Metro's ref2 value for comparing frameworks that were not re-run.
     const metroRef2 = benchmark.results.find(r => r.key === 'metro')?.ref2;
     let html = '';
     benchmark.results.forEach(result => {
@@ -4228,9 +4349,9 @@ function renderTable(benchmark, idx) {
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
-            ${benchmarkData.refs.ref1 ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>` : ''}
-            ${benchmarkData.refs.ref2 ? `<td class="numeric">${result.ref2 ? formatTime(result.ref2, benchmark.unit) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td>` : ''}
-            ${benchmarkData.refs.ref1 && benchmarkData.refs.ref2 ? `<td class="numeric diff ${diff.class}">${diff.text}</td>` : ''}</tr>`;
+            ${isComparison
+                ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTime(result.ref2, benchmark.unit) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
+                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
     });
     tbody.innerHTML = html;
 }
@@ -4254,6 +4375,7 @@ function renderMetadata() {
                 <div class="metadata-group">
                     <h3>Library Versions</h3>
                     <dl>
+                        <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
                         <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                         <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                         <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -4444,9 +4566,11 @@ function renderBinaryMetrics() {
     if (bm.r8Jars) bm.r8Jars.forEach(j => { if (!frameworks.find(f => f.key === j.key)) frameworks.push({key: j.key, name: j.framework}); });
     if (bm.apks) bm.apks.forEach(a => { if (!frameworks.find(f => f.key === a.key)) frameworks.push({key: a.key, name: a.framework}); });
 
-    // Keep Control as the default baseline when it is available.
+    // Prefer Metro as the binary-metrics baseline when it is available.
     if (!frameworks.find(f => f.key === selectedBaseline)) {
-        selectedBaseline = frameworks[0]?.key || 'control';
+        selectedBaseline = frameworks.some(f => f.key === 'metro')
+            ? 'metro'
+            : (frameworks[0]?.key || 'metro');
     }
 
     const showVsBaseline = frameworks.length > 1;
@@ -4495,7 +4619,7 @@ function renderBinaryMetrics() {
                     html += `<td class="numeric">${formatCountWithDelta(c.ref2?.shards, c.ref1?.shards)}</td>`;
                     html += `<td class="numeric">${formatBytesWithDelta(c.ref2?.sizeBytes, c.ref1?.sizeBytes)}</td>`;
                 } else {
-                    // Non-metro frameworks weren't run on ref2
+                    // Other frameworks were not run on ref2.
                     html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
                 }
             }
@@ -4557,7 +4681,7 @@ function renderBinaryMetrics() {
                     html += `<td class="numeric">${formatCountWithDelta(j.ref2?.methods, j.ref1?.methods)}</td>`;
                     html += `<td class="numeric">${formatCountWithDelta(j.ref2?.fields, j.ref1?.fields)}</td>`;
                 } else {
-                    // Non-metro frameworks weren't run on ref2
+                    // Other frameworks were not run on ref2.
                     html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
                 }
             }
@@ -4625,7 +4749,7 @@ function renderBinaryMetrics() {
                     html += `<td class="numeric">${formatCountWithDelta(a.ref2?.dexMethods, a.ref1?.dexMethods)}</td>`;
                     html += `<td class="numeric">${formatCountWithDelta(a.ref2?.dexFields, a.ref1?.dexFields)}</td>`;
                 } else {
-                    // Non-metro frameworks weren't run on ref2
+                    // Other frameworks were not run on ref2.
                     html += '<td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td><td class="numeric no-data">—</td>';
                 }
             }
@@ -4800,9 +4924,9 @@ run_compare() {
     print_info "Modes:           $MODES"
     print_info "Runtime tracing: $ENABLE_RUNTIME_TRACING"
     if [ "$RERUN_NON_METRO" = true ]; then
-        print_info "Re-run non-metro on ref2: yes"
+        print_info "Re-run non-baseline modes on ref2: yes"
     else
-        print_info "Re-run non-metro on ref2: no (using ref1 results)"
+        print_info "Re-run non-baseline modes on ref2: no (using ref1 results)"
     fi
     echo ""
 
@@ -4826,7 +4950,7 @@ run_compare() {
     # Run benchmarks for ref1 (baseline) - run all modes
     run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false
 
-    # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
+    # Run benchmarks for ref2 using only the preferred baseline by default.
     run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" true
 
     # Generate comparison summary
