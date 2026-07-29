@@ -6,7 +6,7 @@
 #
 # Modes (handled by run_benchmarks.sh):
 # - metro: Metro compiler plugin
-# - vanilla: Pure Kotlin baseline (no DI)
+# - control: Pure Kotlin control (no DI)
 # - metro_noop: Metro plugin applied but no annotations (measures plugin overhead)
 # - dagger_ksp: Dagger with KSP
 # - dagger_kapt: Dagger with KAPT
@@ -70,7 +70,7 @@ plain_non_abi_change {
 # These measure full compilation performance without incremental compilation.
 # Different variants for different mode types based on their compilation needs:
 #
-# - raw_compilation: For Metro/Vanilla/Metro-NOOP (pure compiler plugin, no annotation processing)
+# - raw_compilation: For Metro/Control/Metro-NOOP (pure compiler plugin, no annotation processing)
 # - raw_compilation_ksp: For kotlin-inject-anvil (needs KSP to run)
 # - raw_compilation_java: For Dagger KSP/KAPT (generates Java code, needs classes task)
 
@@ -79,7 +79,7 @@ raw_compilation {
     warm-ups = 5
     iterations = 5
 
-    # Metro/Vanilla/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
+    # Metro/Control/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin", "--rerun"]
 }
 
@@ -153,7 +153,7 @@ clean_build {
 #
 # To generate different project configurations manually:
 #   kotlin generate-projects.main.kts --mode metro --count 500
-#   kotlin generate-projects.main.kts --mode vanilla --count 500
+#   kotlin generate-projects.main.kts --mode control --count 500
 #   kotlin generate-projects.main.kts --mode metro_noop --count 500
 #   kotlin generate-projects.main.kts --mode dagger --processor ksp --count 500
 #   kotlin generate-projects.main.kts --mode dagger --processor kapt --count 500

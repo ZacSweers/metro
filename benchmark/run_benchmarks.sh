@@ -14,16 +14,34 @@ source "$SCRIPT_DIR/benchmark-utils.sh"
 
 # Configuration
 DEFAULT_MODULE_COUNT=500
+DEFAULT_SEED=0
 RESULTS_DIR="benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+WORKLOAD_SEED=$DEFAULT_SEED
+WORKLOAD_MANIFEST_FILE="$SCRIPT_DIR/workload-manifest.json"
+WORKLOAD_FINGERPRINT=""
+WORKLOAD_MODULE_COUNT=""
+WORKLOAD_CORE_MODULE_COUNT=""
+WORKLOAD_FEATURE_MODULE_COUNT=""
+WORKLOAD_APP_MODULE_COUNT=""
+WORKLOAD_DEPENDENCY_EDGE_COUNT=""
+WORKLOAD_CONTRIBUTION_COUNT=""
+WORKLOAD_BINDING_COUNT=""
+WORKLOAD_PLUGIN_COUNT=""
+WORKLOAD_INITIALIZER_COUNT=""
+WORKLOAD_L1_SUBCOMPONENT_COUNT=""
+WORKLOAD_L2_PER_L1=""
+WORKLOAD_L3_PER_L2=""
+WORKLOAD_SUBCOMPONENT_COUNT=""
+INCLUDE_CLEAN_BUILDS=false
 
 # Mode lists
-# Standard modes (without baselines)
-STANDARD_MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
-# Baseline modes (pure Kotlin and Metro plugin overhead)
-BASELINE_MODES="vanilla,metro-noop"
-# All modes including baselines
-ALL_MODES_WITH_BASELINES="metro,vanilla,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+# Standard published modes
+STANDARD_MODES="control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+# Optional compiler-plugin overhead baseline
+BASELINE_MODES="metro-noop"
+# All modes including the optional baseline
+ALL_MODES_WITH_BASELINES="control,metro,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -36,7 +54,7 @@ ORIGINAL_GIT_REF=""
 ORIGINAL_GIT_IS_BRANCH=false
 # Whether to re-run non-metro modes in ref2 (default: false to save time)
 RERUN_NON_METRO=false
-# Whether to include baseline modes (vanilla, metro-noop)
+# Whether to include the optional Metro-NOOP baseline
 INCLUDE_BASELINES=false
 # Profile options to pass to gradle-profiler (e.g., "jfr", "async-profiler-heap")
 PROFILE_OPTIONS=()
@@ -64,6 +82,141 @@ print_header() {
     echo -e "${BLUE}========================================${NC}\n"
 }
 
+json_quote() {
+    python3 - "$1" << 'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1]))
+PY
+}
+
+load_workload_manifest_metadata() {
+    local manifest_file="$1"
+
+    if [ ! -f "$manifest_file" ]; then
+        print_error "Missing workload manifest: $manifest_file" >&2
+        return 1
+    fi
+
+    local values
+    if ! values=$(python3 - "$manifest_file" << 'PY'
+import json
+import re
+import sys
+
+manifest_path = sys.argv[1]
+with open(manifest_path, encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
+
+if manifest.get("schemaVersion") != 1:
+    raise SystemExit(f"Unsupported workload manifest schema: {manifest.get('schemaVersion')!r}")
+
+fingerprint = manifest.get("fingerprint")
+if not isinstance(fingerprint, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint):
+    raise SystemExit(f"Invalid workload fingerprint: {fingerprint!r}")
+
+workload = manifest["workload"]
+modules_by_layer = workload["modulesByLayer"]
+contributions_by_kind = workload["contributionsByKind"]
+subcomponents = workload["subcomponents"]
+
+values = [
+    fingerprint,
+    workload["seed"],
+    workload["moduleCount"],
+    modules_by_layer["core"],
+    modules_by_layer["features"],
+    modules_by_layer["app"],
+    workload["dependencyEdgeCount"],
+    workload["contributionCount"],
+    contributions_by_kind["binding"],
+    contributions_by_kind["plugin"],
+    contributions_by_kind["initializer"],
+    subcomponents["l1"],
+    subcomponents["l2PerL1"],
+    subcomponents["l3PerL2"],
+    subcomponents["total"],
+]
+
+if not all(isinstance(value, int) for value in values[1:]):
+    raise SystemExit("Workload manifest counts and seed must be integers")
+
+print("|".join(str(value) for value in values))
+PY
+    ); then
+        print_error "Invalid workload manifest: $manifest_file" >&2
+        return 1
+    fi
+
+    local manifest_seed
+    IFS='|' read -r \
+        WORKLOAD_FINGERPRINT \
+        manifest_seed \
+        WORKLOAD_MODULE_COUNT \
+        WORKLOAD_CORE_MODULE_COUNT \
+        WORKLOAD_FEATURE_MODULE_COUNT \
+        WORKLOAD_APP_MODULE_COUNT \
+        WORKLOAD_DEPENDENCY_EDGE_COUNT \
+        WORKLOAD_CONTRIBUTION_COUNT \
+        WORKLOAD_BINDING_COUNT \
+        WORKLOAD_PLUGIN_COUNT \
+        WORKLOAD_INITIALIZER_COUNT \
+        WORKLOAD_L1_SUBCOMPONENT_COUNT \
+        WORKLOAD_L2_PER_L1 \
+        WORKLOAD_L3_PER_L2 \
+        WORKLOAD_SUBCOMPONENT_COUNT \
+        <<< "$values"
+
+    if [ "$manifest_seed" != "$WORKLOAD_SEED" ]; then
+        print_error "Workload manifest seed $manifest_seed does not match requested seed $WORKLOAD_SEED" >&2
+        return 1
+    fi
+}
+
+verify_and_capture_workload_manifest() {
+    local mode="$1"
+    local ref_dir="$2"
+    local expected_module_count="$3"
+    local canonical_manifest="$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json"
+    local ref_manifest="$ref_dir/workload-manifest.json"
+
+    if ! load_workload_manifest_metadata "$WORKLOAD_MANIFEST_FILE"; then
+        return 1
+    fi
+
+    if [ "$WORKLOAD_MODULE_COUNT" != "$expected_module_count" ]; then
+        print_error "Workload manifest module count $WORKLOAD_MODULE_COUNT does not match requested count $expected_module_count" >&2
+        return 1
+    fi
+
+    if [ -f "$canonical_manifest" ]; then
+        if ! cmp -s "$canonical_manifest" "$WORKLOAD_MANIFEST_FILE"; then
+            print_error "Generated workload for $mode does not match the first benchmark mode" >&2
+            print_error "Expected the byte-stable manifest and fingerprint to remain identical across modes" >&2
+            return 1
+        fi
+    else
+        cp "$WORKLOAD_MANIFEST_FILE" "$canonical_manifest"
+    fi
+
+    if [ -f "$ref_manifest" ]; then
+        if ! cmp -s "$ref_manifest" "$WORKLOAD_MANIFEST_FILE"; then
+            print_error "Generated workload for $mode does not match the first mode for this ref" >&2
+            return 1
+        fi
+    else
+        cp "$WORKLOAD_MANIFEST_FILE" "$ref_manifest"
+    fi
+
+    print_success "Verified workload for $mode: $WORKLOAD_FINGERPRINT"
+}
+
+load_report_workload_metadata() {
+    local canonical_manifest="$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json"
+    load_workload_manifest_metadata "$canonical_manifest"
+}
+
 # Source the gradle-profiler installer script
 source "$SCRIPT_DIR/install-gradle-profiler.sh"
 
@@ -74,6 +227,14 @@ GRADLE_PROFILER_BIN="$(get_gradle_profiler_bin)"
 collect_build_metadata() {
     local output_dir="$1"
     local metadata_file="$output_dir/build-metadata.json"
+    local dirty_diff_file="$output_dir/repo-dirty-diff-fingerprint.txt"
+    local dirty_diff_fingerprint
+
+    if [ ! -f "$dirty_diff_file" ]; then
+        print_error "Missing repository dirty diff fingerprint: $dirty_diff_file" >&2
+        return 1
+    fi
+    dirty_diff_fingerprint=$(cat "$dirty_diff_file")
 
     print_status "Collecting build environment metadata..."
 
@@ -148,7 +309,8 @@ collect_build_metadata() {
   "git": {
     "branch": "$git_branch",
     "sha": "$git_sha",
-    "shaShort": "$git_sha_short"
+    "shaShort": "$git_sha_short",
+    "dirtyDiffFingerprint": "$dirty_diff_fingerprint"
   },
   "versions": {
     "kotlin": "$kotlin_version",
@@ -165,6 +327,39 @@ collect_build_metadata() {
     "gradleProfiler": "$profiler_version",
     "jdk": "$java_version",
     "jvmTarget": "$jvm_target"
+  },
+  "workload": {
+    "seed": $WORKLOAD_SEED,
+    "fingerprint": "$WORKLOAD_FINGERPRINT",
+    "moduleCount": $WORKLOAD_MODULE_COUNT,
+    "modulesByLayer": {
+      "core": $WORKLOAD_CORE_MODULE_COUNT,
+      "features": $WORKLOAD_FEATURE_MODULE_COUNT,
+      "app": $WORKLOAD_APP_MODULE_COUNT
+    },
+    "dependencyEdgeCount": $WORKLOAD_DEPENDENCY_EDGE_COUNT,
+    "contributionCount": $WORKLOAD_CONTRIBUTION_COUNT,
+    "contributionsByKind": {
+      "binding": $WORKLOAD_BINDING_COUNT,
+      "plugin": $WORKLOAD_PLUGIN_COUNT,
+      "initializer": $WORKLOAD_INITIALIZER_COUNT
+    },
+    "subcomponents": {
+      "l1": $WORKLOAD_L1_SUBCOMPONENT_COUNT,
+      "l2PerL1": $WORKLOAD_L2_PER_L1,
+      "l3PerL2": $WORKLOAD_L3_PER_L2,
+      "total": $WORKLOAD_SUBCOMPONENT_COUNT
+    }
+  },
+  "daggerOptions": {
+    "mapMultibindingDuplicateDetectionFix": "ENABLED (explicit)",
+    "useBindingGraphFix": "ENABLED default",
+    "ignoreProvisionKeyWildcards": "ENABLED default",
+    "validateTransitiveComponentDependencies": "ENABLED default",
+    "strictSuperficialValidation": "ENABLED default",
+    "fullBindingGraphValidation": "NONE default",
+    "fastInit": "DISABLED",
+    "providerMultibindings": false
   },
   "system": {
     "os": "$os_info",
@@ -187,6 +382,14 @@ check_prerequisites() {
     
     if ! command -v kotlin &> /dev/null; then
         missing_tools+=("kotlin")
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        missing_tools+=("python3")
+    fi
+
+    if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
+        missing_tools+=("sha256sum or shasum")
     fi
     
     # Check for gradle-profiler (either in PATH or in tmp/)
@@ -217,17 +420,17 @@ generate_projects() {
     print_status "Generating $count modules for $mode mode"
     if [ "$mode" = "dagger" ]; then
         print_status "Using $processor processor"
-        kotlin generate-projects.main.kts --mode "DAGGER" --processor "$(echo $processor | tr '[:lower:]' '[:upper:]')" --count "$count"
+        kotlin generate-projects.main.kts --mode "DAGGER" --processor "$(echo "$processor" | tr '[:lower:]' '[:upper:]')" --count "$count" --seed "$WORKLOAD_SEED"
     elif [ "$mode" = "kotlin-inject-anvil" ]; then
-        kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count"
+        kotlin generate-projects.main.kts --mode "KOTLIN_INJECT_ANVIL" --count "$count" --seed "$WORKLOAD_SEED"
     elif [ "$mode" = "koin" ]; then
-        kotlin generate-projects.main.kts --mode "KOIN" --count "$count"
-    elif [ "$mode" = "vanilla" ]; then
-        kotlin generate-projects.main.kts --mode "VANILLA" --count "$count"
+        kotlin generate-projects.main.kts --mode "KOIN" --count "$count" --seed "$WORKLOAD_SEED"
+    elif [ "$mode" = "control" ]; then
+        kotlin generate-projects.main.kts --mode "CONTROL" --count "$count" --seed "$WORKLOAD_SEED"
     elif [ "$mode" = "metro-noop" ]; then
-        kotlin generate-projects.main.kts --mode "METRO_NOOP" --count "$count"
+        kotlin generate-projects.main.kts --mode "METRO_NOOP" --count "$count" --seed "$WORKLOAD_SEED"
     else
-        kotlin generate-projects.main.kts --mode "$(echo $mode | tr '[:lower:]' '[:upper:]')" --count "$count"
+        kotlin generate-projects.main.kts --mode "$(echo "$mode" | tr '[:lower:]' '[:upper:]')" --count "$count" --seed "$WORKLOAD_SEED"
     fi
     
     if [ $? -eq 0 ]; then
@@ -235,6 +438,32 @@ generate_projects() {
     else
         print_error "Project generation failed for $mode mode"
         exit 1
+    fi
+}
+
+validate_benchmark_csv() {
+    local csv_file="$1"
+    local mode="$2"
+    local scenario="$3"
+
+    if [ ! -f "$csv_file" ]; then
+        print_error "Missing benchmark result for $mode/$scenario: $csv_file" >&2
+        return 1
+    fi
+
+    if ! awk -F, '
+        /^measured build/ {
+            measured++
+            if ($2 !~ /^[0-9]+([.][0-9]+)?$/ || $3 !~ /^[0-9]+([.][0-9]+)?$/) {
+                invalid = 1
+            }
+        }
+        END {
+            exit !(measured > 0 && !invalid)
+        }
+    ' "$csv_file"; then
+        print_error "Benchmark result for $mode/$scenario has no complete measured build rows: $csv_file" >&2
+        return 1
     fi
 }
 
@@ -248,8 +477,8 @@ run_scenarios() {
     local mode_name
     if [ "$mode" = "metro" ]; then
         mode_name="metro"
-    elif [ "$mode" = "vanilla" ]; then
-        mode_name="vanilla"
+    elif [ "$mode" = "control" ]; then
+        mode_name="control"
     elif [ "$mode" = "metro-noop" ]; then
         mode_name="metro_noop"
     elif [ "$mode" = "dagger" ] && [ "$processor" = "ksp" ]; then
@@ -271,9 +500,9 @@ run_scenarios() {
     # Determine the raw compilation variant for this mode
     local raw_compilation_variant
     case "$mode_name" in
-        metro|vanilla|metro_noop|koin)
-            # Metro/Koin use pure K2 compiler plugins (no annotation processing), so the
-            # `raw_compilation` scenario (app-component-only rerun) works for both.
+        metro|control|metro_noop|koin)
+            # Metro/Koin use pure K2 compiler plugins and Control uses no compiler plugin.
+            # None of these modes need annotation-processing tasks for raw compilation.
             raw_compilation_variant="raw_compilation"
             ;;
         kotlin_inject_anvil)
@@ -357,6 +586,10 @@ run_scenarios() {
                 return 1
             }
 
+        if ! validate_benchmark_csv "$scenario_output_dir/benchmark.csv" "$mode_name" "$scenario"; then
+            return 1
+        fi
+
         print_success "Completed scenario: $scenario"
     done
 
@@ -420,7 +653,7 @@ show_usage() {
     echo "Commands:"
     echo "  all                           Run all benchmark modes on current branch"
     echo "  metro [COUNT]                 Run only Metro mode on current branch"
-    echo "  vanilla [COUNT]               Run only Vanilla mode (pure Kotlin baseline)"
+    echo "  control [COUNT]               Run only Control mode (pure Kotlin, no DI tooling)"
     echo "  metro-noop [COUNT]            Run only Metro-NOOP mode (Metro plugin, no annotations)"
     echo "  dagger-ksp [COUNT]            Run only Dagger (KSP) mode"
     echo "  dagger-kapt [COUNT]           Run only Dagger (KAPT) mode"
@@ -432,16 +665,17 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  COUNT                        Number of modules to generate (default: $DEFAULT_MODULE_COUNT)"
+    echo "  --seed <int>                 Seed for deterministic workload generation (default: $DEFAULT_SEED)"
     echo "  --build-only                 Only run ./gradlew :app:component:run --quiet, skip gradle-profiler"
     echo "  --include-clean-builds       Include clean build scenarios in benchmarks"
-    echo "  --include-baselines          Include baseline modes (vanilla + metro-noop) when using --modes all"
+    echo "  --include-baselines          Also include the optional Metro-NOOP plugin-overhead baseline"
     echo ""
     echo "Single/Compare Options:"
     echo "  --ref <ref>                  Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --modes <list>               Comma-separated list of modes to benchmark, or 'all'"
-    echo "                               Available: metro, vanilla, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin, all"
-    echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
-    echo "                               Use 'all' to run all standard modes (add --include-baselines for vanilla/metro-noop)"
+    echo "                               Available: control, metro, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin, all"
+    echo "                               Default: control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+    echo "                               Use 'all' to run all six published modes"
     echo "  --scenarios <list>           Comma-separated list of scenarios to run"
     echo "                               Available: abi_change, non_abi_change, plain_abi_change, plain_non_abi_change, raw_compilation, clean_build"
     echo "                               Default: all scenarios (except clean_build unless --include-clean-builds)"
@@ -475,7 +709,8 @@ show_usage() {
     echo "Examples:"
     echo "  $0                           # Run all benchmarks with default settings"
     echo "  $0 all 1000                  # Run all benchmarks with 1000 modules"
-    echo "  $0 all --include-baselines   # Run all benchmarks including vanilla + metro-noop"
+    echo "  $0 all --include-baselines   # Also run the Metro-NOOP plugin-overhead baseline"
+    echo "  $0 all --seed 0              # Reproduce the published workload"
     echo "  $0 metro 250                 # Run only Metro benchmarks with 250 modules"
     echo "  $0 dagger-ksp                # Run only Dagger (KSP) benchmarks with default count"
     echo "  $0 all --include-clean-builds # Run all benchmarks including clean build scenarios"
@@ -511,7 +746,16 @@ validate_count() {
     fi
 }
 
-# expand_modes: Expands "all" mode to actual mode list based on INCLUDE_BASELINES
+validate_seed() {
+    local seed="$1"
+    if ! [[ "$seed" =~ ^-?[0-9]+$ ]] || [ "$seed" -lt -2147483648 ] || [ "$seed" -gt 2147483647 ]; then
+        print_error "Invalid workload seed: $seed"
+        print_error "Seed must be a 32-bit signed integer"
+        exit 1
+    fi
+}
+
+# expand_modes: Expands "all" mode to the published modes and optional Metro-NOOP baseline.
 expand_modes() {
     local modes="$1"
     if [ "$modes" = "all" ]; then
@@ -521,10 +765,9 @@ expand_modes() {
             echo "$STANDARD_MODES"
         fi
     else
-        # If include_baselines is set and modes doesn't already include baselines, add them
+        # If requested, add Metro-NOOP to an explicit mode list.
         if [ "$INCLUDE_BASELINES" = true ]; then
-            # Check if vanilla is already in the modes
-            if [[ "$modes" != *"vanilla"* ]]; then
+            if [[ ",$modes," != *",metro-noop,"* ]]; then
                 echo "${modes},${BASELINE_MODES}"
             else
                 echo "$modes"
@@ -532,6 +775,173 @@ expand_modes() {
         else
             echo "$modes"
         fi
+    fi
+}
+
+mode_to_prefix() {
+    case "$1" in
+        control) echo "control" ;;
+        metro) echo "metro" ;;
+        metro-noop) echo "metro_noop" ;;
+        dagger-ksp) echo "dagger_ksp" ;;
+        dagger-kapt) echo "dagger_kapt" ;;
+        kotlin-inject-anvil) echo "kotlin_inject_anvil" ;;
+        koin) echo "koin" ;;
+        *)
+            print_error "Unknown benchmark mode: $1" >&2
+            return 1
+            ;;
+    esac
+}
+
+mode_display_name() {
+    case "$1" in
+        control) echo "Control*" ;;
+        metro) echo "Metro" ;;
+        metro-noop) echo "Metro-NOOP" ;;
+        dagger-ksp) echo "Dagger (KSP)" ;;
+        dagger-kapt) echo "Dagger (KAPT)" ;;
+        kotlin-inject-anvil) echo "kotlin-inject" ;;
+        koin) echo "Koin**" ;;
+        *)
+            print_error "Unknown benchmark mode: $1" >&2
+            return 1
+            ;;
+    esac
+}
+
+select_report_baseline_mode() {
+    local ref_label="$1"
+    local modes="$2"
+    local -a selected_modes
+    IFS=',' read -ra selected_modes <<< "$modes"
+
+    local preferred_mode
+    for preferred_mode in control metro; do
+        local selected_mode
+        for selected_mode in "${selected_modes[@]}"; do
+            if [ "$selected_mode" != "$preferred_mode" ]; then
+                continue
+            fi
+
+            local preferred_prefix
+            if ! preferred_prefix=$(mode_to_prefix "$preferred_mode"); then
+                return 1
+            fi
+            if mode_was_run_for_ref "$ref_label" "$preferred_prefix"; then
+                echo "$preferred_mode"
+                return
+            fi
+        done
+    done
+
+    local selected_mode
+    for selected_mode in "${selected_modes[@]}"; do
+        local selected_prefix
+        if ! selected_prefix=$(mode_to_prefix "$selected_mode"); then
+            return 1
+        fi
+        if mode_was_run_for_ref "$ref_label" "$selected_prefix"; then
+            echo "$selected_mode"
+            return
+        fi
+    done
+
+    print_error "No benchmark mode is available to use as the report baseline for $ref_label" >&2
+    return 1
+}
+
+scenario_name_for_mode() {
+    local mode_prefix="$1"
+    local test_type="$2"
+
+    if [ "$test_type" != "raw_compilation" ]; then
+        echo "$test_type"
+        return
+    fi
+
+    case "$mode_prefix" in
+        control|metro|metro_noop|koin) echo "raw_compilation" ;;
+        kotlin_inject_anvil) echo "raw_compilation_ksp" ;;
+        dagger_ksp|dagger_kapt) echo "raw_compilation_java" ;;
+        *)
+            print_error "Unknown benchmark result mode: $mode_prefix" >&2
+            return 1
+            ;;
+    esac
+}
+
+REPORT_TEST_TYPES=()
+REPORT_TEST_NAMES=()
+
+configure_report_scenarios() {
+    REPORT_TEST_TYPES=()
+    REPORT_TEST_NAMES=()
+
+    local requested_scenarios
+    if [ -n "$SCENARIOS_FILTER" ]; then
+        requested_scenarios="$SCENARIOS_FILTER"
+    else
+        requested_scenarios="abi_change,non_abi_change,plain_abi_change,plain_non_abi_change,raw_compilation"
+        if [ "$INCLUDE_CLEAN_BUILDS" = true ]; then
+            requested_scenarios="${requested_scenarios},clean_build"
+        fi
+    fi
+
+    local requested
+    IFS=',' read -ra requested <<< "$requested_scenarios"
+    local scenario
+    for scenario in "${requested[@]}"; do
+        case "$scenario" in
+            abi_change)
+                REPORT_TEST_TYPES+=("abi_change")
+                REPORT_TEST_NAMES+=("ABI Change")
+                ;;
+            non_abi_change)
+                REPORT_TEST_TYPES+=("non_abi_change")
+                REPORT_TEST_NAMES+=("Non-ABI Change")
+                ;;
+            plain_abi_change)
+                REPORT_TEST_TYPES+=("plain_abi_change")
+                REPORT_TEST_NAMES+=("Plain Kotlin ABI")
+                ;;
+            plain_non_abi_change)
+                REPORT_TEST_TYPES+=("plain_non_abi_change")
+                REPORT_TEST_NAMES+=("Plain Kotlin Non-ABI")
+                ;;
+            raw_compilation)
+                REPORT_TEST_TYPES+=("raw_compilation")
+                REPORT_TEST_NAMES+=("Graph Processing")
+                ;;
+            clean_build)
+                REPORT_TEST_TYPES+=("clean_build")
+                REPORT_TEST_NAMES+=("Clean Build")
+                ;;
+            *)
+                print_error "Unknown report scenario: $scenario" >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+move_mode_results() {
+    local mode_prefix="$1"
+    local ref_dir="$2"
+    local source_dir="$RESULTS_DIR/${mode_prefix}_${TIMESTAMP}"
+    local destination_dir="$ref_dir/${mode_prefix}_${TIMESTAMP}"
+
+    if [ ! -d "$source_dir" ]; then
+        print_error "Missing result directory for $mode_prefix: $source_dir" >&2
+        return 1
+    fi
+    if [ -e "$destination_dir" ]; then
+        print_error "Result directory already exists: $destination_dir" >&2
+        return 1
+    fi
+    if ! mv "$source_dir" "$ref_dir/"; then
+        print_error "Failed to move $source_dir to $ref_dir" >&2
+        return 1
     fi
 }
 
@@ -566,6 +976,12 @@ run_benchmarks_for_ref() {
     local ref_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}"
     mkdir -p "$ref_dir"
 
+    local dirty_diff_fingerprint
+    if ! dirty_diff_fingerprint=$(benchmark_repo_state_fingerprint); then
+        return 1
+    fi
+    echo "$dirty_diff_fingerprint" > "$ref_dir/repo-dirty-diff-fingerprint.txt"
+
     # Save version/commit info for reference
     if is_metro_version "$ref"; then
         echo "Metro version: $ref" > "$ref_dir/version-info.txt"
@@ -587,76 +1003,53 @@ run_benchmarks_for_ref() {
 
         print_header "Benchmarking $mode for $ref_label"
 
+        local generator_mode
+        local processor=""
+        local mode_prefix
         case "$mode" in
-            "metro")
-                generate_projects "metro" "" "$count"
-                run_scenarios "metro" "" "$include_clean_builds"
-                # Move results to ref-specific directory
-                for scenario_dir in "$RESULTS_DIR"/metro_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            control)
+                generator_mode="control"
+                mode_prefix="control"
                 ;;
-            "vanilla")
-                generate_projects "vanilla" "" "$count"
-                run_scenarios "vanilla" "" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/vanilla_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            metro)
+                generator_mode="metro"
+                mode_prefix="metro"
                 ;;
-            "metro-noop")
-                generate_projects "metro-noop" "" "$count"
-                run_scenarios "metro-noop" "" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/metro_noop_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            metro-noop)
+                generator_mode="metro-noop"
+                mode_prefix="metro_noop"
                 ;;
-            "dagger-ksp")
-                generate_projects "dagger" "ksp" "$count"
-                run_scenarios "dagger" "ksp" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/dagger_ksp_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            dagger-ksp)
+                generator_mode="dagger"
+                processor="ksp"
+                mode_prefix="dagger_ksp"
                 ;;
-            "dagger-kapt")
-                generate_projects "dagger" "kapt" "$count"
-                run_scenarios "dagger" "kapt" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/dagger_kapt_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            dagger-kapt)
+                generator_mode="dagger"
+                processor="kapt"
+                mode_prefix="dagger_kapt"
                 ;;
-            "kotlin-inject-anvil")
-                generate_projects "kotlin-inject-anvil" "" "$count"
-                run_scenarios "kotlin-inject-anvil" "" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/kotlin_inject_anvil_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            kotlin-inject-anvil)
+                generator_mode="kotlin-inject-anvil"
+                mode_prefix="kotlin_inject_anvil"
                 ;;
-            "koin")
-                generate_projects "koin" "" "$count"
-                run_scenarios "koin" "" "$include_clean_builds"
-                for scenario_dir in "$RESULTS_DIR"/koin_*"$TIMESTAMP"*; do
-                    if [ -d "$scenario_dir" ]; then
-                        mv "$scenario_dir" "$ref_dir/" 2>/dev/null || true
-                    fi
-                done
+            koin)
+                generator_mode="koin"
+                mode_prefix="koin"
                 ;;
             *)
-                print_warning "Unknown mode: $mode, skipping"
+                print_error "Unknown mode: $mode" >&2
+                return 1
                 ;;
         esac
+
+        generate_projects "$generator_mode" "$processor" "$count"
+        verify_and_capture_workload_manifest "$mode" "$ref_dir" "$count"
+        run_scenarios "$generator_mode" "$processor" "$include_clean_builds"
+        move_mode_results "$mode_prefix" "$ref_dir"
     done
+
+    collect_build_metadata "$ref_dir"
 
     print_success "Completed benchmarks for $ref_label"
 }
@@ -667,57 +1060,34 @@ extract_median_for_ref() {
     local mode_prefix="$2"
     local test_type="$3"
 
-    # Determine the scenario directory name
-    # Different modes use different scenario variants for fair comparison
-    local scenario_name="$test_type"
-    case "$test_type" in
-        raw_compilation)
-            case "$mode_prefix" in
-                metro|vanilla|metro_noop|koin)
-                    scenario_name="raw_compilation"
-                    ;;
-                kotlin_inject_anvil)
-                    scenario_name="raw_compilation_ksp"
-                    ;;
-                dagger_ksp|dagger_kapt)
-                    scenario_name="raw_compilation_java"
-                    ;;
-            esac
-            ;;
-    esac
+    local scenario_name
+    if ! scenario_name=$(scenario_name_for_mode "$mode_prefix" "$test_type"); then
+        return 1
+    fi
 
     local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
+    if ! validate_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
+        return 1
+    fi
 
-    if [ -f "$csv_file" ]; then
-        # Extract measured build times (skip header and warm-up builds)
-        local times=$(awk -F, '/^measured build/ {print $2}' "$csv_file" | sort -n)
+    local times
+    times=$(awk -F, '/^measured build/ {print $2}' "$csv_file" | sort -n)
+    local times_array=($times)
+    local count=${#times_array[@]}
+    local median_index=$((count / 2))
 
-        if [ -z "$times" ]; then
-            echo ""
-            return
-        fi
-
-        # Convert to array and calculate median
-        local times_array=($times)
-        local count=${#times_array[@]}
-
-        if [ $count -eq 0 ]; then
-            echo ""
-            return
-        fi
-
-        local median_index=$((count / 2))
-
-        if [ $((count % 2)) -eq 1 ]; then
-            echo "${times_array[$median_index]}"
-        else
-            local mid1_index=$((median_index - 1))
-            local mid1=${times_array[$mid1_index]}
-            local mid2=${times_array[$median_index]}
-            echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null || echo ""
-        fi
+    if [ $((count % 2)) -eq 1 ]; then
+        echo "${times_array[$median_index]}"
     else
-        echo ""
+        local mid1_index=$((median_index - 1))
+        local mid1=${times_array[$mid1_index]}
+        local mid2=${times_array[$median_index]}
+        local median
+        if ! median=$(echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null); then
+            print_error "Failed to calculate median for $mode_prefix/$scenario_name" >&2
+            return 1
+        fi
+        echo "$median"
     fi
 }
 
@@ -728,56 +1098,34 @@ extract_gc_for_ref() {
     local mode_prefix="$2"
     local test_type="$3"
 
-    # Determine the scenario directory name (same logic as extract_median_for_ref)
-    local scenario_name="$test_type"
-    case "$test_type" in
-        raw_compilation)
-            case "$mode_prefix" in
-                metro|vanilla|metro_noop|koin)
-                    scenario_name="raw_compilation"
-                    ;;
-                kotlin_inject_anvil)
-                    scenario_name="raw_compilation_ksp"
-                    ;;
-                dagger_ksp|dagger_kapt)
-                    scenario_name="raw_compilation_java"
-                    ;;
-            esac
-            ;;
-    esac
+    local scenario_name
+    if ! scenario_name=$(scenario_name_for_mode "$mode_prefix" "$test_type"); then
+        return 1
+    fi
 
     local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
+    if ! validate_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
+        return 1
+    fi
 
-    if [ -f "$csv_file" ]; then
-        # Extract measured GC times (column 3, skip header and warm-up builds)
-        local times=$(awk -F, '/^measured build/ {print $3}' "$csv_file" | sort -n)
+    local times
+    times=$(awk -F, '/^measured build/ {print $3}' "$csv_file" | sort -n)
+    local times_array=($times)
+    local count=${#times_array[@]}
+    local median_index=$((count / 2))
 
-        if [ -z "$times" ]; then
-            echo ""
-            return
-        fi
-
-        # Convert to array and calculate median
-        local times_array=($times)
-        local count=${#times_array[@]}
-
-        if [ $count -eq 0 ]; then
-            echo ""
-            return
-        fi
-
-        local median_index=$((count / 2))
-
-        if [ $((count % 2)) -eq 1 ]; then
-            echo "${times_array[$median_index]}"
-        else
-            local mid1_index=$((median_index - 1))
-            local mid1=${times_array[$mid1_index]}
-            local mid2=${times_array[$median_index]}
-            echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null || echo ""
-        fi
+    if [ $((count % 2)) -eq 1 ]; then
+        echo "${times_array[$median_index]}"
     else
-        echo ""
+        local mid1_index=$((median_index - 1))
+        local mid1=${times_array[$mid1_index]}
+        local mid2=${times_array[$median_index]}
+        local median
+        if ! median=$(echo "scale=2; ($mid1 + $mid2) / 2" | bc 2>/dev/null); then
+            print_error "Failed to calculate median GC time for $mode_prefix/$scenario_name" >&2
+            return 1
+        fi
+        echo "$median"
     fi
 }
 
@@ -794,6 +1142,50 @@ mode_was_run_for_ref() {
     return 1
 }
 
+validate_report_results() {
+    local ref_label="$1"
+    local modes="$2"
+    local allow_skipped_non_metro="${3:-false}"
+
+    if ! configure_report_scenarios; then
+        return 1
+    fi
+
+    local selected_modes
+    IFS=',' read -ra selected_modes <<< "$modes"
+    local mode
+    for mode in "${selected_modes[@]}"; do
+        local mode_prefix
+        if ! mode_prefix=$(mode_to_prefix "$mode"); then
+            return 1
+        fi
+
+        if ! mode_was_run_for_ref "$ref_label" "$mode_prefix"; then
+            if [ "$allow_skipped_non_metro" = true ] && [ "$mode" != "metro" ]; then
+                continue
+            fi
+            print_error "Missing selected mode results for $ref_label/$mode" >&2
+            return 1
+        fi
+
+        local test_type
+        for test_type in "${REPORT_TEST_TYPES[@]}"; do
+            local score
+            local gc_time
+            if ! score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
+            if ! gc_time=$(extract_gc_for_ref "$ref_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
+            if [ -z "$score" ] || [ -z "$gc_time" ]; then
+                print_error "Missing selected result for $ref_label/$mode/$test_type" >&2
+                return 1
+            fi
+        done
+    done
+}
+
 # Generate comparison summary between two refs
 generate_comparison_summary() {
     local ref1_label="$1"
@@ -801,26 +1193,47 @@ generate_comparison_summary() {
     local modes="$3"
 
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/comparison-summary.md"
-    local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
-    local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local ref1_commit
+    local ref2_commit
+    ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
 
     print_header "Generating Comparison Summary"
 
+    if ! load_report_workload_metadata; then
+        return 1
+    fi
+    if ! validate_report_results "$ref1_label" "$modes" false; then
+        return 1
+    fi
+    if ! validate_report_results "$ref2_label" "$modes" true; then
+        return 1
+    fi
+
+    local baseline_mode
+    local baseline_prefix
+    local baseline_name
+    if ! baseline_mode=$(select_report_baseline_mode "$ref1_label" "$modes"); then
+        return 1
+    fi
+    if ! baseline_prefix=$(mode_to_prefix "$baseline_mode"); then
+        return 1
+    fi
+    if ! baseline_name=$(mode_display_name "$baseline_mode"); then
+        return 1
+    fi
+
+    local -a mode_array
+    IFS=',' read -ra mode_array <<< "$modes"
+
     # Determine which modes were actually run on ref2
     local ref2_modes=""
-    IFS=',' read -ra MODE_ARRAY <<< "$modes"
-    for mode in "${MODE_ARRAY[@]}"; do
+    local mode
+    for mode in "${mode_array[@]}"; do
         local mode_prefix
-        case "$mode" in
-            "metro") mode_prefix="metro" ;;
-            "vanilla") mode_prefix="vanilla" ;;
-            "metro-noop") mode_prefix="metro_noop" ;;
-            "dagger-ksp") mode_prefix="dagger_ksp" ;;
-            "dagger-kapt") mode_prefix="dagger_kapt" ;;
-            "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
-            "koin") mode_prefix="koin" ;;
-            *) continue ;;
-        esac
+        if ! mode_prefix=$(mode_to_prefix "$mode"); then
+            return 1
+        fi
         if mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
             if [ -n "$ref2_modes" ]; then
                 ref2_modes="${ref2_modes},"
@@ -833,9 +1246,11 @@ generate_comparison_summary() {
 # Benchmark Comparison: $ref1_label vs $ref2_label
 
 **Date:** $(date)
-**Module Count:** $DEFAULT_MODULE_COUNT
+**Module Count:** $WORKLOAD_MODULE_COUNT
+**Workload Seed:** $WORKLOAD_SEED
+**Workload Fingerprint:** \`$WORKLOAD_FINGERPRINT\`
 **Modes benchmarked on ref1:** $modes
-**Modes benchmarked on ref2:** ${ref2_modes:-metro}
+**Modes benchmarked on ref2:** ${ref2_modes:-none}
 
 ## Git Refs
 
@@ -846,44 +1261,47 @@ generate_comparison_summary() {
 
 EOF
 
-    # Test types to compare
-    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
-    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+    local i
+    for i in "${!REPORT_TEST_TYPES[@]}"; do
+        local test_type="${REPORT_TEST_TYPES[$i]}"
+        local test_name="${REPORT_TEST_NAMES[$i]}"
 
-    for i in "${!test_types[@]}"; do
-        local test_type="${test_types[$i]}"
-        local test_name="${test_names[$i]}"
-
-        # Get metro scores for this test type to use as baseline for "vs Metro" column
-        local metro_score1=$(extract_median_for_ref "$ref1_label" "metro" "$test_type")
-        local metro_score2=""
-        if mode_was_run_for_ref "$ref2_label" "metro"; then
-            metro_score2=$(extract_median_for_ref "$ref2_label" "metro" "$test_type")
+        local baseline_score1
+        local baseline_score2=""
+        if ! baseline_score1=$(extract_median_for_ref "$ref1_label" "$baseline_prefix" "$test_type"); then
+            return 1
+        fi
+        if mode_was_run_for_ref "$ref2_label" "$baseline_prefix"; then
+            if ! baseline_score2=$(extract_median_for_ref "$ref2_label" "$baseline_prefix" "$test_type"); then
+                return 1
+            fi
         fi
 
         cat >> "$summary_file" << EOF
 ## $test_name
 
-| Framework | $ref1_label | vs Metro | $ref2_label | vs Metro | Difference |
+| Framework | $ref1_label | vs $baseline_name | $ref2_label | vs $baseline_name | Difference |
 |-----------|-------------|----------|-------------|----------|------------|
 EOF
 
-        for mode in "${MODE_ARRAY[@]}"; do
+        for mode in "${mode_array[@]}"; do
             local mode_prefix
-            case "$mode" in
-                "metro") mode_prefix="metro" ;;
-                "vanilla") mode_prefix="vanilla" ;;
-            "metro-noop") mode_prefix="metro_noop" ;;
-                "dagger-ksp") mode_prefix="dagger_ksp" ;;
-                "dagger-kapt") mode_prefix="dagger_kapt" ;;
-                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
-                "koin") mode_prefix="koin" ;;
-            "koin") mode_prefix="koin" ;;
-                *) continue ;;
-            esac
+            local mode_name
+            if ! mode_prefix=$(mode_to_prefix "$mode"); then
+                return 1
+            fi
+            if ! mode_name=$(mode_display_name "$mode"); then
+                return 1
+            fi
 
-            local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
-            local gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type")
+            local score1
+            local gc1
+            if ! score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
+            if ! gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
 
             # Check if this mode was run on ref2
             local mode_ran_on_ref2=false
@@ -894,59 +1312,66 @@ EOF
             local score2=""
             local gc2=""
             if [ "$mode_ran_on_ref2" = true ]; then
-                score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
-                gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+                if ! score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
+                    return 1
+                fi
+                if ! gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
+                    return 1
+                fi
             fi
 
             local display1="N/A"
             local display2="N/A"
-            local vs_metro1="—"
-            local vs_metro2="—"
+            local vs_baseline1="—"
+            local vs_baseline2="—"
             local diff="-"
 
             if [ -n "$score1" ]; then
-                local secs1=$(echo "scale=1; $score1 / 1000" | bc 2>/dev/null || echo "")
+                local secs1
+                secs1=$(echo "scale=1; $score1 / 1000" | bc 2>/dev/null || echo "")
                 if [ -n "$secs1" ]; then
                     display1="${secs1}s"
                     # Add GC time if available
                     if [ -n "$gc1" ]; then
-                        local gc_secs1=$(echo "scale=2; $gc1 / 1000" | bc 2>/dev/null || echo "")
+                        local gc_secs1
+                        gc_secs1=$(echo "scale=2; $gc1 / 1000" | bc 2>/dev/null || echo "")
                         if [ -n "$gc_secs1" ]; then
                             display1="${secs1}s (gc: ${gc_secs1}s)"
                         fi
                     fi
                 fi
-                # Calculate vs Metro for ref1
-                if [ "$mode" = "metro" ]; then
-                    vs_metro1="baseline"
-                elif [ -n "$metro_score1" ] && [ "$metro_score1" != "0" ]; then
-                    vs_metro1=$(format_vs_baseline "$score1" "$metro_score1")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline1="baseline"
+                elif [ -n "$baseline_score1" ] && [ "$baseline_score1" != "0" ]; then
+                    vs_baseline1=$(format_vs_baseline "$score1" "$baseline_score1")
                 fi
             fi
 
             if [ "$mode_ran_on_ref2" = true ]; then
                 if [ -n "$score2" ]; then
-                    local secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
+                    local secs2
+                    secs2=$(echo "scale=1; $score2 / 1000" | bc 2>/dev/null || echo "")
                     if [ -n "$secs2" ]; then
                         display2="${secs2}s"
                         # Add GC time if available
                         if [ -n "$gc2" ]; then
-                            local gc_secs2=$(echo "scale=2; $gc2 / 1000" | bc 2>/dev/null || echo "")
+                            local gc_secs2
+                            gc_secs2=$(echo "scale=2; $gc2 / 1000" | bc 2>/dev/null || echo "")
                             if [ -n "$gc_secs2" ]; then
                                 display2="${secs2}s (gc: ${gc_secs2}s)"
                             fi
                         fi
                     fi
-                    # Calculate vs Metro for ref2
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro2="baseline"
-                    elif [ -n "$metro_score2" ] && [ "$metro_score2" != "0" ]; then
-                        vs_metro2=$(format_vs_baseline "$score2" "$metro_score2")
+                    if [ "$mode" = "$baseline_mode" ]; then
+                        vs_baseline2="baseline"
+                    elif [ -n "$baseline_score2" ] && [ "$baseline_score2" != "0" ]; then
+                        vs_baseline2=$(format_vs_baseline "$score2" "$baseline_score2")
                     fi
                 fi
 
                 if [ -n "$score1" ] && [ -n "$score2" ] && [ "$score1" != "0" ]; then
-                    local pct_diff=$(format_pct_diff "$score2" "$score1" 2)
+                    local pct_diff
+                    pct_diff=$(format_pct_diff "$score2" "$score1" 2)
                     if [ "$pct_diff" = "0%" ] || [ "$pct_diff" = "0.00%" ]; then
                         diff="+0.00% (no change)"
                     else
@@ -959,13 +1384,17 @@ EOF
                 diff="n/a"
             fi
 
-            echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+            echo "| $mode_name | $display1 | $vs_baseline1 | $display2 | $vs_baseline2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
     done
 
     cat >> "$summary_file" << EOF
+*Control performs no dependency injection or graph processing, including in the Graph Processing scenario.
+
+**Koin does not fully validate the dependency graph or generate its complete implementation.
+
 ## Raw Results
 
 Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
@@ -979,7 +1408,9 @@ EOF
     cat "$summary_file"
 
     # Generate HTML report
-    generate_html_report "$ref1_label" "$ref2_label" "$modes"
+    if ! generate_html_report "$ref1_label" "$ref2_label" "$modes"; then
+        return 1
+    fi
 }
 
 # Generate HTML report for benchmarks
@@ -994,7 +1425,10 @@ generate_html_report() {
 
     # Build JSON data
     local json_data
-    json_data=$(build_benchmark_json "$ref1_label" "$ref2_label" "$modes")
+    if ! json_data=$(build_benchmark_json "$ref1_label" "$ref2_label" "$modes"); then
+        print_error "Could not generate the HTML report because selected benchmark results or metadata are missing" >&2
+        return 1
+    fi
 
     # Generate HTML
     cat > "$html_file" << 'HTMLHEAD'
@@ -1005,7 +1439,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --vanilla-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
+        :root { --metro-color: #4CAF50; --control-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1030,10 +1464,10 @@ generate_html_report() {
         td.framework { font-weight: 500; }
         .baseline-select { cursor: pointer; width: 30px; }
         .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
-        .baseline-radio.selected { border-color: var(--metro-color); background: var(--metro-color); }
-        .baseline-row { background: #f0fdf4; }
+        .baseline-radio.selected { border-color: var(--control-color); background: var(--control-color); }
+        .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
+        .vs-baseline.baseline { color: var(--control-color); font-weight: 500; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .diff { font-weight: 500; }
@@ -1055,6 +1489,9 @@ generate_html_report() {
         .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
         .metadata-group dt { color: #888; }
         .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin-top: 2rem; font-size: 0.9rem; line-height: 1.5; }
+        .notes-section h2 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
+        .notes-section p { margin: 0.5rem 0; }
         .gc-time { color: #888; font-size: 0.85em; }
     </style>
 </head>
@@ -1067,6 +1504,11 @@ generate_html_report() {
         <div class="refs-info" id="refs-info"></div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
+        <div class="notes-section">
+            <h2>Framework Notes</h2>
+            <p><strong>*</strong> Control performs no dependency injection or graph processing, including in the Graph Processing scenario.</p>
+            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation.</p>
+        </div>
     </div>
 <script>
 const benchmarkData =
@@ -1076,11 +1518,15 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'vanilla': '#607D8B', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
-const displayNames = { 'metro': 'Metro', 'vanilla': 'Vanilla (Baseline)', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
+const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const displayNames = { 'control': 'Control*', 'metro': 'Metro', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin**' };
 
 // State for selectable baseline
-let selectedBaseline = 'metro';
+const firstBenchmarkResults = benchmarkData.benchmarks[0]?.results || [];
+const defaultBaselineResult = firstBenchmarkResults.find(result => result.key === 'control' && result.ref1 !== null)
+    || firstBenchmarkResults.find(result => result.key === 'metro' && result.ref1 !== null)
+    || firstBenchmarkResults.find(result => result.ref1 !== null);
+let selectedBaseline = defaultBaselineResult?.key;
 
 function formatTime(ms) {
     if (ms === null || ms === undefined) return '—';
@@ -1231,8 +1677,26 @@ function renderMetadata() {
     if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
     const m = benchmarkData.metadata;
     container.innerHTML = `
-        <h2>Build Environment</h2>
+        <h2>Build Environment and Workload</h2>
         <div class="metadata-grid">
+            <div class="metadata-group">
+                <h3>Generated Workload</h3>
+                <dl>
+                    <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
+                    <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
+                    <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'} total (${m.workload?.modulesByLayer?.core ?? '—'} core, ${m.workload?.modulesByLayer?.features ?? '—'} feature, ${m.workload?.modulesByLayer?.app ?? '—'} app)</dd>
+                    <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
+                    <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'} total (${m.workload?.contributionsByKind?.binding ?? '—'} bindings, ${m.workload?.contributionsByKind?.plugin ?? '—'} plugins, ${m.workload?.contributionsByKind?.initializer ?? '—'} initializers)</dd>
+                    <dt>Subcomponents</dt><dd>${m.workload?.subcomponents?.total ?? '—'} total (L1 ${m.workload?.subcomponents?.l1 ?? '—'}, L2/L1 ${m.workload?.subcomponents?.l2PerL1 ?? '—'}, L3/L2 ${m.workload?.subcomponents?.l3PerL2 ?? '—'})</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Repository State</h3>
+                <dl>
+                    <dt>${benchmarkData.refs.ref1?.label || 'Ref 1'}</dt><dd>${benchmarkData.refs.ref1?.dirtyDiffFingerprint || '—'}</dd>
+                    ${benchmarkData.refs.ref2 ? `<dt>${benchmarkData.refs.ref2.label}</dt><dd>${benchmarkData.refs.ref2.dirtyDiffFingerprint || '—'}</dd>` : ''}
+                </dl>
+            </div>
             <div class="metadata-group">
                 <h3>Library Versions</h3>
                 <dl>
@@ -1264,6 +1728,19 @@ function renderMetadata() {
                     <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
                 </dl>
             </div>
+            <div class="metadata-group">
+                <h3>Dagger Options (KSP and KAPT)</h3>
+                <dl>
+                    <dt>mapMultibindingDuplicateDetectionFix</dt><dd>${m.daggerOptions?.mapMultibindingDuplicateDetectionFix || '—'}</dd>
+                    <dt>useBindingGraphFix</dt><dd>${m.daggerOptions?.useBindingGraphFix || '—'}</dd>
+                    <dt>ignoreProvisionKeyWildcards</dt><dd>${m.daggerOptions?.ignoreProvisionKeyWildcards || '—'}</dd>
+                    <dt>validateTransitiveComponentDependencies</dt><dd>${m.daggerOptions?.validateTransitiveComponentDependencies || '—'}</dd>
+                    <dt>strictSuperficialValidation</dt><dd>${m.daggerOptions?.strictSuperficialValidation || '—'}</dd>
+                    <dt>fullBindingGraphValidation</dt><dd>${m.daggerOptions?.fullBindingGraphValidation || '—'}</dd>
+                    <dt>fastInit</dt><dd>${m.daggerOptions?.fastInit || '—'}</dd>
+                    <dt>providerMultibindings</dt><dd>${m.daggerOptions?.providerMultibindings ?? '—'}</dd>
+                </dl>
+            </div>
         </div>`;
 }
 
@@ -1283,166 +1760,213 @@ build_benchmark_json() {
     local ref2_label="${2:-}"
     local modes="$3"
 
-    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
-    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+    if ! load_report_workload_metadata; then
+        return 1
+    fi
+    if ! validate_report_results "$ref1_label" "$modes" false; then
+        return 1
+    fi
+    if [ -n "$ref2_label" ] && ! validate_report_results "$ref2_label" "$modes" true; then
+        return 1
+    fi
+    if ! configure_report_scenarios; then
+        return 1
+    fi
 
-    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+    local run_dir="$RESULTS_DIR/${TIMESTAMP}"
+    local metadata_file="$run_dir/${ref1_label}/build-metadata.json"
+    local manifest_file="$run_dir/workload-manifest.json"
+    local metadata_json
+    if ! metadata_json=$(python3 - "$metadata_file" "$manifest_file" << 'PY'
+import json
+import sys
 
-    # Get repo root and read metadata
-    local repo_root
-    repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
-    local versions_file="$repo_root/gradle/libs.versions.toml"
+metadata_path, manifest_path = sys.argv[1:]
+with open(metadata_path, encoding="utf-8") as metadata_file:
+    metadata = json.load(metadata_file)
+with open(manifest_path, encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
 
-    # Helper to extract version from libs.versions.toml
-    get_toml_version() {
-        local key="$1"
-        grep "^${key} = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1
-    }
+expected_workload = manifest["workload"]
+actual_workload = metadata["workload"]
+workload_paths = [
+    ("seed",),
+    ("moduleCount",),
+    ("modulesByLayer", "core"),
+    ("modulesByLayer", "features"),
+    ("modulesByLayer", "app"),
+    ("dependencyEdgeCount",),
+    ("contributionCount",),
+    ("contributionsByKind", "binding"),
+    ("contributionsByKind", "plugin"),
+    ("contributionsByKind", "initializer"),
+    ("subcomponents", "l1"),
+    ("subcomponents", "l2PerL1"),
+    ("subcomponents", "l3PerL2"),
+    ("subcomponents", "total"),
+]
+
+if actual_workload.get("fingerprint") != manifest["fingerprint"]:
+    raise SystemExit("Build metadata workload fingerprint does not match the canonical manifest")
+
+for path in workload_paths:
+    expected = expected_workload
+    actual = actual_workload
+    for key in path:
+        expected = expected[key]
+        actual = actual[key]
+    if actual != expected:
+        joined_path = ".".join(path)
+        raise SystemExit(f"Build metadata workload value differs at {joined_path}")
+
+expected_dagger_options = {
+    "mapMultibindingDuplicateDetectionFix": "ENABLED (explicit)",
+    "useBindingGraphFix": "ENABLED default",
+    "ignoreProvisionKeyWildcards": "ENABLED default",
+    "validateTransitiveComponentDependencies": "ENABLED default",
+    "strictSuperficialValidation": "ENABLED default",
+    "fullBindingGraphValidation": "NONE default",
+    "fastInit": "DISABLED",
+    "providerMultibindings": False,
+}
+if metadata.get("daggerOptions") != expected_dagger_options:
+    raise SystemExit("Build metadata does not contain the expected Dagger option matrix")
+
+json.dump(metadata, sys.stdout, separators=(",", ":"))
+PY
+    ); then
+        print_error "Invalid report metadata: $metadata_file" >&2
+        return 1
+    fi
+
+    local ref1_dirty_file="$run_dir/${ref1_label}/repo-dirty-diff-fingerprint.txt"
+    if [ ! -f "$ref1_dirty_file" ]; then
+        print_error "Missing repository dirty diff fingerprint: $ref1_dirty_file" >&2
+        return 1
+    fi
+    local ref1_dirty
+    ref1_dirty=$(cat "$ref1_dirty_file")
+
+    local ref2_dirty=""
+    if [ -n "$ref2_label" ]; then
+        local ref2_dirty_file="$run_dir/${ref2_label}/repo-dirty-diff-fingerprint.txt"
+        if [ ! -f "$ref2_dirty_file" ]; then
+            print_error "Missing repository dirty diff fingerprint: $ref2_dirty_file" >&2
+            return 1
+        fi
+        ref2_dirty=$(cat "$ref2_dirty_file")
+    fi
+
+    local ref1_commit
+    local ref2_commit=""
+    ref1_commit=$(cat "$run_dir/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    if [ -n "$ref2_label" ]; then
+        ref2_commit=$(cat "$run_dir/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    fi
+
+    local date_json
+    local ref1_label_json
+    local ref1_commit_json
+    local ref1_dirty_json
+    date_json=$(json_quote "$(date -Iseconds)")
+    ref1_label_json=$(json_quote "$ref1_label")
+    ref1_commit_json=$(json_quote "$ref1_commit")
+    ref1_dirty_json=$(json_quote "$ref1_dirty")
+
+    local -a mode_array
+    IFS=',' read -ra mode_array <<< "$modes"
 
     echo "{"
     echo '  "title": "Build Benchmark Comparison",'
-    echo '  "date": "'$(date -Iseconds)'",'
-    echo '  "moduleCount": '"$DEFAULT_MODULE_COUNT"','
-
-    # Refs info
+    echo "  \"date\": $date_json,"
+    echo "  \"moduleCount\": $WORKLOAD_MODULE_COUNT,"
     echo '  "refs": {'
-    local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
-    echo '    "ref1": { "label": "'"$ref1_label"'", "commit": "'"$ref1_commit"'" }'
+    echo "    \"ref1\": { \"label\": $ref1_label_json, \"commit\": $ref1_commit_json, \"dirtyDiffFingerprint\": $ref1_dirty_json }"
     if [ -n "$ref2_label" ]; then
-        local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
-        echo '    ,"ref2": { "label": "'"$ref2_label"'", "commit": "'"$ref2_commit"'" }'
+        local ref2_label_json
+        local ref2_commit_json
+        local ref2_dirty_json
+        ref2_label_json=$(json_quote "$ref2_label")
+        ref2_commit_json=$(json_quote "$ref2_commit")
+        ref2_dirty_json=$(json_quote "$ref2_dirty")
+        echo "    ,\"ref2\": { \"label\": $ref2_label_json, \"commit\": $ref2_commit_json, \"dirtyDiffFingerprint\": $ref2_dirty_json }"
     fi
     echo '  },'
-
-    # Build metadata
-    local kotlin_version=$(get_toml_version "kotlin")
-    local dagger_version=$(get_toml_version "dagger")
-    local ksp_version=$(get_toml_version "ksp")
-    local kotlin_inject_version=$(get_toml_version "kotlinInject")
-    local anvil_version=$(get_toml_version "anvil")
-    local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
-    local koin_version=$(get_toml_version "koin")
-    local koin_compiler_version=$(get_toml_version "koin-compiler")
-    local jvm_target=$(get_toml_version "jvmTarget")
-
-    local gradle_version=$("$repo_root/gradlew" --version 2>/dev/null | grep "^Gradle " | awk '{print $2}' || echo "unknown")
-
-    local profiler_version="unknown"
-    local profiler_source_dir="$repo_root/tmp/gradle-profiler-source"
-    if [ -d "$profiler_source_dir/.git" ]; then
-        local profiler_sha=$(cd "$profiler_source_dir" && git rev-parse --short HEAD 2>/dev/null || echo "")
-        profiler_version="source ($profiler_sha)"
-    elif command -v gradle-profiler &> /dev/null; then
-        profiler_version=$(gradle-profiler --version 2>/dev/null | head -1 || echo "unknown")
-    fi
-
-    local java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
-
-    local os_info=$(uname -s 2>/dev/null || echo "unknown")
-    local cpu_info=""
-    local ram_info=""
-    if [ "$os_info" = "Darwin" ]; then
-        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
-        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
-    elif [ "$os_info" = "Linux" ]; then
-        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
-        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
-    fi
-
-    local daemon_jvm_args=""
-    if [ -f "$repo_root/gradle.properties" ]; then
-        daemon_jvm_args=$(grep "org.gradle.jvmargs" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- | sed 's/"/\\"/g' || echo "")
-    fi
-
-    echo '  "metadata": {'
-    echo '    "versions": {'
-    echo '      "kotlin": "'"$kotlin_version"'",'
-    echo '      "dagger": "'"$dagger_version"'",'
-    echo '      "ksp": "'"$ksp_version"'",'
-    echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
-    echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
-    echo '      "koin": "'"$koin_version"'",'
-    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
-    echo '    },'
-    echo '    "build": {'
-    echo '      "gradle": "'"$gradle_version"'",'
-    echo '      "gradleProfiler": "'"$profiler_version"'",'
-    echo '      "jdk": "'"$java_version"'",'
-    echo '      "jvmTarget": "'"$jvm_target"'"'
-    echo '    },'
-    echo '    "system": {'
-    echo '      "os": "'"$os_info"'",'
-    echo '      "cpu": "'"$cpu_info"'",'
-    echo '      "ram": "'"$ram_info"'",'
-    echo '      "daemonJvmArgs": "'"$daemon_jvm_args"'"'
-    echo '    }'
-    echo '  },'
-
-    # Benchmarks data
+    echo "  \"metadata\": $metadata_json,"
     echo '  "benchmarks": ['
 
     local first_test=true
-    for i in "${!test_types[@]}"; do
-        local test_type="${test_types[$i]}"
-        local test_name="${test_names[$i]}"
+    local i
+    for i in "${!REPORT_TEST_TYPES[@]}"; do
+        local test_type="${REPORT_TEST_TYPES[$i]}"
+        local test_name="${REPORT_TEST_NAMES[$i]}"
+        local test_type_json
+        local test_name_json
+        test_type_json=$(json_quote "$test_type")
+        test_name_json=$(json_quote "$test_name")
 
-        if [ "$first_test" = false ]; then echo ","; fi
+        if [ "$first_test" = false ]; then
+            echo ","
+        fi
         first_test=false
 
         echo '    {'
-        echo '      "name": "'"$test_name"'",'
-        echo '      "key": "'"$test_type"'",'
+        echo "      \"name\": $test_name_json,"
+        echo "      \"key\": $test_type_json,"
         echo '      "results": ['
 
         local first_mode=true
-        for mode in "${MODE_ARRAY[@]}"; do
+        local mode
+        for mode in "${mode_array[@]}"; do
             local mode_prefix
             local mode_name
-            case "$mode" in
-                "metro") mode_prefix="metro"; mode_name="Metro" ;;
-                "vanilla") mode_prefix="vanilla"; mode_name="Vanilla (Baseline)" ;;
-                "metro-noop") mode_prefix="metro_noop"; mode_name="Metro-NOOP" ;;
-                "dagger-ksp") mode_prefix="dagger_ksp"; mode_name="Dagger (KSP)" ;;
-                "dagger-kapt") mode_prefix="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
-                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_prefix="koin"; mode_name="Koin" ;;
-                *) continue ;;
-            esac
+            if ! mode_prefix=$(mode_to_prefix "$mode"); then
+                return 1
+            fi
+            if ! mode_name=$(mode_display_name "$mode"); then
+                return 1
+            fi
 
-            if [ "$first_mode" = false ]; then echo ","; fi
-            first_mode=false
+            local score1
+            local gc1
+            if ! score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
+            if ! gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
 
-            local score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type")
-            local gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type")
             local score2=""
             local gc2=""
-            if [ -n "$ref2_label" ]; then
-                score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type")
-                gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type")
+            if [ -n "$ref2_label" ] && mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
+                if ! score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
+                    return 1
+                fi
+                if ! gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
+                    return 1
+                fi
             fi
 
+            if [ "$first_mode" = false ]; then
+                echo ","
+            fi
+            first_mode=false
+
+            local mode_name_json
+            local mode_prefix_json
+            mode_name_json=$(json_quote "$mode_name")
+            mode_prefix_json=$(json_quote "$mode_prefix")
+
             echo '        {'
-            echo '          "framework": "'"$mode_name"'",'
-            echo '          "key": "'"$mode_prefix"'",'
-            if [ -n "$score1" ]; then
-                echo '          "ref1": '"$score1"','
-            else
-                echo '          "ref1": null,'
-            fi
-            if [ -n "$gc1" ]; then
-                echo '          "gc1": '"$gc1"','
-            else
-                echo '          "gc1": null,'
-            fi
+            echo "          \"framework\": $mode_name_json,"
+            echo "          \"key\": $mode_prefix_json,"
+            echo "          \"ref1\": $score1,"
+            echo "          \"gc1\": $gc1,"
             if [ -n "$score2" ]; then
-                echo '          "ref2": '"$score2"','
+                echo "          \"ref2\": $score2,"
+                echo "          \"gc2\": $gc2"
             else
                 echo '          "ref2": null,'
-            fi
-            if [ -n "$gc2" ]; then
-                echo '          "gc2": '"$gc2"
-            else
                 echo '          "gc2": null'
             fi
             echo -n '        }'
@@ -1464,88 +1988,119 @@ generate_single_summary() {
     local modes="$2"
 
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/single-summary.md"
-    local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local ref_commit
+    ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
 
     print_header "Generating Single Ref Summary"
+
+    if ! load_report_workload_metadata; then
+        return 1
+    fi
+    if ! validate_report_results "$ref_label" "$modes" false; then
+        return 1
+    fi
+
+    local baseline_mode
+    local baseline_prefix
+    local baseline_name
+    if ! baseline_mode=$(select_report_baseline_mode "$ref_label" "$modes"); then
+        return 1
+    fi
+    if ! baseline_prefix=$(mode_to_prefix "$baseline_mode"); then
+        return 1
+    fi
+    if ! baseline_name=$(mode_display_name "$baseline_mode"); then
+        return 1
+    fi
 
     cat > "$summary_file" << EOF
 # Benchmark Results: $ref_label
 
 **Date:** $(date)
-**Module Count:** $DEFAULT_MODULE_COUNT
+**Module Count:** $WORKLOAD_MODULE_COUNT
+**Workload Seed:** $WORKLOAD_SEED
+**Workload Fingerprint:** \`$WORKLOAD_FINGERPRINT\`
 **Modes:** $modes
 **Commit:** $ref_commit
 
 EOF
 
-    # Test types to show
-    local test_types=("abi_change" "non_abi_change" "plain_abi_change" "plain_non_abi_change" "raw_compilation")
-    local test_names=("ABI Change" "Non-ABI Change" "Plain Kotlin ABI" "Plain Kotlin Non-ABI" "Graph Processing")
+    local -a mode_array
+    IFS=',' read -ra mode_array <<< "$modes"
 
-    IFS=',' read -ra MODE_ARRAY <<< "$modes"
+    local i
+    for i in "${!REPORT_TEST_TYPES[@]}"; do
+        local test_type="${REPORT_TEST_TYPES[$i]}"
+        local test_name="${REPORT_TEST_NAMES[$i]}"
 
-    for i in "${!test_types[@]}"; do
-        local test_type="${test_types[$i]}"
-        local test_name="${test_names[$i]}"
-
-        # Get metro score for this test type to use as baseline
-        local metro_score=$(extract_median_for_ref "$ref_label" "metro" "$test_type")
+        local baseline_score
+        if ! baseline_score=$(extract_median_for_ref "$ref_label" "$baseline_prefix" "$test_type"); then
+            return 1
+        fi
 
         cat >> "$summary_file" << EOF
 ## $test_name
 
-| Framework | Time | GC Time | vs Metro |
+| Framework | Time | GC Time | vs $baseline_name |
 |-----------|------|---------|----------|
 EOF
 
-        for mode in "${MODE_ARRAY[@]}"; do
+        local mode
+        for mode in "${mode_array[@]}"; do
             local mode_prefix
-            case "$mode" in
-                "metro") mode_prefix="metro" ;;
-                "vanilla") mode_prefix="vanilla" ;;
-            "metro-noop") mode_prefix="metro_noop" ;;
-                "dagger-ksp") mode_prefix="dagger_ksp" ;;
-                "dagger-kapt") mode_prefix="dagger_kapt" ;;
-                "kotlin-inject-anvil") mode_prefix="kotlin_inject_anvil" ;;
-                "koin") mode_prefix="koin" ;;
-            "koin") mode_prefix="koin" ;;
-                *) continue ;;
-            esac
+            local mode_name
+            if ! mode_prefix=$(mode_to_prefix "$mode"); then
+                return 1
+            fi
+            if ! mode_name=$(mode_display_name "$mode"); then
+                return 1
+            fi
 
-            local score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type")
-            local gc_time=$(extract_gc_for_ref "$ref_label" "$mode_prefix" "$test_type")
+            local score
+            local gc_time
+            if ! score=$(extract_median_for_ref "$ref_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
+            if ! gc_time=$(extract_gc_for_ref "$ref_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
 
             local display="N/A"
             local display_gc="N/A"
-            local vs_metro="—"
+            local vs_baseline="—"
 
             if [ -n "$score" ]; then
-                local secs=$(echo "scale=1; $score / 1000" | bc 2>/dev/null || echo "")
+                local secs
+                secs=$(echo "scale=1; $score / 1000" | bc 2>/dev/null || echo "")
                 if [ -n "$secs" ]; then
                     display="${secs}s"
                 fi
-                # Calculate vs Metro
-                if [ "$mode" = "metro" ]; then
-                    vs_metro="baseline"
-                elif [ -n "$metro_score" ] && [ "$metro_score" != "0" ]; then
-                    vs_metro=$(format_vs_baseline "$score" "$metro_score")
+                if [ "$mode" = "$baseline_mode" ]; then
+                    vs_baseline="baseline"
+                elif [ -n "$baseline_score" ] && [ "$baseline_score" != "0" ]; then
+                    vs_baseline=$(format_vs_baseline "$score" "$baseline_score")
                 fi
             fi
 
             if [ -n "$gc_time" ]; then
-                local gc_secs=$(echo "scale=2; $gc_time / 1000" | bc 2>/dev/null || echo "")
+                local gc_secs
+                gc_secs=$(echo "scale=2; $gc_time / 1000" | bc 2>/dev/null || echo "")
                 if [ -n "$gc_secs" ]; then
                     display_gc="${gc_secs}s"
                 fi
             fi
 
-            echo "| $mode | $display | $display_gc | $vs_metro |" >> "$summary_file"
+            echo "| $mode_name | $display | $display_gc | $vs_baseline |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
     done
 
     cat >> "$summary_file" << EOF
+*Control performs no dependency injection or graph processing, including in the Graph Processing scenario.
+
+**Koin does not fully validate the dependency graph or generate its complete implementation.
+
 ## Raw Results
 
 Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
@@ -1558,7 +2113,9 @@ EOF
     cat "$summary_file"
 
     # Generate HTML report
-    generate_html_report "$ref_label" "" "$modes"
+    if ! generate_html_report "$ref_label" "" "$modes"; then
+        return 1
+    fi
 }
 
 # Run single ref command
@@ -1609,6 +2166,7 @@ run_single() {
     fi
     print_status "Modes: $modes"
     print_status "Module count: $count"
+    print_status "Workload seed: $WORKLOAD_SEED"
     echo ""
 
     # Create safe label for directory name
@@ -1624,10 +2182,7 @@ run_single() {
     fi
 
     # Run benchmarks for the ref (all modes, not second ref)
-    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$modes" false || {
-        print_error "Failed to run benchmarks for $SINGLE_REF"
-        exit 1
-    }
+    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$modes" false
 
     # Generate summary
     generate_single_summary "$ref_label" "$modes"
@@ -1690,6 +2245,7 @@ run_compare() {
     print_status "Compare (ref2):  $COMPARE_REF2 ($(get_ref_type_description "$COMPARE_REF2"))"
     print_status "Modes:           $modes"
     print_status "Module count:    $count"
+    print_status "Workload seed:   $WORKLOAD_SEED"
     if [ "$RERUN_NON_METRO" = true ]; then
         print_status "Re-run non-metro on ref2: yes"
     else
@@ -1718,16 +2274,10 @@ run_compare() {
     fi
 
     # Run benchmarks for ref1 (baseline) - run all modes
-    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$modes" false || {
-        print_error "Failed to run benchmarks for $COMPARE_REF1"
-        exit 1
-    }
+    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$modes" false
 
     # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
-    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$modes" true || {
-        print_error "Failed to run benchmarks for $COMPARE_REF2"
-        exit 1
-    }
+    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$modes" true
 
     # Generate comparison summary
     generate_comparison_summary "$ref1_label" "$ref2_label" "$modes"
@@ -1760,6 +2310,14 @@ main() {
             --include-clean-builds)
                 include_clean_builds=true
                 shift
+                ;;
+            --seed)
+                if [ $# -lt 2 ]; then
+                    print_error "--seed requires an integer value"
+                    exit 1
+                fi
+                WORKLOAD_SEED="$2"
+                shift 2
                 ;;
             --include-baselines)
                 INCLUDE_BASELINES=true
@@ -1828,6 +2386,14 @@ main() {
             missing_tools+=("kotlin")
         fi
 
+        if ! command -v python3 &> /dev/null; then
+            missing_tools+=("python3")
+        fi
+
+        if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
+            missing_tools+=("sha256sum or shasum")
+        fi
+
         if ! command -v ./gradlew &> /dev/null; then
             missing_tools+=("gradlew (not executable)")
         fi
@@ -1844,6 +2410,8 @@ main() {
     fi
 
     validate_count "$count"
+    validate_seed "$WORKLOAD_SEED"
+    INCLUDE_CLEAN_BUILDS="$include_clean_builds"
 
     case "$command" in
         all)
@@ -1852,7 +2420,7 @@ main() {
             COMPARE_MODES="all"
             run_single "$count" "$include_clean_builds"
             ;;
-        metro|vanilla|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil|koin)
+        control|metro|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil|koin)
             # Single mode is shorthand for 'single --ref HEAD --modes <mode>' (current branch)
             SINGLE_REF="HEAD"
             COMPARE_MODES="$command"
@@ -1877,4 +2445,6 @@ main() {
 }
 
 # Execute main function with all arguments
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

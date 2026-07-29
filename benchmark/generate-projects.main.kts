@@ -12,6 +12,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.int
 import java.io.File
+import java.security.MessageDigest
 import kotlin.random.Random
 
 class GenerateProjectsCommand : CliktCommand() {
@@ -23,13 +24,18 @@ class GenerateProjectsCommand : CliktCommand() {
     option(
         "--mode",
         "-m",
-        help = "Build mode: metro, dagger, kotlin_inject_anvil, koin, vanilla, or metro_noop",
+        help = "Build mode: metro, dagger, kotlin_inject_anvil, koin, control, or metro_noop",
       )
       .enum<BuildMode>(ignoreCase = true)
       .default(BuildMode.METRO)
 
   private val totalModules by
     option("--count", "-c", help = "Total number of modules to generate").int().default(500)
+
+  private val seed by
+    option("--seed", help = "Seed for deterministic inter-module dependency selection")
+      .int()
+      .default(0)
 
   private val enableSharding
     get() = if (graphShardingExplicitlySet) enableGraphShardingFlag else totalModules >= 500
@@ -120,11 +126,12 @@ class GenerateProjectsCommand : CliktCommand() {
     val coreCount = (totalModules * 0.16).toInt().coerceAtLeast(5)
     val featuresCount = (totalModules * 0.70).toInt().coerceAtLeast(5)
     val appCount = (totalModules - coreCount - featuresCount).coerceAtLeast(1)
+    val dependencyRandom = Random(seed)
 
     // Module architecture design
     val coreModules =
       (1..coreCount).map { i ->
-        val categorySize = coreCount / 6
+        val categorySize = (coreCount / 6).coerceAtLeast(1)
         ModuleSpec(
           name =
             when {
@@ -141,8 +148,8 @@ class GenerateProjectsCommand : CliktCommand() {
 
     val featureModules =
       (1..featuresCount).map { i ->
-        val categorySize = featuresCount / 6
-        val coreCategory = coreCount / 6
+        val categorySize = (featuresCount / 6).coerceAtLeast(1)
+        val coreCategory = (coreCount / 6).coerceAtLeast(1)
 
         // Calculate actual ranges based on what modules exist
         val commonRange = 1..(coreCategory.coerceAtLeast(1))
@@ -175,44 +182,44 @@ class GenerateProjectsCommand : CliktCommand() {
                 commonRange.first <= commonRange.last &&
                 networkRange.first <= networkRange.last ->
                 listOf(
-                  "core:common-${commonRange.random()}",
-                  "core:network-${networkRange.random()}",
+                  "core:common-${commonRange.random(dependencyRandom)}",
+                  "core:network-${networkRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 2 &&
                 dataRange.first <= dataRange.last &&
                 authRange.first <= authRange.last ->
                 listOf(
-                  "core:data-${dataRange.random()}",
-                  "features:auth-feature-${authRange.random()}",
+                  "core:data-${dataRange.random(dependencyRandom)}",
+                  "features:auth-feature-${authRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 3 &&
                 utilsRange.first <= utilsRange.last &&
                 userRange.first <= userRange.last ->
                 listOf(
-                  "core:utils-${utilsRange.random()}",
-                  "features:user-feature-${userRange.random()}",
+                  "core:utils-${utilsRange.random(dependencyRandom)}",
+                  "features:user-feature-${userRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 4 &&
                 platformRange.first <= platformRange.last &&
                 contentRange.first <= contentRange.last ->
                 listOf(
-                  "core:platform-${platformRange.random()}",
-                  "features:content-feature-${contentRange.random()}",
+                  "core:platform-${platformRange.random(dependencyRandom)}",
+                  "features:content-feature-${contentRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 5 &&
                 socialRange.first <= socialRange.last &&
                 userRange.first <= userRange.last ->
                 listOf(
-                  "features:social-feature-${socialRange.random()}",
-                  "features:user-feature-${userRange.random()}",
+                  "features:social-feature-${socialRange.random(dependencyRandom)}",
+                  "features:user-feature-${userRange.random(dependencyRandom)}",
                 )
               else ->
                 if (
                   commerceRange.first <= commerceRange.last && sharedRange.first <= sharedRange.last
                 ) {
                   listOf(
-                    "features:commerce-feature-${commerceRange.random()}",
-                    "core:shared-${sharedRange.random()}",
+                    "features:commerce-feature-${commerceRange.random(dependencyRandom)}",
+                    "core:shared-${sharedRange.random(dependencyRandom)}",
                   )
                 } else emptyList()
             },
@@ -221,15 +228,14 @@ class GenerateProjectsCommand : CliktCommand() {
 
     val appModules =
       (1..appCount).map { i ->
-        val categorySize = appCount / 4
-        val featureCategory = featuresCount / 6
-        val coreCategory = coreCount / 6
+        val categorySize = (appCount / 4).coerceAtLeast(1)
+        val featureCategory = (featuresCount / 6).coerceAtLeast(1)
+        val coreCategory = (coreCount / 6).coerceAtLeast(1)
 
         // Calculate actual ranges for features
         val authRange = 1..(featureCategory.coerceAtLeast(1))
         val userRange = (featureCategory + 1)..(featureCategory * 2).coerceAtLeast(2)
         val contentRange = (featureCategory * 2 + 1)..(featureCategory * 3).coerceAtLeast(3)
-        val socialRange = (featureCategory * 3 + 1)..(featureCategory * 4).coerceAtLeast(4)
         val commerceRange = (featureCategory * 4 + 1)..(featureCategory * 5).coerceAtLeast(5)
         val analyticsRange = (featureCategory * 5 + 1)..featuresCount
 
@@ -258,36 +264,34 @@ class GenerateProjectsCommand : CliktCommand() {
                 userRange.first <= userRange.last &&
                 platformRange.first <= platformRange.last ->
                 listOf(
-                  "features:auth-feature-${authRange.random()}",
-                  "features:user-feature-${userRange.random()}",
-                  "core:platform-${platformRange.random()}",
+                  "features:auth-feature-${authRange.random(dependencyRandom)}",
+                  "features:user-feature-${userRange.random(dependencyRandom)}",
+                  "core:platform-${platformRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 2 &&
                 contentRange.first <= contentRange.last &&
                 uiRange.first <= uiRange.last ->
                 listOf(
-                  "features:content-feature-${contentRange.random()}",
-                  "app:ui-${uiRange.random()}",
+                  "features:content-feature-${contentRange.random(dependencyRandom)}",
+                  "app:ui-${uiRange.random(dependencyRandom)}",
                 )
               i <= categorySize * 3 &&
                 commerceRange.first <= commerceRange.last &&
                 analyticsRange.first <= analyticsRange.last &&
                 navigationRange.first <= navigationRange.last ->
                 listOf(
-                  "features:commerce-feature-${commerceRange.random()}",
-                  "features:analytics-feature-${analyticsRange.random()}",
-                  "app:navigation-${navigationRange.random()}",
+                  "features:commerce-feature-${commerceRange.random(dependencyRandom)}",
+                  "features:analytics-feature-${analyticsRange.random(dependencyRandom)}",
+                  "app:navigation-${navigationRange.random(dependencyRandom)}",
                 )
               else ->
                 if (
                   integrationRange.first <= integrationRange.last &&
-                    commonRange.first <= commonRange.last &&
-                    socialRange.first <= socialRange.last
+                    commonRange.first <= commonRange.last
                 ) {
                   listOf(
-                    "app:integration-${integrationRange.random()}",
-                    "core:common-${commonRange.random()}",
-                    "features:social-feature-${socialRange.random()}",
+                    "app:integration-${integrationRange.random(dependencyRandom)}",
+                    "core:common-${commonRange.random(dependencyRandom)}",
                   )
                 } else emptyList()
             },
@@ -324,10 +328,15 @@ class GenerateProjectsCommand : CliktCommand() {
 
     writeSettingsFile(allModules)
 
+    val workloadManifest = writeWorkloadManifest(allModules)
+
     echo("Generated benchmark project with ${allModules.size} modules!")
     echo("Build mode: $buildMode")
+    echo("Workload manifest: ${workloadManifest.path}")
+    echo("Workload fingerprint: ${workloadManifest.fingerprint}")
     if (buildMode == BuildMode.DAGGER) {
       echo("Processor: $processor")
+      echo("Dagger map multibinding duplicate detection fix: enabled")
       if (enableSwitchingProviders) {
         echo("Fast init: enabled (deferred class loading)")
       }
@@ -387,8 +396,8 @@ class GenerateProjectsCommand : CliktCommand() {
     METRO,
     /** Metro compiler plugin applied but no Metro annotations - measures plugin overhead */
     METRO_NOOP,
-    /** Pure Kotlin with no DI framework at all - true baseline */
-    VANILLA,
+    /** Pure Kotlin with no DI framework at all - compilation and runtime control */
+    CONTROL,
     DAGGER,
     KOTLIN_INJECT_ANVIL,
     /**
@@ -430,6 +439,34 @@ class GenerateProjectsCommand : CliktCommand() {
     val hasSubcomponent: Boolean = false,
   )
 
+  enum class ContributionKind {
+    BINDING,
+    PLUGIN,
+    INITIALIZER,
+  }
+
+  data class ContributionCounts(
+    val binding: Int = 0,
+    val plugin: Int = 0,
+    val initializer: Int = 0,
+  ) {
+    val total: Int
+      get() = binding + plugin + initializer
+
+    operator fun plus(other: ContributionCounts): ContributionCounts {
+      return ContributionCounts(
+        binding = binding + other.binding,
+        plugin = plugin + other.plugin,
+        initializer = initializer + other.initializer,
+      )
+    }
+  }
+
+  data class WorkloadManifest(
+    val path: String,
+    val fingerprint: String,
+  )
+
   enum class Layer(val path: String) {
     CORE("core"),
     FEATURES("features"),
@@ -448,6 +485,134 @@ class GenerateProjectsCommand : CliktCommand() {
     return split("-", "_").joinToString("") { word ->
       word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
+  }
+
+  fun contributionKind(module: ModuleSpec, index: Int): ContributionKind {
+    return when (Random(module.name.hashCode() + index).nextInt(3)) {
+      0 -> ContributionKind.BINDING
+      1 -> ContributionKind.PLUGIN
+      else -> ContributionKind.INITIALIZER
+    }
+  }
+
+  fun contributionCounts(module: ModuleSpec): ContributionCounts {
+    var counts = ContributionCounts()
+    for (index in 1..module.contributionsCount) {
+      counts =
+        when (contributionKind(module, index)) {
+          ContributionKind.BINDING -> counts.copy(binding = counts.binding + 1)
+          ContributionKind.PLUGIN -> counts.copy(plugin = counts.plugin + 1)
+          ContributionKind.INITIALIZER -> counts.copy(initializer = counts.initializer + 1)
+        }
+    }
+    return counts
+  }
+
+  fun jsonString(value: String): String {
+    return buildString {
+      append('"')
+      for (character in value) {
+        when (character) {
+          '"' -> append("\\\"")
+          '\\' -> append("\\\\")
+          '\b' -> append("\\b")
+          '\u000C' -> append("\\f")
+          '\n' -> append("\\n")
+          '\r' -> append("\\r")
+          '\t' -> append("\\t")
+          else -> {
+            if (character.code < 0x20) {
+              append("\\u")
+              append(character.code.toString(16).padStart(4, '0'))
+            } else {
+              append(character)
+            }
+          }
+        }
+      }
+      append('"')
+    }
+  }
+
+  fun buildWorkloadJson(allModules: List<ModuleSpec>): String {
+    val modulesByLayer =
+      Layer.entries.associateWith { layer ->
+        allModules.count { it.layer == layer }
+      }
+    val totalContributions =
+      allModules.fold(ContributionCounts()) { counts, module ->
+        counts + contributionCounts(module)
+      }
+    val l1Count = allModules.count { it.hasSubcomponent }
+    val totalSubcomponents = l1Count * (1 + l2ChildrenPerL1 * (1 + l3ChildrenPerL2))
+
+    return buildString {
+      appendLine("{")
+      appendLine("""  "seed": $seed,""")
+      appendLine("""  "moduleCount": ${allModules.size},""")
+      appendLine("""  "modulesByLayer": {""")
+      appendLine("""    "core": ${modulesByLayer.getValue(Layer.CORE)},""")
+      appendLine("""    "features": ${modulesByLayer.getValue(Layer.FEATURES)},""")
+      appendLine("""    "app": ${modulesByLayer.getValue(Layer.APP)}""")
+      appendLine("  },")
+      appendLine("""  "dependencyEdgeCount": ${allModules.sumOf { it.dependencies.size }},""")
+      appendLine("""  "contributionCount": ${totalContributions.total},""")
+      appendLine("""  "contributionsByKind": {""")
+      appendLine("""    "binding": ${totalContributions.binding},""")
+      appendLine("""    "plugin": ${totalContributions.plugin},""")
+      appendLine("""    "initializer": ${totalContributions.initializer}""")
+      appendLine("  },")
+      appendLine("""  "subcomponents": {""")
+      appendLine("""    "l1": $l1Count,""")
+      appendLine("""    "l2PerL1": $l2ChildrenPerL1,""")
+      appendLine("""    "l3PerL2": $l3ChildrenPerL2,""")
+      appendLine("""    "total": $totalSubcomponents""")
+      appendLine("  },")
+      appendLine("""  "modules": [""")
+      allModules.forEachIndexed { index, module ->
+        val counts = contributionCounts(module)
+        val dependencies = module.dependencies.joinToString(", ") { jsonString(it) }
+        val trailingComma = if (index == allModules.lastIndex) "" else ","
+        appendLine("    {")
+        appendLine("""      "path": ${jsonString("${module.layer.path}:${module.name}")},""")
+        appendLine("""      "layer": ${jsonString(module.layer.path)},""")
+        appendLine("""      "dependencies": [$dependencies],""")
+        appendLine("""      "contributionCount": ${counts.total},""")
+        appendLine("""      "contributionsByKind": {""")
+        appendLine("""        "binding": ${counts.binding},""")
+        appendLine("""        "plugin": ${counts.plugin},""")
+        appendLine("""        "initializer": ${counts.initializer}""")
+        appendLine("      },")
+        appendLine("""      "hasSubcomponent": ${module.hasSubcomponent}""")
+        appendLine("    }$trailingComma")
+      }
+      appendLine("  ]")
+      append("}")
+    }
+  }
+
+  fun sha256(value: String): String {
+    return MessageDigest.getInstance("SHA-256")
+      .digest(value.toByteArray(Charsets.UTF_8))
+      .joinToString("") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') }
+  }
+
+  fun writeWorkloadManifest(allModules: List<ModuleSpec>): WorkloadManifest {
+    val workloadJson = buildWorkloadJson(allModules)
+    val fingerprint = "sha256:${sha256(workloadJson)}"
+    val indentedWorkload = workloadJson.lineSequence().joinToString("\n") { line -> "  $line" }
+    val manifestText = buildString {
+      appendLine("{")
+      appendLine("""  "schemaVersion": 1,""")
+      appendLine("""  "fingerprint": "$fingerprint",""")
+      append("  \"workload\": ")
+      append(indentedWorkload.removePrefix("  "))
+      appendLine()
+      appendLine("}")
+    }
+    val manifestFile = File("workload-manifest.json")
+    manifestFile.writeText(manifestText)
+    return WorkloadManifest(manifestFile.path, fingerprint)
   }
 
   fun generateModule(module: ModuleSpec, processor: ProcessorMode) {
@@ -549,7 +714,7 @@ $jvmDependencies
 """
           .trimIndent()
 
-      BuildMode.VANILLA ->
+      BuildMode.CONTROL ->
         """
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -664,7 +829,7 @@ anvil {
     componentMerging = true,
   )
 }
-${daggerKspFastInit()}
+${daggerKspOptions()}
 """
               .trimIndent()
 
@@ -693,31 +858,41 @@ anvil {
     componentMerging = true,
   )
 }
-${daggerKaptFastInit()}
+${daggerKaptOptions()}
 """
               .trimIndent()
         }
     }
   }
 
-  fun daggerKspFastInit(): String {
-    return if (enableSwitchingProviders) {
-      """
+  fun daggerKspOptions(): String {
+    val fastInitOption =
+      if (enableSwitchingProviders) {
+        """  arg("dagger.fastInit", "enabled")"""
+      } else {
+        ""
+      }
+    return """
 ksp {
-  arg("dagger.fastInit", "enabled")
+  arg("dagger.mapMultibindingDuplicateDetectionFix", "ENABLED")
+$fastInitOption
 }"""
-    } else ""
   }
 
-  fun daggerKaptFastInit(): String {
-    return if (enableSwitchingProviders) {
-      """
+  fun daggerKaptOptions(): String {
+    val fastInitOption =
+      if (enableSwitchingProviders) {
+        """    arg("dagger.fastInit", "enabled")"""
+      } else {
+        ""
+      }
+    return """
 kapt {
   arguments {
-    arg("dagger.fastInit", "enabled")
+    arg("dagger.mapMultibindingDuplicateDetectionFix", "ENABLED")
+$fastInitOption
   }
 }"""
-    } else ""
   }
 
   fun generateSourceCode(module: ModuleSpec): String {
@@ -779,7 +954,7 @@ $dependencyImports
             .trimIndent()
 
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA ->
+        BuildMode.CONTROL ->
           """
 // Pure Kotlin - no DI annotations
 $dependencyImports
@@ -819,7 +994,7 @@ $dependencyImports
       when (buildMode) {
         BuildMode.METRO -> "@SingleIn(AppScope::class)"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
         BuildMode.KOIN -> error("KOIN path handled above by generateKoinSourceCode")
@@ -829,27 +1004,25 @@ $dependencyImports
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
         BuildMode.KOIN -> error("KOIN path handled above by generateKoinSourceCode")
       }
 
-    // For METRO_NOOP and VANILLA, generate plain Kotlin without annotations
-    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
+    // For METRO_NOOP and CONTROL, generate plain Kotlin without annotations
+    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.CONTROL) {
       // Generate the same class structure as other modes, just without DI annotations
       val contributions =
         (1..module.contributionsCount)
           .map { i ->
-            // Use deterministic random for consistency with other modes
-            val moduleRandom = Random(module.name.hashCode() + i)
-            when (moduleRandom.nextInt(3)) {
-              0 ->
+            when (contributionKind(module, i)) {
+              ContributionKind.BINDING ->
                 """// Binding contribution $i
 interface ${className}Service$i
 
 class ${className}ServiceImpl$i : ${className}Service$i"""
-              1 ->
+              ContributionKind.PLUGIN ->
                 """// Plugin contribution $i
 interface ${className}Plugin$i : Plugin {
   override fun execute(): String
@@ -858,7 +1031,7 @@ interface ${className}Plugin$i : Plugin {
 class ${className}PluginImpl$i : ${className}Plugin$i {
   override fun execute() = "${className.lowercase()}-plugin-$i"
 }"""
-              else ->
+              ContributionKind.INITIALIZER ->
                 """// Initializer contribution $i
 interface ${className}Initializer$i : Initializer {
   override fun initialize()
@@ -871,10 +1044,10 @@ class ${className}InitializerImpl$i : ${className}Initializer$i {
           }
           .joinToString("\n\n")
 
-      // Generate subcomponent equivalent for vanilla/metro-noop (plain classes)
+      // Generate subcomponent equivalent for control/metro-noop (plain classes)
       val subcomponentCode =
         if (module.hasSubcomponent) {
-          generateVanillaSubcomponentHierarchy(className)
+          generateControlSubcomponentHierarchy(className)
         } else ""
 
       return """
@@ -900,9 +1073,8 @@ $subcomponentCode
     // Generate accessor interface for this module's scoped bindings
     val accessorBindings =
       (1..module.contributionsCount).mapNotNull { index ->
-        val moduleRandom = Random(module.name.hashCode() + index)
-        when (moduleRandom.nextInt(3)) {
-          0 -> "${className}Service$index"
+        when (contributionKind(module, index)) {
+          ContributionKind.BINDING -> "${className}Service$index"
           else -> null
         }
       }
@@ -943,23 +1115,22 @@ $subcomponent
   fun generateContribution(module: ModuleSpec, index: Int, buildMode: BuildMode): String {
     val className = module.name.toCamelCase()
 
-    // Use deterministic random based on module name and index for consistency
-    val moduleRandom = Random(module.name.hashCode() + index)
-    return when (moduleRandom.nextInt(3)) {
-      0 -> generateBindingContribution(className, index, buildMode)
-      1 -> generateMultibindingContribution(className, index, buildMode)
-      else -> generateSetMultibindingContribution(className, index, buildMode)
+    return when (contributionKind(module, index)) {
+      ContributionKind.BINDING -> generateBindingContribution(className, index, buildMode)
+      ContributionKind.PLUGIN -> generateMultibindingContribution(className, index, buildMode)
+      ContributionKind.INITIALIZER ->
+        generateSetMultibindingContribution(className, index, buildMode)
     }
   }
 
   fun generateBindingContribution(className: String, index: Int, buildMode: BuildMode): String {
-    // METRO_NOOP/VANILLA don't generate DI contributions; KOIN is handled in
+    // METRO_NOOP/CONTROL don't generate DI contributions; KOIN is handled in
     // generateKoinSourceCode.
     val scopeAnnotation =
       when (buildMode) {
         BuildMode.METRO -> "@SingleIn(AppScope::class)"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "@SingleIn(AppScope::class)"
         BuildMode.DAGGER -> "@Singleton"
         BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
@@ -969,7 +1140,7 @@ $subcomponent
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
         BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
@@ -991,12 +1162,12 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}ServiceImpl$index${if
     index: Int,
     buildMode: BuildMode,
   ): String {
-    // METRO_NOOP/VANILLA don't generate multibindings; KOIN is handled in generateKoinSourceCode.
+    // METRO_NOOP/CONTROL don't generate multibindings; KOIN is handled in generateKoinSourceCode.
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
         BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
@@ -1029,13 +1200,13 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}PluginImpl$index${if 
     index: Int,
     buildMode: BuildMode,
   ): String {
-    // METRO_NOOP/VANILLA don't generate set multibindings; KOIN is handled in
+    // METRO_NOOP/CONTROL don't generate set multibindings; KOIN is handled in
     // generateKoinSourceCode.
     val scopeParam =
       when (buildMode) {
         BuildMode.METRO -> "AppScope::class"
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> "" // No DI annotations
+        BuildMode.CONTROL -> "" // No DI annotations
         BuildMode.KOTLIN_INJECT_ANVIL -> "AppScope::class"
         BuildMode.DAGGER -> "Unit::class"
         BuildMode.KOIN -> error("KOIN uses generateKoinSourceCode, not this path")
@@ -1064,8 +1235,8 @@ ${if (injectOnClass) "@Inject\n" else ""}class ${className}InitializerImpl$index
   }
 
   fun generateSubcomponent(module: ModuleSpec, buildMode: BuildMode): String {
-    // METRO_NOOP and VANILLA don't generate subcomponents (no DI)
-    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.VANILLA) {
+    // METRO_NOOP and CONTROL don't generate subcomponents (no DI)
+    if (buildMode == BuildMode.METRO_NOOP || buildMode == BuildMode.CONTROL) {
       return ""
     }
 
@@ -1262,28 +1433,28 @@ annotation class $scopeName
     }
   }
 
-  fun generateVanillaSubcomponentHierarchy(className: String): String {
+  fun generateControlSubcomponentHierarchy(className: String): String {
     val parts = mutableListOf<String>()
 
     // L1
-    parts.add(generateVanillaSingleLevel(className, 3))
+    parts.add(generateControlSingleLevel(className, 3))
 
     // L2
     for (i in 1..l2ChildrenPerL1) {
       val l2Name = "${className}Child$i"
-      parts.add(generateVanillaSingleLevel(l2Name, 2))
+      parts.add(generateControlSingleLevel(l2Name, 2))
 
       // L3
       for (j in 1..l3ChildrenPerL2) {
         val l3Name = "${l2Name}Sub$j"
-        parts.add(generateVanillaSingleLevel(l3Name, 1))
+        parts.add(generateControlSingleLevel(l3Name, 1))
       }
     }
 
     return parts.joinToString("\n\n")
   }
 
-  fun generateVanillaSingleLevel(name: String, serviceCount: Int): String {
+  fun generateControlSingleLevel(name: String, serviceCount: Int): String {
     val services =
       (1..serviceCount).joinToString("\n\n") { i ->
         """interface ${name}LocalService$i
@@ -1326,14 +1497,13 @@ object ${name}Scope"""
     val contributions =
       (1..module.contributionsCount)
         .map { i ->
-          val moduleRandom = Random(module.name.hashCode() + i)
-          when (moduleRandom.nextInt(3)) {
-            0 ->
+          when (contributionKind(module, i)) {
+            ContributionKind.BINDING ->
               """interface ${className}Service$i
 
 @Singleton(binds = [${className}Service$i::class])
 class ${className}ServiceImpl$i : ${className}Service$i"""
-            1 ->
+            ContributionKind.PLUGIN ->
               """interface ${className}Plugin$i : Plugin {
   override fun execute(): String
 }
@@ -1342,7 +1512,7 @@ class ${className}ServiceImpl$i : ${className}Service$i"""
 class ${className}PluginImpl$i : ${className}Plugin$i {
   override fun execute() = "${className.lowercase()}-plugin-$i"
 }"""
-            else ->
+            ContributionKind.INITIALIZER ->
               """interface ${className}Initializer$i : Initializer {
   override fun initialize()
 }
@@ -1706,7 +1876,7 @@ application {
 }
 """
 
-        BuildMode.VANILLA ->
+        BuildMode.CONTROL ->
           """
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -1850,7 +2020,7 @@ anvil {
     componentMerging = true,
   )
 }
-${daggerKspFastInit()}
+${daggerKspOptions()}
 application {
   mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
@@ -1883,7 +2053,7 @@ anvil {
     componentMerging = true,
   )
 }
-${daggerKaptFastInit()}
+${daggerKaptOptions()}
 application {
   mainClass = "dev.zacsweers.metro.benchmark.app.component.AppComponentKt"
 }
@@ -2129,11 +2299,11 @@ $${metroMainFunction}
 """
 
         BuildMode.METRO_NOOP,
-        BuildMode.VANILLA -> {
+        BuildMode.CONTROL -> {
           val modeDescription =
             if (buildMode == BuildMode.METRO_NOOP)
               "METRO_NOOP mode - Metro compiler plugin is applied but no Metro annotations are used."
-            else "VANILLA mode - Pure Kotlin with no DI framework."
+            else "CONTROL mode - Pure Kotlin with no DI framework."
           """
 package dev.zacsweers.metro.benchmark.app.component
 
@@ -2142,12 +2312,12 @@ import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 
 /**
  * $modeDescription
- * This is a baseline to measure compilation overhead.
+ * This is a control that performs no dependency injection work.
  */
 interface AppComponent
 
 fun traceNextCreateAndInitialize() {
-  // Baseline modes do not own a runtime trace driver.
+  // Control modes do not own a runtime trace driver.
 }
 
 fun createAndInitialize(): AppComponent {
@@ -2155,7 +2325,7 @@ fun createAndInitialize(): AppComponent {
 }
 
 /**
- * Stable entry point used by Android startup benchmarks. Baseline modes ignore the parameter.
+ * Stable entry point used by Android startup benchmarks. Control modes ignore the parameter.
  */
 @Suppress("UNUSED_PARAMETER")
 fun createAndInitializeForBenchmarkTracing(runtimeTracer: Any?): AppComponent {
@@ -2166,7 +2336,7 @@ fun main() {
   println("${buildMode.name} benchmark completed!")
   println("  - Total modules: ${allModules.size}")
   println("  - Total contributions: ${allModules.sumOf { it.contributionsCount }}")
-  println("  - This is a baseline measurement for Kotlin compilation")
+  println("  - This is a control measurement for Kotlin compilation")
 }
 """
         }

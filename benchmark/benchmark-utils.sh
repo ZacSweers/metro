@@ -53,6 +53,51 @@ get_ref_type_description() {
 # ORIGINAL_GIT_REF=""
 # ORIGINAL_GIT_IS_BRANCH=false
 
+benchmark_sha256_stream() {
+    if command -v sha256sum &> /dev/null; then
+        sha256sum | awk '{print $1}'
+    elif command -v shasum &> /dev/null; then
+        shasum -a 256 | awk '{print $1}'
+    else
+        echo "Neither sha256sum nor shasum is available" >&2
+        return 1
+    fi
+}
+
+# Returns "clean" or a stable SHA-256 fingerprint of every tracked change and nonignored
+# untracked file in the repository.
+benchmark_repo_state_fingerprint() {
+    local repo_dir="${1:-$(git rev-parse --show-toplevel)}"
+    local status
+    status=$(git -C "$repo_dir" status --porcelain=v1 --untracked-files=all)
+    if [ -z "$status" ]; then
+        echo "clean"
+        return
+    fi
+
+    local fingerprint
+    if ! fingerprint=$(
+        {
+            git -C "$repo_dir" diff --binary HEAD --
+            git -C "$repo_dir" status --porcelain=v1 -z --untracked-files=all
+            while IFS= read -r -d '' path; do
+                printf 'untracked\000%s\000' "$path"
+                if [ -L "$repo_dir/$path" ]; then
+                    printf 'symlink\000'
+                    readlink "$repo_dir/$path"
+                elif [ -f "$repo_dir/$path" ]; then
+                    printf 'file\000'
+                    cat -- "$repo_dir/$path"
+                fi
+                printf '\000'
+            done < <(git -C "$repo_dir" ls-files --others --exclude-standard -z)
+        } | benchmark_sha256_stream
+    ); then
+        return 1
+    fi
+    echo "sha256:$fingerprint"
+}
+
 # Save current git state (branch or commit)
 # Sets ORIGINAL_GIT_REF and ORIGINAL_GIT_IS_BRANCH
 save_git_state() {

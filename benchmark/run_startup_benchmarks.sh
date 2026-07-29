@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Script to run Metro startup benchmarks across multiple DI frameworks and generate comparison
-# Usage: ./run_startup_benchmarks.sh [jvm|android|all] [--modes metro,anvil-ksp,kotlin-inject-anvil]
+# Usage: ./run_startup_benchmarks.sh [jvm|jvm-r8|android|all] [--modes control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin]
 
 set -euo pipefail
 
@@ -17,10 +17,13 @@ source "$SCRIPT_DIR/benchmark-utils.sh"
 RESULTS_DIR="startup-benchmark-results"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 MODULE_COUNT=500
+WORKLOAD_SEED=0
 START_TIME=$(date +%s)
+WORKLOAD_MANIFEST="$SCRIPT_DIR/workload-manifest.json"
+EXPECTED_WORKLOAD_FINGERPRINT=""
 
 # Default modes to benchmark
-MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+MODES="control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -84,6 +87,32 @@ validate_runtime_tracing_options() {
     done
 }
 
+validate_benchmark_inputs() {
+    if ! [[ "$MODULE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+        print_error "--count must be a positive integer"
+        exit 1
+    fi
+    if ! [[ "$WORKLOAD_SEED" =~ ^-?[0-9]+$ ]]; then
+        print_error "--seed must be an integer"
+        exit 1
+    fi
+    case "$COMPARE_BENCHMARK_TYPE" in
+        jvm|jvm-r8|android|all) ;;
+        *)
+            print_error "--benchmark must be one of: jvm, jvm-r8, android, all"
+            exit 1
+            ;;
+    esac
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    for mode in "${MODE_ARRAY[@]}"; do
+        if ! mode_key "$mode" > /dev/null; then
+            print_error "Unknown mode: $mode"
+            exit 1
+        fi
+    done
+}
+
 runtime_tracing_gradle_args() {
     if [ "$ENABLE_RUNTIME_TRACING" = true ]; then
         echo "-Pmetro.benchmark.runtimeTracing=true"
@@ -99,12 +128,12 @@ copy_jvm_runtime_traces() {
     local trace_dir="app/component/build/metro-runtime-traces"
     if [ ! -d "$trace_dir" ]; then
         print_error "Runtime trace directory not found: $trace_dir"
-        return
+        return 1
     fi
 
     local destination="$output_dir/metro-runtime-traces"
     mkdir -p "$destination"
-    cp -r "$trace_dir"/* "$destination/" 2>/dev/null || true
+    cp -R "$trace_dir"/. "$destination/"
     print_success "Copied JVM runtime traces to $destination"
 }
 
@@ -113,7 +142,10 @@ clear_android_runtime_traces() {
         return
     fi
 
-    adb shell rm -rf "$ANDROID_APP_TRACE_DIR" "$ANDROID_MICROBENCHMARK_TRACE_DIR" >/dev/null 2>&1 || true
+    if ! adb shell rm -rf "$ANDROID_APP_TRACE_DIR" "$ANDROID_MICROBENCHMARK_TRACE_DIR" >/dev/null 2>&1; then
+        print_error "Failed to clear Android runtime traces"
+        return 1
+    fi
 }
 
 copy_android_macro_runtime_traces() {
@@ -125,7 +157,7 @@ copy_android_macro_runtime_traces() {
     local destination="$output_dir/metro-runtime-traces"
     if ! adb shell "[ -d '$ANDROID_APP_TRACE_DIR' ]" >/dev/null 2>&1; then
         print_error "Android runtime trace directory not found: $ANDROID_APP_TRACE_DIR"
-        return
+        return 1
     fi
 
     rm -rf "$destination"
@@ -133,6 +165,7 @@ copy_android_macro_runtime_traces() {
         print_success "Copied Android runtime traces to $destination"
     else
         print_error "Failed to copy Android runtime traces from $ANDROID_APP_TRACE_DIR"
+        return 1
     fi
 }
 
@@ -156,11 +189,11 @@ clean_build_artifacts() {
     # Stop Gradle daemon to ensure no stale state
     ./gradlew --stop > /dev/null 2>&1 || true
     # Remove all build directories to avoid stale JAR/class file issues
-    find . -type d -name "build" -not -path "./.gradle/*" -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name "build" -not -path "./.gradle/*" -exec rm -rf {} +
     # Remove KSP caches
-    find . -type d -name "kspCaches" -exec rm -rf {} + 2>/dev/null || true
+    find . -type d -name "kspCaches" -exec rm -rf {} +
     # Remove .gradle caches in project
-    rm -rf .gradle/caches 2>/dev/null || true
+    rm -rf .gradle/caches
 }
 
 show_usage() {
@@ -179,9 +212,10 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
-    echo "                          Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
-    echo "                          Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+    echo "                          Available: control, metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
+    echo "                          Default: control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
     echo "  --count <n>             Number of modules to generate (default: 500)"
+    echo "  --seed <n>              Deterministic workload seed (default: 0)"
     echo "  --timestamp <ts>        Use specific timestamp for results directory"
     echo "  --include-macrobenchmark  Include Android macrobenchmarks (startup time)"
     echo "                          Disabled by default as startup time is low-signal for DI perf"
@@ -197,12 +231,12 @@ show_usage() {
     echo ""
     echo "Single Options:"
     echo "  --ref <ref>         Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
-    echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: jvm)"
+    echo "  --benchmark <type>  Benchmark type: jvm, jvm-r8, android, or all (default: all)"
     echo ""
     echo "Compare Options:"
     echo "  --ref1 <ref>        First ref (baseline) - git ref or Metro version"
     echo "  --ref2 <ref>        Second ref to compare - git ref or Metro version"
-    echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: jvm)"
+    echo "  --benchmark <type>  Benchmark type for compare: jvm, jvm-r8, android, or all (default: all)"
     echo "  --rerun-non-metro   Re-run non-metro modes on ref2 (default: only run metro on ref2)"
     echo "                      When disabled (default), ref2 uses ref1's non-metro results for comparison"
     echo ""
@@ -267,6 +301,9 @@ get_generator_args() {
     local args=""
 
     case "$mode" in
+        control)
+            args="--mode CONTROL"
+            ;;
         metro)
             args="--mode metro"
             ;;
@@ -313,6 +350,279 @@ get_generator_args() {
     fi
 
     echo "$args"
+}
+
+mode_key() {
+    case "$1" in
+        control) echo "control" ;;
+        metro) echo "metro" ;;
+        dagger-ksp) echo "dagger_ksp" ;;
+        dagger-kapt) echo "dagger_kapt" ;;
+        kotlin-inject-anvil) echo "kotlin_inject_anvil" ;;
+        koin) echo "koin" ;;
+        *) return 1 ;;
+    esac
+}
+
+mode_display_name() {
+    case "$1" in
+        control) echo "Control*" ;;
+        metro) echo "Metro" ;;
+        dagger-ksp) echo "Dagger (KSP)" ;;
+        dagger-kapt) echo "Dagger (KAPT)" ;;
+        kotlin-inject-anvil) echo "kotlin-inject-anvil" ;;
+        koin) echo "Koin**" ;;
+        *) return 1 ;;
+    esac
+}
+
+json_quote() {
+    jq -Rn --arg value "$1" '$value'
+}
+
+verify_workload_manifest() {
+    local mode="$1"
+
+    if ! command -v jq > /dev/null 2>&1; then
+        print_error "jq is required to verify $WORKLOAD_MANIFEST"
+        return 1
+    fi
+    if [ ! -f "$WORKLOAD_MANIFEST" ]; then
+        print_error "Generator did not write $WORKLOAD_MANIFEST"
+        return 1
+    fi
+    if ! jq -e \
+        --argjson seed "$WORKLOAD_SEED" \
+        --argjson module_count "$MODULE_COUNT" \
+        '.schemaVersion == 1
+          and .workload.seed == $seed
+          and .workload.moduleCount == $module_count
+          and (.fingerprint | test("^sha256:[0-9a-f]{64}$"))' \
+        "$WORKLOAD_MANIFEST" > /dev/null; then
+        print_error "Invalid workload manifest for $mode (expected seed=$WORKLOAD_SEED, modules=$MODULE_COUNT)"
+        return 1
+    fi
+
+    local fingerprint
+    fingerprint=$(jq -er '.fingerprint' "$WORKLOAD_MANIFEST")
+    if [ -z "$EXPECTED_WORKLOAD_FINGERPRINT" ]; then
+        EXPECTED_WORKLOAD_FINGERPRINT="$fingerprint"
+    elif [ "$fingerprint" != "$EXPECTED_WORKLOAD_FINGERPRINT" ]; then
+        print_error "Workload mismatch for $mode: expected $EXPECTED_WORKLOAD_FINGERPRINT, found $fingerprint"
+        return 1
+    fi
+
+    local manifest_results_dir="$RESULTS_DIR/${TIMESTAMP}/workload-manifests"
+    mkdir -p "$manifest_results_dir"
+    cp "$WORKLOAD_MANIFEST" "$manifest_results_dir/${mode}.json"
+    cp "$WORKLOAD_MANIFEST" "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json"
+    print_info "Verified workload fingerprint: $fingerprint"
+}
+
+build_benchmark_metadata_json() {
+    local benchmark_type="$1"
+    local repo_root
+    repo_root="$(cd "$SCRIPT_DIR/.." && pwd)"
+    local versions_file="$repo_root/gradle/libs.versions.toml"
+    local result_manifest="$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json"
+    local manifest_metadata='{}'
+    if [ -f "$result_manifest" ]; then
+        manifest_metadata=$(jq -c '{
+          schemaVersion,
+          fingerprint,
+          seed: .workload.seed,
+          moduleCount: .workload.moduleCount,
+          modulesByLayer: .workload.modulesByLayer,
+          dependencyEdgeCount: .workload.dependencyEdgeCount,
+          contributionCount: .workload.contributionCount,
+          contributionsByKind: .workload.contributionsByKind,
+          subcomponents: .workload.subcomponents
+        }' "$result_manifest")
+    fi
+
+    local kotlin_version
+    kotlin_version=$(grep "^kotlin = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local dagger_version
+    dagger_version=$(grep "^dagger = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local ksp_version
+    ksp_version=$(grep "^ksp = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local kotlin_inject_version
+    kotlin_inject_version=$(grep "^kotlinInject = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local anvil_version
+    anvil_version=$(grep "^anvil = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local kotlin_inject_anvil_version
+    kotlin_inject_anvil_version=$(grep "^kotlinInject-anvil = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local koin_version
+    koin_version=$(grep "^koin = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local koin_compiler_version
+    koin_compiler_version=$(grep "^koin-compiler = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local jvm_target
+    jvm_target=$(grep "^jvmTarget = " "$versions_file" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+    local jmh_version
+    jmh_version=$(grep "me.champeau.jmh" "$versions_file" 2>/dev/null | sed 's/.*version *= *"\([^"]*\)".*/\1/' | head -1)
+    local benchmark_version
+    benchmark_version=$(grep "androidx.benchmark" "$versions_file" 2>/dev/null | sed 's/.*version *= *"\([^"]*\)".*/\1/' | head -1)
+
+    local java_version
+    java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
+    local os_info
+    os_info=$(uname -s 2>/dev/null || echo "unknown")
+    local cpu_info=""
+    local ram_info=""
+    if [ "$os_info" = "Darwin" ]; then
+        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
+        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
+    elif [ "$os_info" = "Linux" ]; then
+        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
+        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+    fi
+
+    local commit
+    commit=$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || echo "unknown")
+    local branch
+    branch=$(git -C "$repo_root" branch --show-current 2>/dev/null || echo "")
+    if [ -z "$branch" ]; then
+        branch="detached"
+    fi
+    local dirty_diff_fingerprint
+    if ! dirty_diff_fingerprint=$(benchmark_repo_state_fingerprint "$repo_root"); then
+        return 1
+    fi
+    local dirty=false
+    if [ "$dirty_diff_fingerprint" != "clean" ]; then
+        dirty=true
+    fi
+
+    local android_serial=""
+    local android_manufacturer=""
+    local android_device=""
+    local android_version=""
+    local android_sdk=""
+    local android_build_fingerprint=""
+    local android_abi=""
+    if command -v adb > /dev/null 2>&1; then
+        android_serial=$(adb get-serialno 2>/dev/null | tr -d '\r' || echo "")
+        android_manufacturer=$(adb shell getprop ro.product.manufacturer 2>/dev/null | tr -d '\r' || echo "")
+        android_device=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r' || echo "")
+        android_version=$(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r' || echo "")
+        android_sdk=$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r' || echo "")
+        android_build_fingerprint=$(adb shell getprop ro.build.fingerprint 2>/dev/null | tr -d '\r' || echo "")
+        android_abi=$(adb shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r' || echo "")
+    fi
+
+    local graph_sharding_requested="${ENABLE_GRAPH_SHARDING:-auto}"
+    local graph_sharding_effective=false
+    if [ "$ENABLE_GRAPH_SHARDING" = "true" ] || { [ -z "$ENABLE_GRAPH_SHARDING" ] && [ "$MODULE_COUNT" -ge 500 ]; }; then
+        graph_sharding_effective=true
+    fi
+    local switching_providers=false
+    local dagger_fast_init="DISABLED"
+    if [ "$ENABLE_SWITCHING_PROVIDERS" = "true" ]; then
+        switching_providers=true
+        dagger_fast_init="ENABLED"
+    fi
+
+    jq -n \
+        --argjson workload "$manifest_metadata" \
+        --arg kotlin "$kotlin_version" \
+        --arg dagger "$dagger_version" \
+        --arg ksp "$ksp_version" \
+        --arg kotlin_inject "$kotlin_inject_version" \
+        --arg anvil "$anvil_version" \
+        --arg kotlin_inject_anvil "$kotlin_inject_anvil_version" \
+        --arg koin "$koin_version" \
+        --arg koin_compiler "$koin_compiler_version" \
+        --arg jvm_target "$jvm_target" \
+        --arg jmh "$jmh_version" \
+        --arg androidx_benchmark "$benchmark_version" \
+        --arg jdk "$java_version" \
+        --arg os "$os_info" \
+        --arg cpu "$cpu_info" \
+        --arg ram "$ram_info" \
+        --arg commit "$commit" \
+        --arg branch "$branch" \
+        --arg dirty_diff_fingerprint "$dirty_diff_fingerprint" \
+        --arg benchmark_type "$benchmark_type" \
+        --arg modes "$MODES" \
+        --arg graph_sharding_requested "$graph_sharding_requested" \
+        --arg dagger_fast_init "$dagger_fast_init" \
+        --arg android_serial "$android_serial" \
+        --arg android_manufacturer "$android_manufacturer" \
+        --arg android_device "$android_device" \
+        --arg android_version "$android_version" \
+        --arg android_sdk "$android_sdk" \
+        --arg android_build_fingerprint "$android_build_fingerprint" \
+        --arg android_abi "$android_abi" \
+        --argjson dirty "$dirty" \
+        --argjson graph_sharding_effective "$graph_sharding_effective" \
+        --argjson switching_providers "$switching_providers" \
+        --argjson runtime_tracing "$ENABLE_RUNTIME_TRACING" \
+        --argjson include_macrobenchmark "$INCLUDE_MACROBENCHMARK" \
+        --argjson binary_metrics_only "$BINARY_METRICS_ONLY" \
+        '{
+          versions: {
+            kotlin: $kotlin,
+            dagger: $dagger,
+            ksp: $ksp,
+            kotlinInject: $kotlin_inject,
+            anvil: $anvil,
+            kotlinInjectAnvil: $kotlin_inject_anvil,
+            koin: $koin,
+            koinCompiler: $koin_compiler
+          },
+          build: {
+            jdk: $jdk,
+            jvmTarget: $jvm_target,
+            jmhPlugin: $jmh,
+            androidxBenchmark: $androidx_benchmark
+          },
+          workload: $workload,
+          repository: {
+            commit: $commit,
+            branch: $branch,
+            dirty: $dirty,
+            dirtyDiffFingerprint: $dirty_diff_fingerprint
+          },
+          options: {
+            benchmarkType: $benchmark_type,
+            modes: ($modes | split(",")),
+            graphSharding: {
+              requested: $graph_sharding_requested,
+              effective: $graph_sharding_effective
+            },
+            switchingProviders: $switching_providers,
+            runtimeTracing: $runtime_tracing,
+            includeMacrobenchmark: $include_macrobenchmark,
+            binaryMetricsOnly: $binary_metrics_only,
+            jmhGcProfiler: false,
+            r8RuntimeClasspathAsProgramInput: true,
+            dagger: {
+              mapMultibindingDuplicateDetectionFix: "ENABLED",
+              mapMultibindingDuplicateDetectionFixSource: "explicit",
+              useBindingGraphFix: "ENABLED",
+              ignoreProvisionKeyWildcards: "ENABLED",
+              validateTransitiveComponentDependencies: "ENABLED",
+              strictSuperficialValidation: "ENABLED",
+              fullBindingGraphValidation: "NONE",
+              fastInit: $dagger_fast_init,
+              providerMultibindings: false
+            }
+          },
+          system: {
+            os: $os,
+            cpu: $cpu,
+            ram: $ram
+          },
+          android: {
+            serial: $android_serial,
+            manufacturer: $android_manufacturer,
+            device: $android_device,
+            version: $android_version,
+            sdk: $android_sdk,
+            buildFingerprint: $android_build_fingerprint,
+            abi: $android_abi
+          }
+        }'
 }
 
 # Get extra Gradle arguments for a mode (e.g., disable incremental for flaky KSP)
@@ -454,7 +764,10 @@ extract_jar_metrics() {
 
     # Use diffuse to get accurate metrics by diffing JAR against itself
     local diffuse_output
-    diffuse_output=$(diffuse diff --jar "$jar_file" "$jar_file" 2>&1 || echo "")
+    if ! diffuse_output=$(diffuse diff --jar "$jar_file" "$jar_file" 2>&1); then
+        print_error "Failed to inspect JAR with diffuse: $jar_file"
+        return 1
+    fi
 
     # Save full diffuse output if requested
     if [ -n "$diffuse_output_file" ]; then
@@ -506,7 +819,10 @@ extract_apk_metrics() {
 
     # Use diffuse to get accurate metrics by diffing APK against itself
     local diffuse_output
-    diffuse_output=$(diffuse diff --apk "$apk_file" "$apk_file" 2>&1 || echo "")
+    if ! diffuse_output=$(diffuse diff --apk "$apk_file" "$apk_file" 2>&1); then
+        print_error "Failed to inspect APK with diffuse: $apk_file"
+        return 1
+    fi
 
     # Save full diffuse output if requested
     if [ -n "$diffuse_output_file" ]; then
@@ -608,10 +924,11 @@ setup_for_mode() {
 
     print_step "Generating project for $mode..."
     local gen_args=$(get_generator_args "$mode")
-    if ! kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" > /dev/null; then
+    if ! kotlin generate-projects.main.kts $gen_args --count "$MODULE_COUNT" --seed "$WORKLOAD_SEED" > /dev/null; then
         print_error "Failed to generate project for $mode"
         return 1
     fi
+    verify_workload_manifest "$mode"
 }
 
 # Run JMH benchmark only (no clean/generate)
@@ -641,7 +958,10 @@ run_jvm_benchmark_only() {
                 mkdir -p "$output_dir/diffuse"
                 extract_jar_metrics "$component_jar" "$output_dir/jar-unminified-metrics.json" "$output_dir/diffuse/diffuse-jar-unminified-${mode}.txt"
                 # Copy JAR file to results directory for later diffuse comparison
-                cp "$component_jar" "$output_dir/component-unminified.jar" 2>/dev/null || true
+                cp "$component_jar" "$output_dir/component-unminified.jar"
+            else
+                print_error "Component JAR not found at expected path: $component_jar"
+                return 1
             fi
 
             print_success "Binary metrics extraction complete for $mode"
@@ -657,7 +977,10 @@ run_jvm_benchmark_only() {
         if ./gradlew --quiet $gradle_args :startup-jvm:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
             # Copy JMH results
             if [ -d "startup-jvm/build/results/jmh" ]; then
-                cp -r startup-jvm/build/results/jmh/* "$output_dir/" 2>/dev/null || true
+                cp -R startup-jvm/build/results/jmh/. "$output_dir/"
+            else
+                print_error "JMH results directory not found for $mode"
+                return 1
             fi
 
             # Extract class metrics from compiled AppComponent classes
@@ -699,7 +1022,7 @@ run_jvm_r8_benchmark_only() {
             mkdir -p "$output_dir/diffuse"
             extract_jar_metrics "$jar_file" "$output_dir/jar-metrics.json" "$output_dir/diffuse/diffuse-jar-${mode}.txt"
             # Copy JAR file to results directory for later diffuse comparison
-            cp "$jar_file" "$output_dir/minified-jar.jar" 2>/dev/null || true
+            cp "$jar_file" "$output_dir/minified-jar.jar"
             print_success "Binary metrics extraction complete for $mode"
         else
             print_error "Build failed for $mode"
@@ -713,7 +1036,10 @@ run_jvm_r8_benchmark_only() {
         if ./gradlew --quiet $gradle_args :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
             # Copy JMH results
             if [ -d "startup-jvm-minified/build/results/jmh" ]; then
-                cp -r startup-jvm-minified/build/results/jmh/* "$output_dir/" 2>/dev/null || true
+                cp -R startup-jvm-minified/build/results/jmh/. "$output_dir/"
+            else
+                print_error "R8 JMH results directory not found for $mode"
+                return 1
             fi
 
             # Extract JAR metrics from minified jar
@@ -721,7 +1047,7 @@ run_jvm_r8_benchmark_only() {
             mkdir -p "$output_dir/diffuse"
             extract_jar_metrics "$jar_file" "$output_dir/jar-metrics.json" "$output_dir/diffuse/diffuse-jar-${mode}.txt"
             # Copy JAR file to results directory for later diffuse comparison
-            cp "$jar_file" "$output_dir/minified-jar.jar" 2>/dev/null || true
+            cp "$jar_file" "$output_dir/minified-jar.jar"
             copy_jvm_runtime_traces "$output_dir"
 
             print_success "JMH R8 benchmark complete for $mode"
@@ -816,7 +1142,8 @@ run_multiplatform_benchmark() {
     clean_build_artifacts
 
     print_step "Generating multiplatform project for metro..."
-    kotlin generate-projects.main.kts --mode metro --multiplatform --count "$MODULE_COUNT" > /dev/null
+    kotlin generate-projects.main.kts --mode metro --multiplatform --count "$MODULE_COUNT" --seed "$WORKLOAD_SEED" > /dev/null
+    verify_workload_manifest "metro"
 
     run_multiplatform_benchmark_only "$target"
 }
@@ -844,7 +1171,7 @@ run_android_benchmark_only() {
             mkdir -p "$output_dir/diffuse"
             extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json" "$output_dir/diffuse/diffuse-apk-${mode}.txt"
             # Copy APK file to results directory for later diffuse comparison
-            cp "$apk_file" "$output_dir/app-release.apk" 2>/dev/null || true
+            cp "$apk_file" "$output_dir/app-release.apk"
             print_success "Minified APK metrics extraction complete for $mode"
         else
             print_error "Minified APK not found at expected path: $apk_file"
@@ -857,7 +1184,7 @@ run_android_benchmark_only() {
             print_step "Extracting non-minified (debug) APK metrics for $mode..."
             extract_apk_metrics "$apk_debug" "$output_dir/apk-debug-metrics.json" "$output_dir/diffuse/diffuse-apk-debug-${mode}.txt"
             # Copy APK file to results directory for later diffuse comparison
-            cp "$apk_debug" "$output_dir/app-debug.apk" 2>/dev/null || true
+            cp "$apk_debug" "$output_dir/app-debug.apk"
             print_success "Non-minified APK metrics extraction complete for $mode"
         else
             print_error "Debug APK not found at expected path: $apk_debug"
@@ -884,9 +1211,10 @@ run_android_benchmark_only() {
             mkdir -p "$output_dir/diffuse"
             extract_apk_metrics "$apk_file" "$output_dir/apk-metrics.json" "$output_dir/diffuse/diffuse-apk-${mode}.txt"
             # Copy APK file to results directory for later diffuse comparison
-            cp "$apk_file" "$output_dir/app-release.apk" 2>/dev/null || true
+            cp "$apk_file" "$output_dir/app-release.apk"
         else
             print_error "APK not found at expected path: $apk_file"
+            return 1
         fi
 
         # Run macrobenchmark only if enabled
@@ -897,7 +1225,10 @@ run_android_benchmark_only() {
                 # Copy macrobenchmark results
                 local macro_output="startup-android/benchmark/build/outputs/connected_android_test_additional_output"
                 if [ -d "$macro_output" ]; then
-                    cp -r "$macro_output"/* "$output_dir/" 2>/dev/null || true
+                    cp -R "$macro_output"/. "$output_dir/"
+                else
+                    print_error "Android macrobenchmark results directory not found for $mode"
+                    return 1
                 fi
                 copy_android_macro_runtime_traces "$output_dir"
                 print_success "Android macrobenchmark complete for $mode"
@@ -914,7 +1245,10 @@ run_android_benchmark_only() {
             local micro_output="startup-android/microbenchmark/build/outputs/connected_android_test_additional_output"
             if [ -d "$micro_output" ]; then
                 mkdir -p "$output_dir/microbenchmark"
-                cp -r "$micro_output"/* "$output_dir/microbenchmark/" 2>/dev/null || true
+                cp -R "$micro_output"/. "$output_dir/microbenchmark/"
+            else
+                print_error "Android microbenchmark results directory not found for $mode"
+                return 1
             fi
             print_success "Android microbenchmark complete for $mode"
         else
@@ -941,17 +1275,6 @@ extract_jmh_score() {
         else
             # Fallback: grep from text output
             grep -oP 'graphCreationAndInitialization\s+avgt\s+\d+\s+\K[\d.]+' "$results_file" 2>/dev/null || echo ""
-        fi
-    fi
-}
-
-# Extract JMH GC allocation rate from results (bytes per operation)
-extract_jmh_alloc() {
-    local results_file="$1"
-    if [ -f "$results_file" ]; then
-        if command -v jq &> /dev/null; then
-            # Extract gc.alloc.rate.norm from secondaryMetrics (B/op)
-            jq -r '.[0].secondaryMetrics["·gc.alloc.rate.norm"].score // empty' "$results_file" 2>/dev/null || echo ""
         fi
     fi
 }
@@ -986,9 +1309,92 @@ extract_android_micro_score() {
     fi
 }
 
+validate_result_completeness() {
+    local base_dir="$1"
+    local benchmark_type="$2"
+    local modes="$3"
+    local failed=false
+
+    IFS=',' read -ra VALIDATION_MODES <<< "$modes"
+    for mode in "${VALIDATION_MODES[@]}"; do
+        if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
+            local jvm_dir="$base_dir/jvm_${mode}"
+            if [ ! -s "$jvm_dir/class-metrics.json" ]; then
+                print_error "Missing JVM class metrics for $mode in $jvm_dir"
+                failed=true
+            fi
+            if [ "$BINARY_METRICS_ONLY" = true ]; then
+                if [ ! -s "$jvm_dir/jar-unminified-metrics.json" ] || [ ! -s "$jvm_dir/component-unminified.jar" ]; then
+                    print_error "Incomplete JVM JAR metrics for $mode in $jvm_dir"
+                    failed=true
+                fi
+            else
+                local jvm_score=""
+                if [ -f "$jvm_dir/results.json" ]; then
+                    jvm_score=$(extract_jmh_score "$jvm_dir/results.json")
+                fi
+                if [ -z "$jvm_score" ]; then
+                    print_error "Missing JVM JMH score for $mode in $jvm_dir/results.json"
+                    failed=true
+                fi
+            fi
+        fi
+
+        if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+            local r8_dir="$base_dir/jvm-r8_${mode}"
+            if [ ! -s "$r8_dir/jar-metrics.json" ] || [ ! -s "$r8_dir/minified-jar.jar" ]; then
+                print_error "Incomplete R8 binary metrics for $mode in $r8_dir"
+                failed=true
+            fi
+            if [ "$BINARY_METRICS_ONLY" != true ]; then
+                local r8_score=""
+                if [ -f "$r8_dir/results.json" ]; then
+                    r8_score=$(extract_jmh_score "$r8_dir/results.json")
+                fi
+                if [ -z "$r8_score" ]; then
+                    print_error "Missing R8 JMH score for $mode in $r8_dir/results.json"
+                    failed=true
+                fi
+            fi
+        fi
+
+        if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
+            local android_dir="$base_dir/android_${mode}"
+            if [ ! -s "$android_dir/apk-metrics.json" ] || [ ! -s "$android_dir/app-release.apk" ]; then
+                print_error "Incomplete Android binary metrics for $mode in $android_dir"
+                failed=true
+            fi
+            if [ "$BINARY_METRICS_ONLY" != true ]; then
+                local micro_score
+                micro_score=$(extract_android_micro_score "$android_dir")
+                if [ -z "$micro_score" ]; then
+                    print_error "Missing Android microbenchmark score for $mode in $android_dir"
+                    failed=true
+                fi
+                if [ "$INCLUDE_MACROBENCHMARK" = true ]; then
+                    local macro_score
+                    macro_score=$(extract_android_macro_score "$android_dir")
+                    if [ -z "$macro_score" ]; then
+                        print_error "Missing Android macrobenchmark score for $mode in $android_dir"
+                        failed=true
+                    fi
+                fi
+            fi
+        fi
+    done
+
+    if [ "$failed" = true ]; then
+        return 1
+    fi
+    print_success "Verified complete $benchmark_type results for: $modes"
+}
+
 # Generate comparison summary
 generate_summary() {
+    local benchmark_type="${1:-all}"
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/summary.md"
+    local workload_fingerprint
+    workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
 
     print_header "Generating Comparison Summary"
 
@@ -997,30 +1403,39 @@ generate_summary() {
 
 **Date:** $(date)
 **Module Count:** $MODULE_COUNT
+**Workload Seed:** $WORKLOAD_SEED
+**Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 
+*Control performs no dependency injection or graph processing and returns a fresh empty component.
+
+**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
+EOF
+
+    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
+    if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
+        cat >> "$summary_file" << EOF
 ## JVM Benchmarks (JMH)
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
-|-----------|-----------|---------------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
     # Collect JVM results
-    local metro_jvm_score=""
-    local metro_jvm_alloc=""
+    local control_jvm_score=""
+    if [ -f "$RESULTS_DIR/${TIMESTAMP}/jvm_control/results.json" ]; then
+        control_jvm_score=$(extract_jmh_score "$RESULTS_DIR/${TIMESTAMP}/jvm_control/results.json")
+    fi
 
-    IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
         local score=""
-        local alloc=""
 
-        # Try to get score and alloc from JSON first, then text output
+        # Try to get score from JSON first, then text output
         if [ -f "$jvm_dir/results.json" ]; then
             score=$(extract_jmh_score "$jvm_dir/results.json")
-            alloc=$(extract_jmh_alloc "$jvm_dir/results.json")
         fi
 
         # Fallback: parse from results.txt or jmh-output.txt
@@ -1033,18 +1448,13 @@ EOF
             score=$(grep 'graphCreationAndInitialization' "$jvm_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
         fi
 
-        if [ "$mode" = "metro" ]; then
-            metro_jvm_score="$score"
-            metro_jvm_alloc="$alloc"
-        fi
-
         # Calculate comparison
         local comparison="-"
-        if [ -n "$score" ] && [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
-            if [ "$mode" = "metro" ]; then
+        if [ -n "$score" ] && [ -n "$control_jvm_score" ] && [ "$control_jvm_score" != "0" ]; then
+            if [ "$mode" = "control" ]; then
                 comparison="baseline"
             else
-                comparison=$(format_pct_diff "$score" "$metro_jvm_score")
+                comparison=$(format_pct_diff "$score" "$control_jvm_score")
             fi
         fi
 
@@ -1053,35 +1463,29 @@ EOF
             display_score=$(printf "%.2f" "$score")
         fi
 
-        # Format allocation in KB
-        local display_alloc="N/A"
-        if [ -n "$alloc" ]; then
-            display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
-        fi
-
-        echo "| $mode | $display_score | $display_alloc | $comparison |" >> "$summary_file"
+        echo "| $(mode_display_name "$mode") | $display_score | $comparison |" >> "$summary_file"
     done
+    fi
 
     # Add JVM R8 results if any exist
     local has_r8_results=false
-    for mode in "${MODE_ARRAY[@]}"; do
-        if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
-            has_r8_results=true
-            break
-        fi
-    done
+    if [ "$benchmark_type" = "jvm-r8" ] || [ "$benchmark_type" = "all" ]; then
+        for mode in "${MODE_ARRAY[@]}"; do
+            if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
+                has_r8_results=true
+                break
+            fi
+        done
+    fi
 
     if [ "$has_r8_results" = true ]; then
-        # Get metro R8 score and alloc for "vs Metro R8" column
-        local metro_jvm_r8_score=""
-        local metro_jvm_r8_alloc=""
-        local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_metro"
+        local control_jvm_r8_score=""
+        local r8_dir="$RESULTS_DIR/${TIMESTAMP}/jvm-r8_control"
         if [ -f "$r8_dir/results.json" ]; then
-            metro_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
-            metro_jvm_r8_alloc=$(extract_jmh_alloc "$r8_dir/results.json")
+            control_jvm_r8_score=$(extract_jmh_score "$r8_dir/results.json")
         fi
-        if [ -z "$metro_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
-            metro_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
+        if [ -z "$control_jvm_r8_score" ] && [ -f "$r8_dir/jmh-output.txt" ]; then
+            control_jvm_r8_score=$(grep 'graphCreationAndInitialization' "$r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
         fi
 
         cat >> "$summary_file" << EOF
@@ -1090,8 +1494,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
-|-----------|-----------|---------------|-------------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -1101,10 +1505,8 @@ EOF
             fi
 
             local r8_score=""
-            local r8_alloc=""
             if [ -f "$jvm_r8_dir/results.json" ]; then
                 r8_score=$(extract_jmh_score "$jvm_r8_dir/results.json")
-                r8_alloc=$(extract_jmh_alloc "$jvm_r8_dir/results.json")
             fi
             if [ -z "$r8_score" ] && [ -f "$jvm_r8_dir/jmh-output.txt" ]; then
                 r8_score=$(grep 'graphCreationAndInitialization' "$jvm_r8_dir/jmh-output.txt" 2>/dev/null | grep 'avgt' | tail -1 | awk '{print $4}' || echo "")
@@ -1115,54 +1517,45 @@ EOF
             fi
 
             local r8_comparison="-"
-            if [ "$mode" = "metro" ]; then
+            if [ "$mode" = "control" ]; then
                 r8_comparison="baseline"
-            elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
-                r8_comparison=$(format_pct_diff "$r8_score" "$metro_jvm_r8_score")
+            elif [ -n "$control_jvm_r8_score" ] && [ "$control_jvm_r8_score" != "0" ]; then
+                r8_comparison=$(format_pct_diff "$r8_score" "$control_jvm_r8_score")
             fi
 
             local r8_display_score=$(printf "%.2f" "$r8_score")
-
-            # Format allocation in KB
-            local r8_display_alloc="N/A"
-            if [ -n "$r8_alloc" ]; then
-                r8_display_alloc=$(echo "scale=2; $r8_alloc / 1024" | bc 2>/dev/null || echo "N/A")
-            fi
-
-            echo "| $mode | $r8_display_score | $r8_display_alloc | $r8_comparison |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $r8_display_score | $r8_comparison |" >> "$summary_file"
         done
     fi
 
     # Only include macrobenchmark section if enabled or if results exist
-    if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_metro/macro-benchmark-output.txt" ]; then
+    if { [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; } &&
+        { [ "$INCLUDE_MACROBENCHMARK" = true ] || [ -f "$RESULTS_DIR/${TIMESTAMP}/android_metro/macro-benchmark-output.txt" ]; }; then
         cat >> "$summary_file" << EOF
 
 ## Android Benchmarks (Macrobenchmark)
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
         # Collect Android macrobenchmark results
-        local metro_android_score=""
+        local control_android_score
+        control_android_score=$(extract_android_macro_score "$RESULTS_DIR/${TIMESTAMP}/android_control")
 
         for mode in "${MODE_ARRAY[@]}"; do
             local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
             local score=$(extract_android_macro_score "$android_dir")
 
-            if [ "$mode" = "metro" ]; then
-                metro_android_score="$score"
-            fi
-
             # Calculate comparison
             local comparison="-"
-            if [ -n "$score" ] && [ -n "$metro_android_score" ] && [ "$metro_android_score" != "0" ]; then
-                if [ "$mode" = "metro" ]; then
+            if [ -n "$score" ] && [ -n "$control_android_score" ] && [ "$control_android_score" != "0" ]; then
+                if [ "$mode" = "control" ]; then
                     comparison="baseline"
                 else
-                    comparison=$(format_pct_diff "$score" "$metro_android_score")
+                    comparison=$(format_pct_diff "$score" "$control_android_score")
                 fi
             fi
 
@@ -1171,48 +1564,47 @@ EOF
                 display_score=$(printf "%.0f" "$score")
             fi
 
-            echo "| $mode | $display_score | $comparison |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display_score | $comparison |" >> "$summary_file"
         done
     fi
 
-    cat >> "$summary_file" << EOF
+    if [ "$benchmark_type" = "android" ] || [ "$benchmark_type" = "all" ]; then
+        cat >> "$summary_file" << EOF
 
 ## Android Benchmarks (Microbenchmark)
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
-    # Collect Android microbenchmark results
-    local metro_android_micro_score=""
+        # Collect Android microbenchmark results
+        local control_android_micro_score
+        control_android_micro_score=$(extract_android_micro_score "$RESULTS_DIR/${TIMESTAMP}/android_control")
 
-    for mode in "${MODE_ARRAY[@]}"; do
-        local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
-        local score=$(extract_android_micro_score "$android_dir")
+        for mode in "${MODE_ARRAY[@]}"; do
+            local android_dir="$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
+            local score=$(extract_android_micro_score "$android_dir")
 
-        if [ "$mode" = "metro" ]; then
-            metro_android_micro_score="$score"
-        fi
-
-        # Calculate comparison
-        local comparison="-"
-        if [ -n "$score" ] && [ -n "$metro_android_micro_score" ] && [ "$metro_android_micro_score" != "0" ]; then
-            if [ "$mode" = "metro" ]; then
-                comparison="baseline"
-            else
-                comparison=$(format_pct_diff "$score" "$metro_android_micro_score")
+            # Calculate comparison
+            local comparison="-"
+            if [ -n "$score" ] && [ -n "$control_android_micro_score" ] && [ "$control_android_micro_score" != "0" ]; then
+                if [ "$mode" = "control" ]; then
+                    comparison="baseline"
+                else
+                    comparison=$(format_pct_diff "$score" "$control_android_micro_score")
+                fi
             fi
-        fi
 
-        local display_score="${score:-N/A}"
-        if [ -n "$score" ]; then
-            display_score=$(printf "%.3f" "$score")
-        fi
+            local display_score="${score:-N/A}"
+            if [ -n "$score" ]; then
+                display_score=$(printf "%.3f" "$score")
+            fi
 
-        echo "| $mode | $display_score | $comparison |" >> "$summary_file"
-    done
+            echo "| $(mode_display_name "$mode") | $display_score | $comparison |" >> "$summary_file"
+        done
+    fi
 
     # Add binary metrics section
     generate_binary_metrics_summary "$summary_file"
@@ -1233,7 +1625,7 @@ EOF
     cat "$summary_file"
 
     # Generate HTML report for non-ref benchmarks
-    generate_non_ref_html_report "all"
+    generate_non_ref_html_report "$benchmark_type"
 }
 
 # Generate binary metrics summary tables
@@ -1281,7 +1673,7 @@ EOF
                 local size_bytes=$(jq -r '.total_size_bytes' "$metrics_file" 2>/dev/null || echo "0")
                 local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
 
-                echo "| $mode | $fields | $methods | $shards | $size_kb |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $fields | $methods | $shards | $size_kb |" >> "$summary_file"
             fi
         done
     fi
@@ -1313,7 +1705,7 @@ EOF
                 local field_count=$(jq -r '.fields // 0' "$metrics_file" 2>/dev/null || echo "0")
                 local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
 
-                echo "| $mode | $size_kb | $class_count | $method_count | $field_count |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $size_kb | $class_count | $method_count | $field_count |" >> "$summary_file"
             fi
         done
     fi
@@ -1347,7 +1739,7 @@ EOF
                 local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
                 local dex_kb=$(echo "scale=1; $dex_size_bytes / 1024" | bc 2>/dev/null || echo "0")
 
-                echo "| $mode | $size_kb | $dex_kb | $dex_classes | $dex_methods | $dex_fields |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $size_kb | $dex_kb | $dex_classes | $dex_methods | $dex_fields |" >> "$summary_file"
             fi
         done
     fi
@@ -1371,7 +1763,7 @@ generate_non_ref_html_report() {
     <title>Metro Startup Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --baseline-color: #607D8B; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1391,10 +1783,10 @@ generate_non_ref_html_report() {
         .worse { color: #e53935; }
         .baseline-select { cursor: pointer; width: 30px; }
         .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
-        .baseline-radio.selected { border-color: var(--metro-color); background: var(--metro-color); }
-        .baseline-row { background: #f0fdf4; }
+        .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
+        .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
+        .vs-baseline.baseline { color: var(--baseline-color); font-weight: 500; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -1417,6 +1809,11 @@ generate_non_ref_html_report() {
     </div>
     <div class="container">
         <div id="benchmarks"></div>
+        <div class="benchmark-section">
+            <h2>Methodology notes</h2>
+            <p><strong>*</strong> Control performs no dependency injection or graph processing and returns a fresh empty component.</p>
+            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
+        </div>
         <div class="metadata-section" id="metadata"></div>
     </div>
 <script>
@@ -1427,8 +1824,10 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
-let selectedBaseline = 'metro';
+const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'control')
+    ? 'control'
+    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'control');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -1457,7 +1856,7 @@ function renderSummaryStats() {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.value) return;
         benchmark.results.forEach(result => {
-            if (result.key !== 'metro' && result.value) {
+            if (Object.hasOwn(totalSpeedup, result.key) && result.value) {
                 totalSpeedup[result.key] += result.value / metroResult.value;
                 counts[result.key]++;
             }
@@ -1559,6 +1958,43 @@ function renderMetadata() {
                 </dl>
             </div>
             <div class="metadata-group">
+                <h3>Workload</h3>
+                <dl>
+                    <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
+                    <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
+                    <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'}</dd>
+                    <dt>Layers</dt><dd>${m.workload?.modulesByLayer ? JSON.stringify(m.workload.modulesByLayer) : '—'}</dd>
+                    <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
+                    <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'}</dd>
+                    <dt>Contribution kinds</dt><dd>${m.workload?.contributionsByKind ? JSON.stringify(m.workload.contributionsByKind) : '—'}</dd>
+                    <dt>Subcomponents</dt><dd>${m.workload?.subcomponents ? JSON.stringify(m.workload.subcomponents) : '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Effective Options</h3>
+                <dl>
+                    <dt>Suites</dt><dd>${m.options?.benchmarkType || '—'}</dd>
+                    <dt>Modes</dt><dd>${m.options?.modes?.join(', ') || '—'}</dd>
+                    <dt>Graph sharding</dt><dd>${m.options?.graphSharding ? `${m.options.graphSharding.requested} (effective ${m.options.graphSharding.effective})` : '—'}</dd>
+                    <dt>Switching providers</dt><dd>${m.options?.switchingProviders ?? '—'}</dd>
+                    <dt>Runtime tracing</dt><dd>${m.options?.runtimeTracing ?? '—'}</dd>
+                    <dt>Macrobenchmark</dt><dd>${m.options?.includeMacrobenchmark ?? '—'}</dd>
+                    <dt>JMH GC profiler</dt><dd>${m.options?.jmhGcProfiler ?? '—'}</dd>
+                    <dt>R8 runtime program input</dt><dd>${m.options?.r8RuntimeClasspathAsProgramInput ?? '—'}</dd>
+                    <dt>Dagger fastInit</dt><dd>${m.options?.dagger?.fastInit || '—'}</dd>
+                    <dt>Dagger validation</dt><dd>${m.options?.dagger ? JSON.stringify(m.options.dagger) : '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Repository</h3>
+                <dl>
+                    <dt>Commit</dt><dd>${m.repository?.commit || '—'}</dd>
+                    <dt>Branch</dt><dd>${m.repository?.branch || '—'}</dd>
+                    <dt>Dirty</dt><dd>${m.repository?.dirty ?? '—'}</dd>
+                    <dt>Dirty diff fingerprint</dt><dd>${m.repository?.dirtyDiffFingerprint || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
                 <h3>System</h3>
                 <dl>
                     <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
@@ -1569,8 +2005,13 @@ function renderMetadata() {
             ${hasAndroid ? `<div class="metadata-group">
                 <h3>Android Device</h3>
                 <dl>
+                    <dt>Serial</dt><dd>${m.android?.serial || '—'}</dd>
+                    <dt>Manufacturer</dt><dd>${m.android?.manufacturer || '—'}</dd>
                     <dt>Device</dt><dd>${m.android?.device || '—'}</dd>
                     <dt>Android Version</dt><dd>${m.android?.version || '—'}</dd>
+                    <dt>SDK</dt><dd>${m.android?.sdk || '—'}</dd>
+                    <dt>ABI</dt><dd>${m.android?.abi || '—'}</dd>
+                    <dt>Build Fingerprint</dt><dd>${m.android?.buildFingerprint || '—'}</dd>
                 </dl>
             </div>` : ''}
         </div>`;
@@ -1613,69 +2054,9 @@ build_non_ref_benchmark_json() {
     echo '  "date": "'$(date -Iseconds)'",'
     echo '  "moduleCount": '"$MODULE_COUNT"','
 
-    # Build metadata
-    local kotlin_version=$(get_toml_version "kotlin")
-    local dagger_version=$(get_toml_version "dagger")
-    local ksp_version=$(get_toml_version "ksp")
-    local kotlin_inject_version=$(get_toml_version "kotlinInject")
-    local anvil_version=$(get_toml_version "anvil")
-    local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
-    local koin_version=$(get_toml_version "koin")
-    local koin_compiler_version=$(get_toml_version "koin-compiler")
-    local jvm_target=$(get_toml_version "jvmTarget")
-
-    # JMH and benchmark versions
-    local jmh_version=$(get_plugin_version "me.champeau.jmh")
-    local benchmark_version=$(get_plugin_version "androidx.benchmark")
-
-    local java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
-
-    local os_info=$(uname -s 2>/dev/null || echo "unknown")
-    local cpu_info=""
-    local ram_info=""
-    if [ "$os_info" = "Darwin" ]; then
-        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
-        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
-    elif [ "$os_info" = "Linux" ]; then
-        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
-        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
-    fi
-
-    # Android device info (if adb is available)
-    local android_device=""
-    local android_version=""
-    if command -v adb &> /dev/null; then
-        android_device=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r' || echo "")
-        android_version=$(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r' || echo "")
-    fi
-
-    echo '  "metadata": {'
-    echo '    "versions": {'
-    echo '      "kotlin": "'"$kotlin_version"'",'
-    echo '      "dagger": "'"$dagger_version"'",'
-    echo '      "ksp": "'"$ksp_version"'",'
-    echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
-    echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
-    echo '      "koin": "'"$koin_version"'",'
-    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
-    echo '    },'
-    echo '    "build": {'
-    echo '      "jdk": "'"$java_version"'",'
-    echo '      "jvmTarget": "'"$jvm_target"'",'
-    echo '      "jmhPlugin": "'"$jmh_version"'",'
-    echo '      "androidxBenchmark": "'"$benchmark_version"'"'
-    echo '    },'
-    echo '    "system": {'
-    echo '      "os": "'"$os_info"'",'
-    echo '      "cpu": "'"$cpu_info"'",'
-    echo '      "ram": "'"$ram_info"'"'
-    echo '    },'
-    echo '    "android": {'
-    echo '      "device": "'"$android_device"'",'
-    echo '      "version": "'"$android_version"'"'
-    echo '    }'
-    echo '  },'
+    echo '  "metadata":'
+    build_benchmark_metadata_json "$benchmark_type"
+    echo ','
 
     echo '  "benchmarks": ['
 
@@ -1696,11 +2077,12 @@ build_non_ref_benchmark_json() {
         for mode in "${MODE_ARRAY[@]}"; do
             local mode_key mode_name
             case "$mode" in
+                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                 *) continue ;;
             esac
 
@@ -1760,11 +2142,12 @@ build_non_ref_benchmark_json() {
             for mode in "${MODE_ARRAY[@]}"; do
                 local mode_key mode_name
                 case "$mode" in
+                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -1827,11 +2210,12 @@ build_non_ref_benchmark_json() {
             for mode in "${MODE_ARRAY[@]}"; do
                 local mode_key mode_name
                 case "$mode" in
+                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -1871,11 +2255,12 @@ build_non_ref_benchmark_json() {
         for mode in "${MODE_ARRAY[@]}"; do
             local mode_key mode_name
             case "$mode" in
+                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                 *) continue ;;
             esac
 
@@ -1912,8 +2297,9 @@ run_jvm_benchmarks() {
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         print_info "Benchmarking: $mode"
-        run_jvm_benchmark "$mode" || true
+        run_jvm_benchmark "$mode"
     done
+    validate_result_completeness "$RESULTS_DIR/${TIMESTAMP}" "jvm" "$MODES"
 }
 
 run_jvm_r8_benchmarks() {
@@ -1922,8 +2308,9 @@ run_jvm_r8_benchmarks() {
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         print_info "Benchmarking: $mode (R8 minified)"
-        run_jvm_r8_benchmark "$mode" || true
+        run_jvm_r8_benchmark "$mode"
     done
+    validate_result_completeness "$RESULTS_DIR/${TIMESTAMP}" "jvm-r8" "$MODES"
 }
 
 run_android_benchmarks() {
@@ -1932,8 +2319,9 @@ run_android_benchmarks() {
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         print_info "Benchmarking: $mode"
-        run_android_benchmark "$mode" || true
+        run_android_benchmark "$mode"
     done
+    validate_result_completeness "$RESULTS_DIR/${TIMESTAMP}" "android" "$MODES"
 }
 
 # Run all benchmarks grouped by mode (build once per mode)
@@ -1949,16 +2337,17 @@ run_all_benchmarks() {
 
         # Run JVM benchmarks
         print_info "Running JVM benchmarks for $mode..."
-        run_jvm_benchmark_only "$mode" || true
+        run_jvm_benchmark_only "$mode"
 
         # Run JVM R8 benchmarks
         print_info "Running JVM R8 benchmarks for $mode..."
-        run_jvm_r8_benchmark_only "$mode" || true
+        run_jvm_r8_benchmark_only "$mode"
 
         # Run Android benchmarks (reuses the same generated project)
         print_info "Running Android benchmarks for $mode..."
-        run_android_benchmark_only "$mode" || true
+        run_android_benchmark_only "$mode"
     done
+    validate_result_completeness "$RESULTS_DIR/${TIMESTAMP}" "all" "$MODES"
 }
 
 # Run benchmarks for a specific git ref or Metro version
@@ -1982,7 +2371,7 @@ run_benchmarks_for_ref() {
         unset METRO_VERSION
     else
         # It's a git ref - checkout
-        checkout_ref "$ref" || return 1
+        checkout_ref "$ref"
         # Unset METRO_VERSION to use included build
         unset METRO_VERSION
     fi
@@ -2001,6 +2390,7 @@ run_benchmarks_for_ref() {
         git log -1 --format='%h %s' > "$ref_dir/commit-info.txt"
     fi
 
+    local completed_modes=""
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
     for mode in "${MODE_ARRAY[@]}"; do
         # Skip non-metro modes on second ref unless RERUN_NON_METRO is true
@@ -2010,61 +2400,70 @@ run_benchmarks_for_ref() {
         fi
 
         print_header "Benchmarking $mode for $ref_label"
+        if [ -n "$completed_modes" ]; then
+            completed_modes="$completed_modes,"
+        fi
+        completed_modes="$completed_modes$mode"
 
         # Setup for this mode
         setup_for_mode "$mode"
 
         case "$benchmark_type" in
             jvm)
-                run_jvm_benchmark_only "$mode" || true
+                run_jvm_benchmark_only "$mode"
                 # Move results to ref-specific directory
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}" ]; then
                     mkdir -p "$ref_dir/jvm_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/. "$ref_dir/jvm_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
                 fi
                 ;;
             jvm-r8)
-                run_jvm_r8_benchmark_only "$mode" || true
+                run_jvm_r8_benchmark_only "$mode"
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
                     mkdir -p "$ref_dir/jvm-r8_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/* "$ref_dir/jvm-r8_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/. "$ref_dir/jvm-r8_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
                 fi
                 ;;
             android)
-                run_android_benchmark_only "$mode" || true
+                run_android_benchmark_only "$mode"
                 # Move results to ref-specific directory
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
                     mkdir -p "$ref_dir/android_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/* "$ref_dir/android_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/. "$ref_dir/android_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
                 fi
                 ;;
             all)
-                run_jvm_benchmark_only "$mode" || true
+                run_jvm_benchmark_only "$mode"
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}" ]; then
                     mkdir -p "$ref_dir/jvm_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/* "$ref_dir/jvm_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"/. "$ref_dir/jvm_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm_${mode}"
                 fi
                 # Run R8 benchmark
-                run_jvm_r8_benchmark_only "$mode" || true
+                run_jvm_r8_benchmark_only "$mode"
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}" ]; then
                     mkdir -p "$ref_dir/jvm-r8_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/* "$ref_dir/jvm-r8_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"/. "$ref_dir/jvm-r8_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/jvm-r8_${mode}"
                 fi
-                run_android_benchmark_only "$mode" || true
+                run_android_benchmark_only "$mode"
                 if [ -d "$RESULTS_DIR/${TIMESTAMP}/android_${mode}" ]; then
                     mkdir -p "$ref_dir/android_${mode}"
-                    cp -r "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/* "$ref_dir/android_${mode}/" 2>/dev/null || true
+                    cp -R "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"/. "$ref_dir/android_${mode}/"
                     rm -rf "$RESULTS_DIR/${TIMESTAMP}/android_${mode}"
                 fi
                 ;;
         esac
     done
 
+    if [ -z "$completed_modes" ]; then
+        print_error "No modes were run for $ref_label"
+        return 1
+    fi
+    validate_result_completeness "$ref_dir" "$benchmark_type" "$completed_modes"
     print_success "Completed benchmarks for $ref_label"
 }
 
@@ -2091,17 +2490,6 @@ extract_jmh_score_for_ref() {
     echo "$score"
 }
 
-# Extract JMH alloc for a ref
-extract_jmh_alloc_for_ref() {
-    local ref_label="$1"
-    local mode="$2"
-    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm_${mode}"
-
-    if [ -f "$jvm_dir/results.json" ]; then
-        extract_jmh_alloc "$jvm_dir/results.json"
-    fi
-}
-
 # Extract JMH R8 score for a ref
 extract_jmh_r8_score_for_ref() {
     local ref_label="$1"
@@ -2123,17 +2511,6 @@ extract_jmh_r8_score_for_ref() {
     fi
 
     echo "$score"
-}
-
-# Extract JMH R8 alloc for a ref
-extract_jmh_r8_alloc_for_ref() {
-    local ref_label="$1"
-    local mode="$2"
-    local jvm_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/jvm-r8_${mode}"
-
-    if [ -f "$jvm_dir/results.json" ]; then
-        extract_jmh_alloc "$jvm_dir/results.json"
-    fi
 }
 
 # Extract Android macro score for a ref
@@ -2186,6 +2563,8 @@ generate_comparison_summary() {
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/comparison-summary.md"
     local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
     local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local workload_fingerprint
+    workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
 
     print_header "Generating Comparison Summary"
 
@@ -2203,6 +2582,7 @@ generate_comparison_summary() {
 
     # Get ref2 metro scores for comparison with ref1 non-metro modes
     local ref2_metro_jvm_score=$(extract_jmh_score_for_ref "$ref2_label" "metro")
+    local metro_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "metro")
     local ref2_metro_macro_score=$(extract_android_macro_score_for_ref "$ref2_label" "metro")
     local ref2_metro_micro_score=$(extract_android_micro_score_for_ref "$ref2_label" "metro")
 
@@ -2211,8 +2591,14 @@ generate_comparison_summary() {
 
 **Date:** $(date)
 **Module Count:** $MODULE_COUNT
+**Workload Seed:** $WORKLOAD_SEED
+**Workload Fingerprint:** $workload_fingerprint
 **Modes benchmarked on ref1:** $MODES
 **Modes benchmarked on ref2:** ${ref2_modes:-metro}
+
+*Control performs no dependency injection or graph processing and returns a fresh empty component.
+
+**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
 
 ## Git Refs
 
@@ -2224,11 +2610,10 @@ generate_comparison_summary() {
 EOF
 
     if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
-        # Get metro scores for "vs Metro" column
-        local metro_jvm_score1=$(extract_jmh_score_for_ref "$ref1_label" "metro")
-        local metro_jvm_score2=""
-        if mode_was_run_for_ref "$ref2_label" "metro" "jvm"; then
-            metro_jvm_score2=$(extract_jmh_score_for_ref "$ref2_label" "metro")
+        local control_jvm_score1=$(extract_jmh_score_for_ref "$ref1_label" "control")
+        local control_jvm_score2="$control_jvm_score1"
+        if mode_was_run_for_ref "$ref2_label" "control" "jvm"; then
+            control_jvm_score2=$(extract_jmh_score_for_ref "$ref2_label" "control")
         fi
 
         cat >> "$summary_file" << EOF
@@ -2236,8 +2621,8 @@ EOF
 
 Graph creation and initialization time (lower is better):
 
-| Framework | $ref1_label | vs Metro | $ref2_label | vs Metro | Difference |
-|-----------|-------------|----------|-------------|----------|------------|
+| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+|-----------|-------------|------------|-------------|------------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -2251,8 +2636,8 @@ EOF
 
             local score2=""
             local display2="N/A"
-            local vs_metro1="—"
-            local vs_metro2="—"
+            local vs_control1="—"
+            local vs_control2="—"
             local diff="-"
 
             if [ "$mode_ran_on_ref2" = true ]; then
@@ -2271,20 +2656,18 @@ EOF
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
-                # Calculate vs Metro for ref1
-                if [ "$mode" = "metro" ]; then
-                    vs_metro1="baseline"
-                elif [ -n "$metro_jvm_score1" ] && [ "$metro_jvm_score1" != "0" ]; then
-                    vs_metro1=$(format_vs_baseline "$score1" "$metro_jvm_score1")
+                if [ "$mode" = "control" ]; then
+                    vs_control1="baseline"
+                elif [ -n "$control_jvm_score1" ] && [ "$control_jvm_score1" != "0" ]; then
+                    vs_control1=$(format_vs_baseline "$score1" "$control_jvm_score1")
                 fi
             fi
 
-            # Calculate vs Metro for ref2
-            if [ -n "$score2" ]; then
-                if [ "$mode" = "metro" ]; then
-                    vs_metro2="baseline"
-                elif [ -n "$metro_jvm_score2" ] && [ "$metro_jvm_score2" != "0" ]; then
-                    vs_metro2=$(format_vs_baseline "$score2" "$metro_jvm_score2")
+            if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
+                if [ "$mode" = "control" ]; then
+                    vs_control2="baseline"
+                elif [ -n "$control_jvm_score2" ] && [ "$control_jvm_score2" != "0" ]; then
+                    vs_control2=$(format_vs_baseline "$score2" "$control_jvm_score2")
                 fi
             fi
 
@@ -2297,42 +2680,7 @@ EOF
                 fi
             fi
 
-            echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
-        done
-
-        # Add allocation table
-        cat >> "$summary_file" << EOF
-
-### Allocation (KB/op)
-
-| Framework | $ref1_label | $ref2_label | Difference |
-|-----------|-------------|-------------|------------|
-EOF
-
-        for mode in "${MODE_ARRAY[@]}"; do
-            local alloc1=$(extract_jmh_alloc_for_ref "$ref1_label" "$mode")
-            local alloc2=""
-            if mode_was_run_for_ref "$ref2_label" "$mode" "jvm"; then
-                alloc2=$(extract_jmh_alloc_for_ref "$ref2_label" "$mode")
-            fi
-
-            # Format allocations in KB
-            local display_alloc1="N/A"
-            local display_alloc2="N/A"
-            local alloc_diff="-"
-
-            if [ -n "$alloc1" ]; then
-                display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
-            fi
-            if [ -n "$alloc2" ]; then
-                display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
-            fi
-
-            if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
-                alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
-            fi
-
-            echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2350,11 +2698,10 @@ EOF
         done
 
         if [ "$has_r8_results" = true ]; then
-            # Get metro R8 scores for "vs Metro R8" column
-            local metro_jvm_r8_score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "metro")
-            local metro_jvm_r8_score2=""
-            if mode_was_run_for_ref "$ref2_label" "metro" "jvm-r8"; then
-                metro_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "metro")
+            local control_jvm_r8_score1=$(extract_jmh_r8_score_for_ref "$ref1_label" "control")
+            local control_jvm_r8_score2="$control_jvm_r8_score1"
+            if mode_was_run_for_ref "$ref2_label" "control" "jvm-r8"; then
+                control_jvm_r8_score2=$(extract_jmh_r8_score_for_ref "$ref2_label" "control")
             fi
 
             cat >> "$summary_file" << EOF
@@ -2362,8 +2709,8 @@ EOF
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | $ref1_label | vs Metro R8 | $ref2_label | vs Metro R8 | Difference |
-|-----------|-------------|-------------|-------------|-------------|------------|
+| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+|-----------|-------------|------------|-------------|------------|------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
@@ -2382,8 +2729,8 @@ EOF
 
                 local score2=""
                 local display2="N/A"
-                local vs_metro1="—"
-                local vs_metro2="—"
+                local vs_control1="—"
+                local vs_control2="—"
                 local diff="-"
 
                 if [ "$mode_ran_on_ref2" = true ]; then
@@ -2399,18 +2746,18 @@ EOF
                 local display1="${score1:-N/A}"
                 if [ -n "$score1" ]; then
                     display1=$(printf "%.3f ms" "$score1")
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro1="baseline"
-                    elif [ -n "$metro_jvm_r8_score1" ] && [ "$metro_jvm_r8_score1" != "0" ]; then
-                        vs_metro1=$(format_vs_baseline "$score1" "$metro_jvm_r8_score1")
+                    if [ "$mode" = "control" ]; then
+                        vs_control1="baseline"
+                    elif [ -n "$control_jvm_r8_score1" ] && [ "$control_jvm_r8_score1" != "0" ]; then
+                        vs_control1=$(format_vs_baseline "$score1" "$control_jvm_r8_score1")
                     fi
                 fi
 
-                if [ -n "$score2" ]; then
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro2="baseline"
-                    elif [ -n "$metro_jvm_r8_score2" ] && [ "$metro_jvm_r8_score2" != "0" ]; then
-                        vs_metro2=$(format_vs_baseline "$score2" "$metro_jvm_r8_score2")
+                if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
+                    if [ "$mode" = "control" ]; then
+                        vs_control2="baseline"
+                    elif [ -n "$control_jvm_r8_score2" ] && [ "$control_jvm_r8_score2" != "0" ]; then
+                        vs_control2=$(format_vs_baseline "$score2" "$control_jvm_r8_score2")
                     fi
                 fi
 
@@ -2423,47 +2770,7 @@ EOF
                     fi
                 fi
 
-                echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
-            done
-
-            # Add R8 allocation table
-            cat >> "$summary_file" << EOF
-
-### Allocation (KB/op)
-
-| Framework | $ref1_label | $ref2_label | Difference |
-|-----------|-------------|-------------|------------|
-EOF
-
-            for mode in "${MODE_ARRAY[@]}"; do
-                local alloc1=$(extract_jmh_r8_alloc_for_ref "$ref1_label" "$mode")
-                local alloc2=""
-                if mode_was_run_for_ref "$ref2_label" "$mode" "jvm-r8"; then
-                    alloc2=$(extract_jmh_r8_alloc_for_ref "$ref2_label" "$mode")
-                fi
-
-                # Skip if no alloc data
-                if [ -z "$alloc1" ] && [ -z "$alloc2" ]; then
-                    continue
-                fi
-
-                # Format allocations in KB
-                local display_alloc1="N/A"
-                local display_alloc2="N/A"
-                local alloc_diff="-"
-
-                if [ -n "$alloc1" ]; then
-                    display_alloc1=$(echo "scale=2; $alloc1 / 1024" | bc 2>/dev/null || echo "N/A")
-                fi
-                if [ -n "$alloc2" ]; then
-                    display_alloc2=$(echo "scale=2; $alloc2 / 1024" | bc 2>/dev/null || echo "N/A")
-                fi
-
-                if [ -n "$alloc1" ] && [ -n "$alloc2" ] && [ "$alloc1" != "0" ]; then
-                    alloc_diff=$(python3 -c "print(f'{(($alloc2 - $alloc1) / $alloc1) * 100:.2f}%')" 2>/dev/null || echo "-")
-                fi
-
-                echo "| $mode | $display_alloc1 | $display_alloc2 | $alloc_diff |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -2482,11 +2789,10 @@ EOF
         fi
 
         if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
-            # Get metro scores for "vs Metro" column
-            local metro_macro_score1=$(extract_android_macro_score_for_ref "$ref1_label" "metro")
-            local metro_macro_score2=""
-            if mode_was_run_for_ref "$ref2_label" "metro" "android"; then
-                metro_macro_score2=$(extract_android_macro_score_for_ref "$ref2_label" "metro")
+            local control_macro_score1=$(extract_android_macro_score_for_ref "$ref1_label" "control")
+            local control_macro_score2="$control_macro_score1"
+            if mode_was_run_for_ref "$ref2_label" "control" "android"; then
+                control_macro_score2=$(extract_android_macro_score_for_ref "$ref2_label" "control")
             fi
 
             cat >> "$summary_file" << EOF
@@ -2494,8 +2800,8 @@ EOF
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | $ref1_label | vs Metro | $ref2_label | vs Metro | Difference |
-|-----------|-------------|----------|-------------|----------|------------|
+| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+|-----------|-------------|------------|-------------|------------|------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
@@ -2509,8 +2815,8 @@ EOF
 
                 local score2=""
                 local display2="N/A"
-                local vs_metro1="—"
-                local vs_metro2="—"
+                local vs_control1="—"
+                local vs_control2="—"
                 local diff="-"
 
                 if [ "$mode_ran_on_ref2" = true ]; then
@@ -2529,20 +2835,18 @@ EOF
                 local display1="${score1:-N/A}"
                 if [ -n "$score1" ]; then
                     display1=$(printf "%.0f ms" "$score1")
-                    # Calculate vs Metro for ref1
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro1="baseline"
-                    elif [ -n "$metro_macro_score1" ] && [ "$metro_macro_score1" != "0" ]; then
-                        vs_metro1=$(format_vs_baseline "$score1" "$metro_macro_score1")
+                    if [ "$mode" = "control" ]; then
+                        vs_control1="baseline"
+                    elif [ -n "$control_macro_score1" ] && [ "$control_macro_score1" != "0" ]; then
+                        vs_control1=$(format_vs_baseline "$score1" "$control_macro_score1")
                     fi
                 fi
 
-                # Calculate vs Metro for ref2
-                if [ -n "$score2" ]; then
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro2="baseline"
-                    elif [ -n "$metro_macro_score2" ] && [ "$metro_macro_score2" != "0" ]; then
-                        vs_metro2=$(format_vs_baseline "$score2" "$metro_macro_score2")
+                if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
+                    if [ "$mode" = "control" ]; then
+                        vs_control2="baseline"
+                    elif [ -n "$control_macro_score2" ] && [ "$control_macro_score2" != "0" ]; then
+                        vs_control2=$(format_vs_baseline "$score2" "$control_macro_score2")
                     fi
                 fi
 
@@ -2555,17 +2859,16 @@ EOF
                     fi
                 fi
 
-                echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
         fi
 
-        # Get metro scores for "vs Metro" column in microbenchmark
-        local metro_micro_score1=$(extract_android_micro_score_for_ref "$ref1_label" "metro")
-        local metro_micro_score2=""
-        if mode_was_run_for_ref "$ref2_label" "metro" "android"; then
-            metro_micro_score2=$(extract_android_micro_score_for_ref "$ref2_label" "metro")
+        local control_micro_score1=$(extract_android_micro_score_for_ref "$ref1_label" "control")
+        local control_micro_score2="$control_micro_score1"
+        if mode_was_run_for_ref "$ref2_label" "control" "android"; then
+            control_micro_score2=$(extract_android_micro_score_for_ref "$ref2_label" "control")
         fi
 
         cat >> "$summary_file" << EOF
@@ -2573,8 +2876,8 @@ EOF
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | $ref1_label | vs Metro | $ref2_label | vs Metro | Difference |
-|-----------|-------------|----------|-------------|----------|------------|
+| Framework | $ref1_label | vs Control | $ref2_label | vs Control | Difference |
+|-----------|-------------|------------|-------------|------------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
@@ -2588,8 +2891,8 @@ EOF
 
             local score2=""
             local display2="N/A"
-            local vs_metro1="—"
-            local vs_metro2="—"
+            local vs_control1="—"
+            local vs_control2="—"
             local diff="-"
 
             if [ "$mode_ran_on_ref2" = true ]; then
@@ -2608,20 +2911,18 @@ EOF
             local display1="${score1:-N/A}"
             if [ -n "$score1" ]; then
                 display1=$(printf "%.3f ms" "$score1")
-                # Calculate vs Metro for ref1
-                if [ "$mode" = "metro" ]; then
-                    vs_metro1="baseline"
-                elif [ -n "$metro_micro_score1" ] && [ "$metro_micro_score1" != "0" ]; then
-                    vs_metro1=$(format_vs_baseline "$score1" "$metro_micro_score1")
+                if [ "$mode" = "control" ]; then
+                    vs_control1="baseline"
+                elif [ -n "$control_micro_score1" ] && [ "$control_micro_score1" != "0" ]; then
+                    vs_control1=$(format_vs_baseline "$score1" "$control_micro_score1")
                 fi
             fi
 
-            # Calculate vs Metro for ref2
-            if [ -n "$score2" ]; then
-                if [ "$mode" = "metro" ]; then
-                    vs_metro2="baseline"
-                elif [ -n "$metro_micro_score2" ] && [ "$metro_micro_score2" != "0" ]; then
-                    vs_metro2=$(format_vs_baseline "$score2" "$metro_micro_score2")
+            if [ "$mode_ran_on_ref2" = true ] && [ -n "$score2" ]; then
+                if [ "$mode" = "control" ]; then
+                    vs_control2="baseline"
+                elif [ -n "$control_micro_score2" ] && [ "$control_micro_score2" != "0" ]; then
+                    vs_control2=$(format_vs_baseline "$score2" "$control_micro_score2")
                 fi
             fi
 
@@ -2634,7 +2935,7 @@ EOF
                 fi
             fi
 
-            echo "| $mode | $display1 | $vs_metro1 | $display2 | $vs_metro2 | $diff |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display1 | $vs_control1 | $display2 | $vs_control2 | $diff |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -2862,7 +3163,7 @@ EOF
                     local shards=$(jq -r '.shards' "$metrics_file" 2>/dev/null || echo "0")
                     local size_bytes=$(jq -r '.total_size_bytes' "$metrics_file" 2>/dev/null || echo "0")
                     local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
-                    echo "| $mode ($ref1_label) | $fields | $methods | $shards | $size_kb |" >> "$summary_file"
+                    echo "| $(mode_display_name "$mode") ($ref1_label) | $fields | $methods | $shards | $size_kb |" >> "$summary_file"
                 fi
             fi
         done
@@ -2904,7 +3205,7 @@ EOF
                     local method_count=$(jq -r '.methods // 0' "$metrics_file" 2>/dev/null || echo "0")
                     local field_count=$(jq -r '.fields // 0' "$metrics_file" 2>/dev/null || echo "0")
                     local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
-                    echo "| $mode ($ref1_label) | $size_kb | $class_count | $method_count | $field_count |" >> "$summary_file"
+                    echo "| $(mode_display_name "$mode") ($ref1_label) | $size_kb | $class_count | $method_count | $field_count |" >> "$summary_file"
                 fi
             fi
         done
@@ -2951,7 +3252,7 @@ EOF
                     local dex_fields=$(jq -r '.dex_fields // 0' "$metrics_file" 2>/dev/null || echo "0")
                     local size_kb=$(echo "scale=1; $size_bytes / 1024" | bc 2>/dev/null || echo "0")
                     local dex_kb=$(echo "scale=1; $dex_size / 1024" | bc 2>/dev/null || echo "0")
-                    echo "| $mode ($ref1_label) | $size_kb | $dex_kb | $dex_classes | $dex_methods | $dex_fields |" >> "$summary_file"
+                    echo "| $(mode_display_name "$mode") ($ref1_label) | $size_kb | $dex_kb | $dex_classes | $dex_methods | $dex_fields |" >> "$summary_file"
                 fi
             fi
         done
@@ -2995,6 +3296,8 @@ generate_single_summary() {
 
     local summary_file="$RESULTS_DIR/${TIMESTAMP}/single-summary.md"
     local ref_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref_label}/commit-info.txt" 2>/dev/null || echo "unknown")
+    local workload_fingerprint
+    workload_fingerprint=$(jq -r '.fingerprint // "unknown"' "$RESULTS_DIR/${TIMESTAMP}/workload-manifest.json" 2>/dev/null || echo "unknown")
 
     print_header "Generating Single Ref Summary"
 
@@ -3003,48 +3306,46 @@ generate_single_summary() {
 
 **Date:** $(date)
 **Module Count:** $MODULE_COUNT
+**Workload Seed:** $WORKLOAD_SEED
+**Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 **Commit:** $ref_commit
+
+*Control performs no dependency injection or graph processing and returns a fresh empty component.
+
+**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
 
 EOF
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
 
     if [ "$benchmark_type" = "jvm" ] || [ "$benchmark_type" = "all" ]; then
-        # Get metro score for "vs Metro" column
-        local metro_jvm_score=$(extract_jmh_score_for_ref "$ref_label" "metro")
+        local control_jvm_score=$(extract_jmh_score_for_ref "$ref_label" "control")
 
         cat >> "$summary_file" << EOF
 ## JVM Benchmarks (JMH)
 
 Graph creation and initialization time (lower is better):
 
-| Framework | Time (ms) | Alloc (KB/op) | vs Metro |
-|-----------|-----------|---------------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_jmh_score_for_ref "$ref_label" "$mode")
-            local alloc=$(extract_jmh_alloc_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
-            local vs_metro="—"
+            local vs_control="—"
 
             if [ -n "$score" ]; then
                 display=$(printf "%.3f" "$score")
-                if [ "$mode" = "metro" ]; then
-                    vs_metro="baseline"
-                elif [ -n "$metro_jvm_score" ] && [ "$metro_jvm_score" != "0" ]; then
-                    vs_metro=$(format_vs_baseline "$score" "$metro_jvm_score")
+                if [ "$mode" = "control" ]; then
+                    vs_control="baseline"
+                elif [ -n "$control_jvm_score" ] && [ "$control_jvm_score" != "0" ]; then
+                    vs_control=$(format_vs_baseline "$score" "$control_jvm_score")
                 fi
             fi
 
-            # Format allocation in KB
-            local display_alloc="N/A"
-            if [ -n "$alloc" ]; then
-                display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
-            fi
-
-            echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -3062,16 +3363,15 @@ EOF
         done
 
         if [ "$has_r8_results" = true ]; then
-            # Get metro R8 score for "vs Metro R8" column
-            local metro_jvm_r8_score=$(extract_jmh_r8_score_for_ref "$ref_label" "metro")
+            local control_jvm_r8_score=$(extract_jmh_r8_score_for_ref "$ref_label" "control")
 
             cat >> "$summary_file" << EOF
 ## JVM Benchmarks - R8 Minified (JMH)
 
 Graph creation and initialization time with R8 optimization (lower is better):
 
-| Framework | Time (ms) | Alloc (KB/op) | vs Metro R8 |
-|-----------|-----------|---------------|-------------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
@@ -3082,23 +3382,16 @@ EOF
                     continue
                 fi
 
-                local alloc=$(extract_jmh_r8_alloc_for_ref "$ref_label" "$mode")
                 local display=$(printf "%.3f" "$score")
-                local vs_metro="—"
+                local vs_control="—"
 
-                if [ "$mode" = "metro" ]; then
-                    vs_metro="baseline"
-                elif [ -n "$metro_jvm_r8_score" ] && [ "$metro_jvm_r8_score" != "0" ]; then
-                    vs_metro=$(format_vs_baseline "$score" "$metro_jvm_r8_score")
+                if [ "$mode" = "control" ]; then
+                    vs_control="baseline"
+                elif [ -n "$control_jvm_r8_score" ] && [ "$control_jvm_r8_score" != "0" ]; then
+                    vs_control=$(format_vs_baseline "$score" "$control_jvm_r8_score")
                 fi
 
-                # Format allocation in KB
-                local display_alloc="N/A"
-                if [ -n "$alloc" ]; then
-                    display_alloc=$(echo "scale=2; $alloc / 1024" | bc 2>/dev/null || echo "N/A")
-                fi
-
-                echo "| $mode | $display | $display_alloc | $vs_metro |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
@@ -3117,63 +3410,61 @@ EOF
         done
 
         if [ "$INCLUDE_MACROBENCHMARK" = true ] || [ "$has_macro_results" = true ]; then
-            # Get metro score for "vs Metro" column
-            local metro_macro_score=$(extract_android_macro_score_for_ref "$ref_label" "metro")
+            local control_macro_score=$(extract_android_macro_score_for_ref "$ref_label" "control")
 
             cat >> "$summary_file" << EOF
 ## Android Benchmarks (Macrobenchmark)
 
 Cold startup time including graph initialization (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
             for mode in "${MODE_ARRAY[@]}"; do
                 local score=$(extract_android_macro_score_for_ref "$ref_label" "$mode")
                 local display="${score:-N/A}"
-                local vs_metro="—"
+                local vs_control="—"
 
                 if [ -n "$score" ]; then
                     display=$(printf "%.0f" "$score")
-                    if [ "$mode" = "metro" ]; then
-                        vs_metro="baseline"
-                    elif [ -n "$metro_macro_score" ] && [ "$metro_macro_score" != "0" ]; then
-                        vs_metro=$(format_vs_baseline "$score" "$metro_macro_score")
+                    if [ "$mode" = "control" ]; then
+                        vs_control="baseline"
+                    elif [ -n "$control_macro_score" ] && [ "$control_macro_score" != "0" ]; then
+                        vs_control=$(format_vs_baseline "$score" "$control_macro_score")
                     fi
                 fi
-                echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+                echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
             done
 
             echo "" >> "$summary_file"
         fi
 
-        # Get metro score for "vs Metro" column
-        local metro_micro_score=$(extract_android_micro_score_for_ref "$ref_label" "metro")
+        local control_micro_score=$(extract_android_micro_score_for_ref "$ref_label" "control")
 
         cat >> "$summary_file" << EOF
 ## Android Benchmarks (Microbenchmark)
 
 Graph creation and initialization time on Android (lower is better):
 
-| Framework | Time (ms) | vs Metro |
-|-----------|-----------|----------|
+| Framework | Time (ms) | vs Control |
+|-----------|-----------|------------|
 EOF
 
         for mode in "${MODE_ARRAY[@]}"; do
             local score=$(extract_android_micro_score_for_ref "$ref_label" "$mode")
             local display="${score:-N/A}"
-            local vs_metro="—"
+            local vs_control="—"
 
             if [ -n "$score" ]; then
                 display=$(printf "%.3f" "$score")
-                if [ "$mode" = "metro" ]; then
-                    vs_metro="baseline"
-                elif [ -n "$metro_micro_score" ] && [ "$metro_micro_score" != "0" ]; then
-                    vs_metro=$(format_vs_baseline "$score" "$metro_micro_score")
+                if [ "$mode" = "control" ]; then
+                    vs_control="baseline"
+                elif [ -n "$control_micro_score" ] && [ "$control_micro_score" != "0" ]; then
+                    vs_control=$(format_vs_baseline "$score" "$control_micro_score")
                 fi
             fi
-            echo "| $mode | $display | $vs_metro |" >> "$summary_file"
+            echo "| $(mode_display_name "$mode") | $display | $vs_control |" >> "$summary_file"
         done
 
         echo "" >> "$summary_file"
@@ -3230,77 +3521,17 @@ build_startup_benchmark_json() {
     echo '  "date": "'$(date -Iseconds)'",'
     echo '  "moduleCount": '"$MODULE_COUNT"','
 
-    # Build metadata
-    local kotlin_version=$(get_toml_version "kotlin")
-    local dagger_version=$(get_toml_version "dagger")
-    local ksp_version=$(get_toml_version "ksp")
-    local kotlin_inject_version=$(get_toml_version "kotlinInject")
-    local anvil_version=$(get_toml_version "anvil")
-    local kotlin_inject_anvil_version=$(get_toml_version "kotlinInject-anvil")
-    local koin_version=$(get_toml_version "koin")
-    local koin_compiler_version=$(get_toml_version "koin-compiler")
-    local jvm_target=$(get_toml_version "jvmTarget")
-
-    # JMH and benchmark versions
-    local jmh_version=$(get_plugin_version "me.champeau.jmh")
-    local benchmark_version=$(get_plugin_version "androidx.benchmark")
-
-    local java_version=$(java -version 2>&1 | head -1 | sed 's/.*"\([^"]*\)".*/\1/' || echo "unknown")
-
-    local os_info=$(uname -s 2>/dev/null || echo "unknown")
-    local cpu_info=""
-    local ram_info=""
-    if [ "$os_info" = "Darwin" ]; then
-        cpu_info=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "unknown")
-        ram_info=$(sysctl -n hw.memsize 2>/dev/null | awk '{printf "%.0f GB", $1/1024/1024/1024}' || echo "unknown")
-    elif [ "$os_info" = "Linux" ]; then
-        cpu_info=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d: -f2 | xargs || echo "unknown")
-        ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
-    fi
-
-    # Android device info (if adb is available)
-    local android_device=""
-    local android_version=""
-    if command -v adb &> /dev/null; then
-        android_device=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r' || echo "")
-        android_version=$(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r' || echo "")
-    fi
-
-    echo '  "metadata": {'
-    echo '    "versions": {'
-    echo '      "kotlin": "'"$kotlin_version"'",'
-    echo '      "dagger": "'"$dagger_version"'",'
-    echo '      "ksp": "'"$ksp_version"'",'
-    echo '      "kotlinInject": "'"$kotlin_inject_version"'",'
-    echo '      "anvil": "'"$anvil_version"'",'
-    echo '      "kotlinInjectAnvil": "'"$kotlin_inject_anvil_version"'",'
-    echo '      "koin": "'"$koin_version"'",'
-    echo '      "koinCompiler": "'"$koin_compiler_version"'"'
-    echo '    },'
-    echo '    "build": {'
-    echo '      "jdk": "'"$java_version"'",'
-    echo '      "jvmTarget": "'"$jvm_target"'",'
-    echo '      "jmhPlugin": "'"$jmh_version"'",'
-    echo '      "androidxBenchmark": "'"$benchmark_version"'"'
-    echo '    },'
-    echo '    "system": {'
-    echo '      "os": "'"$os_info"'",'
-    echo '      "cpu": "'"$cpu_info"'",'
-    echo '      "ram": "'"$ram_info"'"'
-    echo '    },'
-    echo '    "android": {'
-    echo '      "device": "'"$android_device"'",'
-    echo '      "version": "'"$android_version"'"'
-    echo '    }'
-    echo '  },'
+    echo '  "metadata":'
+    build_benchmark_metadata_json "$benchmark_type"
+    echo ','
 
     # Refs info
     echo '  "refs": {'
     local ref1_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref1_label}/commit-info.txt" 2>/dev/null || echo "unknown")
-    echo '    "ref1": { "label": "'"$ref1_label"'", "commit": "'"$ref1_commit"'" }'
+    echo '    "ref1": { "label": '"$(json_quote "$ref1_label")"', "commit": '"$(json_quote "$ref1_commit")"' }'
     if [ -n "$ref2_label" ]; then
         local ref2_commit=$(cat "$RESULTS_DIR/${TIMESTAMP}/${ref2_label}/commit-info.txt" 2>/dev/null || echo "unknown")
-        echo '    ,"ref2": { "label": "'"$ref2_label"'", "commit": "'"$ref2_commit"'" }'
+        echo '    ,"ref2": { "label": '"$(json_quote "$ref2_label")"', "commit": '"$(json_quote "$ref2_commit")"' }'
     fi
     echo '  },'
 
@@ -3325,11 +3556,12 @@ build_startup_benchmark_json() {
             local mode_key
             local mode_name
             case "$mode" in
+                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                 *) continue ;;
             esac
 
@@ -3389,11 +3621,12 @@ build_startup_benchmark_json() {
                 local mode_key
                 local mode_name
                 case "$mode" in
+                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -3459,11 +3692,12 @@ build_startup_benchmark_json() {
                 local mode_key
                 local mode_name
                 case "$mode" in
+                    "control") mode_key="control"; mode_name="Control*" ;;
                     "metro") mode_key="metro"; mode_name="Metro" ;;
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject-anvil" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                     *) continue ;;
                 esac
 
@@ -3512,11 +3746,12 @@ build_startup_benchmark_json() {
             local mode_key
             local mode_name
             case "$mode" in
+                "control") mode_key="control"; mode_name="Control*" ;;
                 "metro") mode_key="metro"; mode_name="Metro" ;;
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
                 *) continue ;;
             esac
 
@@ -3563,11 +3798,12 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
+            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -3623,11 +3859,12 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
+            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -3680,11 +3917,12 @@ build_startup_benchmark_json() {
         local mode_key
         local mode_name
         case "$mode" in
+            "control") mode_key="control"; mode_name="Control*" ;;
             "metro") mode_key="metro"; mode_name="Metro" ;;
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin" ;;
+                "koin") mode_key="koin"; mode_name="Koin**" ;;
             *) continue ;;
         esac
 
@@ -3760,7 +3998,7 @@ generate_html_report() {
     <title>Metro Startup Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --baseline-color: #607D8B; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -3787,10 +4025,10 @@ generate_html_report() {
         .worse { color: #e53935; }
         .baseline-select { cursor: pointer; width: 30px; }
         .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
-        .baseline-radio.selected { border-color: var(--metro-color); background: var(--metro-color); }
-        .baseline-row { background: #f0fdf4; }
+        .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
+        .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--metro-color); font-weight: 500; }
+        .vs-baseline.baseline { color: var(--baseline-color); font-weight: 500; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .diff { font-weight: 500; }
@@ -3819,6 +4057,11 @@ generate_html_report() {
         <div class="refs-info" id="refs-info"></div>
         <div id="benchmarks"></div>
         <div id="binaryMetrics"></div>
+        <div class="benchmark-section">
+            <h2>Methodology notes</h2>
+            <p><strong>*</strong> Control performs no dependency injection or graph processing and returns a fresh empty component.</p>
+            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
+        </div>
         <div id="metadata"></div>
     </div>
 <script>
@@ -3829,10 +4072,12 @@ HTMLHEAD
 
     cat >> "$html_file" << 'HTMLTAIL'
 ;
-const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
 
 // State for selectable baseline
-let selectedBaseline = 'metro';
+let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'control')
+    ? 'control'
+    : (benchmarkData.benchmarks[0]?.results[0]?.key || 'control');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -3885,7 +4130,7 @@ function renderSummaryStats() {
         const metroResult = benchmark.results.find(r => r.key === 'metro');
         if (!metroResult || !metroResult.ref1) return;
         benchmark.results.forEach(result => {
-            if (result.key !== 'metro' && result.ref1) {
+            if (Object.hasOwn(totalSpeedup, result.key) && result.ref1) {
                 totalSpeedup[result.key] += result.ref1 / metroResult.ref1;
                 counts[result.key]++;
             }
@@ -3943,8 +4188,9 @@ function renderChart(benchmark, idx) {
 
 function renderTable(benchmark, idx) {
     const tbody = document.getElementById(`table-${idx}`);
-    const baselineRef1 = benchmark.results.find(r => r.key === selectedBaseline)?.ref1;
-    const baselineRef2 = benchmark.results.find(r => r.key === selectedBaseline)?.ref2;
+    const baselineResult = benchmark.results.find(r => r.key === selectedBaseline);
+    const baselineRef1 = baselineResult?.ref1;
+    const baselineRef2 = baselineResult?.ref2 ?? baselineResult?.ref1;
     // Get metro's ref2 value for comparing non-metro frameworks that weren't re-run
     const metroRef2 = benchmark.results.find(r => r.key === 'metro')?.ref2;
     let html = '';
@@ -4004,6 +4250,43 @@ function renderMetadata() {
                     </dl>
                 </div>
                 <div class="metadata-group">
+                    <h3>Workload</h3>
+                    <dl>
+                        <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
+                        <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
+                        <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'}</dd>
+                        <dt>Layers</dt><dd>${m.workload?.modulesByLayer ? JSON.stringify(m.workload.modulesByLayer) : '—'}</dd>
+                        <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
+                        <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'}</dd>
+                        <dt>Contribution kinds</dt><dd>${m.workload?.contributionsByKind ? JSON.stringify(m.workload.contributionsByKind) : '—'}</dd>
+                        <dt>Subcomponents</dt><dd>${m.workload?.subcomponents ? JSON.stringify(m.workload.subcomponents) : '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Effective Options</h3>
+                    <dl>
+                        <dt>Suites</dt><dd>${m.options?.benchmarkType || '—'}</dd>
+                        <dt>Modes</dt><dd>${m.options?.modes?.join(', ') || '—'}</dd>
+                        <dt>Graph sharding</dt><dd>${m.options?.graphSharding ? `${m.options.graphSharding.requested} (effective ${m.options.graphSharding.effective})` : '—'}</dd>
+                        <dt>Switching providers</dt><dd>${m.options?.switchingProviders ?? '—'}</dd>
+                        <dt>Runtime tracing</dt><dd>${m.options?.runtimeTracing ?? '—'}</dd>
+                        <dt>Macrobenchmark</dt><dd>${m.options?.includeMacrobenchmark ?? '—'}</dd>
+                        <dt>JMH GC profiler</dt><dd>${m.options?.jmhGcProfiler ?? '—'}</dd>
+                        <dt>R8 runtime program input</dt><dd>${m.options?.r8RuntimeClasspathAsProgramInput ?? '—'}</dd>
+                        <dt>Dagger fastInit</dt><dd>${m.options?.dagger?.fastInit || '—'}</dd>
+                        <dt>Dagger validation</dt><dd>${m.options?.dagger ? JSON.stringify(m.options.dagger) : '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
+                    <h3>Repository</h3>
+                    <dl>
+                        <dt>Commit</dt><dd>${m.repository?.commit || '—'}</dd>
+                        <dt>Branch</dt><dd>${m.repository?.branch || '—'}</dd>
+                        <dt>Dirty</dt><dd>${m.repository?.dirty ?? '—'}</dd>
+                        <dt>Dirty diff fingerprint</dt><dd>${m.repository?.dirtyDiffFingerprint || '—'}</dd>
+                    </dl>
+                </div>
+                <div class="metadata-group">
                     <h3>System Info</h3>
                     <dl>
                         <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
@@ -4015,8 +4298,13 @@ function renderMetadata() {
                 <div class="metadata-group">
                     <h3>Android Device</h3>
                     <dl>
+                        <dt>Serial</dt><dd>${m.android?.serial || '—'}</dd>
+                        <dt>Manufacturer</dt><dd>${m.android?.manufacturer || '—'}</dd>
                         <dt>Device</dt><dd>${m.android?.device || '—'}</dd>
                         <dt>Android Version</dt><dd>${m.android?.version || '—'}</dd>
+                        <dt>SDK</dt><dd>${m.android?.sdk || '—'}</dd>
+                        <dt>ABI</dt><dd>${m.android?.abi || '—'}</dd>
+                        <dt>Build Fingerprint</dt><dd>${m.android?.buildFingerprint || '—'}</dd>
                     </dl>
                 </div>
                 ` : ''}
@@ -4132,13 +4420,16 @@ function renderBinaryMetrics() {
     if (bm.r8Jars) bm.r8Jars.forEach(j => { if (!frameworks.find(f => f.key === j.key)) frameworks.push({key: j.key, name: j.framework}); });
     if (bm.apks) bm.apks.forEach(a => { if (!frameworks.find(f => f.key === a.key)) frameworks.push({key: a.key, name: a.framework}); });
 
-    // Default baseline to metro if available
+    // Keep Control as the default baseline when it is available.
     if (!frameworks.find(f => f.key === selectedBaseline)) {
-        selectedBaseline = frameworks[0]?.key || 'metro';
+        selectedBaseline = frameworks[0]?.key || 'control';
     }
 
     const showVsBaseline = frameworks.length > 1;
-    const getBaseline = (items, refKey) => items?.find(i => i.key === selectedBaseline)?.[refKey];
+    const getBaseline = (items, refKey) => {
+        const item = items?.find(i => i.key === selectedBaseline);
+        return item?.[refKey] ?? (refKey === 'ref2' ? item?.ref1 : null);
+    };
 
     let html = '';
 
@@ -4426,10 +4717,7 @@ run_single() {
 
     # Run benchmarks for the ref (all modes, not second ref)
     # Pass use_current_state as 5th arg to skip checkout
-    run_benchmarks_for_ref "$SINGLE_REF" "$benchmark_type" "$ref_label" false "$use_current_state" || {
-        print_error "Failed to run benchmarks for $SINGLE_REF"
-        exit 1
-    }
+    run_benchmarks_for_ref "$SINGLE_REF" "$benchmark_type" "$ref_label" false "$use_current_state"
 
     # Generate summary
     generate_single_summary "$ref_label" "$benchmark_type"
@@ -4512,16 +4800,10 @@ run_compare() {
     fi
 
     # Run benchmarks for ref1 (baseline) - run all modes
-    run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false || {
-        print_error "Failed to run benchmarks for $COMPARE_REF1"
-        exit 1
-    }
+    run_benchmarks_for_ref "$COMPARE_REF1" "$benchmark_type" "$ref1_label" false
 
     # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
-    run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" true || {
-        print_error "Failed to run benchmarks for $COMPARE_REF2"
-        exit 1
-    }
+    run_benchmarks_for_ref "$COMPARE_REF2" "$benchmark_type" "$ref2_label" true
 
     # Generate comparison summary
     generate_comparison_summary "$ref1_label" "$ref2_label" "$benchmark_type"
@@ -4547,6 +4829,10 @@ main() {
                 ;;
             --count)
                 MODULE_COUNT="$2"
+                shift 2
+                ;;
+            --seed)
+                WORKLOAD_SEED="$2"
                 shift 2
                 ;;
             --timestamp)
@@ -4609,6 +4895,7 @@ main() {
         esac
     done
 
+    validate_benchmark_inputs
     validate_runtime_tracing_options
 
     mkdir -p "$RESULTS_DIR/${TIMESTAMP}"
@@ -4647,7 +4934,8 @@ main() {
             ;;
         summary)
             # Just regenerate the summary from existing results
-            generate_summary
+            validate_result_completeness "$RESULTS_DIR/${TIMESTAMP}" "$COMPARE_BENCHMARK_TYPE" "$MODES"
+            generate_summary "$COMPARE_BENCHMARK_TYPE"
             print_final_results "$RESULTS_DIR/${TIMESTAMP}"
             ;;
         single)
