@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785278853567,
+  "lastUpdate": 1785295417078,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19936,6 +19936,62 @@ window.BENCHMARK_DATA = {
             "value": 19997.214,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +3.35%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c237a735~1",
+          "message": "[before] Fix JS box tests (#2597)",
+          "timestamp": "2026-07-29T02:51:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c237a735806a682ceffc7b850dd9bdba7af833a6"
+        },
+        "date": 1785295417078,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19003.167999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "c237a735806a682ceffc7b850dd9bdba7af833a6",
+          "message": "[after] Fix JS box tests (#2597)",
+          "timestamp": "2026-07-29T02:51:11Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/c237a735806a682ceffc7b850dd9bdba7af833a6"
+        },
+        "date": 1785295417079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18831.316,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.90%"
           }
         ]
       }
