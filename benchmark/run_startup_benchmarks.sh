@@ -366,7 +366,7 @@ mode_display_name() {
         dagger-ksp) echo "Dagger (KSP)" ;;
         dagger-kapt) echo "Dagger (KAPT)" ;;
         kotlin-inject-anvil) echo "kotlin-inject" ;;
-        koin) echo "Koin**" ;;
+        koin) echo "Koin" ;;
         *) return 1 ;;
     esac
 }
@@ -1462,7 +1462,7 @@ generate_summary() {
 **Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 
-**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
+**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
 EOF
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
@@ -1863,11 +1863,11 @@ generate_non_ref_html_report() {
         <div class="subtitle" id="date"></div>
     </div>
     <div class="container">
-        <div id="benchmarks"></div>
         <div class="benchmark-section">
-            <h2>Methodology notes</h2>
-            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
+            <h2>Framework Scope</h2>
+            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
         </div>
+        <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
     </div>
 <script>
@@ -1957,13 +1957,13 @@ function chartGroupsFor(benchmark) {
     }
     const compiledKeys = new Set(['metro', 'dagger_ksp', 'dagger_kapt']);
     const compiledResults = benchmark.results.filter(result => compiledKeys.has(result.key));
-    const slowerResults = benchmark.results.filter(result => !compiledKeys.has(result.key));
-    if (!compiledResults.length || !slowerResults.length) {
+    const hasOutsizedResults = benchmark.results.some(result => !compiledKeys.has(result.key));
+    if (!compiledResults.length || !hasOutsizedResults) {
         return [{ label: '', results: benchmark.results }];
     }
     return [
-        { label: 'Metro and Dagger', results: compiledResults },
-        { label: 'kotlin-inject and Koin', results: slowerResults },
+        { label: 'Metro and Dagger detail', results: compiledResults },
+        { label: 'All frameworks (full scale)', results: benchmark.results },
     ];
 }
 
@@ -1973,7 +1973,7 @@ function renderBenchmarks() {
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         const chartGroups = chartGroupsFor(benchmark);
         const splitNote = chartGroups.length > 1
-            ? '<p class="chart-note">Android is split into two charts because kotlin-inject and Koin take roughly two orders of magnitude longer on this workload. A single linear axis would make the differences among Metro and Dagger unreadable.</p>'
+            ? '<p class="chart-note">Android is shown twice at different linear scales. The first chart is a detail view for Metro and Dagger. The second repeats all frameworks at the full scale required by kotlin-inject and Koin\'s outsized times on this workload.</p>'
             : '';
         const chartsHtml = chartGroups.map((group, groupIdx) => `
             ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
@@ -2182,7 +2182,7 @@ build_non_ref_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -2246,7 +2246,7 @@ build_non_ref_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                    "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -2313,7 +2313,7 @@ build_non_ref_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                    "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -2357,7 +2357,7 @@ build_non_ref_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -2699,7 +2699,7 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $MODES
 **Modes benchmarked on ref2:** ${ref2_modes:-$baseline_mode}
 
-**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
+**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
 
 ## Git Refs
 
@@ -3412,7 +3412,7 @@ generate_single_summary() {
 **Modes:** $MODES
 **Commit:** $ref_commit
 
-**Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.
+**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
 
 EOF
 
@@ -3659,7 +3659,7 @@ build_startup_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -3723,7 +3723,7 @@ build_startup_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                    "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -3793,7 +3793,7 @@ build_startup_benchmark_json() {
                     "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                     "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                     "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                    "koin") mode_key="koin"; mode_name="Koin**" ;;
+                    "koin") mode_key="koin"; mode_name="Koin" ;;
                     *) continue ;;
                 esac
 
@@ -3846,7 +3846,7 @@ build_startup_benchmark_json() {
                 "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
                 "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
                 "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-                "koin") mode_key="koin"; mode_name="Koin**" ;;
+                "koin") mode_key="koin"; mode_name="Koin" ;;
                 *) continue ;;
             esac
 
@@ -3897,7 +3897,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-            "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -3957,7 +3957,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-            "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -4014,7 +4014,7 @@ build_startup_benchmark_json() {
             "dagger-ksp") mode_key="dagger_ksp"; mode_name="Dagger (KSP)" ;;
             "dagger-kapt") mode_key="dagger_kapt"; mode_name="Dagger (KAPT)" ;;
             "kotlin-inject-anvil") mode_key="kotlin_inject_anvil"; mode_name="kotlin-inject" ;;
-            "koin") mode_key="koin"; mode_name="Koin**" ;;
+            "koin") mode_key="koin"; mode_name="Koin" ;;
             *) continue ;;
         esac
 
@@ -4149,12 +4149,12 @@ generate_html_report() {
     </div>
     <div class="container">
         <div class="refs-info" id="refs-info"></div>
+        <div class="benchmark-section">
+            <h2>Framework Scope</h2>
+            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+        </div>
         <div id="benchmarks"></div>
         <div id="binaryMetrics"></div>
-        <div class="benchmark-section">
-            <h2>Methodology notes</h2>
-            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation. Its Android startup measurements may show the same or similar slowdown as kotlin-inject.</p>
-        </div>
         <div id="metadata"></div>
     </div>
 <script>
@@ -4272,13 +4272,13 @@ function chartGroupsFor(benchmark) {
     }
     const compiledKeys = new Set(['metro', 'dagger_ksp', 'dagger_kapt']);
     const compiledResults = benchmark.results.filter(result => compiledKeys.has(result.key));
-    const slowerResults = benchmark.results.filter(result => !compiledKeys.has(result.key));
-    if (!compiledResults.length || !slowerResults.length) {
+    const hasOutsizedResults = benchmark.results.some(result => !compiledKeys.has(result.key));
+    if (!compiledResults.length || !hasOutsizedResults) {
         return [{ label: '', results: benchmark.results }];
     }
     return [
-        { label: 'Metro and Dagger', results: compiledResults },
-        { label: 'kotlin-inject and Koin', results: slowerResults },
+        { label: 'Metro and Dagger detail', results: compiledResults },
+        { label: 'All frameworks (full scale)', results: benchmark.results },
     ];
 }
 
@@ -4289,7 +4289,7 @@ function renderBenchmarks() {
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         const chartGroups = chartGroupsFor(benchmark);
         const splitNote = chartGroups.length > 1
-            ? '<p class="chart-note">Android is split into two charts because kotlin-inject and Koin take roughly two orders of magnitude longer on this workload. A single linear axis would make the differences among Metro and Dagger unreadable.</p>'
+            ? '<p class="chart-note">Android is shown twice at different linear scales. The first chart is a detail view for Metro and Dagger. The second repeats all frameworks at the full scale required by kotlin-inject and Koin\'s outsized times on this workload.</p>'
             : '';
         const chartsHtml = chartGroups.map((group, groupIdx) => `
             ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
