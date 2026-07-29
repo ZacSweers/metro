@@ -58,6 +58,7 @@ RERUN_NON_METRO=false
 INCLUDE_BASELINES=false
 # Profile options to pass to gradle-profiler (e.g., "jfr", "async-profiler-heap")
 PROFILE_OPTIONS=()
+PROFILER_GRADLE_USER_HOME="${BENCHMARK_GRADLE_USER_HOME:-$SCRIPT_DIR/tmp/gradle-profiler-home}"
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
@@ -301,11 +302,37 @@ collect_build_metadata() {
         ram_info=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
     fi
 
-    # Gradle daemon JVM args (from gradle.properties or default)
+    # Record the effective Gradle daemon JVM args reported by Gradle Profiler.
     local daemon_jvm_args=""
-    if [ -f "$repo_root/gradle.properties" ]; then
-        daemon_jvm_args=$(grep "org.gradle.jvmargs" "$repo_root/gradle.properties" 2>/dev/null | cut -d= -f2- || echo "")
+    local daemon_jvm_args_source="benchmark/gradle.properties"
+    local representative_profile_log
+    representative_profile_log=$(find "$output_dir" -name profile.log -type f -print | sort | head -1)
+    if [ -n "$representative_profile_log" ]; then
+        daemon_jvm_args=$(
+            awk '
+                /^JVM args:$/ {
+                    collecting = 1
+                    next
+                }
+                /^Gradle args:$/ {
+                    exit
+                }
+                collecting && /^  / {
+                    sub(/^  /, "")
+                    print
+                }
+            ' "$representative_profile_log" | paste -sd ' ' -
+        )
+        daemon_jvm_args_source="Gradle Profiler profile.log"
+    elif [ -f "$SCRIPT_DIR/gradle.properties" ]; then
+        daemon_jvm_args=$(grep "^org.gradle.jvmargs=" "$SCRIPT_DIR/gradle.properties" 2>/dev/null | cut -d= -f2- || echo "")
     fi
+    local daemon_jvm_args_json
+    daemon_jvm_args_json=$(json_quote "$daemon_jvm_args")
+    local daemon_jvm_args_source_json
+    daemon_jvm_args_source_json=$(json_quote "$daemon_jvm_args_source")
+    local profiler_gradle_user_home_json
+    profiler_gradle_user_home_json=$(json_quote "$PROFILER_GRADLE_USER_HOME")
 
     # Write JSON
     cat > "$metadata_file" << EOF
@@ -370,7 +397,9 @@ collect_build_metadata() {
     "os": "$os_info",
     "cpu": "$cpu_info",
     "ram": "$ram_info",
-    "daemonJvmArgs": "$daemon_jvm_args"
+    "daemonJvmArgs": $daemon_jvm_args_json,
+    "daemonJvmArgsSource": $daemon_jvm_args_source_json,
+    "gradleUserHome": $profiler_gradle_user_home_json
   },
   "timestamp": "$(date -Iseconds)"
 }
@@ -472,6 +501,37 @@ validate_benchmark_csv() {
     fi
 }
 
+validate_profiler_log() {
+    local profile_log="$1"
+    local mode="$2"
+    local scenario="$3"
+
+    if [ ! -f "$profile_log" ]; then
+        print_error "Missing profiler log for $mode/$scenario: $profile_log" >&2
+        return 1
+    fi
+
+    if grep -q "Publishing Build Scan" "$profile_log"; then
+        print_error "Develocity published a build scan during $mode/$scenario" >&2
+        return 1
+    fi
+
+    if [ "$mode" = "koin" ]; then
+        local unexpected_strict_safety_projects
+        unexpected_strict_safety_projects=$(
+            sed -n 's/.*Auto-enabling strictSafety on \(:[^ ]*\).*/\1/p' "$profile_log" \
+                | sort -u \
+                | grep -v '^:app:component$' \
+                || true
+        )
+        if [ -n "$unexpected_strict_safety_projects" ]; then
+            print_error "Koin strictSafety was auto-enabled outside :app:component during $scenario:" >&2
+            echo "$unexpected_strict_safety_projects" >&2
+            return 1
+        fi
+    fi
+}
+
 # Function to run benchmark scenarios for a specific mode
 run_scenarios() {
     local mode=$1
@@ -553,6 +613,7 @@ run_scenarios() {
     # Create mode-specific results directory to avoid overwrites
     local mode_results_dir="$RESULTS_DIR/${mode_name}_${TIMESTAMP}"
     mkdir -p "$mode_results_dir"
+    mkdir -p "$PROFILER_GRADLE_USER_HOME"
 
     print_status "Running scenarios for $mode${processor:+ with $processor}: ${scenarios[*]}"
     print_status "Results will be saved to: $mode_results_dir"
@@ -578,12 +639,12 @@ run_scenarios() {
             done
         fi
 
-        $profiler_cmd \
+        "$profiler_cmd" \
             --benchmark \
             --measure-gc \
             --scenario-file benchmark.scenarios \
             --output-dir "$scenario_output_dir" \
-            --gradle-user-home ~/.gradle \
+            --gradle-user-home "$PROFILER_GRADLE_USER_HOME" \
             ${profile_args[@]+"${profile_args[@]}"} \
             "$scenario" \
             || {
@@ -592,6 +653,9 @@ run_scenarios() {
             }
 
         if ! validate_benchmark_csv "$scenario_output_dir/benchmark.csv" "$mode_name" "$scenario"; then
+            return 1
+        fi
+        if ! validate_profiler_log "$scenario_output_dir/profile.log" "$mode_name" "$scenario"; then
             return 1
         fi
 
@@ -801,13 +865,13 @@ mode_to_prefix() {
 
 mode_display_name() {
     case "$1" in
-        control) echo "Control*" ;;
+        control) echo "Control" ;;
         metro) echo "Metro" ;;
         metro-noop) echo "Metro-NOOP" ;;
         dagger-ksp) echo "Dagger (KSP)" ;;
         dagger-kapt) echo "Dagger (KAPT)" ;;
         kotlin-inject-anvil) echo "kotlin-inject" ;;
-        koin) echo "Koin**" ;;
+        koin) echo "Koin" ;;
         *)
             print_error "Unknown benchmark mode: $1" >&2
             return 1
@@ -1257,6 +1321,10 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $modes
 **Modes benchmarked on ref2:** ${ref2_modes:-none}
 
+**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+
+**ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
+
 ## Git Refs
 
 | Ref | Commit |
@@ -1396,12 +1464,6 @@ EOF
     done
 
     cat >> "$summary_file" << EOF
-*Control performs no dependency injection or graph processing, including in the Graph Processing scenario.
-
-**Koin does not fully validate the dependency graph or generate its complete implementation.
-
-† Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.
-
 ## Raw Results
 
 Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`
@@ -1509,14 +1571,14 @@ generate_html_report() {
     </div>
     <div class="container">
         <div class="refs-info" id="refs-info"></div>
+        <div class="notes-section">
+            <h2>Framework Scope</h2>
+            <p>Control applies no dependency injection tooling and performs no graph work.</p>
+            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+            <p>Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.</p>
+        </div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
-        <div class="notes-section">
-            <h2>Framework Notes</h2>
-            <p><strong>*</strong> Control performs no dependency injection or graph processing, including in the Graph Processing scenario.</p>
-            <p><strong>**</strong> Koin does not fully validate the dependency graph or generate its complete implementation.</p>
-            <p><strong>†</strong> Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.</p>
-        </div>
     </div>
 <script>
 const benchmarkData =
@@ -1527,7 +1589,7 @@ HTMLHEAD
     cat >> "$html_file" << 'HTMLTAIL'
 ;
 const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
-const displayNames = { 'control': 'Control*', 'metro': 'Metro', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin**' };
+const displayNames = { 'control': 'Control', 'metro': 'Metro', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
 
 // State for selectable baseline
 const firstBenchmarkResults = benchmarkData.benchmarks[0]?.results || [];
@@ -1767,6 +1829,8 @@ function renderMetadata() {
                     <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
                     <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
                     <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
+                    <dt>JVM Args Source</dt><dd>${m.system?.daemonJvmArgsSource || '—'}</dd>
+                    <dt>Gradle User Home</dt><dd>${m.system?.gradleUserHome || '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -2064,6 +2128,10 @@ generate_single_summary() {
 **Modes:** $modes
 **Commit:** $ref_commit
 
+**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+
+**ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
+
 EOF
 
     local -a mode_array
@@ -2138,12 +2206,6 @@ EOF
     done
 
     cat >> "$summary_file" << EOF
-*Control performs no dependency injection or graph processing, including in the Graph Processing scenario.
-
-**Koin does not fully validate the dependency graph or generate its complete implementation.
-
-† Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module. Control and Metro rebuild the same Kotlin compile tasks, so their ABI result should not be interpreted as Metro compiling plain Kotlin faster.
-
 ## Raw Results
 
 Results are stored in: \`$RESULTS_DIR/${TIMESTAMP}/\`

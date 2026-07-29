@@ -760,6 +760,10 @@ plugins {
   alias(libs.plugins.koin.compiler)
 }
 
+koinCompiler {
+  strictSafety = false
+}
+
 val enableLinux = findProperty("benchmark.native.linux")?.toString()?.toBoolean() ?: false
 val enableWindows = findProperty("benchmark.native.windows")?.toString()?.toBoolean() ?: false
 
@@ -791,6 +795,10 @@ $koinCommon
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.koin.compiler)
+}
+
+koinCompiler {
+  strictSafety = false
 }
 
 dependencies {
@@ -1551,8 +1559,8 @@ import dev.zacsweers.metro.benchmark.core.foundation.Initializer
 
 /**
  * Per-Gradle-module Koin module. `@ComponentScan` narrows to this package so the Koin compiler
- * plugin generates a small per-module registration lambda. The app's `@KoinApplication` class
- * enumerates all of these in its `modules = [...]` list.
+ * plugin generates a small per-module registration lambda. The root application aggregator
+ * enumerates all of these modules.
  */
 @Module
 @ComponentScan("$packageName")
