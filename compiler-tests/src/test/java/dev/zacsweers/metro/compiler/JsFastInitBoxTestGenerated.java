@@ -2239,6 +2239,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt")
+    public void testMembersInjectorDoesNotDuplicateQualifierAnnotations() {
+      run("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt");
+    }
+
+    @Test
     @TestMetadata("MembersInjectorRespectMultibindingQualifier.kt")
     public void testMembersInjectorRespectMultibindingQualifier() {
       run("MembersInjectorRespectMultibindingQualifier.kt");

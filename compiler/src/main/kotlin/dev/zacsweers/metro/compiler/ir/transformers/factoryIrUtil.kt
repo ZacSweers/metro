@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -205,13 +206,16 @@ private fun transformStaticCreateFunction(
     if (copyQualifiers) {
       for ((i, param) in regularParameters.withIndex()) {
         val sourceParam = parameters.regularParameters[i]
-        sourceParam.typeKey.qualifier?.let { qualifier ->
-          with(context) {
-            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-              param,
-              listOf(qualifier.ir.deepCopyWithSymbols()),
-            )
-          }
+        val qualifier = sourceParam.typeKey.qualifier ?: continue
+        val qualifierAlreadyPresent =
+          param.annotationsCompat().any { existing -> IrAnnotation(existing) == qualifier }
+        if (qualifierAlreadyPresent) continue
+
+        with(context) {
+          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+            param,
+            listOf(qualifier.ir.deepCopyWithSymbols()),
+          )
         }
       }
     }
