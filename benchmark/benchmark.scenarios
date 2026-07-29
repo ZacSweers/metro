@@ -84,7 +84,7 @@ plain_non_abi_change {
 
 raw_compilation {
     title = "Raw Compilation"
-    warm-ups = 5
+    warm-ups = 10
     iterations = 10
 
     # Metro/Control/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
@@ -95,7 +95,7 @@ raw_compilation {
 
 raw_compilation_ksp {
     title = "Raw Compilation"
-    warm-ups = 5
+    warm-ups = 10
     iterations = 10
 
     # kotlin-inject-anvil: KSP generates Kotlin, rerun only app:component tasks (not all modules)
@@ -106,7 +106,7 @@ raw_compilation_ksp {
 
 raw_compilation_java {
     title = "Raw Compilation"
-    warm-ups = 5
+    warm-ups = 10
     iterations = 10
 
     # Dagger KSP/KAPT: Generates Java code, rerun only app:component tasks (not all modules)

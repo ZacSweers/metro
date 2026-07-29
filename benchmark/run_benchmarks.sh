@@ -63,6 +63,9 @@ BENCHMARK_MIN_IDLE_PERCENT="${BENCHMARK_MIN_IDLE_PERCENT:-85}"
 BENCHMARK_IDLE_SAMPLES="${BENCHMARK_IDLE_SAMPLES:-3}"
 BENCHMARK_IDLE_TIMEOUT_SECONDS="${BENCHMARK_IDLE_TIMEOUT_SECONDS:-600}"
 BENCHMARK_COOLDOWN_SECONDS="${BENCHMARK_COOLDOWN_SECONDS:-30}"
+BENCHMARK_INCREMENTAL_WARMUP_COUNT=5
+BENCHMARK_GRAPH_PROCESSING_WARMUP_COUNT=10
+BENCHMARK_CLEAN_WARMUP_COUNT=2
 BENCHMARK_MEASURED_SAMPLE_COUNT=10
 BENCHMARK_MAX_RELATIVE_MAD_PERCENT=10
 BENCHMARK_MAX_HALF_DRIFT_PERCENT=10
@@ -417,6 +420,8 @@ collect_build_metadata() {
     "cooldownSeconds": $BENCHMARK_COOLDOWN_SECONDS
   },
   "stability": {
+    "incrementalWarmups": $BENCHMARK_INCREMENTAL_WARMUP_COUNT,
+    "graphProcessingWarmups": $BENCHMARK_GRAPH_PROCESSING_WARMUP_COUNT,
     "measuredSamples": $BENCHMARK_MEASURED_SAMPLE_COUNT,
     "maxRelativeMadPercent": $BENCHMARK_MAX_RELATIVE_MAD_PERCENT,
     "maxHalfDriftPercent": $BENCHMARK_MAX_HALF_DRIFT_PERCENT,
@@ -502,28 +507,52 @@ generate_projects() {
     fi
 }
 
+expected_warmup_count_for_scenario() {
+    case "$1" in
+        raw_compilation|raw_compilation_ksp|raw_compilation_java)
+            echo "$BENCHMARK_GRAPH_PROCESSING_WARMUP_COUNT"
+            ;;
+        clean_build)
+            echo "$BENCHMARK_CLEAN_WARMUP_COUNT"
+            ;;
+        *)
+            echo "$BENCHMARK_INCREMENTAL_WARMUP_COUNT"
+            ;;
+    esac
+}
+
 validate_benchmark_csv() {
     local csv_file="$1"
     local mode="$2"
     local scenario="$3"
+    local expected_warmups
+    expected_warmups=$(expected_warmup_count_for_scenario "$scenario")
 
     if [ ! -f "$csv_file" ]; then
         print_error "Missing benchmark result for $mode/$scenario: $csv_file" >&2
         return 1
     fi
 
-    if ! awk -F, '
+    if ! awk -F, -v expected_warmups="$expected_warmups" -v expected_measured="$BENCHMARK_MEASURED_SAMPLE_COUNT" '
+        /^warm-up build/ {
+            warmups++
+            if ($1 != "warm-up build #" warmups) {
+                invalid = 1
+            }
+        }
         /^measured build/ {
             measured++
-            if ($2 !~ /^[0-9]+([.][0-9]+)?$/ || $3 !~ /^[0-9]+([.][0-9]+)?$/) {
+            if ($1 != "measured build #" measured ||
+                $2 !~ /^[0-9]+([.][0-9]+)?$/ ||
+                $3 !~ /^[0-9]+([.][0-9]+)?$/) {
                 invalid = 1
             }
         }
         END {
-            exit !(measured > 0 && !invalid)
+            exit !(warmups == expected_warmups && measured == expected_measured && !invalid)
         }
     ' "$csv_file"; then
-        print_error "Benchmark result for $mode/$scenario has no complete measured build rows: $csv_file" >&2
+        print_error "Benchmark result for $mode/$scenario has unexpected warm-up or measured build rows: $csv_file" >&2
         return 1
     fi
 }
@@ -560,9 +589,26 @@ validate_profiler_log() {
     local profile_log="$1"
     local mode="$2"
     local scenario="$3"
+    local expected_warmups
+    local expected_executions
+    local execution_count
+    expected_warmups=$(expected_warmup_count_for_scenario "$scenario")
+    expected_executions=$((expected_warmups + BENCHMARK_MEASURED_SAMPLE_COUNT))
 
     if [ ! -f "$profile_log" ]; then
         print_error "Missing profiler log for $mode/$scenario: $profile_log" >&2
+        return 1
+    fi
+
+    if ! grep -Fq "Warm-ups: $expected_warmups" "$profile_log" ||
+        ! grep -Fq "Builds: $BENCHMARK_MEASURED_SAMPLE_COUNT" "$profile_log"; then
+        print_error "Profiler log for $mode/$scenario does not record the expected iteration counts" >&2
+        return 1
+    fi
+
+    execution_count=$(grep -c '^Execution time ' "$profile_log" || true)
+    if [ "$execution_count" -ne "$expected_executions" ]; then
+        print_error "Profiler log for $mode/$scenario contains $execution_count executions; expected $expected_executions" >&2
         return 1
     fi
 
@@ -1964,6 +2010,8 @@ function renderMetadata() {
                     <dt>Minimum CPU Idle</dt><dd>${m.system?.minimumIdleCpuPercent ?? '—'}%</dd>
                     <dt>Stable Idle Samples</dt><dd>${m.system?.idleSamplesRequired ?? '—'}</dd>
                     <dt>Iteration Cooldown</dt><dd>${m.system?.cooldownSeconds ?? '—'} seconds</dd>
+                    <dt>Incremental Warmups</dt><dd>${m.stability?.incrementalWarmups ?? '—'}</dd>
+                    <dt>Graph Processing Warmups</dt><dd>${m.stability?.graphProcessingWarmups ?? '—'}</dd>
                     <dt>Measured Samples</dt><dd>${m.stability?.measuredSamples ?? '—'}</dd>
                     <dt>Maximum Relative MAD</dt><dd>${m.stability?.maxRelativeMadPercent ?? '—'}%</dd>
                     <dt>Maximum Half-Run Drift</dt><dd>${m.stability?.maxHalfDriftPercent ?? '—'}%</dd>
