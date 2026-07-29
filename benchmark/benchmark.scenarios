@@ -20,7 +20,7 @@
 
 abi_change {
     title = "ABI Change"
-    warm-ups = 3
+    warm-ups = 5
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
@@ -30,7 +30,7 @@ abi_change {
 
 non_abi_change {
     title = "Non-ABI Change"
-    warm-ups = 3
+    warm-ups = 5
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
@@ -46,7 +46,7 @@ non_abi_change {
 
 plain_abi_change {
     title = "Plain Kotlin ABI Change"
-    warm-ups = 3
+    warm-ups = 5
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
@@ -56,7 +56,7 @@ plain_abi_change {
 
 plain_non_abi_change {
     title = "Plain Kotlin Non-ABI Change"
-    warm-ups = 3
+    warm-ups = 5
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
