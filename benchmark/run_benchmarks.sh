@@ -59,6 +59,9 @@ INCLUDE_BASELINES=false
 # Profile options to pass to gradle-profiler (e.g., "jfr", "async-profiler-heap")
 PROFILE_OPTIONS=()
 PROFILER_GRADLE_USER_HOME="${BENCHMARK_GRADLE_USER_HOME:-$SCRIPT_DIR/tmp/gradle-profiler-home}"
+BENCHMARK_MIN_IDLE_PERCENT="${BENCHMARK_MIN_IDLE_PERCENT:-85}"
+BENCHMARK_IDLE_SAMPLES="${BENCHMARK_IDLE_SAMPLES:-3}"
+BENCHMARK_IDLE_TIMEOUT_SECONDS="${BENCHMARK_IDLE_TIMEOUT_SECONDS:-600}"
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
@@ -399,7 +402,9 @@ collect_build_metadata() {
     "ram": "$ram_info",
     "daemonJvmArgs": $daemon_jvm_args_json,
     "daemonJvmArgsSource": $daemon_jvm_args_source_json,
-    "gradleUserHome": $profiler_gradle_user_home_json
+    "gradleUserHome": $profiler_gradle_user_home_json,
+    "minimumIdleCpuPercent": $BENCHMARK_MIN_IDLE_PERCENT,
+    "idleSamplesRequired": $BENCHMARK_IDLE_SAMPLES
   },
   "timestamp": "$(date -Iseconds)"
 }
@@ -532,6 +537,41 @@ validate_profiler_log() {
     fi
 }
 
+wait_for_benchmark_host_idle() {
+    if [ "$(uname -s)" != "Darwin" ]; then
+        return 0
+    fi
+
+    local idle_samples=0
+    local elapsed_seconds=0
+    print_status "Waiting for ${BENCHMARK_MIN_IDLE_PERCENT}% host CPU idle before measurement"
+
+    while [ "$elapsed_seconds" -lt "$BENCHMARK_IDLE_TIMEOUT_SECONDS" ]; do
+        local idle_percent
+        idle_percent=$(
+            top -l 2 -n 0 -s 1 \
+                | awk '/CPU usage/ { idle=$7 } END { gsub("%", "", idle); print idle }'
+        )
+
+        if awk -v idle="$idle_percent" -v minimum="$BENCHMARK_MIN_IDLE_PERCENT" 'BEGIN { exit !(idle >= minimum) }'; then
+            idle_samples=$((idle_samples + 1))
+        else
+            idle_samples=0
+        fi
+
+        print_status "Host CPU idle: ${idle_percent}% (${idle_samples}/${BENCHMARK_IDLE_SAMPLES} stable samples)"
+        if [ "$idle_samples" -ge "$BENCHMARK_IDLE_SAMPLES" ]; then
+            return 0
+        fi
+
+        sleep 10
+        elapsed_seconds=$((elapsed_seconds + 11))
+    done
+
+    print_error "Host did not remain ${BENCHMARK_MIN_IDLE_PERCENT}% idle for ${BENCHMARK_IDLE_SAMPLES} samples" >&2
+    return 1
+}
+
 # Function to run benchmark scenarios for a specific mode
 run_scenarios() {
     local mode=$1
@@ -637,6 +677,10 @@ run_scenarios() {
             for profile_type in "${PROFILE_OPTIONS[@]}"; do
                 profile_args+=("--profile" "$profile_type")
             done
+        fi
+
+        if ! wait_for_benchmark_host_idle; then
+            return 1
         fi
 
         "$profiler_cmd" \
@@ -1831,6 +1875,8 @@ function renderMetadata() {
                     <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
                     <dt>JVM Args Source</dt><dd>${m.system?.daemonJvmArgsSource || '—'}</dd>
                     <dt>Gradle User Home</dt><dd>${m.system?.gradleUserHome || '—'}</dd>
+                    <dt>Minimum CPU Idle</dt><dd>${m.system?.minimumIdleCpuPercent ?? '—'}%</dd>
+                    <dt>Stable Idle Samples</dt><dd>${m.system?.idleSamplesRequired ?? '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
