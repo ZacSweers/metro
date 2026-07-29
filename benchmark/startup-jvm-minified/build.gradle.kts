@@ -12,6 +12,11 @@ dependencies {
   jmhRuntimeOnly(project(":startup-jvm:minified-jar"))
 }
 
+configurations.named("jmhRuntimeClasspath") {
+  // R8 already packages and optimizes the selected Kotlin runtime in the minified jar.
+  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+}
+
 jmh {
   warmupIterations = 4
   iterations = 10

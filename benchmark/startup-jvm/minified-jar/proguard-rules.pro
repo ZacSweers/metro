@@ -4,6 +4,12 @@
     public static *** traceNextCreateAndInitialize();
 }
 
+# The Kotlin JMH harness calls this before each iteration, but the harness itself is not an R8
+# program input.
+-keep class kotlin.jvm.internal.Intrinsics {
+    public static void checkNotNullParameter(java.lang.Object, java.lang.String);
+}
+
 # Don't warn about missing classes
 -dontwarn javax.annotation.**
 -dontwarn org.jetbrains.annotations.**

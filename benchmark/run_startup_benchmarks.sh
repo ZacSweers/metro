@@ -977,6 +977,9 @@ run_jvm_benchmark_only() {
         if ./gradlew --quiet $gradle_args :startup-jvm:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
             # Copy JMH results
             if [ -d "startup-jvm/build/results/jmh" ]; then
+                if ! validate_jmh_result_file "startup-jvm/build/results/jmh/results.json" "$mode JVM"; then
+                    return 1
+                fi
                 cp -R startup-jvm/build/results/jmh/. "$output_dir/"
             else
                 print_error "JMH results directory not found for $mode"
@@ -1036,6 +1039,9 @@ run_jvm_r8_benchmark_only() {
         if ./gradlew --quiet $gradle_args :startup-jvm-minified:jmh 2>&1 | tee "$output_dir/jmh-output.txt"; then
             # Copy JMH results
             if [ -d "startup-jvm-minified/build/results/jmh" ]; then
+                if ! validate_jmh_result_file "startup-jvm-minified/build/results/jmh/results.json" "$mode R8 JVM"; then
+                    return 1
+                fi
                 cp -R startup-jvm-minified/build/results/jmh/. "$output_dir/"
             else
                 print_error "R8 JMH results directory not found for $mode"
@@ -1266,6 +1272,23 @@ run_android_benchmark() {
 }
 
 # Extract JMH score from results
+validate_jmh_result_file() {
+    local results_file="$1"
+    local description="$2"
+    if ! jq -e '
+        [
+          .[]
+          | select(.benchmark | endswith(".graphCreationAndInitialization"))
+          | select(.primaryMetric.scoreUnit == "ms/op")
+          | select(.primaryMetric.score | type == "number")
+        ]
+        | length == 1
+    ' "$results_file" > /dev/null 2>&1; then
+        print_error "Missing or invalid JMH score for $description in $results_file"
+        return 1
+    fi
+}
+
 extract_jmh_score() {
     local results_file="$1"
     if [ -f "$results_file" ]; then
