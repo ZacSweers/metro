@@ -22,3 +22,15 @@ plugins {
 }
 
 subprojects { apply(plugin = "metro.base") }
+
+tasks.register("benchmarkCooldown") {
+  group = "benchmark"
+  description = "Pauses between Gradle Profiler iterations to keep the benchmark host stable."
+
+  doLast {
+    val seconds =
+      providers.environmentVariable("BENCHMARK_COOLDOWN_SECONDS").getOrElse("30").toLong()
+    require(seconds >= 0) { "BENCHMARK_COOLDOWN_SECONDS must be non-negative" }
+    Thread.sleep(seconds * 1_000)
+  }
+}

@@ -24,6 +24,7 @@ abi_change {
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
 
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
 }
@@ -34,6 +35,7 @@ non_abi_change {
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
 
     apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
 }
@@ -50,6 +52,7 @@ plain_abi_change {
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
 
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
@@ -60,6 +63,7 @@ plain_non_abi_change {
     iterations = 5
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
 
     apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
@@ -81,6 +85,7 @@ raw_compilation {
 
     # Metro/Control/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin", "--rerun"]
+    cleanup-tasks = [":benchmarkCooldown"]
 }
 
 raw_compilation_ksp {
@@ -90,6 +95,7 @@ raw_compilation_ksp {
 
     # kotlin-inject-anvil: KSP generates Kotlin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
     gradle-args = ["--rerun-tasks", "-a"]
 }
 
@@ -100,6 +106,7 @@ raw_compilation_java {
 
     # Dagger KSP/KAPT: Generates Java code, rerun only app:component tasks (not all modules)
     tasks = [":app:component:classes"]
+    cleanup-tasks = [":benchmarkCooldown"]
     gradle-args = ["--rerun-tasks", "-a"]
 }
 

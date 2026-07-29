@@ -62,6 +62,8 @@ PROFILER_GRADLE_USER_HOME="${BENCHMARK_GRADLE_USER_HOME:-$SCRIPT_DIR/tmp/gradle-
 BENCHMARK_MIN_IDLE_PERCENT="${BENCHMARK_MIN_IDLE_PERCENT:-85}"
 BENCHMARK_IDLE_SAMPLES="${BENCHMARK_IDLE_SAMPLES:-3}"
 BENCHMARK_IDLE_TIMEOUT_SECONDS="${BENCHMARK_IDLE_TIMEOUT_SECONDS:-600}"
+BENCHMARK_COOLDOWN_SECONDS="${BENCHMARK_COOLDOWN_SECONDS:-30}"
+export BENCHMARK_COOLDOWN_SECONDS
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
 print_status() {
@@ -404,7 +406,8 @@ collect_build_metadata() {
     "daemonJvmArgsSource": $daemon_jvm_args_source_json,
     "gradleUserHome": $profiler_gradle_user_home_json,
     "minimumIdleCpuPercent": $BENCHMARK_MIN_IDLE_PERCENT,
-    "idleSamplesRequired": $BENCHMARK_IDLE_SAMPLES
+    "idleSamplesRequired": $BENCHMARK_IDLE_SAMPLES,
+    "cooldownSeconds": $BENCHMARK_COOLDOWN_SECONDS
   },
   "timestamp": "$(date -Iseconds)"
 }
@@ -1877,6 +1880,7 @@ function renderMetadata() {
                     <dt>Gradle User Home</dt><dd>${m.system?.gradleUserHome || '—'}</dd>
                     <dt>Minimum CPU Idle</dt><dd>${m.system?.minimumIdleCpuPercent ?? '—'}%</dd>
                     <dt>Stable Idle Samples</dt><dd>${m.system?.idleSamplesRequired ?? '—'}</dd>
+                    <dt>Iteration Cooldown</dt><dd>${m.system?.cooldownSeconds ?? '—'} seconds</dd>
                 </dl>
             </div>
             <div class="metadata-group">
