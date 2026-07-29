@@ -271,22 +271,24 @@ private fun transformBindingDeclarations(
     }
   }
 
+  fun collectExternalMirrorFunction(declaration: IrSimpleFunction) {
+    if (declaration.isFakeOverride) return
+
+    val function = metroFunctionOf(declaration)
+    val annotations = function.annotations
+    if (annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
+      collector += function
+    }
+  }
+
   if (isExternal && mirrorClass != null) {
     for (declaration in mirrorClass.declarations) {
       when (declaration) {
         is IrProperty -> {
           val getter = declaration.getter ?: continue
-          collector += metroFunctionOf(getter)
+          collectExternalMirrorFunction(getter)
         }
-        is IrSimpleFunction -> {
-          if (!declaration.isFakeOverride) {
-            val function = metroFunctionOf(declaration)
-            val annotations = function.annotations
-            if (annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
-              collector += function
-            }
-          }
-        }
+        is IrSimpleFunction -> collectExternalMirrorFunction(declaration)
       }
     }
   }

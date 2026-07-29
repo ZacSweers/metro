@@ -245,7 +245,7 @@ jobs:
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
-    name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
+    name: ${{ github.ref == 'refs/heads/main' && 'js box / full' || 'web / smoke' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -272,6 +272,14 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Run Wasm bindings smoke test
+        if: github.ref != 'refs/heads/main'
+        run: |
+          ./gradlew :gradle-plugin:functionalTest --quiet \
+            -Pmetro.functionalTestKmpTarget=wasmJs \
+            --tests 'dev.zacsweers.metro.gradle.incremental.ICTests.icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams*' \
+            -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run JS box tests
         if: github.ref == 'refs/heads/main'
