@@ -10,9 +10,6 @@ android {
     minSdk = 28
     targetSdk = 36
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-    // Suppress emulator warning for local development
-    testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "EMULATOR"
   }
 
   buildTypes {

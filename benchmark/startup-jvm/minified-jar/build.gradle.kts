@@ -131,23 +131,15 @@ val componentJar =
 // This excludes the component project's own build outputs since we're creating our own jar from
 // sources
 val componentBuildPath = componentProject.layout.buildDirectory.get().asFile.absolutePath
-val benchmarkRootPath = rootProject.projectDir.absolutePath
 val componentRuntimeClasspath =
   componentProject.configurations
     .named { it == "runtimeClasspath" || it == "jvmMainRuntimeClasspath" }
     .first()
     .filter { file -> !file.absolutePath.startsWith(componentBuildPath) }
 
-// Separate program classpath (project modules - included in output) from
-// library classpath (external deps like kotlin stdlib - used for analysis only)
-val programClasspath = componentRuntimeClasspath.filter { file ->
-  // Project modules are under the benchmark root directory
-  file.absolutePath.startsWith(benchmarkRootPath)
-}
-val libraryClasspath = componentRuntimeClasspath.filter { file ->
-  // External dependencies are outside the benchmark root (e.g., in .gradle/caches)
-  !file.absolutePath.startsWith(benchmarkRootPath)
-}
+// Include the complete runtime classpath in the R8 program input. This lets R8 optimize the
+// generated component together with the selected framework runtime and remove unreachable code.
+val programClasspath = componentRuntimeClasspath
 
 val r8RulesExtractTask =
   tasks.register<ExtractR8Rules>("extractR8Rules") {
@@ -184,9 +176,7 @@ val r8Task =
     customRules.set(customR8RulesFile)
     r8Jar.set(layout.buildDirectory.file("libs/${project.name}.jar"))
     mapping.set(layout.buildDirectory.file("libs/${project.name}-mapping.txt"))
-    // Program classpath: project modules (included in output after optimization)
-    // Library classpath: external deps like kotlin stdlib (used for analysis only, not in output)
-    configureR8Inputs(componentJar.flatMap { it.archiveFile }, programClasspath, libraryClasspath)
+    configureR8Inputs(componentJar.flatMap { it.archiveFile }, programClasspath, null)
     argumentProviders += r8ArgumentProvider()
 
     doLast {

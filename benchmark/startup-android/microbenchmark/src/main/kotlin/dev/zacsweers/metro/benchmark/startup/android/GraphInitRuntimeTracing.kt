@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.tracing.wire.TraceDriver
 import androidx.tracing.wire.TraceSink
 import androidx.tracing.wire.createPerfettoFile
+import dev.zacsweers.metro.benchmark.app.component.AppComponent
 import dev.zacsweers.metro.benchmark.app.component.createAndInitializeForBenchmarkTracing
 import dev.zacsweers.metro.benchmark.startup.android.microbenchmark.BuildConfig
 import java.io.File
@@ -13,9 +14,9 @@ import java.io.File
 /**
  * Owns the optional Android runtime trace driver for graph init microbenchmarks.
  *
- * Non-traced builds pass `null` to the generated component entry point. Runtime-traced Metro builds
- * pass the AndroidX tracer, flush after each measured graph initialization, and write trace files
- * where the benchmark script can pull them after the instrumentation run.
+ * Runtime-traced Metro builds pass the AndroidX tracer, flush after each measured graph
+ * initialization, and write trace files where the benchmark script can pull them after the
+ * instrumentation run.
  */
 class GraphInitRuntimeTracing(
   private val context: Context,
@@ -40,8 +41,9 @@ class GraphInitRuntimeTracing(
     }
   }
 
-  fun createAndInitializeGraph() {
-    createAndInitializeForBenchmarkTracing(traceDriver?.tracer)
+  fun createAndInitializeGraph(): AppComponent {
+    val graph = createAndInitializeForBenchmarkTracing(traceDriver?.tracer)
     traceDriver?.flush()
+    return graph
   }
 }

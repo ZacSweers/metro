@@ -2,10 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.benchmark.startup.android
 
+import androidx.benchmark.BlackHole
+import androidx.benchmark.ExperimentalBlackHoleApi
 import androidx.benchmark.junit4.BenchmarkRule
 import androidx.benchmark.junit4.measureRepeated
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.zacsweers.metro.benchmark.app.component.createAndInitialize
+import dev.zacsweers.metro.benchmark.startup.android.microbenchmark.BuildConfig
 import java.io.File
 import org.junit.Rule
 import org.junit.Test
@@ -20,6 +24,7 @@ import org.junit.runner.RunWith
  * Run with: ./gradlew :startup-android:microbenchmark:connectedReleaseAndroidTest
  */
 @RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalBlackHoleApi::class)
 class GraphInitMicroBenchmark {
 
   @get:Rule val benchmarkRule: BenchmarkRule = BenchmarkRule()
@@ -32,12 +37,17 @@ class GraphInitMicroBenchmark {
    */
   @Test
   fun graphCreationAndInitialization() {
+    if (!BuildConfig.METRO_RUNTIME_TRACING) {
+      benchmarkRule.measureRepeated { BlackHole.consume(createAndInitialize()) }
+      return
+    }
+
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val outputDirectory =
       InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let {
         File(it, "metro-runtime-traces")
       }
     val runtimeTracing = GraphInitRuntimeTracing(instrumentation.context, outputDirectory)
-    benchmarkRule.measureRepeated { runtimeTracing.createAndInitializeGraph() }
+    benchmarkRule.measureRepeated { BlackHole.consume(runtimeTracing.createAndInitializeGraph()) }
   }
 }
