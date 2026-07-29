@@ -60,6 +60,44 @@ class MetroArtifactsTest {
   }
 
   @Test
+  fun `generateClassesInIr Gradle property overrides compiler version default`() {
+    val compilerVersionDefault =
+      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
+    val propertyOverride = !compilerVersionDefault
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("metro.generateClassesInIr=$propertyOverride"),
+        ) {
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "metroEnv")
+
+    val content =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .readText()
+    assertThat(content).contains("    generate-classes-in-ir = $propertyOverride")
+  }
+
+  @Test
   fun `diagnosticsRenderMode resolves AUTO plugin-side and explicit values pass through`() {
     val fixture =
       object : MetroProject(multiplatform = false) {
