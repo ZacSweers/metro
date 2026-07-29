@@ -42,6 +42,7 @@ This release introduces experimental support for suspend providers. This is disa
 - **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
 - **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
 - **[IR]** Don't inline `object`, enum, or class-literal provider bindings when they're requested through `Provider`, `Lazy`, or provider-based multibindings.
+- Improve Kotlin `2.4.20-Beta2` support.
 
 ### Changes
 
