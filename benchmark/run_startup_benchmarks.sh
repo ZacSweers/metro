@@ -1327,6 +1327,9 @@ extract_android_micro_score() {
             if [ -n "$ns" ]; then
                 # Preserve the raw benchmark precision when converting ns to ms. Prefix
                 # fractional values so the result is valid JSON as well as JavaScript.
+                if [[ "$ns" =~ ^([0-9]+([.][0-9]+)?)[eE][+]?(-?[0-9]+)$ ]]; then
+                    ns="(${BASH_REMATCH[1]} * 10^${BASH_REMATCH[3]})"
+                fi
                 local ms
                 ms=$(echo "scale=20; $ns / 1000000" | bc 2>/dev/null || echo "")
                 if [[ "$ms" == .* ]]; then
