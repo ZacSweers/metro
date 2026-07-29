@@ -162,9 +162,6 @@ internal class IrContributionData(
     if (kind != ClassKind.INTERFACE) return false
     val irClass = this
     if (with(metroContext) { irClass.isBindingContainer() }) return false
-    if (isAnnotatedWithAny(metroContext.metroSymbols.classIds.graphExtensionFactoryAnnotations)) {
-      return false
-    }
     return isDirectContributionTo(scope)
   }
 
@@ -265,6 +262,21 @@ internal class IrContributionData(
     }
 
     return contributingClasses
+  }
+
+  fun findNonFriendInternalContributionClassesForScopeInHints(
+    scope: Scope,
+    callingDeclaration: IrDeclaration,
+  ): Set<IrClass> {
+    val allContributionClasses =
+      findVisibleContributionClassesForScopeInHints(
+        scope,
+        callingDeclaration,
+        includeNonFriendInternals = true,
+      )
+    val visibleContributionClasses =
+      findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
+    return allContributionClasses - visibleContributionClasses
   }
 
   // Note: Origin classes may be looked up multiple times if they contribute to multiple scopes.

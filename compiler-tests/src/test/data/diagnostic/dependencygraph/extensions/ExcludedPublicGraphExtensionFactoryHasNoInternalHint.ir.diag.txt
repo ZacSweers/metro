@@ -1,0 +1,8 @@
+/module_main_ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt:20:7: error: [Metro/MissingBinding] No binding found for Factory
+
+  trace (in ParentGraph):
+      Factory is requested at ParentGraph.childGraphFactory
+
+  help: ensure Factory has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to ParentGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

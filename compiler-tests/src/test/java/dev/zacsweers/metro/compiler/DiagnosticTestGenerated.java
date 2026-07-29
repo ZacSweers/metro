@@ -684,6 +684,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt")
+      public void testExcludedPublicGraphExtensionFactoryHasNoInternalHint() {
+        run("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
       public void testExtensionAccessorsCannotHaveParameters() {
         run("ExtensionAccessorsCannotHaveParameters.kt");

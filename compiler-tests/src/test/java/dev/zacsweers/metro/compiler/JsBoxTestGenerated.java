@@ -685,6 +685,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBinding.kt")
+    public void testNestedContributedFactoryIsAvailableAsBinding() {
+      run("NestedContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt")
+    public void testNestedContributedFactoryIsAvailableAsBindingAcrossModules() {
+      run("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
     public void testParentIncludesArePropgatedToExtensions() {
       run("ParentIncludesArePropgatedToExtensions.kt");

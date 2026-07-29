@@ -574,6 +574,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt")
+      public void testExcludedPublicGraphExtensionFactoryHasNoInternalHint() {
+        run("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
       public void testExtensionAccessorsCannotHaveParameters() {
         run("ExtensionAccessorsCannotHaveParameters.kt");

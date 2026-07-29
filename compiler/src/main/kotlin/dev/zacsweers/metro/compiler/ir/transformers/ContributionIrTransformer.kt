@@ -300,7 +300,6 @@ internal class ContributionIrTransformer(
   ): Boolean {
     if (kind != ClassKind.INTERFACE) return false
     if (isBindingContainer()) return false
-    if (isAnnotatedWithAny(metroSymbols.classIds.graphExtensionFactoryAnnotations)) return false
     return scopedContributions.any { it is Contribution.ContributesTo }
   }
 
