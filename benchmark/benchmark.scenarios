@@ -21,7 +21,7 @@
 abi_change {
     title = "ABI Change"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
     cleanup-tasks = [":benchmarkCooldown"]
@@ -32,7 +32,7 @@ abi_change {
 non_abi_change {
     title = "Non-ABI Change"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
     cleanup-tasks = [":benchmarkCooldown"]
@@ -49,7 +49,7 @@ non_abi_change {
 plain_abi_change {
     title = "Plain Kotlin ABI Change"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
     cleanup-tasks = [":benchmarkCooldown"]
@@ -60,7 +60,7 @@ plain_abi_change {
 plain_non_abi_change {
     title = "Plain Kotlin Non-ABI Change"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
     cleanup-tasks = [":benchmarkCooldown"]
@@ -81,7 +81,7 @@ plain_non_abi_change {
 raw_compilation {
     title = "Raw Compilation"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     # Metro/Control/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin", "--rerun"]
@@ -91,7 +91,7 @@ raw_compilation {
 raw_compilation_ksp {
     title = "Raw Compilation"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     # kotlin-inject-anvil: KSP generates Kotlin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin"]
@@ -102,7 +102,7 @@ raw_compilation_ksp {
 raw_compilation_java {
     title = "Raw Compilation"
     warm-ups = 5
-    iterations = 5
+    iterations = 10
 
     # Dagger KSP/KAPT: Generates Java code, rerun only app:component tasks (not all modules)
     tasks = [":app:component:classes"]
@@ -135,7 +135,7 @@ trace_compile {
 clean_build {
     title = "Clean Build"
     warm-ups = 2
-    iterations = 3
+    iterations = 10
 
     tasks = ["assemble"]
     cleanup-tasks = ["clean"]

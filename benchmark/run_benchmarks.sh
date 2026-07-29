@@ -63,6 +63,12 @@ BENCHMARK_MIN_IDLE_PERCENT="${BENCHMARK_MIN_IDLE_PERCENT:-85}"
 BENCHMARK_IDLE_SAMPLES="${BENCHMARK_IDLE_SAMPLES:-3}"
 BENCHMARK_IDLE_TIMEOUT_SECONDS="${BENCHMARK_IDLE_TIMEOUT_SECONDS:-600}"
 BENCHMARK_COOLDOWN_SECONDS="${BENCHMARK_COOLDOWN_SECONDS:-30}"
+BENCHMARK_MEASURED_SAMPLE_COUNT=10
+BENCHMARK_MAX_RELATIVE_MAD_PERCENT=10
+BENCHMARK_MAX_HALF_DRIFT_PERCENT=10
+BENCHMARK_OUTLIER_THRESHOLD_PERCENT=20
+BENCHMARK_MAX_OUTLIER_COUNT=1
+BENCHMARK_STABILITY_CHECKER="$SCRIPT_DIR/check-benchmark-stability.py"
 export BENCHMARK_COOLDOWN_SECONDS
 
 # Script-specific print functions (styles differ from run_startup_benchmarks.sh)
@@ -409,6 +415,14 @@ collect_build_metadata() {
     "idleSamplesRequired": $BENCHMARK_IDLE_SAMPLES,
     "cooldownSeconds": $BENCHMARK_COOLDOWN_SECONDS
   },
+  "stability": {
+    "measuredSamples": $BENCHMARK_MEASURED_SAMPLE_COUNT,
+    "maxRelativeMadPercent": $BENCHMARK_MAX_RELATIVE_MAD_PERCENT,
+    "maxHalfDriftPercent": $BENCHMARK_MAX_HALF_DRIFT_PERCENT,
+    "outlierThresholdPercent": $BENCHMARK_OUTLIER_THRESHOLD_PERCENT,
+    "maxOutlierCount": $BENCHMARK_MAX_OUTLIER_COUNT,
+    "outliersDiscarded": false
+  },
   "timestamp": "$(date -Iseconds)"
 }
 EOF
@@ -428,6 +442,10 @@ check_prerequisites() {
 
     if ! command -v python3 &> /dev/null; then
         missing_tools+=("python3")
+    fi
+
+    if [ ! -f "$BENCHMARK_STABILITY_CHECKER" ]; then
+        missing_tools+=("check-benchmark-stability.py")
     fi
 
     if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
@@ -507,6 +525,34 @@ validate_benchmark_csv() {
         print_error "Benchmark result for $mode/$scenario has no complete measured build rows: $csv_file" >&2
         return 1
     fi
+}
+
+validate_benchmark_stability() {
+    local csv_file="$1"
+    local mode="$2"
+    local scenario="$3"
+    local stability_file
+    stability_file="$(dirname "$csv_file")/stability.json"
+
+    if ! python3 "$BENCHMARK_STABILITY_CHECKER" \
+        "$csv_file" \
+        --output "$stability_file" \
+        --expected-samples "$BENCHMARK_MEASURED_SAMPLE_COUNT" \
+        --max-relative-mad-percent "$BENCHMARK_MAX_RELATIVE_MAD_PERCENT" \
+        --max-half-drift-percent "$BENCHMARK_MAX_HALF_DRIFT_PERCENT" \
+        --outlier-threshold-percent "$BENCHMARK_OUTLIER_THRESHOLD_PERCENT" \
+        --max-outlier-count "$BENCHMARK_MAX_OUTLIER_COUNT" \
+        > /dev/null; then
+        print_error "Unstable benchmark result for $mode/$scenario" >&2
+        if [ -f "$stability_file" ]; then
+            sed 's/^/  /' "$stability_file" >&2
+        fi
+        return 1
+    fi
+}
+
+validate_publishable_benchmark_csv() {
+    validate_benchmark_csv "$@" && validate_benchmark_stability "$@"
 }
 
 validate_profiler_log() {
@@ -699,7 +745,7 @@ run_scenarios() {
                 return 1
             }
 
-        if ! validate_benchmark_csv "$scenario_output_dir/benchmark.csv" "$mode_name" "$scenario"; then
+        if ! validate_publishable_benchmark_csv "$scenario_output_dir/benchmark.csv" "$mode_name" "$scenario"; then
             return 1
         fi
         if ! validate_profiler_log "$scenario_output_dir/profile.log" "$mode_name" "$scenario"; then
@@ -1182,7 +1228,7 @@ extract_median_for_ref() {
     fi
 
     local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
-    if ! validate_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
+    if ! validate_publishable_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
         return 1
     fi
 
@@ -1220,7 +1266,7 @@ extract_gc_for_ref() {
     fi
 
     local csv_file="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}/benchmark.csv"
-    if ! validate_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
+    if ! validate_publishable_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
         return 1
     fi
 
@@ -1243,6 +1289,37 @@ extract_gc_for_ref() {
         fi
         echo "$median"
     fi
+}
+
+extract_stability_for_ref() {
+    local ref_label="$1"
+    local mode_prefix="$2"
+    local test_type="$3"
+
+    local scenario_name
+    if ! scenario_name=$(scenario_name_for_mode "$mode_prefix" "$test_type"); then
+        return 1
+    fi
+
+    local scenario_dir="$RESULTS_DIR/${TIMESTAMP}/${ref_label}/${mode_prefix}_${TIMESTAMP}/${scenario_name}"
+    local csv_file="$scenario_dir/benchmark.csv"
+    local stability_file="$scenario_dir/stability.json"
+    if ! validate_publishable_benchmark_csv "$csv_file" "$mode_prefix" "$scenario_name"; then
+        return 1
+    fi
+
+    python3 - "$stability_file" << 'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as input_file:
+    stability = json.load(input_file)
+
+if stability.get("status") != "pass":
+    raise SystemExit("Benchmark stability data does not have pass status")
+
+json.dump(stability, sys.stdout, separators=(",", ":"))
+PY
 }
 
 # Check if a mode was run for a given ref (by checking if results exist)
@@ -1609,6 +1686,7 @@ generate_html_report() {
         .notes-section h2 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
         .notes-section p { margin: 0.5rem 0; }
         .gc-time { color: #888; font-size: 0.85em; }
+        .stability { display: block; color: #888; font-size: 0.78em; margin-top: 0.2rem; }
     </style>
 </head>
 <body>
@@ -1655,11 +1733,14 @@ function formatGcTime(ms) {
     return (ms / 1000).toFixed(2) + 's';
 }
 
-function formatTimeWithGc(time, gc) {
+function formatTimeWithGc(time, gc, stability) {
     if (time === null || time === undefined) return '—';
     let result = formatTime(time);
     if (gc !== null && gc !== undefined) {
         result += ` <span class="gc-time">(gc: ${formatGcTime(gc)})</span>`;
+    }
+    if (stability) {
+        result += `<span class="stability">MAD ${stability.relativeMadPercent.toFixed(1)}% · half-run drift ${stability.halfDriftPercent.toFixed(1)}% · outliers ${stability.outlierCount}</span>`;
     }
     return result;
 }
@@ -1807,8 +1888,8 @@ function renderTable(benchmark, idx) {
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
             ${isComparison
-                ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
-                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
+                ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2, result.stability2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
+                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
     });
     tbody.innerHTML = html;
 }
@@ -1881,6 +1962,12 @@ function renderMetadata() {
                     <dt>Minimum CPU Idle</dt><dd>${m.system?.minimumIdleCpuPercent ?? '—'}%</dd>
                     <dt>Stable Idle Samples</dt><dd>${m.system?.idleSamplesRequired ?? '—'}</dd>
                     <dt>Iteration Cooldown</dt><dd>${m.system?.cooldownSeconds ?? '—'} seconds</dd>
+                    <dt>Measured Samples</dt><dd>${m.stability?.measuredSamples ?? '—'}</dd>
+                    <dt>Maximum Relative MAD</dt><dd>${m.stability?.maxRelativeMadPercent ?? '—'}%</dd>
+                    <dt>Maximum Half-Run Drift</dt><dd>${m.stability?.maxHalfDriftPercent ?? '—'}%</dd>
+                    <dt>Outlier Threshold</dt><dd>${m.stability?.outlierThresholdPercent ?? '—'}%</dd>
+                    <dt>Maximum Outlier Count</dt><dd>${m.stability?.maxOutlierCount ?? '—'}</dd>
+                    <dt>Outliers Discarded</dt><dd>${m.stability?.outliersDiscarded === false ? 'No' : '—'}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -1987,6 +2074,17 @@ expected_dagger_options = {
 if metadata.get("daggerOptions") != expected_dagger_options:
     raise SystemExit("Build metadata does not contain the expected Dagger option matrix")
 
+expected_stability = {
+    "measuredSamples": 10,
+    "maxRelativeMadPercent": 10,
+    "maxHalfDriftPercent": 10,
+    "outlierThresholdPercent": 20,
+    "maxOutlierCount": 1,
+    "outliersDiscarded": False,
+}
+if metadata.get("stability") != expected_stability:
+    raise SystemExit("Build metadata does not contain the expected stability policy")
+
 json.dump(metadata, sys.stdout, separators=(",", ":"))
 PY
     ); then
@@ -2084,20 +2182,28 @@ PY
 
             local score1
             local gc1
+            local stability1
             if ! score1=$(extract_median_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
                 return 1
             fi
             if ! gc1=$(extract_gc_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
                 return 1
             fi
+            if ! stability1=$(extract_stability_for_ref "$ref1_label" "$mode_prefix" "$test_type"); then
+                return 1
+            fi
 
             local score2=""
             local gc2=""
+            local stability2=""
             if [ -n "$ref2_label" ] && mode_was_run_for_ref "$ref2_label" "$mode_prefix"; then
                 if ! score2=$(extract_median_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
                     return 1
                 fi
                 if ! gc2=$(extract_gc_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
+                    return 1
+                fi
+                if ! stability2=$(extract_stability_for_ref "$ref2_label" "$mode_prefix" "$test_type"); then
                     return 1
                 fi
             fi
@@ -2117,12 +2223,15 @@ PY
             echo "          \"key\": $mode_prefix_json,"
             echo "          \"ref1\": $score1,"
             echo "          \"gc1\": $gc1,"
+            echo "          \"stability1\": $stability1,"
             if [ -n "$score2" ]; then
                 echo "          \"ref2\": $score2,"
-                echo "          \"gc2\": $gc2"
+                echo "          \"gc2\": $gc2,"
+                echo "          \"stability2\": $stability2"
             else
                 echo '          "ref2": null,'
-                echo '          "gc2": null'
+                echo '          "gc2": null,'
+                echo '          "stability2": null'
             fi
             echo -n '        }'
         done
