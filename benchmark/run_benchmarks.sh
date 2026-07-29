@@ -1368,7 +1368,7 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $modes
 **Modes benchmarked on ref2:** ${ref2_modes:-none}
 
-**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.
 
 **ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
 
@@ -1621,7 +1621,7 @@ generate_html_report() {
         <div class="notes-section">
             <h2>Framework Scope</h2>
             <p>Control applies no dependency injection tooling and performs no graph work.</p>
-            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+            <p>Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.</p>
             <p>Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.</p>
         </div>
         <div id="benchmarks"></div>
@@ -2178,7 +2178,7 @@ generate_single_summary() {
 **Modes:** $modes
 **Commit:** $ref_commit
 
-**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.
 
 **ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
 

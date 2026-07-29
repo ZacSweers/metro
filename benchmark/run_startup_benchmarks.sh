@@ -1462,7 +1462,7 @@ generate_summary() {
 **Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 
-**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Framework scope:** Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.
 EOF
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
@@ -1865,7 +1865,7 @@ generate_non_ref_html_report() {
     <div class="container">
         <div class="benchmark-section">
             <h2>Framework Scope</h2>
-            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+            <p>Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.</p>
         </div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
@@ -2699,7 +2699,7 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $MODES
 **Modes benchmarked on ref2:** ${ref2_modes:-$baseline_mode}
 
-**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Framework scope:** Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.
 
 ## Git Refs
 
@@ -3412,7 +3412,7 @@ generate_single_summary() {
 **Modes:** $MODES
 **Commit:** $ref_commit
 
-**Framework scope:** Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Framework scope:** Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.
 
 EOF
 
@@ -4151,7 +4151,7 @@ generate_html_report() {
         <div class="refs-info" id="refs-info"></div>
         <div class="benchmark-section">
             <h2>Framework Scope</h2>
-            <p>Koin validates the application graph in its aggregator but does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+            <p>Koin's application aggregator performs compile-time safety checks, but not the full static graph validation used by the code-generating frameworks here. It also does not generate a static full-graph implementation; runtime resolution uses Koin's container.</p>
         </div>
         <div id="benchmarks"></div>
         <div id="binaryMetrics"></div>
