@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785295417078,
+  "lastUpdate": 1785340431120,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -19992,6 +19992,62 @@ window.BENCHMARK_DATA = {
             "value": 18831.316,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.90%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "880e5134~1",
+          "message": "[before] Fix duplicate annotations in IR class gen (#2599)",
+          "timestamp": "2026-07-29T15:27:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/880e5134db6b6bd6a7053304ebf95e9adb45c3ab"
+        },
+        "date": 1785340431120,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15296.220000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "880e5134db6b6bd6a7053304ebf95e9adb45c3ab",
+          "message": "[after] Fix duplicate annotations in IR class gen (#2599)",
+          "timestamp": "2026-07-29T15:27:56Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/880e5134db6b6bd6a7053304ebf95e9adb45c3ab"
+        },
+        "date": 1785340431121,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14638.044,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.30%"
           }
         ]
       }
