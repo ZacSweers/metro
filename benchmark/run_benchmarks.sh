@@ -1162,7 +1162,7 @@ move_mode_results() {
 }
 
 # Run benchmarks for a specific git ref or Metro version
-# Arguments: ref, ref_label, count, include_clean_builds, modes, is_second_ref
+# Arguments: ref, ref_label, count, include_clean_builds, modes, is_second_ref, build_only
 run_benchmarks_for_ref() {
     local ref="$1"
     local ref_label="$2"
@@ -1170,8 +1170,13 @@ run_benchmarks_for_ref() {
     local include_clean_builds="$4"
     local modes="$5"
     local is_second_ref="${6:-false}"
+    local build_only="${7:-false}"
 
-    print_header "Running benchmarks for: $ref_label"
+    if [ "$build_only" = true ]; then
+        print_header "Building benchmark for: $ref_label"
+    else
+        print_header "Running benchmarks for: $ref_label"
+    fi
 
     # Check if ref is a Metro version, HEAD/current, or git ref
     if is_metro_version "$ref"; then
@@ -1261,13 +1266,25 @@ run_benchmarks_for_ref() {
 
         generate_projects "$generator_mode" "$processor" "$count"
         verify_and_capture_workload_manifest "$mode" "$ref_dir" "$count"
-        run_scenarios "$generator_mode" "$processor" "$include_clean_builds"
-        move_mode_results "$mode_prefix" "$ref_dir"
+        if [ "$build_only" = true ]; then
+            print_status "Build-only mode: running ./gradlew :app:component:run --quiet"
+            if ! ./gradlew :app:component:run --quiet; then
+                print_error "Build failed for $mode"
+                return 1
+            fi
+            print_success "Completed build for $mode"
+        else
+            run_scenarios "$generator_mode" "$processor" "$include_clean_builds"
+            move_mode_results "$mode_prefix" "$ref_dir"
+        fi
     done
 
-    collect_build_metadata "$ref_dir"
-
-    print_success "Completed benchmarks for $ref_label"
+    if [ "$build_only" = true ]; then
+        print_success "Completed builds for $ref_label"
+    else
+        collect_build_metadata "$ref_dir"
+        print_success "Completed benchmarks for $ref_label"
+    fi
 }
 
 # Extract median time from benchmark CSV for a specific test type
@@ -2527,6 +2544,7 @@ EOF
 run_single() {
     local count="${1:-$DEFAULT_MODULE_COUNT}"
     local include_clean_builds="${2:-false}"
+    local build_only="${3:-false}"
 
     if [ -z "$SINGLE_REF" ]; then
         print_error "Single requires --ref argument"
@@ -2587,11 +2605,15 @@ run_single() {
     fi
 
     # Run benchmarks for the ref (all modes, not second ref)
-    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$modes" false
+    run_benchmarks_for_ref "$SINGLE_REF" "$ref_label" "$count" "$include_clean_builds" "$modes" false "$build_only"
+
+    if [ "$build_only" = true ]; then
+        print_header "Build Complete"
+        return
+    fi
 
     # Generate summary
     generate_single_summary "$ref_label" "$modes"
-
     print_header "Benchmarks Complete"
     echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
     echo ""
@@ -2601,6 +2623,7 @@ run_single() {
 run_compare() {
     local count="${1:-$DEFAULT_MODULE_COUNT}"
     local include_clean_builds="${2:-false}"
+    local build_only="${3:-false}"
 
     if [ -z "$COMPARE_REF1" ] || [ -z "$COMPARE_REF2" ]; then
         print_error "Compare requires both --ref1 and --ref2 arguments"
@@ -2679,14 +2702,18 @@ run_compare() {
     fi
 
     # Run benchmarks for ref1 (baseline) - run all modes
-    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$modes" false
+    run_benchmarks_for_ref "$COMPARE_REF1" "$ref1_label" "$count" "$include_clean_builds" "$modes" false "$build_only"
 
     # Run benchmarks for ref2 - only metro by default (is_second_ref=true)
-    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$modes" true
+    run_benchmarks_for_ref "$COMPARE_REF2" "$ref2_label" "$count" "$include_clean_builds" "$modes" true "$build_only"
+
+    if [ "$build_only" = true ]; then
+        print_header "Builds Complete"
+        return
+    fi
 
     # Generate comparison summary
     generate_comparison_summary "$ref1_label" "$ref2_label" "$modes"
-
     print_header "Comparison Complete"
     echo "Results saved to: $RESULTS_DIR/${TIMESTAMP}/"
     echo ""
@@ -2823,19 +2850,19 @@ main() {
             # 'all' is shorthand for 'single --ref HEAD --modes all' (current branch)
             SINGLE_REF="HEAD"
             COMPARE_MODES="all"
-            run_single "$count" "$include_clean_builds"
+            run_single "$count" "$include_clean_builds" "$build_only"
             ;;
         control|metro|metro-noop|dagger-ksp|dagger-kapt|kotlin-inject-anvil|koin)
             # Single mode is shorthand for 'single --ref HEAD --modes <mode>' (current branch)
             SINGLE_REF="HEAD"
             COMPARE_MODES="$command"
-            run_single "$count" "$include_clean_builds"
+            run_single "$count" "$include_clean_builds" "$build_only"
             ;;
         single)
-            run_single "$count" "$include_clean_builds"
+            run_single "$count" "$include_clean_builds" "$build_only"
             ;;
         compare)
-            run_compare "$count" "$include_clean_builds"
+            run_compare "$count" "$include_clean_builds" "$build_only"
             ;;
         help|-h|--help)
             show_usage
