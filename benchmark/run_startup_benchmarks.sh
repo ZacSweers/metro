@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Script to run Metro startup benchmarks across multiple DI frameworks and generate comparison
-# Usage: ./run_startup_benchmarks.sh [jvm|jvm-r8|android|all] [--modes metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin]
+# Usage: ./run_startup_benchmarks.sh [jvm|jvm-r8|android|all] [--modes metro,dagger-ksp,kotlin-inject-anvil,koin]
 
 set -euo pipefail
 
@@ -23,7 +23,7 @@ WORKLOAD_MANIFEST="$SCRIPT_DIR/workload-manifest.json"
 EXPECTED_WORKLOAD_FINGERPRINT=""
 
 # DI modes to benchmark.
-MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+MODES="metro,dagger-ksp,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -213,7 +213,7 @@ show_usage() {
     echo "Options:"
     echo "  --modes <list>          Comma-separated list of modes to benchmark"
     echo "                          Available: metro, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin"
-    echo "                          Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+    echo "                          Default: metro,dagger-ksp,kotlin-inject-anvil,koin"
     echo "  --count <n>             Number of modules to generate (default: 500)"
     echo "  --seed <n>              Deterministic workload seed (default: 0)"
     echo "  --timestamp <ts>        Use specific timestamp for results directory"

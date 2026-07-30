@@ -37,11 +37,11 @@ INCLUDE_CLEAN_BUILDS=false
 
 # Mode lists
 # Standard published modes
-STANDARD_MODES="control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+STANDARD_MODES="metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 # Optional compiler-plugin overhead baseline
 BASELINE_MODES="metro-noop"
 # All modes including the optional baseline
-ALL_MODES_WITH_BASELINES="control,metro,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+ALL_MODES_WITH_BASELINES="metro,metro-noop,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
 
 # Git refs
 SINGLE_REF=""
@@ -870,7 +870,6 @@ show_usage() {
     echo "Commands:"
     echo "  all                           Run all benchmark modes on current branch"
     echo "  metro [COUNT]                 Run only Metro mode on current branch"
-    echo "  control [COUNT]               Run only Control mode (pure Kotlin, no DI tooling)"
     echo "  metro-noop [COUNT]            Run only Metro-NOOP mode (Metro plugin, no annotations)"
     echo "  dagger-ksp [COUNT]            Run only Dagger (KSP) mode"
     echo "  dagger-kapt [COUNT]           Run only Dagger (KAPT) mode"
@@ -890,9 +889,9 @@ show_usage() {
     echo "Single/Compare Options:"
     echo "  --ref <ref>                  Git ref (branch name/commit) or Metro version (e.g., 1.0.0)"
     echo "  --modes <list>               Comma-separated list of modes to benchmark, or 'all'"
-    echo "                               Available: control, metro, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin, all"
-    echo "                               Default: control,metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
-    echo "                               Use 'all' to run all six published modes"
+    echo "                               Available: metro, metro-noop, dagger-ksp, dagger-kapt, kotlin-inject-anvil, koin, all"
+    echo "                               Default: metro,dagger-ksp,dagger-kapt,kotlin-inject-anvil,koin"
+    echo "                               Use 'all' to run all five published modes"
     echo "  --scenarios <list>           Comma-separated list of scenarios to run"
     echo "                               Available: abi_change, non_abi_change, plain_abi_change, plain_non_abi_change, raw_compilation, clean_build"
     echo "                               Default: all scenarios (except clean_build unless --include-clean-builds)"
