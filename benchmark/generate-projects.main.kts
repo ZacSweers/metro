@@ -46,16 +46,15 @@ class GenerateProjectsCommand : CliktCommand() {
       .default(ProcessorMode.KSP)
 
   private val multiplatform by
-    option("--multiplatform", help = "Generate multiplatform project (Metro mode only)")
+    option("--multiplatform", help = "Generate multiplatform project (Metro or Koin mode)")
       .flag(default = false)
 
   private val providerMultibindings by
     option(
         "--provider-multibindings",
         help =
-          "Wrap multibinding accessors in a provider form (e.g., a provider of `Set<E>` instead of `Set<E>`). " +
-            "Metro mode generates the preferred function-syntax form `() -> Set<E>`. Dagger mode uses the " +
-            "classic `Provider<Set<E>>` form. Useful for benchmarking `SetFactory`/`MapFactory` behavior.",
+          "Change generated set accessors from `Set<E>` to `() -> Set<E>` in Metro and " +
+            "`Provider<Set<E>>` in Dagger.",
       )
       .flag(default = false)
 
@@ -341,13 +340,18 @@ class GenerateProjectsCommand : CliktCommand() {
         echo("Fast init: enabled (deferred class loading)")
       }
     }
-    if (providerMultibindings) {
+    val supportsProviderMultibindings =
+      buildMode == BuildMode.METRO || buildMode == BuildMode.DAGGER
+    if (providerMultibindings && supportsProviderMultibindings) {
       val form =
         when (buildMode) {
           BuildMode.METRO -> "() -> Set<E>"
-          else -> "Provider<Set<E>>"
+          BuildMode.DAGGER -> "Provider<Set<E>>"
+          else -> error("Unexpected provider-wrapped multibinding mode: $buildMode")
         }
-      println("Provider multibindings: enabled (using $form instead of Set<E>)")
+      println("Provider-wrapped multibindings enabled ($form)")
+    } else if (providerMultibindings) {
+      println("Provider-wrapped multibindings are not supported in $buildMode mode")
     }
     if (buildMode == BuildMode.METRO) {
       echo("Graph sharding: ${if (enableSharding) "enabled" else "disabled"}")
@@ -396,25 +400,23 @@ class GenerateProjectsCommand : CliktCommand() {
     METRO,
     /** Metro compiler plugin applied but no Metro annotations - measures plugin overhead */
     METRO_NOOP,
-    /** Pure Kotlin with no DI framework at all - compilation and runtime control */
+    /** Pure Kotlin with no DI framework. Used for generator and compile smoke checks. */
     CONTROL,
     DAGGER,
     KOTLIN_INJECT_ANVIL,
     /**
      * Koin with koin-annotations + K2 compiler plugin.
      *
-     * Koin is a runtime service-locator; the compiler plugin performs some reachability/validation
-     * checks but the runtime graph is still a KClass-keyed map walked at `get()`/`getAll()` time.
+     * Koin uses a runtime service-locator. The compiler plugin performs reachability and validation
+     * checks. The runtime graph remains a KClass-keyed map accessed through `get()` and `getAll()`.
      * Functional-equivalence caveats vs Metro/Dagger/kotlin-inject:
-     * - No multibindings. `Set<Plugin>`/`Set<Initializer>` are synthesized via
+     * - No native `Set<T>` multibindings. `Set<Plugin>`/`Set<Initializer>` are synthesized via
      *   [org.koin.core.Koin.getAll] and wrapped with `.toSet()` at the accessor boundary.
-     * - No cross-Gradle-module aggregation. We rely on `@ComponentScan` at a common root package so
-     *   the annotations-driven plugin walks the dependency tree.
-     * - Subcomponents are not nested containers in Koin. They are emulated with flat scopes
-     *   (`@Scope`/`@Scoped` + `KoinScopeComponent`) which is cheaper at runtime; this is a real
-     *   property of Koin, not a measurement artifact.
-     * - Accessor interfaces are not emitted: Koin's `@Singleton` classes are registered but lazy;
-     *   nothing forces realization beyond the multibinding `getAll` calls.
+     * - Cross-module aggregation uses a narrow `@Module @ComponentScan` class in each Gradle
+     *   module. The root `@KoinApplication` enumerates every generated module.
+     * - Subcomponents use flat scopes with `@Scope`, `@Scoped`, and `KoinScopeComponent`.
+     * - Koin registers `@Singleton` classes lazily. The multibinding `getAll` calls force
+     *   realization.
      */
     KOIN,
   }
@@ -2082,14 +2084,14 @@ application {
 
     val sourceFile = File(srcDir, "AppComponent.kt")
 
-    // Metro uses the function-syntax provider form `() -> T` (no import needed). Dagger/NOOP use
+    // Metro uses the function-syntax provider form `() -> T` and needs no import. Dagger uses
     // `javax.inject.Provider`.
     val providerImport =
       when {
         !providerMultibindings -> ""
         buildMode == BuildMode.METRO -> ""
         buildMode == BuildMode.DAGGER -> "import javax.inject.Provider"
-        else -> "import javax.inject.Provider" // NOOP uses javax style for consistency
+        else -> "" // Unsupported modes are rejected during argument validation.
       }
 
     // Multibinding types based on providerMultibindings flag
@@ -2428,8 +2430,6 @@ fun main() {
           // each generated Gradle module has its own `@Module @ComponentScan(<its-pkg>)` class
           // and we list them all here.
           //
-          // Phase C note: Koin + Kotlin Multiplatform is not supported here (Koin compiler
-          // plugin 1.0.0-RC2 conflicts with KMP over LifecycleBasePlugin registration).
           val koinModuleImports =
             allModules.joinToString("\n") { "import ${koinModuleClassFqn(it)}" }
           val koinModuleClassLiterals =
