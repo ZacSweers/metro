@@ -7543,8 +7543,6 @@
 <li><strong>[FIR]</strong> Report an error when a map key is applied (via type argument) to a binding without a corresponding <code>@IntoMap</code> or <code>@ContributesIntoMap</code> annotation.</li>
 <li><strong>[IR]</strong> Fix stale contribution hints after changing a contribution&rsquo;s scope during incremental compilation. This only affects Kotlin versions prior to <code>2.3.20</code>.</li>
 <li><strong>[IR]</strong> Fix Kotlin/Native compilation failures when generated hidden classes were missing their <code>Any</code> supertype.</li>
-<li><strong>[IR]</strong> Enforce <code>enableSuspendProviders</code> for suspend-provider signatures read from upstream modules.</li>
-<li><strong>[IR]</strong> Report a missing <code>runtime-coroutines</code> dependency from generated provider factories, including factories not used by a graph.</li>
 <li><strong>[IR]</strong> Prevent directly provided maps from satisfying suspend-provider-valued map requests unless the provided map uses that exact value type.</li>
 <li><strong>[IR]</strong> Avoid redundant nested <code>DoubleCheck.lazy()</code> calls when materializing <code>Lazy</code> graph accessors and binding parameters.</li>
 <li><strong>[IR]</strong> Correctly adapt function-provider accessors from included graphs when storing them as Metro <code>Provider</code> fields.</li>
@@ -7555,7 +7553,7 @@
 </ul>
 <h3 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Refresh <a href="https://zacsweers.github.io/metro/latest/performance/">benchmarks</a>!</li>
+<li>Refreshed <a href="https://zacsweers.github.io/metro/latest/performance/">benchmarks</a>!</li>
 <li>They now run against latest Metro, Dagger, and KSP versions.<ul>
 <li>Dagger + KSP have improved significantly 🚀.</li>
 </ul>
