@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785340431120,
+  "lastUpdate": 1785369924946,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20048,6 +20048,62 @@ window.BENCHMARK_DATA = {
             "value": 14638.044,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.30%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "853a2989~1",
+          "message": "[before] Fix nested contributed graph extension factories (",
+          "timestamp": "2026-07-29T23:31:20Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/853a2989cd912a8feff945dd8e7542cdb0eafc3b"
+        },
+        "date": 1785369924946,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19364.584,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "853a2989cd912a8feff945dd8e7542cdb0eafc3b",
+          "message": "[after] Fix nested contributed graph extension factories (",
+          "timestamp": "2026-07-29T23:31:20Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/853a2989cd912a8feff945dd8e7542cdb0eafc3b"
+        },
+        "date": 1785369924947,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19840.176,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.46%"
           }
         ]
       }
