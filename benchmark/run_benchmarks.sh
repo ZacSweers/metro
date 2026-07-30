@@ -2133,6 +2133,8 @@ if metadata.get("daggerOptions") != expected_dagger_options:
     raise SystemExit("Build metadata does not contain the expected Dagger option matrix")
 
 expected_stability = {
+    "incrementalWarmups": 5,
+    "graphProcessingWarmups": 10,
     "measuredSamples": 10,
     "maxRelativeMadPercent": 10,
     "maxHalfDriftPercent": 10,
