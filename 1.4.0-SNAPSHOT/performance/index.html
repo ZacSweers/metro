@@ -1361,44 +1361,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methodology">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abi-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ABI Change
-      </span>
-    </span>
-  </a>
-  
 </li>
         
           <li class="md-nav__item">
-  <a href="#non-abi-change" class="md-nav__link">
+  <a href="#published-build-results" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Non-ABI Change
+        Published Build Results
       </span>
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#raw-graphcomponent-processing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Raw Graph/Component Processing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1431,32 +1403,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#jvm-startup" class="md-nav__link">
+  <a href="#published-runtime-results" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        JVM Startup
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#jvm-startup-r8-minified" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        JVM Startup (R8 Minified)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#android-graph-init" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Android Graph Init
+        Published Runtime Results
       </span>
     </span>
   </a>
@@ -2175,44 +2125,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methodology">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abi-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ABI Change
-      </span>
-    </span>
-  </a>
-  
 </li>
         
           <li class="md-nav__item">
-  <a href="#non-abi-change" class="md-nav__link">
+  <a href="#published-build-results" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Non-ABI Change
+        Published Build Results
       </span>
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#raw-graphcomponent-processing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Raw Graph/Component Processing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -2245,32 +2167,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#jvm-startup" class="md-nav__link">
+  <a href="#published-runtime-results" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        JVM Startup
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#jvm-startup-r8-minified" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        JVM Startup (R8 Minified)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#android-graph-init" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Android Graph Init
+        Published Runtime Results
       </span>
     </span>
   </a>
@@ -2449,96 +2349,346 @@
 <h1 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h1>
 <p>Metro strives to be a performant solution with minimal overhead at build-time and generating fast, efficient code at runtime.</p>
 <h2 id="benchmarks">Benchmarks<a class="headerlink" href="#benchmarks" title="Permanent link">&para;</a></h2>
-<p>To benchmark against anvil-ksp + dagger-ksp, anvil-ksp + dagger-kapt, and kotlin-inject-anvil + kotlin-inject, there is a <a href="https://github.com/ZacSweers/metro/tree/main/benchmark">benchmark</a> directory with a generator script. There are more details in its README, but in short it generates a nontrivial multi-module project (default is 500 modules but is configurable) and benchmarks with gradle-profiler.</p>
-<p>The below sections describe the two scenarios Metro&rsquo;s benchmarks run against using this project generation.</p>
+<p>The <a href="https://github.com/ZacSweers/metro/tree/main/benchmark">benchmark project</a> generates a deterministic multi-module workload for every framework. Its README documents the workload, generator, and runner commands.</p>
+<p>Every ratio below compares frameworks within one run. The dated tabs preserve older measurements, but absolute values across tabs are not controlled comparisons because the tools, host environments, and Android versions changed.</p>
 <p><strong>Modes</strong></p>
 <ul>
-<li><code>Metro</code>: Purely running metro</li>
-<li><code>Dagger (KSP)</code>: Running dagger-ksp with anvil-ksp for contribution merging.</li>
-<li><code>Dagger (KAPT)</code>: Running dagger-kapt with anvil-ksp for contribution merging.</li>
-<li><code>Kotlin-Inject</code>: Running kotlin-inject with kotlin-inject-anvil for contribution merging.</li>
+<li><code>Metro</code>: Metro&rsquo;s compiler plugin and runtime.</li>
+<li><code>Dagger (KSP)</code>: Dagger KSP with Anvil KSP contribution merging.</li>
+<li><code>Dagger (KAPT)</code>: Dagger KAPT with Anvil KSP contribution merging.</li>
+<li><code>kotlin-inject</code>: kotlin-inject with kotlin-inject-anvil contribution merging.</li>
+<li><code>Koin</code>: Koin&rsquo;s compiler plugin and runtime container.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Koin caveats</p>
+<p>The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:</p>
+<ul>
+<li>Koin&rsquo;s compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+<li>Koin&rsquo;s runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+</ul>
+</div>
 <h3 id="build-performance">Build Performance<a class="headerlink" href="#build-performance" title="Permanent link">&para;</a></h3>
 <p>Metro&rsquo;s compiler plugin is designed to be <em>fast</em>. Running as a compiler plugin allows it to:</p>
 <ul>
-<li>Avoid generating new sources that need to be compiled</li>
-<li>Avoid running KSP/KAPT</li>
-<li>Generate IR that lowers directly into target platforms</li>
-<li>Hook directly into kotlinc&rsquo;s IC APIs.</li>
+<li>Avoid generating new sources that need to be compiled.</li>
+<li>Avoid running KSP or KAPT.</li>
+<li>Generate IR that lowers directly into target platforms.</li>
+<li>Hook directly into kotlinc&rsquo;s incremental compilation APIs.</li>
 </ul>
-<p><strong>In a straightforward migration, it improves ABI-changing build performance by 80–85%.</strong></p>
 <h4 id="methodology">Methodology<a class="headerlink" href="#methodology" title="Permanent link">&para;</a></h4>
-<p>This benchmark uses <a href="https://github.com/gradle/gradle-profiler">gradle-profiler</a> to benchmark build performance using different tools.</p>
-<div class="admonition tip">
-<p class="admonition-title">Summary</p>
-<p>Results as of Metro <code>0.8.3</code>, Anvil-KSP <code>0.5.1</code>, Dagger <code>2.57.2</code>, and Kotlin-Inject <code>0.8.0</code> with kotlin-inject-anvil <code>0.1.6</code> are as follows.</p>
-<p><em>(Median times in seconds)</em></p>
+<p>The build benchmarks use <a href="https://github.com/gradle/gradle-profiler">Gradle Profiler</a> and report the median of ten measured builds without clean builds.</p>
+<p>Each scenario targets a different kind of work:</p>
+<ul>
+<li><strong>ABI and non-ABI</strong> scenarios change a lower-level module file that does use DI.</li>
+<li><strong>Plain Kotlin</strong> variants change code that does not participate in DI.</li>
+<li><strong>Graph Processing</strong> reruns the top-level graph or container processing task.</li>
+</ul>
+<p>The benchmark README documents warm-ups, Kotlin compiler execution, cache settings, and stability checks.</p>
+<div class="admonition note">
+<p class="admonition-title">Build report legend</p>
+<ul>
+<li><strong>GC</strong> is time spent in garbage collection.</li>
+<li><strong>MAD</strong> shows variation around the median.</li>
+<li><strong>Half-run drift</strong> compares the first and second halves of the run.</li>
+<li><strong>Outliers</strong> are samples more than 20% from the median. All ten samples remain included.</li>
+</ul>
+</div>
+<h4 id="published-build-results">Published Build Results<a class="headerlink" href="#published-build-results" title="Permanent link">&para;</a></h4>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="current-2026-07-30" name="__tabbed_1" type="radio" /><input id="2025-12-08" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="current-2026-07-30">Current (2026-07-30)</label><label for="2025-12-08">2025-12-08</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Exact median times are in milliseconds. The value in parentheses is the ratio to Metro within this run, and lower is better.</p>
 <table>
 <thead>
 <tr>
-<th></th>
-<th>Metro</th>
-<th>Dagger (KSP)</th>
-<th>Dagger (KAPT)</th>
-<th>Kotlin-Inject</th>
+<th>Scenario</th>
+<th style="text-align: right;">Metro</th>
+<th style="text-align: right;">Dagger (KSP)</th>
+<th style="text-align: right;">Dagger (KAPT)</th>
+<th style="text-align: right;">kotlin-inject</th>
+<th style="text-align: right;">Koin</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>ABI</strong></td>
-<td>17.5s</td>
-<td>119.6s (+584%)</td>
-<td>93.2s (+433%)</td>
-<td>32.3s (+85%)</td>
+<td>ABI Change</td>
+<td style="text-align: right;">5,541.985 (1.00×)</td>
+<td style="text-align: right;">23,237.710 (4.19×)</td>
+<td style="text-align: right;">25,186.340 (4.54×)</td>
+<td style="text-align: right;">11,612.840 (2.10×)</td>
+<td style="text-align: right;">5,751.730 (1.04×)</td>
 </tr>
 <tr>
-<td><strong>Non-ABI</strong></td>
-<td>11.6s</td>
-<td>13.8s (+20%)</td>
-<td>23.2s (+100%)</td>
-<td>11.3s (-2%)</td>
+<td>Non-ABI Change</td>
+<td style="text-align: right;">3,334.620 (1.00×)</td>
+<td style="text-align: right;">4,242.790 (1.27×)</td>
+<td style="text-align: right;">8,552.660 (2.56×)</td>
+<td style="text-align: right;">3,642.120 (1.09×)</td>
+<td style="text-align: right;">3,793.640 (1.14×)</td>
 </tr>
 <tr>
-<td><strong>Graph processing</strong></td>
-<td>22.6s</td>
-<td>88.1s (+290%)</td>
-<td>26.0s (+15%)</td>
-<td>28.3s (+25%)</td>
+<td>Plain Kotlin ABI</td>
+<td style="text-align: right;">5,552.485 (1.00×)</td>
+<td style="text-align: right;">22,796.950 (4.11×)</td>
+<td style="text-align: right;">25,003.370 (4.50×)</td>
+<td style="text-align: right;">11,869.535 (2.14×)</td>
+<td style="text-align: right;">5,711.295 (1.03×)</td>
+</tr>
+<tr>
+<td>Plain Kotlin Non-ABI</td>
+<td style="text-align: right;">3,069.720 (1.00×)</td>
+<td style="text-align: right;">4,175.165 (1.36×)</td>
+<td style="text-align: right;">9,360.640 (3.05×)</td>
+<td style="text-align: right;">3,635.170 (1.18×)</td>
+<td style="text-align: right;">3,732.875 (1.22×)</td>
+</tr>
+<tr>
+<td>Graph Processing*</td>
+<td style="text-align: right;">6,198.085 (1.00×)</td>
+<td style="text-align: right;">12,311.125 (1.99×)</td>
+<td style="text-align: right;">11,732.670 (1.89×)</td>
+<td style="text-align: right;">23,699.260 (3.82×)</td>
+<td style="text-align: right;">3,643.340 (0.59×)</td>
 </tr>
 </tbody>
 </table>
-<p>View the <a href="../benchmark_assets/build-benchmark-report.html">full interactive benchmark report</a> for detailed results including environment information.</p>
+<p>* Graph Processing reruns each framework&rsquo;s top-level graph or container processing task. Dagger and kotlin-inject also run the processors that generate their graph implementations, so this scenario does not use identical Gradle tasks across frameworks.</p>
+<p><a href="../benchmark_assets/runs/2026-07-30/build-benchmark-report.html">Open the full interactive build report</a>.</p>
+<p><img alt="Current build-time chart for the ABI change benchmark." src="../benchmark_assets/runs/2026-07-30/benchmark_abi.png" /></p>
+<p><img alt="Current build-time chart for the non-ABI change benchmark." src="../benchmark_assets/runs/2026-07-30/benchmark_noabi.png" /></p>
+<p><img alt="Current build-time chart for the Graph Processing benchmark." src="../benchmark_assets/runs/2026-07-30/benchmark_graph_processing.png" /></p>
+<p><strong>Run metadata</strong></p>
+<ul>
+<li>Measurement commit <a href="https://github.com/ZacSweers/metro/commit/cf8e677835e3eb084e8d933e8b0568fb74505cb2"><code>cf8e67783</code></a> on <code>z/updateBenchmarks</code>, with a clean working tree. The matrix completed on 2026-07-30 at 07:14 EDT.</li>
+<li>Seed <code>0</code> and workload fingerprint <code>sha256:7b20f05437d03f4742fc1bfa884d66091e025d86651c5f519f4a3f97e28ebdf4</code>.</li>
+<li>Metro 1.4.0, Kotlin 2.4.0, Dagger 2.60.1, KSP 2.3.10, Anvil 0.5.4, kotlin-inject 0.9.0, kotlin-inject-anvil 0.1.7, Koin 4.2.2, and Koin compiler 1.1.0.</li>
+<li>Gradle 9.6.1, Gradle Profiler 0.25.2, JDK 25.0.4, and JVM target 11 on macOS with an Apple M4 Pro and 48 GB RAM. Kotlin compilation ran in-process against an isolated Gradle user home.</li>
+<li>Every scenario passed the stability gate with ten measured samples and zero outliers. The maximum relative median absolute deviation was 3.86%. The maximum first-half versus second-half median drift was 9.13%.</li>
+<li>The full report records the workload counts, framework options, and repository metadata.</li>
+</ul>
 </div>
-<h5 id="abi-change">ABI Change<a class="headerlink" href="#abi-change" title="Permanent link">&para;</a></h5>
-<p>This benchmark makes ABI-breaking source changes in a lower level module. This is where Metro shines the most.</p>
-<p><img alt="Bar chart comparing ABI change build times: Metro is fastest at 17.5s, followed by kotlin-inject at 32.3s, Dagger KAPT at 93.2s, and Dagger KSP at 119.6s" src="../benchmark_assets/benchmark_abi.png" /></p>
-<h5 id="non-abi-change">Non-ABI Change<a class="headerlink" href="#non-abi-change" title="Permanent link">&para;</a></h5>
-<p>This benchmark makes non-ABI-breaking source changes in a lower level module. The differences are less significant here as KSP is quite good at compilation avoidance now too. The outlier here is KAPT, which still has to run stub gen + apt and cannot fully avoid it.</p>
-<p><img alt="Bar chart comparing non-ABI change build times: Metro and kotlin-inject are similar at around 11.5s, Dagger KSP at 13.8s, and Dagger KAPT slowest at 23.2s" src="../benchmark_assets/benchmark_noabi.png" /></p>
-<h5 id="raw-graphcomponent-processing">Raw Graph/Component Processing<a class="headerlink" href="#raw-graphcomponent-processing" title="Permanent link">&para;</a></h5>
-<p>This benchmark reruns the top-level merging graph/component where all the downstream contributions are merged. This also builds the full dependency graph and any contributed graph extensions/subcomponents.</p>
-<p>Metro again shines here. Dagger (KSP) seems to have a bottleneck that disproportionately affects it here too.</p>
-<p><img alt="Bar chart comparing graph processing times: Metro is fastest at 22.6s, Dagger KAPT and kotlin-inject are similar at around 26-28s, and Dagger KSP is slowest at 88.1s" src="../benchmark_assets/benchmark_graph_processing.png" /></p>
+<div class="tabbed-block">
+<p>Koin was not included in this run. Exact median times are in milliseconds. The value in parentheses is the ratio to Metro within this run, and lower is better.</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th style="text-align: right;">Metro</th>
+<th style="text-align: right;">Dagger (KSP)</th>
+<th style="text-align: right;">Dagger (KAPT)</th>
+<th style="text-align: right;">kotlin-inject</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ABI Change</td>
+<td style="text-align: right;">17,483.18 (1.00×)</td>
+<td style="text-align: right;">119,632.99 (6.84×)</td>
+<td style="text-align: right;">93,195.04 (5.33×)</td>
+<td style="text-align: right;">32,297.22 (1.85×)</td>
+</tr>
+<tr>
+<td>Non-ABI Change</td>
+<td style="text-align: right;">11,552.18 (1.00×)</td>
+<td style="text-align: right;">13,819.26 (1.20×)</td>
+<td style="text-align: right;">23,177.53 (2.01×)</td>
+<td style="text-align: right;">11,336.05 (0.98×)</td>
+</tr>
+<tr>
+<td>Plain Kotlin ABI</td>
+<td style="text-align: right;">17,501.49 (1.00×)</td>
+<td style="text-align: right;">121,273.14 (6.93×)</td>
+<td style="text-align: right;">92,521.81 (5.29×)</td>
+<td style="text-align: right;">31,702.09 (1.81×)</td>
+</tr>
+<tr>
+<td>Plain Kotlin Non-ABI</td>
+<td style="text-align: right;">10,083.62 (1.00×)</td>
+<td style="text-align: right;">12,232.19 (1.21×)</td>
+<td style="text-align: right;">26,049.74 (2.58×)</td>
+<td style="text-align: right;">11,460.08 (1.14×)</td>
+</tr>
+<tr>
+<td>Graph Processing</td>
+<td style="text-align: right;">22,612.15 (1.00×)</td>
+<td style="text-align: right;">88,085.83 (3.90×)</td>
+<td style="text-align: right;">25,986.25 (1.15×)</td>
+<td style="text-align: right;">28,250.25 (1.25×)</td>
+</tr>
+</tbody>
+</table>
+<p><a href="../benchmark_assets/runs/2025-12-08/build-benchmark-report.html">Open the archived interactive build report</a>.</p>
+<p><img alt="Archived build-time chart for the 2025 ABI change benchmark." src="../benchmark_assets/runs/2025-12-08/benchmark_abi.png" /></p>
+<p><img alt="Archived build-time chart for the 2025 non-ABI change benchmark." src="../benchmark_assets/runs/2025-12-08/benchmark_noabi.png" /></p>
+<p><img alt="Archived build-time chart for the 2025 Graph Processing benchmark." src="../benchmark_assets/runs/2025-12-08/benchmark_graph_processing.png" /></p>
+<p><strong>Run metadata</strong></p>
+<ul>
+<li>Metro 0.8.3 at commit <a href="https://github.com/ZacSweers/metro/commit/a1f9a939"><code>a1f9a939</code></a>. The run used Kotlin 2.2.20, Dagger 2.57.2, KSP 2.3.3, Anvil 0.5.1, kotlin-inject 0.8.0, and kotlin-inject-anvil 0.1.6.</li>
+<li>Gradle 9.2.1, Gradle Profiler commit <a href="https://github.com/gradle/gradle-profiler/commit/a27c6559"><code>a27c6559</code></a>, JDK 24.0.2, and JVM target 11 on Linux with an AMD EPYC 7763 and 15 GiB RAM.</li>
+<li>The seed and workload fingerprint were not recorded.</li>
+</ul>
+</div>
+</div>
+</div>
 <h3 id="runtime-performance">Runtime Performance<a class="headerlink" href="#runtime-performance" title="Permanent link">&para;</a></h3>
 <p>Metro&rsquo;s compiler generates Dagger-style factory classes for every injection site. The same factory classes are reused across modules and downstream builds, so there&rsquo;s no duplicated glue code or runtime discovery cost.</p>
-<p>Because the full dependency graph is wired at compile-time, each binding is accessed through a direct provider field reference or direct invocation in the generated code. No reflection, no hashmap lookups, no runtime service locator hops, etc.</p>
+<p>Because the full dependency graph is wired at compile-time, each binding is accessed through a direct provider field reference or direct invocation in the generated code. There are no reflection calls, hashmap lookups, or runtime service locator hops.</p>
+<p>kotlin-inject generates an inner <code>LazyMap</code> in its component impl that is populated at component init.</p>
+<p>Koin does not generate a graph impl at compile-time and instead resolves all dependencies at runtime.</p>
 <h4 id="methodology_1">Methodology<a class="headerlink" href="#methodology_1" title="Permanent link">&para;</a></h4>
-<p>To measure and compare runtime performance, Metro benchmarks graph initialization time across different DI frameworks. These benchmarks measure the time to create and initialize a dependency graph with 500 modules&rsquo; worth of bindings.</p>
-<div class="admonition note">
-<p class="admonition-title">Interactive Report</p>
-<p>View the <a href="../benchmark_assets/startup-benchmark-report.html">full interactive benchmark report</a> for detailed results including environment information.</p>
+<p>The JVM and R8 measurements use JMH average-time mode. Android uses an AndroidX microbenchmark and consumes each returned component through <code>BlackHole.consume</code>. The benchmark README documents the full runner configuration.</p>
+<h4 id="published-runtime-results">Published Runtime Results<a class="headerlink" href="#published-runtime-results" title="Permanent link">&para;</a></h4>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="current-2026-07-30_1" name="__tabbed_2" type="radio" /><input id="2025-12-08_1" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="current-2026-07-30_1">Current (2026-07-30)</label><label for="2025-12-08_1">2025-12-08</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Exact values are milliseconds per graph creation and initialization. The value in parentheses is the ratio to Metro within the same environment.</p>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th style="text-align: right;">JVM JMH</th>
+<th style="text-align: right;">JVM R8</th>
+<th style="text-align: right;">Android microbenchmark</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Metro</td>
+<td style="text-align: right;">0.16807883977409765 (1.00×)</td>
+<td style="text-align: right;">0.16645391862207762 (1.00×)</td>
+<td style="text-align: right;">0.10138713576449912 (1.00×)</td>
+</tr>
+<tr>
+<td>Dagger (KSP)</td>
+<td style="text-align: right;">0.1778419859546272 (1.06×)</td>
+<td style="text-align: right;">0.1710602057899141 (1.03×)</td>
+<td style="text-align: right;">0.13074065954922892 (1.29×)</td>
+</tr>
+<tr>
+<td>kotlin-inject</td>
+<td style="text-align: right;">0.2380900961010331 (1.42×)</td>
+<td style="text-align: right;">0.22299428354115663 (1.34×)</td>
+<td style="text-align: right;">17.6878621 (174.46×)</td>
+</tr>
+<tr>
+<td>Koin</td>
+<td style="text-align: right;">6.490582016559728 (38.62×)</td>
+<td style="text-align: right;">4.968557821007341 (29.85×)</td>
+<td style="text-align: right;">23.686009625 (233.62×)</td>
+</tr>
+</tbody>
+</table>
+<p>Dagger KAPT is omitted from the current runtime matrix because its generated graph implementation is equivalent to Dagger KSP&rsquo;s for this workload.</p>
+<p><a href="../benchmark_assets/runs/2026-07-30/startup-benchmark-report.html">Open the full interactive runtime report</a>.</p>
+<p><img alt="Linear JVM runtime chart with Metro at 0.16807883977409765 ms, Dagger KSP at 0.1778419859546272 ms, kotlin-inject at 0.2380900961010331 ms, and Koin at 6.490582016559728 ms." src="../benchmark_assets/runs/2026-07-30/runtime_jvm.png" /></p>
+<p><img alt="Linear R8-minified JVM runtime chart with Metro at 0.16645391862207762 ms, Dagger KSP at 0.1710602057899141 ms, kotlin-inject at 0.22299428354115663 ms, and Koin at 4.968557821007341 ms." src="../benchmark_assets/runs/2026-07-30/runtime_jvm_r8.png" /></p>
+<p>Android uses two linear scales. A detail chart shows Metro and Dagger. A full-scale chart shows all four frameworks and accommodates the longer kotlin-inject and Koin times.</p>
+<p><img alt="Linear Android detail chart with Metro at 0.10138713576449912 ms and Dagger KSP at 0.13074065954922892 ms." src="../benchmark_assets/runs/2026-07-30/runtime_android_compiled.png" /></p>
+<p><img alt="Full-scale linear Android chart with Metro at 0.10138713576449912 ms, Dagger KSP at 0.13074065954922892 ms, kotlin-inject at 17.6878621 ms, and Koin at 23.686009625 ms." src="../benchmark_assets/runs/2026-07-30/runtime_android_runtime.png" /></p>
+<p>The complete Android matrix was repeated after a cooldown. No framework exceeded both stabilization thresholds of 10% and 0.02 ms.</p>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th style="text-align: right;">First pass (ms)</th>
+<th style="text-align: right;">Second pass (ms)</th>
+<th style="text-align: right;">Absolute difference (ms)</th>
+<th style="text-align: right;">Difference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Metro</td>
+<td style="text-align: right;">0.10138713576449912</td>
+<td style="text-align: right;">0.0962546281938326</td>
+<td style="text-align: right;">0.005132507570666522</td>
+<td style="text-align: right;">5.06%</td>
+</tr>
+<tr>
+<td>Dagger (KSP)</td>
+<td style="text-align: right;">0.13074065954922892</td>
+<td style="text-align: right;">0.12853238038548753</td>
+<td style="text-align: right;">0.00220827916374139</td>
+<td style="text-align: right;">1.69%</td>
+</tr>
+<tr>
+<td>kotlin-inject</td>
+<td style="text-align: right;">17.6878621</td>
+<td style="text-align: right;">17.5348552</td>
+<td style="text-align: right;">0.15300690000000117</td>
+<td style="text-align: right;">0.87%</td>
+</tr>
+<tr>
+<td>Koin</td>
+<td style="text-align: right;">23.686009625</td>
+<td style="text-align: right;">24.227620375</td>
+<td style="text-align: right;">0.5416107500000003</td>
+<td style="text-align: right;">2.29%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Run metadata</strong></p>
+<ul>
+<li>Measurement commit <a href="https://github.com/ZacSweers/metro/commit/f4a6fc34c865a4bc9ae0a397e428c03f32239152"><code>f4a6fc34c</code></a> on <code>z/updateBenchmarks</code>, with a clean working tree. The full matrix completed on 2026-07-30 at 09:30 EDT, and the Android repeat completed at 09:41 EDT.</li>
+<li>Seed <code>0</code> and workload fingerprint <code>sha256:7b20f05437d03f4742fc1bfa884d66091e025d86651c5f519f4a3f97e28ebdf4</code>.</li>
+<li>Metro 1.4.0, Kotlin 2.4.0, Dagger 2.60.1, KSP 2.3.10, Anvil 0.5.4, kotlin-inject 0.9.0, kotlin-inject-anvil 0.1.7, Koin 4.2.2, and Koin compiler 1.1.0.</li>
+<li>JDK 25.0.4, JVM target 11, JMH plugin 0.7.3, JMH runtime 1.36, and AndroidX Benchmark 1.4.1 on macOS with an Apple M4 Pro and 48 GB RAM.</li>
+<li>Pixel 9 running Android 17/API 37 on arm64-v8a with build <code>CP31.260618.005</code>.</li>
+<li>The full report records the workload counts, framework options, and complete device environment.</li>
+</ul>
 </div>
-<h4 id="jvm-startup">JVM Startup<a class="headerlink" href="#jvm-startup" title="Permanent link">&para;</a></h4>
-<p>These benchmarks run with JMH.</p>
-<p>On the JVM, Metro, Dagger (KSP), and Dagger (KAPT) all perform nearly identically since they generate similar factory-based code. kotlin-inject is slightly slower due to its different code generation approach.</p>
-<p><img alt="Bar chart comparing JVM startup times: Metro, Dagger KSP, and Dagger KAPT all perform nearly identically at around 0.17ms, while kotlin-inject is slightly slower at 0.22ms" src="../benchmark_assets/runtime_jvm.png" /></p>
-<h4 id="jvm-startup-r8-minified">JVM Startup (R8 Minified)<a class="headerlink" href="#jvm-startup-r8-minified" title="Permanent link">&para;</a></h4>
-<p>These benchmarks run with JMH on an R8-minified jar of the same built project.</p>
-<p>With R8 minification enabled, Metro shows a slight edge. The benefits of compile-time wiring become more apparent as R8 can further optimize the generated code.</p>
-<p><img alt="Bar chart comparing R8-minified JVM startup times: Metro is fastest at 0.16ms, Dagger KSP and KAPT at 0.16ms, and kotlin-inject at 0.20ms" src="../benchmark_assets/runtime_jvm_r8.png" /></p>
-<h4 id="android-graph-init">Android Graph Init<a class="headerlink" href="#android-graph-init" title="Permanent link">&para;</a></h4>
-<p>On Android, the differences become more pronounced. Metro and Dagger perform similarly well, while kotlin-inject shows a significant performance gap.</p>
-<p><img alt="Bar chart comparing Android graph initialization times: Metro is fastest at 0.10ms, Dagger KSP and KAPT are similar at around 0.12ms, while kotlin-inject is significantly slower at 12ms" src="../benchmark_assets/runtime_android.png" /></p>
+<div class="tabbed-block">
+<p>Koin was not included in this run. Exact values are milliseconds per operation. The value in parentheses is the ratio to Metro within this run.</p>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th style="text-align: right;">JVM JMH</th>
+<th style="text-align: right;">JVM R8</th>
+<th style="text-align: right;">Android microbenchmark</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Metro</td>
+<td style="text-align: right;">0.16802429521997675 (1.00×)</td>
+<td style="text-align: right;">0.15640682329788375 (1.00×)</td>
+<td style="text-align: right;">0.102 (1.00×)</td>
+</tr>
+<tr>
+<td>Dagger (KSP)</td>
+<td style="text-align: right;">0.16716651975694252 (0.99×)</td>
+<td style="text-align: right;">0.16155119157781478 (1.03×)</td>
+<td style="text-align: right;">0.125 (1.23×)</td>
+</tr>
+<tr>
+<td>Dagger (KAPT)</td>
+<td style="text-align: right;">0.16800631929906623 (1.00×)</td>
+<td style="text-align: right;">0.16164561019243706 (1.03×)</td>
+<td style="text-align: right;">0.123 (1.21×)</td>
+</tr>
+<tr>
+<td>kotlin-inject</td>
+<td style="text-align: right;">0.21527532967935503 (1.28×)</td>
+<td style="text-align: right;">0.20484185885872247 (1.31×)</td>
+<td style="text-align: right;">12.051 (118.15×)</td>
+</tr>
+</tbody>
+</table>
+<p><a href="../benchmark_assets/runs/2025-12-08/startup-benchmark-report.html">Open the archived interactive runtime report</a>.</p>
+<p><img alt="Archived JVM runtime chart for the December 2025 run." src="../benchmark_assets/runs/2025-12-08/runtime_jvm.png" /></p>
+<p><img alt="Archived R8-minified JVM runtime chart for the December 2025 run." src="../benchmark_assets/runs/2025-12-08/runtime_jvm_r8.png" /></p>
+<p><img alt="Archived Android runtime chart for the December 2025 run." src="../benchmark_assets/runs/2025-12-08/runtime_android.png" /></p>
+<p><strong>Run metadata</strong></p>
+<ul>
+<li>Kotlin 2.2.20, Dagger 2.57.2, KSP 2.3.3, Anvil 0.5.1, kotlin-inject 0.8.0, and kotlin-inject-anvil 0.1.6.</li>
+<li>JMH plugin 0.7.3, AndroidX Benchmark 1.4.1, JDK 24.0.2, and JVM target 11 on an Apple M4 Pro with 48 GB RAM.</li>
+<li>Pixel 9 running Android 16.</li>
+<li>The commit, seed, and workload fingerprint were not recorded.</li>
+</ul>
+</div>
+</div>
+</div>
 <h2 id="real-world-results">Real-World Results<a class="headerlink" href="#real-world-results" title="Permanent link">&para;</a></h2>
 <p>Below are some results from real-world projects, shared with the developers&rsquo; permission.</p>
 <div class="admonition note">
