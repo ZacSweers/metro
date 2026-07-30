@@ -1462,7 +1462,12 @@ generate_summary() {
 **Workload Fingerprint:** $workload_fingerprint
 **Modes:** $MODES
 
-**Framework scope:** Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Notes:** Each runtime benchmark creates and initializes the same generated graph.
+
+The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+
+- Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
+- Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 EOF
 
     IFS=',' read -ra MODE_ARRAY <<< "$MODES"
@@ -1816,16 +1821,28 @@ generate_non_ref_html_report() {
     <title>Metro Startup Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --baseline-color: #607D8B; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --baseline-color: #4CAF50; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
         .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
         .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .versions-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .versions-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; }
+        .version-item { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; padding: 0.55rem 0.75rem; }
+        .version-item .label { color: #666; }
+        .version-item .value { flex: 0 0 auto; min-width: 0; font-family: 'SF Mono', Monaco, monospace; text-align: right; white-space: nowrap; }
+        .versions-section p { margin: 1rem 0 0; color: #666; font-size: 0.85rem; }
+        .versions-section a { color: inherit; text-underline-offset: 0.15em; }
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5; }
+        .notes-section h2, .notes-section h3 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
+        .notes-section ul { margin: 0; padding-left: 1.25rem; }
+        .notes-section li + li { margin-top: 0.5rem; }
         .chart-group-title { margin: 0 0 0.75rem 0; font-size: 0.95rem; font-weight: 600; color: #555; }
         .chart-note { margin: 0 0 1rem 0; color: #666; font-size: 0.9rem; }
         .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
@@ -1841,7 +1858,9 @@ generate_non_ref_html_report() {
         .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
         .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--baseline-color); font-weight: 500; }
+        .vs-baseline.baseline { font-weight: 500; }
+        .vs-baseline.better { color: #43a047; }
+        .vs-baseline.worse { color: #e53935; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -1850,11 +1869,13 @@ generate_non_ref_html_report() {
         .no-data { color: #999; font-style: italic; }
         .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+        .metadata-group { min-width: 0; }
         .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
-        .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
-        .metadata-group dt { color: #888; }
-        .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; font-size: 0.85rem; }
+        .metadata-group dt { min-width: 0; color: #888; overflow-wrap: anywhere; }
+        .metadata-group dd { min-width: 0; margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; overflow-wrap: anywhere; word-break: break-word; }
+        .metadata-group a { color: inherit; text-underline-offset: 0.15em; }
     </style>
 </head>
 <body>
@@ -1863,9 +1884,19 @@ generate_non_ref_html_report() {
         <div class="subtitle" id="date"></div>
     </div>
     <div class="container">
-        <div class="benchmark-section">
-            <h2>Framework Scope</h2>
-            <p>Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+        <div class="versions-section" id="versions"></div>
+        <div class="notes-section">
+            <h2>Notes</h2>
+            <ul>
+                <li>Each runtime benchmark creates and initializes the same generated graph.</li>
+                <li>
+                    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+                    <ul>
+                        <li>Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+                        <li>Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+                    </ul>
+                </li>
+            </ul>
         </div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
@@ -1879,9 +1910,15 @@ HTMLHEAD
     cat >> "$html_file" << 'HTMLTAIL'
 ;
 const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const benchmarkDescriptions = {
+    'jvm': 'Lower is better. Measures graph creation and initialization on the JVM.',
+    'jvm_r8': 'Lower is better. Measures the same JVM graph after R8 minification.',
+    'android_micro': 'Lower is better. Measures graph creation and initialization on the connected Android device.',
+};
 let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'metro')
     ? 'metro'
     : (benchmarkData.benchmarks[0]?.results[0]?.key || 'metro');
+document.documentElement.style.setProperty('--baseline-color', colors[selectedBaseline] || '#888');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -1928,11 +1965,52 @@ function getBaselineLabel() {
     return result?.framework || 'Baseline';
 }
 
+function displayMetroVersion(version) {
+    return version?.replace(/-SNAPSHOT$/, '') || '—';
+}
+
+function renderVersions() {
+    const container = document.getElementById('versions');
+    const m = benchmarkData.metadata;
+    if (!m) { container.style.display = 'none'; return; }
+    const items = [
+        ['Metro', displayMetroVersion(m.versions?.metro)],
+        ['Kotlin', m.versions?.kotlin],
+        ['Dagger', m.versions?.dagger],
+        ['KSP', m.versions?.ksp],
+        ['Anvil', m.versions?.anvil],
+        ['kotlin-inject', m.versions?.kotlinInject],
+        ['kotlin-inject-anvil', m.versions?.kotlinInjectAnvil],
+        ['Koin', m.versions?.koin],
+        ['Koin Compiler', m.versions?.koinCompiler],
+        ['JDK', m.build?.jdk],
+        ['JVM Target', m.build?.jvmTarget],
+        ['JMH Plugin', m.build?.jmhPlugin],
+        ['AndroidX Benchmark', m.build?.androidxBenchmark],
+    ];
+    if (m.android?.version) items.push(['Android', m.android.version]);
+    if (m.android?.sdk) items.push(['Android SDK', m.android.sdk]);
+    container.innerHTML = `
+        <h2>Versions</h2>
+        <div class="versions-grid">${items.map(([label, value]) => `<div class="version-item"><span class="label">${label}</span><span class="value">${value || '—'}</span></div>`).join('')}</div>
+        <p>See the <a href="#build-environment">full build environment</a> at the bottom of the report.</p>`;
+}
+
+function formatCommit(commit) {
+    if (!commit || !/^[0-9a-f]{7,40}$/i.test(commit)) return commit || '—';
+    return `<a href="https://github.com/ZacSweers/metro/commit/${commit}">${commit}</a>`;
+}
+
+function formatMetadataMap(value) {
+    if (!value) return '—';
+    return Object.entries(value).map(([key, item]) => `${key}: ${item}`).join('<br>');
+}
+
 function frameworkVersion(key) {
     const versions = benchmarkData.metadata?.versions || {};
     switch (key) {
         case 'metro':
-            return versions.metro || '—';
+            return displayMetroVersion(versions.metro);
         case 'dagger_ksp':
         case 'dagger_kapt':
             return versions.dagger || '—';
@@ -1973,16 +2051,16 @@ function renderBenchmarks() {
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         const chartGroups = chartGroupsFor(benchmark);
         const splitNote = chartGroups.length > 1
-            ? '<p class="chart-note">Android is shown twice at different linear scales. The first chart is a detail view for Metro and Dagger. The second repeats all frameworks at the full scale required by kotlin-inject and Koin\'s outsized times on this workload.</p>'
+            ? '<p class="chart-note">Android uses two linear scales. The detail view shows Metro and Dagger. The full-scale view includes all frameworks and accommodates the longer kotlin-inject and Koin times.</p>'
             : '';
         const chartsHtml = chartGroups.map((group, groupIdx) => `
             ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
             <div class="legend">${group.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}-${groupIdx}"></canvas></div>`).join('');
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better · linear time scale; see the table for exact values</div>
+            <div class="chart-hint">${benchmarkDescriptions[benchmark.key] || 'Lower is better.'}</div>
             ${splitNote}${chartsHtml}
-            <table><thead><tr><th></th><th>Framework</th><th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+            <table><thead><tr><th></th><th>Framework</th><th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th></tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
@@ -2000,7 +2078,7 @@ function renderChart(benchmark, idx, group, groupIdx) {
         data.push(result.value ?? null);
         backgroundColors.push(colors[result.key]);
     });
-    charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => frameworkVersion(group.results[ctx.dataIndex].key) + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
+    charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Time', data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => group.results[ctx.dataIndex].framework + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms') } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
 }
 
 function renderTable(benchmark, idx) {
@@ -2013,7 +2091,6 @@ function renderTable(benchmark, idx) {
         html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
             <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
-            <td class="numeric">${frameworkVersion(result.key)}</td>
             <td class="numeric">${result.value ? formatTime(result.value, benchmark.unit) : '<span class="no-data">N/A</span>'}</td>
             <td class="numeric vs-baseline ${vsBaseline.class}">${vsBaseline.text}</td></tr>`;
     });
@@ -2022,6 +2099,7 @@ function renderTable(benchmark, idx) {
 
 function setBaseline(key) {
     selectedBaseline = key;
+    document.documentElement.style.setProperty('--baseline-color', colors[key] || '#888');
     benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
     if (typeof renderBinaryMetrics === 'function') renderBinaryMetrics();
     document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
@@ -2033,12 +2111,12 @@ function renderMetadata() {
     const m = benchmarkData.metadata;
     const hasAndroid = m.android?.device || m.android?.version;
     container.innerHTML = `
-        <h2>Build Environment</h2>
+        <h2 id="build-environment">Build Environment</h2>
         <div class="metadata-grid">
             <div class="metadata-group">
                 <h3>Library Versions</h3>
                 <dl>
-                    <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
+                    <dt>Metro</dt><dd>${displayMetroVersion(m.versions?.metro)}</dd>
                     <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                     <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                     <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -2064,11 +2142,11 @@ function renderMetadata() {
                     <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
                     <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
                     <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'}</dd>
-                    <dt>Layers</dt><dd>${m.workload?.modulesByLayer ? JSON.stringify(m.workload.modulesByLayer) : '—'}</dd>
+                    <dt>Layers</dt><dd>${formatMetadataMap(m.workload?.modulesByLayer)}</dd>
                     <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
                     <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'}</dd>
-                    <dt>Contribution kinds</dt><dd>${m.workload?.contributionsByKind ? JSON.stringify(m.workload.contributionsByKind) : '—'}</dd>
-                    <dt>Subcomponents</dt><dd>${m.workload?.subcomponents ? JSON.stringify(m.workload.subcomponents) : '—'}</dd>
+                    <dt>Contribution kinds</dt><dd>${formatMetadataMap(m.workload?.contributionsByKind)}</dd>
+                    <dt>Subcomponents</dt><dd>${formatMetadataMap(m.workload?.subcomponents)}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
@@ -2083,13 +2161,13 @@ function renderMetadata() {
                     <dt>JMH GC profiler</dt><dd>${m.options?.jmhGcProfiler ?? '—'}</dd>
                     <dt>R8 runtime program input</dt><dd>${m.options?.r8RuntimeClasspathAsProgramInput ?? '—'}</dd>
                     <dt>Dagger fastInit</dt><dd>${m.options?.dagger?.fastInit || '—'}</dd>
-                    <dt>Dagger validation</dt><dd>${m.options?.dagger ? JSON.stringify(m.options.dagger) : '—'}</dd>
+                    <dt>Dagger validation</dt><dd>${formatMetadataMap(m.options?.dagger)}</dd>
                 </dl>
             </div>
             <div class="metadata-group">
                 <h3>Repository</h3>
                 <dl>
-                    <dt>Commit</dt><dd>${m.repository?.commit || '—'}</dd>
+                    <dt>Commit</dt><dd>${formatCommit(m.repository?.commit)}</dd>
                     <dt>Branch</dt><dd>${m.repository?.branch || '—'}</dd>
                     <dt>Dirty</dt><dd>${m.repository?.dirty ?? '—'}</dd>
                     <dt>Dirty diff fingerprint</dt><dd>${m.repository?.dirtyDiffFingerprint || '—'}</dd>
@@ -2119,7 +2197,7 @@ function renderMetadata() {
 }
 
 document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
-renderBenchmarks(); renderMetadata();
+renderVersions(); renderBenchmarks(); renderMetadata();
 </script>
 </body>
 </html>
@@ -2699,7 +2777,12 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $MODES
 **Modes benchmarked on ref2:** ${ref2_modes:-$baseline_mode}
 
-**Framework scope:** Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Notes:** Each runtime benchmark creates and initializes the same generated graph.
+
+The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+
+- Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
+- Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 
 ## Git Refs
 
@@ -3412,7 +3495,12 @@ generate_single_summary() {
 **Modes:** $MODES
 **Commit:** $ref_commit
 
-**Framework scope:** Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+**Notes:** Each runtime benchmark creates and initializes the same generated graph.
+
+The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+
+- Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
+- Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 
 EOF
 
@@ -4090,7 +4178,7 @@ generate_html_report() {
     <title>Metro Startup Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --baseline-color: #607D8B; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
+        :root { --baseline-color: #4CAF50; --metro-color: #4CAF50; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -4104,9 +4192,23 @@ generate_html_report() {
         .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
         .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
         .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .ref-card .commit a, .metadata-group a { color: inherit; text-underline-offset: 0.15em; }
+        .versions-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .versions-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; }
+        .version-item { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; padding: 0.55rem 0.75rem; }
+        .version-item .label { color: #666; }
+        .version-item .value { flex: 0 0 auto; min-width: 0; font-family: 'SF Mono', Monaco, monospace; text-align: right; white-space: nowrap; }
+        .versions-section p { margin: 1rem 0 0; color: #666; font-size: 0.85rem; }
+        .versions-section a { color: inherit; text-underline-offset: 0.15em; }
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5; }
+        .notes-section h2, .notes-section h3 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
+        .binary-metrics-heading { margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 500; }
+        .notes-section ul { margin: 0; padding-left: 1.25rem; }
+        .notes-section li + li { margin-top: 0.5rem; }
         .chart-group-title { margin: 0 0 0.75rem 0; font-size: 0.95rem; font-weight: 600; color: #555; }
         .chart-note { margin: 0 0 1rem 0; color: #666; font-size: 0.9rem; }
         .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
@@ -4122,7 +4224,9 @@ generate_html_report() {
         .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
         .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--baseline-color); font-weight: 500; }
+        .vs-baseline.baseline { font-weight: 500; }
+        .vs-baseline.better { color: #43a047; }
+        .vs-baseline.worse { color: #e53935; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .diff { font-weight: 500; }
@@ -4135,11 +4239,12 @@ generate_html_report() {
         .no-data { color: #999; font-style: italic; }
         .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; color: #666; }
-        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+        .metadata-group { min-width: 0; }
         .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #888; font-weight: 600; }
-        .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; }
-        .metadata-group dt { color: #666; font-size: 0.85rem; }
-        .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: #333; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; }
+        .metadata-group dt { min-width: 0; color: #666; font-size: 0.85rem; overflow-wrap: anywhere; }
+        .metadata-group dd { min-width: 0; margin: 0; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: #333; overflow-wrap: anywhere; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -4149,9 +4254,19 @@ generate_html_report() {
     </div>
     <div class="container">
         <div class="refs-info" id="refs-info"></div>
-        <div class="benchmark-section">
-            <h2>Framework Scope</h2>
-            <p>Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
+        <div class="versions-section" id="versions"></div>
+        <div class="notes-section">
+            <h2>Notes</h2>
+            <ul>
+                <li>Each runtime benchmark creates and initializes the same generated graph.</li>
+                <li>
+                    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+                    <ul>
+                        <li>Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+                        <li>Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+                    </ul>
+                </li>
+            </ul>
         </div>
         <div id="benchmarks"></div>
         <div id="binaryMetrics"></div>
@@ -4166,11 +4281,17 @@ HTMLHEAD
     cat >> "$html_file" << 'HTMLTAIL'
 ;
 const colors = { 'metro': '#4CAF50', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const benchmarkDescriptions = {
+    'jvm': 'Lower is better. Measures graph creation and initialization on the JVM.',
+    'jvm_r8': 'Lower is better. Measures the same JVM graph after R8 minification.',
+    'android_micro': 'Lower is better. Measures graph creation and initialization on the connected Android device.',
+};
 
 // State for selectable baseline
 let selectedBaseline = benchmarkData.benchmarks[0]?.results.some(r => r.key === 'metro')
     ? 'metro'
     : (benchmarkData.benchmarks[0]?.results[0]?.key || 'metro');
+document.documentElement.style.setProperty('--baseline-color', colors[selectedBaseline] || '#888');
 
 function formatTime(ms, unit) {
     if (ms === null || ms === undefined) return '—';
@@ -4198,16 +4319,65 @@ function calculateDiff(newVal, oldVal) {
     return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
 }
 
+function displayMetroVersion(version) {
+    return version?.replace(/-SNAPSHOT$/, '') || '—';
+}
+
+function renderVersions() {
+    const container = document.getElementById('versions');
+    const m = benchmarkData.metadata;
+    if (!m) { container.style.display = 'none'; return; }
+    const items = [
+        ['Metro', displayMetroVersion(m.versions?.metro)],
+        ['Kotlin', m.versions?.kotlin],
+        ['Dagger', m.versions?.dagger],
+        ['KSP', m.versions?.ksp],
+        ['Anvil', m.versions?.anvil],
+        ['kotlin-inject', m.versions?.kotlinInject],
+        ['kotlin-inject-anvil', m.versions?.kotlinInjectAnvil],
+        ['Koin', m.versions?.koin],
+        ['Koin Compiler', m.versions?.koinCompiler],
+        ['JDK', m.build?.jdk],
+        ['JVM Target', m.build?.jvmTarget],
+        ['JMH Plugin', m.build?.jmhPlugin],
+        ['AndroidX Benchmark', m.build?.androidxBenchmark],
+    ];
+    if (m.android?.version) items.push(['Android', m.android.version]);
+    if (m.android?.sdk) items.push(['Android SDK', m.android.sdk]);
+    container.innerHTML = `
+        <h2>Versions</h2>
+        <div class="versions-grid">${items.map(([label, value]) => `<div class="version-item"><span class="label">${label}</span><span class="value">${value || '—'}</span></div>`).join('')}</div>
+        <p>See the <a href="#build-environment">full build environment</a> at the bottom of the report.</p>`;
+}
+
+function formatCommit(commit) {
+    if (!commit) return 'unknown';
+    const [sha, ...subjectParts] = commit.split(' ');
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) return commit;
+    let subjectText = subjectParts.join(' ');
+    const recordedMetroVersion = benchmarkData.metadata?.versions?.metro;
+    if (recordedMetroVersion) {
+        subjectText = subjectText.replaceAll(recordedMetroVersion, displayMetroVersion(recordedMetroVersion));
+    }
+    const subject = subjectText ? ` ${subjectText}` : '';
+    return `<a href="https://github.com/ZacSweers/metro/commit/${sha}">${sha}</a>${subject}`;
+}
+
+function formatMetadataMap(value) {
+    if (!value) return '—';
+    return Object.entries(value).map(([key, item]) => `${key}: ${item}`).join('<br>');
+}
+
 function renderRefsInfo() {
     const container = document.getElementById('refs-info');
     let html = '';
     if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
-        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
     } else if (benchmarkData.refs.ref1) {
-        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
     }
     if (benchmarkData.refs.ref2) {
-        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${benchmarkData.refs.ref2.commit}</div></div>`;
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref2.commit)}</div></div>`;
     }
     container.innerHTML = html;
 }
@@ -4247,7 +4417,7 @@ function frameworkVersion(key) {
     const versions = benchmarkData.metadata?.versions || {};
     switch (key) {
         case 'metro':
-            return versions.metro || '—';
+            return displayMetroVersion(versions.metro);
         case 'dagger_ksp':
         case 'dagger_kapt':
             return versions.dagger || '—';
@@ -4289,18 +4459,18 @@ function renderBenchmarks() {
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         const chartGroups = chartGroupsFor(benchmark);
         const splitNote = chartGroups.length > 1
-            ? '<p class="chart-note">Android is shown twice at different linear scales. The first chart is a detail view for Metro and Dagger. The second repeats all frameworks at the full scale required by kotlin-inject and Koin\'s outsized times on this workload.</p>'
+            ? '<p class="chart-note">Android uses two linear scales. The detail view shows Metro and Dagger. The full-scale view includes all frameworks and accommodates the longer kotlin-inject and Koin times.</p>'
             : '';
         const chartsHtml = chartGroups.map((group, groupIdx) => `
             ${group.label ? `<h3 class="chart-group-title">${group.label}</h3>` : ''}
             <div class="legend">${group.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}-${groupIdx}"></canvas></div>`).join('');
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better · linear time scale; see the table for exact values</div>
+            <div class="chart-hint">${benchmarkDescriptions[benchmark.key] || 'Lower is better.'}</div>
             ${splitNote}${chartsHtml}
             <table><thead><tr><th></th><th>Framework</th>${isComparison
-                ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>Difference</th>`
-                : `<th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
+                ? `<th class="numeric">${benchmarkData.refs.ref1.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">${benchmarkData.refs.ref2.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">Difference</th>`
+                : `<th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
             </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
@@ -4325,7 +4495,7 @@ function renderChart(benchmark, idx, group, groupIdx) {
     if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
     if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
     charts[`${idx}-${groupIdx}`] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
-        const label = isComparison ? ctx.dataset.label : frameworkVersion(group.results[ctx.dataIndex].key);
+        const label = isComparison ? ctx.dataset.label : group.results[ctx.dataIndex].framework;
         return label + ': ' + formatTime(ctx.raw, benchmark.unit || 'ms');
     } } } }, scales: { y: { type: 'linear', beginAtZero: true, title: { display: true, text: 'Time (' + (benchmark.unit || 'ms') + ', linear scale)' } } } } });
 }
@@ -4351,13 +4521,14 @@ function renderTable(benchmark, idx) {
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
             ${isComparison
                 ? `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTime(result.ref2, benchmark.unit) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
-                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
+                : `<td class="numeric">${result.ref1 ? formatTime(result.ref1, benchmark.unit) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
     });
     tbody.innerHTML = html;
 }
 
 function setBaseline(key) {
     selectedBaseline = key;
+    document.documentElement.style.setProperty('--baseline-color', colors[key] || '#888');
     benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
     if (typeof renderBinaryMetrics === 'function') renderBinaryMetrics();
     document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
@@ -4370,12 +4541,12 @@ function renderMetadata() {
     const hasAndroid = m.android?.device || m.android?.version;
     container.innerHTML = `
         <div class="metadata-section">
-            <h2>Build Environment</h2>
+            <h2 id="build-environment">Build Environment</h2>
             <div class="metadata-grid">
                 <div class="metadata-group">
                     <h3>Library Versions</h3>
                     <dl>
-                        <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
+                        <dt>Metro</dt><dd>${displayMetroVersion(m.versions?.metro)}</dd>
                         <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                         <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                         <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -4401,11 +4572,11 @@ function renderMetadata() {
                         <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
                         <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
                         <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'}</dd>
-                        <dt>Layers</dt><dd>${m.workload?.modulesByLayer ? JSON.stringify(m.workload.modulesByLayer) : '—'}</dd>
+                        <dt>Layers</dt><dd>${formatMetadataMap(m.workload?.modulesByLayer)}</dd>
                         <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
                         <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'}</dd>
-                        <dt>Contribution kinds</dt><dd>${m.workload?.contributionsByKind ? JSON.stringify(m.workload.contributionsByKind) : '—'}</dd>
-                        <dt>Subcomponents</dt><dd>${m.workload?.subcomponents ? JSON.stringify(m.workload.subcomponents) : '—'}</dd>
+                        <dt>Contribution kinds</dt><dd>${formatMetadataMap(m.workload?.contributionsByKind)}</dd>
+                        <dt>Subcomponents</dt><dd>${formatMetadataMap(m.workload?.subcomponents)}</dd>
                     </dl>
                 </div>
                 <div class="metadata-group">
@@ -4420,13 +4591,13 @@ function renderMetadata() {
                         <dt>JMH GC profiler</dt><dd>${m.options?.jmhGcProfiler ?? '—'}</dd>
                         <dt>R8 runtime program input</dt><dd>${m.options?.r8RuntimeClasspathAsProgramInput ?? '—'}</dd>
                         <dt>Dagger fastInit</dt><dd>${m.options?.dagger?.fastInit || '—'}</dd>
-                        <dt>Dagger validation</dt><dd>${m.options?.dagger ? JSON.stringify(m.options.dagger) : '—'}</dd>
+                        <dt>Dagger validation</dt><dd>${formatMetadataMap(m.options?.dagger)}</dd>
                     </dl>
                 </div>
                 <div class="metadata-group">
                     <h3>Repository</h3>
                     <dl>
-                        <dt>Commit</dt><dd>${m.repository?.commit || '—'}</dd>
+                        <dt>Commit</dt><dd>${formatCommit(m.repository?.commit)}</dd>
                         <dt>Branch</dt><dd>${m.repository?.branch || '—'}</dd>
                         <dt>Dirty</dt><dd>${m.repository?.dirty ?? '—'}</dd>
                         <dt>Dirty diff fingerprint</dt><dd>${m.repository?.dirtyDiffFingerprint || '—'}</dd>
@@ -4579,7 +4750,10 @@ function renderBinaryMetrics() {
         return item?.[refKey] ?? (refKey === 'ref2' ? item?.ref1 : null);
     };
 
-    let html = '';
+    const hasMetrics = [bm.classes, bm.r8Jars, bm.apks].some(items => items?.length);
+    let html = hasMetrics
+        ? '<h2 class="binary-metrics-heading">Binary Metrics</h2><div class="notes-section"><h3>Notes</h3><ul><li>Field, method, and class counts are not exactly like-for-like. kotlin-inject generates a simple map, while Koin does not generate a static graph implementation.</li></ul></div>'
+        : '';
 
     // Class metrics
     if (bm.classes && bm.classes.length > 0) {
@@ -4587,12 +4761,12 @@ function renderBinaryMetrics() {
         const metroClass = bm.classes.find(c => c.key === 'metro');
         const metroRef2 = metroClass?.ref2;
 
-        html += '<div class="benchmark-section"><h2>Binary Metrics: Pre-Minification Classes</h2>';
+        html += '<div class="benchmark-section"><h2>Pre-Minification Classes</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
         html += '<th>Framework</th>';
         html += '<th class="numeric">Fields</th><th class="numeric">Methods</th><th class="numeric">Shards</th><th class="numeric">Size</th><th class="numeric">Classes</th>';
-        if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (showVsBaseline) html += '<th class="numeric">Size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
         if (hasRef2) html += '<th class="numeric">ref2 Fields</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Shards</th><th class="numeric">ref2 Size</th>';
         html += '</tr></thead><tbody>';
         bm.classes.forEach(c => {
@@ -4650,12 +4824,12 @@ function renderBinaryMetrics() {
         const metroJar = bm.r8Jars.find(j => j.key === 'metro');
         const metroRef2 = metroJar?.ref2;
 
-        html += '<div class="benchmark-section"><h2>Binary Metrics: R8-Minified JAR</h2>';
+        html += '<div class="benchmark-section"><h2>R8-Minified JAR</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
         html += '<th>Framework</th>';
         html += '<th class="numeric">JAR Size</th><th class="numeric">Classes</th><th class="numeric">Methods</th><th class="numeric">Fields</th>';
-        if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (showVsBaseline) html += '<th class="numeric">JAR size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
         if (hasRef2) html += '<th class="numeric">ref2 Size</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
         html += '</tr></thead><tbody>';
         bm.r8Jars.forEach(j => {
@@ -4712,7 +4886,7 @@ function renderBinaryMetrics() {
         const metroApk = bm.apks.find(a => a.key === 'metro');
         const metroRef2 = metroApk?.ref2;
 
-        html += '<div class="benchmark-section"><h2>Binary Metrics: Android APK</h2>';
+        html += '<div class="benchmark-section"><h2>Android APK</h2>';
         html += '<table><thead><tr>';
         if (showVsBaseline) html += '<th></th>';
         html += '<th>Framework</th>';
@@ -4721,7 +4895,7 @@ function renderBinaryMetrics() {
         html += '<th class="numeric">DEX Classes</th>';
         html += '<th class="numeric">DEX Methods</th>';
         html += '<th class="numeric">DEX Fields</th>';
-        if (showVsBaseline) html += '<th class="numeric">vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
+        if (showVsBaseline) html += '<th class="numeric">APK size vs <span class="baseline-header">' + getBaselineLabel() + '</span></th>';
         if (hasRef2) html += '<th class="numeric">ref2 APK</th><th class="numeric">ref2 DEX</th><th class="numeric">ref2 Classes</th><th class="numeric">ref2 Methods</th><th class="numeric">ref2 Fields</th>';
         html += '</tr></thead><tbody>';
         bm.apks.forEach(a => {
@@ -4779,7 +4953,7 @@ function renderBinaryMetrics() {
 }
 
 document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
-renderRefsInfo(); renderBenchmarks(); renderBinaryMetrics(); renderMetadata();
+renderRefsInfo(); renderVersions(); renderBenchmarks(); renderBinaryMetrics(); renderMetadata();
 </script>
 </body>
 </html>

@@ -1033,7 +1033,7 @@ select_report_baseline_mode() {
     IFS=',' read -ra selected_modes <<< "$modes"
 
     local preferred_mode
-    for preferred_mode in control metro; do
+    for preferred_mode in metro; do
         local selected_mode
         for selected_mode in "${selected_modes[@]}"; do
             if [ "$selected_mode" != "$preferred_mode" ]; then
@@ -1111,7 +1111,7 @@ configure_report_scenarios() {
         case "$scenario" in
             abi_change)
                 REPORT_TEST_TYPES+=("abi_change")
-                REPORT_TEST_NAMES+=("ABI Change†")
+                REPORT_TEST_NAMES+=("ABI Change")
                 ;;
             non_abi_change)
                 REPORT_TEST_TYPES+=("non_abi_change")
@@ -1499,7 +1499,10 @@ generate_comparison_summary() {
 **Modes benchmarked on ref1:** $modes
 **Modes benchmarked on ref2:** ${ref2_modes:-none}
 
-**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+
+- Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
+- Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 
 **ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
 
@@ -1686,7 +1689,7 @@ generate_html_report() {
     <title>Metro Benchmark Results</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --metro-color: #4CAF50; --control-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
+        :root { --baseline-color: #4CAF50; --metro-color: #4CAF50; --control-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
         .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
@@ -1700,6 +1703,15 @@ generate_html_report() {
         .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
         .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
         .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .ref-card .commit a, .metadata-group a { color: inherit; text-underline-offset: 0.15em; }
+        .versions-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .versions-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; }
+        .version-item { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; padding: 0.55rem 0.75rem; }
+        .version-item .label { color: #666; }
+        .version-item .value { flex: 0 0 auto; min-width: 0; font-family: 'SF Mono', Monaco, monospace; text-align: right; white-space: nowrap; }
+        .versions-section p { margin: 1rem 0 0; color: #666; font-size: 0.85rem; }
+        .versions-section a { color: inherit; text-underline-offset: 0.15em; }
         .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
         .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
@@ -1707,14 +1719,14 @@ generate_html_report() {
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.8rem; text-transform: uppercase; }
-        td.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
+        td.numeric, th.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
         td.framework { font-weight: 500; }
         .baseline-select { cursor: pointer; width: 30px; }
         .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
-        .baseline-radio.selected { border-color: var(--control-color); background: var(--control-color); }
+        .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
         .baseline-row { background: #f3f6f7; }
         .vs-baseline { color: #888; font-size: 0.85em; }
-        .vs-baseline.baseline { color: var(--control-color); font-weight: 500; }
+        .vs-baseline.baseline { font-weight: 500; }
         .vs-baseline.slower { color: #e53935; }
         .vs-baseline.faster { color: #43a047; }
         .diff { font-weight: 500; }
@@ -1731,14 +1743,16 @@ generate_html_report() {
         .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
         .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-        .metadata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+        .metadata-group { min-width: 0; }
         .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
-        .metadata-group dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
-        .metadata-group dt { color: #888; }
-        .metadata-group dd { margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; word-break: break-all; }
-        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin-top: 2rem; font-size: 0.9rem; line-height: 1.5; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; font-size: 0.85rem; }
+        .metadata-group dt { min-width: 0; color: #888; overflow-wrap: anywhere; }
+        .metadata-group dd { min-width: 0; margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; overflow-wrap: anywhere; word-break: break-word; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 0.9rem; line-height: 1.5; }
         .notes-section h2 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
-        .notes-section p { margin: 0.5rem 0; }
+        .notes-section ul { margin: 0; padding-left: 1.25rem; }
+        .notes-section li + li { margin-top: 0.5rem; }
         .gc-time { color: #888; font-size: 0.85em; }
         .stability { display: block; color: #888; font-size: 0.78em; margin-top: 0.2rem; }
     </style>
@@ -1750,11 +1764,27 @@ generate_html_report() {
     </div>
     <div class="container">
         <div class="refs-info" id="refs-info"></div>
+        <div class="versions-section" id="versions"></div>
         <div class="notes-section">
-            <h2>Framework Scope</h2>
-            <p>Control applies no dependency injection tooling and performs no graph work.</p>
-            <p>Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.</p>
-            <p>Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.</p>
+            <h2>Notes</h2>
+            <ul>
+                <li>
+                    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+                    <ul>
+                        <li>Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+                        <li>Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Legend</strong>
+                    <ul>
+                        <li><strong>GC</strong> is time spent in garbage collection.</li>
+                        <li><strong>MAD</strong> shows variation around the median.</li>
+                        <li><strong>Half-run drift</strong> compares the first and second halves of the run.</li>
+                        <li><strong>Outliers</strong> are samples more than 20% from the median. All ten samples remain included.</li>
+                    </ul>
+                </li>
+            </ul>
         </div>
         <div id="benchmarks"></div>
         <div class="metadata-section" id="metadata"></div>
@@ -1769,13 +1799,21 @@ HTMLHEAD
 ;
 const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
 const displayNames = { 'control': 'Control', 'metro': 'Metro', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
+const benchmarkDescriptions = {
+    'abi_change': 'Lower is better. Measures recompilation after a public API change in a shared module.',
+    'non_abi_change': 'Lower is better. Measures recompilation after an implementation-only change in a shared module.',
+    'plain_abi_change': 'Lower is better. Measures a public API change in shared code that does not use dependency injection.',
+    'plain_non_abi_change': 'Lower is better. Measures an implementation-only change in shared code that does not use dependency injection.',
+    'raw_compilation': 'Lower is better. Measures the top-level graph or container processing task.',
+};
 
 // State for selectable baseline
 const firstBenchmarkResults = benchmarkData.benchmarks[0]?.results || [];
-const defaultBaselineResult = firstBenchmarkResults.find(result => result.key === 'control' && result.ref1 !== null)
-    || firstBenchmarkResults.find(result => result.key === 'metro' && result.ref1 !== null)
+const defaultBaselineResult = firstBenchmarkResults.find(result => result.key === 'metro' && result.ref1 !== null)
+    || firstBenchmarkResults.find(result => result.key === 'control' && result.ref1 !== null)
     || firstBenchmarkResults.find(result => result.ref1 !== null);
 let selectedBaseline = defaultBaselineResult?.key;
+document.documentElement.style.setProperty('--baseline-color', colors[selectedBaseline] || '#888');
 
 function formatTime(ms) {
     if (ms === null || ms === undefined) return '—';
@@ -1820,16 +1858,58 @@ function calculateDiff(newVal, oldVal) {
     return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
 }
 
+function displayMetroVersion(version) {
+    return version?.replace(/-SNAPSHOT$/, '') || '—';
+}
+
+function renderVersions() {
+    const container = document.getElementById('versions');
+    const m = benchmarkData.metadata;
+    if (!m) { container.style.display = 'none'; return; }
+    const items = [
+        ['Metro', displayMetroVersion(m.versions?.metro)],
+        ['Kotlin', m.versions?.kotlin],
+        ['Dagger', m.versions?.dagger],
+        ['KSP', m.versions?.ksp],
+        ['Anvil', m.versions?.anvil],
+        ['kotlin-inject', m.versions?.kotlinInject],
+        ['kotlin-inject-anvil', m.versions?.kotlinInjectAnvil],
+        ['Koin', m.versions?.koin],
+        ['Koin Compiler', m.versions?.koinCompiler],
+        ['Gradle', m.build?.gradle],
+        ['Gradle Profiler', m.build?.gradleProfiler?.replace(/^Gradle Profiler version\s+/, '')],
+        ['JDK', m.build?.jdk],
+        ['JVM Target', m.build?.jvmTarget],
+    ];
+    container.innerHTML = `
+        <h2>Versions</h2>
+        <div class="versions-grid">${items.map(([label, value]) => `<div class="version-item"><span class="label">${label}</span><span class="value">${value || '—'}</span></div>`).join('')}</div>
+        <p>See the <a href="#build-environment">full build environment and workload</a> at the bottom of the report.</p>`;
+}
+
+function formatCommit(commit) {
+    if (!commit) return 'unknown';
+    const [sha, ...subjectParts] = commit.split(' ');
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) return commit;
+    let subjectText = subjectParts.join(' ');
+    const recordedMetroVersion = benchmarkData.metadata?.versions?.metro;
+    if (recordedMetroVersion) {
+        subjectText = subjectText.replaceAll(recordedMetroVersion, displayMetroVersion(recordedMetroVersion));
+    }
+    const subject = subjectText ? ` ${subjectText}` : '';
+    return `<a href="https://github.com/ZacSweers/metro/commit/${sha}">${sha}</a>${subject}`;
+}
+
 function renderRefsInfo() {
     const container = document.getElementById('refs-info');
     let html = '';
     if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
-        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
     } else if (benchmarkData.refs.ref1) {
-        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${benchmarkData.refs.ref1.commit}</div></div>`;
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
     }
     if (benchmarkData.refs.ref2) {
-        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${benchmarkData.refs.ref2.commit}</div></div>`;
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref2.commit)}</div></div>`;
     }
     container.innerHTML = html;
 }
@@ -1870,15 +1950,20 @@ function frameworkVersion(key) {
         case 'control':
             return versions.kotlin ? `Kotlin ${versions.kotlin}` : '—';
         case 'metro':
-            return versions.metro || '—';
+            return displayMetroVersion(versions.metro);
         case 'dagger_ksp':
+            if (versions.dagger && versions.ksp) {
+                return `${versions.dagger} / KSP ${versions.ksp}`;
+            }
+            return versions.dagger || (versions.ksp ? `KSP ${versions.ksp}` : '—');
         case 'dagger_kapt':
             return versions.dagger || '—';
         case 'kotlin_inject_anvil':
-            if (versions.kotlinInject && versions.kotlinInjectAnvil) {
-                return `${versions.kotlinInject} / anvil ${versions.kotlinInjectAnvil}`;
-            }
-            return versions.kotlinInject || versions.kotlinInjectAnvil || '—';
+            const kotlinInjectVersions = [];
+            if (versions.kotlinInject) kotlinInjectVersions.push(versions.kotlinInject);
+            if (versions.kotlinInjectAnvil) kotlinInjectVersions.push(`anvil ${versions.kotlinInjectAnvil}`);
+            if (versions.ksp) kotlinInjectVersions.push(`KSP ${versions.ksp}`);
+            return kotlinInjectVersions.join(' / ') || '—';
         case 'koin':
             if (versions.koin && versions.koinCompiler) {
                 return `${versions.koin} / compiler ${versions.koinCompiler}`;
@@ -1895,12 +1980,12 @@ function renderBenchmarks() {
     let html = '';
     benchmarkData.benchmarks.forEach((benchmark, idx) => {
         html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
-            <div class="chart-hint">Lower is better</div>
+            <div class="chart-hint">${benchmarkDescriptions[benchmark.key] || 'Lower is better.'}</div>
             <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
             <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
             <table><thead><tr><th></th><th>Framework</th>${isComparison
-                ? `<th>${benchmarkData.refs.ref1.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>${benchmarkData.refs.ref2.label}</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th><th>Difference</th>`
-                : `<th>Version</th><th>Time</th><th>vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
+                ? `<th class="numeric">${benchmarkData.refs.ref1.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">${benchmarkData.refs.ref2.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">Difference</th>`
+                : `<th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
             </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
     });
     container.innerHTML = html;
@@ -1922,7 +2007,7 @@ function renderChart(benchmark, idx) {
     if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
     if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
     charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
-        const label = isComparison ? ctx.dataset.label : frameworkVersion(benchmark.results[ctx.dataIndex].key);
+        const label = isComparison ? ctx.dataset.label : benchmark.results[ctx.dataIndex].framework;
         return label + ': ' + ctx.raw.toFixed(1) + 's';
     } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
 }
@@ -1943,13 +2028,14 @@ function renderTable(benchmark, idx) {
             <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
             ${isComparison
                 ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2, result.stability2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
-                : `<td class="numeric">${frameworkVersion(result.key)}</td><td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
+                : `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
     });
     tbody.innerHTML = html;
 }
 
 function setBaseline(key) {
     selectedBaseline = key;
+    document.documentElement.style.setProperty('--baseline-color', colors[key] || '#888');
     // Update all tables
     benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
     // Update header labels
@@ -1961,7 +2047,7 @@ function renderMetadata() {
     if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
     const m = benchmarkData.metadata;
     container.innerHTML = `
-        <h2>Build Environment and Workload</h2>
+        <h2 id="build-environment">Build Environment and Workload</h2>
         <div class="metadata-grid">
             <div class="metadata-group">
                 <h3>Generated Workload</h3>
@@ -1975,16 +2061,9 @@ function renderMetadata() {
                 </dl>
             </div>
             <div class="metadata-group">
-                <h3>Repository State</h3>
-                <dl>
-                    <dt>${benchmarkData.refs.ref2 ? benchmarkData.refs.ref1?.label : `Metro ${frameworkVersion('metro')}`}</dt><dd>${benchmarkData.refs.ref1?.dirtyDiffFingerprint || '—'}</dd>
-                    ${benchmarkData.refs.ref2 ? `<dt>${benchmarkData.refs.ref2.label}</dt><dd>${benchmarkData.refs.ref2.dirtyDiffFingerprint || '—'}</dd>` : ''}
-                </dl>
-            </div>
-            <div class="metadata-group">
                 <h3>Library Versions</h3>
                 <dl>
-                    <dt>Metro</dt><dd>${m.versions?.metro || '—'}</dd>
+                    <dt>Metro</dt><dd>${displayMetroVersion(m.versions?.metro)}</dd>
                     <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
                     <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
                     <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
@@ -2044,7 +2123,7 @@ function renderMetadata() {
 }
 
 document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
-renderRefsInfo(); renderBenchmarks(); renderMetadata();
+renderRefsInfo(); renderVersions(); renderBenchmarks(); renderMetadata();
 </script>
 </body>
 </html>
@@ -2346,7 +2425,10 @@ generate_single_summary() {
 **Modes:** $modes
 **Commit:** $ref_commit
 
-**Framework scope:** Control applies no dependency injection tooling and performs no graph work. Koin's compiler plugin validates the assembled annotation graph at the typed application entry point and generates Koin module and factory wiring, but it does not generate a static full-graph implementation; runtime resolution still uses Koin's container.
+The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+
+- Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.
+- Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.
 
 **ABI scenario note:** Gradle Profiler's generic ABI mutation appends an unrelated top-level function to a foundation file used by every module.
 
