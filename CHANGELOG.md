@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
+
 1.4.0
 -----
 

@@ -632,6 +632,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       public void testOverridesAreTypeChecked() {
         run("OverridesAreTypeChecked.kt");
       }
+
+      @Test
+      @TestMetadata("ParentDuplicateBindingsUsedOnlyByChild.kt")
+      public void testParentDuplicateBindingsUsedOnlyByChild() {
+        run("ParentDuplicateBindingsUsedOnlyByChild.kt");
+      }
     }
 
     @Nested

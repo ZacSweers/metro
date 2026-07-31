@@ -181,37 +181,32 @@ internal class BindingGraphGenerator(
 
     // Collect all inherited data from extended nodes in a single pass
     val inheritedData = trace("Collect inherited data") { collectInheritedData(node) }
-    val inheritedProviderFactoryKeys = inheritedData.providerFactoryKeys
     val inheritedProviderFactories = inheritedData.providerFactories
-    val inheritedBindsCallableKeys = inheritedData.bindsCallableKeys
 
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
     trace(
       "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
     ) {
-      // Collect all provider factories to add (flatten from lists)
-      val providerFactoriesToAdd = buildList {
+      // Collect provider candidates (flatten from lists)
+      val providerFactoryCandidates = buildList {
         node.providerFactories.values.flatten().forEach { factory ->
-          add(factory.typeKey to factory)
+          add(ProviderFactoryCandidate(factory, isLocallyDeclared = true))
         }
-        addAll(inheritedProviderFactories)
+        inheritedProviderFactories.forEach { (_, factory) ->
+          add(ProviderFactoryCandidate(factory, isLocallyDeclared = false))
+        }
       }
+        // Keep local provenance when the same declaration is also inherited.
+        .distinctBy { it.factory }
 
-      for ((typeKey, providerFactory) in providerFactoriesToAdd) {
+      for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
+        val typeKey = providerFactory.typeKey
         // Track IC lookups but don't add bindings yet - they'll be added lazily
         trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
         trackFunctionCall(node.sourceGraph, providerFactory.function)
         if (providerFactory is ProviderFactory.Metro) {
           trackFunctionCall(node.sourceGraph, providerFactory.signatureFunction)
-        }
-
-        val isInherited = typeKey in inheritedProviderFactoryKeys
-        if (typeKey in bindingLookup && isInherited) {
-          // If we already have a binding provisioned in this scenario, ignore the parent's version.
-          // This includes multibinding contributors — the same contribution discovered through
-          // multiple include/contribution paths should only be registered once.
-          continue
         }
 
         // Skip non-dynamic bindings that have dynamic replacements
@@ -255,27 +250,32 @@ internal class BindingGraphGenerator(
               .also { providerFactory.factoryClass.cachedProvidedBinding = it }
 
         // Add the binding to the lookup (duplicates tracked as lists)
-        putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
+        putBinding(binding.typeKey, isLocallyDeclared = isLocallyDeclared, binding)
       }
     }
 
     val ownBindsCount = node.bindsCallables.values.sumOf { it.size }
     val inheritedBindsCount = inheritedData.bindsCallables.size
     trace("Collect binds callables (own=$ownBindsCount, inh=$inheritedBindsCount)") {
-      // Collect all binds callables to add (flatten from lists)
-      val bindsCallablesToAdd = buildList {
+      // Collect binds candidates (flatten from lists)
+      val bindsCallableCandidates = buildList {
         node.bindsCallables.values.flatten().forEach { callable ->
-          add(callable.typeKey to callable)
+          add(BindsCallableCandidate(callable, isLocallyDeclared = true))
         }
         // Add inherited from extended nodes (already collected in single pass)
-        addAll(inheritedData.bindsCallables)
+        inheritedData.bindsCallables.forEach { (_, callable) ->
+          add(BindsCallableCandidate(callable, isLocallyDeclared = false))
+        }
       }
+        // Keep local provenance when the same declaration is also inherited.
+        .distinctBy { it.callable }
 
       // Track IC lookups for all binds callables in one batch: hoists file-path resolution and
       // tracker-lock acquisition out of the per-callable loop.
       trace("Track IC for binds") {
         batchTrackForCallingDeclaration(node.sourceGraph) {
-          for ((_, bindsCallable) in bindsCallablesToAdd) {
+          for (candidate in bindsCallableCandidates) {
+            val bindsCallable = candidate.callable
             trackFunctionCall(bindsCallable.function)
             trackFunctionCall(bindsCallable.callableMetadata.signatureFunction)
             trackClassLookup(bindsCallable.function.parentAsClass)
@@ -284,15 +284,8 @@ internal class BindingGraphGenerator(
         }
       }
 
-      for ((typeKey, bindsCallable) in bindsCallablesToAdd) {
-
-        val isInherited = typeKey in inheritedBindsCallableKeys
-        if (typeKey in bindingLookup && isInherited) {
-          // If we already have a binding provisioned in this scenario, ignore the parent's version.
-          // This includes multibinding contributors, so we ensure the same contribution discovered
-          // through multiple include/contribution paths should only be registered once.
-          continue
-        }
+      for ((bindsCallable, isLocallyDeclared) in bindsCallableCandidates) {
+        val typeKey = bindsCallable.typeKey
 
         // Skip non-dynamic bindings that have dynamic replacements
         if (!bindsCallable.isDynamic && typeKey in node.dynamicTypeKeys) {
@@ -344,7 +337,7 @@ internal class BindingGraphGenerator(
           }
 
         // Add the binding to the lookup (duplicates tracked as lists)
-        putBinding(binding.typeKey, isLocallyDeclared = !isInherited, binding)
+        putBinding(binding.typeKey, isLocallyDeclared = isLocallyDeclared, binding)
       }
     }
 
@@ -859,25 +852,19 @@ private class RawInheritedGraphData(
 ) {
   fun applyDirectlyProvidedFilter(directlyProvidedKeys: Set<IrTypeKey>): InheritedGraphData {
     val outProviderFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
-    val outProviderFactoryKeys = mutableSetOf<IrTypeKey>()
-    val outBindsCallableKeys = mutableSetOf<IrTypeKey>()
     val outBindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
     for ((key, factory, isDynamicInParent) in providerFactories) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outProviderFactories.add(key to factory)
-        outProviderFactoryKeys.add(key)
       }
     }
     for ((key, callable, isDynamicInParent) in bindsCallables) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
-        outBindsCallableKeys.add(key)
         outBindsCallables.add(key to callable)
       }
     }
     return InheritedGraphData(
       providerFactories = outProviderFactories,
-      providerFactoryKeys = outProviderFactoryKeys,
-      bindsCallableKeys = outBindsCallableKeys,
       bindsCallables = outBindsCallables,
       bindingContainers = bindingContainers,
       multibindsCallables = multibindsCallables,
@@ -900,14 +887,22 @@ private data class RawBindsCallableEntry(
   val isDynamicInParent: Boolean,
 )
 
+private data class ProviderFactoryCandidate(
+  val factory: ProviderFactory,
+  val isLocallyDeclared: Boolean,
+)
+
+private data class BindsCallableCandidate(
+  val callable: BindsCallable,
+  val isLocallyDeclared: Boolean,
+)
+
 /**
  * Data collected from parent nodes in a single pass. Avoids multiple iterations over
  * allParentGraphs.
  */
 private data class InheritedGraphData(
   val providerFactories: Set<Pair<IrTypeKey, ProviderFactory>>,
-  val providerFactoryKeys: Set<IrTypeKey>,
-  val bindsCallableKeys: Set<IrTypeKey>,
   val bindsCallables: List<Pair<IrTypeKey, BindsCallable>>,
   val bindingContainers: Set<IrClass>,
   val multibindsCallables: Set<MultibindsCallable>,
