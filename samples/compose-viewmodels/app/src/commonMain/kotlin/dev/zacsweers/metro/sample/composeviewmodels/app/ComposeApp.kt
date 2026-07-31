@@ -10,7 +10,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import dev.zacsweers.metro.sample.composeviewmodels.details.DetailsScreen
 import dev.zacsweers.metro.sample.composeviewmodels.home.HomeScreen
@@ -46,6 +48,10 @@ fun ComposeApp(metroVmf: MetroViewModelFactory, modifier: Modifier = Modifier) {
               }
           }
         },
+        entryDecorators = listOf(
+          rememberSaveableStateHolderNavEntryDecorator(),
+          rememberViewModelStoreNavEntryDecorator()
+        )
       )
     }
   }
