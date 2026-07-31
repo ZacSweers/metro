@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785456334746,
+  "lastUpdate": 1785459607826,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20160,6 +20160,62 @@ window.BENCHMARK_DATA = {
             "value": 12794.153,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.52%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "60711ef2~1",
+          "message": "[before] Prepare next development version.",
+          "timestamp": "2026-07-30T19:29:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/60711ef207c73ae2ee5b9822ad98bf424cce313a"
+        },
+        "date": 1785459607826,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18601.029000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "60711ef207c73ae2ee5b9822ad98bf424cce313a",
+          "message": "[after] Prepare next development version.",
+          "timestamp": "2026-07-30T19:29:18-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/60711ef207c73ae2ee5b9822ad98bf424cce313a"
+        },
+        "date": 1785459607827,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18663.874,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.34%"
           }
         ]
       }
