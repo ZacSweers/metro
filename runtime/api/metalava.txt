@@ -93,6 +93,12 @@ package dev.zacsweers.metro {
     method @KotlinOnly public static inline <reified T> T createGraphFactory();
   }
 
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface DefaultBinding<T> {
+  }
+
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface DelicateMetroApi {
+  }
+
   @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface DependencyGraph {
     ctor @KotlinOnly public DependencyGraph(optional kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] additionalScopes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] excludes, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] bindingContainers);
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] additionalScopes();
@@ -114,6 +120,12 @@ package dev.zacsweers.metro {
   @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is an experimental API and may change or be removed in the future. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) public @interface ExperimentalMetroApi {
   }
 
+  @kotlin.RequiresOptIn(level=kotlin.RequiresOptIn.Level.WARNING, message="This is part of Metro\'s experimental coroutines support") @kotlin.annotation.MustBeDocumented @kotlin.annotation.Retention(kotlin.annotation.AnnotationRetention.BINARY) @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.TYPEALIAS}) public @interface ExperimentalMetroCoroutinesApi {
+  }
+
+  @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ExposeImplBinding {
+  }
+
   @dev.zacsweers.metro.Qualifier @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.CLASS, kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER, kotlin.annotation.AnnotationTarget.TYPE}) public @interface ForScope {
     ctor @KotlinOnly public ForScope(kotlin.reflect.KClass<? extends java.lang.Object?> scope);
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
@@ -133,6 +145,9 @@ package dev.zacsweers.metro {
   }
 
   @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public static @interface GraphExtension.Factory {
+  }
+
+  @kotlin.annotation.Target(allowedTargets={kotlin.annotation.AnnotationTarget.FUNCTION, kotlin.annotation.AnnotationTarget.PROPERTY_GETTER, kotlin.annotation.AnnotationTarget.PROPERTY, kotlin.annotation.AnnotationTarget.VALUE_PARAMETER}) public @interface GraphPrivate {
   }
 
   @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface HasMemberInjections {

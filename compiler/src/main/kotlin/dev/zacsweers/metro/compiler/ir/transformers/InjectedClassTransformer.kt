@@ -20,7 +20,7 @@ import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
-import dev.zacsweers.metro.compiler.ir.checkMirrorParamMismatches
+import dev.zacsweers.metro.compiler.ir.checkSignatureCarrierParamMismatches
 import dev.zacsweers.metro.compiler.ir.contextParameters
 import dev.zacsweers.metro.compiler.ir.copyParameterDefaultValues
 import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
@@ -49,11 +49,14 @@ import dev.zacsweers.metro.compiler.ir.remapType
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
+import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Optional
@@ -176,8 +179,17 @@ internal class InjectedClassTransformer(
               ?: reportCompilerBug(
                 "Expected nested class '$factoryClassName' not found in '${declaration.kotlinFqName}'."
               )
-          val mirrorFunction = factoryCls.requireDeclarationMirrorFunction()
-          val parameters = mirrorFunction.parameters()
+          val signatureCarrier = metadata.signature_carrier
+          val signatureFunction =
+            when (signatureCarrier) {
+              SignatureCarrier.MIRROR_FUNCTION -> factoryCls.requireDeclarationMirrorFunction()
+              SignatureCarrier.CREATOR_FUNCTION ->
+                factoryCls
+                  .requireStaticIshDeclarationContainer()
+                  .requireSimpleFunction(Symbols.StringNames.NEW_INSTANCE)
+                  .owner
+            }
+          val parameters = signatureFunction.parameters()
 
           // Look up the injectable constructor for direct invocation optimization
           val externalTargetConstructor = targetConstructor()
@@ -185,11 +197,11 @@ internal class InjectedClassTransformer(
           // Validate and optionally patch parameter types due to
           // https://github.com/ZacSweers/metro/issues/1556
           val hadUnpatchedMismatch =
-            checkMirrorParamMismatches(
+            checkSignatureCarrierParamMismatches(
               factoryClass = factoryCls,
               newInstanceFunctionName = Symbols.StringNames.NEW_INSTANCE,
-              mirrorFunction = mirrorFunction,
-              mirrorParams = { parameters.nonDispatchParameters.filterNot { it.isAssisted } },
+              signatureFunction = signatureFunction,
+              signatureParams = { parameters.nonDispatchParameters.filterNot { it.isAssisted } },
               reportingFunction = externalTargetConstructor,
               primaryConstructorParamOffset = 0,
             ) {
@@ -200,7 +212,13 @@ internal class InjectedClassTransformer(
             return null
           }
 
-          val wrapper = ClassFactory.MetroFactory(factoryCls, parameters, externalTargetConstructor)
+          val wrapper =
+            ClassFactory.MetroFactory(
+              factoryCls,
+              parameters,
+              externalTargetConstructor,
+              signatureCarrier,
+            )
           // If it's from another module, we're done!
           // TODO this doesn't work as expected in KMP, where things compiled in common are seen
           //  as external but no factory is found?
@@ -292,8 +310,8 @@ internal class InjectedClassTransformer(
     val factoryTypeRemapper = declaration.deepRemapperFor(factoryTargetType)
 
     if (!isAssistedInject) {
-      // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to read
-      // it directly since we'll read the declaration mirror to get the target type
+      // Add factory supertype. It won't be visible in metadata, so downstream compilations read
+      // the generated signature carrier to get the target type.
       factoryCls.superTypes += metroSymbols.metroFactory.typeWith(factoryTargetType)
     }
 
@@ -370,6 +388,7 @@ internal class InjectedClassTransformer(
           }
     }
 
+    val useCreatorSignatureCarrier = shouldUseCreatorSignatureCarrier()
     val newInstanceFunction =
       generateCreators(
         declaration,
@@ -379,6 +398,7 @@ internal class InjectedClassTransformer(
         constructorParameters,
         allParameters,
         isAssistedInject,
+        useCreatorSignatureCarrier,
       )
 
     /*
@@ -413,20 +433,33 @@ internal class InjectedClassTransformer(
 
     possiblyImplementInvoke(declaration, constructorParameters)
 
-    // Generate a metadata-visible declaration that matches the target constructor. This is used in
-    // downstream compilations to read the constructor's signature.
-    val mirrorFunction =
-      generateMetadataVisibleDeclarationMirror(
-        factoryClass = factoryCls,
-        target = targetConstructor,
-        backingField = null,
-        annotations = metroAnnotationsOf(targetConstructor),
-      )
+    val signatureCarrier =
+      if (useCreatorSignatureCarrier) {
+        SignatureCarrier.CREATOR_FUNCTION
+      } else {
+        SignatureCarrier.MIRROR_FUNCTION
+      }
+    val signatureFunction =
+      if (useCreatorSignatureCarrier) {
+        newInstanceFunction
+      } else {
+        generateMetadataVisibleDeclarationMirror(
+          factoryClass = factoryCls,
+          target = targetConstructor,
+          backingField = null,
+          annotations = metroAnnotationsOf(targetConstructor),
+        )
+      }
 
     factoryCls.dumpToMetroLog()
 
     val wrapper =
-      ClassFactory.MetroFactory(factoryCls, mirrorFunction.parameters(), targetConstructor)
+      ClassFactory.MetroFactory(
+        factoryCls,
+        signatureFunction.parameters(),
+        targetConstructor,
+        signatureCarrier,
+      )
 
     // Write metadata to indicate Metro generated this factory
     cacheFactoryInMetadata(declaration, wrapper)
@@ -754,6 +787,7 @@ internal class InjectedClassTransformer(
     constructorParameters: Parameters,
     allParameters: List<Parameters>,
     isAssistedInject: Boolean,
+    useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -791,10 +825,14 @@ internal class InjectedClassTransformer(
     val newInstanceFunction =
       generateStaticNewInstanceFunction(
         parentClass = classToGenerateCreatorsIn,
+        factoryClass = if (useCreatorSignatureCarrier) factoryCls else classToGenerateCreatorsIn,
         sourceTypeParameters = targetClass,
         returnTypeProvider = { typeParams -> targetClass.symbol.typeWithParameters(typeParams) },
         sourceMetroParameters = constructorParameters,
         sourceParameters = constructorParameters.regularParameters.map { it.asValueParameter },
+        signatureAnnotations =
+          metroAnnotationsOf(targetConstructor.owner).takeIf { useCreatorSignatureCarrier },
+        targetFunction = targetConstructor.owner.takeIf { useCreatorSignatureCarrier },
       ) { function ->
         irCallConstructor(
             callee = targetConstructor,

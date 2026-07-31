@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import org.jetbrains.kotlin.ir.declarations.IrClass
 
 context(metroContext: IrMetroContext)
@@ -20,6 +21,12 @@ internal fun IrClass.writeInjectedClassMetadata(
         InjectedClassProto(
           factory_class_name = classFactory?.factoryClass?.name?.asString(),
           member_injections = memberInjectClass?.toProto(),
+          signature_carrier =
+            when (classFactory) {
+              is ClassFactory.MetroFactory -> classFactory.signatureCarrier
+              is ClassFactory.DaggerFactory,
+              null -> SignatureCarrier.MIRROR_FUNCTION
+            },
         )
     )
 }

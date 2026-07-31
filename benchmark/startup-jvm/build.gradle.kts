@@ -16,5 +16,4 @@ jmh {
     listOf(
       "-Dmetro.benchmark.runtimeTraceDir=${rootProject.layout.projectDirectory.dir("app/component/build/metro-runtime-traces").asFile.absolutePath}"
     )
-  profilers = listOf("gc")
 }

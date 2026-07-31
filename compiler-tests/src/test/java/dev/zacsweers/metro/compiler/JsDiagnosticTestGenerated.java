@@ -574,6 +574,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt")
+      public void testExcludedPublicGraphExtensionFactoryHasNoInternalHint() {
+        run("ExcludedPublicGraphExtensionFactoryHasNoInternalHint.kt");
+      }
+
+      @Test
       @TestMetadata("ExtensionAccessorsCannotHaveParameters.kt")
       public void testExtensionAccessorsCannotHaveParameters() {
         run("ExtensionAccessorsCannotHaveParameters.kt");
@@ -1571,7 +1577,7 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
 
     @Test
     public void testAllFilesPresentInSuspend() {
-      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/suspend"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
     }
 
     @Test

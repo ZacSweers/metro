@@ -23,10 +23,10 @@ internal class SafePublicationSuspendLazy<T>(initializer: suspend () -> T) :
   private var initializer: (suspend () -> T)? = initializer
   private var _value: Any? = UNINITIALIZED
 
-  override suspend fun invoke(): T = value()
+  override suspend fun invoke(): T = await()
 
   @Suppress("UNCHECKED_CAST")
-  override suspend fun value(): T {
+  override suspend fun await(): T {
     val result = _value
     if (result !== UNINITIALIZED) {
       return result as T

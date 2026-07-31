@@ -75,8 +75,7 @@ buildConfig {
       providers.gradleProperty("VERSION_NAME").map { "\"$it\"" },
     )
     buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-    // Metadata version for compatibility checking. Increment when making breaking changes to
-    // metro_metadata.proto
+    // Metadata version written into Metro's custom metadata.
     buildConfigField("Int", "METADATA_VERSION", 1)
   }
   sourceSets.named("test") {
@@ -88,6 +87,9 @@ tasks.test {
   maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
   systemProperty("metro.buildDir", project.layout.buildDirectory.asFile.get().absolutePath)
   systemProperty("metro.diagnosticsRenderMode", "PLAIN")
+  providers.gradleProperty("metro.testOmitRedundantMirrors").orNull?.let {
+    systemProperty("metro.testOmitRedundantMirrors", it)
+  }
 }
 
 val diagnosticsDocsFile = rootProject.layout.projectDirectory.file("docs/diagnostics.md")

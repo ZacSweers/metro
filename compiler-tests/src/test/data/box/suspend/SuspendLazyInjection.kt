@@ -29,19 +29,19 @@ fun box(): String {
   return runBlocking {
     val lazyDb = graph.database
     assertFalse(lazyDb.isInitialized())
-    assertEquals("db", lazyDb.value())
+    assertEquals("db", lazyDb.await())
     assertTrue(lazyDb.isInitialized())
     // Memoized per wrapper instance
-    assertEquals("db", lazyDb.value())
+    assertEquals("db", lazyDb.await())
     assertEquals(1, dbComputations)
 
     // Unscoped binding: a separate wrapper instance recomputes
     val consumer = graph.consumer
-    assertEquals("db", consumer.database.value())
+    assertEquals("db", consumer.database.await())
     assertEquals(2, dbComputations)
 
     // Non-suspend binding through SuspendLazy
-    assertEquals(5432, consumer.port.value())
+    assertEquals(5432, consumer.port.await())
     "OK"
   }
 }

@@ -14,12 +14,14 @@ import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.GradlePlugins
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.KotlinToolingVersion
+import dev.zacsweers.metro.gradle.MetroOptionOverrides
 import dev.zacsweers.metro.gradle.MetroProject
 import dev.zacsweers.metro.gradle.buildAndAssertThat
 import dev.zacsweers.metro.gradle.classLoader
 import dev.zacsweers.metro.gradle.cleanOutputLine
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
+import dev.zacsweers.metro.gradle.getTestOmitRedundantMirrorsOverride
 import dev.zacsweers.metro.gradle.invokeMain
 import dev.zacsweers.metro.gradle.source
 import java.io.File
@@ -41,7 +43,8 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   private val generateClassesInIrEnabled =
-    getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
+    target == KmpTarget.JVM &&
+      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
 
   private fun someRepositoryProviderRequestPath(): String {
     return if (generateClassesInIrEnabled) {
@@ -637,9 +640,22 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   @Test
-  fun internalBindings() {
+  fun internalBindingsWithRedundantMirrors() {
+    internalBindings(omitRedundantMirrors = false)
+  }
+
+  @Test
+  fun internalBindingsWithoutRedundantMirrors() {
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
+    internalBindings(omitRedundantMirrors = true)
+  }
+
+  private fun internalBindings(omitRedundantMirrors: Boolean) {
     val fixture =
-      object : MetroProject() {
+      object :
+        MetroProject(
+          metroOptions = MetroOptionOverrides(omitRedundantMirrors = omitRedundantMirrors)
+        ) {
         override fun buildGradleProject() = multiModuleProject {
           root {
             sources(exampleGraph)
@@ -1147,20 +1163,25 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
       }
     }
 
-    // TODO We need to add or remove an annotation at this point to trigger the graph regen,
-    //  IC doesn't seem to pick up an annotation argument change when the previous compilation
-    //  was successful
-    project.modify(
-      fixture.exampleClass,
-      """
-      @Inject
-      class ExampleClass
-      """
-        .trimIndent(),
-    )
+    val omitRedundantMirrorsEnabled = getTestOmitRedundantMirrorsOverride() == true
+    val annotationArgumentChangesSupported =
+      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0")
+    val requiresAnnotationRemovalWorkaround =
+      !omitRedundantMirrorsEnabled || !annotationArgumentChangesSupported
+    if (requiresAnnotationRemovalWorkaround) {
+      project.modify(
+        fixture.exampleClass,
+        """
+        @Inject
+        class ExampleClass
+        """
+          .trimIndent(),
+      )
 
-    val thirdBuildResult = project.compileKotlin()
-    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+      val workaroundBuildResult = project.compileKotlin()
+      assertThat(workaroundBuildResult.task(compileTaskFor())?.outcome)
+        .isEqualTo(TaskOutcome.SUCCESS)
+    }
 
     project.modify(
       fixture.exampleClass,
@@ -1174,8 +1195,8 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     // We expect that changing the source back to what we started with should again give us the
     // original error
-    val fourthBuildResult = project.compileKotlinAndFail()
-    assertThat(fourthBuildResult.output.cleanOutputLine())
+    val finalBuildResult = project.compileKotlinAndFail()
+    assertThat(finalBuildResult.output.cleanOutputLine())
       .contains(
         """
         [Metro/IncompatiblyScopedBindings] test.ExampleGraph.Impl.LoggedInGraphImpl (scopes
@@ -3190,6 +3211,166 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     val secondBuildResult = project.compileKotlin()
     assertThat(secondBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hi, world") }
+  }
+
+  @Test
+  fun mapKeyArgumentChangeDetectedWhenOmittingRedundantMirrors() {
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
+
+    val fixture =
+      object : MetroProject(metroOptions = MetroOptionOverrides(omitRedundantMirrors = true)) {
+        override fun sources() = listOf(bindingContainer, graph)
+
+        val bindingContainer =
+          source(
+            """
+            @BindingContainer
+            object MapBindings {
+              @Provides
+              @IntoMap
+              @StringKey("first")
+              fun provideFirst(): String = "first"
+
+              @Provides
+              @IntoMap
+              @StringKey("second")
+              fun provideSecond(): String = "second"
+            }
+            """
+              .trimIndent()
+          )
+
+        private val graph =
+          source(
+            """
+            @DependencyGraph(bindingContainers = [MapBindings::class])
+            interface AppGraph {
+              val values: Map<String, String>
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      object MapBindings {
+        @Provides
+        @IntoMap
+        @StringKey("second")
+        fun provideFirst(): String = "first"
+
+        @Provides
+        @IntoMap
+        @StringKey("second")
+        fun provideSecond(): String = "second"
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlinAndFail()
+    assertThat(secondBuildResult.output).contains("[Metro/DuplicateMapKeys]")
+
+    project.modify(
+      fixture.bindingContainer,
+      """
+      @BindingContainer
+      object MapBindings {
+        // Restored after the intentionally failing compilation.
+        @Provides
+        @IntoMap
+        @StringKey("first")
+        fun provideFirst(): String = "first"
+
+        @Provides
+        @IntoMap
+        @StringKey("second")
+        fun provideSecond(): String = "second"
+      }
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = project.compileKotlin()
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+  }
+
+  @Test
+  fun defaultBindingTypeArgumentChangeDetectedWhenOmittingRedundantMirrors() {
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
+
+    val fixture =
+      object : MetroProject(metroOptions = MetroOptionOverrides(omitRedundantMirrors = true)) {
+        override fun sources() = listOf(baseInterface, impl, graph)
+
+        val baseInterface =
+          source(
+            """
+            @DefaultBinding<BaseFactory<*>>
+            interface BaseFactory<T : BaseFactory<T>> : RawFactory
+            interface RawFactory
+            """
+          )
+
+        private val impl =
+          source(
+            """
+            @ContributesBinding(Unit::class)
+            @Inject
+            class Impl : BaseFactory<Impl>
+            """
+          )
+
+        private val graph =
+          source(
+            """
+            @DependencyGraph(Unit::class)
+            interface AppGraph {
+              val base: BaseFactory<*>
+            }
+            """
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    val firstBuildResult = project.compileKotlin()
+    assertThat(firstBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    project.modify(
+      fixture.baseInterface,
+      """
+      @DefaultBinding<RawFactory>
+      interface BaseFactory<T : BaseFactory<T>> : RawFactory
+      interface RawFactory
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlinAndFail()
+    assertThat(secondBuildResult.output).contains("[Metro/MissingBinding]")
+
+    project.modify(
+      fixture.baseInterface,
+      """
+      // Restored after the intentionally failing compilation.
+      @DefaultBinding<BaseFactory<*>>
+      interface BaseFactory<T : BaseFactory<T>> : RawFactory
+      interface RawFactory
+      """
+        .trimIndent(),
+    )
+
+    val thirdBuildResult = project.compileKotlin()
+    assertThat(thirdBuildResult.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
   }
 
   /**

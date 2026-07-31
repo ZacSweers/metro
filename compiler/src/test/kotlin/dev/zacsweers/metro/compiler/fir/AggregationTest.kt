@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.allSupertypes
 import dev.zacsweers.metro.compiler.assertDiagnostics
 import dev.zacsweers.metro.compiler.callFunction
 import dev.zacsweers.metro.compiler.callProperty
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.createGraphWithNoArgs
 import dev.zacsweers.metro.compiler.generatedImpl
 import kotlin.reflect.KClass
@@ -21,6 +22,12 @@ import org.junit.Ignore
 class AggregationTest : MetroCompilerTest() {
 
   override val extraImports: List<String> = listOf("kotlin.reflect.*")
+
+  private val usesDirectBindingDeclarations: Boolean
+    get() =
+      metroOptions.omitRedundantMirrors &&
+        CompatContext.create(CompatContext.Factory.loadCompilerVersion())
+          .supportsAnnotationArgumentInvalidation
 
   @Test
   fun `contributing types are generated in fir`() {
@@ -3313,6 +3320,26 @@ class AggregationTest : MetroCompilerTest() {
         ),
         compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
       )
+    val expectedDeclarationContext =
+      if (usesDirectBindingDeclarations) {
+        """
+        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.bindIntoMapAsCloseable1854383119' (no source location available)
+        - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
+        """
+          .trimIndent()
+      } else {
+        val bindsMirrorFunctionName =
+          featureCompilation.classLoader
+            .loadClass("feature.TestClass\$MetroContributionToAppScope\$BindsMirror")
+            .declaredMethods
+            .single()
+            .name
+        """
+        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.$bindsMirrorFunctionName' (no source location available)
+        - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
+        """
+          .trimIndent()
+      }
 
     // Module "main" - depends only on feature (not common), defines the graph
     // This should fail because ServiceKey is not visible to this compilation
@@ -3337,14 +3364,14 @@ class AggregationTest : MetroCompilerTest() {
       },
     ) {
       assertDiagnostics(
-        """
-        e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
-
-        (context)
-        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.BindsMirror.bindIntoMapAsCloseable18543831191854383119_intomap' (no source location available)
-        - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
-        """
-          .trimIndent()
+        buildString {
+          appendLine(
+            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source."
+          )
+          appendLine()
+          appendLine("(context)")
+          append(expectedDeclarationContext)
+        }
       )
     }
   }
@@ -3399,6 +3426,22 @@ class AggregationTest : MetroCompilerTest() {
         ),
         compilationBlock = { addPreviousResultToClasspath(commonCompilation) },
       )
+    val expectedDeclarationContext =
+      if (usesDirectBindingDeclarations) {
+        "Encountered while processing declaration 'feature.Bindings.bind' (no source location available)"
+      } else {
+        val bindsMirrorFunctionName =
+          featureCompilation.classLoader
+            .loadClass("feature.Bindings\$BindsMirror")
+            .declaredMethods
+            .single()
+            .name
+        """
+        Encountered while processing declaration 'feature.Bindings.BindsMirror.$bindsMirrorFunctionName' (no source location available)
+        - This is Metro-generated code for 'feature.Bindings.bind' (where the problem is).
+        """
+          .trimIndent()
+      }
 
     // Module "main" - depends only on feature (not common), defines the graph
     // This should fail because ServiceKey is not visible to this compilation
@@ -3423,14 +3466,14 @@ class AggregationTest : MetroCompilerTest() {
       },
     ) {
       assertDiagnostics(
-        """
-        e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source.
-
-        (context)
-        Encountered while processing declaration 'feature.Bindings.BindsMirror.bind_property1854383119_intomap' (no source location available)
-        - This is Metro-generated code for 'feature.Bindings.bind' (where the problem is).
-        """
-          .trimIndent()
+        buildString {
+          appendLine(
+            "e: Found an @IntoMap annotation without any @MapKey annotations. This may happen if this is an external declaration that has a map key annotation that is not visible to this compilation. Please check the original source."
+          )
+          appendLine()
+          appendLine("(context)")
+          append(expectedDeclarationContext)
+        }
       )
     }
   }

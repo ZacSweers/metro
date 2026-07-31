@@ -164,6 +164,7 @@ abstract class MetroProject(
               withBuildScript {
                 if (config.plugins.isNotEmpty()) {
                   plugins(*config.plugins.toTypedArray())
+                  withKotlin(buildMetroBlock())
                 } else {
                   applyMetroDefault()
                 }
@@ -276,6 +277,12 @@ abstract class MetroProject(
       }
       metroOptions.generateContributionProviders?.let {
         add("generateContributionProviders.set($it)")
+      }
+      val omitRedundantMirrors =
+        metroOptions.omitRedundantMirrors ?: getTestOmitRedundantMirrorsOverride()
+      omitRedundantMirrors?.let {
+        val method = if (it) "enable" else "disable"
+        add("compilerOptions.$method(\"omit-redundant-mirrors\")")
       }
     }
     if (options.isNotEmpty()) {

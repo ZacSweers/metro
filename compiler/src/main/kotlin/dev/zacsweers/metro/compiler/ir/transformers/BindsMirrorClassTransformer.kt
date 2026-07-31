@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.getOrCreateMetadataVisibleHiddenNestedClass
+import dev.zacsweers.metro.compiler.ir.isEffectivelyPublic
 import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
@@ -51,8 +52,8 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
- * Transforms binding mirror classes generated in FIR by adding mirror functions for `@Binds` and
- * `@Multibinds` declarations.
+ * Collects `@Binds`-like declarations and generates metadata carriers for declarations that are not
+ * directly readable from another compilation.
  */
 @Inject
 @ContributesIntoSet(IrScope::class, binding<Lockable>())
@@ -64,35 +65,58 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   fun getOrComputeBindsMirror(declaration: IrClass): BindsMirror? {
     return cache
       .getOrPut(declaration.classIdOrFail) {
-        val mirrorClass =
-          declaration.bindsMirrorClassOrNull()
-            // If there's no mirror class, there's no bindings.
-            // TODO what if they forgot to run the metro compiler? Should we put something in
-            //  metadata?
-            ?: return@getOrPut Optional.empty()
+        val isExternal = declaration.isExternalParent
+        val useDirectDeclarations = declaration.shouldUseDirectBindingDeclarations()
+        val createMirror =
+          if (isExternal) {
+            false
+          } else if (useDirectDeclarations) {
+            declaration.hasInaccessibleBindingCallables()
+          } else {
+            declaration.hasBindingCallables()
+          }
+        val mirrorClass = declaration.bindsMirrorClassOrNull(createIfMissing = createMirror)
+
+        // External declarations may have been produced with redundant mirrors omitted even when
+        // the current compilation still generates them. Read their visible originals alongside
+        // any mirror functions so modules using either setting can be mixed.
+        if (mirrorClass == null && !useDirectDeclarations && !isExternal) {
+          // If there's no mirror class, there's no bindings.
+          // TODO what if they forgot to run the metro compiler? Should we put something in
+          //  metadata?
+          return@getOrPut Optional.empty()
+        }
 
         if (!declaration.isExternalParent) {
           checkNotLocked()
         }
-        val mirror = transformBindingMirrorClass(declaration, mirrorClass)
+        val mirror =
+          transformBindingDeclarations(
+            parentClass = declaration,
+            mirrorClass = mirrorClass,
+            useDirectDeclarations = useDirectDeclarations,
+          )
         Optional.ofNullable(mirror)
       }
       .getOrNull()
   }
 
-  private fun IrClass.bindsMirrorClassOrNull(): IrClass? {
+  private fun IrClass.shouldUseDirectBindingDeclarations(): Boolean {
+    if (isExternalParent) return false
+    return icCapabilities.annotationArgumentInvalidation &&
+      icCapabilities.readableAnnotationMetadata
+  }
+
+  private fun IrClass.bindsMirrorClassOrNull(createIfMissing: Boolean): IrClass? {
     nestedClassOrNull(Symbols.Names.BindsMirrorClass)?.let {
       return it
     }
 
-    if (!options.generateClassesInIr) return null
+    if (!options.generateClassesInIr || !createIfMissing) return null
 
-    // Match FIR generation (BindingMirrorClassFirGenerator): only create a mirror class when the
-    // class actually declares binding callables. Besides avoiding empty mirror noise, this keeps
-    // us from generating mirrors inside Metro's own IR-generated classes (e.g. assisted factory
-    // impls and their companions), which aren't metadata-visible themselves and so can't be
-    // resolved back to FIR when registering the mirror.
-    if (!hasBindingCallables()) return null
+    // Avoid empty mirror noise and mirrors inside Metro's own IR-generated classes (e.g. assisted
+    // factory impls and their companions), which aren't metadata-visible themselves and so can't
+    // be resolved back to FIR when registering the mirror.
 
     return getOrCreateMetadataVisibleHiddenNestedClass(
         name = Symbols.Names.BindsMirrorClass,
@@ -103,9 +127,24 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
   }
 
   private fun IrClass.hasBindingCallables(): Boolean {
+    return hasBindingCallables(inaccessibleOnly = false)
+  }
+
+  private fun IrClass.hasInaccessibleBindingCallables(): Boolean {
+    return hasBindingCallables(inaccessibleOnly = true)
+  }
+
+  private fun IrClass.hasBindingCallables(inaccessibleOnly: Boolean): Boolean {
     return declarations.any { declaration ->
       if (declaration !is IrSimpleFunction && declaration !is IrProperty) return@any false
       if (declaration.isFakeOverride) return@any false
+      val function =
+        when (declaration) {
+          is IrProperty -> declaration.getter ?: return@any false
+          is IrSimpleFunction -> declaration
+          else -> return@any false
+        }
+      if (inaccessibleOnly && function.canBeReadDirectly()) return@any false
       val annotations =
         declaration.metroAnnotations(
           metroSymbols.classIds,
@@ -119,6 +158,10 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
       annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
     }
   }
+}
+
+private fun IrSimpleFunction.canBeReadDirectly(): Boolean {
+  return isEffectivelyPublic()
 }
 
 internal data class BindsMirror(
@@ -137,11 +180,15 @@ internal data class BindsMirror(
 }
 
 context(context: IrMetroContext)
-private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrClass): BindsMirror {
-  val isExternal = mirrorClass.isExternalParent
+private fun transformBindingDeclarations(
+  parentClass: IrClass,
+  mirrorClass: IrClass?,
+  useDirectDeclarations: Boolean,
+): BindsMirror {
+  val isExternal = parentClass.isExternalParent
   val collector = BindsMirrorCollector(isInterop = false)
 
-  if (!isExternal) {
+  if (!isExternal && mirrorClass != null) {
     mirrorClass.patchDeclarationParents(parentClass)
   }
 
@@ -155,10 +202,10 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
 
   // Annotate the mirror class with @ComptimeOnly
   comptimeOnlyConstructor?.let { ctor ->
-    mirrorClass.addAnnotationCompat(buildAnnotation(mirrorClass.symbol, ctor))
+    mirrorClass?.addAnnotationCompat(buildAnnotation(mirrorClass.symbol, ctor))
   }
 
-  fun processFunction(declaration: IrSimpleFunction) {
+  fun processOriginalFunction(declaration: IrSimpleFunction) {
     if (!declaration.isFakeOverride) {
       val originalFunction = metroFunctionOf(declaration)
       if (
@@ -202,29 +249,53 @@ private fun transformBindingMirrorClass(parentClass: IrClass, mirrorClass: IrCla
           }
         }
 
-        // TODO we round-trip generating -> reading back. Should we optimize that path?
-        val function =
-          if (isExternal) metroFunction else generateMirrorFunction(mirrorClass, metroFunction)
-        collector += function
+        if (declaration.canBeReadDirectly() && (useDirectDeclarations || isExternal)) {
+          collector.addDirect(metroFunction)
+        } else if (!isExternal) {
+          val requiredMirrorClass = checkNotNull(mirrorClass)
+          collector += generateMirrorFunction(requiredMirrorClass, metroFunction)
+        }
       }
     }
   }
 
-  // Find all @Binds and @Multibinds declarations in the parent class
-  // If external, just read the mirror class directly. If current round, transform the parent and
-  // generate its mirrors
-  val classToProcess = if (isExternal) mirrorClass else parentClass
-  for (declaration in classToProcess.declarations) {
-    when (declaration) {
-      is IrProperty -> {
-        val getter = declaration.getter ?: continue
-        processFunction(getter)
+  fun processOriginalDeclarations() {
+    for (declaration in parentClass.declarations) {
+      when (declaration) {
+        is IrProperty -> {
+          val getter = declaration.getter ?: continue
+          processOriginalFunction(getter)
+        }
+        is IrSimpleFunction -> processOriginalFunction(declaration)
       }
-      is IrSimpleFunction -> processFunction(declaration)
     }
   }
 
-  return collector.buildMirror(mirrorClass)
+  fun collectExternalMirrorFunction(declaration: IrSimpleFunction) {
+    if (declaration.isFakeOverride) return
+
+    val function = metroFunctionOf(declaration)
+    val annotations = function.annotations
+    if (annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf) {
+      collector += function
+    }
+  }
+
+  if (isExternal && mirrorClass != null) {
+    for (declaration in mirrorClass.declarations) {
+      when (declaration) {
+        is IrProperty -> {
+          val getter = declaration.getter ?: continue
+          collectExternalMirrorFunction(getter)
+        }
+        is IrSimpleFunction -> collectExternalMirrorFunction(declaration)
+      }
+    }
+  }
+
+  processOriginalDeclarations()
+
+  return collector.buildMirror(mirrorClass ?: parentClass)
 }
 
 context(context: IrMetroContext)
@@ -235,15 +306,21 @@ private fun generateMirrorFunction(
   // Create a unique name for this mirror function based on the target function name
   // and qualifier + map key annotations
   val annotations = targetFunction.annotations
+  val canReadChangedAnnotations =
+    context.icCapabilities.annotationArgumentInvalidation &&
+      context.icCapabilities.readableAnnotationMetadata
+  val includeAnnotationHashes = !canReadChangedAnnotations
   val mirrorFunctionName = buildString {
     val sourceDeclaration = targetFunction.ir.propertyIfAccessor
     append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
     if (sourceDeclaration is IrProperty) {
       append("_property")
     }
-    annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
-    annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
-    annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
+    if (includeAnnotationHashes) {
+      annotations.qualifier?.hashCode()?.toUInt()?.let(::append)
+      annotations.mapKey?.hashCode()?.toUInt()?.let(::append)
+      annotations.multibinds?.hashCode()?.toUInt()?.let(::append)
+    }
 
     if (annotations.isBindsOptionalOf) {
       append("_opt")

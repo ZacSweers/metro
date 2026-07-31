@@ -9,50 +9,65 @@ import android.content.BroadcastReceiver
 import android.content.ContentProvider
 import android.content.Context
 import android.content.Intent
+import android.os.Looper
 import androidx.tracing.Tracer
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.Includes
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Provides
-import dev.zacsweers.metro.createDynamicGraphFactory
+import dev.zacsweers.metro.createGraphFactory
 import dev.zacsweers.metrox.android.ActivityKey
 import dev.zacsweers.metrox.android.BroadcastReceiverKey
 import dev.zacsweers.metrox.android.ContentProviderKey
 import dev.zacsweers.metrox.android.MetroAppComponentProviders
 import dev.zacsweers.metrox.android.MetroApplication
 import dev.zacsweers.metrox.android.ServiceKey
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 const val TEST_STRING = "Hello, Metro!"
 const val TEST_ACTION = "dev.zacsweers.metro.sample.android.TEST_ACTION"
 const val EXTRA_DATA = "extra_data"
 
+abstract class TestAppScope private constructor()
+
 class TestApp : Application(), MetroApplication {
   override val appComponentProviders: MetroAppComponentProviders by lazy {
-    createDynamicGraphFactory<AppGraph.Factory>(TestBindings()).create(this, Tracer.getStubTracer())
+    createGraphFactory<TestAppGraph.Factory>().create(TestBindings(), Tracer.getStubTracer())
   }
 
   init {
     assertThat(appComponentProviders.activityProviders).hasSize(1)
     assertThat(appComponentProviders.activityProviders)
-      .containsKey(MetroAppComponentFactoryTest.TestActivity::class.java)
+      .containsKey(MetroAppComponentFactoryTest.TestActivity::class)
     assertThat(appComponentProviders.receiverProviders).hasSize(1)
     assertThat(appComponentProviders.receiverProviders)
-      .containsKey(MetroAppComponentFactoryTest.TestReceiver::class.java)
+      .containsKey(MetroAppComponentFactoryTest.TestReceiver::class)
     assertThat(appComponentProviders.providerProviders).hasSize(1)
     assertThat(appComponentProviders.providerProviders)
-      .containsKey(MetroAppComponentFactoryTest.TestProvider::class.java)
+      .containsKey(MetroAppComponentFactoryTest.TestProvider::class)
     assertThat(appComponentProviders.serviceProviders).hasSize(1)
     assertThat(appComponentProviders.serviceProviders)
-      .containsKey(MetroAppComponentFactoryTest.TestService::class.java)
+      .containsKey(MetroAppComponentFactoryTest.TestService::class)
+  }
+}
+
+@DependencyGraph(TestAppScope::class)
+interface TestAppGraph : MetroAppComponentProviders {
+  @DependencyGraph.Factory
+  fun interface Factory {
+    fun create(
+      @Includes bindings: TestBindings,
+      @Provides tracer: Tracer,
+    ): TestAppGraph
   }
 }
 
@@ -63,7 +78,6 @@ class TestBindings {
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class)
-@Ignore("https://github.com/robolectric/robolectric/pull/10833")
 class MetroAppComponentFactoryTest {
 
   @Test
@@ -81,8 +95,12 @@ class MetroAppComponentFactoryTest {
   @Test
   fun broadcastReceiver() {
     val context = RuntimeEnvironment.getApplication()
-    val intent = Intent(TEST_ACTION).putExtra(EXTRA_DATA, "broadcast_data")
+    val intent =
+      Intent(context, TestReceiver::class.java)
+        .setAction(TEST_ACTION)
+        .putExtra(EXTRA_DATA, "broadcast_data")
     context.sendBroadcast(intent)
+    shadowOf(Looper.getMainLooper()).idle()
     // Verify the receiver was injected with the test string and received the broadcast data
     assertThat(TestReceiver.lastInjectedValue).isEqualTo(TEST_STRING)
     assertThat(TestReceiver.lastReceivedData).isEqualTo("broadcast_data")
@@ -97,19 +115,19 @@ class MetroAppComponentFactoryTest {
   // Test component classes
   @Inject
   @ActivityKey
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(TestAppScope::class)
   class TestActivity(val value: String) : Activity()
 
   @Inject
   @ServiceKey
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(TestAppScope::class)
   class TestService(val value: String) : Service() {
     override fun onBind(intent: Intent?) = null
   }
 
   @Inject
   @BroadcastReceiverKey
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(TestAppScope::class)
   class TestReceiver(val value: String) : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       lastInjectedValue = value
@@ -124,7 +142,7 @@ class MetroAppComponentFactoryTest {
 
   @Inject
   @ContentProviderKey
-  @ContributesIntoMap(AppScope::class)
+  @ContributesIntoMap(TestAppScope::class)
   class TestProvider(val value: String) : ContentProvider() {
     override fun onCreate() = true
 

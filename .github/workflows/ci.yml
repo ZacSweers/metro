@@ -52,6 +52,7 @@ jobs:
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
       default_kotlin_version: ${{ steps.generate.outputs.default_kotlin_version }}
+      latest_kotlin_version: ${{ steps.generate.outputs.latest_kotlin_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -122,6 +123,8 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
+    env:
+      METRO_TEST_OMIT_REDUNDANT_MIRRORS: ${{ matrix.kotlin-compiler == needs.generate-matrix.outputs.default_kotlin_version || matrix.kotlin-compiler == needs.generate-matrix.outputs.latest_kotlin_version }}
     permissions:
       checks: write
 
@@ -152,6 +155,7 @@ jobs:
         run: |
           ./scripts/run-ci-gradle.sh :compiler:test :compiler-tests:test --continue --quiet \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.excludeJsBoxTests \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
@@ -160,6 +164,7 @@ jobs:
         run: |
           ./scripts/run-ci-gradle.sh :gradle-plugin:functionalTest --continue --quiet \
             '-Pmetro.testCompilerVersion=${{ matrix.kotlin-compiler }}' \
+            "-Pmetro.testOmitRedundantMirrors=$METRO_TEST_OMIT_REDUNDANT_MIRRORS" \
             -Pmetro.functionalTestKmpTarget=jvm \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
@@ -240,7 +245,7 @@ jobs:
           check_name: 'Test Report - shaded compiler / Ubuntu JDK 21'
 
   js-box:
-    name: ${{ format('js box / {0}', github.ref == 'refs/heads/main' && 'full' || 'smoke') }}
+    name: ${{ github.ref == 'refs/heads/main' && 'js box / full' || 'web / smoke' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -267,6 +272,14 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+
+      - name: Run Wasm bindings smoke test
+        if: github.ref != 'refs/heads/main'
+        run: |
+          ./gradlew :gradle-plugin:functionalTest --quiet \
+            -Pmetro.functionalTestKmpTarget=wasmJs \
+            --tests 'dev.zacsweers.metro.gradle.incremental.ICTests.icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams*' \
+            -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run JS box tests
         if: github.ref == 'refs/heads/main'

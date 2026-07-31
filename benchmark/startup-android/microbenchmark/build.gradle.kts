@@ -13,9 +13,6 @@ android {
     minSdk = 28
     testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
     buildConfigField("boolean", "METRO_RUNTIME_TRACING", runtimeTracingEnabled.toString())
-
-    // Suppress emulator warning for quick testing but not actual benchmark measurements
-    testInstrumentationRunnerArguments["androidx.benchmark.suppressErrors"] = "SIMPLEPERF,EMULATOR"
   }
 
   buildTypes {

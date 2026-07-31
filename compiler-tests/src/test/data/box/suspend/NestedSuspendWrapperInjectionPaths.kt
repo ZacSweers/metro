@@ -77,7 +77,7 @@ interface ExampleGraph {
 
   @Provides
   suspend fun provideReport(value: () -> SuspendLazy<InjectionPathValue>): Report {
-    return Report(value().value().index)
+    return Report(value().await().index)
   }
 
   @Provides
@@ -90,7 +90,7 @@ interface ExampleGraph {
     nested: () -> SuspendLazy<SynchronousInjectionPathValue>,
     provider: () -> SynchronousInjectionPathValue,
   ): String {
-    return "${provider().value}:${nested().value().value}"
+    return "${provider().value}:${nested().await().value}"
   }
 }
 
@@ -102,23 +102,23 @@ fun box(): String =
     val memberTarget = MemberInjectedTarget()
     graph.inject(memberTarget)
     assertEquals(0, injectionPathComputations)
-    assertEquals(1, memberTarget.value().value().index)
+    assertEquals(1, memberTarget.value().await().index)
 
     val assistedTarget = graph.assistedFactory.create("name")
     assertEquals("name", assistedTarget.name)
     assertEquals(1, injectionPathComputations)
-    assertEquals(2, assistedTarget.value().value().index)
+    assertEquals(2, assistedTarget.value().await().index)
 
     assertEquals(3, graph.report().index)
 
-    assertEquals(4, graph.nestedInjectedFunction.invoke()().value().index)
+    assertEquals(4, graph.nestedInjectedFunction.invoke()().await().index)
 
     val graphLocalTarget = graph.graphLocalTarget()
     assertEquals(5, graphLocalTarget.direct.index)
     assertEquals("sync", graphLocalTarget.synchronous.value)
     assertEquals("sync", graphLocalTarget.synchronousProvider().value)
     assertEquals(5, injectionPathComputations)
-    assertEquals(6, graphLocalTarget.nested().value().index)
+    assertEquals(6, graphLocalTarget.nested().await().index)
     assertSame(graphLocalTarget, graph.graphLocalTarget())
 
     assertEquals("sync:sync", graph.mixedStorageKinds())

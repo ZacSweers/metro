@@ -41,7 +41,12 @@ abstract class MetroCompilerTest {
     get() = emptyList()
 
   protected open val metroOptions: MetroOptions
-    get() = MetroOptions()
+    get() =
+      MetroOptions(
+        omitRedundantMirrors =
+          testOmitRedundantMirrors
+            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>()
+      )
 
   protected val debugOutputDir: Path
     get() =
@@ -66,7 +71,17 @@ abstract class MetroCompilerTest {
     previousCompilationResult: JvmCompilationResult? = null,
     compilationName: String = "compilation${compilationCount++}",
   ): KotlinCompilation {
-    val finalOptions = options.toBuilder().debug(debug || options.debug).build()
+    val omitRedundantMirrorsOverride = testOmitRedundantMirrors
+    val finalOptions =
+      options
+        .toBuilder()
+        .debug(debug || options.debug)
+        .apply {
+          if (omitRedundantMirrorsOverride != null) {
+            omitRedundantMirrors = omitRedundantMirrorsOverride
+          }
+        }
+        .build()
     return KotlinCompilation().apply {
       workingDir = temporaryFolder.newFolder(compilationName)
       compilerPluginRegistrars = listOf(MetroCompilerPluginRegistrar())
@@ -345,6 +360,9 @@ abstract class MetroCompilerTest {
             BUFFERED_IC_TRACKING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.bufferedIcTracking)
             }
+            OMIT_REDUNDANT_MIRRORS -> {
+              processor.option(entry.raw.cliOption, this@toPluginOptions.omitRedundantMirrors)
+            }
             ENABLE_PROVIDER_INLINING -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.enableProviderInlining)
             }
@@ -396,6 +414,9 @@ abstract class MetroCompilerTest {
     }
       .toList()
   }
+
+  private val testOmitRedundantMirrors: Boolean?
+    get() = System.getProperty("metro.testOmitRedundantMirrors")?.toBooleanStrict()
 
   protected fun CommandLineProcessor.option(key: AbstractCliOption, value: Any?): PluginOption {
     return PluginOption(pluginId, key.optionName, value.toString())

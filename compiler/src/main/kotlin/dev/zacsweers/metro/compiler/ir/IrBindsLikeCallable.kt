@@ -157,8 +157,10 @@ internal class BindsOptionalOfCallable(
 }
 
 context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCallable {
-  val callableMetadata = ir.irCallableMetadata(annotations, isInterop)
+internal fun MetroSimpleFunction.toBindsCallable(
+  isInterop: Boolean,
+  callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop),
+): BindsCallable {
   val rawTarget = IrContextualTypeKey.from(ir).typeKey
   val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations)
   val nonDispatchParameters = ir.nonDispatchParameters
@@ -177,15 +179,20 @@ internal fun MetroSimpleFunction.toBindsCallable(isInterop: Boolean): BindsCalla
 }
 
 context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toMultibindsCallable(isInterop: Boolean): MultibindsCallable {
+internal fun MetroSimpleFunction.toMultibindsCallable(
+  isInterop: Boolean,
+  callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop),
+): MultibindsCallable {
   return MultibindsCallable(
-    ir.irCallableMetadata(annotations, isInterop),
+    callableMetadata,
     IrContextualTypeKey.from(ir, patchMutableCollections = isInterop).typeKey,
   )
 }
 
 context(context: IrMetroContext)
-internal fun MetroSimpleFunction.toBindsOptionalOfCallable(): BindsOptionalOfCallable {
+internal fun MetroSimpleFunction.toBindsOptionalOfCallable(
+  callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop = true)
+): BindsOptionalOfCallable {
   // Wrap this in a Java Optional
   // TODO what if we support other optionals?
   val targetType = IrContextualTypeKey.from(ir, patchMutableCollections = true).typeKey
@@ -193,7 +200,7 @@ internal fun MetroSimpleFunction.toBindsOptionalOfCallable(): BindsOptionalOfCal
   val wrappedContextKey = targetType.copy(type = wrapped)
 
   return BindsOptionalOfCallable(
-    ir.irCallableMetadata(annotations, isInterop = true),
+    callableMetadata,
     wrappedContextKey,
   )
 }

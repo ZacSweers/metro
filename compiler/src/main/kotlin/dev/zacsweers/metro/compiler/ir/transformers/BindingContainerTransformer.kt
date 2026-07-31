@@ -67,6 +67,8 @@ import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.reportCompat
 import dev.zacsweers.metro.compiler.ir.reportMissingRuntimeCoroutines
 import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
+import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
+import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
@@ -82,6 +84,7 @@ import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -115,6 +118,7 @@ import org.jetbrains.kotlin.ir.declarations.IrTypeAlias
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -395,8 +399,8 @@ internal class BindingContainerTransformer(
       if (reference.isSuspend) metroSymbols.suspendProviderInvoke else metroSymbols.providerInvoke
     val invokeFunction =
       trace("Add factory supertype + invoke shell") {
-        // Add factory supertype. It won't be visible in metadata but that's ok, we don't need to
-        // read it directly since we'll read the declaration mirror to get the target type
+        // Add factory supertype. It won't be visible in metadata, so downstream compilations read
+        // the generated signature carrier to get the target type.
         factoryCls.superTypes += factorySuperTypeSymbol.typeWith(factoryTargetType)
         // Cannot call addFakeOverrides because FIR2IR has already done that, so we need to add
         // the invoke override directly later
@@ -500,9 +504,16 @@ internal class BindingContainerTransformer(
     }
 
     val inlinedValue = reference.inlinedValueIfEnabled()
+    val useCreatorSignatureCarrier = shouldUseCreatorSignatureCarrier()
     val bytecodeFunction =
       trace("Implement creator bodies") {
-        implementCreatorBodies(factoryCls, ctor.symbol, reference, dedupedSourceParameters)
+        implementCreatorBodies(
+          factoryCls,
+          ctor.symbol,
+          reference,
+          dedupedSourceParameters,
+          useCreatorSignatureCarrier,
+        )
       }
 
     // Implement invoke()
@@ -531,21 +542,29 @@ internal class BindingContainerTransformer(
         }
     }
 
-    // Generate a metadata-visible declaration that matches the target provider. This is used in
-    // downstream compilations to read the provider's signature.
     val sourceFunction = reference.callee?.owner as? IrSimpleFunction
     val backingField = reference.backingField
-    val mirrorFunction =
-      trace("Generate declaration mirror") {
-        generateMetadataVisibleDeclarationMirror(
-          factoryClass = factoryCls,
-          target = sourceFunction,
-          backingField = backingField,
-          annotations = reference.annotations,
-          registerAsMetadataVisible =
-            options.generateClassesInIr ||
-              !reference.parent.owner.hasAnnotation(Symbols.ClassIds.irOnlyFactories),
-        )
+    val signatureCarrier =
+      if (useCreatorSignatureCarrier) {
+        SignatureCarrier.CREATOR_FUNCTION
+      } else {
+        SignatureCarrier.MIRROR_FUNCTION
+      }
+    val signatureFunction =
+      if (useCreatorSignatureCarrier) {
+        bytecodeFunction
+      } else {
+        trace("Generate declaration mirror") {
+          generateMetadataVisibleDeclarationMirror(
+            factoryClass = factoryCls,
+            target = sourceFunction,
+            backingField = backingField,
+            annotations = reference.annotations,
+            registerAsMetadataVisible =
+              options.generateClassesInIr ||
+                !reference.parent.owner.hasAnnotation(Symbols.ClassIds.irOnlyFactories),
+          )
+        }
       }
 
     // For in-compilation, use direct reference to source function to avoid round-tripping
@@ -555,29 +574,49 @@ internal class BindingContainerTransformer(
         if (sourceFunction != null) {
           IrCallableMetadata.forInCompilation(
             sourceFunction = sourceFunction,
-            mirrorFunction = mirrorFunction,
+            signatureFunction = signatureFunction,
             annotations = reference.annotations,
             isPropertyAccessor = reference.isPropertyAccessor,
+            newInstanceName =
+              if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION) {
+                reference.name
+              } else {
+                sourceFunction.name
+              },
           )
         } else if (backingField != null) {
-          val sourceFunction =
-            mirrorFunction.deepCopyWithSymbols().apply {
-              name = reference.callableId.callableName
-              setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
-              parent = reference.parent.owner
-              correspondingPropertySymbol = backingField.correspondingPropertySymbol
-            }
-          IrCallableMetadata(
-            callableId = reference.callableId,
-            mirrorCallableId = mirrorFunction.callableId,
-            annotations = reference.annotations,
-            isPropertyAccessor = reference.isPropertyAccessor,
-            newInstanceName = reference.name,
-            function = sourceFunction,
-            mirrorFunction = mirrorFunction,
-          )
+          if (useCreatorSignatureCarrier) {
+            factoryCls.irCallableMetadata(
+              signatureFunction,
+              reference.annotations,
+              isInterop = false,
+              signatureCarrier = signatureCarrier,
+            )
+          } else {
+            val copiedSourceFunction =
+              signatureFunction.deepCopyWithSymbols().apply {
+                name = reference.callableId.callableName
+                setDispatchReceiver(reference.parent.owner.thisReceiverOrFail.copyTo(this))
+                parent = reference.parent.owner
+                correspondingPropertySymbol = backingField.correspondingPropertySymbol
+              }
+            IrCallableMetadata(
+              callableId = reference.callableId,
+              signatureCallableId = signatureFunction.callableId,
+              annotations = reference.annotations,
+              isPropertyAccessor = reference.isPropertyAccessor,
+              newInstanceName = reference.name,
+              function = copiedSourceFunction,
+              signatureFunction = signatureFunction,
+            )
+          }
         } else {
-          factoryCls.irCallableMetadata(mirrorFunction, reference.annotations, isInterop = false)
+          factoryCls.irCallableMetadata(
+            signatureFunction,
+            reference.annotations,
+            isInterop = false,
+            signatureCarrier = signatureCarrier,
+          )
         }
       }
 
@@ -587,9 +626,10 @@ internal class BindingContainerTransformer(
     val providerFactory =
       trace("Construct ProviderFactory") {
         ProviderFactory(
-          contextKey = IrContextualTypeKey.from(mirrorFunction),
+          contextKey = IrContextualTypeKey.from(signatureFunction),
           clazz = factoryCls,
-          mirrorFunction = mirrorFunction,
+          signatureFunction = signatureFunction,
+          signatureCarrier = signatureCarrier,
           sourceAnnotations = reference.annotations,
           callableMetadata = callableMetadata,
           realDeclaration = realDeclaration,
@@ -639,6 +679,7 @@ internal class BindingContainerTransformer(
         isPropertyAccessor = isPropertyAccessor,
         parameters = parameters,
         typeKey = typeKey,
+        returnType = function.returnType,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
         callee = function.symbol,
@@ -691,6 +732,7 @@ internal class BindingContainerTransformer(
         isPropertyAccessor = true,
         parameters = getter?.parameters() ?: Parameters.empty(),
         typeKey = typeKey,
+        returnType = getter?.returnType ?: backingField!!.type,
         isNullable = typeKey.type.isMarkedNullable(),
         parent = parent.symbol,
         callee = callee,
@@ -707,6 +749,7 @@ internal class BindingContainerTransformer(
     factoryConstructor: IrConstructorSymbol,
     reference: CallableReference,
     factoryParameters: Parameters,
+    useCreatorSignatureCarrier: Boolean,
   ): IrSimpleFunction {
     // If this is an object, we can generate directly into this object
     val isObject = factoryCls.kind == ClassKind.OBJECT
@@ -738,6 +781,7 @@ internal class BindingContainerTransformer(
         parentClass = classToGenerateCreatorsIn,
         factoryClass = factoryCls,
         targetFunction = reference.callee?.owner,
+        signatureAnnotations = reference.annotations.takeIf { useCreatorSignatureCarrier },
         sourceMetroParameters = reference.parameters,
         sourceParameters = reference.parameters.regularParameters.map { it.asValueParameter },
         sourceTypeParameters = reference.parent.owner,
@@ -748,7 +792,7 @@ internal class BindingContainerTransformer(
               typeParameters.map { it.defaultType },
               sourceClass,
             )
-          typeRemapper.remapType(reference.typeKey.type)
+          typeRemapper.remapType(reference.returnType)
         },
         functionName = reference.name.asString(),
         isSuspend = reference.isSuspend,
@@ -819,6 +863,7 @@ internal class BindingContainerTransformer(
     val isPropertyAccessor: Boolean,
     val parameters: Parameters,
     val typeKey: IrTypeKey,
+    val returnType: IrType,
     val isNullable: Boolean,
     val parent: IrClassSymbol,
     /**
@@ -893,20 +938,38 @@ internal class BindingContainerTransformer(
   ): ProviderFactory.Metro {
     // Extract IrTypeKey from Factory supertype
     // Qualifier will be populated in ProviderFactory construction
-    val mirrorFunction = factoryCls.requireDeclarationMirrorFunction()
-    val sourceAnnotations = mirrorFunction.metroAnnotations(metroSymbols.classIds)
+    val signatureCarrier = entry.signature_carrier
+    val signatureFunction = factoryCls.signatureFunction(entry, signatureCarrier)
+    val sourceAnnotations = signatureFunction.metroAnnotations(metroSymbols.classIds)
     val callableMetadata =
-      factoryCls.irCallableMetadata(mirrorFunction, sourceAnnotations, isInterop = false)
-    val contextKey = IrContextualTypeKey.from(mirrorFunction)
+      factoryCls.irCallableMetadata(
+        signatureFunction,
+        sourceAnnotations,
+        isInterop = false,
+        signatureCarrier = signatureCarrier,
+      )
+    val contextKey = IrContextualTypeKey.from(signatureFunction)
     return ProviderFactory(
       contextKey,
       factoryCls,
-      mirrorFunction,
+      signatureFunction,
+      signatureCarrier,
       sourceAnnotations,
       callableMetadata,
       inlinedValue = entry.inlinedValueIfEnabled(),
       computeInlinedValue = false,
     ) ?: exitProcessing()
+  }
+
+  private fun IrClass.signatureFunction(
+    entry: ProviderFactoryProto,
+    signatureCarrier: SignatureCarrier,
+  ): IrSimpleFunction {
+    return when (signatureCarrier) {
+      SignatureCarrier.MIRROR_FUNCTION -> requireDeclarationMirrorFunction()
+      SignatureCarrier.CREATOR_FUNCTION ->
+        requireStaticIshDeclarationContainer().requireSimpleFunction(entry.new_instance_name).owner
+    }
   }
 
   private fun loadExternalBindingContainer(
@@ -1220,12 +1283,12 @@ internal class BindingContainerTransformer(
     val callableMetadata =
       IrCallableMetadata(
         callableId = callableId,
-        mirrorCallableId = mirrorFunction.callableId,
+        signatureCallableId = mirrorFunction.callableId,
         annotations = sourceAnnotations,
         isPropertyAccessor = entry.property_name.isNotEmpty(),
         newInstanceName = Name.identifier(entry.new_instance_name),
         function = sourceFunction,
-        mirrorFunction = mirrorFunction,
+        signatureFunction = mirrorFunction,
       )
 
     // referenceClass bypasses the visibility filter that originClassOrNull() inherits, so
@@ -1240,7 +1303,8 @@ internal class BindingContainerTransformer(
     return ProviderFactory(
       contextKey = IrContextualTypeKey.from(mirrorFunction),
       clazz = stub,
-      mirrorFunction = mirrorFunction,
+      signatureFunction = mirrorFunction,
+      signatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
       sourceAnnotations = sourceAnnotations,
       callableMetadata = callableMetadata,
       realDeclaration = originClass ?: providesFunction,

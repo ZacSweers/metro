@@ -540,6 +540,26 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/ir/ic")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Ic {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/ir/ic/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInIc() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/ir/ic"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/dump/ir/injectconstructor")
   @TestDataPath("$PROJECT_ROOT")
   public class Injectconstructor {

@@ -334,6 +334,7 @@ val generateTests =
 
 val largeTestMode = providers.gradleProperty("metro.enableLargeTests").isPresent
 val excludeJsBoxTests = providers.gradleProperty("metro.excludeJsBoxTests").isPresent
+val testOmitRedundantMirrors = providers.gradleProperty("metro.testOmitRedundantMirrors").orNull
 
 if (excludeJsBoxTests) {
   sourceSets.test {
@@ -457,6 +458,7 @@ tasks.withType<Test> {
   )
 
   systemProperty("metro.shortLocations", "true")
+  testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 
   // Regenerate golden files in place: ./gradlew :compiler-tests:test -PupdateTestData=true
   if (providers.gradleProperty("updateTestData").isPresent) {

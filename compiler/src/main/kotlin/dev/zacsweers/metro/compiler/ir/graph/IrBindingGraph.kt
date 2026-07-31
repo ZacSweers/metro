@@ -1015,9 +1015,8 @@ internal class IrBindingGraph(
       val contributingClass =
         node.aggregationScopes
           .flatMap { scope ->
-            contributionData.findVisibleContributionClassesForScopeInHints(
+            contributionData.findNonFriendInternalContributionClassesForScopeInHints(
               scope,
-              includeNonFriendInternals = true,
               callingDeclaration = node.sourceGraph,
             )
           }

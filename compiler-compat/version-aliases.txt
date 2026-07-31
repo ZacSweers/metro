@@ -5,6 +5,7 @@
 #
 # This file must be an equal or superset of the available compiler-compat modules.
 # Each line is a Kotlin version that has a corresponding k* module.
+# Keep versions in release order. CI treats the final entry as the newest tested version.
 # Blank lines and comments (starting with #) are ignored.
 
 2.3.0

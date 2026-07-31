@@ -6,7 +6,7 @@
 #
 # Modes (handled by run_benchmarks.sh):
 # - metro: Metro compiler plugin
-# - vanilla: Pure Kotlin baseline (no DI)
+# - control: Pure Kotlin control (no DI)
 # - metro_noop: Metro plugin applied but no annotations (measures plugin overhead)
 # - dagger_ksp: Dagger with KSP
 # - dagger_kapt: Dagger with KAPT
@@ -20,20 +20,24 @@
 
 abi_change {
     title = "ABI Change"
-    warm-ups = 3
-    iterations = 5
+    warm-ups = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
 
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/CommonInterfaces.kt"
 }
 
 non_abi_change {
     title = "Non-ABI Change"
-    warm-ups = 3
-    iterations = 5
+    warm-ups = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
 
     apply-non-abi-change-to = "features/auth-feature-10/src/main/kotlin/dev/zacsweers/metro/benchmark/features/authfeature10/AuthFeature10.kt"
 }
@@ -46,20 +50,24 @@ non_abi_change {
 
 plain_abi_change {
     title = "Plain Kotlin ABI Change"
-    warm-ups = 3
-    iterations = 5
+    warm-ups = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
 
     apply-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
 
 plain_non_abi_change {
     title = "Plain Kotlin Non-ABI Change"
-    warm-ups = 3
-    iterations = 5
+    warm-ups = 5
+    iterations = 10
 
     tasks = [":app:component:compileKotlin"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
 
     apply-non-abi-change-to = "core/foundation/src/main/kotlin/dev/zacsweers/metro/benchmark/core/foundation/PlainKotlinFile.kt"
 }
@@ -70,37 +78,41 @@ plain_non_abi_change {
 # These measure full compilation performance without incremental compilation.
 # Different variants for different mode types based on their compilation needs:
 #
-# - raw_compilation: For Metro/Vanilla/Metro-NOOP (pure compiler plugin, no annotation processing)
+# - raw_compilation: For Metro/Control/Metro-NOOP (pure compiler plugin, no annotation processing)
 # - raw_compilation_ksp: For kotlin-inject-anvil (needs KSP to run)
 # - raw_compilation_java: For Dagger KSP/KAPT (generates Java code, needs classes task)
 
 raw_compilation {
     title = "Raw Compilation"
-    warm-ups = 5
-    iterations = 5
+    warm-ups = 10
+    iterations = 10
 
-    # Metro/Vanilla/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
+    # Metro/Control/Metro-NOOP: Pure compiler plugin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin", "--rerun"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
 }
 
 raw_compilation_ksp {
     title = "Raw Compilation"
-    warm-ups = 5
-    iterations = 5
+    warm-ups = 10
+    iterations = 10
 
     # kotlin-inject-anvil: KSP generates Kotlin, rerun only app:component tasks (not all modules)
     tasks = [":app:component:compileKotlin"]
-    gradle-args = ["--rerun-tasks", "-a"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["--rerun-tasks", "-a", "-Pkotlin.compiler.execution.strategy=in-process"]
 }
 
 raw_compilation_java {
     title = "Raw Compilation"
-    warm-ups = 5
-    iterations = 5
+    warm-ups = 10
+    iterations = 10
 
     # Dagger KSP/KAPT: Generates Java code, rerun only app:component tasks (not all modules)
     tasks = [":app:component:classes"]
-    gradle-args = ["--rerun-tasks", "-a"]
+    cleanup-tasks = [":benchmarkCooldown"]
+    gradle-args = ["--rerun-tasks", "-a", "-Pkotlin.compiler.execution.strategy=in-process"]
 }
 
 # ====================================
@@ -128,10 +140,11 @@ trace_compile {
 clean_build {
     title = "Clean Build"
     warm-ups = 2
-    iterations = 3
+    iterations = 10
 
     tasks = ["assemble"]
     cleanup-tasks = ["clean"]
+    gradle-args = ["-Pkotlin.compiler.execution.strategy=in-process"]
     clear-build-cache-before = BUILD
 }
 
@@ -153,7 +166,7 @@ clean_build {
 #
 # To generate different project configurations manually:
 #   kotlin generate-projects.main.kts --mode metro --count 500
-#   kotlin generate-projects.main.kts --mode vanilla --count 500
+#   kotlin generate-projects.main.kts --mode control --count 500
 #   kotlin generate-projects.main.kts --mode metro_noop --count 500
 #   kotlin generate-projects.main.kts --mode dagger --processor ksp --count 500
 #   kotlin generate-projects.main.kts --mode dagger --processor kapt --count 500

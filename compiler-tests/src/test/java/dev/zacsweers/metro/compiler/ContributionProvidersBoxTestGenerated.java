@@ -616,6 +616,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("CreatorSignatureCarrierScreenArguments.kt")
+      public void testCreatorSignatureCarrierScreenArguments() {
+        run("CreatorSignatureCarrierScreenArguments.kt");
+      }
+
+      @Test
       @TestMetadata("ParameterOrderDoesNotMatter.kt")
       public void testParameterOrderDoesNotMatter() {
         run("ParameterOrderDoesNotMatter.kt");
@@ -950,6 +956,18 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("DuplicatedDepInBinding.kt")
     public void testDuplicatedDepInBinding() {
       run("DuplicatedDepInBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBinding.kt")
+    public void testNestedContributedFactoryIsAvailableAsBinding() {
+      run("NestedContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt")
+    public void testNestedContributedFactoryIsAvailableAsBindingAcrossModules() {
+      run("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt");
     }
 
     @Test
@@ -2034,6 +2052,44 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/ic")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Ic {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/ic/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInIc() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/ic"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectBindsDeclarations.kt")
+    public void testDirectBindsDeclarations() {
+      run("DirectBindsDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("LegacyCapabilityFallbackCarriers.kt")
+    public void testLegacyCapabilityFallbackCarriers() {
+      run("LegacyCapabilityFallbackCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("LegacySignatureCarriers.kt")
+    public void testLegacySignatureCarriers() {
+      run("LegacySignatureCarriers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/inject")
   @TestDataPath("$PROJECT_ROOT")
   public class Inject {
@@ -3020,6 +3076,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       run("MemberInjectsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt")
+    public void testMembersInjectorDoesNotDuplicateQualifierAnnotations() {
+      run("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt");
     }
 
     @Test

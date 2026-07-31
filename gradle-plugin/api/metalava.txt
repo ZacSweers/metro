@@ -60,6 +60,7 @@ package dev.zacsweers.metro.gradle {
     method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getForceEnableFirInIde();
     method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getGenerateAssistedFactories();
     method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getGenerateContributionHints();
+    method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Boolean> getGenerateContributionProviders();
     method @InaccessibleFromKotlin public final dev.zacsweers.metro.gradle.MetroPluginExtension.InteropHandler getInterop();
     method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> getInteropAnnotationsNamedArgSeverity();
     method @InaccessibleFromKotlin public final org.gradle.api.provider.Property<java.lang.Integer> getKeysPerGraphShard();
@@ -90,6 +91,7 @@ package dev.zacsweers.metro.gradle {
     property @dev.zacsweers.metro.gradle.DangerousMetroGradleApi(message="This could break analysis in your IDE if you force-enable!") public final org.gradle.api.provider.Property<java.lang.Boolean> forceEnableFirInIde;
     property @dev.zacsweers.metro.gradle.RequiresIdeSupport public final org.gradle.api.provider.Property<java.lang.Boolean> generateAssistedFactories;
     property public final org.gradle.api.provider.Property<java.lang.Boolean> generateContributionHints;
+    property public final org.gradle.api.provider.Property<java.lang.Boolean> generateContributionProviders;
     property public final dev.zacsweers.metro.gradle.MetroPluginExtension.InteropHandler interop;
     property public final org.gradle.api.provider.Property<dev.zacsweers.metro.gradle.DiagnosticSeverity> interopAnnotationsNamedArgSeverity;
     property public final org.gradle.api.provider.Property<java.lang.Integer> keysPerGraphShard;

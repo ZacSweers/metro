@@ -36,10 +36,14 @@ private val MULTIPLATFORM_IC_MIN_VERSION = KotlinToolingVersion("2.3.21")
  */
 private val JS_WASM_IC_TOP_LEVEL_BROKEN_VERSIONS = setOf("2.4.0-Beta1", "2.4.0-dev-2124")
 
-abstract class BaseIncrementalCompilationTest(protected val target: KmpTarget) {
+abstract class BaseIncrementalCompilationTest(
+  protected val target: KmpTarget,
+  private val requiresMultiplatformIc: Boolean = true,
+) {
 
   @Before
   fun assumeMultiplatformIcSupported() {
+    if (!requiresMultiplatformIc) return
     assumeTrue(
       "KMP incremental compilation requires Kotlin $MULTIPLATFORM_IC_MIN_VERSION+",
       getTestCompilerToolingVersion() >= MULTIPLATFORM_IC_MIN_VERSION,

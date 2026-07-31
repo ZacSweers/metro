@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.metroAnnotations
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.builders.declarations.buildProperty
@@ -20,6 +21,7 @@ import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
+import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -31,13 +33,13 @@ import org.jetbrains.kotlin.name.Name
 @Poko
 internal class IrCallableMetadata(
   val callableId: CallableId,
-  val mirrorCallableId: CallableId,
+  val signatureCallableId: CallableId,
   val annotations: MetroAnnotations<IrAnnotation>,
   val isPropertyAccessor: Boolean,
   /** The name for the generated newInstance function. */
   val newInstanceName: Name?,
   @Poko.Skip val function: IrSimpleFunction,
-  @Poko.Skip val mirrorFunction: IrSimpleFunction,
+  @Poko.Skip val signatureFunction: IrSimpleFunction,
 ) {
   companion object {
     /**
@@ -47,9 +49,10 @@ internal class IrCallableMetadata(
      */
     fun forInCompilation(
       sourceFunction: IrSimpleFunction,
-      mirrorFunction: IrSimpleFunction,
+      signatureFunction: IrSimpleFunction,
       annotations: MetroAnnotations<IrAnnotation>,
       isPropertyAccessor: Boolean,
+      newInstanceName: Name,
     ): IrCallableMetadata {
       val callableId =
         if (isPropertyAccessor) {
@@ -59,12 +62,12 @@ internal class IrCallableMetadata(
         }
       return IrCallableMetadata(
         callableId = callableId,
-        mirrorCallableId = mirrorFunction.callableId,
+        signatureCallableId = signatureFunction.callableId,
         annotations = annotations,
         isPropertyAccessor = isPropertyAccessor,
-        newInstanceName = sourceFunction.name,
+        newInstanceName = newInstanceName,
         function = sourceFunction,
-        mirrorFunction = mirrorFunction,
+        signatureFunction = signatureFunction,
       )
     }
   }
@@ -80,20 +83,21 @@ internal fun IrSimpleFunction.irCallableMetadata(
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.irCallableMetadata(
-  mirrorFunction: IrSimpleFunction,
+  signatureFunction: IrSimpleFunction,
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
   isInterop: Boolean,
+  signatureCarrier: SignatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
 ): IrCallableMetadata {
   if (isInterop) {
     return IrCallableMetadata(
-      callableId = mirrorFunction.callableId,
-      mirrorCallableId = mirrorFunction.callableId,
+      callableId = signatureFunction.callableId,
+      signatureCallableId = signatureFunction.callableId,
       annotations =
-        sourceAnnotations ?: mirrorFunction.metroAnnotations(context.metroSymbols.classIds),
-      isPropertyAccessor = mirrorFunction.isPropertyAccessor,
-      newInstanceName = mirrorFunction.name,
-      function = mirrorFunction,
-      mirrorFunction = mirrorFunction,
+        sourceAnnotations ?: signatureFunction.metroAnnotations(context.metroSymbols.classIds),
+      isPropertyAccessor = signatureFunction.isPropertyAccessor,
+      newInstanceName = signatureFunction.name,
+      function = signatureFunction,
+      signatureFunction = signatureFunction,
     )
   }
 
@@ -102,15 +106,26 @@ internal fun IrAnnotationContainer.irCallableMetadata(
       ?: reportCompilerBug(
         "No @CallableMetadata found on ${this.expectAsOrNull<IrDeclarationParent>()?.kotlinFqName}"
       )
-  return callableMetadataAnno.toIrCallableMetadata(mirrorFunction, sourceAnnotations)
+  return callableMetadataAnno.toIrCallableMetadata(
+    signatureFunction,
+    sourceAnnotations,
+    signatureCarrier,
+  )
 }
 
 context(context: IrMetroContext)
 internal fun IrConstructorCall.toIrCallableMetadata(
-  mirrorFunction: IrSimpleFunction,
+  signatureFunction: IrSimpleFunction,
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
+  signatureCarrier: SignatureCarrier = SignatureCarrier.MIRROR_FUNCTION,
 ): IrCallableMetadata {
-  val clazz = mirrorFunction.parentAsClass
+  val signatureParent = signatureFunction.parentAsClass
+  val clazz =
+    if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && signatureParent.isCompanion) {
+      signatureParent.parentAsClass
+    } else {
+      signatureParent
+    }
   val parentClass = clazz.parentAsClass
   val callableName = getAnnotationStringValue("callableName")
   val propertyName = getAnnotationStringValue("propertyName")
@@ -118,13 +133,27 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val annoStartOffset = constArgumentOfTypeAt<Int>(2)!!
   val annoEndOffset = constArgumentOfTypeAt<Int>(3)!!
   val newInstanceName = constArgumentOfTypeAt<String>(4)?.asName()
-  val callableId = CallableId(clazz.classIdOrFail.parentClassId!!, callableName.asName())
+  val sourceCallableName = propertyName.ifBlank { callableName }.asName()
+  val callableId =
+    CallableId(
+      clazz.classIdOrFail.parentClassId!!,
+      sourceCallableName,
+    )
 
-  // Fake a reference to the "real" function by making a copy of this mirror that reflects the
-  // real one
+  // Fake a reference to the real function by making a copy of its generated signature carrier.
   val function =
-    mirrorFunction.deepCopyWithSymbols().apply {
-      name = callableId.callableName
+    signatureFunction.deepCopyWithSymbols().apply {
+      // Property carriers are functions, so keep the getter name on the reconstructed function.
+      name = callableName.asName()
+      if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject) {
+        val instanceParameter = regularParameters.firstOrNull()
+        if (instanceParameter?.name != Symbols.Names.instance) {
+          reportCompilerBug(
+            "Expected an instance parameter on new-instance signature carrier for $callableId"
+          )
+        }
+        parameters = parameters.filterNot { it === instanceParameter }
+      }
       setDispatchReceiver(parentClass.thisReceiverOrFail.copyTo(this))
       // Point at the original class
       parent = parentClass
@@ -132,7 +161,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
 
   if (propertyName.isNotBlank()) {
     // Synthesize the property too
-    mirrorFunction.factory
+    signatureFunction.factory
       .buildProperty {
         this.name = propertyName.asName()
         startOffset = annoStartOffset
@@ -151,11 +180,11 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val annotations = sourceAnnotations ?: function.metroAnnotations(context.metroSymbols.classIds)
   return IrCallableMetadata(
     callableId = callableId,
-    mirrorCallableId = mirrorFunction.callableId,
+    signatureCallableId = signatureFunction.callableId,
     annotations = annotations,
     isPropertyAccessor = propertyName.isNotBlank(),
     newInstanceName = newInstanceName,
     function = function,
-    mirrorFunction = mirrorFunction,
+    signatureFunction = signatureFunction,
   )
 }

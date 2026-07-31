@@ -8,15 +8,15 @@ import androidx.tracing.wire.TraceDriver
 import androidx.tracing.wire.TraceSink
 import androidx.tracing.wire.createPerfettoFile
 import dev.zacsweers.metro.benchmark.app.component.AppComponent
+import dev.zacsweers.metro.benchmark.app.component.createAndInitialize
 import dev.zacsweers.metro.benchmark.app.component.createAndInitializeForBenchmarkTracing
 
 /**
  * Owns the optional Android runtime trace driver for startup benchmarks.
  *
- * The generated component API decides whether the tracer argument is used. Non-traced builds pass
- * `null`, which every non-traced generated component ignores. Traced builds write to the target
- * app's external media directory; the macrobenchmark flushes the AndroidX trace driver after each
- * launch, and the benchmark script pulls the finalized trace files.
+ * Traced builds write to the target app's external media directory; the macrobenchmark flushes the
+ * AndroidX trace driver after each launch, and the benchmark script pulls the finalized trace
+ * files.
  */
 class BenchmarkRuntimeTracing(private val context: Context) {
   private val traceDirectory =
@@ -39,7 +39,7 @@ class BenchmarkRuntimeTracing(private val context: Context) {
   fun createAndInitializeGraph(): AppComponent {
     val driver = traceDriver
     if (driver == null) {
-      return createAndInitializeForBenchmarkTracing(null)
+      return createAndInitialize()
     }
 
     return createAndInitializeForBenchmarkTracing(driver.tracer)

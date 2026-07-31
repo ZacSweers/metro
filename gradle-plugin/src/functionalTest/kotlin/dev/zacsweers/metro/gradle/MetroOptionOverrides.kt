@@ -5,4 +5,5 @@ package dev.zacsweers.metro.gradle
 data class MetroOptionOverrides(
   val enableFullBindingGraphValidation: Boolean? = null,
   val generateContributionProviders: Boolean? = null,
+  val omitRedundantMirrors: Boolean? = null,
 )

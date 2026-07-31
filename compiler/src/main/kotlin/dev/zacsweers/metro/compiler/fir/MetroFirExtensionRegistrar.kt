@@ -148,7 +148,12 @@ public class MetroFirExtensionRegistrar(
           // These need to run in the IDE for supertype merging inlays to be visible
           add(
             wrapNativeGenerator("FirGen - ContributionsGenerator", true) { session, compatContext ->
-              ContributionsFirGenerator(session, compatContext, externalExtensions)
+              ContributionsFirGenerator(
+                session,
+                compatContext,
+                options.omitRedundantMirrors,
+                externalExtensions,
+              )
             }(session)
           )
         }
@@ -164,11 +169,13 @@ public class MetroFirExtensionRegistrar(
 
           if (!options.generateClassesInIr) {
             add(
-              wrapNativeGenerator(
-                "FirGen - BindingMirrorClass",
-                true,
-                ::BindingMirrorClassFirGenerator,
-              )(session)
+              wrapNativeGenerator("FirGen - BindingMirrorClass", true) { session, compatContext ->
+                BindingMirrorClassFirGenerator(
+                  session,
+                  compatContext,
+                  options.omitRedundantMirrors,
+                )
+              }(session)
             )
           }
 

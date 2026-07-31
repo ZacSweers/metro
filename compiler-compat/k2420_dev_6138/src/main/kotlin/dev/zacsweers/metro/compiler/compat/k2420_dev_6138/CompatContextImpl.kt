@@ -15,6 +15,8 @@ import org.jetbrains.kotlin.ir.util.KotlinLikeDumpOptions
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 
 public class CompatContextImpl : CompatContext by DelegateType() {
+  override val supportsIrGeneratedClasses: Boolean = true
+
   override fun createIrGeneratedDeclarationsRegistrar(
     pluginContext: IrPluginContext
   ): IrGeneratedDeclarationsRegistrarCompat {

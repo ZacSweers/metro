@@ -4,9 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
-### New
+1.4.0
+-----
 
-- **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
+_2026-07-30_
+
+### New
 
 #### Experimental support for suspend providers
 
@@ -19,10 +22,16 @@ This release introduces experimental support for suspend providers. This is disa
 - Like ordinary scoped bindings, scoped suspend bindings are single-flight and retry after failures or cancellation. They also run on the coroutine context they were called on, so if this is important then you should use an appropriate `withContext` within your provider body.
 - The Gradle plugin automatically adds the new `runtime-coroutines` artifact when suspend providers are enabled. If runtime dependencies are managed manually, add it for scoped suspend bindings, `suspendLazy`, and injection requests containing `SuspendLazy` at any nesting level.
   - `runtime-coroutines` uses kotlinx-coroutines on every platform.
+- **Note:** Switching providers do not yet support suspend providers. You can still enable them, just scoped suspend provider fields will not be sharded into nested switching provider classes yet.
+
+#### Other new stuff
+
+- **[FIR/IR/Circuit]** Support sub-circuits (i.e. the new `@SubCircuitInject` annotation).
 
 ### Enhancements
 
-Support private `@Provides` properties on Kotlin `2.4.20-Beta1` and newer.
+- Support private `@Provides` properties on Kotlin `2.4.20-Beta1` and newer.
+- **[IR]** Improve IC on Kotlin `2.3.20` by backporting compat support for the compiler's new declaration finder APIs.
 - **[IR]** Avoid generating unused provider fields for included graph accessors that can be read directly.
 - **[IR]** Avoid linear helper traversal in large switching providers by routing directly to the matching chunk.
 - **[runtime]** If the input function to `provider()` is already a `Provider` instance, return it directly rather than needlessly wrap it.
@@ -32,19 +41,35 @@ Support private `@Provides` properties on Kotlin `2.4.20-Beta1` and newer.
 
 - **[FIR]** Report a diagnostic when private `@Provides` properties are used without compiler support (i.e. pre-`2.4.20`).
 - **[FIR]** Report an error when a map key is applied (via type argument) to a binding without a corresponding `@IntoMap` or `@ContributesIntoMap` annotation.
+- **[IR]** Fix stale contribution hints after changing a contribution's scope during incremental compilation. This only affects Kotlin versions prior to `2.3.20`.
 - **[IR]** Fix Kotlin/Native compilation failures when generated hidden classes were missing their `Any` supertype.
-- **[IR]** Enforce `enableSuspendProviders` for suspend-provider signatures read from upstream modules.
-- **[IR]** Report a missing `runtime-coroutines` dependency from generated provider factories, including factories not used by a graph.
 - **[IR]** Prevent directly provided maps from satisfying suspend-provider-valued map requests unless the provided map uses that exact value type.
 - **[IR]** Avoid redundant nested `DoubleCheck.lazy()` calls when materializing `Lazy` graph accessors and binding parameters.
 - **[IR]** Correctly adapt function-provider accessors from included graphs when storing them as Metro `Provider` fields.
 - **[IR]** Fix graph implementations incorrectly inheriting the containing class of nested `@ContributesTo` interfaces with IR class generation.
 - **[IR]** Don't inline `object`, enum, or class-literal provider bindings when they're requested through `Provider`, `Lazy`, or provider-based multibindings.
+- **[gradle]** Respect `metro.generateClassesInIr` Gradle and system property overrides instead of replacing them with the Kotlin-version default.
+- Improve Kotlin `2.4.20-Beta2` support.
 
 ### Changes
 
+- Refreshed [benchmarks](https://zacsweers.github.io/metro/latest/performance/)!
+  - They now run against latest Metro, Dagger, and KSP versions.
+    - Dagger + KSP have improved significantly 🚀.
+  - They now also include Koin.
 - Build against Kotlin `2.4.10`. Note the runtime artifacts still target Kotlin `2.3.0` and Metro supports a wide range of compiler versions. See the [compatibility docs](https://zacsweers.github.io/metro/latest/compatibility/) for a full table of compatible versions.
-- Test Android Studio Quail 4 canaries
+- Test IntelliJ `2026.2` stable.
+- Test Android Studio Quail 4 canaries.
+- Switch shaded Mordan dependency to just `mordant-core`.
+- Update shaded Okio dependency to `3.18.1`.
+- Update androidx.tracing to `2.0.0-rc01`.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@kevinguitar](https://github.com/kevinguitar)
+- [@kyay10](https://github.com/kyay10)
 
 1.3.2
 -----

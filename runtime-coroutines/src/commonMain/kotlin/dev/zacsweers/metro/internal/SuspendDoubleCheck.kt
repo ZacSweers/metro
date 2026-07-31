@@ -10,7 +10,7 @@ import dev.zacsweers.metro.SuspendProvider
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -49,7 +49,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
       return result1 as T
     }
 
-    val initialization = coroutineContext[SuspendDoubleCheckInitialization]
+    val initialization = currentCoroutineContext()[SuspendDoubleCheckInitialization]
     check(initialization?.contains(this) != true) {
       "A suspend value was requested recursively while it was still being initialized. The " +
         "recursive request would wait for that same initialization, likely due to a circular " +
@@ -71,7 +71,7 @@ public class SuspendDoubleCheck<T> private constructor(provider: SuspendProvider
     }
   }
 
-  override suspend fun value(): T = invoke()
+  override suspend fun await(): T = invoke()
 
   override fun isInitialized(): Boolean = _value !== UNINITIALIZED_SUSPEND
 
@@ -143,7 +143,7 @@ private suspend fun <T> withSuspendDoubleCheckInitialization(
   val initialization =
     SuspendDoubleCheckInitialization(
       owner = owner,
-      parent = coroutineContext[SuspendDoubleCheckInitialization],
+      parent = currentCoroutineContext()[SuspendDoubleCheckInitialization],
     )
   return try {
     withContext(initialization) { block() }

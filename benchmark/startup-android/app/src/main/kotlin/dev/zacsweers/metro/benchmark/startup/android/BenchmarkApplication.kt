@@ -5,6 +5,7 @@ package dev.zacsweers.metro.benchmark.startup.android
 import android.app.Application
 import androidx.tracing.AbstractTraceDriver
 import dev.zacsweers.metro.benchmark.app.component.AppComponent
+import dev.zacsweers.metro.benchmark.app.component.createAndInitialize
 
 class BenchmarkApplication : Application(), AbstractTraceDriver.Factory {
   val runtimeTracing by lazy { BenchmarkRuntimeTracing(this) }
@@ -14,7 +15,12 @@ class BenchmarkApplication : Application(), AbstractTraceDriver.Factory {
 
   override fun onCreate() {
     super.onCreate()
-    appGraph = runtimeTracing.createAndInitializeGraph()
+    appGraph =
+      if (BuildConfig.METRO_RUNTIME_TRACING) {
+        runtimeTracing.createAndInitializeGraph()
+      } else {
+        createAndInitialize()
+      }
   }
 
   override fun create(): AbstractTraceDriver {

@@ -5,9 +5,11 @@
 interface Base1
 interface Base2
 interface Base3
+abstract class OtherScope
 
 // FILE: file1.kt
 @SingleIn(AppScope::class)
+@ContributesBinding(OtherScope::class, binding = binding<Base1>())
 @ContributesIntoSet(AppScope::class, binding = binding<Base3>())
 @ContributesIntoSet(AppScope::class, binding = binding<Base2>())
 @ContributesBinding(AppScope::class, binding = binding<Base1>())

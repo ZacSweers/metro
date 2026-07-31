@@ -19,7 +19,6 @@ import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.name
 import org.jetbrains.kotlin.backend.common.extensions.IrGeneratedDeclarationsRegistrar
 import org.jetbrains.kotlin.descriptors.impl.EmptyPackageFragmentDescriptor
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
@@ -97,7 +96,6 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
         }
 
     val fileName = hintFileName(sourceClass.classIdOrFail, hintName)
-
     val firFile = buildFile {
       val metadataSource = metadataSourceClass.metadata as? FirMetadataSource.Class
       if (metadataSource == null) {
@@ -109,7 +107,9 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
       }
       moduleData = (metadataSourceClass.metadata as FirMetadataSource.Class).fir.moduleData
       origin = FirDeclarationOrigin.Synthetic.PluginFile
-      packageDirective = buildPackageDirective { packageFqName = Symbols.FqNames.metroHintsPackage }
+      packageDirective = buildPackageDirective {
+        packageFqName = Symbols.FqNames.metroHintsPackage
+      }
       name = fileName
     }
 
@@ -123,7 +123,7 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     and we can keep an eye on https://youtrack.jetbrains.com/issue/KT-74778 for a better long term
     solution.
     */
-    val fakeNewPath = Path(sourceClass.fileEntry.name).parent.resolve(fileName)
+    val fakeNewPath = Path(metadataSourceClass.fileEntry.name).parent.resolve(fileName)
     val hintFile =
       IrFileImpl(
           fileEntry = NaiveSourceBasedFileEntryImpl(fakeNewPath.absolutePathString()),
@@ -134,8 +134,10 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
             ),
           module = moduleFragment,
         )
-        .also { it.metadata = FirMetadataSource.File(firFile) }
-    moduleFragment.addFile(hintFile)
+        .also {
+          it.metadata = FirMetadataSource.File(firFile)
+          moduleFragment.addFile(it)
+        }
     hintFile.addChild(function)
     metadataDeclarationRegistrarCompat.registerFunctionAsMetadataVisible(function)
     // Link the hint back to the source class so source class changes in IC also mark this hint
@@ -146,8 +148,8 @@ internal class HintGenerator(context: IrMetroContext, val moduleFragment: IrModu
     // for this scenario.
     // https://github.com/ZacSweers/metro/pull/1637
     // https://github.com/ZacSweers/metro/issues/1393
-    linkDeclarationsInCompilation(callingFile = hintFile, sourceClass)
-    hintFile.dumpToMetroLog(fakeNewPath.name)
+    linkDeclarationsInCompilation(callingFile = hintFile, metadataSourceClass)
+    hintFile.dumpToMetroLog(fileName)
     return function
   }
 

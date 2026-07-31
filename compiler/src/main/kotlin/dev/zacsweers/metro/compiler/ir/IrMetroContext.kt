@@ -49,6 +49,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
   val options: MetroOptions
+  val icCapabilities: IcCapabilities
   val coroutinesRuntimeAvailability: CoroutinesRuntimeAvailability
 
   /**
@@ -173,6 +174,7 @@ internal class IrMetroContextImpl(
   symbols: Symbols,
   override val coroutinesRuntimeAvailability: CoroutinesRuntimeAvailability,
   override val options: MetroOptions,
+  override val icCapabilities: IcCapabilities,
   override val memberNamer: MemberNamer,
   rawLookupTracker: LookupTracker?,
   rawExpectActualTracker: ExpectActualTracker,

@@ -922,6 +922,18 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  OMIT_REDUNDANT_MIRRORS(
+    RawMetroOption.boolean(
+      name = "omit-redundant-mirrors",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description =
+        "Omit generated declaration mirrors when compiler metadata and declaration finders " +
+          "provide the same information.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   ENABLE_PROVIDER_INLINING(
     RawMetroOption.boolean(
       name = "enable-provider-inlining",
@@ -1222,6 +1234,8 @@ public class MetroOptions(
   public val parallelThreads: Int = MetroOption.PARALLEL_THREADS.raw.defaultValue.expectAs(),
   public val bufferedIcTracking: Boolean =
     MetroOption.BUFFERED_IC_TRACKING.raw.defaultValue.expectAs(),
+  public val omitRedundantMirrors: Boolean =
+    MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs(),
   public val enableProviderInlining: Boolean =
     MetroOption.ENABLE_PROVIDER_INLINING.raw.defaultValue.expectAs(),
   public val enableFunctionProviders: Boolean =
@@ -1572,6 +1586,7 @@ public class MetroOptions(
     public var compilerVersionAliases: Map<String, String> = base.compilerVersionAliases
     public var parallelThreads: Int = base.parallelThreads
     public var bufferedIcTracking: Boolean = base.bufferedIcTracking
+    public var omitRedundantMirrors: Boolean = base.omitRedundantMirrors
     public var enableProviderInlining: Boolean = base.enableProviderInlining
     public var enableFunctionProviders: Boolean = base.enableFunctionProviders
     public var enableSuspendProviders: Boolean = base.enableSuspendProviders
@@ -1623,6 +1638,10 @@ public class MetroOptions(
 
     public fun enableFunctionProviders(enableFunctionProviders: Boolean): Builder = apply {
       this.enableFunctionProviders = enableFunctionProviders
+    }
+
+    public fun omitRedundantMirrors(omitRedundantMirrors: Boolean): Builder = apply {
+      this.omitRedundantMirrors = omitRedundantMirrors
     }
 
     public fun enableSuspendProviders(enableSuspendProviders: Boolean): Builder = apply {
@@ -1928,6 +1947,7 @@ public class MetroOptions(
         MetroOption.COMPILER_VERSION_ALIASES -> compilerVersionAliases = value.expectAs()
         MetroOption.PARALLEL_THREADS -> parallelThreads = value.expectAs()
         MetroOption.BUFFERED_IC_TRACKING -> bufferedIcTracking = value.expectAs()
+        MetroOption.OMIT_REDUNDANT_MIRRORS -> omitRedundantMirrors = value.expectAs()
         MetroOption.ENABLE_PROVIDER_INLINING -> enableProviderInlining = value.expectAs()
         MetroOption.ENABLE_FUNCTION_PROVIDERS -> enableFunctionProviders = value.expectAs()
         MetroOption.ENABLE_SUSPEND_PROVIDERS -> enableSuspendProviders = value.expectAs()
@@ -2017,6 +2037,7 @@ public class MetroOptions(
         compilerVersionAliases = compilerVersionAliases,
         parallelThreads = parallelThreads,
         bufferedIcTracking = bufferedIcTracking,
+        omitRedundantMirrors = omitRedundantMirrors,
         enableProviderInlining = enableProviderInlining,
         enableFunctionProviders = enableFunctionProviders,
         enableSuspendProviders = enableSuspendProviders,

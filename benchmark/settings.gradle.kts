@@ -82,6 +82,7 @@ develocity {
   buildScan {
     termsOfUseUrl = "https://gradle.com/terms-of-service"
     termsOfUseAgree = "yes"
+    publishing.onlyIf { false }
 
     tag(if (System.getenv("CI").isNullOrBlank()) "Local" else "CI")
 

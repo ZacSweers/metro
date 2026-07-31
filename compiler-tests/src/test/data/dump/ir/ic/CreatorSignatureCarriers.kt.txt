@@ -1,0 +1,169 @@
+@Inject
+class SignatureServiceImpl : SignatureService {
+  @Named(name = "value")
+  val value: String
+    field = value
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SignatureServiceImpl> {
+    private /* final field */ val value: Provider<String> = value
+    @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(@Named(name = "value") value: Provider<String>): MetroFactory {
+        return MetroFactory(value = value)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(@Named(name = "value") value: String): SignatureServiceImpl {
+        return SignatureServiceImpl(value = value)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(value: Provider<String>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SignatureServiceImpl {
+      return MetroFactory/* companion */.newInstance(value = <this>.#value.invoke())
+    }
+
+  }
+
+  constructor(@Named(name = "value") value: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DefaultBinding<DefaultSignatureService>()
+interface DefaultSignatureService {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  abstract class DefaultBindingMirror {
+    fun defaultBinding(): DefaultSignatureService {
+      return error(message = "Never called")
+    }
+
+  }
+
+}
+
+@BindingContainer
+interface SignatureAliases {
+  @Binds
+  @Named(name = "service")
+  @ComptimeOnly
+  fun bind(impl: SignatureServiceImpl): SignatureService {
+    return error(message = "Never called")
+  }
+
+}
+
+@DependencyGraph(bindingContainers = [SignatureProviders::class, SignatureAliases::class])
+interface SignatureGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : SignatureGraph {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override val service: SignatureService
+      @Named(name = "service")
+      override get(): SignatureService {
+        return SignatureServiceImpl(value = "creator")
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): SignatureGraph {
+      return Impl()
+    }
+
+  }
+
+  abstract val service: SignatureService
+    @Named(name = "service")
+    abstract get
+
+}
+
+interface SignatureService {
+}
+
+@BindingContainer
+object SignatureProviders {
+  @CallableMetadata(callableName = "provideValue", propertyName = "", startOffset = 407, endOffset = 445, newInstanceName = "provideValue")
+  @ComptimeOnly
+  object ProvideValueMetroFactory : Factory<String> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): ProvideValueMetroFactory {
+      return ProvideValueMetroFactory
+    }
+
+    @Named(name = "value")
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun provideValue(): String {
+      return SignatureProviders.provideValue()
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): String {
+      return ProvideValueMetroFactory.provideValue()
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+  @Provides
+  @Named(name = "value")
+  fun provideValue(): String {
+    return "creator"
+  }
+
+}

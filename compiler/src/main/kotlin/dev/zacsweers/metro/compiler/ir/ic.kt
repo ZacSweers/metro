@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.fileOrNull
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.resolveFakeOverrideMaybeAbstract
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.doNotAnalyze
@@ -114,6 +115,26 @@ internal fun trackClassLookup(
   }
 }
 
+/** Records the legacy fallback for a source-aware callable lookup. */
+context(context: IrMetroContext)
+internal fun trackCallableLookup(callingDeclaration: IrDeclaration, callableId: CallableId) {
+  val classId = callableId.classId
+  val container = classId?.asSingleFqName() ?: callableId.packageName
+  val scopeKind = if (classId == null) ScopeKind.PACKAGE else ScopeKind.CLASSIFIER
+  callingDeclaration.withAnalyzableKtFile { filePath ->
+    trackLookup(
+      container = container,
+      declarationName = callableId.callableName.asString(),
+      scopeKind = scopeKind,
+      location =
+        object : LocationInfo {
+          override val filePath = filePath
+          override val position: Position = Position.NO_POSITION
+        },
+    )
+  }
+}
+
 /**
  * Tracks a call from one [callingDeclaration] to a [calleeFunction] to inform incremental
  * compilation.
@@ -136,26 +157,6 @@ internal fun trackFunctionCall(callingDeclaration: IrDeclaration, calleeFunction
     trackLookup(
       container = callee.parent.kotlinFqName,
       declarationName = declaration.name.asString(),
-      scopeKind = ScopeKind.CLASSIFIER,
-      location =
-        object : LocationInfo {
-          override val filePath = filePath
-          override val position: Position = Position.NO_POSITION
-        },
-    )
-  }
-}
-
-context(context: IrMetroContext)
-internal fun trackMemberDeclarationCall(
-  callingDeclaration: IrDeclaration,
-  containerFqName: FqName,
-  declarationName: String,
-) {
-  callingDeclaration.withAnalyzableKtFile { filePath ->
-    trackLookup(
-      container = containerFqName,
-      declarationName = declarationName,
       scopeKind = ScopeKind.CLASSIFIER,
       location =
         object : LocationInfo {

@@ -12,15 +12,21 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.EnumSet
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
 import org.jetbrains.kotlin.fir.extensions.NestedClassGenerationContext
+import org.jetbrains.kotlin.fir.languageVersionSettings
+import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.plugin.createDefaultPrivateConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
+import org.jetbrains.kotlin.fir.resolve.getContainingClassSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -28,13 +34,26 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
+import org.jetbrains.kotlin.platform.isJs
+import org.jetbrains.kotlin.platform.isWasm
+import org.jetbrains.kotlin.platform.jvm.isJvm
+import org.jetbrains.kotlin.platform.konan.isNative
 
 /**
  * Generates mirror class declarations for `@Binds` and `@Multibinds`-annotated members, as well as
  * `@DefaultBinding`-annotated classes.
  */
-internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext: CompatContext) :
-  FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+internal class BindingMirrorClassFirGenerator(
+  session: FirSession,
+  compatContext: CompatContext,
+  omitRedundantMirrors: Boolean,
+) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
+
+  private val useDirectBindingDeclarations =
+    session.shouldUseDirectBindingDeclarations(
+      omitRedundantMirrors,
+      supportsAnnotationArgumentInvalidation,
+    )
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(session.predicates.bindsAnnotationPredicate)
@@ -87,7 +106,9 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
                 MetroAnnotations.Kind.BindsOptionalOf,
               ),
           )
-        annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+        val isBinding =
+          annotations.isBinds || annotations.isMultibinds || annotations.isBindsOptionalOf
+        isBinding && (!useDirectBindingDeclarations || !callable.isEffectivelyPublicInRawFir())
       }
 
     if (hasBindingMembers) {
@@ -130,4 +151,43 @@ internal class BindingMirrorClassFirGenerator(session: FirSession, compatContext
       else -> null
     }
   }
+}
+
+@OptIn(SymbolInternals::class)
+private fun FirCallableSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
+  val callableVisibility = fir.status.visibility
+  if (callableVisibility == Visibilities.Unknown && rawStatus.isOverride) return false
+  if (callableVisibility != Visibilities.Public && callableVisibility != Visibilities.Unknown) {
+    return false
+  }
+
+  return getContainingClassSymbol()?.isEffectivelyPublicInRawFir() != false
+}
+
+@OptIn(SymbolInternals::class)
+internal fun FirClassLikeSymbol<*>.isEffectivelyPublicInRawFir(): Boolean {
+  var current: FirClassLikeSymbol<*>? = this
+  while (current != null) {
+    val classVisibility = current.fir.status.visibility
+    if (classVisibility != Visibilities.Public && classVisibility != Visibilities.Unknown) {
+      return false
+    }
+    current = current.getContainingClassSymbol()
+  }
+  return true
+}
+
+internal fun FirSession.shouldUseDirectBindingDeclarations(
+  omitRedundantMirrors: Boolean,
+  supportsAnnotationArgumentInvalidation: Boolean,
+): Boolean {
+  if (!omitRedundantMirrors) return false
+  if (!supportsAnnotationArgumentInvalidation) return false
+
+  val platform = moduleData.platform
+  val usesKlib = platform.isJs() || platform.isWasm() || platform.isNative()
+  val usesReadableJvmMetadata =
+    platform.isJvm() &&
+      languageVersionSettings.supportsFeature(LanguageFeature.AnnotationsInMetadata)
+  return usesKlib || usesReadableJvmMetadata
 }

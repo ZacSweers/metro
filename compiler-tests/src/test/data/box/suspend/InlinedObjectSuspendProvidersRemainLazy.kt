@@ -53,7 +53,7 @@ fun box(): String {
     assertFalse(suspendLazyObjectInitialized)
     assertSame(SuspendProviderBackedObject, providerValue)
 
-    val lazyValue = lazy.value()
+    val lazyValue = lazy.await()
     assertTrue(suspendLazyObjectInitialized)
     assertTrue(lazy.isInitialized())
     assertSame(SuspendLazyBackedObject, lazyValue)

@@ -30,8 +30,8 @@ fun box(): String =
 
     val suspendLazy = consumer.providerOfSuspendLazy.get()
     assertEquals(0, interopComputations)
-    assertEquals(1, suspendLazy.value().index)
-    assertEquals(1, suspendLazy.value().index)
+    assertEquals(1, suspendLazy.await().index)
+    assertEquals(1, suspendLazy.await().index)
 
     val suspendFunction: suspend () -> InteropValue = consumer.lazyOfSuspendFunction.get()
     assertEquals(2, suspendFunction().index)

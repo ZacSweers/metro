@@ -108,6 +108,7 @@ Never run tests yourself without asking me first. You are not usually able to de
 ## Important Notes
 
 - Kotlin compiler plugins are not stable APIs – Metro tracks Kotlin releases closely
+- Metro's Protocol Buffer schemas do not require backward compatibility currently. Update writers and readers together instead of retaining legacy fields or representations.
 - FIR is for analysis/validation, IR is for code generation – don't mix concerns
 - Always run API validation (`apiCheck`) when changing public APIs
 - Use existing test infrastructure patterns rather than creating new test types

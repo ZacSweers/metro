@@ -132,9 +132,10 @@ constructor(
    */
   @ExperimentalMetroGradleApi
   public val generateClassesInIr: Property<Boolean> =
-    objects
-      .booleanProperty("metro.generateClassesInIr", false)
-      .convention(compilerVersion.map { KotlinVersions.supportsIrClassGeneration(it) })
+    objects.booleanProperty(
+      "metro.generateClassesInIr",
+      compilerVersion.map { KotlinVersions.supportsIrClassGeneration(it) },
+    )
 
   /**
    * Allows `@Provides` properties to be private when supported by the Kotlin compiler.
@@ -687,6 +688,13 @@ constructor(
     return booleanProperty().propertyNameConventionImpl(name, defaultValue, String::toBoolean)
   }
 
+  private fun ObjectFactory.booleanProperty(
+    name: String,
+    defaultValue: Provider<Boolean>,
+  ): Property<Boolean> {
+    return booleanProperty().propertyNameConventionImpl(name, defaultValue, String::toBoolean)
+  }
+
   private fun ObjectFactory.intProperty(name: String, defaultValue: Int): Property<Int> {
     return property(Int::class.java).propertyNameConventionImpl(name, defaultValue, String::toInt)
   }
@@ -713,6 +721,18 @@ constructor(
   private fun <T : Any> Property<T>.propertyNameConventionImpl(
     propertyName: String,
     defaultValue: T,
+    mapper: (String) -> T,
+  ): Property<T> {
+    return propertyNameConventionImpl(
+      propertyName,
+      providers.provider { defaultValue },
+      mapper,
+    )
+  }
+
+  private fun <T : Any> Property<T>.propertyNameConventionImpl(
+    propertyName: String,
+    defaultValue: Provider<T>,
     mapper: (String) -> T,
   ): Property<T> {
     return convention(

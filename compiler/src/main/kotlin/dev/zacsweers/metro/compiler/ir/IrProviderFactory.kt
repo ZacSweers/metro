@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.runIf
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -90,12 +91,13 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     override val contextualTypeKey: IrContextualTypeKey,
     override val realDeclaration: IrDeclaration?,
     private val callableMetadata: IrCallableMetadata,
+    val signatureCarrier: SignatureCarrier,
     parametersLazy: Lazy<Parameters>,
     override val inlinedValue: IrInlinedProvider? = null,
     override val creatorTypeArguments: List<IrType>? = null,
   ) : ProviderFactory() {
-    val mirrorFunction: IrSimpleFunction
-      get() = callableMetadata.mirrorFunction
+    val signatureFunction: IrSimpleFunction
+      get() = callableMetadata.signatureFunction
 
     override val callableId: CallableId
       get() = callableMetadata.callableId
@@ -128,7 +130,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
           concreteTypes,
           sourceClass,
           factoryClass,
-          mirrorFunction,
+          signatureFunction,
           function,
         )
       return Metro(
@@ -138,6 +140,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         contextualTypeKey = contextualTypeKey.remapType(factoryRemapper),
         realDeclaration = realDeclaration,
         callableMetadata = callableMetadata,
+        signatureCarrier = signatureCarrier,
         parametersLazy = lazy { parameters.remapTypes(factoryRemapper) },
         inlinedValue = inlinedValue,
         creatorTypeArguments = concreteTypes,
@@ -182,7 +185,8 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
     operator fun invoke(
       contextKey: IrContextualTypeKey,
       clazz: IrClass,
-      mirrorFunction: IrSimpleFunction,
+      signatureFunction: IrSimpleFunction,
+      signatureCarrier: SignatureCarrier,
       sourceAnnotations: MetroAnnotations<IrAnnotation>?,
       callableMetadata: IrCallableMetadata,
       /** Pre-computed real declaration for in-compilation case. If null, will be looked up. */
@@ -196,11 +200,17 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
       // Validate and optionally patch parameter types due to
       // https://github.com/ZacSweers/metro/issues/1556
       val hadUnpatchedMismatch =
-        checkMirrorParamMismatches(
+        checkSignatureCarrierParamMismatches(
           factoryClass = clazz,
           newInstanceFunctionName = callableMetadata.newInstanceName!!.asString(),
-          mirrorFunction = callableMetadata.mirrorFunction,
-          mirrorParams = { callableMetadata.mirrorFunction.parameters().nonDispatchParameters },
+          signatureFunction = signatureFunction,
+          signatureParams = {
+            if (signatureCarrier == SignatureCarrier.MIRROR_FUNCTION) {
+              signatureFunction.parameters().nonDispatchParameters
+            } else {
+              callableMetadata.function.parameters().nonDispatchParameters
+            }
+          },
           reportingFunction = callableMetadata.function,
           primaryConstructorParamOffset = 1,
         ) {
@@ -242,6 +252,7 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
         callableMetadata = callableMetadata,
         realDeclaration = realDecl,
         parametersLazy = lazyParams,
+        signatureCarrier = signatureCarrier,
         inlinedValue = computedInlinedValue,
       )
     }

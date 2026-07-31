@@ -103,3 +103,13 @@ open class AbstractIrOnlyClassesBoxTest : AbstractBoxTest() {
     }
   }
 }
+
+open class AbstractOmitRedundantMirrorsIrOnlyClassesBoxTest : AbstractIrOnlyClassesBoxTest() {
+  override fun configure(builder: TestConfigurationBuilder) {
+    super.configure(builder)
+
+    with(builder) {
+      defaultDirectives { MetroDirectives.OMIT_REDUNDANT_MIRRORS.with(true) }
+    }
+  }
+}

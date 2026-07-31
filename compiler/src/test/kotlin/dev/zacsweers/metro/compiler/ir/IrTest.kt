@@ -15,33 +15,46 @@ class IrTest {
 
   private val metroOptions = MetroOptions()
 
-  // region shouldCheckMirrorParamMismatches tests
+  // region shouldCheckSignatureCarrierParamMismatches tests
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns false when enableKlibParamsCheck is false`() {
+  fun `signature carrier mismatch check returns false when enableKlibParamsCheck is false`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(false).build()
 
     // Should return false regardless of platform when the option is disabled
-    assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { true })
-      .isFalse()
     assertThat(
-        shouldCheckMirrorParamMismatches(options, NativePlatforms.unspecifiedNativePlatform) {
+        shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
           true
         }
       )
       .isFalse()
-    assertThat(shouldCheckMirrorParamMismatches(options, JsPlatforms.defaultJsPlatform) { true })
+    assertThat(
+        shouldCheckSignatureCarrierParamMismatches(
+          options,
+          NativePlatforms.unspecifiedNativePlatform,
+        ) {
+          true
+        }
+      )
       .isFalse()
-    assertThat(shouldCheckMirrorParamMismatches(options, WasmPlatforms.Default) { true }).isFalse()
-    assertThat(shouldCheckMirrorParamMismatches(options, null) { true }).isFalse()
+    assertThat(
+        shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) { true }
+      )
+      .isFalse()
+    assertThat(shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) { true })
+      .isFalse()
+    assertThat(shouldCheckSignatureCarrierParamMismatches(options, null) { true }).isFalse()
   }
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns true for Native platform when enabled`() {
+  fun `signature carrier mismatch check returns true for Native platform when enabled`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
     assertThat(
-        shouldCheckMirrorParamMismatches(options, NativePlatforms.unspecifiedNativePlatform) {
+        shouldCheckSignatureCarrierParamMismatches(
+          options,
+          NativePlatforms.unspecifiedNativePlatform,
+        ) {
           false
         }
       )
@@ -49,65 +62,81 @@ class IrTest {
   }
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns true for JS platform when enabled`() {
+  fun `signature carrier mismatch check returns true for JS platform when enabled`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
-    assertThat(shouldCheckMirrorParamMismatches(options, JsPlatforms.defaultJsPlatform) { false })
+    assertThat(
+        shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) {
+          false
+        }
+      )
       .isTrue()
   }
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns true for Wasm platform when enabled`() {
+  fun `signature carrier mismatch check returns true for Wasm platform when enabled`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
-    assertThat(shouldCheckMirrorParamMismatches(options, WasmPlatforms.Default) { false }).isTrue()
-  }
-
-  @Test
-  fun `shouldCheckMirrorParamMismatches returns true for JVM when AnnotationsInMetadata is enabled`() {
-    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
-
-    assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { true })
+    assertThat(shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) { false })
       .isTrue()
   }
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns false for JVM when AnnotationsInMetadata is disabled`() {
+  fun `signature carrier mismatch check returns true for JVM metadata annotations`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
-    assertThat(shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) { false })
+    assertThat(
+        shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
+          true
+        }
+      )
+      .isTrue()
+  }
+
+  @Test
+  fun `signature carrier mismatch check returns false without JVM metadata annotations`() {
+    val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
+
+    assertThat(
+        shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
+          false
+        }
+      )
       .isFalse()
   }
 
   @Test
-  fun `shouldCheckMirrorParamMismatches returns false for null platform`() {
+  fun `signature carrier mismatch check returns false for null platform`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
 
-    assertThat(shouldCheckMirrorParamMismatches(options, null) { true }).isFalse()
+    assertThat(shouldCheckSignatureCarrierParamMismatches(options, null) { true }).isFalse()
   }
 
   @Suppress("RETURN_VALUE_NOT_USED")
   @Test
-  fun `shouldCheckMirrorParamMismatches lambda is only called for JVM platform`() {
+  fun `signature carrier mismatch check lambda is only called for JVM platform`() {
     val options = metroOptions.toBuilder().enableKlibParamsCheck(true).build()
     // Native
-    shouldCheckMirrorParamMismatches(options, NativePlatforms.unspecifiedNativePlatform) {
+    shouldCheckSignatureCarrierParamMismatches(
+      options,
+      NativePlatforms.unspecifiedNativePlatform,
+    ) {
       fail("Should not be called")
     }
 
     // JS
-    shouldCheckMirrorParamMismatches(options, JsPlatforms.defaultJsPlatform) {
+    shouldCheckSignatureCarrierParamMismatches(options, JsPlatforms.defaultJsPlatform) {
       fail("Should not be called")
     }
 
     // Wasm
-    shouldCheckMirrorParamMismatches(options, WasmPlatforms.Default) {
+    shouldCheckSignatureCarrierParamMismatches(options, WasmPlatforms.Default) {
       fail("Should not be called")
     }
 
     // JVM - lambda should be called
     var lambdaCalled = false
-    shouldCheckMirrorParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
+    shouldCheckSignatureCarrierParamMismatches(options, JvmPlatforms.defaultJvmPlatform) {
       lambdaCalled = true
       false
     }

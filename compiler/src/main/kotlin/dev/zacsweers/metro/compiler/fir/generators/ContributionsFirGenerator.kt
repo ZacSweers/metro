@@ -105,6 +105,7 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 internal class ContributionsFirGenerator(
   session: FirSession,
   compatContext: CompatContext,
+  omitRedundantMirrors: Boolean,
   private val externalExtensions: List<MetroFirDeclarationGenerationExtension>,
 ) : FirDeclarationGenerationExtension(session), CompatContext by compatContext {
 
@@ -116,6 +117,12 @@ internal class ContributionsFirGenerator(
 
   private val generateContributionProviders: Boolean
     get() = session.metroFirBuiltIns.options.generateContributionProviders
+
+  private val useDirectBindingDeclarations =
+    session.shouldUseDirectBindingDeclarations(
+      omitRedundantMirrors,
+      supportsAnnotationArgumentInvalidation,
+    )
 
   /** Lazily resolves binding contributions for a holder. */
   private fun ContributionsHolder.bindingContributions(): Set<Contribution.BindingContribution> {
@@ -780,7 +787,9 @@ internal class ContributionsFirGenerator(
             externalScopesFor(it.classId).isNotEmpty()
         } ?: false
 
-      return if (!isSupertypeContribution) {
+      val canReadContributionDirectly =
+        useDirectBindingDeclarations && classSymbol.isEffectivelyPublicInRawFir()
+      return if (!isSupertypeContribution && !canReadContributionDirectly) {
         setOf(Symbols.Names.BindsMirrorClass)
       } else {
         emptySet()

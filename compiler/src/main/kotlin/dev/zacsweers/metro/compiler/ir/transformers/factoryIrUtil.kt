@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.ir.addAnnotationsCompat
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addStaticAnnotations
 import dev.zacsweers.metro.compiler.ir.annotationClass
+import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
@@ -205,13 +206,16 @@ private fun transformStaticCreateFunction(
     if (copyQualifiers) {
       for ((i, param) in regularParameters.withIndex()) {
         val sourceParam = parameters.regularParameters[i]
-        sourceParam.typeKey.qualifier?.let { qualifier ->
-          with(context) {
-            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-              param,
-              listOf(qualifier.ir.deepCopyWithSymbols()),
-            )
-          }
+        val qualifier = sourceParam.typeKey.qualifier ?: continue
+        val qualifierAlreadyPresent =
+          param.annotationsCompat().any { existing -> IrAnnotation(existing) == qualifier }
+        if (qualifierAlreadyPresent) continue
+
+        with(context) {
+          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+            param,
+            listOf(qualifier.ir.deepCopyWithSymbols()),
+          )
         }
       }
     }
@@ -251,6 +255,7 @@ internal fun generateStaticNewInstanceFunction(
   returnTypeProvider: (List<IrTypeParameter>) -> IrType,
   sourceMetroParameters: Parameters,
   sourceParameters: List<IrValueParameter>,
+  signatureAnnotations: MetroAnnotations<IrAnnotation>? = null,
   functionName: String = Symbols.StringNames.NEW_INSTANCE,
   targetFunction: IrFunction? = null,
   isSuspend: Boolean = false,
@@ -274,10 +279,15 @@ internal fun generateStaticNewInstanceFunction(
           sourceTypeParameters.deepRemapperFor(
             sourceTypeParameters.symbol.typeWithParameters(typeParams)
           )
+        signatureAnnotations?.let {
+          copySignatureAnnotations(factoryClass, targetFunction, it)
+        }
         addParameters(
           sourceMetroParameters.allParameters,
           wrapInProvider = false,
           copyQualifiers = true,
+          copyAssisted = signatureAnnotations != null,
+          copySourceOffsets = signatureAnnotations != null,
           typeRemapper = { type -> typeRemapper.remapType(type) },
         )
         addHiddenFromObjCAnnotation(this)
@@ -379,14 +389,6 @@ internal fun generateMetadataVisibleDeclarationMirror(
     val typeSubstitution =
       if (target is IrConstructor) {
         val sourceClass = factoryClass.parentAsClass
-        val scopeAndQualifierAnnotations = buildList {
-          val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
-          classMetroAnnotations.scope?.ir?.let(::add)
-          classMetroAnnotations.qualifier?.ir?.let(::add)
-        }
-        if (scopeAndQualifierAnnotations.isNotEmpty()) {
-          addAnnotationsCompat(scopeAndQualifierAnnotations)
-        }
         val copiedTypeParameters = copyTypeParametersFrom(sourceClass)
         sourceClass.typeParameters.zip(copiedTypeParameters).associate { (source, copied) ->
           source.symbol to copied.defaultType
@@ -394,18 +396,6 @@ internal fun generateMetadataVisibleDeclarationMirror(
       } else {
         // Copy type parameters from the factory class (e.g., generic binding containers)
         val copiedTypeParameters = copyTypeParametersFrom(factoryClass)
-
-        // If it's a regular (provides) function or backing field, just always copy its
-        // annotations
-        replaceAnnotationsCompat(
-          annotations
-            .mirrorIrConstructorCalls(symbol)
-            .filterNot {
-              // Exclude @Provides to avoid reentrant factory gen
-              it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
-            }
-            .map { it.deepCopyWithSymbols() }
-        )
         buildMap {
           factoryClass.typeParameters.zip(copiedTypeParameters).forEach { (source, copied) ->
             put(source.symbol, copied.defaultType)
@@ -416,6 +406,7 @@ internal fun generateMetadataVisibleDeclarationMirror(
           }
         }
       }
+    copySignatureAnnotations(factoryClass, target, annotations)
     if (target != null) {
       if (typeSubstitution.isNotEmpty()) {
         copyParametersFrom(target, typeSubstitution)
@@ -462,6 +453,44 @@ internal fun generateMetadataVisibleDeclarationMirror(
     }
   }
   return function
+}
+
+context(context: IrMetroContext)
+private fun IrSimpleFunction.copySignatureAnnotations(
+  factoryClass: IrClass,
+  target: IrFunction?,
+  annotations: MetroAnnotations<IrAnnotation>,
+) {
+  if (target is IrConstructor) {
+    val sourceClass = factoryClass.parentAsClass
+    val classMetroAnnotations = sourceClass.metroAnnotations(context.metroSymbols.classIds)
+    val scopeAndQualifierAnnotations = buildList {
+      classMetroAnnotations.scope?.ir?.let(::add)
+      classMetroAnnotations.qualifier?.ir?.let(::add)
+    }
+    if (scopeAndQualifierAnnotations.isNotEmpty()) {
+      addAnnotationsCompat(scopeAndQualifierAnnotations)
+    }
+    return
+  }
+
+  replaceAnnotationsCompat(
+    annotations
+      .mirrorIrConstructorCalls(symbol)
+      .filterNot {
+        // Exclude @Provides to avoid reentrant factory generation.
+        it.annotationClass.classId in context.metroSymbols.classIds.providesAnnotations
+      }
+      .map { it.deepCopyWithSymbols() }
+  )
+}
+
+context(context: IrMetroContext)
+internal fun shouldUseCreatorSignatureCarrier(): Boolean {
+  val supportsIrGeneratedClasses = context.icCapabilities.irGeneratedClasses
+  val annotationsAreReadable = context.icCapabilities.readableAnnotationMetadata
+  val annotationChangesInvalidateLookups = context.icCapabilities.annotationArgumentInvalidation
+  return supportsIrGeneratedClasses && annotationsAreReadable && annotationChangesInvalidateLookups
 }
 
 context(context: IrMetroContext)
@@ -528,6 +557,8 @@ internal fun IrFunction.addParameters(
   params: List<Parameter>,
   wrapInProvider: Boolean,
   copyQualifiers: Boolean = false,
+  copyAssisted: Boolean = false,
+  copySourceOffsets: Boolean = false,
   typeRemapper: ((IrType) -> IrType)? = null,
   stubDefaults: Boolean = true,
   /**
@@ -573,11 +604,21 @@ internal fun IrFunction.addParameters(
         }
       }
       .apply {
+        if (copySourceOffsets) {
+          startOffset = param.asValueParameter.startOffset
+          endOffset = param.asValueParameter.endOffset
+        }
         // Propagate @OptionalBinding if present
         param.asValueParameter
           .annotationsIn(context.metroSymbols.classIds.optionalBindingAnnotations)
           .firstOrNull()
           ?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
+        if (copyAssisted) {
+          param.asValueParameter
+            .annotationsIn(context.metroSymbols.assistedAnnotations)
+            .singleOrNull()
+            ?.let { addAnnotationCompat(it.deepCopyWithSymbols()) }
+        }
         if (copyQualifiers) {
           param.typeKey.qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }

@@ -685,6 +685,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBinding.kt")
+    public void testNestedContributedFactoryIsAvailableAsBinding() {
+      run("NestedContributedFactoryIsAvailableAsBinding.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt")
+    public void testNestedContributedFactoryIsAvailableAsBindingAcrossModules() {
+      run("NestedContributedFactoryIsAvailableAsBindingAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ParentIncludesArePropgatedToExtensions.kt")
     public void testParentIncludesArePropgatedToExtensions() {
       run("ParentIncludesArePropgatedToExtensions.kt");
@@ -1766,6 +1778,44 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
   }
 
   @Nested
+  @TestMetadata("compiler-tests/src/test/data/box/ic")
+  @TestDataPath("$PROJECT_ROOT")
+  public class Ic {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/box/ic/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInIc() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/ic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("CreatorSignatureCarriers.kt")
+    public void testCreatorSignatureCarriers() {
+      run("CreatorSignatureCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("DirectBindsDeclarations.kt")
+    public void testDirectBindsDeclarations() {
+      run("DirectBindsDeclarations.kt");
+    }
+
+    @Test
+    @TestMetadata("LegacyCapabilityFallbackCarriers.kt")
+    public void testLegacyCapabilityFallbackCarriers() {
+      run("LegacyCapabilityFallbackCarriers.kt");
+    }
+
+    @Test
+    @TestMetadata("LegacySignatureCarriers.kt")
+    public void testLegacySignatureCarriers() {
+      run("LegacySignatureCarriers.kt");
+    }
+  }
+
+  @Nested
   @TestMetadata("compiler-tests/src/test/data/box/inject")
   @TestDataPath("$PROJECT_ROOT")
   public class Inject {
@@ -2198,6 +2248,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("MemberInjectsAcrossModules.kt")
     public void testMemberInjectsAcrossModules() {
       run("MemberInjectsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt")
+    public void testMembersInjectorDoesNotDuplicateQualifierAnnotations() {
+      run("MembersInjectorDoesNotDuplicateQualifierAnnotations.kt");
     }
 
     @Test

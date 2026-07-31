@@ -32,7 +32,7 @@ fun box(): String {
   assertEquals("hello", runBlocking { injected() })
 
   // SuspendLazy dispatches through its interface (never the function type) — sanity-check on JS
-  assertEquals("hello", runBlocking { graph.lazyMessage.value() })
+  assertEquals("hello", runBlocking { graph.lazyMessage.await() })
 
   return "OK"
 }

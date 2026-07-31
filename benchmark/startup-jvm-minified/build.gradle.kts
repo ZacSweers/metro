@@ -8,17 +8,13 @@ plugins {
 dependencies {
   // Compile against the original component (for Kotlin metadata)
   jmhCompileOnly(project(":app:component"))
-  // Run against the minified jar
+  // The minified jar contains the generated component and its selected framework runtime.
   jmhRuntimeOnly(project(":startup-jvm:minified-jar"))
-  // Runtime dependencies not included in the minified jar (library classpath).
-  // All frameworks' runtimes are listed so the same minified-jar harness works regardless of
-  // which framework the generator produced — the classloader will only resolve what's used.
-  jmhRuntimeOnly("dev.zacsweers.metro:runtime:+")
-  jmhRuntimeOnly("javax.inject:javax.inject:1")
-  jmhRuntimeOnly(libs.dagger.runtime)
-  jmhRuntimeOnly(libs.kotlinInject.runtime)
-  jmhRuntimeOnly(libs.koin.core)
-  jmhRuntimeOnly(libs.koin.annotations)
+}
+
+configurations.named("jmhRuntimeClasspath") {
+  // R8 already packages and optimizes the selected Kotlin runtime in the minified jar.
+  exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
 }
 
 jmh {

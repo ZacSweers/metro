@@ -594,8 +594,8 @@ internal class Symbols(
     pluginContext.referenceClass(ClassIds.metroSuspendLazy)!!
   }
 
-  val suspendLazyValue: IrSimpleFunctionSymbol by lazy {
-    metroSuspendLazy.requireSimpleFunction("value")
+  val suspendLazyAwait: IrSimpleFunctionSymbol by lazy {
+    metroSuspendLazy.requireSimpleFunction("await")
   }
 
   val metroSuspendProviderFunction: IrSimpleFunctionSymbol by lazy {

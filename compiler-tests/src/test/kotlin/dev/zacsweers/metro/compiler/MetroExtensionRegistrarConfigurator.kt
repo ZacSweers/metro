@@ -130,6 +130,11 @@ class MetroExtensionRegistrarConfigurator(
           .lastOrNull()
           ?.toString()
           ?.toBoolean() ?: false
+      omitRedundantMirrors =
+        module.directives[MetroDirectives.OMIT_REDUNDANT_MIRRORS]
+          .lastOrNull()
+          ?.toString()
+          ?.toBoolean() ?: false
 
       val shouldGenerateContributionHintsInFir =
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
