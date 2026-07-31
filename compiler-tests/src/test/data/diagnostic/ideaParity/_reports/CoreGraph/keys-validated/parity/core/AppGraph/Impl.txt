@@ -1,0 +1,6 @@
+@dev.zacsweers.metro.Named("base") kotlin.String
+parity.core.Engine
+parity.core.RealApi
+parity.core.Api
+parity.core.OptionalValue
+parity.core.Consumer

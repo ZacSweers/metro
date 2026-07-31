@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.MetroOptions.DiagnosticSeverity.WARN
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
