@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785459607684,
+  "lastUpdate": 1785621805122,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -20216,6 +20216,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22273008977940195,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -4.23%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1de6f7c6~1",
+          "message": "[before] Fix graph extension factory replacements in IR (#2",
+          "timestamp": "2026-08-01T17:03:21-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1de6f7c66b3c963505483fdd78ad40f8ee20c804"
+        },
+        "date": 1785621805122,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2240339959544783,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "1de6f7c66b3c963505483fdd78ad40f8ee20c804",
+          "message": "[after] Fix graph extension factory replacements in IR (#2",
+          "timestamp": "2026-08-01T17:03:21-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/1de6f7c66b3c963505483fdd78ad40f8ee20c804"
+        },
+        "date": 1785621805123,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22006516651861968,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -1.77%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
