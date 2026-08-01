@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
+- **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 
 1.4.0
 -----

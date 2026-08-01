@@ -117,6 +117,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt")
+    public void testContributedGraphFactoryReplacementAcrossAdditionalScopes() {
+      run("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       run("ContributesBindingScopeArgumentOrder.kt");

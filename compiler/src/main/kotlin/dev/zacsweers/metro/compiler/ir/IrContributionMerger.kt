@@ -340,6 +340,9 @@ internal class IrContributionMerger(
         // Binding containers (only remaining ones after exclusions)
         yieldAll(mutableContributedBindingContainers.values)
 
+        // Direct supertype contributions (only remaining ones after exclusions)
+        yieldAll(mutableExternalSupertypes.values)
+
         // For binding containers with @Origin (contribution providers), also scan the
         // origin class for @ContributesBinding(replaces=...) annotations
         for (container in mutableContributedBindingContainers.values) {

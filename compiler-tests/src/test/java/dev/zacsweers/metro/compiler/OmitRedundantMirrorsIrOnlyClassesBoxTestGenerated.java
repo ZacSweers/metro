@@ -117,6 +117,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt")
+    public void testContributedGraphFactoryReplacementAcrossAdditionalScopes() {
+      run("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       run("ContributesBindingScopeArgumentOrder.kt");
