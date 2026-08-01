@@ -34,6 +34,7 @@ rootProject.name = "metro"
 include(
   ":compiler",
   ":compiler-compat",
+  ":compiler-compat:latest",
   ":compiler-tests",
   ":gradle-plugin",
   ":interop-dagger",
