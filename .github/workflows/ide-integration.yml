@@ -108,7 +108,8 @@ jobs:
             uses: ./.github/actions/setup-gradle
             with:
               encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-              cache-read-only: true
+              # Keep one IDE-specific Gradle cache writer on main.
+              cache-read-only: ${{ github.ref != 'refs/heads/main' || matrix.ide != fromJson(needs.generate-matrix.outputs.ide-matrix)[0] }}
 
           - name: Install aria2 and xvfb
             run: |
@@ -131,9 +132,8 @@ jobs:
         run: ide-integration-tests/download-ides.sh
 
       - name: Run IDE tests
-        # The :intellijPlatformTestRuntimeClasspath resolution flakes with a
-        # ClosedFileSystemException (IO/download issue), so retry once. The retry adds --stacktrace to
-        # pin down where the failure originates if it recurs.
+        # IntelliJ Platform plugin and dependency resolution occasionally fails on remote I/O.
+        # Retry once with a fresh dependency lookup and a stacktrace.
         run: |
           set +e
           ./gradlew -p ide-integration-tests test --quiet
@@ -141,7 +141,7 @@ jobs:
           if [ $status -ne 0 ]; then
             echo "::warning::IDE tests failed (exit $status); retrying once"
             sleep 15
-            ./gradlew -p ide-integration-tests test --quiet --stacktrace
+            ./gradlew -p ide-integration-tests test --quiet --stacktrace --refresh-dependencies
             status=$?
           fi
           exit $status
