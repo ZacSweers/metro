@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785621805700,
+  "lastUpdate": 1785887050442,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20272,6 +20272,62 @@ window.BENCHMARK_DATA = {
             "value": 19677.657,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.78%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73c9a6cd~1",
+          "message": "[before] Fix an edge case around mixed parallel cycle detec",
+          "timestamp": "2026-08-04T22:48:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73c9a6cdb5f8e34a85b7f38082077a0e1856278a"
+        },
+        "date": 1785887050442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18208.878,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73c9a6cdb5f8e34a85b7f38082077a0e1856278a",
+          "message": "[after] Fix an edge case around mixed parallel cycle detec",
+          "timestamp": "2026-08-04T22:48:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73c9a6cdb5f8e34a85b7f38082077a0e1856278a"
+        },
+        "date": 1785887050443,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17937.719999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.49%"
           }
         ]
       }

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785621805122,
+  "lastUpdate": 1785887050290,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -20272,6 +20272,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22006516651861968,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.77%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73c9a6cd~1",
+          "message": "[before] Fix an edge case around mixed parallel cycle detec",
+          "timestamp": "2026-08-04T22:48:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73c9a6cdb5f8e34a85b7f38082077a0e1856278a"
+        },
+        "date": 1785887050290,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21709973137699476,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "73c9a6cdb5f8e34a85b7f38082077a0e1856278a",
+          "message": "[after] Fix an edge case around mixed parallel cycle detec",
+          "timestamp": "2026-08-04T22:48:37Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/73c9a6cdb5f8e34a85b7f38082077a0e1856278a"
+        },
+        "date": 1785887050291,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2130142327202519,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -1.88%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
