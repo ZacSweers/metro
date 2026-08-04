@@ -415,6 +415,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("MixedParallelDependencyCycles.kt")
+    public void testMixedParallelDependencyCycles() {
+      run("MixedParallelDependencyCycles.kt");
+    }
+
+    @Test
     @TestMetadata("ProvidesSccShouldNotCrashReporter.kt")
     public void testProvidesSccShouldNotCrashReporter() {
       run("ProvidesSccShouldNotCrashReporter.kt");
