@@ -6,7 +6,10 @@ import com.autonomousapps.kit.gradle.Dependency
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.gradle.KmpTarget
 import dev.zacsweers.metro.gradle.MetroProject
+import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
+import dev.zacsweers.metro.gradle.supportsTopLevelFirGen
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assume.assumeFalse
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -20,6 +23,10 @@ class ContributionHintICTests :
   fun contributionScopeArgumentChangeRemovesOldIrHint() {
     val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
     assumeTrue(selectedTarget == null || selectedTarget == "jvm")
+    assumeFalse(
+      "IR contribution hints are only supported before FIR contribution hint generation became required",
+      getTestCompilerToolingVersion().supportsTopLevelFirGen(),
+    )
 
     val fixture =
       object : MetroProject(multiplatform = false) {
