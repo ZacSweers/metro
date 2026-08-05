@@ -277,7 +277,6 @@ jobs:
         if: github.ref != 'refs/heads/main'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
-            -Pmetro.testCompilerVersion=2.4.20-Beta2 \
             -Pmetro.functionalTestKmpTarget=wasmJs \
             --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests.contributionScopeChangeInMultiModuleProject*' \
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
