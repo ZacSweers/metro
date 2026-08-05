@@ -26,7 +26,6 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
-import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -68,13 +67,20 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
+/** Whether Circuit factory declarations must be visible in FIR. */
+internal val MetroOptions.generateCircuitFactoriesInFir: Boolean
+  get() = !generateClassesInIr || (generateContributionHints && generateContributionHintsInFir)
+
 /**
  * FIR extension that generates Circuit factories.
  *
  * `@CircuitInject` functions produce a top-level factory class, while annotated classes produce a
  * nested `Factory` class.
  *
- * Generated classes are annotated with:
+ * With IR class generation, these declarations are FIR-visible shells for contribution hints and
+ * [CircuitIrExtension] fills their implementation.
+ *
+ * Generated factories are annotated with:
  * - `@Inject` (for Metro to generate the factory's own factory)
  * - `@ContributesIntoSet(scope)` (for Metro to contribute it to the graph)
  * - `@Origin(originClass)` (for Metro to track the origin)
@@ -120,9 +126,16 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       }
   }
 
-  // Map from factory ClassId -> annotated function (for top-level function factories)
-  // Purposefully not FirNamedFunctionSymbol for compat reasons. TODO move in 2.3.20
-  private val functionFactoryClassIds = mutableMapOf<ClassId, AnnotatedCircuitFunction>()
+  // Map from factory ClassId -> annotated function (for top-level function factories).
+  private val functionFactoriesByClassId: Map<ClassId, AnnotatedCircuitFunction> by lazy {
+    annotatedFunctions.associateBy { annotatedFunction ->
+      val function = annotatedFunction.symbol
+      ClassId(
+        function.callableId.packageName,
+        annotatedFunction.target.functionFactoryName(function.name.asString()),
+      )
+    }
+  }
 
   // Track generated Circuit ClassIds for constructor generation.
   private val generatedClassIds = mutableSetOf<ClassId>()
@@ -143,19 +156,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // Top-level circuit functions
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
-    val factoryClassIds = annotatedFunctions.mapNotNullToSet { annotatedFunction ->
-      // Just compute the class ID here, defer full target computation to class gen
-      val function = annotatedFunction.symbol
-      val factoryClassId =
-        ClassId(
-          function.callableId.packageName,
-          annotatedFunction.target.functionFactoryName(function.name.asString()),
-        )
-      functionFactoryClassIds[factoryClassId] = annotatedFunction
-      factoryClassId
-    }
-
-    return factoryClassIds
+    return functionFactoriesByClassId.keys
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
@@ -321,7 +322,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       ContributionHint(contributingClassId = target.factoryClassId, scope = target.scopeClassId)
     }
     val functionHints =
-      functionFactoryClassIds.keys.mapNotNull { factoryClassId ->
+      functionFactoriesByClassId.keys.mapNotNull { factoryClassId ->
         val target = getOrComputeFunctionTarget(factoryClassId) ?: return@mapNotNull null
         ContributionHint(contributingClassId = target.factoryClassId, scope = target.scopeClassId)
       }
@@ -573,7 +574,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   /** Gets or lazily computes and caches the factory target for a function-based factory. */
   private fun getOrComputeFunctionTarget(factoryClassId: ClassId): CircuitFactoryTarget? {
     return computedTargets.getOrPut(factoryClassId) {
-      val annotatedFunction = functionFactoryClassIds[factoryClassId] ?: return@getOrPut null
+      val annotatedFunction = functionFactoriesByClassId[factoryClassId] ?: return@getOrPut null
       val function = annotatedFunction.symbol
       val typeResolver = typeResolverFactory.create(function) ?: return@getOrPut null
       @OptIn(SymbolInternals::class) val returnTypeRef = function.fir.returnTypeRef
@@ -602,7 +603,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension? {
-      if (!options.enableCircuitCodegen || options.generateClassesInIr) return null
+      if (!options.enableCircuitCodegen) return null
+      if (!options.generateCircuitFactoriesInFir) return null
       return CircuitFirExtension(session, compatContext)
     }
   }

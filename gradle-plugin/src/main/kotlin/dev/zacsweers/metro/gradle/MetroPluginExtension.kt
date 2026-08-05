@@ -130,8 +130,9 @@ constructor(
       )
 
   /**
-   * Generates metadata-visible hidden classes in IR instead of FIR when supported by the Kotlin
-   * compiler.
+   * Generates metadata-visible hidden class implementations in IR when supported by the Kotlin
+   * compiler. FIR declaration shells remain where required by extension-generated contribution
+   * hints.
    */
   @ExperimentalMetroGradleApi
   public val generateClassesInIr: Property<Boolean> =

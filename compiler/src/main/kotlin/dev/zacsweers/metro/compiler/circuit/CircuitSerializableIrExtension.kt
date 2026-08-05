@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.circuit
 
+import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
@@ -253,7 +254,7 @@ private class CircuitSerializableIrTransformer(
         pluginContext.finderFor(registrationClass).findClass(origin.serializedType)
       } ?: error("Could not find @CircuitSerializable type ${origin.serializedType}.")
 
-    if (!generateClassesInIr) {
+    if (!generateClassesInIr || registrationClass.metroOriginData != null) {
       // FIR carries Metro's origin data separately. Materialize the annotation before Metro's IR
       // pipeline reads the generated contribution.
       generationSupport.addMetadataVisibleOrigin(registrationClass, serializedClass)

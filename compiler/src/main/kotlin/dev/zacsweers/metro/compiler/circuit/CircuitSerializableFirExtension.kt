@@ -38,6 +38,10 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
 
+/** Whether Circuit serializer registration declarations must be visible in FIR. */
+internal val MetroOptions.generateCircuitSerializerRegistrationsInFir: Boolean
+  get() = !generateClassesInIr || (generateContributionHints && generateContributionHintsInFir)
+
 /** Generates Circuit serializer registrations in FIR. */
 @OptIn(ExperimentalTopLevelDeclarationsGenerationApi::class)
 public class CircuitSerializableFirExtension(
@@ -179,7 +183,8 @@ public class CircuitSerializableFirExtension(
       options: MetroOptions,
       compatContext: CompatContext,
     ): MetroFirDeclarationGenerationExtension? {
-      if (!options.enableCircuitCodegen || options.generateClassesInIr) return null
+      if (!options.enableCircuitCodegen) return null
+      if (!options.generateCircuitSerializerRegistrationsInFir) return null
       return CircuitSerializableFirExtension(session, compatContext)
     }
   }

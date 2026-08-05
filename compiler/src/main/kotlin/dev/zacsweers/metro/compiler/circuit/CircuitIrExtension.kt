@@ -611,9 +611,9 @@ private class CircuitIrFactoryTransformer(
           pluginContext.finderFor(declaration).findClass(circuitTargetInfo.screenType)
         }!!
 
-      if (!generateClassesInIr) {
-        // Legacy FIR-generated Circuit factories could not safely receive @Origin in FIR, so keep
-        // adding it here. IR-generated factories already get it as part of shell creation.
+      if (declaration.circuitFactoryTargetData != null) {
+        // FIR-generated Circuit factories cannot safely receive @Origin in FIR, so keep adding it
+        // here. IR-generated factories already get it as part of shell creation.
         circuitTargetInfo.originClassId?.let { originClassId ->
           val originClass =
             with(compatContext) {
@@ -637,6 +637,10 @@ private class CircuitIrFactoryTransformer(
 
   /** Produces the unified target model for the body generator without cross-extension state. */
   private fun IrClass.circuitFactoryTargetData(): CircuitIrFactoryTarget {
+    circuitFactoryTargetData?.let {
+      return it.toCircuitIrFactoryTarget()
+    }
+
     if (generateClassesInIr) {
       val origin =
         origin.expectAsOrNull<IrDeclarationOrigin.GeneratedByPlugin>()?.pluginKey
@@ -656,8 +660,7 @@ private class CircuitIrFactoryTransformer(
       return target ?: error("Circuit factory class ${classId} is missing target data.")
     }
 
-    return circuitFactoryTargetData?.toCircuitIrFactoryTarget()
-      ?: error("Circuit factory class ${classId} is missing target data.")
+    error("Circuit factory class ${classId} is missing target data.")
   }
 
   /** Adapts the legacy FIR target object to the smaller IR-only data needed after FIR2IR. */

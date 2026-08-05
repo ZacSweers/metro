@@ -124,6 +124,8 @@ val aProvider = A.MetroFactory.create(bProvider)
 DelegateFactory.setDelegate(bProvider, B.MetroFactory.create(aProvider))
 ```
 
+Metro first checks whether a single candidate can break the cycle, preferring implicitly deferrable bindings and then their natural order. If overlapping cycles need multiple deferrals, it validates the full candidate set and tries to remove the lowest-priority candidates first. These checks start at the binding being restored because any new cycle must pass through it. Removing any remaining deferral would restore a cycle, although another valid combination could use fewer bindings.
+
 Sorted adjacency and repeated cycle checks add work beyond the component traversal itself. Avoid describing the entire graph pipeline as a single linear-time algorithm.
 
 `ReusableCycleChecker` also uses heap-backed traversal frames instead of recursive calls. It reuses its frame stack and visited sets when testing different deferred bindings.

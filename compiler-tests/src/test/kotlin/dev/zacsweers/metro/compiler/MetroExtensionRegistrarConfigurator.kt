@@ -313,16 +313,6 @@ class MetroExtensionRegistrarConfigurator(
                   as? MetroContributionHintExtension,
               )
             )
-            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
-              add(
-                CircuitFirExtension.Factory().create(session, options, compatContext)!!
-                  as MetroContributionHintExtension
-              )
-              add(
-                CircuitSerializableFirExtension.Factory().create(session, options, compatContext)!!
-                  as MetroContributionHintExtension
-              )
-            }
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
                 .create(session, options, compatContext)
@@ -363,16 +353,28 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
+      val circuitFactoriesGeneratedInFir =
+        !options.generateClassesInIr ||
+          (options.generateContributionHints && options.generateContributionHintsInFir)
+      val circuitSerializerRegistrationsGeneratedInFir =
+        !options.generateClassesInIr ||
+          (options.generateContributionHints && options.generateContributionHintsInFir)
       if (options.generateClassesInIr) {
-        IrGenerationExtension.registerExtension(
-          CircuitSerializableIrDeclarationGenerationExtension.create(compatContext = compatContext)
-        )
-        IrGenerationExtension.registerExtension(
-          CircuitIrDeclarationGenerationExtension.create(
-            classIds = classIds,
-            compatContext = compatContext,
+        if (!circuitSerializerRegistrationsGeneratedInFir) {
+          IrGenerationExtension.registerExtension(
+            CircuitSerializableIrDeclarationGenerationExtension.create(
+              compatContext = compatContext
+            )
           )
-        )
+        }
+        if (!circuitFactoriesGeneratedInFir) {
+          IrGenerationExtension.registerExtension(
+            CircuitIrDeclarationGenerationExtension.create(
+              classIds = classIds,
+              compatContext = compatContext,
+            )
+          )
+        }
       }
       IrGenerationExtension.registerExtension(
         CircuitIrExtension.create(

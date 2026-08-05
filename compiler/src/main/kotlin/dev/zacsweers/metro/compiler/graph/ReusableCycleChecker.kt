@@ -32,10 +32,7 @@ internal class ReusableCycleChecker<V>(
    * deferrable outgoing edges are skipped.
    */
   fun isAcyclicWith(deferredNodes: Set<V>): Boolean {
-    visited.clear()
-    inStack.clear()
-    // A previous check may have returned early with unfinished frames still on the stack.
-    frames.clear()
+    resetTraversal()
 
     for (node in vertices) {
       if (node !in visited && !isAcyclicFrom(node, deferredNodes)) {
@@ -43,6 +40,25 @@ internal class ReusableCycleChecker<V>(
       }
     }
     return true
+  }
+
+  /**
+   * Checks whether restoring [node]'s deferred outgoing edges introduces a cycle.
+   *
+   * The graph must already have been acyclic while [node] was deferred, and [node] must no longer
+   * be in [deferredNodes]. Any new cycle must pass through [node], so only vertices reachable from
+   * it need to be checked.
+   */
+  fun isAcyclicAfterRestoringEdges(node: V, deferredNodes: Set<V>): Boolean {
+    resetTraversal()
+    return isAcyclicFrom(node, deferredNodes)
+  }
+
+  private fun resetTraversal() {
+    visited.clear()
+    inStack.clear()
+    // A previous check may have returned early with unfinished frames still on the stack.
+    frames.clear()
   }
 
   /**

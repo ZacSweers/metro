@@ -1,5 +1,4 @@
 // GENERATE_CONTRIBUTION_HINTS_IN_FIR
-// GENERATE_CLASSES_IN_IR: false
 // MODULE: lib
 package test
 
