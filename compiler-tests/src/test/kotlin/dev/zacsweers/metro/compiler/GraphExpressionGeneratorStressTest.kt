@@ -90,7 +90,6 @@ class GraphExpressionGeneratorStressTest : AbstractBoxTest() {
     try {
       testData.writeText(
         buildString {
-          appendLine("// ENABLE_STACKLESS_GRAPH_GEN")
           if (usesSuspendBindings) {
             appendLine("// ENABLE_SUSPEND_PROVIDERS")
           }
