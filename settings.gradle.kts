@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   includeBuild("build-logic")
+  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
   repositories {
+    if (kotlinRepoUrl != null) {
+      maven(kotlinRepoUrl)
+    }
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -16,7 +20,11 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
+  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
   repositories {
+    if (kotlinRepoUrl != null) {
+      maven(kotlinRepoUrl)
+    }
     mavenCentral()
     google()
     maven("https://redirector.kotlinlang.org/maven/bootstrap")
