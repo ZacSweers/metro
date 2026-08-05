@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785912769377,
+  "lastUpdate": 1785948183699,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20496,6 +20496,62 @@ window.BENCHMARK_DATA = {
             "value": 18632.501,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.95%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ec215904~1",
+          "message": "[before] Fix an SO in graph extension traversal with suspen",
+          "timestamp": "2026-08-05T15:46:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ec215904a8706dcdd826983a80e95ddcb1db6d9b"
+        },
+        "date": 1785948183699,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19156.989,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "ec215904a8706dcdd826983a80e95ddcb1db6d9b",
+          "message": "[after] Fix an SO in graph extension traversal with suspen",
+          "timestamp": "2026-08-05T15:46:10Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/ec215904a8706dcdd826983a80e95ddcb1db6d9b"
+        },
+        "date": 1785948183700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17669.123,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.77%"
           }
         ]
       }
