@@ -299,7 +299,6 @@ class MetroArtifactsTest {
                 "shrinkUnusedBindings": true,
                 "statementsPerInitFun": 25,
                 "enableGraphSharding": true,
-                "enableStacklessGraphGen": false,
                 "keysPerGraphShard": 2000,
                 "mergedSupertypeChunkSize": 0,
                 "enableSwitchingProviders": false,
