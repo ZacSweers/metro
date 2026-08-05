@@ -1194,15 +1194,15 @@ internal class IrBindingGraph(
         }
       }
     }
-    if (parameters.allParameters.any { it.contextualTypeKey.containsSuspendWrapper() }) return true
-    if (this is IrBinding.AssistedFactory) {
-      val targetUsesSuspendWrapper =
-        targetBinding.parameters.allParameters.any {
-          it.contextualTypeKey.containsSuspendWrapper()
-        }
-      if (targetUsesSuspendWrapper) return true
+    val sourceParameters =
+      if (this is IrBinding.AssistedFactory) {
+        targetBinding.parameters.allParameters
+      } else {
+        parameters.allParameters
+      }
+    return sourceParameters.any {
+      !it.isAssisted && it.contextualTypeKey.containsSuspendWrapper()
     }
-    return false
   }
 
   private fun IrContextualTypeKey.containsSuspendWrapper(): Boolean {

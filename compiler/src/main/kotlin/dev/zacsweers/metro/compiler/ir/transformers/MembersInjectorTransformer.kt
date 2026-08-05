@@ -434,14 +434,17 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
           val instanceParam = regularParameters[0]
 
           // Copy any qualifier annotations over to propagate them
-          regularParameters.drop(1).forEachIndexed { i, param ->
+          for ((i, param) in regularParameters.drop(1).withIndex()) {
             val injectedParam = params.regularParameters[i]
-            injectedParam.typeKey.qualifier?.let { qualifier ->
-              metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-                param,
-                listOf(qualifier.ir.deepCopyWithSymbols()),
-              )
-            }
+            val qualifier = injectedParam.typeKey.qualifier ?: continue
+            val qualifierAlreadyPresent =
+              param.annotationsCompat().any { existing -> IrAnnotation(existing) == qualifier }
+            if (qualifierAlreadyPresent) continue
+
+            metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+              param,
+              listOf(qualifier.ir.deepCopyWithSymbols()),
+            )
           }
 
           body =
