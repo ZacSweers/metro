@@ -90,7 +90,7 @@ constructor(
       )
 
   /**
-   * Generates contribution hints in IR.
+   * Generates contribution hints.
    *
    * This does not have a convention default set here as it actually depends on the platform. You
    * can set a value to force it to one or the other, otherwise if unset it will default to the
@@ -100,6 +100,9 @@ constructor(
 
   /**
    * Generates contribution hints in FIR. Requires [generateContributionHints] to be true.
+   *
+   * This is independent of [generateClassesInIr]. It must remain enabled with contribution hints on
+   * Kotlin `2.3.20-Beta1` and newer.
    *
    * **Warnings**
    * - Prior to Kotlin 2.3.20-Beta1, FIR contribution hint generation is only compatible with

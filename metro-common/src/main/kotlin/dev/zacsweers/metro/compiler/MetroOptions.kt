@@ -215,7 +215,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Generate contribution hints in FIR.",
+      description = "Generate contribution hints in FIR. Required on Kotlin 2.3.20-Beta1+.",
       required = false,
       allowMultipleOccurrences = false,
     )

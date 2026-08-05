@@ -8,11 +8,25 @@ package test.graph
 @Inject
 class MyClass
 
+// The alphabetically earlier dependent leads to the longer root path.
+@Inject
+class ALongRoot(val next: BLongConsumer)
+
+@Inject
+class BLongConsumer(val value: MyClass)
+
+@Inject
+class ZShortRoot(val value: MyClass)
+
 // Graph uses a custom AppScope
 abstract class AppScope private constructor()
 
 @SingleIn(AppScope::class)
 @DependencyGraph(AppScope::class)
 interface <!INCOMPATIBLE_SCOPE!>ExampleGraph<!> {
-  val myClass: MyClass
+  val longPath: ALongRoot
+
+  // Keep the first accessor when scalar and provider roots request the same binding.
+  val shortPath: ZShortRoot
+  val shortProvider: () -> ZShortRoot
 }

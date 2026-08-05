@@ -24,7 +24,6 @@ import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
-import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -1116,6 +1115,7 @@ internal class IrBindingGraph(
     adjacency: GraphAdjacency<IrTypeKey>,
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
+    val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
     bindings.forEachValue { binding ->
@@ -1156,14 +1156,14 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      checkScope(binding, stack, roots, adjacency.forward)
-      validateMultibindings(binding, bindings, roots, adjacency.forward)
+      checkScope(binding, stack, diagnosticRoutes)
+      validateMultibindings(binding, bindings, diagnosticRoutes)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
     if (!metroContext.options.enableSuspendProviders) {
-      for (accessor in node.accessors) {
-        val isSuspendAccessor = accessor.metroFunction.ir.isSuspend
-        if (!isSuspendAccessor && !accessor.contextKey.containsSuspendWrapper()) continue
+      for ((contextKey, metroFunction) in node.accessors) {
+        val isSuspendAccessor = metroFunction.ir.isSuspend
+        if (!isSuspendAccessor && !contextKey.containsSuspendWrapper()) continue
         hasDisabledSuspendProviderUse = true
       }
       if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
@@ -1755,8 +1755,7 @@ internal class IrBindingGraph(
   private fun checkScope(
     binding: IrBinding,
     stack: IrBindingStack,
-    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    diagnosticRoutes: DiagnosticRoutes,
   ) {
     val bindingScope = binding.scope ?: return
     // Our binding doesn't have a scope... so we don't care about scopes
@@ -1775,7 +1774,7 @@ internal class IrBindingGraph(
 
     val isUnscoped = node.scopes.isEmpty()
     val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
-    val stack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
+    val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     stack.push(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
@@ -1827,11 +1826,15 @@ internal class IrBindingGraph(
 
   private fun buildStackToRoot(
     typeKey: IrTypeKey,
-    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    diagnosticRoutes: DiagnosticRoutes,
     stack: IrBindingStack = newBindingStack(),
   ): IrBindingStack {
-    val backTrace = buildRouteToRoot(typeKey, roots, adjacency)
+    val backTrace =
+      diagnosticRoutes.routeToRoot(typeKey) { callingKey, dependencyKey ->
+        val callingBinding = realGraph.bindings.getValue(callingKey)
+        val contextKey = callingBinding.dependencies.first { it.typeKey == dependencyKey }
+        bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
+      }
     for (entry in backTrace) {
       stack.push(entry)
     }
@@ -1841,8 +1844,7 @@ internal class IrBindingGraph(
   private fun validateMultibindings(
     binding: IrBinding,
     bindings: ScatterMap<IrTypeKey, IrBinding>,
-    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+    diagnosticRoutes: DiagnosticRoutes,
   ) {
     if (binding !is IrBinding.Multibinding) return
     if (!binding.isMap) return
@@ -1858,7 +1860,7 @@ internal class IrBindingGraph(
         reportCompilerBug("Map key should not be null for map multibindings")
       }
 
-      val stack = buildStackToRoot(binding.typeKey, roots, adjacency)
+      val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
 
       val locationDiagnostics = dupes.map { dupe ->
         dupe.renderLocationDiagnostic(
@@ -1949,75 +1951,6 @@ internal class IrBindingGraph(
       }
     }
     roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration) }
-  }
-
-  /**
-   * Builds a route from this binding back to one of the root bindings. Useful for error messaging
-   * to show a trace back to an entry point.
-   */
-  private fun buildRouteToRoot(
-    key: IrTypeKey,
-    roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-    adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
-  ): List<IrBindingStack.Entry> {
-    // No need to walk through the tree without roots
-    if (roots.isEmpty()) return emptyList()
-
-    // Build who depends on what
-    val dependents = mutableMapOf<IrTypeKey, MutableSet<IrTypeKey>>()
-    for ((key, deps) in adjacency) {
-      for (dep in deps) {
-        dependents.getAndAdd(dep, key)
-      }
-    }
-
-    // Walk backwards from this binding to find a root
-    val visited = mutableSetOf<IrTypeKey>()
-
-    fun walkToRoot(current: IrTypeKey, path: List<IrTypeKey>): List<IrTypeKey>? {
-      if (current in visited) return null // Cycle
-
-      // Is this a root?
-      if (roots.any { it.key.typeKey == current }) {
-        return path + current
-      }
-
-      visited.add(current)
-
-      // Try walking through each dependent
-      for (dependent in dependents[current].orEmpty()) {
-        walkToRoot(dependent, path + current)?.let {
-          return it
-        }
-      }
-
-      visited.remove(current)
-      return null
-    }
-
-    val path = walkToRoot(key, emptyList()) ?: return emptyList()
-
-    // Convert to stack entries - just create a simple stack and build it up
-    val result = mutableListOf<IrBindingStack.Entry>()
-
-    for (i in path.indices.reversed()) {
-      val typeKey = path[i]
-
-      if (i == path.lastIndex) {
-        // This is the root
-        val rootEntry = roots.entries.first { it.key.typeKey == typeKey }.value
-        result.add(0, rootEntry)
-      } else {
-        // Create an entry for this step
-        val callingBinding = realGraph.bindings.getValue(path[i + 1])
-        val contextKey = callingBinding.dependencies.first { it.typeKey == typeKey }
-        val entry = bindingStackEntryForDependency(callingBinding, contextKey, contextKey.typeKey)
-        result.add(0, entry)
-      }
-    }
-
-    // Reverse the route as these will push onto the top of the stack
-    return result.asReversed()
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {

@@ -2657,6 +2657,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("AssistedSuspendFunctionParameter.kt")
+    public void testAssistedSuspendFunctionParameter() {
+      run("AssistedSuspendFunctionParameter.kt");
+    }
+
+    @Test
     @TestMetadata("ConstructorInjection.kt")
     public void testConstructorInjection() {
       run("ConstructorInjection.kt");
@@ -2822,6 +2828,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("MultipleSuspendDeps.kt")
     public void testMultipleSuspendDeps() {
       run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedGraphExtensionMiddleScopedBinding.kt")
+    public void testNestedGraphExtensionMiddleScopedBinding() {
+      run("NestedGraphExtensionMiddleScopedBinding.kt");
     }
 
     @Test

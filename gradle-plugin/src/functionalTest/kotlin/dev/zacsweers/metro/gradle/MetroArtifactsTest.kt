@@ -60,15 +60,15 @@ class MetroArtifactsTest {
   }
 
   @Test
-  fun `generateClassesInIr Gradle property overrides compiler version default`() {
-    val compilerVersionDefault =
-      getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.20-dev-6138")
-    val propertyOverride = !compilerVersionDefault
+  fun `generateClassesInIr does not change FIR hint default`() {
+    val compilerVersion = getTestCompilerToolingVersion()
+    val generateClassesInIr = compilerVersion < KotlinToolingVersion("2.4.20-dev-6138")
+    val generateContributionHintsInFir = compilerVersion.supportsTopLevelFirGen()
     val fixture =
       object :
         MetroProject(
           multiplatform = false,
-          additionalGradleProperties = listOf("metro.generateClassesInIr=$propertyOverride"),
+          additionalGradleProperties = listOf("metro.generateClassesInIr=$generateClassesInIr"),
         ) {
         override fun sources() =
           listOf(
@@ -94,7 +94,9 @@ class MetroArtifactsTest {
         .walk()
         .single { it.name == "main.txt" }
         .readText()
-    assertThat(content).contains("    generate-classes-in-ir = $propertyOverride")
+    assertThat(content).contains("    generate-classes-in-ir = $generateClassesInIr")
+    assertThat(content)
+      .contains("    generate-contribution-hints-in-fir = $generateContributionHintsInFir")
   }
 
   @Test
@@ -216,12 +218,7 @@ class MetroArtifactsTest {
   @Test
   fun `generateMetroGraphMetadata task creates aggregated JSON output`() {
     val testCompilerVersion = getTestCompilerToolingVersion()
-    val topLevelFirGenEnabled =
-      if (testCompilerVersion.isDev) {
-        testCompilerVersion >= KotlinToolingVersion("2.3.20-dev-6204")
-      } else {
-        testCompilerVersion >= KotlinToolingVersion("2.3.20-Beta1")
-      }
+    val topLevelFirGenEnabled = testCompilerVersion.supportsTopLevelFirGen()
     val enableKlibParamsCheck =
       testCompilerVersion >= KotlinToolingVersion("2.3.0") &&
         testCompilerVersion < KotlinToolingVersion("2.3.20-Beta2")
@@ -293,7 +290,7 @@ class MetroArtifactsTest {
                 "generateAssistedFactories": false,
                 "enableTopLevelFunctionInjection": $topLevelFirGenEnabled,
                 "generateContributionHints": true,
-                "generateContributionHintsInFir": ${topLevelFirGenEnabled && !generateClassesInIrEnabled},
+                "generateContributionHintsInFir": $topLevelFirGenEnabled,
                 "generateClassesInIr": $generateClassesInIrEnabled,
                 "enablePrivateProviderProperties": $privateProviderPropertiesEnabled,
                 "shrinkUnusedBindings": true,

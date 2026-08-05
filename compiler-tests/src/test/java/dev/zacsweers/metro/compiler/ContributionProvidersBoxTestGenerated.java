@@ -3491,6 +3491,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
+    @TestMetadata("AssistedSuspendFunctionParameter.kt")
+    public void testAssistedSuspendFunctionParameter() {
+      run("AssistedSuspendFunctionParameter.kt");
+    }
+
+    @Test
     @TestMetadata("ConstructorInjection.kt")
     public void testConstructorInjection() {
       run("ConstructorInjection.kt");
@@ -3656,6 +3662,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("MultipleSuspendDeps.kt")
     public void testMultipleSuspendDeps() {
       run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedGraphExtensionMiddleScopedBinding.kt")
+    public void testNestedGraphExtensionMiddleScopedBinding() {
+      run("NestedGraphExtensionMiddleScopedBinding.kt");
     }
 
     @Test
