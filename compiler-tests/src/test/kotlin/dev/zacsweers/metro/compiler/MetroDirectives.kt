@@ -41,6 +41,8 @@ object MetroDirectives : SimpleDirectivesContainer() {
     valueDirective("Maximum statements per init function when chunking is enabled.") { it.toInt() }
   val ENABLE_GRAPH_SHARDING by
     valueDirective("Enable/disable graph sharding of binding graphs.") { it.toBoolean() }
+  val ENABLE_STACKLESS_GRAPH_GEN by
+    directive("Enable stackless graph generation for deeply nested dependency graphs.")
   val KEYS_PER_GRAPH_SHARD by
     valueDirective("Maximum number of binding keys per graph shard when sharding is enabled.") {
       it.toInt()

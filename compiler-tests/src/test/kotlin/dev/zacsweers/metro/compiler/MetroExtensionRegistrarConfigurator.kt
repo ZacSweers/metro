@@ -103,6 +103,7 @@ class MetroExtensionRegistrarConfigurator(
       module.directives.singleOrZeroValue(MetroDirectives.ENABLE_GRAPH_SHARDING)?.let {
         enableGraphSharding = it
       }
+      enableStacklessGraphGen = MetroDirectives.ENABLE_STACKLESS_GRAPH_GEN in module.directives
       module.directives.singleOrZeroValue(MetroDirectives.KEYS_PER_GRAPH_SHARD)?.let {
         keysPerGraphShard = it
       }

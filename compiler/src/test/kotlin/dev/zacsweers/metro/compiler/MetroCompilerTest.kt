@@ -134,6 +134,8 @@ abstract class MetroCompilerTest {
             SHRINK_UNUSED_BINDINGS -> processor.option(entry.raw.cliOption, shrinkUnusedBindings)
             STATEMENTS_PER_INIT_FUN -> processor.option(entry.raw.cliOption, statementsPerInitFun)
             ENABLE_GRAPH_SHARDING -> processor.option(entry.raw.cliOption, enableGraphSharding)
+            ENABLE_STACKLESS_GRAPH_GEN ->
+              processor.option(entry.raw.cliOption, enableStacklessGraphGen)
             KEYS_PER_GRAPH_SHARD -> processor.option(entry.raw.cliOption, keysPerGraphShard)
             MERGED_SUPERTYPE_CHUNK_SIZE ->
               processor.option(entry.raw.cliOption, mergedSupertypeChunkSize)

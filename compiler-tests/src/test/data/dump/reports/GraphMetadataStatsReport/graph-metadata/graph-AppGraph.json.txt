@@ -48,6 +48,7 @@
     "shrinkUnusedBindings": true,
     "statementsPerInitFun": 2,
     "enableGraphSharding": true,
+    "enableStacklessGraphGen": false,
     "keysPerGraphShard": 4,
     "mergedSupertypeChunkSize": 2,
     "enableSwitchingProviders": false,

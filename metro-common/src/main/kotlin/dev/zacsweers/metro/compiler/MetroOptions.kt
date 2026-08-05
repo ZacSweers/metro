@@ -273,6 +273,16 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
     )
   ),
+  ENABLE_STACKLESS_GRAPH_GEN(
+    RawMetroOption.boolean(
+      name = "enable-stackless-graph-gen",
+      defaultValue = false,
+      valueDescription = "<true | false>",
+      description = "Use stackless graph generation for deeply nested dependency graphs.",
+      required = false,
+      allowMultipleOccurrences = false,
+    )
+  ),
   KEYS_PER_GRAPH_SHARD(
     RawMetroOption(
       name = "keys-per-graph-shard",
@@ -1100,6 +1110,8 @@ public class MetroOptions(
     MetroOption.STATEMENTS_PER_INIT_FUN.raw.defaultValue.expectAs(),
   public val enableGraphSharding: Boolean =
     MetroOption.ENABLE_GRAPH_SHARDING.raw.defaultValue.expectAs(),
+  public val enableStacklessGraphGen: Boolean =
+    MetroOption.ENABLE_STACKLESS_GRAPH_GEN.raw.defaultValue.expectAs(),
   public val keysPerGraphShard: Int = MetroOption.KEYS_PER_GRAPH_SHARD.raw.defaultValue.expectAs(),
   public val mergedSupertypeChunkSize: Int =
     MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE.raw.defaultValue.expectAs(),
@@ -1467,6 +1479,7 @@ public class MetroOptions(
     public var shrinkUnusedBindings: Boolean = base.shrinkUnusedBindings
     public var statementsPerInitFun: Int = base.statementsPerInitFun
     public var enableGraphSharding: Boolean = base.enableGraphSharding
+    public var enableStacklessGraphGen: Boolean = base.enableStacklessGraphGen
     public var keysPerGraphShard: Int = base.keysPerGraphShard
     public var mergedSupertypeChunkSize: Int = base.mergedSupertypeChunkSize
     public var enableSwitchingProviders: Boolean = base.enableSwitchingProviders
@@ -1810,6 +1823,7 @@ public class MetroOptions(
         MetroOption.SHRINK_UNUSED_BINDINGS -> shrinkUnusedBindings = value.expectAs()
         MetroOption.STATEMENTS_PER_INIT_FUN -> statementsPerInitFun = value.expectAs()
         MetroOption.ENABLE_GRAPH_SHARDING -> enableGraphSharding = value.expectAs()
+        MetroOption.ENABLE_STACKLESS_GRAPH_GEN -> enableStacklessGraphGen = value.expectAs()
         MetroOption.KEYS_PER_GRAPH_SHARD -> keysPerGraphShard = value.expectAs()
         MetroOption.MERGED_SUPERTYPE_CHUNK_SIZE -> mergedSupertypeChunkSize = value.expectAs()
         MetroOption.ENABLE_SWITCHING_PROVIDERS -> enableSwitchingProviders = value.expectAs()
@@ -1943,6 +1957,7 @@ public class MetroOptions(
         shrinkUnusedBindings = shrinkUnusedBindings,
         statementsPerInitFun = statementsPerInitFun,
         enableGraphSharding = enableGraphSharding,
+        enableStacklessGraphGen = enableStacklessGraphGen,
         keysPerGraphShard = keysPerGraphShard,
         mergedSupertypeChunkSize = mergedSupertypeChunkSize,
         enableSwitchingProviders = enableSwitchingProviders,
