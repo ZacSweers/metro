@@ -23,6 +23,12 @@ Changelog
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
 - **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
 
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@scana](https://github.com/scana)
+
 1.4.0
 -----
 
