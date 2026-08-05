@@ -9,6 +9,7 @@ Changelog
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 - **[IR]** Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.
+- **[IR]** Prevent stack overflows in large dependency graphs by checking cycles with heap-backed frames instead of recursive DFS traversal.
 
 1.4.0
 -----
