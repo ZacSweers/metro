@@ -1406,9 +1406,13 @@ internal class IrGraphGenerator(
         }
       }
 
+      val storesProvider = shardBinding.propertyKind == PropertyKind.FIELD
+      val returnsSuspendProvider = contextKey.isWrappedInSuspendProvider
+      val usesSuspendProvider = isSuspendBinding && (storesProvider || returnsSuspendProvider)
       val accessType =
-        if (isSuspendBinding && shardBinding.propertyKind == PropertyKind.FIELD) {
+        if (usesSuspendProvider) {
           // Suspend bindings with FIELD properties use SuspendProvider<T>
+          // Property getters cannot suspend, so return a SuspendProvider<T> instead.
           BindingExpressionGenerator.AccessType.SUSPEND_PROVIDER
         } else if (isProviderType) {
           BindingExpressionGenerator.AccessType.PROVIDER
@@ -1765,8 +1769,18 @@ internal class IrGraphGenerator(
     val key = binding.typeKey
     var isProviderType = collectedIsProviderType
     val isSuspendBinding = binding.isSuspendInGraph
+
+    val canUseDepthLimitingGetter =
+      binding is IrBinding.ConstructorInjected || binding is IrBinding.Provided
+    val isProviderGetter = propertyType == PropertyKind.GETTER && isProviderType
+    val isDepthLimitingGetter = canUseDepthLimitingGetter && isProviderGetter
+
+    val requiresProviderWrapper = propertyType == PropertyKind.FIELD || isDepthLimitingGetter
+
+    // Suspend depth-limiting getters return a provider instead of invoking a suspend binding.
+    val usesSuspendProvider = isSuspendBinding && requiresProviderWrapper
     val finalContextKey =
-      if (isSuspendBinding && propertyType == PropertyKind.FIELD) {
+      if (usesSuspendProvider) {
         collectedContextKey.wrapInSuspendProvider()
       } else {
         collectedContextKey.letIf(isProviderType) { it.wrapInProvider() }
@@ -1781,7 +1795,12 @@ internal class IrGraphGenerator(
         binding.classFactory.factoryClass.typeWith()
       } else if (propertyType == PropertyKind.GETTER) {
         if (isProviderType) {
-          suffix = "Provider"
+          suffix =
+            if (usesSuspendProvider) {
+              "SuspendProvider"
+            } else {
+              "Provider"
+            }
           kind = MemberNamer.Kind.PROVIDER
         } else {
           suffix = ""

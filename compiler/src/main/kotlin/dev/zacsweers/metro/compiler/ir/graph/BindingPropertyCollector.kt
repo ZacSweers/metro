@@ -226,6 +226,20 @@ internal class BindingPropertyCollector(
     // factory access.
     visitKeys(sortedKeys.asReversed())
 
+    if (reachableKeys.size >= MAX_INLINE_BINDING_DEPTH) {
+      BindingExpressionDepthLimiter(
+          graph = graph,
+          sortedKeys = sortedKeys,
+          reachableKeys = reachableKeys,
+          properties = keysWithBackingProperties,
+          requiresProviderGetter = { contextKey ->
+            val node = nodes[contextKey]
+            node != null && node.factoryRefCount > 0 && node.scalarRefCount == 0
+          },
+        )
+        .limitDepth()
+    }
+
     // Add FIELD properties for assisted-inject targets used by multiple Assisted bindings.
     // Single-use targets don't need fields - they can be inlined.
     // Collect these separately so we can append them to init order at the end.
