@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[FIR/IR/Circuit]** Generate `CircuitSerializerRegistration` Set contributions for `@CircuitSerializable` `Screen` and `PopResult` types when using Circuit `0.36.0` or newer.
+
 ### Fixes
 
 - **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
