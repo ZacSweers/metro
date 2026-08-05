@@ -183,7 +183,7 @@ object MetroDirectives : SimpleDirectivesContainer() {
       "Verifies that Metro trace files were generated and follow the expected naming pattern. " +
         "Verification runs inside MetroReportsChecker."
     )
-  val ENABLE_SERIALIZATION by directive("Enables the kotlinx serialization compiler plugin.")
+  val ENABLE_SERIALIZATION by directive("Enables the kotlinx-serialization compiler plugin.")
   val ENABLE_CIRCUIT by directive("Enables Circuit code gen.")
   val WITH_HILT by directive("Add Hilt-core as dependency.")
   val ENABLE_HILT_INTEROP by
