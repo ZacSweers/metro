@@ -738,6 +738,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindingNotVisibleToGrandchild.kt")
+      public void testGraphPrivateBindingNotVisibleToGrandchild() {
+        run("GraphPrivateBindingNotVisibleToGrandchild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateGraphExtensionFactoryParam.kt")
       public void testGraphPrivateGraphExtensionFactoryParam() {
         run("GraphPrivateGraphExtensionFactoryParam.kt");
