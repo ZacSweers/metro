@@ -1868,6 +1868,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#diagnostic-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Diagnostic routes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#strongly-connected-components" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2245,6 +2256,10 @@ Stored order:           A -&gt; B, C
 <span class="p">)</span>
 </code></pre></div>
 <p>Both requests point to <code>B</code>. The edge still counts as eager because one request needs <code>B</code> immediately. Collapsing adjacency must not discard that information.</p>
+<h3 id="diagnostic-routes">Diagnostic routes<a class="headerlink" href="#diagnostic-routes" title="Permanent link">&para;</a></h3>
+<p>Graph errors need a route from an accessor to the failing binding. When an error first needs a route, Metro runs a breadth-first search from every graph root over the existing sorted forward adjacency. It records each binding&rsquo;s parent and preserves the original entry for each root so later errors can reuse the same routes.</p>
+<p>Breadth-first traversal picks the shortest dependency path, and stable root and dependency ordering keeps equally short routes consistent. Keep the original contextual root entry so provider, lazy, and suspend accessors appear correctly in diagnostics.</p>
+<p>The index is populated only when an error needs a route. Successful graphs do not perform the extra traversal, and route reconstruction does not rebuild reverse adjacency or recurse through the graph. When we&rsquo;re gonna fail, we&rsquo;re ok with failing slowly in service of more actionable information to the user.</p>
 <h3 id="strongly-connected-components">Strongly connected components<a class="headerlink" href="#strongly-connected-components" title="Permanent link">&para;</a></h3>
 <p><code>MetroSort</code> identifies strongly connected components (via Tarjan&rsquo;s algo) before ordering bindings. It maps vertices to dense integer IDs and uses primitive arrays for adjacency, discovery indexes, and low-link values.</p>
 <p>The strongly connected component traversal uses explicit work stacks. This avoids allocating a traversal object for every edge and prevents that traversal from depending on the JVM call stack.</p>
