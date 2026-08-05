@@ -19,9 +19,11 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.extensions.predicate.LookupPredicate.BuilderContext.annotated
+import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.type
@@ -219,3 +221,11 @@ internal sealed interface CircuitSymbols {
  */
 internal val FirSession.circuitFirSymbols: CircuitSymbols.Fir? by
   FirSession.sessionComponentAccessor<CircuitSymbols.Fir>()
+
+internal fun FirSession.findCircuitSerializableClasses(): List<FirRegularClassSymbol> {
+  return predicateBasedProvider
+    .getSymbolsByPredicate(CircuitSymbols.circuitSerializablePredicate)
+    .filterIsInstance<FirRegularClassSymbol>()
+    // Platform FIR sessions contain both declarations. The expect owns code generation.
+    .filterNot { it.rawStatus.isActual }
+}

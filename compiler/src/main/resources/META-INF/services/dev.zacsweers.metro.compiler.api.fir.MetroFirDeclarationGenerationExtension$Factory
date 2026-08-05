@@ -1,2 +1,3 @@
 dev.zacsweers.metro.compiler.circuit.CircuitFirExtension$Factory
+dev.zacsweers.metro.compiler.circuit.CircuitSerializableFirExtension$Factory
 dev.zacsweers.metro.compiler.hilt.HiltFirDeclarationExtension$Factory

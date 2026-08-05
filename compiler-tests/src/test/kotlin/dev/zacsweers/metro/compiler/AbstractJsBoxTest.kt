@@ -28,6 +28,10 @@ open class AbstractJsBoxTest : KotlinJsBoxTestBase() {
         +WITH_STDLIB
         +WITH_COROUTINE_HELPERS
       }
+
+      forTestsMatching("CircuitSerializerRegistrationExpectActual.kt") {
+        defaultDirectives { -WITH_COROUTINE_HELPERS }
+      }
     }
   }
 }

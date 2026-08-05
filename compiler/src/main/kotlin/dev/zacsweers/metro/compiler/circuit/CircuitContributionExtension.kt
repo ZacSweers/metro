@@ -9,12 +9,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.classArgument
-import dev.zacsweers.metro.compiler.fir.resolveClassId
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -48,20 +43,8 @@ public class CircuitContributionExtension(
       .toList()
   }
 
-  private val annotatedSerializableClasses by lazy {
-    session.allSessions
-      .flatMap {
-        it.predicateBasedProvider.getSymbolsByPredicate(CircuitSymbols.circuitSerializablePredicate)
-      }
-      .filterIsInstance<FirRegularClassSymbol>()
-      // Platform FIR sessions contain both declarations. The expect owns code generation.
-      .filterNot { it.rawStatus.isActual }
-      .toList()
-  }
-
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)
-    register(CircuitSymbols.circuitSerializablePredicate)
   }
 
   override fun getContributions(
@@ -94,43 +77,7 @@ public class CircuitContributionExtension(
       }
     }
 
-    for (serializedType in annotatedSerializableClasses) {
-      val typeResolver = typeResolverFactory.create(serializedType) ?: continue
-      val contribution =
-        computeSerializerRegistrationContribution(
-          serializedType,
-          scopeClassId,
-          typeResolver,
-        )
-      if (contribution != null) {
-        contributions.add(contribution)
-      }
-    }
-
     return contributions
-  }
-
-  private fun computeSerializerRegistrationContribution(
-    serializedType: FirRegularClassSymbol,
-    requestedScopeClassId: ClassId,
-    typeResolver: MetroFirTypeResolver,
-  ): MetroContributionExtension.Contribution? {
-    val annotation =
-      serializedType
-        .annotationsIn(session, setOf(CircuitClassIds.CircuitSerializable))
-        .firstOrNull() ?: return null
-    val scopeClassId =
-      extractScopeClassId(annotation, typeResolver, argumentIndex = 0) ?: return null
-    if (scopeClassId != requestedScopeClassId) return null
-
-    val registrationClassId = serializedType.classId.circuitSerializerRegistrationClassId()
-    val metroContributionClassId =
-      MetroContributions.metroContributionClassId(registrationClassId, scopeClassId)
-    return MetroContributionExtension.Contribution(
-      supertype = metroContributionClassId.constructClassLikeType(emptyArray()),
-      replaces = emptyList(),
-      originClassId = registrationClassId,
-    )
   }
 
   private fun computeContributionForClass(
@@ -144,7 +91,7 @@ public class CircuitContributionExtension(
         ?: return null
 
     val scopeClassId =
-      extractScopeClassId(annotation, typeResolver, argumentIndex = 1) ?: return null
+      annotation.extractCircuitScopeClassId(session, typeResolver, argumentIndex = 1) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -180,7 +127,7 @@ public class CircuitContributionExtension(
       function.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull() ?: return null
 
     val scopeClassId =
-      extractScopeClassId(annotation, typeResolver, argumentIndex = 1) ?: return null
+      annotation.extractCircuitScopeClassId(session, typeResolver, argumentIndex = 1) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -200,17 +147,6 @@ public class CircuitContributionExtension(
       replaces = emptyList(),
       originClassId = factoryClassId,
     )
-  }
-
-  private fun extractScopeClassId(
-    annotation: FirAnnotation,
-    typeResolver: MetroFirTypeResolver,
-    argumentIndex: Int,
-  ): ClassId? {
-    if (annotation !is FirAnnotationCall) return null
-    return annotation
-      .classArgument(session, Symbols.Names.scope, index = argumentIndex)
-      ?.resolveClassId(typeResolver)
   }
 
   public class Factory : MetroContributionExtension.Factory {

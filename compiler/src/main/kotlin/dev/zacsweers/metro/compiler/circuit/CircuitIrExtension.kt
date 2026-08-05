@@ -5,11 +5,9 @@ package dev.zacsweers.metro.compiler.circuit
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
-import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
@@ -17,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.finderFor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -49,14 +46,12 @@ import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSamConversion
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -70,11 +65,9 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.starProjectedType
@@ -96,9 +89,8 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.name.StandardClassIds
 
-/** Generates Circuit class declarations before Metro's IR pipeline consumes them. */
+/** Generates Circuit factory declarations before Metro's IR pipeline consumes them. */
 public class CircuitIrDeclarationGenerationExtension
 private constructor(
   private val function0Types: Set<ClassId>,
@@ -123,7 +115,6 @@ private constructor(
   }
 
   override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-    val symbols = CircuitSymbols.Ir(with(compatContext) { pluginContext.finderForBuiltinsCompat() })
     val targetResolver =
       CircuitIrFactoryTargetResolver(
         pluginContext = pluginContext,
@@ -133,9 +124,8 @@ private constructor(
         qualifierAnnotations = qualifierAnnotations,
         compatContext = compatContext,
       )
-    CircuitIrDeclarationGenerator(
+    CircuitIrFactoryDeclarationGenerator(
         pluginContext = pluginContext,
-        symbols = symbols,
         targetResolver = targetResolver,
         compatContext = compatContext,
       )
@@ -144,15 +134,13 @@ private constructor(
 }
 
 /**
- * IR extension for Circuit-generated factories and serializer registrations.
+ * IR extension for Circuit-generated factories.
  *
- * This fills in factory backing fields and `create()` bodies, plus serializer registration
- * `register()` bodies, for declarations generated in FIR or by
- * [CircuitIrDeclarationGenerationExtension].
+ * This fills in factory backing fields and `create()` bodies for declarations generated in FIR or
+ * by [CircuitIrDeclarationGenerationExtension].
  *
  * This extension must run before Compose because it creates composable lambdas that Compose then
- * transforms. It must also run before kotlinx-serialization so its IR extension can lower the
- * generated `Type.serializer()` calls.
+ * transforms.
  */
 public class CircuitIrExtension(
   private val generateClassesInIr: Boolean,
@@ -194,7 +182,7 @@ public class CircuitIrExtension(
         compatContext = compatContext,
       )
     val transformer =
-      CircuitIrTransformer(
+      CircuitIrFactoryTransformer(
         pluginContext = pluginContext,
         symbols = symbols,
         generateClassesInIr = generateClassesInIr,
@@ -438,104 +426,22 @@ private class CircuitIrFactoryTargetResolver(
   }
 }
 
-private class CircuitIrDeclarationGenerator(
+private class CircuitIrFactoryDeclarationGenerator(
   private val pluginContext: IrPluginContext,
-  private val symbols: CircuitSymbols.Ir,
   private val targetResolver: CircuitIrFactoryTargetResolver,
   private val compatContext: CompatContext,
 ) : CompatContext by compatContext {
-  private val builtinsFinder by lazy {
-    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
-  }
-
-  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
-    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
-  }
-
-  private val irTypeSystemContext by lazy { IrTypeSystemContextImpl(pluginContext.irBuiltIns) }
-
-  private val injectAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroInject)!!.constructors.first()
-  }
-
-  private val contributesIntoSetAnnotationCtor by lazy {
-    builtinsFinder.findClass(CONTRIBUTES_INTO_SET_CLASS_ID)!!.constructors.first()
-  }
-
-  private val originAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
-  }
-
-  private val deprecatedAnnotationCtor by lazy {
-    builtinsFinder.findClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
-      it.owner.isPrimary
-    }
-  }
-
-  private val deprecationLevel by lazy {
-    builtinsFinder.findClass(StandardClassIds.DeprecationLevel)!!
-  }
-
-  private val hiddenDeprecationLevel by lazy {
-    deprecationLevel.owner.declarations
-      .filterIsInstance<IrEnumEntry>()
-      .single { it.name.asString() == "HIDDEN" }
-      .symbol
-  }
+  private val generationSupport = CircuitIrGenerationSupport(pluginContext, compatContext)
 
   fun generateDeclarationShells(moduleFragment: IrModuleFragment) {
     for (file in moduleFragment.files) {
       for (declaration in file.declarations.toList()) {
         when (declaration) {
-          is IrClass -> {
-            generateSerializerRegistrationShells(declaration)
-            generateNestedFactoryShells(declaration)
-          }
+          is IrClass -> generateNestedFactoryShells(declaration)
           is IrSimpleFunction -> generateTopLevelFunctionFactoryShell(declaration)
         }
       }
     }
-  }
-
-  private fun generateSerializerRegistrationShells(serializedClass: IrClass) {
-    generateSerializerRegistrationShell(serializedClass)
-
-    for (nestedClass in serializedClass.declarations.filterIsInstance<IrClass>().toList()) {
-      generateSerializerRegistrationShells(nestedClass)
-    }
-  }
-
-  private fun generateSerializerRegistrationShell(serializedClass: IrClass) {
-    // Platform compilations contain both sides of an expect/actual family. Circuit assigns
-    // generation ownership to the expect declaration, so actual declarations must not generate a
-    // second registration.
-    if (serializedClass.isActualDeclaration) return
-
-    val annotation =
-      serializedClass.annotationsCompat().firstOrNull { annotation ->
-        annotation.symbol.owner.parentAsClass.classId == CircuitClassIds.CircuitSerializable
-      } ?: return
-    val serializedType = serializedClass.classId ?: return
-    val scopeClass = annotation.circuitSerializableScope() ?: return
-    val registrationClassId = serializedType.circuitSerializerRegistrationClassId()
-    val file = serializedClass.file
-    if (file.hasTopLevelFactoryClass(registrationClassId)) return
-
-    createSerializerRegistrationClass(
-      parent = file,
-      registrationClassId = registrationClassId,
-      serializedClass = serializedClass,
-      scopeClass = scopeClass,
-    )
-  }
-
-  private fun IrConstructorCall.circuitSerializableScope(): IrClassSymbol? {
-    val positionalScope = arguments.getOrNull(0) as? IrClassReference
-    val namedScope =
-      symbol.owner.parameters
-        .firstOrNull { it.name == CircuitNames.scope }
-        ?.let { parameter -> arguments.getOrNull(parameter.indexInParameters) } as? IrClassReference
-    return (positionalScope ?: namedScope)?.symbol as? IrClassSymbol
   }
 
   private fun generateNestedFactoryShells(targetClass: IrClass) {
@@ -621,13 +527,15 @@ private class CircuitIrDeclarationGenerator(
     factoryClass.apply {
       superTypes += target.codegenTarget.factoryClassId(factoryType).type()
       addFactoryAnnotations(target)
-      markAsDeprecatedHidden()
-      addFakeOverrides(irTypeSystemContext)
+      generationSupport.markAsDeprecatedHidden(this)
+      addFakeOverrides(generationSupport.irTypeSystemContext)
     }
 
     // Kotlin 2.4 requires the class shell to be registered without a constructor. The constructor
     // is then added and registered separately so both declarations receive valid FIR metadata.
-    metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(factoryClass)
+    generationSupport.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(
+      factoryClass
+    )
     factoryClass
       .addConstructor {
         this.origin = CircuitOrigins.IrFactoryConstructor
@@ -641,128 +549,34 @@ private class CircuitIrDeclarationGenerator(
           }
         }
         body = context(pluginContext) { this@constructor.generateDefaultConstructorBody() }
-        metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
-      }
-  }
-
-  private fun createSerializerRegistrationClass(
-    parent: IrFile,
-    registrationClassId: ClassId,
-    serializedClass: IrClass,
-    scopeClass: IrClassSymbol,
-  ) {
-    val registrationType = symbols.serializerRegistration ?: return
-    val registrationClass =
-      pluginContext.irFactory
-        .buildClass {
-          name = registrationClassId.shortClassName
-          origin =
-            IrDeclarationOrigin.GeneratedByPlugin(
-              CircuitOrigins.SerializerRegistrationClass(serializedClass.classIdOrFail)
-            )
-          kind = ClassKind.CLASS
-          visibility = DescriptorVisibilities.PUBLIC
-          modality = Modality.FINAL
-        }
-        .apply {
-          this.parent = parent
-          createThisReceiverParameter()
-        }
-    parent.addChild(registrationClass)
-    registrationClass.apply {
-      superTypes += registrationType.defaultType
-      addSerializerRegistrationAnnotations(serializedClass, scopeClass)
-      markAsDeprecatedHidden()
-      addFakeOverrides(irTypeSystemContext)
-    }
-
-    // Kotlin 2.4 requires the class shell to be registered without a constructor. Register the
-    // constructor separately so both declarations receive valid FIR metadata.
-    metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(registrationClass)
-    registrationClass
-      .addConstructor {
-        origin = CircuitOrigins.IrSerializerRegistrationConstructor
-        isPrimary = true
-        visibility = DescriptorVisibilities.PUBLIC
-      }
-      .apply {
-        body = context(pluginContext) { generateDefaultConstructorBody() }
-        metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+        generationSupport.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(
+          this
+        )
       }
   }
 
   private fun IrClass.addFactoryAnnotations(target: CircuitIrFactoryTarget) {
-    addAnnotationCompat(context(pluginContext) { buildAnnotation(symbol, injectAnnotationCtor) })
     val scopeClass = requireNotNull(target.scopeClass)
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, contributesIntoSetAnnotationCtor) { annotation ->
-          annotation.arguments[0] = kClassReference(scopeClass)
-        }
+    val originClass =
+      target.originClassId?.let { originClassId ->
+        with(compatContext) {
+          pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
+        } ?: error("Could not find Circuit origin class $originClassId")
       }
-    )
-    target.qualifier?.let { addAnnotationCompat(it) }
-    target.originClassId?.let { originClassId ->
-      addAnnotationCompat(
-        context(pluginContext) {
-          buildAnnotation(symbol, originAnnotationCtor) { annotation ->
-            annotation.arguments[0] =
-              kClassReference(
-                with(compatContext) {
-                  pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
-                } ?: error("Could not find Circuit origin class $originClassId")
-              )
-          }
-        }
-      )
-    }
-  }
-
-  private fun IrClass.addSerializerRegistrationAnnotations(
-    serializedClass: IrClass,
-    scopeClass: IrClassSymbol,
-  ) {
-    addAnnotationCompat(context(pluginContext) { buildAnnotation(symbol, injectAnnotationCtor) })
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, contributesIntoSetAnnotationCtor) { annotation ->
-          annotation.arguments[0] = kClassReference(scopeClass)
-        }
-      }
-    )
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, originAnnotationCtor) { annotation ->
-          annotation.arguments[0] = kClassReference(serializedClass.symbol)
-        }
-      }
+    generationSupport.addGeneratedClassAnnotations(
+      generatedClass = this,
+      scopeClass = scopeClass,
+      originClass = originClass,
+      qualifier = target.qualifier,
     )
   }
 
   private fun ClassId.type(): IrType {
-    return builtinsFinder.findClass(this)?.defaultType ?: error("Could not find $this")
-  }
-
-  private fun IrClass.markAsDeprecatedHidden() {
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, deprecatedAnnotationCtor) { annotation ->
-          annotation.arguments[0] =
-            irString("This synthesized declaration should not be used directly")
-          annotation.arguments[2] =
-            IrGetEnumValueImpl(
-              SYNTHETIC_OFFSET,
-              SYNTHETIC_OFFSET,
-              deprecationLevel.defaultType,
-              hiddenDeprecationLevel,
-            )
-        }
-      }
-    )
+    return generationSupport.findBuiltinsClass(this)?.defaultType ?: error("Could not find $this")
   }
 }
 
-private class CircuitIrTransformer(
+private class CircuitIrFactoryTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
   private val generateClassesInIr: Boolean,
@@ -773,17 +587,10 @@ private class CircuitIrTransformer(
   private val builtinsFinder by lazy {
     with(compatContext) { pluginContext.finderForBuiltinsCompat() }
   }
-
-  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
-    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
-  }
+  private val generationSupport = CircuitIrGenerationSupport(pluginContext, compatContext)
 
   private val composableAnnotationCtor by lazy {
     builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
-  }
-
-  private val originAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
   }
 
   /** Cached invoke() symbol for metro's Provider type. */
@@ -808,19 +615,11 @@ private class CircuitIrTransformer(
         // Legacy FIR-generated Circuit factories could not safely receive @Origin in FIR, so keep
         // adding it here. IR-generated factories already get it as part of shell creation.
         circuitTargetInfo.originClassId?.let { originClassId ->
-          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-            declaration,
-            context(pluginContext) {
-              buildAnnotation(declaration.symbol, originAnnotationCtor) {
-                it.arguments[0] =
-                  kClassReference(
-                    with(compatContext) {
-                      pluginContext.finderFor(declaration).findClass(originClassId)
-                    }!!
-                  )
-              }
-            },
-          )
+          val originClass =
+            with(compatContext) {
+              pluginContext.finderFor(declaration).findClass(originClassId)
+            }!!
+          generationSupport.addMetadataVisibleOrigin(declaration, originClass)
         }
       }
 
@@ -833,78 +632,7 @@ private class CircuitIrTransformer(
       createFunction.modality = Modality.FINAL
       createFunction.body = generateCreateFunctionBody(createFunction, screenClass, fieldsByName)
     }
-
-    if (generatedOrigin is CircuitOrigins.SerializerRegistrationClass) {
-      finalizeSerializerRegistration(declaration, generatedOrigin)
-    }
     return super.visitClass(declaration)
-  }
-
-  private fun finalizeSerializerRegistration(
-    registrationClass: IrClass,
-    origin: CircuitOrigins.SerializerRegistrationClass,
-  ) {
-    val registerFunction =
-      symbols.serializerRegisterFunction(registrationClass)
-        ?: error(
-          "Generated Circuit serializer registration ${registrationClass.classId} is missing " +
-            "CircuitSerializerRegistration.register()."
-        )
-
-    val serializedClass =
-      with(compatContext) {
-        pluginContext.finderFor(registrationClass).findClass(origin.serializedType)
-      } ?: error("Could not find @CircuitSerializable type ${origin.serializedType}.")
-
-    if (!generateClassesInIr) {
-      // FIR carries Metro's origin data separately. Materialize the annotation before Metro's IR
-      // pipeline reads the generated contribution, as is done for FIR-generated factories above.
-      metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-        registrationClass,
-        context(pluginContext) {
-          buildAnnotation(registrationClass.symbol, originAnnotationCtor) { annotation ->
-            annotation.arguments[0] = kClassReference(serializedClass)
-          }
-        },
-      )
-    }
-
-    val serializerFunction =
-      symbols.serializerFunction(serializedClass)
-        ?: error(
-          "Could not find serializer output for ${origin.serializedType.asSingleFqName()}. " +
-            "Apply the kotlinx-serialization compiler plugin."
-        )
-
-    val subclassFunction =
-      symbols.polymorphicSubclassFunction
-        ?: error(
-          "Could not find PolymorphicModuleBuilder.subclass(KClass, KSerializer). Ensure " +
-            "Circuit's serialization runtime and kotlinx-serialization-core are on the classpath."
-        )
-
-    val builderParameter =
-      registerFunction.regularParameters.firstOrNull { it.name == CircuitNames.builder }
-        ?: registerFunction.regularParameters.singleOrNull()
-        ?: error(
-          "CircuitSerializerRegistration.register() on ${registrationClass.classId} is missing " +
-            "its builder parameter."
-        )
-
-    if (registerFunction.isFakeOverride) {
-      registerFunction.finalizeFakeOverride(registrationClass.thisReceiver!!)
-    }
-    registerFunction.modality = Modality.FINAL
-    registerFunction.body =
-      pluginContext.createIrBuilder(registerFunction.symbol).irBlockBody {
-        val serializerCall = irInvoke(callee = serializerFunction)
-        +irInvoke(
-          dispatchReceiver = irGet(builderParameter),
-          callee = subclassFunction,
-          typeArgs = listOf(serializedClass.defaultType),
-          args = listOf(kClassReference(serializedClass), serializerCall),
-        )
-      }
   }
 
   /** Produces the unified target model for the body generator without cross-extension state. */
@@ -1470,9 +1198,6 @@ private class CircuitIrTransformer(
   }
 }
 
-private val IrClass.isActualDeclaration: Boolean
-  get() = (metadata as? FirMetadataSource.Class)?.fir?.symbol?.rawStatus?.isActual == true
-
 private fun ClassId?.isCircuitProviderParameterType(function0Types: Set<ClassId>): Boolean {
   val classId = this ?: return false
   if (classId in Symbols.ClassIds.commonMetroProviders) return true
@@ -1501,6 +1226,3 @@ private data class CircuitIrFactoryTarget(
   val constructorParams: List<CircuitIrConstructorParam>,
   val qualifier: IrConstructorCall?,
 )
-
-private val CONTRIBUTES_INTO_SET_CLASS_ID =
-  ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesIntoSet"))

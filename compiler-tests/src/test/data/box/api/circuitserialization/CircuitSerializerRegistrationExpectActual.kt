@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable(with = PlatformScreenSerializer::class)
 expect object PlatformScreen : Screen
 
-expect object PlatformScreenSerializer : KSerializer<PlatformScreen>
+expect <!ABSTRACT_MEMBER_NOT_IMPLEMENTED{METADATA}!>object PlatformScreenSerializer<!> : KSerializer<PlatformScreen>
 
 // MODULE: platform()()(common)
 // FILE: PlatformScreen.platform.kt

@@ -22,6 +22,10 @@ import dev.zacsweers.metro.compiler.circuit.CircuitContributionExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableContributionExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableFirExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableIrDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableIrExtension
 import dev.zacsweers.metro.compiler.circuit.configureCircuit
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
@@ -286,6 +290,9 @@ class MetroExtensionRegistrarConfigurator(
             add(GenerateProvidesInGraphExtension.Factory().create(session, options, compatContext))
             if (options.enableCircuitCodegen) {
               CircuitFirExtension.Factory().create(session, options, compatContext)?.let(::add)
+              CircuitSerializableFirExtension.Factory()
+                .create(session, options, compatContext)
+                ?.let(::add)
             }
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.Factory()
@@ -309,6 +316,10 @@ class MetroExtensionRegistrarConfigurator(
             if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(
                 CircuitFirExtension.Factory().create(session, options, compatContext)!!
+                  as MetroContributionHintExtension
+              )
+              add(
+                CircuitSerializableFirExtension.Factory().create(session, options, compatContext)!!
                   as MetroContributionHintExtension
               )
             }
@@ -336,6 +347,10 @@ class MetroExtensionRegistrarConfigurator(
             )
             if (options.enableCircuitCodegen && !options.generateClassesInIr) {
               add(CircuitContributionExtension.Factory().create(session, options, compatContext)!!)
+              add(
+                CircuitSerializableContributionExtension.Factory()
+                  .create(session, options, compatContext)!!
+              )
             }
             if (options.enableHiltInterop) {
               HiltContributionExtension.Factory()
@@ -350,6 +365,9 @@ class MetroExtensionRegistrarConfigurator(
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
       if (options.generateClassesInIr) {
         IrGenerationExtension.registerExtension(
+          CircuitSerializableIrDeclarationGenerationExtension.create(compatContext = compatContext)
+        )
+        IrGenerationExtension.registerExtension(
           CircuitIrDeclarationGenerationExtension.create(
             classIds = classIds,
             compatContext = compatContext,
@@ -360,6 +378,12 @@ class MetroExtensionRegistrarConfigurator(
         CircuitIrExtension.create(
           generateClassesInIr = options.generateClassesInIr,
           classIds = classIds,
+          compatContext = compatContext,
+        )
+      )
+      IrGenerationExtension.registerExtension(
+        CircuitSerializableIrExtension.create(
+          generateClassesInIr = options.generateClassesInIr,
           compatContext = compatContext,
         )
       )

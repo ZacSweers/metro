@@ -11,6 +11,8 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics
 import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.circuit.CircuitFirCheckers
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableFirCheckers
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableFirExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitSymbols
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
@@ -87,6 +89,7 @@ public class MetroFirExtensionRegistrar(
     if (options.enableCircuitCodegen) {
       +CircuitSymbols.Fir.getFactory()
       +::CircuitFirCheckers
+      +::CircuitSerializableFirCheckers
       registerDiagnosticContainers(CircuitDiagnostics)
     }
 
@@ -130,6 +133,18 @@ public class MetroFirExtensionRegistrar(
 
       // Build list of native Metro generators
       val nativeExtensions = buildList {
+        if (options.enableCircuitCodegen && options.generateClassesInIr) {
+          // Metadata-only common compilations do not run IR extensions. Generate only expect-owned
+          // registrations here so platform compilations never need to fall back to their actuals.
+          add(
+            CircuitSerializableFirExtension(
+              session = session,
+              compatContext = compatContext,
+              expectDeclarationsOnly = true,
+            )
+          )
+        }
+
         // Don't gate on isCli because this also handles top-level function gen
         add(
           wrapNativeGenerator("FirGen - InjectedClass", true, ::InjectedClassFirGenerator)(session)

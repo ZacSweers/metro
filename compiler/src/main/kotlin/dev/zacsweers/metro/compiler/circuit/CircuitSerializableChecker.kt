@@ -129,7 +129,7 @@ internal object CircuitSerializableClassChecker : FirClassChecker(MppCheckerKind
     val registrationClassId = declaration.symbol.classId.circuitSerializerRegistrationClassId()
     val conflicts =
       session.allSessions
-        .flatMap { CircuitFirExtension.findCircuitSerializableClasses(it) }
+        .flatMap { it.findCircuitSerializableClasses() }
         .distinctBy { it.classId }
         .filter { it.classId.circuitSerializerRegistrationClassId() == registrationClassId }
     if (conflicts.size > 1) {
