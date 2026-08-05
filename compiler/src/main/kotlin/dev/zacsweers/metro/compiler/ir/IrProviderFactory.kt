@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
-internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallable {
+internal sealed class ProviderFactory : IrMetroFactory(), IrBindingContainerCallable {
   /**
    * The canonical typeKey for this provider. For `@IntoSet`/`@IntoMap` bindings, this includes the
    * unique `@MultibindingElement` qualifier. For non-multibinding providers, this equals
