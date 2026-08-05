@@ -218,8 +218,7 @@ internal abstract class BindingExpressionGenerator<T : IrBinding>(
     return with(scope) { instanceFactory(type, this@wrapInInstanceFactory, allowPropertyGetter) }
   }
 
-  // Inlining also keeps nested binding generation on the same heap-backed recursion stack.
-  protected inline fun IrBuilderWithScope.wrapInProviderFunction(
+  protected fun IrBuilderWithScope.wrapInProviderFunction(
     type: IrType,
     returnExpression: IrBlockBodyBuilder.(function: IrSimpleFunction) -> IrExpression,
   ): IrExpression {
