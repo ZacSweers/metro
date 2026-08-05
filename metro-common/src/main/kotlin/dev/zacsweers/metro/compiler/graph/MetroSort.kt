@@ -197,8 +197,8 @@ public fun <V : Comparable<V>> metroSort(
 }
 
 /**
- * Picks the smallest set of vertices in this SCC that, when their deferrable outgoing edges are
- * cut, leaves the remaining graph acyclic.
+ * Picks bindings to defer until this component has no remaining cycles. Every selected binding is
+ * needed to keep those cycles broken.
  *
  * "Minimal" matters because every deferred vertex becomes a `DelegateFactory` in generated code:
  * fewer deferred sources = fewer wrappers = cleaner output and less indirection at runtime.
@@ -217,17 +217,18 @@ public fun <V : Comparable<V>> metroSort(
  * 3. Try each candidate **alone**, in priority order. The first one whose deferral makes the SCC
  *    acyclic wins. Single-vertex deferral is the common case (one `Provider<T>` typically breaks a
  *    2-cycle).
- * 4. If no individual candidate works, try **all candidates together** as a last resort. Some
- *    interleaved cycles need multiple soft cuts.
- * 5. If even that fails, return empty (the available deferrable edges aren't enough to break the
- *    cycle).
+ * 4. If no individual candidate works, try **all candidates together**. Some interleaved cycles
+ *    need multiple soft cuts. If this fails, return empty because the available deferrable edges
+ *    aren't enough to break the cycle.
+ * 5. Remove candidates in reverse priority order while the remaining graph stays acyclic. This
+ *    keeps preferred candidates and ensures that every remaining candidate is necessary.
  *
  * Candidate priority: implicitly deferrable vertices (`@AssistedFactory`s, which the user already
  * marked as constructed-on-demand) come first, then natural order. This keeps generated code more
  * stable and prefers obvious-on-the-source choices over arbitrary picks.
  *
- * Cycle-checking is done via [ReusableCycleChecker], which masks the deferred edges during a
- * standard recursive DFS instead of materializing a new adjacency map for each candidate test.
+ * Cycle-checking is done via [ReusableCycleChecker], which masks the deferred edges during an
+ * iterative DFS instead of materializing a new adjacency map for each candidate test.
  *
  * Example: `A <-> B` with `B -> A` deferrable (`Provider<A>`):
  * ```
@@ -301,80 +302,26 @@ private fun <V : Comparable<V>> findMinimalDeferralSet(
     }
   }
 
-  // If no single candidate works, try all candidates together
-  if (cycleChecker.isAcyclicWith(potentialCandidates)) {
-    return potentialCandidates
+  // If no single candidate works, first check whether all candidates can break the cycle.
+  if (!cycleChecker.isAcyclicWith(potentialCandidates)) {
+    // No combination of deferrable edges can break the cycle
+    return emptySet()
   }
 
-  // No combination of deferrable edges can break the cycle
-  return emptySet()
-}
+  // Try removing less preferred bindings first.
+  for (index in sortedCandidates.lastIndex downTo 0) {
+    // Every single candidate was already tested, so two remaining candidates are both necessary.
+    if (potentialCandidates.size == 2) break
 
-/**
- * Reusable cycle checker that avoids rebuilding adjacency maps for each candidate test. Instead, it
- * masks deferrable edges dynamically during DFS traversal.
- */
-private class ReusableCycleChecker<V>(
-  private val vertices: List<V>,
-  private val sccAdjacency: Map<V, Set<V>>,
-  private val deferrableEdgesFrom: Map<V, Set<V>>,
-) {
-  // Reuse these sets across checks to reduce allocations.
-  private val visited: HashSet<V>
-  private val inStack: HashSet<V>
-
-  init {
-    // Sized to the full SCC since the worst case is "every vertex visited."
-    val cap = calculateInitialCapacity(vertices.size)
-    visited = HashSet(cap)
-    inStack = HashSet(cap)
+    val candidate = sortedCandidates[index]
+    potentialCandidates.remove(candidate)
+    if (!cycleChecker.isAcyclicAfterRestoringEdges(candidate, potentialCandidates)) {
+      // This candidate is required to keep the remaining graph acyclic.
+      potentialCandidates.add(candidate)
+    }
   }
 
-  /**
-   * Checks if the graph would be acyclic if we defer the given nodes. When a node is deferred, its
-   * deferrable outgoing edges are skipped.
-   */
-  fun isAcyclicWith(deferredNodes: Set<V>): Boolean {
-    visited.clear()
-    inStack.clear()
-
-    for (node in vertices) {
-      if (node !in visited && !dfs(node, deferredNodes)) {
-        return false
-      }
-    }
-    return true
-  }
-
-  private fun dfs(node: V, deferredNodes: Set<V>): Boolean {
-    if (node in inStack) {
-      // Cycle found
-      return false
-    }
-    if (node in visited) {
-      return true
-    }
-
-    visited.add(node)
-    inStack.add(node)
-
-    val neighbors = sccAdjacency[node].orEmpty()
-    val deferrableFromThis =
-      if (node in deferredNodes) {
-        deferrableEdgesFrom[node]
-      } else {
-        null
-      }
-
-    for (neighbor in neighbors) {
-      // Skip deferrable edges from deferred nodes (this matches what sortVerticesInSCC will do)
-      if (deferrableFromThis != null && neighbor in deferrableFromThis) continue
-      if (!dfs(neighbor, deferredNodes)) return false
-    }
-
-    inStack.remove(node)
-    return true
-  }
+  return potentialCandidates
 }
 
 /**

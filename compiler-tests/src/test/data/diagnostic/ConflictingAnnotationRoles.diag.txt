@@ -1,0 +1,15 @@
+/ConflictingAnnotationRoles.kt:39:1: error: Annotation '@ExternalQualifierAndScope' has conflicting Metro roles: qualifier, scope.
+
+/ConflictingAnnotationRoles.kt:42:1: error: Annotation '@QualifierAndMapKey' has conflicting Metro roles: qualifier, map key.
+
+/ConflictingAnnotationRoles.kt:45:1: error: Annotation '@ScopeAndMapKey' has conflicting Metro roles: scope, map key.
+
+/ConflictingAnnotationRoles.kt:48:1: error: Annotation '@AllRoles' has conflicting Metro roles: qualifier, scope, map key.
+
+/ConflictingAnnotationRoles.kt:51:1: error: Annotation '@DaggerAndJsrRoles' has conflicting Metro roles: qualifier, scope, map key.
+
+/ConflictingAnnotationRoles.kt:56:3: error: Annotation '@ExternalQualifierAndScope' has conflicting Metro roles: qualifier, scope.
+
+/ConflictingAnnotationRoles.kt:64:1: error: Annotation '@QualifierAndMapKey' has conflicting Metro roles: qualifier, map key.
+
+/ConflictingAnnotationRoles.kt:71:21: error: Annotation '@QualifierAndMapKey' has conflicting Metro roles: qualifier, map key.

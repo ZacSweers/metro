@@ -2,7 +2,11 @@
 
 This module provides a compatibility layer for Metro's compiler plugin to work across different Kotlin compiler versions. As the Kotlin compiler APIs evolve and change between versions, this layer abstracts away version-specific differences.
 
-This collection of artifacts is not published and is instead shaded into Metro's compiler plugin.
+These artifacts are published and are also shaded into Metro's compiler plugin. Consumers that need the compatibility layer directly can depend on the stable alias, which points to the newest version-specific artifact in each Metro release:
+
+```kotlin
+implementation("dev.zacsweers.metro:compiler-compat-latest:<metro-version>")
+```
 
 ## Overview
 

@@ -1,0 +1,224 @@
+/MixedParallelDependencyCycles.kt:12:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing LazyFirstGraph
+
+  cycle:
+      +-> LazyFirstB -> LazyFirstA --+
+      +------------------------------+
+
+  trace (in LazyFirstGraph):
+      LazyFirstB is injected at LazyFirstA(…, eager)
+      LazyFirstA is injected at LazyFirstB(…, a)
+      LazyFirstB is injected at LazyFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> LazyFirstB` or
+        `Lazy<LazyFirstB>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:21:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerLazyFirstGraph
+
+  cycle:
+      +-> EagerLazyFirstB -> EagerLazyFirstA --+
+      +----------------------------------------+
+
+  trace (in EagerLazyFirstGraph):
+      EagerLazyFirstB is injected at EagerLazyFirstA(…, eager)
+      EagerLazyFirstA is injected at EagerLazyFirstB(…, a)
+      EagerLazyFirstB is injected at EagerLazyFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerLazyFirstB` or `Lazy<EagerLazyFirstB>`. Only do this if you know what you're doing
+        though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:30:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing FunctionFirstGraph
+
+  cycle:
+      +-> FunctionFirstB -> FunctionFirstA --+
+      +--------------------------------------+
+
+  trace (in FunctionFirstGraph):
+      FunctionFirstB is injected at FunctionFirstA(…, eager)
+      FunctionFirstA is injected at FunctionFirstB(…, a)
+      FunctionFirstB is injected at FunctionFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        FunctionFirstB` or `Lazy<FunctionFirstB>`. Only do this if you know what you're doing
+        though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:43:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerFunctionFirstGraph
+
+  cycle:
+      +-> EagerFunctionFirstB -> EagerFunctionFirstA --+
+      +------------------------------------------------+
+
+  trace (in EagerFunctionFirstGraph):
+      EagerFunctionFirstB is injected at EagerFunctionFirstA(…, eager)
+      EagerFunctionFirstA is injected at EagerFunctionFirstB(…, a)
+      EagerFunctionFirstB is injected at EagerFunctionFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerFunctionFirstB` or `Lazy<EagerFunctionFirstB>`. Only do this if you know what you're
+        doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:52:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing ProviderFirstGraph
+
+  cycle:
+      +-> ProviderFirstB -> ProviderFirstA --+
+      +--------------------------------------+
+
+  trace (in ProviderFirstGraph):
+      ProviderFirstB is injected at ProviderFirstA(…, eager)
+      ProviderFirstA is injected at ProviderFirstB(…, a)
+      ProviderFirstB is injected at ProviderFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        ProviderFirstB` or `Lazy<ProviderFirstB>`. Only do this if you know what you're doing
+        though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:65:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerProviderFirstGraph
+
+  cycle:
+      +-> EagerProviderFirstB -> EagerProviderFirstA --+
+      +------------------------------------------------+
+
+  trace (in EagerProviderFirstGraph):
+      EagerProviderFirstB is injected at EagerProviderFirstA(…, eager)
+      EagerProviderFirstA is injected at EagerProviderFirstB(…, a)
+      EagerProviderFirstB is injected at EagerProviderFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerProviderFirstB` or `Lazy<EagerProviderFirstB>`. Only do this if you know what you're
+        doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:78:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing SuspendFunctionFirstGraph
+
+  cycle:
+      +-> SuspendFunctionFirstB -> SuspendFunctionFirstA --+
+      +----------------------------------------------------+
+
+  trace (in SuspendFunctionFirstGraph):
+      SuspendFunctionFirstB is injected at SuspendFunctionFirstA(…, eager)
+      SuspendFunctionFirstA is injected at SuspendFunctionFirstB(…, a)
+      SuspendFunctionFirstB is injected at SuspendFunctionFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        SuspendFunctionFirstB` or `Lazy<SuspendFunctionFirstB>`. Only do this if you know what
+        you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:91:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerSuspendFunctionFirstGraph
+
+  cycle:
+      +-> EagerSuspendFunctionFirstB -> EagerSuspendFunctionFirstA --+
+      +--------------------------------------------------------------+
+
+  trace (in EagerSuspendFunctionFirstGraph):
+      EagerSuspendFunctionFirstB is injected at EagerSuspendFunctionFirstA(…, eager)
+      EagerSuspendFunctionFirstA is injected at EagerSuspendFunctionFirstB(…, a)
+      EagerSuspendFunctionFirstB is injected at EagerSuspendFunctionFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerSuspendFunctionFirstB` or `Lazy<EagerSuspendFunctionFirstB>`. Only do this if you know
+        what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:104:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing SuspendProviderFirstGraph
+
+  cycle:
+      +-> SuspendProviderFirstB -> SuspendProviderFirstA --+
+      +----------------------------------------------------+
+
+  trace (in SuspendProviderFirstGraph):
+      SuspendProviderFirstB is injected at SuspendProviderFirstA(…, eager)
+      SuspendProviderFirstA is injected at SuspendProviderFirstB(…, a)
+      SuspendProviderFirstB is injected at SuspendProviderFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        SuspendProviderFirstB` or `Lazy<SuspendProviderFirstB>`. Only do this if you know what
+        you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:117:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerSuspendProviderFirstGraph
+
+  cycle:
+      +-> EagerSuspendProviderFirstB -> EagerSuspendProviderFirstA --+
+      +--------------------------------------------------------------+
+
+  trace (in EagerSuspendProviderFirstGraph):
+      EagerSuspendProviderFirstB is injected at EagerSuspendProviderFirstA(…, eager)
+      EagerSuspendProviderFirstA is injected at EagerSuspendProviderFirstB(…, a)
+      EagerSuspendProviderFirstB is injected at EagerSuspendProviderFirstA(…, eager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerSuspendProviderFirstB` or `Lazy<EagerSuspendProviderFirstB>`. Only do this if you know
+        what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:132:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing RepeatedMixedGraph
+
+  cycle:
+      +-> RepeatedMixedB -> RepeatedMixedA --+
+      +--------------------------------------+
+
+  trace (in RepeatedMixedGraph):
+      RepeatedMixedB is injected at RepeatedMixedA(…, firstEager)
+      RepeatedMixedA is injected at RepeatedMixedB(…, a)
+      RepeatedMixedB is injected at RepeatedMixedA(…, firstEager)
+      ...
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        RepeatedMixedB` or `Lazy<RepeatedMixedB>`. Only do this if you know what you're doing
+        though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:139:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing LazyFirstSelfGraph
+
+  cycle:
+      +-> LazyFirstSelf --+
+      +-------------------+
+
+  trace (in LazyFirstSelfGraph):
+      LazyFirstSelf is injected at LazyFirstSelf(…, eager)
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() -> LazyFirstSelf`
+        or `Lazy<LazyFirstSelf>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle
+
+
+/MixedParallelDependencyCycles.kt:146:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing EagerFirstSelfGraph
+
+  cycle:
+      +-> EagerFirstSelf --+
+      +--------------------+
+
+  trace (in EagerFirstSelfGraph):
+      EagerFirstSelf is injected at EagerFirstSelf(…, eager)
+
+  help: you can break the cycle by injecting a deferred type at one edge, e.g. `() ->
+        EagerFirstSelf` or `Lazy<EagerFirstSelf>`. Only do this if you know what you're doing
+        though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

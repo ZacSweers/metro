@@ -17,6 +17,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.BINDS_OPTIONAL_OF_WARNING
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_MULTIPLE_TARGETS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_ANNOTATION_ROLES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
@@ -146,6 +147,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val METRO_DECLARATION_VISIBILITY_ERROR by error2<KtElement, String, String>(VISIBILITY_MODIFIER)
   val METRO_TYPE_PARAMETERS_ERROR by error1<KtElement, String>(TYPE_PARAMETERS_LIST)
   val SUSPICIOUS_OBJECT_INJECTION_WARNING by warning1<KtElement, String>(TYPE_PARAMETERS_LIST)
+  val CONFLICTING_ANNOTATION_ROLES by error2<KtElement, String, String>(NAME_IDENTIFIER)
 
   // DependencyGraph factory errors
   val GRAPH_CREATORS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -298,6 +300,12 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(METRO_DECLARATION_VISIBILITY_ERROR, "{0} must be {1}.", TO_STRING, STRING)
         put(METRO_TYPE_PARAMETERS_ERROR, "{0}", STRING)
         put(SUSPICIOUS_OBJECT_INJECTION_WARNING, "{0}", STRING)
+        put(
+          CONFLICTING_ANNOTATION_ROLES,
+          "Annotation ''@{0}'' has conflicting Metro roles: {1}.",
+          STRING,
+          STRING,
+        )
 
         // DependencyGraph creator errors
         put(GRAPH_CREATORS_ERROR, "{0}", STRING)

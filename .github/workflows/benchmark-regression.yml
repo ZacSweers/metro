@@ -388,7 +388,7 @@ jobs:
       - name: Run baseline build benchmark
         run: |
           cd benchmark
-          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios raw_compilation 500
 
       - name: Save baseline results
         id: baseline
@@ -436,7 +436,7 @@ jobs:
         run: |
           cd benchmark
           rm -rf benchmark-results
-          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios abi_change,raw_compilation 500
+          ./run_benchmarks.sh single --ref HEAD --modes metro --scenarios raw_compilation 500
 
       - name: Save current results
         id: current

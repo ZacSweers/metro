@@ -117,6 +117,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt")
+    public void testContributedGraphFactoryReplacementAcrossAdditionalScopes() {
+      run("ContributedGraphFactoryReplacementAcrossAdditionalScopes.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesBindingScopeArgumentOrder.kt")
     public void testContributesBindingScopeArgumentOrder() {
       run("ContributesBindingScopeArgumentOrder.kt");
@@ -2224,6 +2230,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("AssistedSuspendFunctionParameter.kt")
+      public void testAssistedSuspendFunctionParameter() {
+        run("AssistedSuspendFunctionParameter.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         run("AssistedTypesCanBeExplicitlyProvided.kt");
@@ -3453,6 +3465,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("AssistedSuspendFunctionParameter.kt")
+    public void testAssistedSuspendFunctionParameter() {
+      run("AssistedSuspendFunctionParameter.kt");
+    }
+
+    @Test
     @TestMetadata("ConstructorInjection.kt")
     public void testConstructorInjection() {
       run("ConstructorInjection.kt");
@@ -3618,6 +3636,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("MultipleSuspendDeps.kt")
     public void testMultipleSuspendDeps() {
       run("MultipleSuspendDeps.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedGraphExtensionMiddleScopedBinding.kt")
+    public void testNestedGraphExtensionMiddleScopedBinding() {
+      run("NestedGraphExtensionMiddleScopedBinding.kt");
     }
 
     @Test

@@ -25,6 +25,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit", "_reports");
   }
 
+  @Test
+  @TestMetadata("ConflictingAnnotationRoles.kt")
+  public void testConflictingAnnotationRoles() {
+    run("ConflictingAnnotationRoles.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
   @TestDataPath("$PROJECT_ROOT")
@@ -302,6 +308,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     @TestMetadata("CyclesShouldFailAcrossMultipleGraphs.kt")
     public void testCyclesShouldFailAcrossMultipleGraphs() {
       run("CyclesShouldFailAcrossMultipleGraphs.kt");
+    }
+
+    @Test
+    @TestMetadata("MixedParallelDependencyCycles.kt")
+    public void testMixedParallelDependencyCycles() {
+      run("MixedParallelDependencyCycles.kt");
     }
 
     @Test
@@ -616,6 +628,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("GraphPrivateBindingNotVisibleToGrandchild.kt")
+      public void testGraphPrivateBindingNotVisibleToGrandchild() {
+        run("GraphPrivateBindingNotVisibleToGrandchild.kt");
+      }
+
+      @Test
       @TestMetadata("GraphPrivateGraphExtensionFactoryParam.kt")
       public void testGraphPrivateGraphExtensionFactoryParam() {
         run("GraphPrivateGraphExtensionFactoryParam.kt");
@@ -631,6 +649,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       @TestMetadata("OverridesAreTypeChecked.kt")
       public void testOverridesAreTypeChecked() {
         run("OverridesAreTypeChecked.kt");
+      }
+
+      @Test
+      @TestMetadata("ParentDuplicateBindingsUsedOnlyByChild.kt")
+      public void testParentDuplicateBindingsUsedOnlyByChild() {
+        run("ParentDuplicateBindingsUsedOnlyByChild.kt");
       }
     }
 

@@ -225,7 +225,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-contribution-hints-in-fir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Generate contribution hints in FIR.",
+      description = "Generate contribution hints in FIR. Required on Kotlin 2.3.20-Beta1+.",
       required = false,
       allowMultipleOccurrences = false,
     )
@@ -235,7 +235,9 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       name = "generate-classes-in-ir",
       defaultValue = false,
       valueDescription = "<true | false>",
-      description = "Generate metadata-visible hidden classes in IR instead of FIR.",
+      description =
+        "Generate metadata-visible hidden class implementations in IR, retaining FIR shells " +
+          "required by contribution hints.",
       required = false,
       allowMultipleOccurrences = false,
     )

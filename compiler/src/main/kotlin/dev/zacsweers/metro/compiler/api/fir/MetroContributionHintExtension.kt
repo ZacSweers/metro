@@ -23,15 +23,20 @@ public interface MetroContributionHintExtension {
   /**
    * Returns contribution hints for classes generated or discovered by this extension.
    *
+   * Every contributing class returned here must be visible in FIR. An implementation that completes
+   * the class in IR must also extend [MetroFirDeclarationGenerationExtension], generate a FIR
+   * declaration shell with the same [ClassId], and register that declaration extension's
+   * [MetroFirDeclarationGenerationExtension.Factory].
+   *
    * @return List of contribution hints, empty by default.
    */
   public fun getContributionHints(): List<ContributionHint> = emptyList()
 
   /**
-   * Represents a contribution hint for a generated class that should be discoverable across module
-   * boundaries.
+   * Represents a contribution hint for a FIR-visible contributing class that should be discoverable
+   * across module boundaries.
    *
-   * @property contributingClassId The class ID of the generated contributing class.
+   * @property contributingClassId The class ID of the FIR-visible contributing class.
    * @property scope The scope class ID this contribution targets.
    */
   public data class ContributionHint(val contributingClassId: ClassId, val scope: ClassId)

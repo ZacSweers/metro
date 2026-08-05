@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitDiagnostics
 import dev.zacsweers.metro.compiler.circuit.CircuitFactorySupertypeGenerator
 import dev.zacsweers.metro.compiler.circuit.CircuitFirCheckers
 import dev.zacsweers.metro.compiler.circuit.CircuitSymbols
+import dev.zacsweers.metro.compiler.circuit.generateCircuitFactoriesInFir
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.generators.AssistedFactoryFirGenerator
 import dev.zacsweers.metro.compiler.fir.generators.BindingMirrorClassFirGenerator
@@ -75,7 +76,7 @@ public class MetroFirExtensionRegistrar(
     // These are types
     if (!isIde) {
       +{ session: FirSession -> FirAccessorOverrideStatusTransformer(session, compatContext) }
-      if (options.enableCircuitCodegen && !options.generateClassesInIr) {
+      if (options.enableCircuitCodegen && options.generateCircuitFactoriesInFir) {
         +supertypeGenerator(
           "Supertypes - circuit factories",
           { session, compatContext -> CircuitFactorySupertypeGenerator(session, compatContext) },
@@ -109,14 +110,16 @@ public class MetroFirExtensionRegistrar(
       val isCli = session.isCli()
 
       // Load external extensions via ServiceLoader
+      val firHintTargetsRequired =
+        options.generateContributionHints && options.generateContributionHintsInFir
       val externalExtensions =
-        if (options.generateClassesInIr) {
-          emptyList()
-        } else {
-          loadExternalDeclarationExtensions(session, options, compatContext)
-            // If we're running in the IDE, only enable extensions that opt-in to that.
-            .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
-        }
+        loadExternalDeclarationExtensions(session, options, compatContext)
+          .filter { extension ->
+            !options.generateClassesInIr ||
+              (firHintTargetsRequired && extension is MetroContributionHintExtension)
+          }
+          // If we're running in the IDE, only enable extensions that opt-in to that.
+          .letIf(!isCli) { extensions -> extensions.filter { it.enableFirInIde } }
 
       val externalHintExtensions =
         (loadExternalContributionHintExtensions(session, options, compatContext) +

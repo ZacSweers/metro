@@ -311,6 +311,7 @@ internal class IrContributionMerger(
             container.lookupClass(originClassId)?.owner?.let { addAll(scanReplaces(it)) }
           }
         }
+        mutableExternalSupertypes[id]?.let { addAll(scanReplaces(it)) }
       }
 
       val mergePlan =

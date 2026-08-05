@@ -140,7 +140,7 @@ class MetroExtensionRegistrarConfigurator(
         MetroDirectives.GENERATE_CONTRIBUTION_HINTS_IN_FIR in module.directives ||
           testServices.shouldGenerateContributionHintsInFirForBackend()
 
-      generateContributionHintsInFir = shouldGenerateContributionHintsInFir && !generateClassesInIr
+      generateContributionHintsInFir = shouldGenerateContributionHintsInFir
 
       module.directives.singleOrZeroValue(MetroDirectives.PUBLIC_SCOPED_PROVIDER_SEVERITY)?.let {
         publicScopedProviderSeverity = it
@@ -304,12 +304,6 @@ class MetroExtensionRegistrarConfigurator(
                   as? MetroContributionHintExtension,
               )
             )
-            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
-              add(
-                CircuitFirExtension.Factory().create(session, options, compatContext)!!
-                  as MetroContributionHintExtension
-              )
-            }
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
                 .create(session, options, compatContext)
@@ -346,7 +340,10 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      if (options.generateClassesInIr) {
+      val circuitFactoriesGeneratedInFir =
+        !options.generateClassesInIr ||
+          (options.generateContributionHints && options.generateContributionHintsInFir)
+      if (options.generateClassesInIr && !circuitFactoriesGeneratedInFir) {
         IrGenerationExtension.registerExtension(
           CircuitIrDeclarationGenerationExtension.create(
             classIds = classIds,
