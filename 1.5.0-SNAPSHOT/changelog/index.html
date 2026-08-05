@@ -7545,6 +7545,8 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both <code>@Qualifier</code> and <code>@MapKey</code>.</li>
+<li><strong>[IR]</strong> Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.</li>
 <li><strong>[IR]</strong> Report duplicate bindings inherited from a parent graph when they are <em>only</em> requested by a child graph extension.</li>
 <li><strong>[IR]</strong> Fix <code>@GraphExtension.Factory</code> replacements across <code>additionalScopes</code> when generating classes in IR.</li>
 <li><strong>[IR]</strong> Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.</li>
