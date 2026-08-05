@@ -39,6 +39,8 @@ class CircuitMirrorRemovalIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM
       )
       metro {
         enableCircuitCodegen.set(true)
+        // Circuit factories generated only in IR cannot publish FIR contribution hints.
+        generateClassesInIr.set(false)
         compilerOptions.enable("omit-redundant-mirrors")
       }
       """

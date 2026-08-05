@@ -6,6 +6,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR/IR]** Generate contribution hints in FIR alongside IR class generation (Kotlin 2.4.20+), fixing downstream discovery for Metro's built-in contributions on all platforms.
 - **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
 - **[IR]** Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
@@ -16,6 +17,7 @@ Changelog
 - **[IR]** Do not require suspend provider support for caller-supplied suspend function `@Assisted` parameters.
 - **[IR]** Fix a stack overflow when a nested graph extension requests a parent-scoped binding with suspend providers enabled.
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
+- **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
 
 1.4.0
 -----

@@ -60,11 +60,7 @@ internal fun Project.metroCompilerPluginOptions(
     add(
       metroOption(
         MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR,
-        extension.generateContributionHintsInFir.zip(extension.generateClassesInIr) {
-          generateContributionHintsInFir,
-          generateClassesInIr ->
-          generateContributionHintsInFir && !generateClassesInIr
-        },
+        extension.generateContributionHintsInFir,
       )
     )
     add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))

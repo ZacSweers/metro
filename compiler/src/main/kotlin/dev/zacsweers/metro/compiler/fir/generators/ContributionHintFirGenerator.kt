@@ -103,6 +103,7 @@ internal class ContributionHintFirGenerator(
 
       val generateContributionProviders =
         session.metroFirBuiltIns.options.generateContributionProviders
+      val generateClassesInIr = session.metroFirBuiltIns.options.generateClassesInIr
 
       val contributingClasses = contributedClassSymbols()
       for (contributingClass in contributingClasses) {
@@ -122,12 +123,11 @@ internal class ContributionHintFirGenerator(
           }
         }
 
-        // When generateContributionProviders is enabled, generate hints pointing to the
-        // generated container objects instead of the original class. The container objects
-        // are not visible to the predicate-based provider (they're generated declarations),
-        // so we must compute their ClassIds and resolve them here.
-        val hasBindingContributions =
-          generateContributionProviders &&
+        // FIR-generated provider containers can be used directly. IR-generated containers are not
+        // available yet, so their hints use the source class and IR resolves the container later.
+        val useFirGeneratedBindingContainer =
+          !generateClassesInIr &&
+            generateContributionProviders &&
             contributingClass.usesContributionProviderPath(session) &&
             contributions.any { annotation ->
               val classId = annotation.toAnnotationClassIdSafe(session) ?: return@any false
@@ -136,8 +136,7 @@ internal class ContributionHintFirGenerator(
 
         for (contributionScope in contributionScopes) {
           val hintName = contributionScope.scopeHintFunctionName()
-          if (hasBindingContributions) {
-            // Compute the container object ClassId and generate hint pointing to it
+          if (useFirGeneratedBindingContainer) {
             val containerClassId =
               MetroContributions.containerObjectClassId(
                 contributingClass.classId,

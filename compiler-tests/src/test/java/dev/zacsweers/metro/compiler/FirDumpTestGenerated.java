@@ -105,6 +105,12 @@ public class FirDumpTestGenerated extends AbstractFirDumpTest {
     }
 
     @Test
+    @TestMetadata("FirHintGenerationWithIrClasses.kt")
+    public void testFirHintGenerationWithIrClasses() {
+      run("FirHintGenerationWithIrClasses.kt");
+    }
+
+    @Test
     @TestMetadata("FirHintGenerationWorks_k23x.kt")
     public void testFirHintGenerationWorks_k23x() {
       run("FirHintGenerationWorks_k23x.kt");

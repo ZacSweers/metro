@@ -273,12 +273,13 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
-      - name: Run Wasm bindings smoke test
+      - name: Run Wasm contribution hint smoke tests
         if: github.ref != 'refs/heads/main'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
             -Pmetro.functionalTestKmpTarget=wasmJs \
-            --tests 'dev.zacsweers.metro.gradle.incremental.ICTests.icWorksWhenAddingAParamToExistingInjectedTypeWithScopeWithZeroToOneParams*' \
+            --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests.contributionScopeChangeInMultiModuleProject*' \
+            --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
             -Dorg.gradle.configuration-cache.read-only=true
 
       - name: Run JS box tests

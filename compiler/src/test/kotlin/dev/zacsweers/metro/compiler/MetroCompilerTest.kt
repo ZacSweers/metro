@@ -11,6 +11,7 @@ import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.SourceFile.Companion.java
 import com.tschuchort.compiletesting.SourceFile.Companion.kotlin
 import com.tschuchort.compiletesting.addPreviousResultToClasspath
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -40,12 +41,16 @@ abstract class MetroCompilerTest {
   protected open val extraImports: List<String>
     get() = emptyList()
 
+  protected val supportsFirContributionHints =
+    kotlinVersionSupportsTopLevelFirGen(CompatContext.Factory.loadCompilerVersion())
+
   protected open val metroOptions: MetroOptions
     get() =
       MetroOptions(
+        generateContributionHintsInFir = supportsFirContributionHints,
         omitRedundantMirrors =
           testOmitRedundantMirrors
-            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>()
+            ?: MetroOption.OMIT_REDUNDANT_MIRRORS.raw.defaultValue.expectAs<Boolean>(),
       )
 
   protected val debugOutputDir: Path
