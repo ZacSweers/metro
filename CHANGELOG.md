@@ -6,9 +6,14 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
+- **[IR]** Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 - **[IR]** Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.
+- **[IR]** Prevent stack overflows in large dependency graphs by checking cycles with heap-backed frames instead of recursive DFS traversal.
+- **[IR]** Do not require suspend provider support for caller-supplied suspend function `@Assisted` parameters.
+- **[IR]** Fix a stack overflow when a nested graph extension requests a parent-scoped binding with suspend providers enabled.
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
 
 1.4.0

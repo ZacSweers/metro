@@ -1,0 +1,22 @@
+/GraphPrivateBindingNotVisibleToGrandchild.kt:23:7: error: [Metro/MissingBinding] No binding found for String
+
+  trace (in ParentGraph.Impl.ChildGraphImpl.FirstGrandchildGraphImpl):
+      String is requested at FirstGrandchildGraph.text
+
+  note: a binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to FirstGrandchildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/GraphPrivateBindingNotVisibleToGrandchild.kt:28:7: error: [Metro/MissingBinding] No binding found for String
+
+  trace (in ParentGraph.Impl.ChildGraphImpl.SecondGrandchildGraphImpl):
+      String is requested at SecondGrandchildGraph.text
+
+  note: a binding for 'String' exists in a parent graph but is marked @GraphPrivate and cannot be
+        accessed from this graph
+  help: ensure String has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to SecondGrandchildGraphImpl
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

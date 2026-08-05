@@ -25,6 +25,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
   }
 
+  @Test
+  @TestMetadata("ConflictingAnnotationRoles.kt")
+  public void testConflictingAnnotationRoles() {
+    run("ConflictingAnnotationRoles.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
   @TestDataPath("$PROJECT_ROOT")
@@ -619,6 +625,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       @TestMetadata("GraphPrivateBindingNotVisibleToChild.kt")
       public void testGraphPrivateBindingNotVisibleToChild() {
         run("GraphPrivateBindingNotVisibleToChild.kt");
+      }
+
+      @Test
+      @TestMetadata("GraphPrivateBindingNotVisibleToGrandchild.kt")
+      public void testGraphPrivateBindingNotVisibleToGrandchild() {
+        run("GraphPrivateBindingNotVisibleToGrandchild.kt");
       }
 
       @Test

@@ -29,6 +29,11 @@ internal class UsedKeyCollector {
   fun keys(): Set<IrContextualTypeKey> = usedKeys.toSet()
 }
 
+private enum class ParentContextLookupMode {
+  MARK_USED,
+  TOKEN_ONLY,
+}
+
 /**
  * Common interface for reading from a parent context. Both [ParentContext] and
  * [ParentContextSnapshot] implement this, allowing code to work with either during validation.
@@ -51,6 +56,9 @@ internal interface ParentContextReader {
 
   /** The current (topmost) parent graph. */
   val currentParentGraph: IrClass
+
+  /** Returns a token without marking the key as used. */
+  fun findToken(key: IrTypeKey): ParentContext.Token?
 
   /**
    * Marks a key as used and returns a token for later property resolution.
@@ -98,8 +106,8 @@ internal class ParentContextSnapshot(
   data class LevelInfo(val scopes: Set<IrAnnotation>, val ownership: KeyOwnership)
 
   private val allScopes: Set<IrAnnotation> = buildSet {
-    for (level in levelScopes) {
-      addAll(level.scopes)
+    for ((scopes) in levelScopes) {
+      addAll(scopes)
     }
     ancestorReader?.scopes()?.let(::addAll)
   }
@@ -120,6 +128,16 @@ internal class ParentContextSnapshot(
     }
   }
 
+  /** Returns a token without recording the key in a child graph's collector. */
+  fun findToken(key: IrTypeKey): ParentContext.Token? =
+    resolve(
+      key = key,
+      scope = null,
+      requiresProviderProperty = false,
+      collector = null,
+      mode = ParentContextLookupMode.TOKEN_ONLY,
+    )
+
   /**
    * Marks a key as used and returns a token for later property resolution. Unlike
    * [ParentContext.mark], this writes to the provided [collector] instead of mutating internal
@@ -130,12 +148,27 @@ internal class ParentContextSnapshot(
     scope: IrAnnotation? = null,
     requiresProviderProperty: Boolean = scope != null,
     collector: UsedKeyCollector,
+  ): ParentContext.Token? =
+    resolve(
+      key = key,
+      scope = scope,
+      requiresProviderProperty = requiresProviderProperty,
+      collector = collector,
+      mode = ParentContextLookupMode.MARK_USED,
+    )
+
+  private fun resolve(
+    key: IrTypeKey,
+    scope: IrAnnotation?,
+    requiresProviderProperty: Boolean,
+    collector: UsedKeyCollector?,
+    mode: ParentContextLookupMode,
   ): ParentContext.Token? {
     val contextKey = createContextKey(key, isProvider = requiresProviderProperty || scope != null)
 
     // Check if key is already available
     keyOwnership[key]?.let { ownership ->
-      collector.record(contextKey)
+      collector?.record(contextKey)
       return ParentContext.Token(
         contextKey = contextKey,
         ownerGraphKey = ownership.ownerGraphKey,
@@ -146,14 +179,14 @@ internal class ParentContextSnapshot(
 
     // For scoped keys, find a matching level
     if (scope != null) {
-      for (levelInfo in levelScopes.asReversed()) {
-        if (scope in levelInfo.scopes) {
-          collector.record(contextKey)
+      for ((scopes, ownership) in levelScopes.asReversed()) {
+        if (scope in scopes) {
+          collector?.record(contextKey)
           return ParentContext.Token(
             contextKey = contextKey,
-            ownerGraphKey = levelInfo.ownership.ownerGraphKey,
-            receiverParameter = levelInfo.ownership.receiverParameter,
-            isSuspend = levelInfo.ownership.isSuspend(key),
+            ownerGraphKey = ownership.ownerGraphKey,
+            receiverParameter = ownership.receiverParameter,
+            isSuspend = ownership.isSuspend(key),
           )
         }
       }
@@ -161,8 +194,13 @@ internal class ParentContextSnapshot(
 
     // Key not found locally, delegate to ancestor reader
     ancestorReader?.let { reader ->
-      reader.mark(key, scope, requiresProviderProperty)?.let { token ->
-        collector.record(contextKey)
+      val token =
+        when (mode) {
+          ParentContextLookupMode.MARK_USED -> reader.mark(key, scope, requiresProviderProperty)
+          ParentContextLookupMode.TOKEN_ONLY -> reader.findToken(key)
+        }
+      token?.let {
+        collector?.record(contextKey)
         return token
       }
     }
@@ -197,8 +235,19 @@ internal class ParentContextSnapshot(
 
       override val currentParentGraph = this@ParentContextSnapshot.currentParentGraph
 
-      override fun mark(key: IrTypeKey, scope: IrAnnotation?, requiresProviderProperty: Boolean) =
-        this@ParentContextSnapshot.mark(key, scope, requiresProviderProperty, collector)
+      override fun findToken(key: IrTypeKey) = this@ParentContextSnapshot.findToken(key)
+
+      override fun mark(
+        key: IrTypeKey,
+        scope: IrAnnotation?,
+        requiresProviderProperty: Boolean,
+      ) =
+        this@ParentContextSnapshot.mark(
+          key,
+          scope,
+          requiresProviderProperty,
+          collector,
+        )
     }
 }
 
@@ -327,7 +376,10 @@ internal class ParentContext(
     _graphPrivateKeys.addAll(keys)
   }
 
-  override fun graphPrivateKeys(): Set<IrTypeKey> = _graphPrivateKeys
+  override fun graphPrivateKeys(): Set<IrTypeKey> = buildSet {
+    parent?.graphPrivateKeys()?.let(::addAll)
+    addAll(_graphPrivateKeys)
+  }
 
   fun add(key: IrTypeKey) {
     pending.add(key)
@@ -336,6 +388,14 @@ internal class ParentContext(
   fun addAll(keys: Collection<IrTypeKey>) {
     if (keys.isNotEmpty()) pending.addAll(keys)
   }
+
+  override fun findToken(key: IrTypeKey): Token? =
+    resolve(
+      key = key,
+      scope = null,
+      requiresProviderProperty = false,
+      mode = ParentContextLookupMode.TOKEN_ONLY,
+    )
 
   /**
    * Marks a key as used and returns a token for later property resolution.
@@ -354,6 +414,19 @@ internal class ParentContext(
     key: IrTypeKey,
     scope: IrAnnotation?,
     requiresProviderProperty: Boolean,
+  ): Token? =
+    resolve(
+      key = key,
+      scope = scope,
+      requiresProviderProperty = requiresProviderProperty,
+      mode = ParentContextLookupMode.MARK_USED,
+    )
+
+  private fun resolve(
+    key: IrTypeKey,
+    scope: IrAnnotation?,
+    requiresProviderProperty: Boolean,
+    mode: ParentContextLookupMode,
   ): Token? {
     // Create the contextual key based on what kind of access is needed
     // Always must be a provider if scope is not null
@@ -364,7 +437,9 @@ internal class ParentContext(
       val providerLevel = levels[providerIdx]
 
       // Track this context key as used at the matched provider level
-      providerLevel.usedContextKeys.add(contextKey)
+      if (mode == ParentContextLookupMode.MARK_USED) {
+        providerLevel.usedContextKeys.add(contextKey)
+      }
 
       return Token(
         contextKey = contextKey,
@@ -382,13 +457,15 @@ internal class ParentContext(
         if (scope in level.node.scopes) {
           introduceAtLevel(i, key)
 
-          // Track this context key as used at the level that owns the scope
-          level.usedContextKeys.add(contextKey)
+          if (mode == ParentContextLookupMode.MARK_USED) {
+            // Track this context key as used at the level that owns the scope
+            level.usedContextKeys.add(contextKey)
 
-          // If this key was introduced to a parent level (not the current level),
-          // track it so it gets reported when this level pops
-          if (i < currentLevelIdx) {
-            levels[currentLevelIdx].parentLevelRequests.add(contextKey)
+            // If this key was introduced to a parent level (not the current level),
+            // track it so it gets reported when this level pops
+            if (i < currentLevelIdx) {
+              levels[currentLevelIdx].parentLevelRequests.add(contextKey)
+            }
           }
 
           return Token(
@@ -403,9 +480,14 @@ internal class ParentContext(
 
     // Key not found locally, delegate to ancestor reader
     parent?.let { parent ->
-      parent.mark(key, scope, requiresProviderProperty)?.let { token ->
+      val token =
+        when (mode) {
+          ParentContextLookupMode.MARK_USED -> parent.mark(key, scope, requiresProviderProperty)
+          ParentContextLookupMode.TOKEN_ONLY -> parent.findToken(key)
+        }
+      token?.let {
         // Track this context key at the current level so it gets reported upward
-        if (levels.isNotEmpty()) {
+        if (mode == ParentContextLookupMode.MARK_USED && levels.isNotEmpty()) {
           levels.last().usedContextKeys.add(contextKey)
         }
         return token
@@ -563,7 +645,7 @@ internal class ParentContext(
       levelScopes = levelScopes,
       currentParentGraph = currentParentGraph,
       ancestorReader = parent,
-      graphPrivateKeys = _graphPrivateKeys.toSet(),
+      graphPrivateKeys = graphPrivateKeys(),
     )
   }
 
