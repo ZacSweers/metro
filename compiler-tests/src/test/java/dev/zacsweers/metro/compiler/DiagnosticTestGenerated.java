@@ -25,6 +25,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic"), Pattern.compile("^(.+)\\.kt$"), null, true);
   }
 
+  @Test
+  @TestMetadata("ConflictingAnnotationRoles.kt")
+  public void testConflictingAnnotationRoles() {
+    run("ConflictingAnnotationRoles.kt");
+  }
+
   @Nested
   @TestMetadata("compiler-tests/src/test/data/diagnostic/aggregation")
   @TestDataPath("$PROJECT_ROOT")
