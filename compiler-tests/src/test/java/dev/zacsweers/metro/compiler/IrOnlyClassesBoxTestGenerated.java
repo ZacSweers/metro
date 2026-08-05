@@ -2230,6 +2230,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("AssistedSuspendFunctionParameter.kt")
+      public void testAssistedSuspendFunctionParameter() {
+        run("AssistedSuspendFunctionParameter.kt");
+      }
+
+      @Test
       @TestMetadata("AssistedTypesCanBeExplicitlyProvided.kt")
       public void testAssistedTypesCanBeExplicitlyProvided() {
         run("AssistedTypesCanBeExplicitlyProvided.kt");
