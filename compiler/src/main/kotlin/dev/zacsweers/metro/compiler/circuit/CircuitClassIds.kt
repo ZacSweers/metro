@@ -17,8 +17,11 @@ internal object CircuitClassIds {
   private const val CIRCUIT_CODEGEN_ANNOTATIONS_PACKAGE = "com.slack.circuit.codegen.annotations"
   private const val CIRCUIT_SERIALIZATION_PACKAGE = "com.slack.circuit.serialization"
   private const val SUBCIRCUIT_PACKAGE = "com.slack.circuit.subcircuit"
-  private const val KOTLINX_SERIALIZATION_PACKAGE = "kotlinx.serialization"
-  private const val KOTLINX_SERIALIZATION_MODULES_PACKAGE = "kotlinx.serialization.modules"
+  // Build these from segments so Shadow does not relocate runtime serialization API names.
+  private val KOTLINX_SERIALIZATION_PACKAGE =
+    FqName.fromSegments(listOf("kotlinx", "serialization"))
+  private val KOTLINX_SERIALIZATION_MODULES_PACKAGE =
+    FqName.fromSegments(listOf("kotlinx", "serialization", "modules"))
 
   // Annotation
   val CircuitInject =
@@ -55,10 +58,10 @@ internal object CircuitClassIds {
       FqName(CIRCUIT_SERIALIZATION_PACKAGE),
       Name.identifier("CircuitSerializerRegistration"),
     )
-  val KSerializer = ClassId(FqName(KOTLINX_SERIALIZATION_PACKAGE), Name.identifier("KSerializer"))
+  val KSerializer = ClassId(KOTLINX_SERIALIZATION_PACKAGE, Name.identifier("KSerializer"))
   val PolymorphicModuleBuilder =
     ClassId(
-      FqName(KOTLINX_SERIALIZATION_MODULES_PACKAGE),
+      KOTLINX_SERIALIZATION_MODULES_PACKAGE,
       Name.identifier("PolymorphicModuleBuilder"),
     )
 
