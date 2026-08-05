@@ -12,7 +12,7 @@ internal class CircuitFirCheckers(session: FirSession) : FirAdditionalCheckersEx
   override val declarationCheckers: DeclarationCheckers =
     object : DeclarationCheckers() {
       override val classCheckers: Set<FirClassChecker>
-        get() = setOf(CircuitInjectClassChecker)
+        get() = setOf(CircuitInjectClassChecker, CircuitSerializableClassChecker)
 
       override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker>
         get() = setOf(CircuitInjectCallableChecker)
