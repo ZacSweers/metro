@@ -599,9 +599,8 @@ internal fun IrClass.allCallableMembers(
 
 // From
 // https://kotlinlang.slack.com/archives/C7L3JB43G/p1672258639333069?thread_ts=1672258597.659509&cid=C7L3JB43G
-// Inlining also keeps nested binding generation on the same heap-backed recursion stack.
 context(context: IrPluginContext)
-internal inline fun irLambda(
+internal fun irLambda(
   parent: IrDeclarationParent,
   receiverParameter: IrType?,
   valueParameters: List<IrType>,
