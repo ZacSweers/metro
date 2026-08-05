@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785964581606,
+  "lastUpdate": 1785969684278,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20720,6 +20720,62 @@ window.BENCHMARK_DATA = {
             "value": 18823.291,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.80%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0904fc53~1",
+          "message": "[before] Properly minimize deferred bindings (#2632)",
+          "timestamp": "2026-08-05T21:44:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0904fc5321c026af8457778036d4ebc05a8cbe8c"
+        },
+        "date": 1785969684278,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19277.939000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "0904fc5321c026af8457778036d4ebc05a8cbe8c",
+          "message": "[after] Properly minimize deferred bindings (#2632)",
+          "timestamp": "2026-08-05T21:44:02Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/0904fc5321c026af8457778036d4ebc05a8cbe8c"
+        },
+        "date": 1785969684279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18919.697,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.86%"
           }
         ]
       }
