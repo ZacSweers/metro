@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785969684278,
+  "lastUpdate": 1785969851195,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20776,6 +20776,62 @@ window.BENCHMARK_DATA = {
             "value": 18919.697,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.86%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f23bfd79~1",
+          "message": "[before] Fix circuit factory gen in IR class gen mode (#263",
+          "timestamp": "2026-08-05T21:45:59Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f23bfd7927481d6a6a49b2ed157e8dd271c8f5d1"
+        },
+        "date": 1785969851195,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20001.302,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f23bfd7927481d6a6a49b2ed157e8dd271c8f5d1",
+          "message": "[after] Fix circuit factory gen in IR class gen mode (#263",
+          "timestamp": "2026-08-05T21:45:59Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f23bfd7927481d6a6a49b2ed157e8dd271c8f5d1"
+        },
+        "date": 1785969851196,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19026.037,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -4.88%"
           }
         ]
       }
