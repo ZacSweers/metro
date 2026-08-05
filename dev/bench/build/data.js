@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785908494493,
+  "lastUpdate": 1785910434124,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20384,6 +20384,62 @@ window.BENCHMARK_DATA = {
             "value": 19508.081,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -1.97%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eca03667~1",
+          "message": "[before] Add conflicting roles checker + fix another dup IR",
+          "timestamp": "2026-08-05T05:12:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eca036673af45c91dee37576ecc6ea1d1d0bbe68"
+        },
+        "date": 1785910434124,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19203.803,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eca036673af45c91dee37576ecc6ea1d1d0bbe68",
+          "message": "[after] Add conflicting roles checker + fix another dup IR",
+          "timestamp": "2026-08-05T05:12:52Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eca036673af45c91dee37576ecc6ea1d1d0bbe68"
+        },
+        "date": 1785910434125,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18918.101000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -1.49%"
           }
         ]
       }
