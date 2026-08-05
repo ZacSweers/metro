@@ -15,6 +15,7 @@ Changelog
 - **[IR]** Do not require suspend provider support for caller-supplied suspend function `@Assisted` parameters.
 - **[IR]** Fix a stack overflow when a nested graph extension requests a parent-scoped binding with suspend providers enabled.
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
+- **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
 
 1.4.0
 -----

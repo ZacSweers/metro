@@ -95,6 +95,14 @@ Several contextual requests can share one adjacency edge.
 
 Both requests point to `B`. The edge still counts as eager because one request needs `B` immediately. Collapsing adjacency must not discard that information.
 
+### Diagnostic routes
+
+Graph errors need a route from an accessor to the failing binding. When an error first needs a route, Metro runs a breadth-first search from every graph root over the existing sorted forward adjacency. It records each binding's parent and preserves the original entry for each root so later errors can reuse the same routes.
+
+Breadth-first traversal picks the shortest dependency path, and stable root and dependency ordering keeps equally short routes consistent. Keep the original contextual root entry so provider, lazy, and suspend accessors appear correctly in diagnostics.
+
+The index is populated only when an error needs a route. Successful graphs do not perform the extra traversal, and route reconstruction does not rebuild reverse adjacency or recurse through the graph. When we're gonna fail, we're ok with failing slowly in service of more actionable information to the user.
+
 ### Strongly connected components
 
 `MetroSort` identifies strongly connected components (via Tarjan's algo) before ordering bindings. It maps vertices to dense integer IDs and uses primitive arrays for adjacency, discovery indexes, and low-link values.
