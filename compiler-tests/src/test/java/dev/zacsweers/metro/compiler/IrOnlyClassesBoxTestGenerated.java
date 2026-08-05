@@ -622,6 +622,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("CircuitSerializerRegistrationMultiModule.kt")
+      public void testCircuitSerializerRegistrationMultiModule() {
+        run("CircuitSerializerRegistrationMultiModule.kt");
+      }
+
+      @Test
       @TestMetadata("CreatorSignatureCarrierScreenArguments.kt")
       public void testCreatorSignatureCarrierScreenArguments() {
         run("CreatorSignatureCarrierScreenArguments.kt");
@@ -769,6 +775,26 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       @TestMetadata("UiFunctionObjectScreenWithState.kt")
       public void testUiFunctionObjectScreenWithState() {
         run("UiFunctionObjectScreenWithState.kt");
+      }
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/api/circuitserialization")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuitserialization {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/api/circuitserialization/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInCircuitserialization() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api/circuitserialization"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+
+      @Test
+      @TestMetadata("CircuitSerializerRegistrationExpectActual.kt")
+      public void testCircuitSerializerRegistrationExpectActual() {
+        run("CircuitSerializerRegistrationExpectActual.kt");
       }
     }
   }
