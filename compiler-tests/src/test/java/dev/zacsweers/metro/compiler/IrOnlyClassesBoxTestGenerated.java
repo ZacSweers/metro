@@ -3627,6 +3627,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("NestedGraphExtensionMiddleScopedBinding.kt")
+    public void testNestedGraphExtensionMiddleScopedBinding() {
+      run("NestedGraphExtensionMiddleScopedBinding.kt");
+    }
+
+    @Test
     @TestMetadata("NestedSuspendFunctionWrappersWithoutRuntime.kt")
     public void testNestedSuspendFunctionWrappersWithoutRuntime() {
       run("NestedSuspendFunctionWrappersWithoutRuntime.kt");
