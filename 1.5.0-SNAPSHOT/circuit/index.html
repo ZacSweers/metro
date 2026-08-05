@@ -1211,6 +1211,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#circuitserializable-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CircuitSerializable support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#circuit-provided-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2103,6 +2114,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#circuitserializable-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CircuitSerializable support
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#circuit-provided-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2167,7 +2189,14 @@
 
 
 <h1 id="circuit-integration">Circuit Integration<a class="headerlink" href="#circuit-integration" title="Permanent link">&para;</a></h1>
-<p>Metro includes built-in support for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for building kotlin apps. This integration generates <code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations from <code>@CircuitInject</code> declarations, plus <code>SubPresenterFactory</code> and <code>SubUiFactory</code> implementations from <code>@SubCircuitInject</code> declarations. It is similar to Circuit&rsquo;s existing KSP code generator but runs entirely within Metro&rsquo;s compiler plugin. Generated factories contribute into the corresponding set multibindings.</p>
+<p>Metro includes built-in code generation for <a href="https://slackhq.github.io/circuit/">Circuit</a>, a Compose-first architecture for Kotlin apps.</p>
+<p>When enabled, Metro generates and contributes:</p>
+<ul>
+<li><code>Presenter.Factory</code> and <code>Ui.Factory</code> implementations for <code>@CircuitInject</code></li>
+<li><code>SubPresenterFactory</code> and <code>SubUiFactory</code> implementations for <code>@SubCircuitInject</code></li>
+<li><code>CircuitSerializerRegistration</code> implementations for <code>@CircuitSerializable</code> with Circuit 0.36.0 or newer</li>
+</ul>
+<p>Generation runs inside Metro&rsquo;s compiler plugin instead of Circuit&rsquo;s KSP code generator.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Enable Circuit codegen in your Gradle build:</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
@@ -2175,7 +2204,8 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>This requires the relevant Circuit runtime libraries on your classpath. The <code>circuit-runtime-presenter</code> and <code>circuit-runtime-ui</code> artifacts are optional — you can use presenter-only or UI-only modules. To generate SubCircuit factories, add <code>com.slack.circuit:circuitx-subcircuit:&lt;version&gt;</code>. Enabling this option also adds the <code>circuit-codegen-annotations</code> artifact to your implementation classpath.</p>
-<p>Use <strong>either</strong> Metro&rsquo;s native code generator or Circuit&rsquo;s KSP code generator for a declaration but <strong>NOT</strong> both. Running both for the same <code>@CircuitInject</code> or <code>@SubCircuitInject</code> declarations attempts to generate the factories twice.</p>
+<p>Serialization registration requires Circuit 0.36.0 or newer, the kotlinx-serialization compiler plugin, and an explicit dependency on <code>com.slack.circuit:circuit-serialization:&lt;version&gt;</code>. Metro does not add this optional runtime automatically.</p>
+<p>Use <strong>either</strong> Metro&rsquo;s native code generator or Circuit&rsquo;s KSP code generator for a declaration but <strong>NOT</strong> both. Running both for the same <code>@CircuitInject</code>, <code>@SubCircuitInject</code>, or <code>@CircuitSerializable</code> declarations attempts to generate the same types twice.</p>
 <p>This is only compatible with Kotlin 2.3.20+ as it requires support for generating top-level declarations in FIR.</p>
 <p>This will likely eventually move to a separate artifact.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
@@ -2296,6 +2326,42 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>SubPresenter functions are not supported.</p>
+<h2 id="circuitserializable-support">CircuitSerializable support<a class="headerlink" href="#circuitserializable-support" title="Permanent link">&para;</a></h2>
+<p>Annotate a concrete <code>Screen</code> or <code>PopResult</code> with <code>@CircuitSerializable(scope)</code> to contribute its serializer to <code>Set&lt;CircuitSerializerRegistration&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@CircuitSerializable</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">data</span><span class="w"> </span><span class="kd">class</span><span class="w"> </span><span class="nc">DetailScreen</span><span class="p">(</span><span class="kd">val</span><span class="w"> </span><span class="nv">itemId</span><span class="p">:</span><span class="w"> </span><span class="kt">Long</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Screen</span>
+</code></pre></div>
+<p><code>@CircuitSerializable</code> uses the default serializer generated by kotlinx-serialization. Add <code>@Serializable(with = CustomSerializer::class)</code> only when the type uses a custom serializer. Metro generates a public no-argument class equivalent to:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
+<span class="nd">@ContributesIntoSet</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">DetailScreenCircuitSerializerRegistration</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">CircuitSerializerRegistration</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">builder</span><span class="p">:</span><span class="w"> </span><span class="n">PolymorphicModuleBuilder</span><span class="o">&lt;</span><span class="n">CircuitSaveable</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">builder</span><span class="p">.</span><span class="na">subclass</span><span class="p">(</span><span class="n">DetailScreen</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">DetailScreen</span><span class="p">.</span><span class="na">serializer</span><span class="p">())</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Declare the registration multibinding in your application graph and provide the saver explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@BindingContainer</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">CircuitSerializationBindings</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nd">@Multibinds</span><span class="p">(</span><span class="n">allowEmpty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">registrations</span><span class="p">():</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">CircuitSerializerRegistration</span><span class="o">&gt;</span>
+<span class="p">}</span>
+
+<span class="nd">@DependencyGraph</span><span class="p">(</span>
+<span class="w">  </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
+<span class="w">  </span><span class="n">bindingContainers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="n">CircuitSerializationBindings</span><span class="o">::</span><span class="n">class</span><span class="o">]</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">circuitSaver</span><span class="p">:</span><span class="w"> </span><span class="n">CircuitSaver</span>
+
+<span class="w">  </span><span class="nd">@Provides</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCircuitSaver</span><span class="p">(</span>
+<span class="w">    </span><span class="n">registrations</span><span class="p">:</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">CircuitSerializerRegistration</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="w">  </span><span class="p">):</span><span class="w"> </span><span class="n">CircuitSaver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SerializableCircuitSaver</span><span class="p">(</span><span class="n">registrations</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Metro does not generate the <code>CircuitSaver</code> provider. <code>SerializableCircuitSaver</code> combines the generated registrations against the <code>CircuitSaveable</code> base class. Android <code>Screen</code> and <code>PopResult</code> implementations must still satisfy Circuit&rsquo;s <code>Parcelable</code> requirement.</p>
+<p>For expect/actual types, apply <code>@CircuitSerializable</code> with the same scope to the expect declaration and every actual declaration. Metro generates one registration from the expect declaration and skips actual declarations. It never falls back to generating from an actual declaration.</p>
 <h2 id="circuit-provided-parameters">Circuit-Provided Parameters<a class="headerlink" href="#circuit-provided-parameters" title="Permanent link">&para;</a></h2>
 <p>Some parameter types are provided by Circuit at runtime and should not be injected:</p>
 <table>
@@ -2332,7 +2398,8 @@
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Top-level <code>@AssistedFactory</code> with <code>@CircuitInject</code> or <code>@SubCircuitInject</code></strong> is not supported — the factory must be nested inside the target class. This is enforced by the compiler.</li>
-<li><strong><code>expect</code> declarations</strong> with <code>@CircuitInject</code> or <code>@SubCircuitInject</code> are skipped. Only <code>actual</code> declarations are processed. You must annotate the <code>actual</code> declaration (too). kotlinc requires this symmetry as well.</li>
+<li><strong><code>expect</code> declarations</strong> with <code>@CircuitInject</code> or <code>@SubCircuitInject</code> are skipped. Only <code>actual</code> declarations are processed. You must annotate the <code>actual</code> declaration too. Kotlinc requires this symmetry as well.</li>
+<li><strong><code>expect</code> declarations</strong> with <code>@CircuitSerializable</code> own serialization registration generation. Apply the annotation with the same scope to the expect declaration and every actual declaration; Metro skips each actual declaration.</li>
 </ul>
 
 
