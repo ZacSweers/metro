@@ -232,6 +232,9 @@ dependencies {
   )
   testImplementation("org.jetbrains.kotlin:kotlin-compiler:$kotlinArtifactsVersion")
   testImplementation("org.jetbrains.kotlin:kotlin-compose-compiler-plugin:$kotlinArtifactsVersion")
+  testImplementation(
+    "org.jetbrains.kotlin:kotlin-serialization-compiler-plugin:$kotlinArtifactsVersion"
+  )
 
   testImplementation(project(":compiler"))
   testImplementation(project(":compiler-compat"))
@@ -278,10 +281,12 @@ dependencies {
   circuitRuntimeClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeClasspath(libs.circuit.runtime.ui)
   circuitRuntimeClasspath(libs.circuit.codegenAnnotations)
+  circuitRuntimeClasspath(libs.circuit.serialization)
   circuitRuntimeClasspath(libs.circuit.subcircuit)
   circuitRuntimeKlibClasspath(libs.circuit.runtime.presenter)
   circuitRuntimeKlibClasspath(libs.circuit.runtime.ui)
   circuitRuntimeKlibClasspath(libs.circuit.codegenAnnotations)
+  circuitRuntimeKlibClasspath(libs.circuit.serialization)
   circuitRuntimeKlibClasspath(libs.circuit.subcircuit)
   circuitRuntimeKlibClasspath(libs.compose.ui)
   circuitRuntimeKlibClasspath(libs.kotlinInject.anvil.runtime.optional)

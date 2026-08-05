@@ -57,7 +57,9 @@ fun TestConfigurationBuilder.configurePlugin(
   compatContext: CompatContext = CompatContext.create()
 ) {
   useConfigurators(
+    ::SerializationFirExtensionRegistrarConfigurator,
     { MetroExtensionRegistrarConfigurator(it, compatContext) },
+    ::SerializationIrExtensionRegistrarConfigurator,
     ::MetroRuntimeEnvironmentConfigurator,
   )
 
