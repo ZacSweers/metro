@@ -6,6 +6,8 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
+- **[IR]** Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 
