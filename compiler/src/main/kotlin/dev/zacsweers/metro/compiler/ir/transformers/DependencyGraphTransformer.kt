@@ -398,13 +398,10 @@ internal class DependencyGraphTransformer(
     if (node.graphExtensions.isNotEmpty()) {
       // Collect parent-available scoped binding keys to match against
       // @Binds not checked because they cannot be scoped!
-      // If parent is a real ParentContext, reuse it (sequential mode - shares context stack).
-      // If parent is a snapshot-backed reader (parallel mode), create fresh with the snapshot
-      // reader as ancestorReader so scope checks and mark() calls can delegate to ancestor
-      // levels not represented in the local level stack.
-      val localParentContext =
-        (parentContextReader as? ParentContext)
-          ?: ParentContext(metroContext, parent = parentContextReader)
+      // The binding graph above uses parentContextReader for parent lookups. Reusing that context
+      // here would add this graph to its own parent lookup. Suspend analysis would then find the
+      // binding in this graph again and repeat the same lookup forever.
+      val localParentContext = ParentContext(metroContext, parent = parentContextReader)
 
       // This instance
       localParentContext.add(node.typeKey)
