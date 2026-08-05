@@ -32,28 +32,29 @@ import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.Name
 
-internal sealed interface IrMetroFactory {
-  val function: IrFunction
+// Final inline invocation helpers let binding generation suspend across factory argument callbacks.
+internal sealed class IrMetroFactory {
+  abstract val function: IrFunction
 
   /**
    * The real, non-synthetic function for invocation. Used when direct function calls are used, as
    * it may have extra metadata like JvmName annotations.
    */
-  val realDeclaration: IrDeclaration?
-  val factoryClass: IrClass
+  abstract val realDeclaration: IrDeclaration?
+  abstract val factoryClass: IrClass
 
-  fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean
+  abstract fun supportsDirectInvocation(from: IrDeclarationWithVisibility): Boolean
 
-  val createFunctionNames: Set<Name>
+  open val createFunctionNames: Set<Name>
     get() = setOf(Symbols.Names.create)
 
-  val isDaggerFactory: Boolean
+  abstract val isDaggerFactory: Boolean
 
-  val creatorTypeArguments: List<IrType>?
+  open val creatorTypeArguments: List<IrType>?
     get() = null
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun invokeCreateExpression(
+  inline fun invokeCreateExpression(
     typeKey: IrTypeKey,
     computeArgs:
       IrBuilderWithScope.(createFunction: IrSimpleFunction, parameters: Parameters) -> List<
@@ -87,7 +88,7 @@ internal sealed interface IrMetroFactory {
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  fun invokeNewInstanceExpression(
+  inline fun invokeNewInstanceExpression(
     typeKey: IrTypeKey,
     name: Name,
     computeArgs:
@@ -105,7 +106,7 @@ internal sealed interface IrMetroFactory {
   }
 
   context(context: IrMetroContext, scope: IrBuilderWithScope)
-  private fun invokeCreatorExpression(
+  private inline fun invokeCreatorExpression(
     typeKey: IrTypeKey,
     expectedCreatorDescription: String,
     functionPredicate: (IrFunction) -> Boolean,
@@ -156,7 +157,7 @@ internal sealed interface IrMetroFactory {
     }
 }
 
-internal sealed class ClassFactory : IrMetroFactory {
+internal sealed class ClassFactory : IrMetroFactory() {
   abstract val invokeFunctionSymbol: IrFunctionSymbol
   abstract val targetFunctionParameters: Parameters
   abstract val isAssistedInject: Boolean
