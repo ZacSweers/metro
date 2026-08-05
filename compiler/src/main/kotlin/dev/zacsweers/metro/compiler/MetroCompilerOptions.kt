@@ -53,12 +53,17 @@ internal fun MetroOptions.validate(
     valid = false
   }
 
+  val contributionHintsAreGeneratedInIr =
+    generateContributionHints && !generateContributionHintsInFir
   val contributionProvidersAreEnabledWithoutFirHintGen =
-    generateContributionProviders &&
-      generateContributionHints &&
-      !generateContributionHintsInFir &&
-      !generateClassesInIr
-  if (contributionProvidersAreEnabledWithoutFirHintGen) {
+    generateContributionProviders && contributionHintsAreGeneratedInIr && !generateClassesInIr
+  if (contributionHintsAreGeneratedInIr && kotlinVersionSupportsTopLevelFirGen(compilerVersion)) {
+    onError(
+      "generateContributionHintsInFir cannot be disabled when generateContributionHints is enabled " +
+        "on Kotlin $compilerVersion."
+    )
+    valid = false
+  } else if (contributionProvidersAreEnabledWithoutFirHintGen) {
     onError(
       "generateContributionProviders with generateContributionHints requires " +
         "generateContributionHintsInFir to also be enabled."
@@ -122,6 +127,19 @@ private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
  * Minimum Kotlin non-dev version on the 2.4.x line that supports JS IC with top-level declarations.
  */
 private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
+
+// Keep these in sync with KotlinVersions.supportsTopLevelFirGen in the Gradle plugin.
+private val MIN_KOTLIN_TOP_LEVEL_FIR_GEN = KotlinToolingVersion("2.3.20-Beta1")
+
+private val MIN_KOTLIN_DEV_TOP_LEVEL_FIR_GEN = KotlinToolingVersion("2.3.20-dev-6204")
+
+internal fun kotlinVersionSupportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
+  return if (version.maturity == KotlinToolingVersion.Maturity.DEV) {
+    version >= MIN_KOTLIN_DEV_TOP_LEVEL_FIR_GEN
+  } else {
+    version >= MIN_KOTLIN_TOP_LEVEL_FIR_GEN
+  }
+}
 
 private fun kotlinVersionSupportsJsIC(version: KotlinToolingVersion): Boolean {
   if (version.major > 2) return true // ... if K3 ever happens

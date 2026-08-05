@@ -26,7 +26,11 @@ import org.junit.Test
 class TopLevelInjectTest : MetroCompilerTest() {
 
   override val metroOptions: MetroOptions
-    get() = MetroOptions.builder().enableTopLevelFunctionInjection(true).build()
+    get() =
+      MetroOptions.builder()
+        .enableTopLevelFunctionInjection(true)
+        .apply { generateContributionHintsInFir = supportsFirContributionHints }
+        .build()
 
   @Test
   fun simple() {

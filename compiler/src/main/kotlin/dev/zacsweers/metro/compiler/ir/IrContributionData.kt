@@ -316,6 +316,15 @@ internal class IrContributionData(
         trace("Look up external contributions for $scope") {
           val contributingClasses =
             findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
+          val contributionProviderSourceClassIds = buildSet {
+            contributingClasses.mapTo(this) { it.classIdOrFail }
+            addAll(
+              findNonFriendInternalContributionProviderSourceClassIds(
+                scope,
+                callingDeclaration,
+              )
+            )
+          }
           val finalSet = mutableScatterSetOf<IrClass>()
           // nativeContributions
           getScopedContributions(contributingClasses, scope, bindingContainersOnly = true).forEach {
@@ -332,17 +341,20 @@ internal class IrContributionData(
               finalSet.add(irClass)
             }
           }
-          if (metroContext.options.generateContributionProviders) {
-            contributingClasses.forEach { irClass ->
-              if (!irClass.usesGeneratedContributionProviderPath()) {
-                return@forEach
-              }
-              val container =
-                irClass.lookupContributionProviderContainer(scope, callingDeclaration)
-                  ?: return@forEach
-              if (metroDeclarations.findBindingContainer(container) != null) {
-                finalSet.add(container)
-              }
+          // Non-friend internal source hints remain excluded from normal contributions. Their
+          // validated public contribution-provider containers can still be consumed downstream.
+          contributionProviderSourceClassIds.forEach { contributingClassId ->
+            val container =
+              lookupContributionProviderContainer(
+                contributingClassId,
+                scope,
+                callingDeclaration,
+              ) ?: return@forEach
+            if (!container.isContributionProviderContainerFor(contributingClassId, scope)) {
+              return@forEach
+            }
+            if (metroDeclarations.findBindingContainer(container) != null) {
+              finalSet.add(container)
             }
           }
           // extensionContributions
@@ -358,16 +370,50 @@ internal class IrContributionData(
       .asSet()
   }
 
-  private fun IrClass.usesGeneratedContributionProviderPath(): Boolean {
-    return usesContributionProviderPath(metroContext.options, metroContext.metroSymbols.classIds)
+  private fun findNonFriendInternalContributionProviderSourceClassIds(
+    scope: Scope,
+    callingDeclaration: IrDeclaration,
+  ): Set<ClassId> {
+    val functionsInPackage =
+      context(metroContext) { callingDeclaration.lookupFunctions(scopeHintFor(scope)) }
+    return functionsInPackage
+      .filter { hintFunctionSymbol ->
+        val hintFunction = hintFunctionSymbol.owner
+        hintFunction.visibility == DescriptorVisibilities.INTERNAL &&
+          !hintFunction.isVisibleAsInternalTo(callingDeclaration)
+      }
+      .mapToSet { hintFunctionSymbol ->
+        hintFunctionSymbol.owner.regularParameters.single().type.classOrFail.owner.classIdOrFail
+      }
   }
 
-  private fun IrClass.lookupContributionProviderContainer(
+  private fun lookupContributionProviderContainer(
+    contributingClassId: ClassId,
     scope: Scope,
     callingDeclaration: IrDeclaration,
   ): IrClass? {
-    val containerClassId = MetroContributions.containerObjectClassId(classIdOrFail, scope)
+    val containerClassId = MetroContributions.containerObjectClassId(contributingClassId, scope)
     return context(metroContext) { callingDeclaration.lookupClass(containerClassId)?.owner }
+  }
+
+  /**
+   * Confirms that a class found at the deterministic container ID is the public
+   * contribution-provider container generated for [contributingClassId] in [scope].
+   *
+   * FIR hints use the source class when its container is generated in IR, so downstream lookup must
+   * verify the container's visibility, scope, and `@Origin` data before accepting it.
+   */
+  private fun IrClass.isContributionProviderContainerFor(
+    contributingClassId: ClassId,
+    scope: Scope,
+  ): Boolean {
+    if (!visibility.isPublicAPI) return false
+    if (!isDirectContributionTo(scope)) return false
+    val originAnnotation =
+      findAnnotations(Symbols.ClassIds.metroOrigin).singleOrNull() ?: return false
+    return originAnnotation.originOrNull() == contributingClassId &&
+      originAnnotation.originContextOrNull() ==
+        Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
   }
 
   // Replacement processing is intentionally NOT done here. It's handled in
