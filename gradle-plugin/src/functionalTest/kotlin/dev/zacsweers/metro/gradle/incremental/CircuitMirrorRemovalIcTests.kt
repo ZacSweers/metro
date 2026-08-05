@@ -14,11 +14,128 @@ import dev.zacsweers.metro.gradle.getTestCircuitVersion
 import dev.zacsweers.metro.gradle.getTestCompilerToolingVersion
 import dev.zacsweers.metro.gradle.getTestCompilerVersion
 import dev.zacsweers.metro.gradle.invokeMain
+import dev.zacsweers.metro.gradle.source as testSource
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CircuitMirrorRemovalIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM) {
+  @Test
+  fun expectOwnedSerializerRegistrationRemovalIsDetected() {
+    val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
+    assumeTrue(selectedTarget == null || selectedTarget == "jvm")
+    assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.3.20"))
+
+    val circuitVersion = getTestCircuitVersion()
+    val circuitSerialization =
+      implementation("com.slack.circuit:circuit-serialization:$circuitVersion")
+    val composePlugin = Plugin("org.jetbrains.kotlin.plugin.compose", getTestCompilerVersion())
+    val serializationPlugin =
+      Plugin("org.jetbrains.kotlin.plugin.serialization", getTestCompilerVersion())
+    val metroConfig =
+      """
+      @OptIn(
+        dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class,
+        dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class,
+      )
+      metro {
+        enableCircuitCodegen.set(true)
+        compilerOptions.enable("omit-redundant-mirrors")
+      }
+      """
+        .trimIndent()
+
+    val fixture =
+      object : MetroProject() {
+        val expectedScreen =
+          source(
+            serializableExpectSource(),
+            fileNameWithoutExtension = "SerializableScreen",
+          )
+
+        val actualScreen =
+          testSource(
+            serializableActualSource(),
+            fileNameWithoutExtension = "SerializableScreen",
+            sourceSet = "jvmMain",
+          )
+
+        private val graphAndMain =
+          source(
+            """
+            import com.slack.circuit.serialization.CircuitSerializerRegistration
+
+            @BindingContainer
+            interface CircuitSerializationBindings {
+              @Multibinds(allowEmpty = true)
+              fun registrations(): Set<CircuitSerializerRegistration>
+            }
+
+            @DependencyGraph(
+              AppScope::class,
+              bindingContainers = [CircuitSerializationBindings::class],
+            )
+            interface AppGraph {
+              val registrations: Set<CircuitSerializerRegistration>
+            }
+
+            fun main(): String = createGraph<AppGraph>().registrations.size.toString()
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+
+        override fun multiplatformTargetsBlock(): String = "kotlin { jvm() }\n"
+
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(graphAndMain)
+            plugins(
+              GradlePlugins.Kotlin.multiplatform(),
+              composePlugin,
+              serializationPlugin,
+              GradlePlugins.metro,
+            )
+            dependencies(implementation(":feature"), circuitSerialization)
+            buildScript { withKotlin(multiplatformTargetsBlock() + metroConfig) }
+          }
+          subproject("feature") {
+            sources(expectedScreen, actualScreen)
+            plugins(
+              GradlePlugins.Kotlin.multiplatform(),
+              composePlugin,
+              serializationPlugin,
+              GradlePlugins.metro,
+            )
+            dependencies(circuitSerialization)
+            buildScript { withKotlin(multiplatformTargetsBlock() + metroConfig) }
+          }
+        }
+      }
+
+    val project = fixture.gradleProject
+    val firstBuild = build(project.rootDir, compileTaskFor())
+    assertThat(firstBuild.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("1")
+
+    val featureProject = project.subprojects.single { it.name.removePrefix(":") == "feature" }
+    featureProject.modify(
+      project.rootDir,
+      fixture.expectedScreen,
+      serializableExpectSource(annotated = false),
+    )
+    featureProject.modify(
+      project.rootDir,
+      fixture.actualScreen,
+      serializableActualSource(annotated = false),
+      sourceSet = "jvmMain",
+    )
+
+    val secondBuild = build(project.rootDir, compileTaskFor())
+    assertThat(secondBuild.task(compileTaskFor())?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<String>()).isEqualTo("0")
+  }
+
   @Test
   fun classAndFunctionScreenArgumentChangesAreDetected() {
     val selectedTarget = System.getProperty("metro.functionalTestKmpTarget")
@@ -145,6 +262,26 @@ class CircuitMirrorRemovalIcTests : BaseIncrementalCompilationTest(KmpTarget.JVM
     @CircuitInject($functionScreen::class, AppScope::class)
     @Composable
     fun FunctionPresenter(): TestState = TestState("function")
+    """
+      .trimIndent()
+
+  private fun serializableExpectSource(annotated: Boolean = true): String =
+    """
+    import com.slack.circuit.runtime.screen.Screen
+    import com.slack.circuit.serialization.CircuitSerializable
+
+    ${if (annotated) "@CircuitSerializable(AppScope::class)" else ""}
+    expect object SerializableScreen : Screen
+    """
+      .trimIndent()
+
+  private fun serializableActualSource(annotated: Boolean = true): String =
+    """
+    import com.slack.circuit.runtime.screen.Screen
+    import com.slack.circuit.serialization.CircuitSerializable
+
+    ${if (annotated) "@CircuitSerializable(AppScope::class)" else ""}
+    actual object SerializableScreen : Screen
     """
       .trimIndent()
 }
