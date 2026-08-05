@@ -166,6 +166,14 @@ fun getTestCompilerVersion(): String =
 fun getTestCompilerToolingVersion(): KotlinToolingVersion =
   KotlinToolingVersion(getTestCompilerVersion())
 
+fun KotlinToolingVersion.supportsTopLevelFirGen(): Boolean {
+  return if (isDev) {
+    this >= KotlinToolingVersion("2.3.20-dev-6204")
+  } else {
+    this >= KotlinToolingVersion("2.3.20-Beta1")
+  }
+}
+
 /**
  * Invokes the `main` function from the compiled test sources and returns the result.
  *
