@@ -10,6 +10,7 @@ Changelog
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 - **[IR]** Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.
 - **[IR]** Prevent stack overflows in large dependency graphs by checking cycles with heap-backed frames instead of recursive DFS traversal.
+- **[IR]** Do not require suspend provider support for caller-supplied suspend function `@Assisted` parameters.
 
 1.4.0
 -----
