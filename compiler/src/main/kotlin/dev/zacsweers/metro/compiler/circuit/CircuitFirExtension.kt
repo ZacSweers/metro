@@ -80,12 +80,13 @@ import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /**
- * FIR extension that generates Circuit factory classes for `@CircuitInject`-annotated elements.
+ * FIR extension that generates Circuit factories and serializer registrations.
  *
- * For top-level functions, generates a top-level factory class. For classes, generates a nested
- * `Factory` class.
+ * `@CircuitInject` functions produce a top-level factory class, while annotated classes produce a
+ * nested `Factory` class. `@CircuitSerializable` classes and objects produce a top-level
+ * `CircuitSerializerRegistration` implementation.
  *
- * Generated factories are annotated with:
+ * Generated classes are annotated with:
  * - `@Inject` (for Metro to generate the factory's own factory)
  * - `@ContributesIntoSet(scope)` (for Metro to contribute it to the graph)
  * - `@Origin(originClass)` (for Metro to track the origin)
@@ -131,21 +132,32 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       }
   }
 
+  private val annotatedSerializableClasses: List<FirRegularClassSymbol> by lazy {
+    findCircuitSerializableClasses(session)
+  }
+
   // Map from factory ClassId -> annotated function (for top-level function factories)
   // Purposefully not FirNamedFunctionSymbol for compat reasons. TODO move in 2.3.20
   private val functionFactoryClassIds = mutableMapOf<ClassId, AnnotatedCircuitFunction>()
 
-  // Track generated factory ClassIds for callable generation
-  private val generatedFactoryClassIds = mutableSetOf<ClassId>()
+  // Map from generated registration ClassId -> annotated serialized type.
+  private val serializerRegistrationClassIds = mutableMapOf<ClassId, FirRegularClassSymbol>()
+
+  // Track generated Circuit ClassIds for constructor generation.
+  private val generatedClassIds = mutableSetOf<ClassId>()
 
   // Cache computed targets during class generation. Nullable values cache failed lookups to avoid
   // recomputation.
   private val computedTargets = mutableMapOf<ClassId, CircuitFactoryTarget?>()
 
+  private val computedSerializerRegistrationTargets =
+    mutableMapOf<ClassId, CircuitSerializerRegistrationTarget?>()
+
   private val typeResolverFactory by lazy { MetroFirTypeResolver.Factory(session).caching() }
 
   override fun FirDeclarationPredicateRegistrar.registerPredicates() {
     register(CircuitSymbols.circuitInjectPredicate)
+    register(CircuitSymbols.circuitSerializablePredicate)
     register(session.predicates.assistedAnnotationPredicate)
     register(session.predicates.assistedFactoryAnnotationPredicate)
     register(session.predicates.qualifiersPredicate)
@@ -154,7 +166,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   // Top-level circuit functions
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun getTopLevelClassIds(): Set<ClassId> {
-    return annotatedFunctions.mapNotNullToSet { annotatedFunction ->
+    val factoryClassIds = annotatedFunctions.mapNotNullToSet { annotatedFunction ->
       // Just compute the class ID here, defer full target computation to class gen
       val function = annotatedFunction.symbol
       val factoryClassId =
@@ -165,19 +177,27 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       functionFactoryClassIds[factoryClassId] = annotatedFunction
       factoryClassId
     }
+
+    val registrationClassIds = registerSerializerRegistrationClassIds()
+    return factoryClassIds + registrationClassIds
   }
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
-    val target = getOrComputeFunctionTarget(classId) ?: return null
-    return generateFactoryClass(
-      target,
-      null,
-      CircuitOrigins.FactoryClass(target.codegenTarget, target.factoryType),
-      target.factoryType,
-      // We don't know hasConstructorParams yet, for now always generate as CLASS
-      hasConstructorParams = true,
-    )
+    val factoryTarget = getOrComputeFunctionTarget(classId)
+    if (factoryTarget != null) {
+      return generateFactoryClass(
+        factoryTarget,
+        null,
+        CircuitOrigins.FactoryClass(factoryTarget.codegenTarget, factoryTarget.factoryType),
+        factoryTarget.factoryType,
+        // We don't know hasConstructorParams yet, for now always generate as CLASS
+        hasConstructorParams = true,
+      )
+    }
+
+    val registrationTarget = getOrComputeSerializerRegistrationTarget(classId) ?: return null
+    return generateSerializerRegistrationClass(registrationTarget)
   }
 
   override fun getNestedClassifiersNames(
@@ -217,11 +237,27 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    if (classSymbol.classId !in generatedFactoryClassIds) return emptySet()
-    return setOf(SpecialNames.INIT) // Create will be handled by fakeOverride IR gen from supertype
+    if (classSymbol.classId !in generatedClassIds) return emptySet()
+    // Other interface functions are materialized as fake overrides and finalized in IR.
+    return setOf(SpecialNames.INIT)
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
+    val registrationTarget = computedSerializerRegistrationTargets[context.owner.classId]
+    if (registrationTarget != null) {
+      return listOf(
+        createConstructor(
+            context.owner,
+            CircuitOrigins.SerializerRegistrationConstructor,
+            isPrimary = true,
+            generateDelegatedNoArgConstructorCall = true,
+          ) {
+            visibility = Visibilities.Public
+          }
+          .symbol
+      )
+    }
+
     val target = findTargetForFactory(context.owner.classId) ?: return emptyList()
     target.populate(session, ::isClassProvidedType)
 
@@ -329,7 +365,47 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         val target = getOrComputeFunctionTarget(factoryClassId) ?: return@mapNotNull null
         ContributionHint(contributingClassId = target.factoryClassId, scope = target.scopeClassId)
       }
-    return classHints + functionHints
+    val serializerRegistrationHints =
+      registerSerializerRegistrationClassIds().mapNotNull { registrationClassId ->
+        val target =
+          getOrComputeSerializerRegistrationTarget(registrationClassId) ?: return@mapNotNull null
+        ContributionHint(
+          contributingClassId = target.registrationClassId,
+          scope = target.scopeClassId,
+        )
+      }
+    return classHints + functionHints + serializerRegistrationHints
+  }
+
+  private fun generateSerializerRegistrationClass(
+    target: CircuitSerializerRegistrationTarget
+  ): FirClassLikeSymbol<*> {
+    val registrationClass =
+      createTopLevelClass(
+        target.registrationClassId,
+        CircuitOrigins.SerializerRegistrationClass(target.serializedType.classId),
+        classKind = ClassKind.CLASS,
+      ) {
+        visibility = Visibilities.Public
+        superType(CircuitClassIds.CircuitSerializerRegistration.constructClassLikeType())
+      }
+
+    registrationClass.metroGeneratedInjectClassData =
+      GeneratedInjectClassData(hasConstructorParams = false)
+    registrationClass.metroOriginData = MetroOriginData(target.serializedType.classId)
+
+    context(session.compatContext) {
+      registrationClass.replaceAnnotationsSafe(
+        listOf(
+          buildInjectAnnotation(),
+          buildContributesIntoSetAnnotation(target.scopeClassId),
+        )
+      )
+    }
+    registrationClass.markAsDeprecatedHidden(session)
+    generatedClassIds.add(registrationClass.symbol.classId)
+
+    return registrationClass.symbol
   }
 
   private fun generateFactoryClass(
@@ -387,7 +463,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     factoryClass.markAsDeprecatedHidden(session)
 
-    generatedFactoryClassIds.add(factoryClass.symbol.classId)
+    generatedClassIds.add(factoryClass.symbol.classId)
 
     return factoryClass.symbol
   }
@@ -546,6 +622,14 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
       )
     }
 
+    fun findCircuitSerializableClasses(session: FirSession): List<FirRegularClassSymbol> {
+      return session.predicateBasedProvider
+        .getSymbolsByPredicate(CircuitSymbols.circuitSerializablePredicate)
+        .filterIsInstance<FirRegularClassSymbol>()
+        // Platform FIR sessions contain both declarations. The expect owns code generation.
+        .filterNot { it.rawStatus.isActual }
+    }
+
     fun findCircuitInjectFunctions(
       annotatedSymbols: List<FirBasedSymbol<*>>,
       session: FirSession,
@@ -563,6 +647,40 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   private fun findTargetForFactory(factoryClassId: ClassId): CircuitFactoryTarget? {
     return computedTargets[factoryClassId]
+  }
+
+  private fun registerSerializerRegistrationClassIds(): Set<ClassId> {
+    for (serializedType in annotatedSerializableClasses) {
+      val registrationClassId = serializedType.classId.circuitSerializerRegistrationClassId()
+      // Collisions are reported by CircuitSerializableClassChecker. Keep generation deterministic
+      // so an invalid source program does not fail inside declaration generation first.
+      serializerRegistrationClassIds.putIfAbsent(registrationClassId, serializedType)
+    }
+    return serializerRegistrationClassIds.keys
+  }
+
+  private fun getOrComputeSerializerRegistrationTarget(
+    registrationClassId: ClassId
+  ): CircuitSerializerRegistrationTarget? {
+    return computedSerializerRegistrationTargets.getOrPut(registrationClassId) {
+      val serializedType =
+        serializerRegistrationClassIds[registrationClassId] ?: return@getOrPut null
+      val typeResolver = typeResolverFactory.create(serializedType) ?: return@getOrPut null
+      val annotation =
+        serializedType
+          .annotationsIn(session, setOf(CircuitClassIds.CircuitSerializable))
+          .firstOrNull() ?: return@getOrPut null
+      if (annotation !is FirAnnotationCall) return@getOrPut null
+      val scopeClassId =
+        annotation
+          .argumentAsOrNull<FirGetClassCall>(session, CircuitNames.scope, 0)
+          ?.resolveClassId(typeResolver) ?: return@getOrPut null
+      CircuitSerializerRegistrationTarget(
+        serializedType = serializedType,
+        registrationClassId = registrationClassId,
+        scopeClassId = scopeClassId,
+      )
+    }
   }
 
   /** Gets or lazily computes and caches the factory target for a class-based factory. */
@@ -682,6 +800,12 @@ private data class AnnotatedCircuitClass(
 private data class AnnotatedCircuitFunction(
   val symbol: FirFunctionSymbol<*>,
   val target: CircuitCodegenTarget,
+)
+
+private data class CircuitSerializerRegistrationTarget(
+  val serializedType: FirRegularClassSymbol,
+  val registrationClassId: ClassId,
+  val scopeClassId: ClassId,
 )
 
 /**

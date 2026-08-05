@@ -135,8 +135,6 @@ internal sealed interface CircuitSymbols {
 
   class Ir(private val builtinsFinder: CompatContext.DeclarationFinderCompat) : CircuitSymbols {
 
-    private val serializerFunctions = mutableMapOf<IrClassSymbol, IrSimpleFunctionSymbol>()
-
     val modifier: IrClassSymbol by lazy {
       builtinsFinder.findClass(CircuitClassIds.Modifier)
         ?: error("Could not find ${CircuitClassIds.Modifier}")
@@ -172,10 +170,6 @@ internal sealed interface CircuitSymbols {
 
     /** Finds the no-argument `serializer()` function on [serializedClass] or its companion. */
     fun serializerFunction(serializedClass: IrClassSymbol): IrSimpleFunctionSymbol? {
-      serializerFunctions[serializedClass]?.let {
-        return it
-      }
-
       val serializedClassOwner = serializedClass.owner
       val serializerOwners =
         listOfNotNull(serializedClassOwner, serializedClassOwner.companionObject())
@@ -204,7 +198,6 @@ internal sealed interface CircuitSymbols {
               serializedTypeArgument == serializedClassOwner.classId
           }
           ?.symbol
-      serializerFunction?.let { serializerFunctions[serializedClass] = it }
       return serializerFunction
     }
 
