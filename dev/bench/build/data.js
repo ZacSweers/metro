@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785960304359,
+  "lastUpdate": 1785963129988,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20608,6 +20608,62 @@ window.BENCHMARK_DATA = {
             "value": 14761.035999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.88%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "87bd03c3~1",
+          "message": "[before] Clean up FIR hint gen and IR class gen interaction",
+          "timestamp": "2026-08-05T19:55:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/87bd03c34d8af16da5757effca72498928d4142d"
+        },
+        "date": 1785963129988,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18307.325,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "87bd03c34d8af16da5757effca72498928d4142d",
+          "message": "[after] Clean up FIR hint gen and IR class gen interaction",
+          "timestamp": "2026-08-05T19:55:44Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/87bd03c34d8af16da5757effca72498928d4142d"
+        },
+        "date": 1785963129989,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18173.568,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.73%"
           }
         ]
       }
