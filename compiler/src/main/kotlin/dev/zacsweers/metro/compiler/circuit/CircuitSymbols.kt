@@ -24,6 +24,9 @@ internal sealed interface CircuitSymbols {
           it.injectAnnotation.asSingleFqName()
         }
       )
+
+    val circuitSerializablePredicate =
+      annotated(setOf(CircuitClassIds.CircuitSerializable.asSingleFqName()))
   }
 
   class Fir(session: FirSession) : FirExtensionSessionComponent(session) {
