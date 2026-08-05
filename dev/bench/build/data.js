@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785948183699,
+  "lastUpdate": 1785960304359,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20552,6 +20552,62 @@ window.BENCHMARK_DATA = {
             "value": 17669.123,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -7.77%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6a4b6799~1",
+          "message": "[before] Add expression limiting to long graph expression s",
+          "timestamp": "2026-08-05T15:13:51-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6a4b679906f3d00027cb872b30edb6daa43ed6c8"
+        },
+        "date": 1785960304359,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14632.597,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6a4b679906f3d00027cb872b30edb6daa43ed6c8",
+          "message": "[after] Add expression limiting to long graph expression s",
+          "timestamp": "2026-08-05T15:13:51-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6a4b679906f3d00027cb872b30edb6daa43ed6c8"
+        },
+        "date": 1785960304360,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14761.035999999998,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.88%"
           }
         ]
       }
