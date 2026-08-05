@@ -3459,6 +3459,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("AssistedSuspendFunctionParameter.kt")
+    public void testAssistedSuspendFunctionParameter() {
+      run("AssistedSuspendFunctionParameter.kt");
+    }
+
+    @Test
     @TestMetadata("ConstructorInjection.kt")
     public void testConstructorInjection() {
       run("ConstructorInjection.kt");
