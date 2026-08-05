@@ -19,7 +19,7 @@ androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0"
 annotation = "1.10.0"
 anvil = "0.5.4"
-circuit = "0.35.1"
+circuit = "0.36.0"
 compose-jb = "1.10.3"
 jetbrains-lifecycle-navigation3 = "2.10.0"
 jetbrains-navigation3 = "1.1.1"
@@ -122,6 +122,7 @@ circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = 
 circuit-runtime-presenter = { module = "com.slack.circuit:circuit-runtime-presenter", version.ref = "circuit" }
 circuit-runtime-ui = { module = "com.slack.circuit:circuit-runtime-ui", version.ref = "circuit" }
 circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annotations", version.ref = "circuit" }
+circuit-serialization = { module = "com.slack.circuit:circuit-serialization", version.ref = "circuit" }
 circuit-subcircuit = { module = "com.slack.circuit:circuitx-subcircuit", version.ref = "circuit" }
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
