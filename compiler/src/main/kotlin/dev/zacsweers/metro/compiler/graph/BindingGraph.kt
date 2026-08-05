@@ -289,27 +289,25 @@ internal open class MutableBindingGraph<
         addAll(keep)
       }
 
+    // Adjacency collapses parallel requests, so check every original request for an eager edge.
+    val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
+      !bindings.getValue(to).isImplicitlyDeferrable &&
+        // TODO we can cache these dep lookups some day if needed
+        bindings.getValue(from).dependencies.any { dependency ->
+          dependency.typeKey == to && !dependency.isDeferrable
+        }
+    }
+
     // Run topo sort. It gives back either a valid order or calls onCycle for errors
     val result =
       trace("Topo sort") {
         metroSort(
           fullAdjacency = fullAdjacency,
           roots = sortedRootKeys,
-          isDeferrable = { from, to ->
-            if (bindings.getValue(to).isImplicitlyDeferrable) {
-              true
-            } else {
-              bindings.getValue(from).dependencies.first { it.typeKey == to }.isDeferrable
-            }
-          },
+          isDeferrable = { from, to -> !isHardEdge(from, to) },
           onSortedCycle = onSortedCycle,
           onCycle = { sccVertices ->
             val sccSet = sccVertices.toSet()
-            val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
-              val toBinding = bindings.getValue(to)
-              if (toBinding.isImplicitlyDeferrable) false
-              else bindings.getValue(from).dependencies.any { it.typeKey == to && !it.isDeferrable }
-            }
 
             val cyclePath: List<TypeKey> =
               sccVertices.firstNotNullOfOrNull { candidate ->
