@@ -23,7 +23,10 @@ public interface MetroContributionHintExtension {
   /**
    * Returns contribution hints for classes generated or discovered by this extension.
    *
-   * Target classes must be visible in FIR. Hints for classes generated only in IR are ignored.
+   * Every contributing class returned here must be visible in FIR. An implementation that completes
+   * the class in IR must also extend [MetroFirDeclarationGenerationExtension], generate a FIR
+   * declaration shell with the same [ClassId], and register that declaration extension's
+   * [MetroFirDeclarationGenerationExtension.Factory].
    *
    * @return List of contribution hints, empty by default.
    */

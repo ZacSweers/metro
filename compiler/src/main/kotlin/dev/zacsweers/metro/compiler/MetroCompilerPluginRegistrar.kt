@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.generateCircuitFactoriesInFir
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
@@ -148,7 +149,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]
       with(compatContext) {
         if (options.enableCircuitCodegen) {
-          if (options.generateClassesInIr) {
+          if (options.generateClassesInIr && !options.generateCircuitFactoriesInFir) {
             registerIrExtensionCompat(
               CircuitIrDeclarationGenerationExtension.create(
                 classIds = classIds,

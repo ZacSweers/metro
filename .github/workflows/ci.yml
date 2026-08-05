@@ -247,6 +247,7 @@ jobs:
   js-box:
     name: ${{ github.ref == 'refs/heads/main' && 'js box / full' || 'web / smoke' }}
     runs-on: ubuntu-latest
+    needs: generate-matrix
     timeout-minutes: 40
     permissions:
       checks: write
@@ -277,6 +278,7 @@ jobs:
         if: github.ref != 'refs/heads/main'
         run: |
           ./gradlew :gradle-plugin:functionalTest --quiet \
+            '-Pmetro.testCompilerVersion=${{ needs.generate-matrix.outputs.latest_kotlin_version }}' \
             -Pmetro.functionalTestKmpTarget=wasmJs \
             --tests 'dev.zacsweers.metro.gradle.incremental.BindingContainerICTests.contributionScopeChangeInMultiModuleProject*' \
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \

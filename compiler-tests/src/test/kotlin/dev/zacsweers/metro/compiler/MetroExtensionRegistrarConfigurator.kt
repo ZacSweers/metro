@@ -304,12 +304,6 @@ class MetroExtensionRegistrarConfigurator(
                   as? MetroContributionHintExtension,
               )
             )
-            if (options.enableCircuitCodegen && !options.generateClassesInIr) {
-              add(
-                CircuitFirExtension.Factory().create(session, options, compatContext)!!
-                  as MetroContributionHintExtension
-              )
-            }
             if (options.enableHiltInterop) {
               HiltFirDeclarationExtension.HintFactory()
                 .create(session, options, compatContext)
@@ -346,7 +340,10 @@ class MetroExtensionRegistrarConfigurator(
     )
     if (options.enableCircuitCodegen) {
       FirExtensionRegistrarAdapter.registerExtension(ComposeFirExtensionRegistrar())
-      if (options.generateClassesInIr) {
+      val circuitFactoriesGeneratedInFir =
+        !options.generateClassesInIr ||
+          (options.generateContributionHints && options.generateContributionHintsInFir)
+      if (options.generateClassesInIr && !circuitFactoriesGeneratedInFir) {
         IrGenerationExtension.registerExtension(
           CircuitIrDeclarationGenerationExtension.create(
             classIds = classIds,

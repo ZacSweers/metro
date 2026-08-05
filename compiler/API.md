@@ -91,7 +91,7 @@ This API is similar to `FirDeclarationGenerationExtension`, but has a `ServiceLo
 
 #### MetroContributionHintExtension and `getContributionHints()`
 
-If your extension generates FIR-visible classes with contributing annotations such as `@ContributesTo`, Metro's `ContributionHintFirGenerator` needs to know about them to produce hint functions for cross-module discovery. Classes generated only in IR cannot be used as contribution hint targets and are ignored.
+If your extension generates classes with contributing annotations such as `@ContributesTo`, Metro's `ContributionHintFirGenerator` needs to know about them to produce hint functions for cross-module discovery. Every contribution hint target must resolve in FIR. If an extension completes the class in IR, the same extension must also extend `MetroFirDeclarationGenerationExtension`, generate a FIR declaration shell with the same `ClassId`, and register its declaration extension factory.
 
 Implement `MetroContributionHintExtension` and override `getContributionHints()` to declare these contributions:
 
