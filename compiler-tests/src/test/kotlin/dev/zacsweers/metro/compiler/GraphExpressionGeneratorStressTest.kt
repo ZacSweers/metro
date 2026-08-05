@@ -2,9 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteIfExists
-import kotlin.io.path.writeText
 import kotlin.test.Test
 
 /**
@@ -12,7 +9,7 @@ import kotlin.test.Test
  *
  * The `StressTest` suffix keeps these tests behind `-Pmetro.enableLargeTests`.
  */
-class GraphExpressionGeneratorStressTest : AbstractBoxTest() {
+class GraphExpressionGeneratorStressTest : DynamicJvmBoxTest() {
 
   @Test
   fun deepAcyclicConstructorChain() {
@@ -85,97 +82,80 @@ class GraphExpressionGeneratorStressTest : AbstractBoxTest() {
     usesSuspendBindings: Boolean = false,
     synchronousBranchBindingCount: Int = 0,
   ) {
-    val testData = createTempFile(prefix = testName, suffix = ".kt")
+    runDynamicBoxTest(testName) {
+      if (usesSuspendBindings) {
+        appendLine("// ENABLE_SUSPEND_PROVIDERS")
+      }
 
-    try {
-      testData.writeText(
-        buildString {
-          if (usesSuspendBindings) {
-            appendLine("// ENABLE_SUSPEND_PROVIDERS")
-          }
-
-          // Keep bindings unscoped so graph fields do not shorten the generated call chain.
-          for (index in 0 until bindingCount) {
-            append("@Inject class Node")
-            append(index.toString().padStart(4, '0'))
-
-            if (index + 1 < bindingCount) {
-              append("(dependency: Node")
-              append((index + 1).toString().padStart(4, '0'))
-              if (hasBranchedRoot && index == 0) {
-                // Add another dependency to make sure the deep branch is still checked.
-                append(", extra: Extra")
-              }
-              if (synchronousBranchBindingCount > 0 && index == 0) {
-                append(", synchronousDependency: SynchronousNode0000, suspendValue: String")
-              }
-              append(')')
-            } else if (closesCycleWithProvider) {
-              append("(dependency: () -> Node0000)")
-            } else if (usesSuspendBindings) {
-              append("(dependency: String)")
-            }
-
-            appendLine()
-          }
-
-          if (synchronousBranchBindingCount > 0) {
-            appendLine()
-            // This branch starts as scalar but becomes a provider dependency of a suspend factory.
-            for (index in 0 until synchronousBranchBindingCount) {
-              append("@Inject class SynchronousNode")
-              append(index.toString().padStart(4, '0'))
-              if (index + 1 < synchronousBranchBindingCount) {
-                append("(dependency: SynchronousNode")
-                append((index + 1).toString().padStart(4, '0'))
-                append(')')
-              }
-              appendLine()
-            }
-          }
-
-          if (hasBranchedRoot) {
-            appendLine("@Inject class Extra")
-          }
-
-          appendLine()
-          appendLine("@DependencyGraph")
-          appendLine("interface StressGraph {")
-          if (usesMultibindingRoot) {
-            // Two contributions put the deep chain inside a buildSet lambda.
-            appendLine("  @Provides @IntoSet fun provideDeep(value: Node0000): Any = value")
-            appendLine("  @Provides @IntoSet fun provideOther(): Any = \"other\"")
-            appendLine("  val root: Set<Any>")
-          } else if (usesSuspendBindings) {
-            appendLine("  @Provides suspend fun provideValue(): String = \"value\"")
-            appendLine("  suspend fun root(): Node0000")
-          } else {
-            appendLine("  val root: Node0000")
-          }
-          appendLine("}")
-          appendLine()
-          appendLine("fun box(): String {")
-
-          // Read acyclic roots to check that the generated code still works.
-          // Do not read cyclic roots because they can still overflow at runtime.
-          appendLine("  val graph = createGraph<StressGraph>()")
-          if (!closesCycleWithProvider) {
-            if (usesMultibindingRoot) {
-              appendLine("  check(graph.root.size == 2)")
-            } else if (usesSuspendBindings) {
-              appendLine("  runBlocking { graph.root() }")
-            } else {
-              appendLine("  graph.root")
-            }
-          }
-          appendLine("  return \"OK\"")
-          appendLine("}")
+      val rootDependencies = buildList {
+        if (hasBranchedRoot) {
+          // Add another dependency to make sure the deep branch is still checked.
+          add("extra: Extra")
         }
+        if (synchronousBranchBindingCount > 0) {
+          add("synchronousDependency: SynchronousNode0000")
+          add("suspendValue: String")
+        }
+      }
+      val leafDependency =
+        when {
+          closesCycleWithProvider -> "() -> Node0000"
+          usesSuspendBindings -> "String"
+          else -> null
+        }
+
+      // Keep bindings unscoped so graph fields do not shorten the generated call chain.
+      appendInjectedBindingChain(
+        bindingCount = bindingCount,
+        leafDependency = leafDependency,
+        rootDependencies = rootDependencies,
       )
 
-      runTest(testData.toString())
-    } finally {
-      testData.deleteIfExists()
+      if (synchronousBranchBindingCount > 0) {
+        appendLine()
+        // This branch starts as scalar but becomes a provider dependency of a suspend factory.
+        appendInjectedBindingChain(
+          bindingCount = synchronousBranchBindingCount,
+          namePrefix = "SynchronousNode",
+        )
+      }
+
+      if (hasBranchedRoot) {
+        appendLine("@Inject class Extra")
+      }
+
+      appendLine()
+      appendLine("@DependencyGraph")
+      appendLine("interface StressGraph {")
+      if (usesMultibindingRoot) {
+        // Two contributions put the deep chain inside a buildSet lambda.
+        appendLine("  @Provides @IntoSet fun provideDeep(value: Node0000): Any = value")
+        appendLine("  @Provides @IntoSet fun provideOther(): Any = \"other\"")
+        appendLine("  val root: Set<Any>")
+      } else if (usesSuspendBindings) {
+        appendLine("  @Provides suspend fun provideValue(): String = \"value\"")
+        appendLine("  suspend fun root(): Node0000")
+      } else {
+        appendLine("  val root: Node0000")
+      }
+      appendLine("}")
+      appendLine()
+      appendLine("fun box(): String {")
+
+      // Read acyclic roots to check that the generated code still works.
+      // Do not read cyclic roots because they can still overflow at runtime.
+      appendLine("  val graph = createGraph<StressGraph>()")
+      if (!closesCycleWithProvider) {
+        if (usesMultibindingRoot) {
+          appendLine("  check(graph.root.size == 2)")
+        } else if (usesSuspendBindings) {
+          appendLine("  runBlocking { graph.root() }")
+        } else {
+          appendLine("  graph.root")
+        }
+      }
+      appendLine("  return \"OK\"")
+      appendLine("}")
     }
   }
 }
