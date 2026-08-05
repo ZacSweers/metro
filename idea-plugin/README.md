@@ -130,6 +130,7 @@ are reported as internal plugin errors rather than Metro graph diagnostics.
 Project settings live under `Settings > Tools > Metro`.
 
 - Suppress unused-declaration warnings for Metro-injected declarations
+- Suppress false-positive kapt configuration warnings in Metro-enabled modules
 - Show binding navigation (gutter icons, code vision, inlay hints)
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types

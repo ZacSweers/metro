@@ -21,6 +21,9 @@ class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
   var suppressUnusedWarnings by property(true)
 
+  /** Suppresses IntelliJ's false-positive kapt configuration warning in Metro-enabled modules. */
+  var suppressKaptConfigurationWarning by property(true)
+
   /** Master switch for binding resolution: gutter icons, code vision, and inlay hints. */
   var enableBindingResolution by property(true)
 
@@ -55,6 +58,11 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           "Treats providers, injected classes, and contributions as used even when their only " +
             "usages are in generated code"
         )
+    }
+    row {
+      checkBox("Suppress false-positive kapt configuration warnings")
+        .bindSelected(state::suppressKaptConfigurationWarning)
+        .comment("Metro does not require kapt; applies only to modules with Metro enabled")
     }
     lateinit var resolutionSelected: ComponentPredicate
     row {
