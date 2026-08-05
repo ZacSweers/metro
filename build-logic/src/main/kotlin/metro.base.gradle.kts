@@ -20,6 +20,15 @@ val catalog = rootProject.extensions.getByType<VersionCatalogsExtension>().named
 val jdkVersion = catalog.findVersion("jdk").get().requiredVersion
 val jvmTargetVersion = catalog.findVersion("jvmTarget").get().requiredVersion
 val compilerJvmTargetVersion = catalog.findVersion("compilerJvmTarget").get().requiredVersion
+val kotlinLanguageVersionOverride =
+  providers.gradleProperty("kotlin_language_version").map(KotlinVersion::fromVersion)
+val kotlinApiVersionOverride =
+  providers.gradleProperty("kotlin_api_version").map(KotlinVersion::fromVersion)
+val kotlinAdditionalCliOptions =
+  providers
+    .gradleProperty("kotlin_additional_cli_options")
+    .map { value -> value.trim().split(Regex("\\s+")).filter(String::isNotEmpty) }
+    .orElse(emptyList())
 
 val metroExtension =
   project.extensions.create<MetroProjectExtension>("metroProject").apply {
@@ -98,6 +107,13 @@ plugins.withType<KotlinBasePlugin> {
       progressiveMode.convention(metroExtension.progressiveMode)
       languageVersion.convention(metroExtension.languageVersion)
       apiVersion.convention(metroExtension.apiVersion)
+      if (kotlinLanguageVersionOverride.isPresent) {
+        languageVersion.set(kotlinLanguageVersionOverride)
+      }
+      if (kotlinApiVersionOverride.isPresent) {
+        apiVersion.set(kotlinApiVersionOverride)
+      }
+      freeCompilerArgs.addAll(kotlinAdditionalCliOptions)
       if (this is KotlinJvmCompilerOptions) {
         jvmTarget.convention(metroExtension.jvmTarget.map(JvmTarget::fromTarget))
         jvmDefault.convention(JvmDefaultMode.NO_COMPATIBILITY)

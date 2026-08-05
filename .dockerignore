@@ -1,0 +1,13 @@
+.git
+.github
+.gradle
+**/.gradle
+**/build
+.cache
+.claude
+.idea
+.kotlin
+.run
+**/.DS_Store
+**/*.iml
+**/local.properties
