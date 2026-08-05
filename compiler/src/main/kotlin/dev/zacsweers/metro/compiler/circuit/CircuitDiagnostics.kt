@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.psi.KtElement
 
 internal object CircuitDiagnostics : KtDiagnosticsContainer() {
   val CIRCUIT_INJECT_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
+  val CIRCUIT_SERIALIZABLE_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
 
   override fun getRendererFactory(): BaseDiagnosticRendererFactory = CircuitErrorMessages
 }
@@ -20,5 +21,6 @@ private object CircuitErrorMessages : BaseDiagnosticRendererFactory() {
   override val MAP by
     KtDiagnosticFactoryToRendererMap("Circuit") { map ->
       map.put(CircuitDiagnostics.CIRCUIT_INJECT_ERROR, "{0}", STRING)
+      map.put(CircuitDiagnostics.CIRCUIT_SERIALIZABLE_ERROR, "{0}", STRING)
     }
 }
