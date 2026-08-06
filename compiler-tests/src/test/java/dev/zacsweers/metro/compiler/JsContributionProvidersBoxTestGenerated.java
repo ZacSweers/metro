@@ -2235,6 +2235,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("AncestorMemberInjectionOrder.kt")
+    public void testAncestorMemberInjectionOrder() {
+      run("AncestorMemberInjectionOrder.kt");
+    }
+
+    @Test
     @TestMetadata("AnotherAncestorInjection.kt")
     public void testAnotherAncestorInjection() {
       run("AnotherAncestorInjection.kt");
