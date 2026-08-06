@@ -1801,6 +1801,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#contributors" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -4746,6 +4757,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#contributors" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -7596,6 +7618,7 @@
 <li><strong>[FIR/IR]</strong> Generate contribution hints in FIR alongside IR class generation (Kotlin 2.4.20+), fixing downstream discovery for Metro&rsquo;s built-in contributions on all platforms.</li>
 <li><strong>[FIR]</strong> Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both <code>@Qualifier</code> and <code>@MapKey</code>.</li>
 <li><strong>[IR]</strong> Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.</li>
+<li><strong>[IR]</strong> Inject inherited members in superclass-first order when using graph injection methods.</li>
 <li><strong>[IR]</strong> Report duplicate bindings inherited from a parent graph when they are <em>only</em> requested by a child graph extension.</li>
 <li><strong>[IR]</strong> Fix <code>@GraphExtension.Factory</code> replacements across <code>additionalScopes</code> when generating classes in IR.</li>
 <li><strong>[IR]</strong> Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.</li>
@@ -7606,6 +7629,10 @@
 <li><strong>[IR]</strong> Prevent stack overflows while generating deeply nested/complex dependency graph expressions.</li>
 <li><strong>[IR]</strong> Show shorter, consistent dependency paths in graph errors with improved route caching.</li>
 <li><strong>[IC]</strong> Fix incremental compilation issue when adding or removing member injections from a superclass.</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Mentioned above in the fixes, but worth reiterating! Previously, graph-level member injector functions would incorrectly inject subclasses <em>before</em> ancestor classes. Now it correctly injects ancestors first, matching how <code>MembersInjector</code> and constructor-injected classes with member injection work. If you were relying on that behavior by accident, it&rsquo;s going to be different now!</li>
 </ul>
 <h3 id="contributors">Contributors<a class="headerlink" href="#contributors" title="Permanent link">&para;</a></h3>
 <p>Special thanks to the following contributors for contributing to this release!</p>
