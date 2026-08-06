@@ -13,6 +13,7 @@ Changelog
 - **[FIR/IR]** Generate contribution hints in FIR alongside IR class generation (Kotlin 2.4.20+), fixing downstream discovery for Metro's built-in contributions on all platforms.
 - **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
 - **[IR]** Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.
+- **[IR]** Inject inherited members in superclass-first order when using graph injection methods.
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 - **[IR]** Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.
@@ -23,6 +24,10 @@ Changelog
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
 - **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
 - **[IC]** Fix incremental compilation issue when adding or removing member injections from a superclass.
+
+### Changed
+
+- Mentioned above in the fixes, but worth reiterating! Previously, graph-level member injector functions would incorrectly inject subclasses _before_ ancestor classes. Now it correctly injects ancestors first, matching how `MembersInjector` and constructor-injected classes with member injection work. If you were relying on that behavior by accident, it's going to be different now!
 
 ### Contributors
 

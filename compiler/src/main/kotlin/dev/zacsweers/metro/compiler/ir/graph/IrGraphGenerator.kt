@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.RuntimeTracingAvailability
-import dev.zacsweers.metro.compiler.ir.allSupertypesSequence
 import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.asCanonicalProviderKey
 import dev.zacsweers.metro.compiler.ir.buildBlockBody
@@ -2013,11 +2012,7 @@ internal class IrGraphGenerator(
                   null
                 }
 
-              for (type in
-                targetClass.allSupertypesSequence(excludeSelf = false, excludeAny = true)) {
-
-                val clazz = type.rawType()
-                val generatedInjector = metroDeclarations.findInjector(clazz) ?: continue
+              for (generatedInjector in metroDeclarations.findAllInjectorsFor(targetClass)) {
                 for ((function, unmappedParams) in generatedInjector.declaredInjectFunctions) {
                   val parameters =
                     if (remapper != null) {
