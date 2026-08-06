@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785973467068,
+  "lastUpdate": 1785988172399,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -20888,6 +20888,62 @@ window.BENCHMARK_DATA = {
             "value": 17491.583,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -4.22%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b15ecd9d~1",
+          "message": "[before] Fix an IC issue with superclass member injections ",
+          "timestamp": "2026-08-06T02:51:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b15ecd9d75650a743b83f4367e4a054638c9ad6c"
+        },
+        "date": 1785988172399,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18361.924,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b15ecd9d75650a743b83f4367e4a054638c9ad6c",
+          "message": "[after] Fix an IC issue with superclass member injections ",
+          "timestamp": "2026-08-06T02:51:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b15ecd9d75650a743b83f4367e4a054638c9ad6c"
+        },
+        "date": 1785988172400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18319.238,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.23%"
           }
         ]
       }
