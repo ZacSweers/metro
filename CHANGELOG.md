@@ -22,6 +22,7 @@ Changelog
 - **[IR]** Fix a stack overflow when a nested graph extension requests a parent-scoped binding with suspend providers enabled.
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
 - **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
+- **[IC]** Fix incremental compilation issue when adding or removing member injections from a superclass.
 
 ### Contributors
 

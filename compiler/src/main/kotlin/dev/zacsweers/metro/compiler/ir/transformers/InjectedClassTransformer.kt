@@ -52,6 +52,7 @@ import dev.zacsweers.metro.compiler.ir.requireDeclarationMirrorFunction
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.requireStaticIshDeclarationContainer
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.ir.typeAsProviderArgument
 import dev.zacsweers.metro.compiler.ir.typeRemapperFor
@@ -601,6 +602,7 @@ internal class InjectedClassTransformer(
           val instance = createAndAddTemporaryVariable(newInstance)
           for (injector in injectors) {
             val injectorClass = injector.injectorClass ?: continue
+            trackClassLookup(invokeFunction, injectorClass)
             for ((function, parameters) in injector.declaredInjectFunctions) {
               // Record for IC
               trackFunctionCall(invokeFunction, function)
