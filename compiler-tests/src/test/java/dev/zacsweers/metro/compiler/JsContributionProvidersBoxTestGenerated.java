@@ -129,6 +129,18 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributesToTypeAliasScope.kt")
+    public void testContributesToTypeAliasScope() {
+      run("ContributesToTypeAliasScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToTypeAliasScopeAcrossModules.kt")
+    public void testContributesToTypeAliasScopeAcrossModules() {
+      run("ContributesToTypeAliasScopeAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       run("ContributingMultibileNullableBindings.kt");
