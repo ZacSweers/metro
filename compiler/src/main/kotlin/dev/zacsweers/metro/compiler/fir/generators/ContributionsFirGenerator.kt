@@ -203,28 +203,34 @@ internal class ContributionsFirGenerator(
       val contributionNamesToScopeArgs = mutableMapOf<Name, FirGetClassCall?>()
 
       if (contributionAnnotations.isNotEmpty()) {
+        val typeResolver = typeResolverFactory.create(contributingClassSymbol)
+
         // We create a contribution class for each scope being contributed to. E.g. if there are
         // contributions for AppScope and LibScope we'll create `MetroContributionToLibScope` and
         // `MetroContributionToAppScope`
-        // It'll try to use the fully name if possible, but because we really just need these to be
-        // disambiguated we can just safely fall back to the short name in the worst case
-        contributionAnnotations
-          .mapNotNull { it.scopeArgument(session) }
-          .distinctBy { it.scopeName(session) }
-          .forEach { scopeArgument ->
-            val nestedContributionName =
-              scopeArgument.resolvedClassId()?.let { scopeClassId ->
-                MetroContributions.metroContributionName(scopeClassId)
-              }
-                ?: scopeArgument.scopeName(session)?.let { scopeName ->
-                  MetroContributions.metroContributionNameFromSuffix(scopeName)
-                }
-                ?: reportCompilerBug(
-                  "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
-                )
+        // Fall back to the source short name when the full scope ClassId isn't available yet.
+        for (annotation in contributionAnnotations) {
+          val scopeArgument = annotation.scopeArgument(session) ?: continue
+          val scopeClassId =
+            if (typeResolver != null) {
+              annotation.resolvedScopeClassId(session, typeResolver)
+            } else {
+              annotation.resolvedScopeClassId(session)
+            }
+          val nestedContributionName =
+            if (scopeClassId != null) {
+              MetroContributions.metroContributionName(scopeClassId)
+            } else {
+              val scopeName =
+                scopeArgument.scopeName(session)
+                  ?: reportCompilerBug(
+                    "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
+                  )
+              MetroContributions.metroContributionNameFromSuffix(scopeName)
+            }
 
-            contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
-          }
+          contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
+        }
       }
       contributionNamesToScopeArgs
     }

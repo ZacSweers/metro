@@ -13,8 +13,7 @@ import dev.zacsweers.metro.compiler.fir.constructType
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
-import dev.zacsweers.metro.compiler.fir.resolvedArgumentTypeRef
-import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.HintGenerator
@@ -37,7 +36,6 @@ import org.jetbrains.kotlin.fir.scopes.getSingleClassifier
 import org.jetbrains.kotlin.fir.scopes.impl.declaredMemberScope
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -117,10 +115,7 @@ internal class ContributionHintFirGenerator(
         val typeResolver = typeResolverFactory.create(contributingClass) ?: continue
 
         val contributionScopes: Set<ClassId> = contributions.mapNotNullToSet { annotation ->
-          annotation.scopeArgument(session)?.let { getClassCall ->
-            val reference = getClassCall.resolvedArgumentTypeRef() ?: return@let null
-            typeResolver.resolveType(typeRef = reference).classId ?: return@let null
-          }
+          annotation.resolvedScopeClassId(session, typeResolver)
         }
 
         // FIR-generated provider containers can be used directly. IR-generated containers are not

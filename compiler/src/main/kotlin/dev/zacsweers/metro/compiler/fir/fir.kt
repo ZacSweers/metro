@@ -119,6 +119,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertyAccessorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirTypeAliasSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
@@ -1132,15 +1133,55 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
   }
 }
 
-internal fun FirAnnotation.resolvedScopeClassId(session: FirSession) =
-  scopeArgument(session)?.resolvedClassId()
+@OptIn(SymbolInternals::class)
+private fun FirTypeAliasSymbol.expandedType(
+  typeResolverFactory: MetroFirTypeResolver.Factory?
+): ConeKotlinType? {
+  val expandedTypeRef = fir.expandedTypeRef
+  expandedTypeRef.coneTypeOrNull?.let {
+    return it
+  }
+
+  val typeResolver = typeResolverFactory?.create(this) ?: return null
+  return typeResolver.resolveType(expandedTypeRef)
+}
+
+/** Expands typealiases without forcing their declarations into a later FIR phase. */
+private fun ConeKotlinType.expandedClassId(
+  session: FirSession,
+  typeResolverFactory: MetroFirTypeResolver.Factory? = null,
+): ClassId? {
+  var currentType = this
+  val visitedAliases = mutableSetOf<ClassId>()
+  while (true) {
+    val currentClassId = currentType.classId ?: return null
+    val typeAlias = currentClassId.toSymbol(session) as? FirTypeAliasSymbol ?: return currentClassId
+    if (!visitedAliases.add(currentClassId)) return null
+    currentType = typeAlias.expandedType(typeResolverFactory) ?: return currentClassId
+  }
+}
+
+private fun FirTypeRef.resolveConeType(typeResolver: MetroFirTypeResolver): ConeKotlinType {
+  return coneTypeOrNull ?: typeResolver.resolveType(this)
+}
+
+internal fun FirAnnotation.resolvedScopeClassId(session: FirSession): ClassId? {
+  val scopeArgument = scopeArgument(session) ?: return null
+  return scopeArgument.coneTypeIfResolved()?.expandedClassId(session)
+    ?: scopeArgument.resolvedClassId()
+}
 
 internal fun FirAnnotation.resolvedScopeClassId(
   session: FirSession,
   typeResolver: MetroFirTypeResolver,
 ): ClassId? {
   val scopeArgument = scopeArgument(session) ?: return null
-  return scopeArgument.resolveClassId(typeResolver)
+  val scopeType =
+    scopeArgument.coneTypeIfResolved()
+      ?: scopeArgument.resolvedArgumentTypeRef()?.resolveConeType(typeResolver)
+  val typeAliasResolverFactory = MetroFirTypeResolver.Factory(session)
+  return scopeType?.expandedClassId(session, typeAliasResolverFactory)
+    ?: scopeArgument.resolvedClassId()
 }
 
 internal fun FirAnnotation.resolvedScopeClassId(
@@ -1148,15 +1189,16 @@ internal fun FirAnnotation.resolvedScopeClassId(
   typeResolver: TypeResolveService,
 ): ClassId? {
   val scopeArgument = scopeArgument(session) ?: return null
-  // Try to resolve it normally first. If this fails,
-  // try to resolve within the enclosing scope
-  return scopeArgument.resolvedClassId()
-    ?: scopeArgument.resolvedArgumentConeKotlinType(typeResolver)?.classId
+  val scopeType = scopeArgument.resolvedArgumentConeKotlinType(typeResolver)
+  val typeAliasResolverFactory = MetroFirTypeResolver.Factory(session)
+  return scopeType?.expandedClassId(session, typeAliasResolverFactory)
+    ?: scopeArgument.resolvedClassId()
 }
 
 internal fun FirAnnotation.resolvedAdditionalScopesClassIds(session: FirSession) =
   additionalScopesArgument(session)?.argumentList?.arguments?.mapNotNull {
-    it.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
+    val scopeArgument = it.expectAsOrNull<FirGetClassCall>() ?: return@mapNotNull null
+    scopeArgument.coneTypeIfResolved()?.expandedClassId(session) ?: scopeArgument.resolvedClassId()
   }
 
 internal fun FirAnnotation.resolvedBindingContainersClassIds(
@@ -1180,10 +1222,11 @@ internal fun FirAnnotation.resolvedAdditionalScopesClassIds(
     additionalScopesArgument(session)?.argumentList?.arguments?.mapNotNull {
       it.expectAsOrNull<FirGetClassCall>()
     } ?: return emptyList()
-  // Try to resolve it normally first. If this fails,
-  // try to resolve within the enclosing scope
-  return additionalScopes.mapNotNull { it.resolvedClassId() }.takeUnless { it.isEmpty() }
-    ?: additionalScopes.mapNotNull { it.resolvedArgumentConeKotlinType(typeResolver)?.classId }
+  val typeAliasResolverFactory = MetroFirTypeResolver.Factory(session)
+  return additionalScopes.mapNotNull { scopeArgument ->
+    val scopeType = scopeArgument.resolvedArgumentConeKotlinType(typeResolver)
+    scopeType?.expandedClassId(session, typeAliasResolverFactory) ?: scopeArgument.resolvedClassId()
+  }
 }
 
 internal fun FirAnnotation.resolvedExcludedClassIds(

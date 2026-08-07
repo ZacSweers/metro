@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR/IR]** Resolve typealiases used as contribution scope arguments.
+
 1.4.1
 -----
 

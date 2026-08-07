@@ -22,7 +22,6 @@ import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
-import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -625,7 +624,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
           contributingType
             .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
-            .filter { it.scopeArgument(session)?.resolveClassId(localTypeResolver) in scopes }
+            .filter { it.resolvedScopeClassId(session, localTypeResolver) in scopes }
             .flatMap { annotation ->
               annotation.resolvedReplacedClassIds(session, localTypeResolver)
             }

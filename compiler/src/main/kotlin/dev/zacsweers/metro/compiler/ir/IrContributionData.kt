@@ -13,8 +13,7 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
-import dev.zacsweers.metro.compiler.fir.resolveClassId
-import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.ir.transformers.Lockable
@@ -177,7 +176,7 @@ internal class IrContributionData(
           firBody = { session, annotations ->
             val typeResolver = MetroFirTypeResolver.forIrUse()
             annotations.mapNotNull {
-              it.scopeArgument(session)?.resolveClassId(typeResolver)
+              it.resolvedScopeClassId(session, typeResolver)
             }
           },
         )
