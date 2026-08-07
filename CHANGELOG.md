@@ -4,7 +4,12 @@ Changelog
 **Unreleased**
 --------------
 
-### Enhancements
+1.4.1
+-----
+
+_2026-08-06_
+
+### New
 
 - **[FIR/IR/Circuit]** Generate `CircuitSerializerRegistration` Set contributions for `@CircuitSerializable` `Screen` and `PopResult` types when using Circuit `0.36.0` or newer.
 
@@ -34,6 +39,8 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@scana](https://github.com/scana)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.0
 -----
@@ -101,6 +108,8 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@kyay10](https://github.com/kyay10)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.3.2
 -----
