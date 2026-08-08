@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irString
+import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
@@ -16,15 +17,18 @@ import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
+import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.removeAnnotations
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 
 context(context: IrMetroContext)
@@ -162,6 +166,39 @@ internal fun populateImplicitClassKey(mapKey: IrConstructorCall, implicitType: I
     )
 }
 
+context(context: IrMetroContext)
+internal fun IrType.mapKeyAnnotationFromTypeArguments(): IrAnnotation? {
+  val simpleType = this as? IrSimpleType ?: return null
+  return simpleType.arguments.firstNotNullOfOrNull { typeArgument ->
+    val argumentType = typeArgument.typeOrNull ?: return@firstNotNullOfOrNull null
+    val mapKey = argumentType.mapKeyAnnotation() ?: return@firstNotNullOfOrNull null
+    mapKey.withImplicitClassKeyValue(argumentType)
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrClass.mapKeyAnnotationFromBoundSupertype(boundClassId: ClassId?): IrAnnotation? {
+  val boundType = superTypes.firstOrNull { it.rawTypeOrNull()?.classId == boundClassId }
+  return boundType?.mapKeyAnnotationFromTypeArguments()
+    ?: boundType?.mapKeyAnnotationFromDefaultBindingTypeParameter()
+}
+
+context(context: IrMetroContext)
+private fun IrType.mapKeyAnnotationFromDefaultBindingTypeParameter(): IrAnnotation? {
+  val simpleType = this as? IrSimpleType ?: return null
+  val boundClass = simpleType.classOrNull?.owner ?: return null
+  val isDefaultBinding =
+    boundClass.isAnnotatedWithAny(setOf(context.metroSymbols.classIds.defaultBindingAnnotation))
+  if (!isDefaultBinding) return null
+
+  return boundClass.typeParameters.zip(simpleType.arguments)
+    .firstNotNullOfOrNull { (typeParameter, typeArgument) ->
+      val mapKey = typeParameter.mapKeyAnnotation() ?: return@firstNotNullOfOrNull null
+      val argumentType = typeArgument.typeOrNull ?: return@firstNotNullOfOrNull null
+      mapKey.withImplicitClassKeyValue(argumentType)
+    }
+}
+
 /**
  * Returns a new [MetroAnnotations] whose [MetroAnnotations.mapKey] has its implicit class key
  * populated with a reference to [implicitType]. Returns `this` if there is no map key or the map
@@ -172,10 +209,17 @@ internal fun MetroAnnotations<IrAnnotation>.withPopulatedImplicitClassKey(
   implicitType: IrType
 ): MetroAnnotations<IrAnnotation> {
   val mapKey = this.mapKey ?: return this
-  if (!isImplicitClassKeySentinel(mapKey.ir)) return this
-  val copied = mapKey.ir.deepCopyWithSymbols()
+  val populatedMapKey = mapKey.withImplicitClassKeyValue(implicitType)
+  if (populatedMapKey === mapKey) return this
+  return copy(mapKey = populatedMapKey)
+}
+
+context(context: IrMetroContext)
+private fun IrAnnotation.withImplicitClassKeyValue(implicitType: IrType): IrAnnotation {
+  if (!isImplicitClassKeySentinel(ir)) return this
+  val copied = ir.deepCopyWithSymbols()
   populateImplicitClassKey(copied, implicitType)
-  return copy(mapKey = IrAnnotation(copied))
+  return IrAnnotation(copied)
 }
 
 context(context: IrMetroContext)

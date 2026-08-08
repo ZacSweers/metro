@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.fir.FirTypeArgumentMapKey
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
@@ -19,6 +20,8 @@ import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.mapKeyAnnotationsFromDefaultBindingTypeParameters
+import dev.zacsweers.metro.compiler.fir.mapKeyAnnotationsFromTypeArguments
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
@@ -40,6 +43,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.fullyExpandedClassId
 import org.jetbrains.kotlin.fir.declarations.FirClass
+import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
@@ -54,8 +59,11 @@ import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
+import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isAny
 import org.jetbrains.kotlin.fir.types.isNothing
+import org.jetbrains.kotlin.fir.types.isSubtypeOf
+import org.jetbrains.kotlin.fir.types.renderReadableWithFqNames
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -420,36 +428,114 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
     val mapKey =
       if (isMapBinding) {
-        val classMapKey = declaration.annotations.mapKeyAnnotation(session)
-        val resolvedKey =
-          if (explicitBindingType == null) {
-            classMapKey.also {
-              if (it == null) {
-                reporter.reportOn(
-                  annotation.source,
-                  MetroDiagnostics.AGGREGATION_ERROR,
-                  "`@$kind`-annotated class ${declaration.classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
-                )
-              }
-            }
-          } else {
-            (explicitBindingType.annotations.mapKeyAnnotation(session) ?: classMapKey).also {
-              if (it == null) {
-                reporter.reportOn(
-                  explicitBindingType.source,
-                  MetroDiagnostics.AGGREGATION_ERROR,
-                  "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
-                )
-              }
-            }
+        val bindingMapKey = explicitBindingType?.annotations?.mapKeyAnnotation(session)
+        val hasImplicitMapContribution =
+          explicitBindingType != null &&
+            declaration
+              .annotationsIn(session, session.classIds.contributesIntoMapAnnotations)
+              .any { it.resolvedBindingArgument(session) == null }
+
+        val boundClassId = typeKey.type.fullyExpandedClassId(session)
+        val implementationBoundTypeRef = supertypesExcludingAny.firstOrNull {
+          it.coneTypeOrNull?.fullyExpandedClassId(session) == boundClassId
+        }
+        val boundTypeRef = explicitBindingType ?: implementationBoundTypeRef
+        val boundTypeArgumentMapKeys =
+          boundTypeRef?.mapKeyAnnotationsFromTypeArguments(session).orEmpty().ifEmpty {
+            implementationBoundTypeRef
+              ?.takeUnless { it === boundTypeRef }
+              ?.mapKeyAnnotationsFromTypeArguments(session)
+              .orEmpty()
           }
-        resolvedKey ?: return false
+        val hasContributionSpecificMapKey =
+          bindingMapKey != null || boundTypeArgumentMapKeys.isNotEmpty()
+        val classMapKey =
+          declaration.annotations
+            .mapKeyAnnotation(session)
+            ?.takeUnless { hasImplicitMapContribution && hasContributionSpecificMapKey }
+        if (boundTypeArgumentMapKeys.size > 1) {
+          val foundMapKeys =
+            boundTypeArgumentMapKeys.joinToString(separator = "; ") {
+              it.annotation.simpleString()
+            }
+          reporter.reportOn(
+            annotation.source,
+            MetroDiagnostics.AGGREGATION_ERROR,
+            "`@$kind` found multiple map keys: $foundMapKeys. Declare a map key in only one location: the explicit bound type, contributed class, or bound type generic argument.",
+          )
+          return false
+        }
+
+        val boundTypeArgumentMapKey = boundTypeArgumentMapKeys.singleOrNull()
+        val declarationSiteMapKeys =
+          listOfNotNull(
+            bindingMapKey,
+            classMapKey,
+            boundTypeArgumentMapKey?.annotation,
+          )
+        if (declarationSiteMapKeys.size > 1) {
+          val foundMapKeys =
+            declarationSiteMapKeys.joinToString(separator = "; ") { it.simpleString() }
+          reporter.reportOn(
+            annotation.source,
+            MetroDiagnostics.AGGREGATION_ERROR,
+            "`@$kind` found multiple map keys: $foundMapKeys. Declare a map key in only one location: the explicit bound type, contributed class, or bound type generic argument.",
+          )
+          return false
+        }
+        if (
+          boundTypeArgumentMapKey != null &&
+            !checkImplicitClassKeyType(session, boundTypeArgumentMapKey)
+        ) {
+          return false
+        }
+
+        val defaultBindingMapKeys =
+          if (declarationSiteMapKeys.isEmpty()) {
+            implementationBoundTypeRef
+              ?.mapKeyAnnotationsFromDefaultBindingTypeParameters(session)
+              .orEmpty()
+          } else {
+            emptyList()
+          }
+
+        val defaultBindingMapKey = defaultBindingMapKeys.firstOrNull()
+        if (
+          defaultBindingMapKey != null && !checkImplicitClassKeyType(session, defaultBindingMapKey)
+        ) {
+          return false
+        }
+
+        val resolvedKey =
+          declarationSiteMapKeys.singleOrNull()
+            ?: defaultBindingMapKey?.annotation
+        if (resolvedKey == null) {
+          if (explicitBindingType == null) {
+            reporter.reportOn(
+              annotation.source,
+              MetroDiagnostics.AGGREGATION_ERROR,
+              "`@$kind`-annotated class ${declaration.classId.asSingleFqName()} must declare a map key on the class or an explicit bound type but doesn't.",
+            )
+          } else {
+            reporter.reportOn(
+              explicitBindingType.source,
+              MetroDiagnostics.AGGREGATION_ERROR,
+              "`@$kind`-annotated class @${declaration.symbol.classId.asSingleFqName()} must declare a map key but doesn't. Add one on the explicit bound type or the class.",
+            )
+          }
+          return false
+        }
 
         // Check implicit class key usage
         checkImplicitClassKeyUsage(
           session,
           resolvedKey,
-          implicitType = declaration.symbol.classId,
+          implicitType =
+            if (resolvedKey === boundTypeArgumentMapKey?.annotation) {
+              boundTypeArgumentMapKey.argumentClassId
+            } else {
+              declaration.symbol.classId
+            },
           source = declaration.source,
         )
 
@@ -597,6 +683,37 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
         else -> return
       }
     reporter.reportOn(declaration.source, diagnosticFactory, message)
+  }
+
+  context(context: CheckerContext, reporter: DiagnosticReporter)
+  private fun checkImplicitClassKeyType(
+    session: FirSession,
+    mapKey: FirTypeArgumentMapKey,
+  ): Boolean {
+    if (!mapKey.usesImplicitClassKey) return true
+
+    val annotationClass = mapKey.annotation.fir.toAnnotationClass(session) ?: return true
+    val parameterType =
+      annotationClass
+        .primaryConstructorIfAny(session)
+        ?.valueParameterSymbols
+        ?.singleOrNull()
+        ?.resolvedReturnTypeRef
+        ?.coneType ?: return true
+    val implicitKClassType =
+      ConeClassLikeTypeImpl(
+        StandardClassIds.KClass.toLookupTag(),
+        arrayOf(mapKey.argumentType),
+        isMarkedNullable = false,
+      )
+    if (implicitKClassType.isSubtypeOf(parameterType, session)) return true
+
+    reporter.reportOn(
+      mapKey.argumentSource,
+      MetroDiagnostics.AGGREGATION_ERROR,
+      "Implicit class key type `${mapKey.argumentType.renderReadableWithFqNames()}` is not compatible with map key parameter type `${parameterType.renderReadableWithFqNames()}`.",
+    )
+    return false
   }
 
   sealed interface DefaultBindingResult {
