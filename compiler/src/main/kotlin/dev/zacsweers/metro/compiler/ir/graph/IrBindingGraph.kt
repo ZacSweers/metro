@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
@@ -92,7 +93,6 @@ import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
@@ -1293,7 +1293,7 @@ internal class IrBindingGraph(
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
         reportUnsupportedConsumption(
-          accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>(),
+          accessor.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>(),
           head,
         )
       }
@@ -1333,7 +1333,7 @@ internal class IrBindingGraph(
       // property declaration, then walk fake overrides back to the original interface
       // declaration since the accessor IR is typically the implementation graph's override.
       val accessorDeclaration =
-        accessor.metroFunction.ir.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+        accessor.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
 
       val typeRender = contextKey.typeKey.render(short = true)
       val deferredFormRender = suspendFunctionRender(typeRender)

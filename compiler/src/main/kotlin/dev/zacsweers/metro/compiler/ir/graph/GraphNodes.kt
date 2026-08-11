@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
@@ -117,7 +118,6 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 internal class GraphNodes(
@@ -492,7 +492,7 @@ internal class GraphNodes(
       val declWithName =
         when (overriddenDeclaration) {
           is IrSimpleFunction ->
-            overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+            overriddenDeclaration.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
 

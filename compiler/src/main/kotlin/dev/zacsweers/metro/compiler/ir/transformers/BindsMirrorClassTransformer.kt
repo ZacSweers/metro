@@ -8,6 +8,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.BindsCallable
@@ -46,7 +47,6 @@ import org.jetbrains.kotlin.ir.util.copyParametersFrom
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.jvm.isJvm
@@ -311,7 +311,7 @@ private fun generateMirrorFunction(
       context.icCapabilities.readableAnnotationMetadata
   val includeAnnotationHashes = !canReadChangedAnnotations
   val mirrorFunctionName = buildString {
-    val sourceDeclaration = targetFunction.ir.propertyIfAccessor
+    val sourceDeclaration = targetFunction.ir.propertyIfAccessorCompat
     append(sourceDeclaration.expectAs<IrDeclarationWithName>().name)
     if (sourceDeclaration is IrProperty) {
       append("_property")
@@ -363,16 +363,18 @@ private fun generateMirrorFunction(
         // propertyName
         arguments[1] =
           irString(
-            targetFunction.ir.propertyIfAccessor.expectAsOrNull<IrProperty>()?.name?.asString()
-              ?: ""
+            targetFunction.ir.propertyIfAccessorCompat
+              .expectAsOrNull<IrProperty>()
+              ?.name
+              ?.asString() ?: ""
           )
 
         // TODO these locations are bogus in generated binding functions. Report origin class
         //  instead somewhere?
         // startOffset
-        arguments[2] = irInt(targetFunction.ir.propertyIfAccessor.startOffset)
+        arguments[2] = irInt(targetFunction.ir.propertyIfAccessorCompat.startOffset)
         // endOffset
-        arguments[3] = irInt(targetFunction.ir.propertyIfAccessor.endOffset)
+        arguments[3] = irInt(targetFunction.ir.propertyIfAccessorCompat.endOffset)
       }
     }
 

@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.metroAnnotations
@@ -25,7 +26,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
@@ -56,7 +56,7 @@ internal class IrCallableMetadata(
     ): IrCallableMetadata {
       val callableId =
         if (isPropertyAccessor) {
-          sourceFunction.propertyIfAccessor.expectAs<IrProperty>().callableId
+          sourceFunction.propertyIfAccessorCompat.expectAs<IrProperty>().callableId
         } else {
           sourceFunction.callableId
         }
@@ -78,7 +78,7 @@ internal fun IrSimpleFunction.irCallableMetadata(
   sourceAnnotations: MetroAnnotations<IrAnnotation>?,
   isInterop: Boolean,
 ): IrCallableMetadata {
-  return propertyIfAccessor.irCallableMetadata(this, sourceAnnotations, isInterop)
+  return propertyIfAccessorCompat.irCallableMetadata(this, sourceAnnotations, isInterop)
 }
 
 context(context: IrMetroContext)

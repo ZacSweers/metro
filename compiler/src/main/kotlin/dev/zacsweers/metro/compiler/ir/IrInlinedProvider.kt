@@ -70,11 +70,10 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression {
       return when (type.classOrNullClassId()) {
-        "kotlin/Byte" ->
-          IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Byte, value.toByte())
+        "kotlin/Byte" -> IrConstImpl.byte(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value.toByte())
         "kotlin/Short" ->
-          IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Short, value.toShort())
-        else -> IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Int, value)
+          IrConstImpl.short(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value.toShort())
+        else -> IrConstImpl.int(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
       }
     }
   }
@@ -85,7 +84,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Long, value)
+      IrConstImpl.long(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   @JvmInline
@@ -94,7 +93,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Float, value)
+      IrConstImpl.float(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   @JvmInline
@@ -103,7 +102,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Double, value)
+      IrConstImpl.double(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   @JvmInline
@@ -112,7 +111,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Boolean, value)
+      IrConstImpl.boolean(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   @JvmInline
@@ -121,7 +120,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.String, value)
+      IrConstImpl.string(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   @JvmInline
@@ -130,7 +129,7 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
 
     context(context: IrMetroContext, scope: IrBuilderWithScope)
     override fun materialize(type: IrType): IrExpression =
-      IrConstImpl(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, IrConstKind.Char, value)
+      IrConstImpl.char(SYNTHETIC_OFFSET, SYNTHETIC_OFFSET, type, value)
   }
 
   private data object NullValue : Value {

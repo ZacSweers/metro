@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.applyIf
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.addAnnotationCompat
@@ -73,7 +74,6 @@ import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.platform.jvm.isJvm
 
 /**
@@ -351,7 +351,8 @@ internal fun generateMetadataVisibleDeclarationMirror(
       ?: error("Either target or backingField must be non-null")
 
   val sourceProperty =
-    target?.propertyIfAccessor as? IrProperty ?: backingField?.correspondingPropertySymbol?.owner
+    target?.propertyIfAccessorCompat as? IrProperty
+      ?: backingField?.correspondingPropertySymbol?.owner
   val shouldGeneratePropertyMirror =
     context.options.enablePrivateProviderProperties &&
       sourceProperty?.visibility == DescriptorVisibilities.PRIVATE

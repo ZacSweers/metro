@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -39,7 +40,6 @@ import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentAsClass
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 
 /**
  * Generates an [IrBindingGraph] for the given [node]. This only constructs the graph from available
@@ -438,7 +438,7 @@ internal class BindingGraphGenerator(
       bindingLookup.registerMultibindsDeclaration(contextualTypeKey.typeKey, getter, multibinds)
 
       // Record an IC lookup
-      trackClassLookup(node.sourceGraph, getter.propertyIfAccessor.parentAsClass)
+      trackClassLookup(node.sourceGraph, getter.propertyIfAccessorCompat.parentAsClass)
       trackFunctionCall(node.sourceGraph, getter)
     }
 
@@ -453,7 +453,7 @@ internal class BindingGraphGenerator(
         trackFunctionCall(node.sourceGraph, multibindsCallable.function)
         trackClassLookup(
           node.sourceGraph,
-          multibindsCallable.function.propertyIfAccessor.parentAsClass,
+          multibindsCallable.function.propertyIfAccessorCompat.parentAsClass,
         )
 
         val contextKey = IrContextualTypeKey(multibindsCallable.typeKey)

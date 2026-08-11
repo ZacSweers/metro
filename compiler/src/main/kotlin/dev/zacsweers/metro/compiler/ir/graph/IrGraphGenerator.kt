@@ -8,6 +8,7 @@ import androidx.collection.emptyIntObjectMap
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -109,7 +110,6 @@ import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.statements
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -643,7 +643,7 @@ internal class IrGraphGenerator(
   }
 
   private fun runtimeTraceCallableName(function: IrSimpleFunction): String {
-    val declaration = function.propertyIfAccessor
+    val declaration = function.propertyIfAccessorCompat
     return if (declaration is IrProperty) {
       declaration.name.asString()
     } else {
@@ -1940,7 +1940,7 @@ internal class IrGraphGenerator(
       val irFunction = function.ir
       irFunction.apply {
         val declarationToFinalize =
-          irFunction.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          irFunction.propertyIfAccessorCompat.expectAs<IrOverridableDeclaration<*>>()
         if (declarationToFinalize.isFakeOverride) {
           declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
         }
@@ -2082,7 +2082,8 @@ internal class IrGraphGenerator(
         // original declarations and we need to implement their fake overrides here
         val irFunction = function.ir
         irFunction.apply {
-          val declarationToFinalize = propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+          val declarationToFinalize =
+            propertyIfAccessorCompat.expectAs<IrOverridableDeclaration<*>>()
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
@@ -2106,7 +2107,7 @@ internal class IrGraphGenerator(
         val irFunction = function.ir
         irFunction.apply {
           val declarationToFinalize =
-            irFunction.propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+            irFunction.propertyIfAccessorCompat.expectAs<IrOverridableDeclaration<*>>()
           if (declarationToFinalize.isFakeOverride) {
             declarationToFinalize.finalizeFakeOverride(graphClass.thisReceiverOrFail)
           }
