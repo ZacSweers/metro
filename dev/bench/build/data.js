@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786079088748,
+  "lastUpdate": 1786484983910,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21000,6 +21000,62 @@ window.BENCHMARK_DATA = {
             "value": 14306.348999999998,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "57055bbd~1",
+          "message": "[before] Remove watchosArm32 + 2.5.0-dev-3513 compat (#2647",
+          "timestamp": "2026-08-11T20:51:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/57055bbddf5bee584ad056919cb4445f00261392"
+        },
+        "date": 1786484983910,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18899.132,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "57055bbddf5bee584ad056919cb4445f00261392",
+          "message": "[after] Remove watchosArm32 + 2.5.0-dev-3513 compat (#2647",
+          "timestamp": "2026-08-11T20:51:14Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/57055bbddf5bee584ad056919cb4445f00261392"
+        },
+        "date": 1786484983911,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18376.591999999997,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.76%"
           }
         ]
       }
