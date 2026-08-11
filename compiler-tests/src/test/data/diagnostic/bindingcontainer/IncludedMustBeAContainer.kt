@@ -4,7 +4,9 @@ interface SomeBindings {
   @Binds val Int.bind: Number
 }
 
-@BindingContainer(includes = [<!BINDING_CONTAINER_ERROR!>SomeBindings::class<!>])
+typealias SomeBindingsAlias = SomeBindings
+
+@BindingContainer(includes = [<!BINDING_CONTAINER_ERROR!>SomeBindingsAlias::class<!>])
 interface IncludingContainer
 
 @DependencyGraph(bindingContainers = [<!BINDING_CONTAINER_ERROR!>SomeBindings::class<!>])
