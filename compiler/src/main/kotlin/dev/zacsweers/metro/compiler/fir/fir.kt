@@ -1129,17 +1129,26 @@ internal fun FirAnnotation.getAnnotationKClassArgument(
 @OptIn(SymbolInternals::class)
 private fun FirTypeAliasSymbol.expandedClassId(session: FirSession): ClassId? {
   val expandedTypeRef = fir.expandedTypeRef
-  expandedTypeRef.coneTypeOrNull?.classId?.let {
+  expandedTypeRef.coneTypeOrNull?.classId.usableClassIdOrNull()?.let {
     return it
   }
 
   val typeResolver = session.metroFirBuiltIns.typeAliasResolverFactory.create(this) ?: return null
-  return typeResolver.resolveType(expandedTypeRef).classId
+  return typeResolver.resolveType(expandedTypeRef).classId.usableClassIdOrNull()
+}
+
+private fun ClassId?.usableClassIdOrNull(): ClassId? {
+  val classId = this ?: return null
+  // Error types can expose a non-null ClassId containing a special name such as `<error>`.
+  val hasSpecialName =
+    classId.packageFqName.pathSegments().any { it.isSpecial } ||
+      classId.relativeClassName.pathSegments().any { it.isSpecial }
+  return classId.takeUnless { hasSpecialName }
 }
 
 /** Expands typealiases without forcing their declarations into a later FIR phase. */
 private fun ClassId.expandedClassId(session: FirSession): ClassId? {
-  var currentClassId = this
+  var currentClassId = usableClassIdOrNull() ?: return null
   val visitedAliases = mutableSetOf<ClassId>()
   while (true) {
     val typeAlias = currentClassId.toSymbol(session) as? FirTypeAliasSymbol ?: return currentClassId
@@ -1232,8 +1241,8 @@ internal fun FirAnnotation.resolvedReplacedClassIds(
 }
 
 internal fun FirGetClassCall.resolveClassId(session: FirSession): ClassId? {
-  val classId = coneTypeIfResolved()?.classId ?: referencedClassId() ?: return null
-  return classId.expandedClassId(session)
+  val resolvedClassId = coneTypeIfResolved()?.classId.usableClassIdOrNull()
+  return resolvedClassId?.expandedClassId(session) ?: referencedClassId()?.expandedClassId(session)
 }
 
 internal fun FirGetClassCall.resolveClassId(
@@ -1245,8 +1254,8 @@ internal fun FirGetClassCall.resolveClassId(
     coneTypeIfResolved()
       // Otherwise fall back to trying to parse from the reference
       ?: resolvedArgumentTypeRef()?.resolveConeType(typeResolver)
-  val classId = resolvedType?.classId ?: referencedClassId() ?: return null
-  return classId.expandedClassId(session)
+  val resolvedClassId = resolvedType?.classId.usableClassIdOrNull()
+  return resolvedClassId?.expandedClassId(session) ?: referencedClassId()?.expandedClassId(session)
 }
 
 internal fun FirGetClassCall.resolveClassId(
@@ -1254,8 +1263,8 @@ internal fun FirGetClassCall.resolveClassId(
   typeResolver: TypeResolveService,
 ): ClassId? {
   // Try to resolve it normally first. If this fails, try to resolve within the enclosing scope
-  val classId = resolvedArgumentConeKotlinType(typeResolver)?.classId ?: referencedClassId()
-  return classId?.expandedClassId(session)
+  val resolvedClassId = resolvedArgumentConeKotlinType(typeResolver)?.classId.usableClassIdOrNull()
+  return resolvedClassId?.expandedClassId(session) ?: referencedClassId()?.expandedClassId(session)
 }
 
 internal fun FirGetClassCall.resolveClassIdForAnnotationValue(
@@ -1275,7 +1284,7 @@ internal val FirResolvedQualifier.classIdCompat: ClassId?
   get() = relativeClassFqName?.let { ClassId(packageFqName, it, isLocal = false) }
 
 internal fun FirGetClassCall.referencedClassId() =
-  (argument as? FirResolvedQualifier)?.classIdCompat
+  (argument as? FirResolvedQualifier)?.classIdCompat.usableClassIdOrNull()
 
 internal fun FirGetClassCall.resolvedArgumentConeKotlinType(
   typeResolver: TypeResolveService

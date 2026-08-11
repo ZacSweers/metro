@@ -468,6 +468,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("AnvilContributesToNestedScope.kt")
+      public void testAnvilContributesToNestedScope() {
+        run("AnvilContributesToNestedScope.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedBindingContainerExclusions.kt")
       public void testContributedBindingContainerExclusions() {
         run("ContributedBindingContainerExclusions.kt");
