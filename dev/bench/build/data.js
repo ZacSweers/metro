@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786484983910,
+  "lastUpdate": 1786488280674,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21056,6 +21056,62 @@ window.BENCHMARK_DATA = {
             "value": 18376.591999999997,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.76%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "07ca9e3e~1",
+          "message": "[before] Improve typealias handling (#2646)",
+          "timestamp": "2026-08-11T21:47:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/07ca9e3ee896ee9818a71c7ae6b090c3c71ad0b2"
+        },
+        "date": 1786488280674,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18147.59,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "07ca9e3ee896ee9818a71c7ae6b090c3c71ad0b2",
+          "message": "[after] Improve typealias handling (#2646)",
+          "timestamp": "2026-08-11T21:47:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/07ca9e3ee896ee9818a71c7ae6b090c3c71ad0b2"
+        },
+        "date": 1786488280675,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18430.422,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.56%"
           }
         ]
       }
