@@ -40,7 +40,6 @@ constructor(private val project: Project, objects: ObjectFactory) {
    *       |   |   |-- iosArm64
    *       |   |   |-- iosX64
    *       |   |   |-- tvosArm64
-   *       |   |   |-- watchosArm32
    *       |   |   |-- watchosArm64
    *       |   |   '-- watchosX86
    *       |   '-- linux
@@ -112,7 +111,6 @@ constructor(private val project: Project, objects: ObjectFactory) {
           linuxX64()
           linuxArm64()
           watchosSimulatorArm64()
-          watchosArm32()
           watchosArm64()
           tvosSimulatorArm64()
           tvosArm64()

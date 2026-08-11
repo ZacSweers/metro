@@ -4,6 +4,11 @@ Changelog
 **Unreleased**
 --------------
 
+### Changes
+
+- Support Kotlin `2.5.0-dev-3513`.
+- Remove the `watchosArm32` target, which Kotlin no longer supports.
+
 1.4.1
 -----
 
