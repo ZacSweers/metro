@@ -263,12 +263,12 @@ jobs:
           cache-read-only: true
 
       - name: Generate tests
-        run: ./gradlew :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
+        run: ./scripts/run-ci-gradle.sh :compiler-tests:generateTests --quiet ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run JS box smoke tests
         if: github.ref != 'refs/heads/main'
         run: |
-          ./gradlew :compiler-tests:test --quiet \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
@@ -284,12 +284,22 @@ jobs:
             --tests 'dev.zacsweers.metro.gradle.incremental.GenerateContributionProvidersICTests.scopeChangeInContributionProviderTriggersDownstreamRecompilation*' \
             -Dorg.gradle.configuration-cache.read-only=true
 
-      - name: Run JS box tests
+      - name: Run standard JS box tests
         if: github.ref == 'refs/heads/main'
         run: |
-          ./gradlew :compiler-tests:test --continue --quiet \
-            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*' \
-            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*' \
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated*'
+
+      - name: Run FastInit JS box tests
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
+            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated*'
+
+      - name: Run contribution provider JS box tests
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ./scripts/run-ci-gradle.sh :compiler-tests:test --quiet \
             --tests 'dev.zacsweers.metro.compiler.JsContributionProvidersBoxTestGenerated*'
 
       - name: (Fail-only) Upload reports

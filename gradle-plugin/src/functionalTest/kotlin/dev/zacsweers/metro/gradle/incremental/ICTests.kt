@@ -2397,6 +2397,119 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Demo") }
   }
 
+  @Test
+  fun removingInheritedMemberInjectionsDoesNotBreakIncrementalCompilation() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun buildGradleProject() = multiModuleProject {
+          root {
+            sources(appGraph, concreteViewModel)
+            dependencies(implementation(":lib"))
+          }
+          subproject("lib") { sources(baseViewModel) }
+          subproject("licenses") {
+            sources(licensesViewModel)
+            dependencies(implementation(":lib"))
+          }
+        }
+
+        val baseViewModel = source("abstract class BaseViewModel")
+
+        private val concreteViewModel = source("@Inject class ConcreteViewModel : BaseViewModel()")
+
+        private val licensesViewModel = source("abstract class LicensesViewModel : BaseViewModel()")
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              @Provides fun provideString(): String = "injected"
+
+              val viewModel: ConcreteViewModel
+            }
+            """
+              .trimIndent()
+          )
+      }
+
+    val project = fixture.gradleProject
+    val libProject = project.subprojects.first { it.name == "lib" }
+    val rootCompileTask = ":compileKotlin"
+    val libCompileTask = ":lib:compileKotlin"
+    val licensesCompileTask = ":licenses:compileKotlin"
+
+    val firstBuildResult =
+      project.compileKotlin(rootCompileTask, false, licensesCompileTask, "--no-build-cache")
+    assertThat(firstBuildResult.task(libCompileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(rootCompileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(firstBuildResult.task(licensesCompileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+    libProject.modify(
+      project.rootDir,
+      fixture.baseViewModel,
+      """
+      abstract class BaseViewModel {
+        @Inject
+        fun injectMessage(message: String) {}
+      }
+      """
+        .trimIndent(),
+      sourceSet = "main",
+    )
+
+    val invalidBaseBuildResult =
+      project.compileKotlinAndFail(libCompileTask, false, "--no-build-cache")
+    assertThat(invalidBaseBuildResult.output)
+      .contains("Non-final class 'BaseViewModel' has declared member injections")
+
+    libProject.modify(
+      project.rootDir,
+      fixture.baseViewModel,
+      """
+      @HasMemberInjections
+      abstract class BaseViewModel {
+        @Inject
+        fun injectMessage(message: String) {}
+      }
+      """
+        .trimIndent(),
+      sourceSet = "main",
+    )
+
+    val failedSiblingBuildResult =
+      project.compileKotlinAndFail(
+        rootCompileTask,
+        false,
+        licensesCompileTask,
+        "--continue",
+        "--no-build-cache",
+      )
+    assertThat(failedSiblingBuildResult.task(libCompileTask)?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(failedSiblingBuildResult.task(rootCompileTask)?.outcome)
+      .isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(failedSiblingBuildResult.task(licensesCompileTask)?.outcome)
+      .isEqualTo(TaskOutcome.FAILED)
+    assertThat(failedSiblingBuildResult.output)
+      .contains("Non-final class 'LicensesViewModel' extends a class with member injections")
+    assertThat(failedSiblingBuildResult.output).doesNotContain("Incremental compilation failed")
+
+    libProject.modify(
+      project.rootDir,
+      fixture.baseViewModel,
+      "abstract class BaseViewModel",
+      sourceSet = "main",
+    )
+
+    val recoveryBuildResult = project.compileKotlin(rootCompileTask, false, "--no-build-cache")
+    assertThat(recoveryBuildResult.task(libCompileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(recoveryBuildResult.task(rootCompileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(recoveryBuildResult.output).doesNotContain("Incremental compilation failed")
+  }
+
   /**
    * Tests that having a graph and its injected dependencies in the same file doesn't cause IC
    * issues. Previously, `linkDeclarationsInCompilation` would link a file to itself via the

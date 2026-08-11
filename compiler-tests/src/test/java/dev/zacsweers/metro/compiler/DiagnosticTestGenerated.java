@@ -180,6 +180,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("CircuitSerializerRegistrationNameCollision.kt")
+      public void testCircuitSerializerRegistrationNameCollision() {
+        run("CircuitSerializerRegistrationNameCollision.kt");
+      }
+
+      @Test
       @TestMetadata("DuplicateCircuitInjects.kt")
       public void testDuplicateCircuitInjects() {
         run("DuplicateCircuitInjects.kt");
@@ -198,9 +204,21 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("InvalidCircuitSerializable.kt")
+      public void testInvalidCircuitSerializable() {
+        run("InvalidCircuitSerializable.kt");
+      }
+
+      @Test
       @TestMetadata("InvalidSupertypes.kt")
       public void testInvalidSupertypes() {
         run("InvalidSupertypes.kt");
+      }
+
+      @Test
+      @TestMetadata("MissingCircuitSerializer.kt")
+      public void testMissingCircuitSerializer() {
+        run("MissingCircuitSerializer.kt");
       }
 
       @Test

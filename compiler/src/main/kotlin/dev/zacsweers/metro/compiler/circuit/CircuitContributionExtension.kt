@@ -9,12 +9,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.classArgument
-import dev.zacsweers.metro.compiler.fir.resolveClassId
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -31,18 +26,18 @@ public class CircuitContributionExtension(
   compatContext: CompatContext,
 ) : MetroContributionExtension, CompatContext by compatContext {
 
-  private val annotatedSymbols by lazy {
+  private val circuitInjectAnnotatedSymbols by lazy {
     session.allSessions.flatMap {
       it.predicateBasedProvider.getSymbolsByPredicate(CircuitSymbols.circuitInjectPredicate)
     }
   }
 
   private val annotatedClasses by lazy {
-    annotatedSymbols.filterIsInstance<FirRegularClassSymbol>().toList()
+    circuitInjectAnnotatedSymbols.filterIsInstance<FirRegularClassSymbol>().toList()
   }
 
   private val annotatedFunctions by lazy {
-    annotatedSymbols
+    circuitInjectAnnotatedSymbols
       .filterIsInstance<FirNamedFunctionSymbol>()
       .filter { it.callableId.classId == null } // Only top-level functions
       .toList()
@@ -95,7 +90,8 @@ public class CircuitContributionExtension(
       classSymbol.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull()
         ?: return null
 
-    val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
+    val scopeClassId =
+      annotation.extractCircuitScopeClassId(session, typeResolver, argumentIndex = 1) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -130,7 +126,8 @@ public class CircuitContributionExtension(
     val annotation =
       function.annotationsIn(session, setOf(target.injectAnnotation)).firstOrNull() ?: return null
 
-    val scopeClassId = extractScopeClassId(annotation, typeResolver) ?: return null
+    val scopeClassId =
+      annotation.extractCircuitScopeClassId(session, typeResolver, argumentIndex = 1) ?: return null
 
     // Only return contribution if scope matches
     if (scopeClassId != requestedScopeClassId) return null
@@ -150,17 +147,6 @@ public class CircuitContributionExtension(
       replaces = emptyList(),
       originClassId = factoryClassId,
     )
-  }
-
-  private fun extractScopeClassId(
-    annotation: FirAnnotation,
-    typeResolver: MetroFirTypeResolver,
-  ): ClassId? {
-    if (annotation !is FirAnnotationCall) return null
-    // Second arg is scope
-    return annotation
-      .classArgument(session, Symbols.Names.scope, index = 1)
-      ?.resolveClassId(typeResolver)
   }
 
   public class Factory : MetroContributionExtension.Factory {

@@ -57,6 +57,10 @@ open class AbstractBoxTest : AbstractFirLightTreeBlackBoxCodegenTest() {
         +IGNORE_DEXING // Avoids loading R8 from the classpath.
       }
 
+      forTestsMatching("CircuitSerializerRegistrationExpectActual.kt") {
+        defaultDirectives { -WITH_COROUTINE_HELPERS }
+      }
+
       configureIrHandlersStep {
         useHandlers(
           // Errors in compiler plugin backend should fail test without running box function.

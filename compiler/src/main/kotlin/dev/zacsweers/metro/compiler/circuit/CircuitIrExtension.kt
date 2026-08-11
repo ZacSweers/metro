@@ -5,11 +5,9 @@ package dev.zacsweers.metro.compiler.circuit
 import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.CompatContext
-import dev.zacsweers.metro.compiler.compat.IrGeneratedDeclarationsRegistrarCompat
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
-import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
@@ -17,7 +15,6 @@ import dev.zacsweers.metro.compiler.ir.finderFor
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
 import dev.zacsweers.metro.compiler.ir.irInvoke
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
-import dev.zacsweers.metro.compiler.ir.kClassReference
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -49,14 +46,12 @@ import org.jetbrains.kotlin.ir.builders.irIs
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.builders.irSamConversion
-import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irTemporary
 import org.jetbrains.kotlin.ir.builders.irWhen
 import org.jetbrains.kotlin.ir.declarations.IrAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
-import org.jetbrains.kotlin.ir.declarations.IrEnumEntry
 import org.jetbrains.kotlin.ir.declarations.IrField
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
@@ -70,11 +65,9 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrGetEnumValueImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.types.IrType
-import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.starProjectedType
@@ -96,9 +89,8 @@ import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.name.StandardClassIds
 
-/** Generates Circuit factory class declarations before Metro's IR pipeline consumes them. */
+/** Generates Circuit factory declarations before Metro's IR pipeline consumes them. */
 public class CircuitIrDeclarationGenerationExtension
 private constructor(
   private val function0Types: Set<ClassId>,
@@ -132,19 +124,19 @@ private constructor(
         qualifierAnnotations = qualifierAnnotations,
         compatContext = compatContext,
       )
-    CircuitIrDeclarationGenerator(
+    CircuitIrFactoryDeclarationGenerator(
         pluginContext = pluginContext,
         targetResolver = targetResolver,
         compatContext = compatContext,
       )
-      .generateFactoryShells(moduleFragment)
+      .generateDeclarationShells(moduleFragment)
   }
 }
 
 /**
  * IR extension for Circuit-generated factories.
  *
- * This fills in backing fields plus `create()` bodies for factory declarations generated in FIR or
+ * This fills in factory backing fields and `create()` bodies for declarations generated in FIR or
  * by [CircuitIrDeclarationGenerationExtension].
  *
  * This extension must run before Compose because it creates composable lambdas that Compose then
@@ -190,7 +182,7 @@ public class CircuitIrExtension(
         compatContext = compatContext,
       )
     val transformer =
-      CircuitIrTransformer(
+      CircuitIrFactoryTransformer(
         pluginContext = pluginContext,
         symbols = symbols,
         generateClassesInIr = generateClassesInIr,
@@ -434,51 +426,14 @@ private class CircuitIrFactoryTargetResolver(
   }
 }
 
-private class CircuitIrDeclarationGenerator(
+private class CircuitIrFactoryDeclarationGenerator(
   private val pluginContext: IrPluginContext,
   private val targetResolver: CircuitIrFactoryTargetResolver,
   private val compatContext: CompatContext,
 ) : CompatContext by compatContext {
-  private val builtinsFinder by lazy {
-    with(compatContext) { pluginContext.finderForBuiltinsCompat() }
-  }
+  private val generationSupport = CircuitIrGenerationSupport(pluginContext, compatContext)
 
-  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
-    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
-  }
-
-  private val irTypeSystemContext by lazy { IrTypeSystemContextImpl(pluginContext.irBuiltIns) }
-
-  private val injectAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroInject)!!.constructors.first()
-  }
-
-  private val contributesIntoSetAnnotationCtor by lazy {
-    builtinsFinder.findClass(CONTRIBUTES_INTO_SET_CLASS_ID)!!.constructors.first()
-  }
-
-  private val originAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
-  }
-
-  private val deprecatedAnnotationCtor by lazy {
-    builtinsFinder.findClass(StandardClassIds.Annotations.Deprecated)!!.constructors.first {
-      it.owner.isPrimary
-    }
-  }
-
-  private val deprecationLevel by lazy {
-    builtinsFinder.findClass(StandardClassIds.DeprecationLevel)!!
-  }
-
-  private val hiddenDeprecationLevel by lazy {
-    deprecationLevel.owner.declarations
-      .filterIsInstance<IrEnumEntry>()
-      .single { it.name.asString() == "HIDDEN" }
-      .symbol
-  }
-
-  fun generateFactoryShells(moduleFragment: IrModuleFragment) {
+  fun generateDeclarationShells(moduleFragment: IrModuleFragment) {
     for (file in moduleFragment.files) {
       for (declaration in file.declarations.toList()) {
         when (declaration) {
@@ -572,13 +527,15 @@ private class CircuitIrDeclarationGenerator(
     factoryClass.apply {
       superTypes += target.codegenTarget.factoryClassId(factoryType).type()
       addFactoryAnnotations(target)
-      markAsDeprecatedHidden()
-      addFakeOverrides(irTypeSystemContext)
+      generationSupport.markAsDeprecatedHidden(this)
+      addFakeOverrides(generationSupport.irTypeSystemContext)
     }
 
     // Kotlin 2.4 requires the class shell to be registered without a constructor. The constructor
     // is then added and registered separately so both declarations receive valid FIR metadata.
-    metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(factoryClass)
+    generationSupport.metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(
+      factoryClass
+    )
     factoryClass
       .addConstructor {
         this.origin = CircuitOrigins.IrFactoryConstructor
@@ -592,61 +549,34 @@ private class CircuitIrDeclarationGenerator(
           }
         }
         body = context(pluginContext) { this@constructor.generateDefaultConstructorBody() }
-        metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(this)
+        generationSupport.metadataDeclarationRegistrarCompat.registerConstructorAsMetadataVisible(
+          this
+        )
       }
   }
 
   private fun IrClass.addFactoryAnnotations(target: CircuitIrFactoryTarget) {
-    addAnnotationCompat(context(pluginContext) { buildAnnotation(symbol, injectAnnotationCtor) })
     val scopeClass = requireNotNull(target.scopeClass)
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, contributesIntoSetAnnotationCtor) { annotation ->
-          annotation.arguments[0] = kClassReference(scopeClass)
-        }
+    val originClass =
+      target.originClassId?.let { originClassId ->
+        with(compatContext) {
+          pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
+        } ?: error("Could not find Circuit origin class $originClassId")
       }
+    generationSupport.addGeneratedClassAnnotations(
+      generatedClass = this,
+      scopeClass = scopeClass,
+      originClass = originClass,
+      qualifier = target.qualifier,
     )
-    target.qualifier?.let { addAnnotationCompat(it) }
-    target.originClassId?.let { originClassId ->
-      addAnnotationCompat(
-        context(pluginContext) {
-          buildAnnotation(symbol, originAnnotationCtor) { annotation ->
-            annotation.arguments[0] =
-              kClassReference(
-                with(compatContext) {
-                  pluginContext.finderFor(this@addFactoryAnnotations).findClass(originClassId)
-                } ?: error("Could not find Circuit origin class $originClassId")
-              )
-          }
-        }
-      )
-    }
   }
 
   private fun ClassId.type(): IrType {
-    return builtinsFinder.findClass(this)?.defaultType ?: error("Could not find $this")
-  }
-
-  private fun IrClass.markAsDeprecatedHidden() {
-    addAnnotationCompat(
-      context(pluginContext) {
-        buildAnnotation(symbol, deprecatedAnnotationCtor) { annotation ->
-          annotation.arguments[0] =
-            irString("This synthesized declaration should not be used directly")
-          annotation.arguments[2] =
-            IrGetEnumValueImpl(
-              SYNTHETIC_OFFSET,
-              SYNTHETIC_OFFSET,
-              deprecationLevel.defaultType,
-              hiddenDeprecationLevel,
-            )
-        }
-      }
-    )
+    return generationSupport.findBuiltinsClass(this)?.defaultType ?: error("Could not find $this")
   }
 }
 
-private class CircuitIrTransformer(
+private class CircuitIrFactoryTransformer(
   private val pluginContext: IrPluginContext,
   private val symbols: CircuitSymbols.Ir,
   private val generateClassesInIr: Boolean,
@@ -657,17 +587,10 @@ private class CircuitIrTransformer(
   private val builtinsFinder by lazy {
     with(compatContext) { pluginContext.finderForBuiltinsCompat() }
   }
-
-  private val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat by lazy {
-    compatContext.createIrGeneratedDeclarationsRegistrar(pluginContext)
-  }
+  private val generationSupport = CircuitIrGenerationSupport(pluginContext, compatContext)
 
   private val composableAnnotationCtor by lazy {
     builtinsFinder.findClass(Symbols.ClassIds.Composable)!!.constructors.first()
-  }
-
-  private val originAnnotationCtor by lazy {
-    builtinsFinder.findClass(Symbols.ClassIds.metroOrigin)!!.constructors.first()
   }
 
   /** Cached invoke() symbol for metro's Provider type. */
@@ -678,10 +601,9 @@ private class CircuitIrTransformer(
   }
 
   override fun visitClass(declaration: IrClass): IrStatement {
-    if (
+    val generatedOrigin =
       declaration.origin.expectAsOrNull<IrDeclarationOrigin.GeneratedByPlugin>()?.pluginKey
-        is CircuitOrigins.FactoryClass
-    ) {
+    if (generatedOrigin is CircuitOrigins.FactoryClass) {
       // Find the target info from the factory class annotations
       val circuitTargetInfo = declaration.circuitFactoryTargetData()
       val screenClass =
@@ -693,19 +615,11 @@ private class CircuitIrTransformer(
         // FIR-generated Circuit factories cannot safely receive @Origin in FIR, so keep adding it
         // here. IR-generated factories already get it as part of shell creation.
         circuitTargetInfo.originClassId?.let { originClassId ->
-          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
-            declaration,
-            context(pluginContext) {
-              buildAnnotation(declaration.symbol, originAnnotationCtor) {
-                it.arguments[0] =
-                  kClassReference(
-                    with(compatContext) {
-                      pluginContext.finderFor(declaration).findClass(originClassId)
-                    }!!
-                  )
-              }
-            },
-          )
+          val originClass =
+            with(compatContext) {
+              pluginContext.finderFor(declaration).findClass(originClassId)
+            }!!
+          generationSupport.addMetadataVisibleOrigin(declaration, originClass)
         }
       }
 
@@ -1315,6 +1229,3 @@ private data class CircuitIrFactoryTarget(
   val constructorParams: List<CircuitIrConstructorParam>,
   val qualifier: IrConstructorCall?,
 )
-
-private val CONTRIBUTES_INTO_SET_CLASS_ID =
-  ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesIntoSet"))

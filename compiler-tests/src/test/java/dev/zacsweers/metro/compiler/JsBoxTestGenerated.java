@@ -497,6 +497,26 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     public void testProvidesInGeneratedContributesTo_SeparateCompilation() {
       run("ProvidesInGeneratedContributesTo_SeparateCompilation.kt");
     }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/box/api/circuitserialization")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Circuitserialization {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/box/api/circuitserialization/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInCircuitserialization() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/api/circuitserialization"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+      }
+
+      @Test
+      @TestMetadata("CircuitSerializerRegistrationExpectActual.kt")
+      public void testCircuitSerializerRegistrationExpectActual() {
+        run("CircuitSerializerRegistrationExpectActual.kt");
+      }
+    }
   }
 
   @Nested
@@ -2212,6 +2232,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     @TestMetadata("AncestorInjectionWithEmptyDescendants.kt")
     public void testAncestorInjectionWithEmptyDescendants() {
       run("AncestorInjectionWithEmptyDescendants.kt");
+    }
+
+    @Test
+    @TestMetadata("AncestorMemberInjectionOrder.kt")
+    public void testAncestorMemberInjectionOrder() {
+      run("AncestorMemberInjectionOrder.kt");
     }
 
     @Test

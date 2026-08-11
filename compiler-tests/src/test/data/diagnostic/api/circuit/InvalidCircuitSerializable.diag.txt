@@ -1,0 +1,15 @@
+/InvalidCircuitSerializable.kt:9:1: error: @CircuitSerializable is not applicable to interfaces.
+
+/InvalidCircuitSerializable.kt:13:1: error: @CircuitSerializable is not applicable to abstract classes.
+
+/InvalidCircuitSerializable.kt:16:20: error: @CircuitSerializable is not applicable to generic classes.
+
+/InvalidCircuitSerializable.kt:20:3: error: @CircuitSerializable is not applicable to inner classes.
+
+/InvalidCircuitSerializable.kt:25:3: error: @CircuitSerializable is not applicable to private, protected, or local declarations.
+
+/InvalidCircuitSerializable.kt:28:1: error: @CircuitSerializable is only applicable to Screen and PopResult implementations.
+
+/InvalidCircuitSerializable.kt:31:1: error: @CircuitSerializable is only applicable to classes and objects.
+
+/InvalidCircuitSerializable.kt:36:1: error: @CircuitSerializable is only applicable to classes and objects.

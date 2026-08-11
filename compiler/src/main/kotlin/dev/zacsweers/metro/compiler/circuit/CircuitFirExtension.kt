@@ -22,7 +22,6 @@ import dev.zacsweers.metro.compiler.fir.findInjectLikeConstructors
 import dev.zacsweers.metro.compiler.fir.implements
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
-import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
@@ -40,10 +39,6 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.arguments
-import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
-import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
-import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
-import org.jetbrains.kotlin.fir.expressions.builder.buildGetClassCall
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -53,7 +48,6 @@ import org.jetbrains.kotlin.fir.plugin.createConstructor
 import org.jetbrains.kotlin.fir.plugin.createNestedClass
 import org.jetbrains.kotlin.fir.plugin.createTopLevelClass
 import org.jetbrains.kotlin.fir.resolve.defaultType
-import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
@@ -65,28 +59,23 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirImplicitTypeRef
-import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.isUnit
-import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames
-import org.jetbrains.kotlin.name.StandardClassIds
 
 /** Whether Circuit factory declarations must be visible in FIR. */
 internal val MetroOptions.generateCircuitFactoriesInFir: Boolean
   get() = !generateClassesInIr || (generateContributionHints && generateContributionHintsInFir)
 
 /**
- * FIR extension that generates Circuit factory classes for `@CircuitInject`-annotated elements.
+ * FIR extension that generates Circuit factories.
  *
- * For top-level functions, generates a top-level factory class. For classes, generates a nested
- * `Factory` class.
+ * `@CircuitInject` functions produce a top-level factory class, while annotated classes produce a
+ * nested `Factory` class.
  *
  * With IR class generation, these declarations are FIR-visible shells for contribution hints and
  * [CircuitIrExtension] fills their implementation.
@@ -148,8 +137,8 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     }
   }
 
-  // Track generated factory ClassIds for callable generation
-  private val generatedFactoryClassIds = mutableSetOf<ClassId>()
+  // Track generated Circuit ClassIds for constructor generation.
+  private val generatedClassIds = mutableSetOf<ClassId>()
 
   // Cache computed targets during class generation. Nullable values cache failed lookups to avoid
   // recomputation.
@@ -172,15 +161,19 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
   @ExperimentalTopLevelDeclarationsGenerationApi
   override fun generateTopLevelClassLikeDeclaration(classId: ClassId): FirClassLikeSymbol<*>? {
-    val target = getOrComputeFunctionTarget(classId) ?: return null
-    return generateFactoryClass(
-      target,
-      null,
-      CircuitOrigins.FactoryClass(target.codegenTarget, target.factoryType),
-      target.factoryType,
-      // We don't know hasConstructorParams yet, for now always generate as CLASS
-      hasConstructorParams = true,
-    )
+    val factoryTarget = getOrComputeFunctionTarget(classId)
+    if (factoryTarget != null) {
+      return generateFactoryClass(
+        factoryTarget,
+        null,
+        CircuitOrigins.FactoryClass(factoryTarget.codegenTarget, factoryTarget.factoryType),
+        factoryTarget.factoryType,
+        // We don't know hasConstructorParams yet, for now always generate as CLASS
+        hasConstructorParams = true,
+      )
+    }
+
+    return null
   }
 
   override fun getNestedClassifiersNames(
@@ -220,8 +213,9 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    if (classSymbol.classId !in generatedFactoryClassIds) return emptySet()
-    return setOf(SpecialNames.INIT) // Create will be handled by fakeOverride IR gen from supertype
+    if (classSymbol.classId !in generatedClassIds) return emptySet()
+    // Other interface functions are materialized as fake overrides and finalized in IR.
+    return setOf(SpecialNames.INIT)
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
@@ -376,10 +370,10 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     // Add annotations
     val annotations = buildList {
       // @Inject
-      add(buildInjectAnnotation())
+      add(session.buildCircuitInjectAnnotation())
 
       // @ContributesIntoSet(scope)
-      add(buildContributesIntoSetAnnotation(target.scopeClassId))
+      add(session.buildCircuitContributesIntoSetAnnotation(target.scopeClassId))
 
       // Propagate any qualifier annotation from the source declaration.
       val qualifierSource: FirBasedSymbol<*>? = target.classSymbol ?: target.originalFunctionSymbol
@@ -390,7 +384,7 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
 
     factoryClass.markAsDeprecatedHidden(session)
 
-    generatedFactoryClassIds.add(factoryClass.symbol.classId)
+    generatedClassIds.add(factoryClass.symbol.classId)
 
     return factoryClass.symbol
   }
@@ -539,10 +533,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
   }
 
   internal companion object {
-    // ClassId for ContributesIntoSet annotation
-    private val contributesIntoSetClassId =
-      ClassId(Symbols.FqNames.metroRuntimePackage, Name.identifier("ContributesIntoSet"))
-
     fun findCircuitInjectSymbols(session: FirSession): List<FirBasedSymbol<*>> {
       return session.predicateBasedProvider.getSymbolsByPredicate(
         CircuitSymbols.circuitInjectPredicate
@@ -605,47 +595,6 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
         returnType,
       )
     }
-  }
-
-  private fun buildInjectAnnotation(): FirAnnotation {
-    val injectClassSymbol = session.metroFirBuiltIns.injectClassSymbol
-    return buildAnnotation {
-      annotationTypeRef = injectClassSymbol.defaultType().toFirResolvedTypeRef()
-      argumentMapping = buildAnnotationArgumentMapping()
-    }
-  }
-
-  private fun buildContributesIntoSetAnnotation(scopeClassId: ClassId): FirAnnotation {
-    val contributesIntoSetSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(contributesIntoSetClassId)
-        as? FirRegularClassSymbol ?: error("Could not find ContributesIntoSet")
-
-    val scopeSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(scopeClassId)
-        ?: error("Could not find scope class: $scopeClassId")
-
-    val scopeType = (scopeSymbol as FirRegularClassSymbol).defaultType()
-
-    return buildAnnotation {
-      annotationTypeRef = contributesIntoSetSymbol.defaultType().toFirResolvedTypeRef()
-      argumentMapping = buildAnnotationArgumentMapping {
-        mapping[Name.identifier("scope")] = buildGetClassCall {
-          argumentList = buildArgumentList {
-            arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
-          }
-          coneTypeOrNull =
-            ConeClassLikeTypeImpl(
-              StandardClassIds.KClass.toLookupTag(),
-              arrayOf(scopeType),
-              isMarkedNullable = false,
-            )
-        }
-      }
-    }
-  }
-
-  private fun ConeKotlinType.toFirResolvedTypeRef(): FirResolvedTypeRef {
-    return buildResolvedTypeRef { coneType = this@toFirResolvedTypeRef }
   }
 
   public class Factory : MetroFirDeclarationGenerationExtension.Factory {

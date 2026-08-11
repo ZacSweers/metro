@@ -1,0 +1,4 @@
+/FlattenedNames.kt:14:15: error: @CircuitSerializable declaration Navigation.SettingsScreen generates Navigation_SettingsScreenCircuitSerializerRegistration, which conflicts with another @CircuitSerializable declaration. Rename one of the declarations.
+
+/FlattenedNames.kt:18:13: error: @CircuitSerializable declaration Navigation_SettingsScreen generates Navigation_SettingsScreenCircuitSerializerRegistration, which conflicts with another @CircuitSerializable declaration. Rename one of the declarations.
+/ExistingDeclaration.kt:30:13: error: @CircuitSerializable declaration collision.existing.ExistingScreen generates ExistingScreenCircuitSerializerRegistration, which conflicts with an existing declaration. Rename one of the declarations.

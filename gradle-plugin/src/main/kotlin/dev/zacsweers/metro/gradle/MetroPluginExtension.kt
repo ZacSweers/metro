@@ -427,9 +427,13 @@ constructor(
     objects.booleanProperty("metro.generateContributionProviders", false)
 
   /**
-   * Generates Metro-native Circuit bindings for `@CircuitInject` and `@SubCircuitInject` classes
-   * and functions. Metro will generate `Ui.Factory`, `Presenter.Factory`, `SubUiFactory`, and
-   * `SubPresenterFactory` implementations for annotated declarations.
+   * Generates Metro-native Circuit bindings. Metro generates `Ui.Factory`, `Presenter.Factory`,
+   * `SubUiFactory`, and `SubPresenterFactory` implementations for `@CircuitInject` and
+   * `@SubCircuitInject` declarations.
+   *
+   * With Circuit 0.36.0 or newer, Metro also generates `CircuitSerializerRegistration` set
+   * contributions for `@CircuitSerializable` types when the `circuit-serialization` artifact and
+   * kotlinx-serialization compiler plugin are present.
    *
    * Note this will eventually move to a separate plugin.
    *

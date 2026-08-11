@@ -37,7 +37,7 @@ kotlinPublished = "2.3.0"
 kotlinInject = "0.9.0"
 koin = "4.2.2"
 koin-compiler = "1.1.0"
-metro = "1.4.0"
+metro = "1.4.1"
 kotlinInject-anvil = "0.1.7"
 kotlinx-benchmark = "0.4.17"
 kotlinx-browser = "0.5.0"
@@ -124,6 +124,7 @@ circuit-runtime = { module = "com.slack.circuit:circuit-runtime", version.ref = 
 circuit-runtime-presenter = { module = "com.slack.circuit:circuit-runtime-presenter", version.ref = "circuit" }
 circuit-runtime-ui = { module = "com.slack.circuit:circuit-runtime-ui", version.ref = "circuit" }
 circuit-codegenAnnotations = { module = "com.slack.circuit:circuit-codegen-annotations", version.ref = "circuit" }
+circuit-serialization = { module = "com.slack.circuit:circuit-serialization", version.ref = "circuit" }
 circuit-subcircuit = { module = "com.slack.circuit:circuitx-subcircuit", version.ref = "circuit" }
 
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose-jb" }
@@ -206,7 +207,7 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:9.1.31"
+r8 = "com.android.tools:r8:9.3.16"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 

@@ -1,0 +1,1 @@
+/MissingCircuitSerializer.kt:9:1: error: Could not find serializer output for MissingSerializerScreen. Apply the kotlinx-serialization compiler plugin.

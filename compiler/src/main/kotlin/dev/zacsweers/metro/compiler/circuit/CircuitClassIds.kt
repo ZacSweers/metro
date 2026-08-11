@@ -30,6 +30,19 @@ internal object CircuitNames {
   val modifier = Name.identifier("modifier")
   val provider = Name.identifier("provider")
   val factoryField = Name.identifier("factory")
+  val register = Name.identifier("register")
+  val builder = Name.identifier("builder")
+  val subclass = Name.identifier("subclass")
+  val serializer = Name.identifier("serializer")
+}
+
+/** Returns the top-level registration class generated for a serializable Circuit type. */
+internal fun ClassId.circuitSerializerRegistrationClassId(): ClassId {
+  val flattenedName = relativeClassName.pathSegments().joinToString("_") { it.asString() }
+  return ClassId(
+    packageFqName,
+    Name.identifier("${flattenedName}CircuitSerializerRegistration"),
+  )
 }
 
 /** The Circuit runtime family targeted by a generated factory. */

@@ -154,6 +154,7 @@ dependencies {
   functionalTestRuntimeOnly(project(":runtime-coroutines"))
   functionalTestRuntimeOnly(project(":interop-dagger"))
   functionalTestRuntimeOnly(libs.circuit.runtime.presenter)
+  functionalTestRuntimeOnly(libs.circuit.serialization)
 }
 
 val testCompilerVersion =

@@ -4,7 +4,10 @@ package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.circuit.CircuitIrDeclarationGenerationExtension
 import dev.zacsweers.metro.compiler.circuit.CircuitIrExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableIrDeclarationGenerationExtension
+import dev.zacsweers.metro.compiler.circuit.CircuitSerializableIrExtension
 import dev.zacsweers.metro.compiler.circuit.generateCircuitFactoriesInFir
+import dev.zacsweers.metro.compiler.circuit.generateCircuitSerializerRegistrationsInFir
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.CompilerVersionAliases
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
@@ -149,15 +152,24 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
         configuration[CommonConfigurationKeys.EXPECT_ACTUAL_TRACKER, ExpectActualTracker.DoNothing]
       with(compatContext) {
         if (options.enableCircuitCodegen) {
-          if (options.generateClassesInIr && !options.generateCircuitFactoriesInFir) {
-            registerIrExtensionCompat(
-              CircuitIrDeclarationGenerationExtension.create(
-                classIds = classIds,
-                compatContext = compatContext,
+          if (options.generateClassesInIr) {
+            if (!options.generateCircuitSerializerRegistrationsInFir) {
+              registerIrExtensionCompat(
+                CircuitSerializableIrDeclarationGenerationExtension.create(
+                  compatContext = compatContext
+                )
               )
-            )
+            }
+            if (!options.generateCircuitFactoriesInFir) {
+              registerIrExtensionCompat(
+                CircuitIrDeclarationGenerationExtension.create(
+                  classIds = classIds,
+                  compatContext = compatContext,
+                )
+              )
+            }
           }
-          // Register Circuit's body transformer before Metro's main IR pipeline.
+          // Register Circuit's body transformers before Metro's main IR pipeline.
           registerIrExtensionCompat(
             CircuitIrExtension(
               generateClassesInIr = options.generateClassesInIr,
@@ -165,6 +177,12 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
               assistedFactoryAnnotations = classIds.assistedFactoryAnnotations,
               injectAnnotations = classIds.allInjectAnnotations,
               qualifierAnnotations = classIds.qualifierAnnotations,
+              compatContext = compatContext,
+            )
+          )
+          registerIrExtensionCompat(
+            CircuitSerializableIrExtension.create(
+              generateClassesInIr = options.generateClassesInIr,
               compatContext = compatContext,
             )
           )

@@ -214,12 +214,16 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
       )
     }
 
-    val orderComposePlugin = kotlinVersion >= KotlinVersions.kotlin230
+    val compilerPluginOrderSupported = kotlinVersion >= KotlinVersions.kotlin230
     kotlinCompilation.compileTaskProvider.configure { task ->
-      if (orderComposePlugin) {
+      if (compilerPluginOrderSupported) {
         // Order before compose-compiler
         task.compilerOptions.freeCompilerArgs.add(
           "-Xcompiler-plugin-order=${PLUGIN_ID}>androidx.compose.compiler.plugins.kotlin"
+        )
+        // Order Circuit's IR generation before kotlinx-serialization
+        task.compilerOptions.freeCompilerArgs.add(
+          "-Xcompiler-plugin-order=${PLUGIN_ID}>org.jetbrains.kotlinx.serialization"
         )
       }
     }
@@ -321,7 +325,7 @@ public class MetroGradleSubplugin @Inject constructor(problems: Problems) :
         kotlinCompilation = kotlinCompilation,
         reportsDir = reportsDir,
         traceDir = traceDir,
-        orderComposePlugin = orderComposePlugin,
+        orderComposePlugin = compilerPluginOrderSupported,
         isJvmTarget = isJvmTarget,
       )
 

@@ -4,11 +4,21 @@ Changelog
 **Unreleased**
 --------------
 
+1.4.1
+-----
+
+_2026-08-06_
+
+### New
+
+- **[FIR/IR/Circuit]** Generate `CircuitSerializerRegistration` Set contributions for `@CircuitSerializable` `Screen` and `PopResult` types when using Circuit `0.36.0` or newer.
+
 ### Fixes
 
 - **[FIR/IR]** Generate contribution hints in FIR alongside IR class generation (Kotlin 2.4.20+), fixing downstream discovery for Metro's built-in contributions on all platforms.
 - **[FIR]** Report an error when one annotation class combines multiple qualifier, scope, or map-key markers, such as both `@Qualifier` and `@MapKey`.
 - **[IR]** Fix duplicate qualifier annotations on parameters of IR-generated member-injector methods.
+- **[IR]** Inject inherited members in superclass-first order when using graph injection methods.
 - **[IR]** Report duplicate bindings inherited from a parent graph when they are _only_ requested by a child graph extension.
 - **[IR]** Fix `@GraphExtension.Factory` replacements across `additionalScopes` when generating classes in IR.
 - **[IR]** Correctly report dependency cycles when the same dependency is requested both directly and through a provider or lazy value.
@@ -18,6 +28,19 @@ Changelog
 - **[IR]** Fix a stack overflow when a nested graph extension requests a parent-scoped binding with suspend providers enabled.
 - **[IR]** Prevent stack overflows while generating deeply nested/complex dependency graph expressions.
 - **[IR]** Show shorter, consistent dependency paths in graph errors with improved route caching.
+- **[IC]** Fix incremental compilation issue when adding or removing member injections from a superclass.
+
+### Changed
+
+- Mentioned above in the fixes, but worth reiterating! Previously, graph-level member injector functions would incorrectly inject subclasses _before_ ancestor classes. Now it correctly injects ancestors first, matching how `MembersInjector` and constructor-injected classes with member injection work. If you were relying on that behavior by accident, it's going to be different now!
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@scana](https://github.com/scana)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.4.0
 -----
@@ -85,6 +108,8 @@ Special thanks to the following contributors for contributing to this release!
 
 - [@kevinguitar](https://github.com/kevinguitar)
 - [@kyay10](https://github.com/kyay10)
+
+### [Consider sponsoring Metro's development](https://www.zacsweers.dev/sponsoring-metro/)
 
 1.3.2
 -----
