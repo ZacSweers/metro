@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -55,11 +55,11 @@ internal fun FirSession.buildCircuitContributesIntoSetAnnotation(
             }
         }
         coneTypeOrNull =
-          ConeClassLikeTypeImpl(
-            StandardClassIds.KClass.toLookupTag(),
-            arrayOf(scopeType),
-            isMarkedNullable = false,
-          )
+          StandardClassIds.KClass.toLookupTag()
+            .constructClassType(
+              arrayOf(scopeType),
+              isMarkedNullable = false,
+            )
       }
     }
   }
