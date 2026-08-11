@@ -36,9 +36,9 @@ import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingTypeKey
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
-import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeAnnotations
 import dev.zacsweers.metro.compiler.fir.scopeArgument
@@ -517,7 +517,7 @@ internal class ContributionsFirGenerator(
             var added = false
             if (mapKey.hasImplicitClassKey(session)) {
               val valueExpr = mapKey.mapKeyClassValueExpression()
-              val valueClassId = valueExpr?.resolvedClassId() ?: StandardClassIds.Nothing
+              val valueClassId = valueExpr?.resolveClassId(session) ?: StandardClassIds.Nothing
               if (valueClassId == StandardClassIds.Nothing) {
                 // It's the sentinel or omitted, so use the annotated class
                 mapKeyFirAnnotation.toAnnotationClass(session)?.let { mapKeyClass ->
