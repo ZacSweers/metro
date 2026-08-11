@@ -1,6 +1,8 @@
 interface Foo
 
-@Origin(RealFoo::class)
+typealias RealFooAlias = RealFoo
+
+@Origin(RealFooAlias::class)
 @Inject
 @ContributesBinding(AppScope::class)
 class GeneratedRealFoo : RealFoo() {

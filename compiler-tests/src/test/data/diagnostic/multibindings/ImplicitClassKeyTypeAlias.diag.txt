@@ -1,0 +1,1 @@
+/ImplicitClassKeyTypeAlias.kt:12:17: warning: Explicit class key value 'KeyedService::class' is the same as the implicit class key and can be omitted.
