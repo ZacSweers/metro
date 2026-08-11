@@ -42,7 +42,7 @@ import org.jetbrains.kotlin.fir.toEffectiveVisibility
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -276,11 +276,11 @@ internal class GenerateGraphExtensionExtension(
             arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
           }
           coneTypeOrNull =
-            ConeClassLikeTypeImpl(
-              StandardClassIds.KClass.toLookupTag(),
-              arrayOf(scopeType),
-              isMarkedNullable = false,
-            )
+            StandardClassIds.KClass.toLookupTag()
+              .constructClassType(
+                arrayOf(scopeType),
+                isMarkedNullable = false,
+              )
         }
       }
     }
@@ -302,11 +302,11 @@ internal class GenerateGraphExtensionExtension(
             arguments += buildResolvedQualifierCompat(scopeClassId, scopeClassSymbol, scopeType)
           }
           coneTypeOrNull =
-            ConeClassLikeTypeImpl(
-              StandardClassIds.KClass.toLookupTag(),
-              arrayOf(scopeType),
-              isMarkedNullable = false,
-            )
+            StandardClassIds.KClass.toLookupTag()
+              .constructClassType(
+                arrayOf(scopeType),
+                isMarkedNullable = false,
+              )
         }
       }
     }
