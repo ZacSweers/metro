@@ -4,14 +4,17 @@ package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.appendIterableWith
 import dev.zacsweers.metro.compiler.memoize
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
-import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
@@ -22,13 +25,15 @@ import org.jetbrains.kotlin.types.ConstantValueKind
 
 internal class MetroFirAnnotation(
   val fir: FirAnnotation,
-  session: FirSession,
-  typeResolver: TypeResolveService? = null,
+  private val session: FirSession,
+  private val typeResolver: TypeResolveService? = null,
 ) {
   private val cachedHashKey by memoize { fir.computeAnnotationHash(session, typeResolver) }
-  private val cachedToString by memoize { buildString { renderAsAnnotation(fir, simple = false) } }
+  private val cachedToString by memoize {
+    buildString { renderAsAnnotation(fir, session, typeResolver, simple = false) }
+  }
 
-  fun simpleString() = buildString { renderAsAnnotation(fir, simple = true) }
+  fun simpleString() = buildString { renderAsAnnotation(fir, session, typeResolver, simple = true) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -46,13 +51,23 @@ internal class MetroFirAnnotation(
   override fun toString() = cachedToString
 }
 
-private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotation, simple: Boolean) {
+private fun StringBuilder.renderAsAnnotation(
+  firAnnotation: FirAnnotation,
+  session: FirSession,
+  typeResolver: TypeResolveService?,
+  simple: Boolean,
+) {
   append('@')
   val annotationClassName =
     if (simple) {
       firAnnotation.resolvedType.renderReadable()
     } else {
-      firAnnotation.resolvedType.renderReadableWithFqNames()
+      val annotationClassId = firAnnotation.toAnnotationClassIdSafe(session)
+      if (annotationClassId == null) {
+        firAnnotation.resolvedType.renderReadableWithFqNames()
+      } else {
+        annotationClassId.asSingleFqName().asString()
+      }
     }
   append(annotationClassName)
 
@@ -67,7 +82,7 @@ private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotation, simpl
       prefix = "(",
       postfix = ")",
     ) { index ->
-      renderAsAnnotationArgument(firAnnotation.arguments[index], simple)
+      renderAsAnnotationArgument(firAnnotation.arguments[index], session, typeResolver, simple)
     }
   } else {
     if (firAnnotation.argumentMapping.mapping.isEmpty()) return
@@ -80,22 +95,40 @@ private fun StringBuilder.renderAsAnnotation(firAnnotation: FirAnnotation, simpl
     ) { (name, arg) ->
       append(name)
       append("=")
-      renderAsAnnotationArgument(arg, simple)
+      renderAsAnnotationArgument(arg, session, typeResolver, simple)
     }
   }
 }
 
-private fun StringBuilder.renderAsAnnotationArgument(argument: FirExpression, simple: Boolean) {
+private fun StringBuilder.renderAsAnnotationArgument(
+  argument: FirExpression,
+  session: FirSession,
+  typeResolver: TypeResolveService?,
+  simple: Boolean,
+) {
   when (argument) {
-    is FirAnnotationCall -> renderAsAnnotation(argument, simple)
+    is FirAnnotationCall -> renderAsAnnotation(argument, session, typeResolver, simple)
+    is FirNamedArgumentExpression ->
+      renderAsAnnotationArgument(argument.expression, session, typeResolver, simple)
     is FirLiteralExpression -> {
       renderFirLiteralAsAnnotationArgument(argument)
     }
     is FirGetClassCall -> {
-      val id =
-        (argument.argument as? FirResolvedQualifier)?.classIdCompat?.asSingleFqName() ?: "<Error>"
-      append(id)
+      val classId = argument.resolveClassIdForAnnotationValue(session, typeResolver)
+      append(classId?.asSingleFqName() ?: "<Error>")
       append("::class")
+    }
+    is FirFunctionCall -> {
+      val evaluated =
+        with(session.compatContext) {
+          argument.evaluateAsCompat(session, FirElement::class)
+        }
+      val evaluatedExpression = evaluated as? FirExpression
+      if (evaluatedExpression == null || evaluatedExpression === argument) {
+        append("...")
+      } else {
+        renderAsAnnotationArgument(evaluatedExpression, session, typeResolver, simple)
+      }
     }
     is FirPropertyAccessExpression -> {
       // Enum entry or const val reference.
