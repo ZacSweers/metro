@@ -137,8 +137,8 @@ import org.jetbrains.kotlin.fir.types.builder.buildUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneTypeOrNull
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.constructType
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.fir.types.type
@@ -1830,11 +1830,11 @@ internal fun buildClassReference(session: FirSession, classId: ClassId): FirGetC
         }
     }
     coneTypeOrNull =
-      ConeClassLikeTypeImpl(
-        StandardClassIds.KClass.toLookupTag(),
-        arrayOf(classType),
-        isMarkedNullable = false,
-      )
+      StandardClassIds.KClass.toLookupTag()
+        .constructClassType(
+          arrayOf(classType),
+          isMarkedNullable = false,
+        )
   }
 }
 
