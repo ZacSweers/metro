@@ -6,7 +6,7 @@ Changelog
 
 ### Fixes
 
-- **[FIR/IR]** Resolve typealiases used as contribution scope arguments.
+- **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 
 1.4.1
 -----
