@@ -35,7 +35,11 @@ import org.jetbrains.kotlin.test.services.TestPhase
  *
  * We don't extend `AbstractFirLightTreeJvmIrTextTest` because its parent registers the built-in
  * handler which can't be removed and would delete our golden files.
+ *
+ * Kotlin 2.5 requires opting into the generic target-backend runner, but older supported compiler
+ * test frameworks do not provide its JVM-specific replacement or opt-in annotation.
  */
+@Suppress("OPT_IN_USAGE_ERROR")
 open class AbstractIrDumpTest : AbstractKotlinCompilerWithTargetBackendTest(TargetBackend.JVM_IR) {
   override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider {
     return EnvironmentBasedStandardLibrariesPathProvider
