@@ -254,6 +254,7 @@ abstract class MetroProject(
   private fun metroRepositories(defaults: List<Repository>): Repositories =
     Repositories(
       mutableListOf<Repository>().apply {
+        getTestCompilerRepositoryUrl()?.let { add(Repository.ofMaven(it)) }
         addAll(defaults)
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/bootstrap"))
         add(Repository.ofMaven("https://packages.jetbrains.team/maven/p/kt/dev/"))

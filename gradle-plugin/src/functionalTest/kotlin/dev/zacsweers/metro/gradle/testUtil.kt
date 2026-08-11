@@ -164,6 +164,9 @@ fun BuildResult.assertOutputContainsOnDifferentKotlinVersions(map: Map<String, S
 fun getTestCompilerVersion(): String =
   System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-version")
 
+fun getTestCompilerRepositoryUrl(): String? =
+  System.getProperty("dev.zacsweers.metro.gradle.test.kotlin-repo-url")
+
 fun getTestCompilerToolingVersion(): KotlinToolingVersion =
   KotlinToolingVersion(getTestCompilerVersion())
 

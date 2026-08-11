@@ -297,7 +297,11 @@ dependencies {
   testImplementation(libs.kotlin.reflect)
   testImplementation(libs.kotlin.stdlib)
   val testCompilerVersion =
-    providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+    providers
+      .gradleProperty("metro.testCompilerVersion")
+      .orElse(providers.gradleProperty("kotlin_version"))
+      .orElse(libs.versions.kotlin)
+      .get()
   testRuntimeOnly("org.jetbrains.kotlin:kotlin-compiler:$testCompilerVersion")
   // Cover for https://github.com/tschuchortdev/kotlin-compile-testing/issues/274
   testImplementation(libs.kotlin.aptEmbeddable)

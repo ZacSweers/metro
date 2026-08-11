@@ -159,7 +159,12 @@ dependencies {
 }
 
 val testCompilerVersion =
-  providers.gradleProperty("metro.testCompilerVersion").orElse(libs.versions.kotlin).get()
+  providers
+    .gradleProperty("metro.testCompilerVersion")
+    .orElse(providers.gradleProperty("kotlin_version"))
+    .orElse(libs.versions.kotlin)
+    .get()
+val testCompilerRepositoryUrl = providers.gradleProperty("kotlin_repo_url").orNull
 
 fun androidHomeOrNull(): File? {
   val localProps = rootProject.isolated.projectDirectory.file("local.properties").asFile
@@ -185,6 +190,9 @@ tasks.withType<Test>().configureEach {
     providers.gradleProperty("VERSION_NAME").get(),
   )
   systemProperty("dev.zacsweers.metro.gradle.test.kotlin-version", testCompilerVersion)
+  testCompilerRepositoryUrl?.let {
+    systemProperty("dev.zacsweers.metro.gradle.test.kotlin-repo-url", it)
+  }
   systemProperty("metro.agpVersion", libs.versions.agp.get())
   systemProperty("metro.circuitVersion", libs.versions.circuit.get())
   systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
