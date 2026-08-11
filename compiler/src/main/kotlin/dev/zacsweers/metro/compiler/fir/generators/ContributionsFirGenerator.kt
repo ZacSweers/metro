@@ -35,6 +35,7 @@ import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
+import dev.zacsweers.metro.compiler.fir.referencedClassId
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingTypeKey
@@ -208,7 +209,7 @@ internal class ContributionsFirGenerator(
         // We create a contribution class for each scope being contributed to. E.g. if there are
         // contributions for AppScope and LibScope we'll create `MetroContributionToLibScope` and
         // `MetroContributionToAppScope`
-        // Fall back to the source short name when the full scope ClassId isn't available yet.
+        // Resolve aliases for identity while preserving existing source contribution marker names.
         for (annotation in contributionAnnotations) {
           val scopeArgument = annotation.scopeArgument(session) ?: continue
           val scopeClassId =
@@ -218,16 +219,11 @@ internal class ContributionsFirGenerator(
               annotation.resolvedScopeClassId(session)
             }
           val nestedContributionName =
-            if (scopeClassId != null) {
-              MetroContributions.metroContributionName(scopeClassId)
-            } else {
-              val scopeName =
-                scopeArgument.scopeName(session)
-                  ?: reportCompilerBug(
-                    "Could not get scope name for ${scopeArgument.render()} on class ${contributingClassSymbol.classId}"
-                  )
-              MetroContributions.metroContributionNameFromSuffix(scopeName)
-            }
+            sourceContributionName(
+              contributingClassSymbol.classId,
+              scopeArgument,
+              scopeClassId,
+            )
 
           contributionNamesToScopeArgs[nestedContributionName] = scopeArgument
         }
@@ -866,6 +862,37 @@ internal class ContributionsFirGenerator(
       ?.expectAsOrNull<FirSimpleNamedReference>()
       ?.name
       ?.identifier
+  }
+
+  private fun sourceContributionName(
+    contributingClassId: ClassId,
+    scopeArgument: FirGetClassCall,
+    resolvedScopeClassId: ClassId?,
+  ): Name {
+    val referencedScopeClassId = scopeArgument.referencedClassId()
+    if (
+      referencedScopeClassId != null &&
+        (resolvedScopeClassId == null || referencedScopeClassId == resolvedScopeClassId)
+    ) {
+      return MetroContributions.metroContributionName(referencedScopeClassId)
+    }
+
+    if (resolvedScopeClassId != null) {
+      // Typealiases use their target's short name without changing the generated name of ordinary
+      // source contributions.
+      return MetroContributions.metroContributionNameFromSuffix(
+        resolvedScopeClassId.shortClassName.asString()
+      )
+    }
+
+    val scopeName = scopeArgument.scopeName(session)
+    if (scopeName != null) {
+      return MetroContributions.metroContributionNameFromSuffix(scopeName)
+    }
+
+    return reportCompilerBug(
+      "Could not get scope name for ${scopeArgument.render()} on class $contributingClassId"
+    )
   }
 
   override fun generateNestedClassLikeDeclaration(

@@ -16,11 +16,9 @@ import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
-import dev.zacsweers.metro.compiler.ir.MemberNamer
 import dev.zacsweers.metro.compiler.ir.addBackingFieldTo
 import dev.zacsweers.metro.compiler.ir.addHiddenFromObjCAnnotation
 import dev.zacsweers.metro.compiler.ir.addMetadataVisibleHiddenCompanionObject
-import dev.zacsweers.metro.compiler.ir.allocateName
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
 import dev.zacsweers.metro.compiler.ir.buildAnnotation
 import dev.zacsweers.metro.compiler.ir.checkSignatureCarrierParamMismatches
@@ -377,17 +375,15 @@ internal class InjectedClassTransformer(
             isPrimary = true
           }
           .apply {
-            val fieldNameAllocator = NameAllocator(mode = NameAllocator.Mode.COUNT)
+            val fieldNameAllocator =
+              NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
             addParameters(
               params = dedupedParameters,
               wrapInProvider = true,
               stubDefaults = false,
               typeRemapper = { type -> factoryTypeRemapper.remapType(type) },
             ) { parameter, irParam ->
-              val fieldName =
-                fieldNameAllocator.allocateName(memberNamer, MemberNamer.Kind.PROVIDER) {
-                  irParam.name.asString()
-                }
+              val fieldName = fieldNameAllocator.newName(irParam.name.asString())
               val field = irParam.addBackingFieldTo(factoryCls, fieldName)
               nameToField[irParam.name] = field
               providerFieldsByKey[parameter.toCanonicalProviderKey()] = field
