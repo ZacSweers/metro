@@ -147,6 +147,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributionClassArrayTypeAliases.kt")
+    public void testContributionClassArrayTypeAliases() {
+      run("ContributionClassArrayTypeAliases.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_Basic.kt")
     public void testDefaultBinding_Basic() {
       run("DefaultBinding_Basic.kt");
@@ -492,6 +498,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributesBindingBoundTypeTypeAlias.kt")
+      public void testContributesBindingBoundTypeTypeAlias() {
+        run("ContributesBindingBoundTypeTypeAlias.kt");
+      }
+
+      @Test
       @TestMetadata("ContributesBindingMixedRegularAndMultibinding.kt")
       public void testContributesBindingMixedRegularAndMultibinding() {
         run("ContributesBindingMixedRegularAndMultibinding.kt");
@@ -634,6 +646,18 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("CircuitInjectTypeAliasArguments.kt")
+      public void testCircuitInjectTypeAliasArguments() {
+        run("CircuitInjectTypeAliasArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("CircuitSerializableTypeAliasScope.kt")
+      public void testCircuitSerializableTypeAliasScope() {
+        run("CircuitSerializableTypeAliasScope.kt");
+      }
+
+      @Test
       @TestMetadata("CircuitSerializerRegistrationMultiModule.kt")
       public void testCircuitSerializerRegistrationMultiModule() {
         run("CircuitSerializerRegistrationMultiModule.kt");
@@ -748,6 +772,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("SubCircuitAssistedFactoryTypeAliasScreen.kt")
+      public void testSubCircuitAssistedFactoryTypeAliasScreen() {
+        run("SubCircuitAssistedFactoryTypeAliasScreen.kt");
+      }
+
+      @Test
       @TestMetadata("SubCircuitMultiModule.kt")
       public void testSubCircuitMultiModule() {
         run("SubCircuitMultiModule.kt");
@@ -822,6 +852,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @Test
     public void testAllFilesPresentInBindingcontainers() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("BindingContainerClassArrayTypeAliases.kt")
+    public void testBindingContainerClassArrayTypeAliases() {
+      run("BindingContainerClassArrayTypeAliases.kt");
     }
 
     @Test
@@ -1262,6 +1298,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @TestMetadata("InjectedGenericsClassWorksWithBinds.kt")
     public void testInjectedGenericsClassWorksWithBinds() {
       run("InjectedGenericsClassWorksWithBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("KClassQualifierTypeAlias.kt")
+    public void testKClassQualifierTypeAlias() {
+      run("KClassQualifierTypeAlias.kt");
     }
 
     @Test
@@ -2978,6 +3020,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("HiltInstallInTypeAlias.kt")
+      public void testHiltInstallInTypeAlias() {
+        run("HiltInstallInTypeAlias.kt");
+      }
+
+      @Test
       @TestMetadata("HiltModuleInSingletonComponent.kt")
       public void testHiltModuleInSingletonComponent() {
         run("HiltModuleInSingletonComponent.kt");
@@ -3182,6 +3230,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     @Test
     public void testAllFilesPresentInMultibindings() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("ClassKeyTypeAlias.kt")
+    public void testClassKeyTypeAlias() {
+      run("ClassKeyTypeAlias.kt");
     }
 
     @Test
