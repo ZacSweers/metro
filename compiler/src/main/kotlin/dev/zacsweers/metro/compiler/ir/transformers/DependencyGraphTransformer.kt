@@ -7,6 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.ExitProcessingException
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -115,7 +116,6 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -909,7 +909,7 @@ internal class DependencyGraphTransformer(
             .forEach { function ->
               with(function) {
                 val declarationToFinalize =
-                  propertyIfAccessor.expectAs<IrOverridableDeclaration<*>>()
+                  propertyIfAccessorCompat.expectAs<IrOverridableDeclaration<*>>()
                 if (declarationToFinalize.isFakeOverride) {
                   declarationToFinalize.finalizeFakeOverride(
                     metroGraph.thisReceiverOrFail.copyTo(this)

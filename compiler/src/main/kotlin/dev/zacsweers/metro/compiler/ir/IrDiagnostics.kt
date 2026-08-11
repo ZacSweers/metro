@@ -120,7 +120,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
         reportDiagnosticToMessageCollector(
           diagnostic!!,
           effectiveDeclaration.locationOrNull(),
-          messageCollector,
+          metroMessageCollector,
           false,
         )
       }
@@ -155,7 +155,7 @@ private fun <A : Any> IrMetroContext.reportCompatImpl(
       } else {
         a.toString()
       }
-    @Suppress("DEPRECATION") messageCollector.report(severity, message, location)
+    @Suppress("DEPRECATION") metroMessageCollector.report(severity, message, location)
   } else {
     diagnosticReporter.reportAt(effectiveDeclaration, factory, a)
   }

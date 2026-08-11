@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
@@ -146,7 +147,6 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.packageFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.simpleFunctions
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
@@ -668,7 +668,7 @@ internal class BindingContainerTransformer(
       val isPropertyAccessor = function.isPropertyAccessor
       val callableId =
         if (isPropertyAccessor) {
-          function.propertyIfAccessor.expectAs<IrProperty>().callableId
+          function.propertyIfAccessorCompat.expectAs<IrProperty>().callableId
         } else {
           function.callableId
         }
@@ -1035,7 +1035,7 @@ internal class BindingContainerTransformer(
                 is IrSimpleFunction -> {
                   callableId =
                     if (decl.isPropertyAccessor) {
-                      decl.propertyIfAccessor.expectAs<IrProperty>().callableId
+                      decl.propertyIfAccessorCompat.expectAs<IrProperty>().callableId
                     } else {
                       decl.callableId
                     }
@@ -1411,7 +1411,7 @@ internal class BindingContainerTransformer(
   }
 
   private fun IrClass.addCallableMetadataAnnotation(reference: CallableReference) {
-    val target = reference.callee?.owner?.propertyIfAccessor ?: reference.backingField
+    val target = reference.callee?.owner?.propertyIfAccessorCompat ?: reference.backingField
     val callableMetadata =
       buildAnnotation(symbol, metroSymbols.callableMetadataAnnotationConstructor) { annotation ->
         with(pluginContext.createIrBuilder(symbol)) {
@@ -1420,7 +1420,7 @@ internal class BindingContainerTransformer(
             irString(
               reference.callee
                 ?.owner
-                ?.propertyIfAccessor
+                ?.propertyIfAccessorCompat
                 ?.expectAsOrNull<IrProperty>()
                 ?.name
                 ?.asString() ?: ""
@@ -1562,7 +1562,7 @@ private fun IrOverridableDeclaration<*>.daggerProviderSourceName(): String {
       is IrProperty -> name.asString()
       is IrSimpleFunction ->
         if (isPropertyAccessor) {
-          propertyIfAccessor.expectAs<IrProperty>().name.asString()
+          propertyIfAccessorCompat.expectAs<IrProperty>().name.asString()
         } else {
           name.asString()
         }

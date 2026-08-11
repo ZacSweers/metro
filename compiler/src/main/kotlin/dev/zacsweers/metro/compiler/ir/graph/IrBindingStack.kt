@@ -7,6 +7,7 @@ import com.jakewharton.picnic.renderText
 import com.jakewharton.picnic.table
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.decapitalizeUS
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.expectAs
@@ -40,7 +41,6 @@ import org.jetbrains.kotlin.ir.util.isFromJava
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.FqName
 
 internal interface IrBindingStack :
@@ -214,7 +214,7 @@ internal interface IrBindingStack :
                   functionToUse is IrConstructor -> ""
                   treatAsConstructor -> ""
                   functionToUse.isPropertyAccessor ->
-                    ".${(functionToUse.propertyIfAccessor as IrProperty).name.asString()}"
+                    ".${(functionToUse.propertyIfAccessorCompat as IrProperty).name.asString()}"
                   else -> ".${functionToUse.name.asString()}"
                 }
               val end =
@@ -305,7 +305,7 @@ internal interface IrBindingStack :
           isSynthetic = false,
           graphContextProvider = {
             val targetFqName = graphExtensionKey.typeKey.type.rawType().kotlinFqName
-            when (val declarationToUse = declaration?.propertyIfAccessor) {
+            when (val declarationToUse = declaration?.propertyIfAccessorCompat) {
               is IrProperty -> "$targetFqName.${declarationToUse.name}"
               is IrFunction -> "$targetFqName.${declarationToUse.name}(…)"
               else -> null

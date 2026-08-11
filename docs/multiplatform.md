@@ -28,7 +28,7 @@ Metro's runtime and generated code support the platforms listed below.
 - **Apple**:
     - macOS (`arm64`)
     - iOS (`x64`, `arm64`, `simulatorArm64`)
-    - watchOS (`arm32`, `arm64`, `deviceArm64`, `simulatorArm64`)
+    - watchOS (`arm64`, `deviceArm64`, `simulatorArm64`)
     - tvOS (`arm64`, `simulatorArm64`)
 - **Linux**:
     - `linuxX64`

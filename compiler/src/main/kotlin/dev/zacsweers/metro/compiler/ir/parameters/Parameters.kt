@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.compareTo
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
@@ -25,7 +26,6 @@ import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.TypeRemapper
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.deepCopyWithSymbols
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.CallableId.Companion.PACKAGE_FQ_NAME_FOR_LOCAL
 import org.jetbrains.kotlin.name.Name
@@ -47,7 +47,7 @@ internal class Parameters(
   val irProperty: IrProperty?
     get() {
       return if (isProperty) {
-        (ir as IrSimpleFunction).propertyIfAccessor as? IrProperty
+        (ir as IrSimpleFunction).propertyIfAccessorCompat as? IrProperty
       } else {
         null
       }
