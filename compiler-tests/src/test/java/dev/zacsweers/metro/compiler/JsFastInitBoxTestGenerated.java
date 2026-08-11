@@ -129,6 +129,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributesIntoMap_DefaultBindingImplicitMapKeyMultiModule.kt")
+    public void testContributesIntoMap_DefaultBindingImplicitMapKeyMultiModule() {
+      run("ContributesIntoMap_DefaultBindingImplicitMapKeyMultiModule.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesIntoMap_ImplicitMapKeyOnTypeArgument.kt")
+    public void testContributesIntoMap_ImplicitMapKeyOnTypeArgument() {
+      run("ContributesIntoMap_ImplicitMapKeyOnTypeArgument.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       run("ContributingMultibileNullableBindings.kt");

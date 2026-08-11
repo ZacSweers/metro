@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.fir.checkers
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classIds
+import dev.zacsweers.metro.compiler.fir.mapKeyAnnotations
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -69,6 +70,18 @@ internal object DefaultBindingChecker : FirClassChecker(MppCheckerKind.Common) {
       else -> {
         // No issues
       }
+    }
+
+    val typeParameterMapKeys =
+      declaration.symbol.typeParameterSymbols.flatMap { it.mapKeyAnnotations(session) }
+    if (typeParameterMapKeys.size > 1) {
+      val foundMapKeys =
+        typeParameterMapKeys.joinToString(separator = "; ") { it.simpleString() }
+      reporter.reportOn(
+        annotation.source,
+        MetroDiagnostics.DEFAULT_BINDING_ERROR,
+        "`@DefaultBinding` type parameters declare multiple map keys: $foundMapKeys. Declare a map key on only one type parameter.",
+      )
     }
   }
 }

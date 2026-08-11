@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.getTargetType
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClass
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
@@ -128,6 +129,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.FirPlaceholderProjection
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.FirStarProjection
 import org.jetbrains.kotlin.fir.types.FirTypeProjectionWithVariance
 import org.jetbrains.kotlin.fir.types.FirTypeRef
@@ -799,6 +801,127 @@ internal fun FirAnnotationContainer.mapKeyAnnotation(session: FirSession): Metro
 
 internal fun List<FirAnnotation>.mapKeyAnnotation(session: FirSession): MetroFirAnnotation? =
   asSequence().annotationAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
+
+internal fun FirBasedSymbol<*>.mapKeyAnnotations(session: FirSession): List<MetroFirAnnotation> =
+  resolvedCompilerAnnotationsWithClassIds.mapKeyAnnotations(session)
+
+internal fun List<FirAnnotation>.mapKeyAnnotations(
+  session: FirSession
+): List<MetroFirAnnotation> =
+  asSequence()
+    .annotationsAnnotatedWithAny(session, session.classIds.mapKeyAnnotations)
+    .toList()
+
+internal data class FirTypeArgumentMapKey(
+  val annotation: MetroFirAnnotation,
+  val argumentClassId: ClassId,
+  val argumentType: ConeKotlinType,
+  val argumentSource: KtSourceElement?,
+  val usesImplicitClassKey: Boolean,
+)
+
+internal fun FirTypeRef.mapKeyAnnotationFromDefaultBindingTypeParameter(
+  session: FirSession
+): MetroFirAnnotation? =
+  mapKeyAnnotationsFromDefaultBindingTypeParameters(session).firstOrNull()?.annotation
+
+internal fun FirTypeRef.mapKeyAnnotationsFromDefaultBindingTypeParameters(
+  session: FirSession
+): List<FirTypeArgumentMapKey> {
+  val resolvedTypeRef = this as? FirResolvedTypeRef ?: return emptyList()
+  val boundClass = resolvedTypeRef.coneType.toRegularClassSymbol(session) ?: return emptyList()
+  if (!boundClass.isAnnotatedWithAny(session, setOf(session.classIds.defaultBindingAnnotation))) {
+    return emptyList()
+  }
+
+  val sourceTypeRef = resolvedTypeRef.delegatedTypeRef as? FirUserTypeRef ?: return emptyList()
+  val sourceArguments =
+    sourceTypeRef.qualifier.lastOrNull()?.typeArgumentList?.typeArguments ?: return emptyList()
+  val resolvedArguments = (resolvedTypeRef.coneType as? ConeClassLikeType)?.typeArguments.orEmpty()
+  return boundClass.typeParameterSymbols.withIndex().flatMap { (index, typeParameter) ->
+    val mapKeys = typeParameter.mapKeyAnnotations(session)
+    if (mapKeys.isEmpty()) return@flatMap emptyList()
+    val argumentTypeRef =
+      (sourceArguments.getOrNull(index) as? FirTypeProjectionWithVariance)?.typeRef
+    val argumentType =
+      argumentTypeRef?.coneTypeOrNull
+        ?: resolvedArguments.getOrNull(index)?.type
+        ?: return@flatMap emptyList()
+    val argumentClassId =
+      argumentType.toRegularClassSymbol(session)?.classId ?: return@flatMap emptyList()
+    mapKeys.map { mapKey ->
+      val usesImplicitClassKey =
+        mapKey.hasImplicitClassKey(session) && mapKey.mapKeyClassValueExpression() == null
+      FirTypeArgumentMapKey(
+        annotation = mapKey.withImplicitClassKeyValue(session, argumentClassId),
+        argumentClassId = argumentClassId,
+        argumentType = argumentType,
+        argumentSource = argumentTypeRef?.source,
+        usesImplicitClassKey = usesImplicitClassKey,
+      )
+    }
+  }
+}
+
+internal fun FirTypeRef.mapKeyAnnotationFromTypeArguments(
+  session: FirSession
+): MetroFirAnnotation? = mapKeyAnnotationsFromTypeArguments(session).firstOrNull()?.annotation
+
+internal fun FirTypeRef.mapKeyAnnotationsFromTypeArguments(
+  session: FirSession
+): List<FirTypeArgumentMapKey> {
+  val sourceTypeRef = (this as? FirResolvedTypeRef)?.delegatedTypeRef ?: this
+  val userTypeRef = sourceTypeRef as? FirUserTypeRef ?: return emptyList()
+  val sourceArguments =
+    userTypeRef.qualifier.lastOrNull()?.typeArgumentList?.typeArguments ?: return emptyList()
+  val resolvedArguments =
+    (coneTypeOrNull as? ConeClassLikeType)?.typeArguments ?: return emptyList()
+
+  return sourceArguments.zip(resolvedArguments).flatMap { (sourceArgument, resolvedArgument) ->
+    val argumentTypeRef =
+      (sourceArgument as? FirTypeProjectionWithVariance)?.typeRef
+        ?: return@flatMap emptyList()
+    val mapKeys = argumentTypeRef.annotations.mapKeyAnnotations(session)
+    if (mapKeys.isEmpty()) return@flatMap emptyList()
+    val argumentType =
+      argumentTypeRef.coneTypeOrNull
+        ?: resolvedArgument.type
+        ?: return@flatMap emptyList()
+    val argumentClassId =
+      argumentType.toRegularClassSymbol(session)?.classId ?: return@flatMap emptyList()
+    mapKeys.map { mapKey ->
+      val usesImplicitClassKey =
+        mapKey.hasImplicitClassKey(session) && mapKey.mapKeyClassValueExpression() == null
+      FirTypeArgumentMapKey(
+        annotation = mapKey.withImplicitClassKeyValue(session, argumentClassId),
+        argumentClassId = argumentClassId,
+        argumentType = argumentType,
+        argumentSource = argumentTypeRef.source,
+        usesImplicitClassKey = usesImplicitClassKey,
+      )
+    }
+  }
+}
+
+private fun MetroFirAnnotation.withImplicitClassKeyValue(
+  session: FirSession,
+  implicitClassId: ClassId,
+): MetroFirAnnotation {
+  if (!hasImplicitClassKey(session) || mapKeyClassValueExpression() != null) return this
+  val annotationClass = fir.toAnnotationClass(session) ?: return this
+  val annotation = buildSimpleAnnotation {
+    annotationClass.symbol
+  }
+    .apply {
+      replaceArgumentMapping(
+        buildAnnotationArgumentMapping {
+          mapping[StandardNames.DEFAULT_VALUE_PARAMETER] =
+            buildClassReference(session, implicitClassId)
+        }
+      )
+    }
+  return MetroFirAnnotation(annotation, session)
+}
 
 /**
  * Checks if the given [mapKeyAnnotation]'s `@MapKey` meta-annotation has `implicitClassKey = true`.

@@ -162,7 +162,8 @@ class CacheImpl(...) : Cache
 
 Same rules around qualifiers and `binding()` apply in this scenario
 
-To contribute into a Map multibinding, the map key annotation must be specified on the class or `binding` type argument.
+To contribute into a Map multibinding, the map key annotation must be specified on the class,
+`binding` type argument, or a generic argument of the bound type.
 
 ```kotlin
 // Will be contributed into a Map multibinding with @StringKey("Networking")
@@ -179,6 +180,30 @@ class CacheImpl(...) : Cache
 @Inject
 class CacheImpl(...) : Cache
 ```
+
+For generic bound types, a map key can be placed directly on a concrete type argument. An implicit
+class key uses that argument as the key.
+
+```kotlin
+interface RouteKey
+
+interface RouteScreen<T : RouteKey>
+
+class HomeKey : RouteKey
+
+@ContributesIntoMap(AppScope::class)
+@Inject
+class HomeScreen(...) : RouteScreen<@ClassKey HomeKey>
+
+@DependencyGraph(AppScope::class)
+interface AppGraph {
+  // Contains HomeKey::class to HomeScreen
+  val routeScreens: Map<KClass<out RouteKey>, RouteScreen<*>>
+}
+```
+
+Specify a map key in only one declaration site location: the explicit `binding` type, contributed
+class, or bound type generic argument.
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
 
@@ -308,6 +333,25 @@ interface BaseFactory<T : BaseFactory<T>>
 @Inject
 class HomeFactory(...) : BaseFactory<HomeFactory>
 ```
+
+A default binding can also declare an implicit class key on one of its type parameters. Each
+implementation then uses its concrete type argument as the key.
+
+```kotlin
+interface RouteKey
+
+@DefaultBinding<RouteScreen<*>>
+interface RouteScreen<@ClassKey T : RouteKey>
+
+class HomeKey : RouteKey
+
+@ContributesIntoMap(AppScope::class)
+@Inject
+class HomeScreen(...) : RouteScreen<HomeKey>
+```
+
+A map key declared by an implementation on its class, explicit `binding` type, or bound type
+generic argument takes precedence over the key declared by `@DefaultBinding`.
 
 ## `generateContributionProviders`
 

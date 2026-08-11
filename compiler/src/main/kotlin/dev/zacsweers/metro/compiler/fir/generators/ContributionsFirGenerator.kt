@@ -30,6 +30,8 @@ import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.isKiaIntoMultibinding
 import dev.zacsweers.metro.compiler.fir.isResolved
 import dev.zacsweers.metro.compiler.fir.mapKeyAnnotation
+import dev.zacsweers.metro.compiler.fir.mapKeyAnnotationFromDefaultBindingTypeParameter
+import dev.zacsweers.metro.compiler.fir.mapKeyAnnotationFromTypeArguments
 import dev.zacsweers.metro.compiler.fir.mapKeyClassValueExpression
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
@@ -504,7 +506,8 @@ internal class ContributionsFirGenerator(
           add(buildIntoMapAnnotation())
           // Copy map key annotation (already resolved on the contribution)
           val mapKey = matchingContribution.mapKey
-          mapKey?.fir?.expectAsOrNull<FirAnnotationCall>()?.let { mapKeyFirAnnotation ->
+          val mapKeyFirAnnotation = mapKey?.fir
+          if (mapKeyFirAnnotation is FirAnnotationCall) {
             // For implicit class keys (@MapKey(implicitClassKey = true)), the annotation
             // value is Nothing::class (sentinel) or absent. Build a new annotation with the
             // contributing class as the value instead of copying the sentinel.
@@ -543,6 +546,8 @@ internal class ContributionsFirGenerator(
                 }
               )
             }
+          } else if (mapKeyFirAnnotation != null) {
+            add(mapKeyFirAnnotation)
           }
         }
         is Contribution.ContributesBinding -> {}
@@ -717,8 +722,24 @@ internal class ContributionsFirGenerator(
           ?: classAnnotations.qualifierAnnotation(session),
       mapKey =
         boundTypeAnnotations?.mapKeyAnnotation(session)
-          ?: classAnnotations.mapKeyAnnotation(session),
+          ?: classAnnotations.mapKeyAnnotation(session)
+          ?: boundTypeRef?.mapKeyAnnotationFromTypeArguments(session)
+          ?: contributingClassSymbol.mapKeyAnnotationFromBoundSupertype(boundTypeRef),
     )
+  }
+
+  private fun FirClassSymbol<*>.mapKeyAnnotationFromBoundSupertype(
+    boundTypeRef: FirTypeRef?
+  ): MetroFirAnnotation? {
+    val boundClassId = boundTypeRef?.coneTypeOrNull?.toRegularClassSymbol(session)?.classId
+    return resolvedSuperTypeRefs
+      .firstOrNull {
+        it.coneType.toRegularClassSymbol(session)?.classId == boundClassId
+      }
+      ?.run {
+        takeUnless { it === boundTypeRef }?.mapKeyAnnotationFromTypeArguments(session)
+          ?: mapKeyAnnotationFromDefaultBindingTypeParameter(session)
+      }
   }
 
   /**
