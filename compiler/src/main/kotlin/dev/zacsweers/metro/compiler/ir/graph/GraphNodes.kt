@@ -254,9 +254,10 @@ internal class GraphNodes(
         if (implicitScope != null) {
           add(IrAnnotation(implicitScope))
           val additionalScopeArgs =
-            dependencyGraphAnno
-              ?.classReferenceArrayArgument(Symbols.Names.additionalScopes, fallbackIndex = 1)
-              .orEmpty()
+            dependencyGraphAnno.classReferenceArrayArgument(
+              Symbols.Names.additionalScopes,
+              fallbackIndex = 1,
+            )
           for (scopeArg in additionalScopeArgs) {
             scopeArg.classType.rawTypeOrNull()?.let {
               aggregationScopes += it.classIdOrFail

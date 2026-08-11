@@ -155,14 +155,14 @@ internal class GenerateImplExtension(session: FirSession, compatContext: CompatC
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    val parentClassId = classSymbol.classId.parentClassId ?: return emptySet()
+    val parentClassId = classSymbol.classId.outerClassId ?: return emptySet()
     if (generateImplClasses.none { it.classId == parentClassId }) return emptySet()
     if (classSymbol.classId.shortClassName != IMPL_NAME) return emptySet()
     return setOf(SpecialNames.INIT)
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
-    val parentClassId = context.owner.classId.parentClassId ?: return emptyList()
+    val parentClassId = context.owner.classId.outerClassId ?: return emptyList()
     if (generateImplClasses.none { it.classId == parentClassId }) return emptyList()
     if (context.owner.classId.shortClassName != IMPL_NAME) return emptyList()
 

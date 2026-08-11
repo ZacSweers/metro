@@ -470,8 +470,7 @@ private fun FirTypeRef.mapValueTypeRefOrNull(): FirTypeRef? {
   return when (val argument = arguments[1]) {
     is FirTypeProjectionWithVariance -> argument.typeRef
     is FirPlaceholderProjection,
-    is FirStarProjection,
-    null -> null
+    is FirStarProjection -> null
   }
 }
 

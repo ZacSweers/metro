@@ -432,7 +432,7 @@ internal class ContributedInterfaceSupertypeGenerator(
                 contributionClassId
               } else {
                 // This is always the `MetroContribution`, the contribution is its parent
-                contributionClassId.parentClassId ?: continue
+                contributionClassId.outerClassId ?: continue
               }
             put(classId, contribution)
           }
@@ -708,7 +708,7 @@ internal class ContributedInterfaceSupertypeGenerator(
           // Filter out binding containers and self-references — they participate in replacements
           // but not in supertypes
           if (
-            metroContribution.classId?.parentClassId?.parentClassId == declarationClassId ||
+            metroContribution.classId?.outerClassId?.outerClassId == declarationClassId ||
               contributionMappingsByClassId[metroContribution.classId] == true
           ) {
             return@flatMap emptyList()

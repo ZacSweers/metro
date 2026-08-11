@@ -136,7 +136,7 @@ internal fun IrConstructorCall.toIrCallableMetadata(
   val sourceCallableName = propertyName.ifBlank { callableName }.asName()
   val callableId =
     CallableId(
-      clazz.classIdOrFail.parentClassId!!,
+      clazz.classIdOrFail.outerClassId!!,
       sourceCallableName,
     )
 

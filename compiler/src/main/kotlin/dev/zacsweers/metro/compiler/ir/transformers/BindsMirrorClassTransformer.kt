@@ -142,7 +142,6 @@ internal class BindsMirrorClassTransformer(context: IrMetroContext) :
         when (declaration) {
           is IrProperty -> declaration.getter ?: return@any false
           is IrSimpleFunction -> declaration
-          else -> return@any false
         }
       if (inaccessibleOnly && function.canBeReadDirectly()) return@any false
       val annotations =

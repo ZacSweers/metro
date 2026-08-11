@@ -375,7 +375,7 @@ internal class ContributionsFirGenerator(
     if (
       generateContributionProviders && classSymbol.hasOrigin(Keys.MetroContributionClassDeclaration)
     ) {
-      val holderClassId = classSymbol.classId.parentClassId ?: return emptySet()
+      val holderClassId = classSymbol.classId.outerClassId ?: return emptySet()
       val holderInfo = getHolder(holderClassId) ?: return emptySet()
       return buildSet {
         add(SpecialNames.INIT)
@@ -407,7 +407,7 @@ internal class ContributionsFirGenerator(
     if (
       generateContributionProviders &&
         context.owner.hasOrigin(Keys.MetroContributionClassDeclaration) &&
-        getHolder(context.owner.classId.parentClassId ?: return emptyList()) != null
+        getHolder(context.owner.classId.outerClassId ?: return emptyList()) != null
     ) {
       return listOf(createDefaultPrivateConstructor(context.owner, Keys.Default).symbol)
     }
@@ -423,7 +423,7 @@ internal class ContributionsFirGenerator(
     if (!generateContributionProviders) return emptyList()
     if (!context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) return emptyList()
 
-    val holderClassId = context.owner.classId.parentClassId ?: return emptyList()
+    val holderClassId = context.owner.classId.outerClassId ?: return emptyList()
     val holderInfo = getHolder(holderClassId) ?: return emptyList()
 
     val contributingClassSymbol = holderInfo.contributingClassSymbol
@@ -776,7 +776,7 @@ internal class ContributionsFirGenerator(
   ): Set<Name> {
     if (context.owner.hasOrigin(Keys.MetroContributionClassDeclaration)) {
       // Contribution provider objects inside holder classes don't need a binding mirror
-      val parentClassId = classSymbol.classId.parentClassId
+      val parentClassId = classSymbol.classId.outerClassId
       if (parentClassId != null && getHolder(parentClassId) != null) {
         return emptySet()
       }

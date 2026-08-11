@@ -324,7 +324,7 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     val explicitBindingMapKey = explicitBindingType?.annotations?.mapKeyAnnotation(session)
     if (!isMapBinding && explicitBindingMapKey != null) {
       reporter.reportOn(
-        explicitBindingMapKey.fir.source ?: explicitBindingType?.source ?: annotation.source,
+        explicitBindingMapKey.fir.source ?: explicitBindingType.source ?: annotation.source,
         MetroDiagnostics.MULTIBINDS_ERROR,
         "`@MapKey` annotations are only allowed on `@ContributesIntoMap` declarations.",
       )

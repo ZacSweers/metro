@@ -217,7 +217,7 @@ internal class GenerateDependencyGraphExtension(
     if (callableId.callableName != CREATE_NAME) return emptyList()
 
     // The graph class is the parent of this Factory
-    val graphClassId = owner.classId.parentClassId ?: return emptyList()
+    val graphClassId = owner.classId.outerClassId ?: return emptyList()
     val graphSymbol =
       session.symbolProvider.getClassLikeSymbolByClassId(graphClassId) as? FirRegularClassSymbol
         ?: return emptyList()

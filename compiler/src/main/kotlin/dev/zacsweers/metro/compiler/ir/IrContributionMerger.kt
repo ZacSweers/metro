@@ -196,7 +196,7 @@ internal class IrContributionMerger(
                   // For Metro contributions, we need to check the parent class ID
                   // This is always the `MetroContribution`, the contribution's parent is the actual
                   // class
-                  it.rawType().classIdOrFail.parentClassId!!
+                  it.rawType().classIdOrFail.outerClassId!!
                 }
 
             val bindingContainers =
@@ -297,7 +297,7 @@ internal class IrContributionMerger(
               (mutableAllContributions.keys +
                   mutableContributedBindingContainers.keys +
                   mutableExternalSupertypes.keys)
-                .filter { it.parentClassId == excludedClassId }
+                .filter { it.outerClassId == excludedClassId }
             nestedContributions.forEach { contributionId ->
               mutableAllContributions.remove(contributionId)
               mutableContributedBindingContainers.remove(contributionId)

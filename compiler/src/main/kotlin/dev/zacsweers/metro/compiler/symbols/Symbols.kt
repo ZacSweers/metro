@@ -416,7 +416,7 @@ internal class Symbols(
   }
 
   val metroTraceContext: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.metroTraceContext)
+    builtinsFinder.findClass(ClassIds.metroTraceContext)
   }
 
   val metroTraceContextTrace: IrSimpleFunctionSymbol? by lazy {
@@ -440,19 +440,19 @@ internal class Symbols(
   }
 
   val tracer: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.tracer)
+    builtinsFinder.findClass(ClassIds.tracer)
   }
 
   val tracedProvider: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.tracedProvider)
+    builtinsFinder.findClass(ClassIds.tracedProvider)
   }
 
   val tracedSuspendProvider: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.tracedSuspendProvider)
+    builtinsFinder.findClass(ClassIds.tracedSuspendProvider)
   }
 
   val tracedMembersInjector: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(ClassIds.tracedMembersInjector)
+    builtinsFinder.findClass(ClassIds.tracedMembersInjector)
   }
 
   val asContribution: IrSimpleFunctionSymbol by lazy {
@@ -587,11 +587,11 @@ internal class Symbols(
   }
 
   val metroSuspendProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.metroSuspendProvider)!!
+    builtinsFinder.findClass(ClassIds.metroSuspendProvider)!!
   }
 
   val metroSuspendLazy: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.metroSuspendLazy)!!
+    builtinsFinder.findClass(ClassIds.metroSuspendLazy)!!
   }
 
   val suspendLazyAwait: IrSimpleFunctionSymbol by lazy {
@@ -599,8 +599,8 @@ internal class Symbols(
   }
 
   val metroSuspendProviderFunction: IrSimpleFunctionSymbol by lazy {
-    pluginContext
-      .referenceFunctions(CallableId(metroRuntime.packageFqName, "suspendProvider".asName()))
+    builtinsFinder
+      .findFunctions(CallableId(metroRuntime.packageFqName, "suspendProvider".asName()))
       .single()
   }
 
@@ -609,7 +609,7 @@ internal class Symbols(
   }
 
   val metroSyncSuspendProvider: IrClassSymbol by lazy {
-    pluginContext.referenceClass(ClassIds.metroSyncSuspendProvider)!!
+    builtinsFinder.findClass(ClassIds.metroSyncSuspendProvider)!!
   }
 
   val metroSyncSuspendProviderConstructor: IrConstructorSymbol by lazy {
@@ -617,7 +617,7 @@ internal class Symbols(
   }
 
   private val suspendDoubleCheck: IrClassSymbol? by lazy {
-    pluginContext.referenceClass(
+    builtinsFinder.findClass(
       ClassId(metroRuntimeInternal.packageFqName, "SuspendDoubleCheck".asName())
     )
   }
@@ -651,7 +651,7 @@ internal class Symbols(
   }
 
   private val metroSuspendDelegateFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
+    builtinsFinder.findClass(
       ClassId(metroRuntimeInternal.packageFqName, "SuspendDelegateFactory".asName())
     )!!
   }
@@ -687,7 +687,7 @@ internal class Symbols(
   }
 
   val metroSuspendFactory: IrClassSymbol by lazy {
-    pluginContext.referenceClass(
+    builtinsFinder.findClass(
       ClassId(metroRuntimeInternal.packageFqName, "SuspendFactory".asName())
     )!!
   }
