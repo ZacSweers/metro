@@ -36,9 +36,7 @@ import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataKey
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationDataRegistry
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
-import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -447,17 +445,14 @@ public class CircuitFirExtension(session: FirSession, compatContext: CompatConte
     annotation: FirAnnotation,
     typeResolver: MetroFirTypeResolver,
   ): Pair<ClassId, ClassId>? {
-    if (annotation !is FirAnnotationCall) return null
-    if (annotation.arguments.size < 2) return null
-
     // First arg is screen, second is scope
     val screenArg =
       annotation.argumentAsOrNull<FirGetClassCall>(session, CircuitNames.screen, 0) ?: return null
     val scopeArg =
       annotation.argumentAsOrNull<FirGetClassCall>(session, CircuitNames.scope, 1) ?: return null
 
-    val screenType = screenArg.resolveClassId(typeResolver) ?: return null
-    val scopeType = scopeArg.resolveClassId(typeResolver) ?: return null
+    val screenType = screenArg.resolveClassId(session, typeResolver) ?: return null
+    val scopeType = scopeArg.resolveClassId(session, typeResolver) ?: return null
 
     return screenType to scopeType
   }

@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
@@ -70,7 +69,6 @@ internal fun FirAnnotation.extractCircuitScopeClassId(
   typeResolver: MetroFirTypeResolver,
   argumentIndex: Int,
 ): ClassId? {
-  if (this !is FirAnnotationCall) return null
   return classArgument(session, Symbols.Names.scope, index = argumentIndex)
-    ?.resolveClassId(typeResolver)
+    ?.resolveClassId(session, typeResolver)
 }

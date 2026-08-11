@@ -13,7 +13,6 @@ import dev.zacsweers.metro.compiler.fir.allSessions
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.classArgument
 import dev.zacsweers.metro.compiler.fir.implements
-import dev.zacsweers.metro.compiler.fir.resolveClassId
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
@@ -116,7 +115,9 @@ internal object CircuitSerializableClassChecker : FirClassChecker(MppCheckerKind
 
     val typeResolver = MetroFirTypeResolver.Factory(session).create(declaration.symbol)
     val scopeArgument = annotation.classArgument(session, CircuitNames.scope, index = 0)
-    val scopeClassId = typeResolver?.let { scopeArgument?.resolveClassId(it) }
+    val scopeClassId = typeResolver?.let {
+      annotation.extractCircuitScopeClassId(session, it, argumentIndex = 0)
+    }
     if (scopeClassId == null) {
       reporter.reportOn(
         scopeArgument?.source ?: annotationSource,
