@@ -13,7 +13,7 @@ import dev.zacsweers.metro.compiler.fir.hasImplicitClassKey
 import dev.zacsweers.metro.compiler.fir.isOrImplements
 import dev.zacsweers.metro.compiler.fir.mapKeyClassValueExpression
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
-import dev.zacsweers.metro.compiler.fir.resolvedClassId
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -346,7 +346,7 @@ internal fun checkImplicitClassKeyUsage(
   if (!mapKey.hasImplicitClassKey(session)) return
 
   val valueArg = mapKey.mapKeyClassValueExpression() ?: return
-  val valueClassId = valueArg.resolvedClassId() ?: return
+  val valueClassId = valueArg.resolveClassId(session) ?: return
   val argSource = valueArg.source ?: mapKey.fir.source ?: source
 
   if (valueClassId == StandardClassIds.Nothing) {
