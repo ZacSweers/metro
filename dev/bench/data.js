@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786569583489,
+  "lastUpdate": 1786577904201,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -21168,6 +21168,62 @@ window.BENCHMARK_DATA = {
             "value": 0.20861634303772308,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -1.18%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "97c3c864~1",
+          "message": "[before] 'Class name is too long' crash with dagger interop",
+          "timestamp": "2026-08-12T22:41:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/97c3c8642fb62887432546f65fc0a557f4ab0a2b"
+        },
+        "date": 1786577904201,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2141017222400841,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "97c3c8642fb62887432546f65fc0a557f4ab0a2b",
+          "message": "[after] 'Class name is too long' crash with dagger interop",
+          "timestamp": "2026-08-12T22:41:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/97c3c8642fb62887432546f65fc0a557f4ab0a2b"
+        },
+        "date": 1786577904202,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22405901969659517,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +4.65%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

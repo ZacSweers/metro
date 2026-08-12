@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786569583655,
+  "lastUpdate": 1786577904453,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21168,6 +21168,62 @@ window.BENCHMARK_DATA = {
             "value": 19523.044,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +4.19%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "97c3c864~1",
+          "message": "[before] 'Class name is too long' crash with dagger interop",
+          "timestamp": "2026-08-12T22:41:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/97c3c8642fb62887432546f65fc0a557f4ab0a2b"
+        },
+        "date": 1786577904453,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19224.537,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "97c3c8642fb62887432546f65fc0a557f4ab0a2b",
+          "message": "[after] 'Class name is too long' crash with dagger interop",
+          "timestamp": "2026-08-12T22:41:18Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/97c3c8642fb62887432546f65fc0a557f4ab0a2b"
+        },
+        "date": 1786577904454,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18056.670000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -6.07%"
           }
         ]
       }
