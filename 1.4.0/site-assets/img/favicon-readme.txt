@@ -1,3 +1,0 @@
-- Emoji Icon Author: Google Noto Emoji fonts
-- Emoji Icon Source: https://github.com/googlefonts/noto-emoji/blob/main/svg/emoji_u1f687.svg
-- Emoji Icon License: Apache license, version 2.0
