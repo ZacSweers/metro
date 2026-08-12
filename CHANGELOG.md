@@ -9,6 +9,7 @@ Changelog
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 - **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
+- **[IR/interop]** Fix a compiler crash when Dagger interop is enabled and deeply nested classes have long names.
 
 ### Changes
 
@@ -22,6 +23,12 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@eygraber](https://github.com/eygraber)
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@grandstaish](https://github.com/grandstaish)
 
 1.4.1
 -----
