@@ -621,6 +621,42 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
   }
 
+  fun testValidatingOneExtensionContextDoesNotValidateItsSiblingContext() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val value: String
+        }
+
+        @DependencyGraph
+        interface LeftGraph {
+          val child: ChildGraph
+
+          @Provides fun value(): String = "left"
+        }
+
+        @DependencyGraph
+        interface RightGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val childGraph = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(childGraph)
+    val leftContext = contexts.single { it.chain[1].name == "LeftGraph" }
+    val rightContext = contexts.single { it.chain[1].name == "RightGraph" }
+    val validationService = project.service<MetroGraphValidationService>()
+
+    val results = validationService.validateWithExtensions(file, leftContext)
+
+    assertEquals(listOf(leftContext.path), results.map { it.context.path })
+    assertTrue(results.single().requireCompleted().diagnostics.isEmpty())
+    assertNull(validationService.cachedResult(file, rightContext))
+  }
+
   fun testReplacedContributionKeepsItsOwnInjectableType() {
     val result =
       validate(

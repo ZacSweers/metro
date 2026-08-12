@@ -31,6 +31,7 @@ import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import java.awt.BorderLayout
 import java.awt.event.MouseEvent
@@ -85,11 +86,11 @@ internal class MetroToolWindowPanel(private val project: Project) :
           override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
           override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = selectedGraph() != null
+            e.presentation.isEnabled = selectedGraphNode() != null
           }
 
           override fun actionPerformed(e: AnActionEvent) {
-            selectedGraph()?.let(::validateGraph)
+            selectedGraphNode()?.context?.let(::validateContext)
           }
         },
       )
@@ -109,7 +110,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
     TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
-      val graph = selectedGraph() ?: findGraph(classId, file)
+      val graph = selectedGraphNode()?.graph ?: findGraph(classId, file)
       graph?.let(::validateGraph)
     }
   }
@@ -149,10 +150,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   private fun selectedNode(): MetroTreeNode? = tree.selectionPath?.let(::nodeAt)
 
-  private fun selectedGraph(): KaGraphNode? {
+  private fun selectedGraphNode(): MetroTreeNode.Graph? {
     var node = selectedNode()
     while (node != null) {
-      if (node is MetroTreeNode.Graph) return node.graph
+      if (node is MetroTreeNode.Graph) return node
       node = node.parent
     }
     return null
@@ -161,14 +162,25 @@ internal class MetroToolWindowPanel(private val project: Project) :
   private fun validateGraph(graph: KaGraphNode) {
     val element = graph.pointer.element ?: return
     project.service<MetroGraphValidationService>().validateWithExtensionsAsync(element, graph) {
-      // Rerun highlighting so the gutter's validation badge picks up the new result
-      DaemonCodeAnalyzer.getInstance(project).restart()
-      // Select the validation node once the refreshed children load, so the outcome is visible
-      // even when the run produced no problems.
-      treeModel.invalidateAsync().thenRun {
-        SwingUtilities.invokeLater {
-          TreeUtil.promiseSelect(tree, validationVisitor(graph))
-        }
+      validationFinished(validationVisitor(graph))
+    }
+  }
+
+  private fun validateContext(context: GraphContext) {
+    val element = context.graph.pointer.element ?: return
+    project.service<MetroGraphValidationService>().validateWithExtensionsAsync(element, context) {
+      validationFinished(validationVisitor(context))
+    }
+  }
+
+  private fun validationFinished(visitor: TreeVisitor) {
+    // Rerun highlighting so the gutter's validation badge picks up the new result
+    DaemonCodeAnalyzer.getInstance(project).restart()
+    // Select the validation node once the refreshed children load, so the outcome is visible even
+    // when the run produced no problems.
+    treeModel.invalidateAsync().thenRun {
+      SwingUtilities.invokeLater {
+        TreeUtil.promiseSelect(tree, visitor)
       }
     }
   }
@@ -180,6 +192,22 @@ internal class MetroToolWindowPanel(private val project: Project) :
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
         is MetroTreeNode.Graph ->
           if (node.matches(graph.classId, file)) {
+            TreeVisitor.Action.CONTINUE
+          } else {
+            TreeVisitor.Action.SKIP_CHILDREN
+          }
+        is MetroTreeNode.Validation -> TreeVisitor.Action.INTERRUPT
+        else -> TreeVisitor.Action.SKIP_CHILDREN
+      }
+    }
+  }
+
+  private fun validationVisitor(context: GraphContext): TreeVisitor {
+    return TreeVisitor { path ->
+      when (val node = nodeAt(path)) {
+        is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
+        is MetroTreeNode.Graph ->
+          if (node.context.path == context.path) {
             TreeVisitor.Action.CONTINUE
           } else {
             TreeVisitor.Action.SKIP_CHILDREN

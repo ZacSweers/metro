@@ -219,6 +219,21 @@ internal class MetroGraphValidationService(
     }
   }
 
+  /** Runs [validateWithExtensions] for one concrete graph path like [validateAsync]. */
+  fun validateWithExtensionsAsync(
+    element: PsiElement,
+    context: GraphContext,
+    onDone: Consumer<List<KaGraphValidationResult>>,
+  ) {
+    launchCoalesced(context.path) {
+      val results =
+        withBackgroundProgress(project, progressTitle(context.graph)) {
+          smartReadAction(project) { validateWithExtensions(element, context) }
+        }
+      withContext(Dispatchers.EDT) { onDone.accept(results) }
+    }
+  }
+
   private fun progressTitle(graph: KaGraphNode): String =
     "Validating Metro graph ${graph.name ?: ""}".trimEnd()
 
