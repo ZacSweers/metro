@@ -195,9 +195,9 @@ internal class BindingIndex(
 
   /** The extension graphs created by [graph]'s accessors. */
   fun extensionsOf(graph: KaGraphNode): List<KaGraphNode> {
-    if (graph.extensionCreationIds.isEmpty()) return emptyList()
+    if (graph.extensionCreations.isEmpty()) return emptyList()
     return graphs.filter { candidate ->
-      candidate.isExtension && candidate.selfIds.any { it in graph.extensionCreationIds }
+      candidate.isExtension && candidate.selfReferences.any { it in graph.extensionCreations }
     }
   }
 
@@ -273,7 +273,7 @@ internal class BindingIndex(
     if (!graph.isExtension) return listOf(listOf(graph))
 
     val parents = graphs.filter { candidate ->
-      candidate !in visited && candidate.extensionCreationIds.any { it in graph.selfIds }
+      candidate !in visited && candidate.extensionCreations.any { it in graph.selfReferences }
     }
     if (parents.isEmpty()) return listOf(listOf(graph))
 

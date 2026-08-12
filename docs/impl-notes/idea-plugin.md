@@ -150,6 +150,9 @@ The two never sum to each other. UI copy should not imply they do.
 
 ## Key contracts
 
+- Graph identity is the resolved class plus its declaration file. Extension creation points and
+  factory inputs retain that declaration identity so unrelated modules can declare the same FQNs
+  without acquiring each other's parent chains or synthesized inputs.
 - Multibinding ids: map ids are `<mapKeyAnnotationParamType>_<canonicalValueKey>`. The key type
   is the map key annotation's parameter type verbatim. Values canonicalize through provider
   wrappers (`Provider<V>`, `Lazy<V>`, `() -> V` all join `V`'s aggregate). Both the contribution

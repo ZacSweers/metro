@@ -86,8 +86,8 @@ internal class KaGraphNode(
   val selfIds: Set<ClassId> = emptySet(),
   /** Supertype classes whose members merge into this graph, gating their provider membership. */
   val supertypeIds: Set<ClassId> = emptySet(),
-  /** Extension or extension factory ids created by this graph's accessors. */
-  val extensionCreationIds: Set<ClassId> = emptySet(),
+  /** Extension or extension factory declarations created by this graph's accessors. */
+  val extensionCreations: Set<GraphReference> = emptySet(),
   /** Whether this graph's compilation classpath contains the optional coroutine runtime. */
   val runtimeCoroutinesAvailable: Boolean = false,
   /**
@@ -99,6 +99,8 @@ internal class KaGraphNode(
   val scopingAnnotations: Set<KaAnnotationSnapshot> = emptySet(),
 ) {
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
+  val selfReferences: Set<GraphReference> =
+    selfIds.mapTo(mutableSetOf()) { GraphReference(it, pointer.virtualFile) }
 
   val name: String?
     get() = classId?.shortClassName?.asString()
@@ -116,6 +118,12 @@ internal class BindingContainerEntry(val classId: ClassId, val includes: Set<Cla
  */
 internal data class GraphDeclarationId(
   val classId: ClassId?,
+  val file: VirtualFile?,
+)
+
+/** A resolved graph or nested factory class, qualified by its source or binary declaration file. */
+internal data class GraphReference(
+  val classId: ClassId,
   val file: VirtualFile?,
 )
 

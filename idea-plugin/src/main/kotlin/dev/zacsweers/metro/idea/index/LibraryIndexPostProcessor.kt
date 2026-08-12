@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.index
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
@@ -217,29 +218,32 @@ internal class LibraryIndexPostProcessor(
   /**
    * Demand-driven resolution of constructor-injected classes from compiled dependencies: the
    * annotation sweeps only cover project sources, but inject annotations survive in library
-   * metadata. Starting from consumer keys with no project-source binding, transitively checks
-   * whether each consumed class is injectable and synthesizes entries targeting the library
-   * declarations.
+   * metadata. Starting from consumer keys in each use-site module, transitively checks whether each
+   * resolved library class is injectable and synthesizes one entry per binary declaration.
    */
   private fun resolveLibraryInjectBindings() {
-    val bindingKeys = bindings.mapTo(mutableSetOf()) { it.typeKey }
     val queue = ArrayDeque<LibraryInjectRequest>()
     for (consumer in consumers) {
       val classId = consumer.typeClassId ?: continue
       if (consumer.multibindingId != null || consumer.key.qualifier != null) continue
-      if (consumer.key in bindingKeys) continue
       val context = consumer.pointer.element ?: continue
       queue += LibraryInjectRequest(consumer.key, classId, context)
     }
     if (queue.isEmpty()) return
 
-    val visited = mutableSetOf<KaTypeKey>()
+    val visited = mutableSetOf<LibraryInjectRequestId>()
+    val bindingIds =
+      bindings.mapNotNullTo(mutableSetOf()) { binding ->
+        val file = binding.pointer.virtualFile ?: return@mapNotNullTo null
+        LibraryInjectBindingId(binding.typeKey, file)
+      }
     val fileIndex = ProjectFileIndex.getInstance(project)
     while (queue.isNotEmpty()) {
       ProgressManager.checkCanceled()
       val request = queue.removeFirst()
-      if (!visited.add(request.key) || request.key in bindingKeys) continue
-      val binding =
+      val module = KaModuleProvider.getModule(project, request.context, useSiteModule = null)
+      if (!visited.add(LibraryInjectRequestId(request.key, module))) continue
+      val resolved =
         analyze(request.context) {
           val classSymbol = findClass(request.classId) as? KaNamedClassSymbol ?: return@analyze null
           val psi = classSymbol.psi ?: return@analyze null
@@ -259,22 +263,24 @@ internal class LibraryIndexPostProcessor(
 
           val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
           val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
-          KaBinding.ConstructorInjected(
-            pointerManager.createSmartPsiElementPointer(psi),
-            request.key,
-            scopeAnnotation(classSymbol, options),
-            classSymbol.name.asString(),
-            dependencies = constructorDependencies + memberDependencies,
-            memberDependencies = memberDependencies,
+          ResolvedLibraryInject(
+            LibraryInjectBindingId(request.key, virtualFile),
+            KaBinding.ConstructorInjected(
+              pointerManager.createSmartPsiElementPointer(psi),
+              request.key,
+              scopeAnnotation(classSymbol, options),
+              classSymbol.name.asString(),
+              dependencies = constructorDependencies + memberDependencies,
+              memberDependencies = memberDependencies,
+            ),
           )
         }
-      if (binding == null) continue
-      bindings += binding
-      bindingKeys += binding.typeKey
-      for (dependency in binding.dependencies) {
+      if (resolved == null) continue
+      if (bindingIds.add(resolved.id)) bindings += resolved.binding
+      for (dependency in resolved.binding.dependencies) {
         val key = dependency.typeKey
         val classId = key.type.classId ?: continue
-        if (key.qualifier != null || key in bindingKeys) continue
+        if (key.qualifier != null) continue
         queue += LibraryInjectRequest(key, classId, request.context)
       }
     }
@@ -288,6 +294,15 @@ internal class LibraryIndexPostProcessor(
     val key: KaTypeKey,
     val classId: ClassId,
     val context: KtElement,
+  )
+
+  private data class LibraryInjectRequestId(val key: KaTypeKey, val module: KaModule)
+
+  private data class LibraryInjectBindingId(val key: KaTypeKey, val file: VirtualFile)
+
+  private data class ResolvedLibraryInject(
+    val id: LibraryInjectBindingId,
+    val binding: KaBinding.ConstructorInjected,
   )
 
   private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction)

@@ -146,6 +146,7 @@ private fun KaSession.includedGraphDependency(
   return FactoryInputEntry(
     dependencyKey,
     FactoryInputEntry.Kind.GRAPH_DEPENDENCY,
+    dependencyType.symbol.psi?.containingFile?.virtualFile,
     bindings,
     emptyList(),
   )
@@ -214,6 +215,7 @@ private fun KaSession.includedBindingContainer(
   return FactoryInputEntry(
     containerKey,
     FactoryInputEntry.Kind.BINDING_CONTAINER,
+    containerType.symbol.psi?.containingFile?.virtualFile,
     bindings,
     consumers,
   )

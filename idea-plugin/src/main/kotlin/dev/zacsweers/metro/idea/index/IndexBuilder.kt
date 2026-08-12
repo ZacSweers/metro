@@ -21,6 +21,7 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
@@ -371,7 +372,7 @@ internal class IndexBuilder(
       val nestedClassIds = mutableSetOf<ClassId>()
       val includedBindingContainers = mutableSetOf<KaTypeKey>()
       val includedDependencies = mutableSetOf<KaTypeKey>()
-      val extensionCreationIds = mutableSetOf<ClassId>()
+      val extensionCreations = mutableSetOf<GraphReference>()
 
       for (member in ktClass.declarations) {
         when (member) {
@@ -415,7 +416,7 @@ internal class IndexBuilder(
                   options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
                 )
             ) {
-              extensionCreationIds += returnClassType.classId
+              extensionCreations += returnClassType.graphReference()
               continue
             }
             val site = consumedSite(symbol, options)
@@ -444,7 +445,7 @@ internal class IndexBuilder(
         val superClass = (superType as? KaClassType)?.symbol as? KaNamedClassSymbol ?: continue
         val superClassId = superClass.classId ?: continue
         if (!supertypeIds.add(superClassId)) continue
-        indexSupertypeMembers(superClass, graphId, extensionCreationIds)
+        indexSupertypeMembers(superClass, graphId, extensionCreations)
       }
 
       // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
@@ -466,7 +467,7 @@ internal class IndexBuilder(
           isExtension = graphAnnotations.isEmpty(),
           selfIds = setOfNotNull(graphClassId) + nestedClassIds,
           supertypeIds = supertypeIds,
-          extensionCreationIds = extensionCreationIds,
+          extensionCreations = extensionCreations,
           runtimeCoroutinesAvailable = findClass(MetroClassIds.suspendDoubleCheck) != null,
           scopingAnnotations = scopingAnnotations,
         )
@@ -477,7 +478,7 @@ internal class IndexBuilder(
   private fun KaSession.indexSupertypeMembers(
     superClass: KaNamedClassSymbol,
     graphId: GraphDeclarationId,
-    extensionCreationIds: MutableSet<ClassId>,
+    extensionCreations: MutableSet<GraphReference>,
   ) {
     // The source annotation sweep never sees library files, so a library supertype's binding
     // callables index here through their decompiled declarations
@@ -510,7 +511,7 @@ internal class IndexBuilder(
             options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
           )
       ) {
-        extensionCreationIds += returnClassType.classId
+        extensionCreations += returnClassType.graphReference()
         continue
       }
       val psi = callable.psi as? KtElement ?: continue
@@ -528,6 +529,10 @@ internal class IndexBuilder(
           isOptional = isOptionalAccessor,
         )
     }
+  }
+
+  private fun KaClassType.graphReference(): GraphReference {
+    return GraphReference(classId, symbol.psi?.containingFile?.virtualFile)
   }
 
   /**

@@ -462,6 +462,141 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
   }
 
+  fun testSameFqnExtensionsInUnrelatedModulesKeepTheirOwnParents() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/ExtensionGraphs.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @Inject class AppValue
+
+        @GraphExtension
+        interface ChildGraph {
+          val appValue: AppValue
+        }
+
+        @DependencyGraph
+        interface ParentGraph {
+          val child: ChildGraph
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/ExtensionGraphs.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @Inject class BridgeValue
+
+        @GraphExtension
+        interface ChildGraph {
+          val bridgeValue: BridgeValue
+        }
+
+        @DependencyGraph
+        interface ParentGraph {
+          val child: ChildGraph
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val appDeclarations = appFile.declarationsIncludingNested()
+    val bridgeDeclarations = bridgeFile.declarationsIncludingNested()
+    val appParent = index.graphEntryAt(appDeclarations.klass("ParentGraph"))!!
+    val bridgeParent = index.graphEntryAt(bridgeDeclarations.klass("ParentGraph"))!!
+    val appChild = index.graphEntryAt(appDeclarations.klass("ChildGraph"))!!
+    val bridgeChild = index.graphEntryAt(bridgeDeclarations.klass("ChildGraph"))!!
+
+    assertEquals(listOf(appChild), index.extensionsOf(appParent))
+    assertEquals(listOf(bridgeChild), index.extensionsOf(bridgeParent))
+    assertEquals(
+      listOf(appChild, appParent),
+      index.contextsFor(appChild).single().chain,
+    )
+    assertEquals(
+      listOf(bridgeChild, bridgeParent),
+      index.contextsFor(bridgeChild).single().chain,
+    )
+  }
+
+  fun testSameFqnFactoryInputsInUnrelatedModulesKeepTheirOwnMembers() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/FactoryGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        interface AppValue
+        interface ExternalDependencies {
+          val appValue: AppValue
+        }
+
+        @DependencyGraph
+        interface FactoryGraph {
+          val appValue: AppValue
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes dependencies: ExternalDependencies): FactoryGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/FactoryGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        interface BridgeValue
+        interface ExternalDependencies {
+          val bridgeValue: BridgeValue
+        }
+
+        @DependencyGraph
+        interface FactoryGraph {
+          val bridgeValue: BridgeValue
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes dependencies: ExternalDependencies): FactoryGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val validationService = fixture.project.service<MetroGraphValidationService>()
+    val appGraph = index.graphEntryAt(appFile.declarationsIncludingNested().klass("FactoryGraph"))!!
+    val bridgeGraph =
+      index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("FactoryGraph"))!!
+    val appResult = validationService.validate(appFile, index.contextsFor(appGraph).single())
+    val bridgeResult =
+      validationService.validate(bridgeFile, index.contextsFor(bridgeGraph).single())
+
+    assertTrue(appResult.requireCompleted().diagnostics.isEmpty())
+    assertTrue(bridgeResult.requireCompleted().diagnostics.isEmpty())
+  }
+
   fun testExtensionsUseTheirDeclarationModuleOptions() {
     val libraryFile =
       fixture.addFileToProject(

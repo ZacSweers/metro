@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
@@ -71,12 +72,13 @@ internal class BindingData(
 internal class FactoryInputEntry(
   val key: KaTypeKey,
   val kind: Kind,
+  declarationFile: VirtualFile?,
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
 ) {
-  val id = Id(key, kind)
+  val id = Id(key, kind, declarationFile)
 
-  internal data class Id(val key: KaTypeKey, val kind: Kind)
+  internal data class Id(val key: KaTypeKey, val kind: Kind, val declarationFile: VirtualFile?)
 
   enum class Kind {
     BINDING_CONTAINER,
