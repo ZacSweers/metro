@@ -7,6 +7,7 @@ Changelog
 ### Fixes
 
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
+- **[IR]** Fix `excludes`/`replaces` not removing contributed bindings whose contributing class declares an `@Origin` pointing at the excluded/replaced class.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
 
 ### Changes

@@ -79,6 +79,21 @@ internal class IrContributionMerger(
   private fun callerCacheKey(callingDeclaration: IrDeclaration): ClassId? =
     (callingDeclaration as? IrClass)?.classId
 
+  // A generated contribution's @Origin points at its contributing class, which may itself declare
+  // an @Origin; every class in the chain is a valid exclusion/replacement target.
+  private fun IrClass.originClassIdChain(): List<ClassId> {
+    val chain = mutableListOf<ClassId>()
+    val seen = mutableSetOf<ClassId>()
+    var current: IrClass? = this
+    while (current != null) {
+      val originClassId = current.originClassId() ?: break
+      if (!seen.add(originClassId)) break
+      chain += originClassId
+      current = current.lookupClass(originClassId)?.owner
+    }
+    return chain
+  }
+
   context(traceScope: TraceScope)
   fun computeContributions(
     graphLikeAnnotation: IrConstructorCall,
@@ -228,10 +243,11 @@ internal class IrContributionMerger(
                 // MetroContribution nested classes generated from those containers don't always
                 // carry that annotation, so fall back to the parent to preserve replacement
                 // behavior in IR-only graph-extension merging.
-                val originClassId =
-                  contributionClass.originClassId()
-                    ?: contributionClass.parentAsClass.originClassId()
-                originClassId?.let {
+                val originChain =
+                  contributionClass.originClassIdChain().ifEmpty {
+                    contributionClass.parentAsClass.originClassIdChain()
+                  }
+                for (originClassId in originChain) {
                   originToContributions.getAndAdd(originClassId, contributionClassId)
                 }
               }
@@ -239,7 +255,7 @@ internal class IrContributionMerger(
 
             // Also check binding containers (e.g., @ContributesTo classes)
             for ((containerClassId, containerClass) in bindingContainers) {
-              containerClass.originClassId()?.let { originClassId ->
+              for (originClassId in containerClass.originClassIdChain()) {
                 originToContributions.getAndAdd(originClassId, containerClassId)
               }
             }
@@ -248,7 +264,7 @@ internal class IrContributionMerger(
             // interfaces can be added both as direct graph supertypes and as binding containers.
             // Replacements/exclusions need to prune both views of the same source interface.
             for ((externalClassId, externalClass) in externalSupertypes) {
-              externalClass.originClassId()?.let { originClassId ->
+              for (originClassId in externalClass.originClassIdChain()) {
                 originToContributions.getAndAdd(originClassId, externalClassId)
               }
             }
