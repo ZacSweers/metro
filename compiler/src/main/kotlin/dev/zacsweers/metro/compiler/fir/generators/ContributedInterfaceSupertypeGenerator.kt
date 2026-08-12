@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -376,6 +377,20 @@ internal class ContributedInterfaceSupertypeGenerator(
     )
   }
 
+  private fun FirClassSymbol<*>.originClassIdChain(): List<ClassId> {
+    return computeOriginClassIdChain(
+      startClass = this,
+      originClassId = { currentClass ->
+        typeResolverFactory.create(currentClass)?.let { currentTypeResolver ->
+          currentClass.originClassId(session, currentTypeResolver)
+        }
+      },
+      resolveClass = { originClassId ->
+        originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
+      },
+    )
+  }
+
   private fun computeContributionSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
@@ -485,28 +500,20 @@ internal class ContributedInterfaceSupertypeGenerator(
     session.trace({ "Build origin map" }, category = TraceCategories.FIR_SUPERTYPE) {
       // Check regular contributions (classes with nested `MetroContribution`)
       for ((parentClassId, _) in contributions) {
-        val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-        if (parentSymbol != null) {
-          val localTypeResolver = typeResolverFactory.create(parentSymbol) ?: continue
-
-          parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-            originToContributions.getAndAdd(originClassId, parentClassId)
-          }
+        val parentSymbol =
+          parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>() ?: continue
+        for (originClassId in parentSymbol.originClassIdChain()) {
+          originToContributions.getAndAdd(originClassId, parentClassId)
         }
       }
 
       // Also check binding containers (e.g., @ContributesTo classes)
       for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
-        if (isBindingContainer) {
-          val containerSymbol =
-            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-          if (containerSymbol != null) {
-            val localTypeResolver = typeResolverFactory.create(containerSymbol) ?: continue
-
-            containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-              originToContributions.getAndAdd(originClassId, containerClassId)
-            }
-          }
+        if (!isBindingContainer) continue
+        val containerSymbol =
+          containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>() ?: continue
+        for (originClassId in containerSymbol.originClassIdChain()) {
+          originToContributions.getAndAdd(originClassId, containerClassId)
         }
       }
 

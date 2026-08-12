@@ -7,6 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.fir.resolveClassId
@@ -80,16 +81,11 @@ internal class IrContributionMerger(
     (callingDeclaration as? IrClass)?.classId
 
   private fun IrClass.originClassIdChain(callingDeclaration: IrDeclaration): List<ClassId> {
-    val chain = mutableListOf<ClassId>()
-    val seen = mutableSetOf<ClassId>()
-    var currentClass = this
-    while (true) {
-      val originClassId = currentClass.originClassId() ?: break
-      if (!seen.add(originClassId)) break
-      chain += originClassId
-      currentClass = callingDeclaration.lookupClass(originClassId)?.owner ?: break
-    }
-    return chain
+    return computeOriginClassIdChain(
+      startClass = this,
+      originClassId = { currentClass -> currentClass.originClassId() },
+      resolveClass = { originClassId -> callingDeclaration.lookupClass(originClassId)?.owner },
+    )
   }
 
   context(traceScope: TraceScope)
