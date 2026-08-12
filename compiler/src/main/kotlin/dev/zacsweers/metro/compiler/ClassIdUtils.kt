@@ -136,7 +136,7 @@ public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0):
 }
 
 public fun ClassId.generatedClass(suffix: String): ClassId {
-  return joinSimpleNames(separator = "_", suffix = suffix)
+  return joinSimpleNamesPrivate(separator = "_", suffix = suffix)
 }
 
 /**
