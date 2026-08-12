@@ -20,7 +20,6 @@ import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingGraph
 import dev.zacsweers.metro.compiler.ir.graph.IrGraphExtensionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedGraphExtensionData
-import dev.zacsweers.metro.compiler.ir.graph.propagatesSuspend
 import dev.zacsweers.metro.compiler.ir.graph.sharding.ShardExpressionContext
 import dev.zacsweers.metro.compiler.ir.irGetProperty
 import dev.zacsweers.metro.compiler.ir.irInvoke
@@ -565,11 +564,7 @@ private constructor(
 
           val targetConsumesSuspend =
             targetBinding.parameters.nonDispatchParameters.any { param ->
-              !param.isAssisted &&
-                param.contextualTypeKey.propagatesSuspend(
-                  isSuspendKey = bindingGraph::isTransitivelySuspend,
-                  findBinding = { key -> bindingGraph.findBinding(key) },
-                )
+              !param.isAssisted && bindingGraph.dependencyRequiresSuspend(param.contextualTypeKey)
             }
           if (targetConsumesSuspend) {
             // The shared per-class Impl delegates to the target's plain Factory<T>, which can't

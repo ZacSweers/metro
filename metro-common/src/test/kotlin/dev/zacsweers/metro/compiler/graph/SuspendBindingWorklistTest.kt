@@ -192,6 +192,12 @@ private class AnalysisFixture {
   private val lookupCounts = mutableMapOf<StringTypeKey, Int>()
   private var generation = 0
 
+  private val rules =
+    SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, TestBinding>(
+      findBinding = bindings::get,
+      bindingCanPassThrough = { binding, _ -> binding.passesThrough },
+    )
+
   val analysis: TestAnalysis =
     SuspendBindingWorklist(
       findBinding = { key ->
@@ -200,7 +206,7 @@ private class AnalysisFixture {
       },
       bindingIsSuspend = { it.isSuspend },
       skipDependencyTraversal = { it.skipDependencies },
-      canPassThrough = { binding, _ -> binding.passesThrough },
+      rules = rules,
       currentGraphGeneration = { generation },
     )
 

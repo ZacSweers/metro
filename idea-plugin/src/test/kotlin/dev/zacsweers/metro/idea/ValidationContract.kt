@@ -33,6 +33,7 @@ internal data class ParityCase(
   val sourceModule: String? = null,
   val sourceFile: String? = null,
   val withLibrary: Boolean = false,
+  val metroOptions: Map<String, String> = emptyMap(),
 )
 
 internal data class ValidationContract(
@@ -180,28 +181,29 @@ internal class CompilerContractReader(
   private fun readDiagnostics(report: String): List<DiagnosticContract> {
     val lines = root.resolve(report).readLines()
     return buildList {
-      var lineIndex = 0
-      while (lineIndex < lines.size) {
-        val line = lines[lineIndex]
-        val match = DIAGNOSTIC_HEADER.matchEntire(line)
-        if (match == null) {
+        var lineIndex = 0
+        while (lineIndex < lines.size) {
+          val line = lines[lineIndex]
+          val match = DIAGNOSTIC_HEADER.matchEntire(line)
+          if (match == null) {
+            lineIndex++
+            continue
+          }
+          val titleLines = mutableListOf(match.groupValues[2])
           lineIndex++
-          continue
-        }
-        val titleLines = mutableListOf(match.groupValues[2])
-        lineIndex++
-        while (lineIndex < lines.size && lines[lineIndex].isNotBlank()) {
-          titleLines += lines[lineIndex].trim()
-          lineIndex++
-        }
-        add(
-          DiagnosticContract(
-            id = "Metro/${match.groupValues[1]}",
-            title = normalizeWhitespace(titleLines.joinToString(" ")),
+          while (lineIndex < lines.size && lines[lineIndex].isNotBlank()) {
+            titleLines += lines[lineIndex].trim()
+            lineIndex++
+          }
+          add(
+            DiagnosticContract(
+              id = "Metro/${match.groupValues[1]}",
+              title = normalizeWhitespace(titleLines.joinToString(" ")),
+            )
           )
-        )
+        }
       }
-    }
+      .sortedWith(diagnosticComparator)
   }
 }
 
@@ -290,12 +292,14 @@ internal fun ValidationContract.Companion.fromIdea(
     validatedKeys = validatedKeys,
     deferredKeys = deferredKeys,
     diagnostics =
-      result.diagnostics.map { diagnostic ->
-        DiagnosticContract(
-          id = diagnostic.id.fullId,
-          title = normalizeWhitespace(diagnostic.diagnostic.title.toString()),
-        )
-      },
+      result.diagnostics
+        .map { diagnostic ->
+          DiagnosticContract(
+            id = diagnostic.id.fullId,
+            title = normalizeWhitespace(diagnostic.diagnostic.title.toString()),
+          )
+        }
+        .sortedWith(diagnosticComparator),
   )
 }
 
@@ -440,6 +444,7 @@ private fun compilerParityDataRoot(): Path {
 
 private val bindingComparator = compareBy<BindingContract>({ it.key }, { it.declaration.orEmpty() })
 private val dependencyComparator = compareBy<DependencyContract>({ it.key }, { it.hasDefault })
+private val diagnosticComparator = compareBy<DiagnosticContract>({ it.id }, { it.title })
 private val MODULE_DIRECTIVE = Regex("""// MODULE: ([^(]+).*$""")
 private val FILE_DIRECTIVE = Regex("""// FILE: (.+)$""")
 private val DIAGNOSTIC_MARKUP_OPEN = Regex("""<![^>]*!>""")

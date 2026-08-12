@@ -27,6 +27,9 @@ internal class SuspendBindingValidator(
   private val runtimeCoroutinesAvailable: Boolean,
   private val report: (MetroDiagnostic, KaBindingStack, List<KaBinding>) -> Unit,
 ) {
+  private val suspendBindingAnalysis = SuspendBindingAnalysis(bindings::get)
+  private val suspendBindingRules = suspendBindingAnalysis.rules
+
   fun validate(): Set<KaTypeKey> {
     if (!options.enableSuspendProviders) {
       validateDisabledUse()
@@ -35,7 +38,7 @@ internal class SuspendBindingValidator(
 
     val allKeys = mutableSetOf<KaTypeKey>()
     bindings.forEachKey(allKeys::add)
-    val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(allKeys)
+    val suspendKeys = suspendBindingAnalysis.analyze(allKeys)
     if (suspendKeys.isEmpty()) {
       validateRuntimeCoroutines(suspendKeys)
       return emptySet()
@@ -397,24 +400,18 @@ internal class SuspendBindingValidator(
   }
 
   private fun KaContextualTypeKey.propagatesSuspend(suspendKeys: Set<KaTypeKey>): Boolean {
-    return typeKey in suspendKeys && !stopsSuspendPropagation()
-  }
-
-  private fun KaContextualTypeKey.stopsSuspendPropagation(): Boolean {
-    if (isDeferrable) return true
-    return (bindings[typeKey] as? KaBinding.GraphDependency)?.canPassThrough(this) == true
+    return suspendBindingRules.propagates(this) { it in suspendKeys }
   }
 
   private fun KaContextualTypeKey.isValidSuspendBoundary(): Boolean {
-    if (isSuspendCapableBoundary) return true
-    return (bindings[typeKey] as? KaBinding.GraphDependency)?.canPassThrough(this) == true
+    return suspendBindingRules.isValidBoundary(this)
   }
 
   private fun KaBinding.Multibinding.supportsSuspendConsumption(
     contextKey: KaContextualTypeKey
   ): Boolean {
     val isSet = typeKey.type.classId == StandardClassIds.Set
-    return !isSet && contextKey.isMapSuspendProvider
+    return suspendBindingRules.supportsSuspendMultibindingConsumption(isSet, contextKey)
   }
 
   private fun suspendProviderRender(typeRender: String): String {

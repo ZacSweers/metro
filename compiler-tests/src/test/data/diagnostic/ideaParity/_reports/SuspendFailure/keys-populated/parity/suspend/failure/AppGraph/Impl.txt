@@ -1,0 +1,4 @@
+parity.suspend.failure.AppGraph
+parity.suspend.failure.Database
+parity.suspend.failure.ProviderRepository
+parity.suspend.failure.Repository

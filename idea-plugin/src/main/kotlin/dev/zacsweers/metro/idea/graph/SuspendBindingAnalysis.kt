@@ -2,20 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.graph
 
+import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.SuspendBindingWorklist
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 
 /** IDEA binding-model adapter for the shared suspend propagation worklist. */
 internal class SuspendBindingAnalysis(findBinding: (KaTypeKey) -> KaBinding?) {
+  internal val rules =
+    SuspendBindingRules<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey, KaBinding>(
+      findBinding = findBinding,
+      bindingCanPassThrough = { binding, dependency ->
+        binding is KaBinding.GraphDependency && binding.canPassThrough(dependency)
+      },
+    )
+
   private val worklist =
     SuspendBindingWorklist(
       findBinding = findBinding,
       bindingIsSuspend = { it.isSuspend },
       skipDependencyTraversal = { it is KaBinding.AssistedFactory },
-      canPassThrough = { binding, dependency ->
-        binding is KaBinding.GraphDependency && binding.canPassThrough(dependency)
-      },
+      rules = rules,
     )
 
   fun analyze(keys: Iterable<KaTypeKey>): Set<KaTypeKey> = worklist.analyze(keys)

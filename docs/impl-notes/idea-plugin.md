@@ -6,13 +6,10 @@ Give Metro users compiler-grade insight in the editor without running the compil
 
 - Gutter markers, code vision, and inlays that connect bindings to consumers.
 - A Metro tool window that lists each graph's members by category.
-- On-demand full graph validation with the compiler's exact diagnostics.
+- On-demand graph validation with compiler-aligned diagnostics.
 - Unused-declaration suppression for declarations only Metro-generated code calls.
 
-Two rules shape everything. Validation reuses the compiler's shared graph core from
-`metro-common`, so validation semantics have exactly one implementation. And the plugin never
-reads compiler report outputs, because those do not exist when compilation fails, which is
-precisely when validation matters.
+The compiler and plugin reuse the graph population, sorting, cycle detection, diagnostic models, and suspend propagation rules from `metro-common`. Validation that depends on frontend declarations still has separate IR and Analysis API adapters, with differential tests comparing IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.
 
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
@@ -82,11 +79,7 @@ canonical-render equality), and declarations are held as `SmartPsiElementPointer
 
 ### Validation
 
-The compiler's core graph logic lives in `metro-common`
-(`dev.zacsweers.metro.compiler.graph.MutableBindingGraph`, diagnostics, etc.). The plugin adapts
-to it with classes named after their IR counterparts. Structural parity with the IR
-implementation is a deliberate maintenance rule. When in doubt, check what the IR side does and
-mirror it.
+The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.compiler.graph.MutableBindingGraph`, diagnostics, suspend propagation, and request-boundary policy). The plugin adapts to it with classes named after their IR counterparts. Validation that needs frontend-specific declarations remains in the two adapters and must be covered by compiler/IDE parity fixtures.
 
 | IDE (`idea/graph/`) | Compiler (`ir/graph/`) |
 |---------------------|------------------------|
@@ -109,6 +102,7 @@ mirror it.
   across modules) and survive index invalidation flagged as stale rather than vanishing.
   `validateWithExtensions` seals extensions before their parents, mirroring the compiler's
   traversal.
+- `graph/SuspendBindingValidator.kt`: applies the shared suspend propagation and request-boundary policy to Analysis API bindings, then builds IDEA-specific source anchors and request traces. Suspend parity fixtures cover valid transitive/deferred paths and representative invalid accessor and wrapper paths.
 
 Validation is strictly on demand. Nothing seals during index builds or highlighting passes.
 
@@ -163,9 +157,7 @@ The two never sum to each other. UI copy should not imply they do.
   from the normal sweep with membership granted via `supertypeIds`; library supertypes' binding
   callables index through their decompiled declarations because the sweep never sees library
   files.
-- Diagnostics render with the compiler's `DiagnosticRenderer` and the plain profile, so wording
-  matches compilation exactly. Diagnostic construction shared with the compiler lives in
-  metro-common's `DiagnosticModelBuilders`.
+- Diagnostics use the compiler's `DiagnosticRenderer` and plain profile. Shared diagnostic builders live in `metro-common`; differential fixtures compare frontend-specific diagnostics by ID and normalized one-line title.
 
 ## Build wiring
 
@@ -185,6 +177,8 @@ resolution tests).
 - `MetroResolutionServiceTest`: index construction and editor resolution.
 - `MetroIndexDependenciesTest`: dependency keys, contextual keys, seal-facing queries.
 - `MetroGraphValidationTest`: seal semantics per diagnostic kind, membership edge cases, caching.
+- `MetroSuspendGraphValidationTest`: suspend propagation, request boundaries, member injection, assisted factories, multibindings, and runtime requirements.
+- `MetroGraphValidationParityTest`: live IDEA validation compared with checked-in compiler graph reports, including suspend success and failure cases.
 - `MetroToolWindowTreeTest`: tree rows, filtering, refresh identity, a full
   `StructureTreeModel`/`AsyncTreeModel` pass, dumb mode.
 - `MetroLineMarkerProviderTest`, `MetroInlayProviderTest`, `MetroImplicitUsageProviderTest`.

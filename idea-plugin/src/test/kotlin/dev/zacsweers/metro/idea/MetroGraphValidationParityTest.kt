@@ -144,6 +144,30 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testSuspendValidationMatchesCompiler() {
+    val options = mapOf("enable-suspend-providers" to "true")
+    assertParity(
+      ParityCase(
+        fixtureName = "SuspendGraph",
+        graphPath = listOf("parity.suspend.AppGraph"),
+        metadataReport = "SuspendGraph/graph-metadata/graph-parity-suspend-AppGraph.json.txt",
+        populatedReport = "SuspendGraph/keys-populated/parity/suspend/AppGraph/Impl.txt",
+        validatedReport = "SuspendGraph/keys-validated/parity/suspend/AppGraph/Impl.txt",
+        deferredReport = "SuspendGraph/keys-deferred/parity/suspend/AppGraph/Impl.txt",
+        metroOptions = options,
+      )
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = "SuspendFailure",
+        graphPath = listOf("parity.suspend.failure.AppGraph"),
+        populatedReport = "SuspendFailure/keys-populated/parity/suspend/failure/AppGraph/Impl.txt",
+        diagnosticReport = "SuspendFailure.ir.diag.txt",
+        metroOptions = options,
+      )
+    )
+  }
+
   private fun failureCase(
     fixtureName: String,
     packageName: String,
@@ -164,6 +188,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
   }
 
   private fun assertParity(case: ParityCase) {
+    project.setMetroOptions(*case.metroOptions.map { it.key to it.value }.toTypedArray())
     val runComparison = {
       val source = compilerContracts.source(case)
       val file =

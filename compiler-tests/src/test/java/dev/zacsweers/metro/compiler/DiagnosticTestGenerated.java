@@ -1055,6 +1055,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     public void testMultiParentExtension() {
       run("MultiParentExtension.kt");
     }
+
+    @Test
+    @TestMetadata("SuspendFailure.kt")
+    public void testSuspendFailure() {
+      run("SuspendFailure.kt");
+    }
+
+    @Test
+    @TestMetadata("SuspendGraph.kt")
+    public void testSuspendGraph() {
+      run("SuspendGraph.kt");
+    }
   }
 
   @Nested

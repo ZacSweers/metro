@@ -34,7 +34,7 @@ public class SuspendBindingWorklist<
   private val findBinding: (TypeKey) -> Binding?,
   private val bindingIsSuspend: (Binding) -> Boolean,
   private val skipDependencyTraversal: (Binding) -> Boolean,
-  private val canPassThrough: (Binding, ContextualTypeKey) -> Boolean,
+  private val rules: SuspendBindingRules<Type, TypeKey, ContextualTypeKey, Binding>,
   private val currentGraphGeneration: () -> Int = { 0 },
 ) {
   /** Successfully resolved bindings. Missing bindings are tracked in [unresolvedGenerations]. */
@@ -118,7 +118,7 @@ public class SuspendBindingWorklist<
           pendingEdges.getOrPut(depKey, ::mutableListOf) += PendingEdge(key, dependency)
           continue
         }
-        if (canPassThrough(depBinding, dependency)) {
+        if (rules.canPassThrough(depBinding, dependency)) {
           continue
         }
         reverseEdges.getOrPut(depKey, ::mutableListOf) += key
@@ -150,7 +150,7 @@ public class SuspendBindingWorklist<
     // Classify edges that were waiting on this key's binding.
     pendingEdges.remove(key)?.let { edges ->
       for (edge in edges) {
-        if (canPassThrough(binding, edge.dependency)) {
+        if (rules.canPassThrough(binding, edge.dependency)) {
           continue
         }
         reverseEdges.getOrPut(key, ::mutableListOf) += edge.consumer

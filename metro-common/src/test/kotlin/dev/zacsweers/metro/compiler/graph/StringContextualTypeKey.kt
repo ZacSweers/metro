@@ -52,6 +52,11 @@ private constructor(
 
     private fun parseWrappedType(type: String): WrappedType<String> {
       return when {
+        type.startsWith("suspend () ->") -> {
+          val inner = type.removePrefix("suspend () -> ")
+          WrappedType.SuspendProvider(parseWrappedType(inner), MetroClassIds.suspendProvider)
+        }
+
         type.startsWith("() ->") -> {
           val inner = type.removePrefix("() -> ")
           WrappedType.Provider(parseWrappedType(inner), MetroClassIds.provider)

@@ -29,6 +29,7 @@ import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -140,6 +141,10 @@ internal class IrBindingGraph(
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
     typeKey in transitivelySuspendKeys
+
+  internal fun dependencyRequiresSuspend(contextKey: IrContextualTypeKey): Boolean {
+    return suspendBindingRules.propagates(contextKey, ::isTransitivelySuspend)
+  }
 
   private fun recordRuntimeCoroutinesUse(contextKey: IrContextualTypeKey) {
     if (
@@ -299,6 +304,14 @@ internal class IrBindingGraph(
       errorReporter = this,
       missingBindingHints = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
+    )
+
+  private val suspendBindingRules =
+    SuspendBindingRules<IrType, IrTypeKey, IrContextualTypeKey, IrBinding>(
+      findBinding = realGraph.bindings::get,
+      bindingCanPassThrough = { binding, dependency ->
+        binding is IrBinding.GraphDependency && binding.canPassThrough(dependency)
+      },
     )
 
   private fun findSuspendCycleKey(
@@ -1244,7 +1257,14 @@ internal class IrBindingGraph(
         head: IrBindingStack.Entry,
       ) {
         val typeRender = binding.typeKey.render(short = true)
-        val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendElement.typeKey, head)
+        val trace =
+          buildSuspendTrace(
+            bindings,
+            suspendSet,
+            suspendBindingRules,
+            firstSuspendElement.typeKey,
+            head,
+          )
         val message = buildString {
           appendLine(
             if (binding.isSet) {
@@ -1271,7 +1291,9 @@ internal class IrBindingGraph(
       // Roots consuming this multibinding
       for ((contextKey, _) in roots) {
         if (contextKey.typeKey != binding.typeKey) continue
-        if (!binding.isSet && contextKey.isMapSuspendProvider) continue
+        if (suspendBindingRules.supportsSuspendMultibindingConsumption(binding.isSet, contextKey)) {
+          continue
+        }
         val accessor =
           node.accessors.find { it.contextKey == contextKey }
             ?: node.accessors.find { it.contextKey.typeKey == contextKey.typeKey }
@@ -1290,7 +1312,9 @@ internal class IrBindingGraph(
         if (consumer is IrBinding.AssistedFactory) return@inner
         for (dep in consumer.dependencies) {
           if (dep.typeKey != binding.typeKey) continue
-          if (!binding.isSet && dep.isMapSuspendProvider) continue
+          if (suspendBindingRules.supportsSuspendMultibindingConsumption(binding.isSet, dep)) {
+            continue
+          }
           val parameterDeclaration =
             consumer.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
           val element = parameterDeclaration ?: consumer.reportableDeclaration ?: continue
@@ -1314,7 +1338,7 @@ internal class IrBindingGraph(
 
       // An included graph can expose the exact wrapper value synchronously. Returning that value
       // does not require flattening its wrapper stack to the canonical binding.
-      if (contextKey.isValidSuspendBoundary(bindings)) continue
+      if (suspendBindingRules.isValidBoundary(contextKey)) continue
 
       // Resolve to the property (if it's a getter) so the diagnostic lands on the
       // property declaration, then walk fake overrides back to the original interface
@@ -1332,7 +1356,8 @@ internal class IrBindingGraph(
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
+        val trace =
+          buildSuspendTrace(bindings, suspendSet, suspendBindingRules, contextKey.typeKey, head)
         val replacement =
           if (blockingWrapper == "Provider") {
             "`$deferredFormRender`"
@@ -1360,7 +1385,8 @@ internal class IrBindingGraph(
         val head =
           IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
             .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
+        val trace =
+          buildSuspendTrace(bindings, suspendSet, suspendBindingRules, contextKey.typeKey, head)
         val message = buildString {
           appendLine(
             "[${MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId}] $typeRender bindings must be a suspend function or $deferredFormRender because it depends on suspend bindings and requires a suspend context."
@@ -1393,7 +1419,7 @@ internal class IrBindingGraph(
           is IrBinding.MembersInjected -> {
             val dep =
               binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
+                dep.typeKey in suspendSet && !suspendBindingRules.stopsPropagation(dep)
               } ?: return@forEachValue
             dep to "'${binding.targetClassId.asFqNameString()}' member injection"
           }
@@ -1403,7 +1429,7 @@ internal class IrBindingGraph(
             // Suspend initialization may be required by a member or constructor dependency.
             val anySuspendDep =
               binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
+                dep.typeKey in suspendSet && !suspendBindingRules.stopsPropagation(dep)
               } ?: return@forEachValue
             // The MembersInjected binding reports suspend member dependencies directly. Only the
             // constructor-specific case remains here: construction requires suspension, so its
@@ -1418,7 +1444,14 @@ internal class IrBindingGraph(
       val head =
         bindingStackEntryForDependency(binding, firstSuspendDep, firstSuspendDep.typeKey)
           .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-      val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendDep.typeKey, head)
+      val trace =
+        buildSuspendTrace(
+          bindings,
+          suspendSet,
+          suspendBindingRules,
+          firstSuspendDep.typeKey,
+          head,
+        )
       val message = buildString {
         appendLine(
           "[${MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING.fullId}] $subject depends on suspend binding '$depRender', but member injection cannot combine with suspend bindings. Defer the dependency as `${suspendFunctionRender(depRender)}` (or `SuspendLazy<$depRender>`) instead."
@@ -1461,7 +1494,7 @@ internal class IrBindingGraph(
         if (dep.typeKey !in suspendSet) continue
         // Suspend multibindings are reported by step 2 with a more specific message
         if (dep.typeKey in suspendMultibindingKeys) continue
-        if (dep.isValidSuspendBoundary(bindings)) continue
+        if (suspendBindingRules.isValidBoundary(dep)) continue
 
         // Prefer landing on the specific parameter that wraps the suspend binding rather
         // than the enclosing function/property declaration.
@@ -1488,7 +1521,8 @@ internal class IrBindingGraph(
             val head =
               bindingStackEntryForDependency(binding, dep, dep.typeKey)
                 .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-            val trace = buildSuspendTrace(bindings, suspendSet, dep.typeKey, head)
+            val trace =
+              buildSuspendTrace(bindings, suspendSet, suspendBindingRules, dep.typeKey, head)
             appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
           }
           val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
@@ -1508,7 +1542,7 @@ internal class IrBindingGraph(
         if (param.isAssisted) continue
         val ctxKey = param.contextualTypeKey
         if (ctxKey.typeKey !in suspendSet) continue
-        if (ctxKey.isValidSuspendBoundary(bindings)) continue
+        if (suspendBindingRules.isValidBoundary(ctxKey)) continue
         val blockingWrapper = ctxKey.wrappedType.lowestSynchronousWrapperName() ?: continue
         val depRender = ctxKey.typeKey.render(short = true)
         val replacement =
@@ -1528,7 +1562,8 @@ internal class IrBindingGraph(
           val head =
             bindingStackEntryForDependency(target, ctxKey, ctxKey.typeKey)
               .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-          val trace = buildSuspendTrace(bindings, suspendSet, ctxKey.typeKey, head)
+          val trace =
+            buildSuspendTrace(bindings, suspendSet, suspendBindingRules, ctxKey.typeKey, head)
           appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
         }
         reportError(
@@ -1542,15 +1577,13 @@ internal class IrBindingGraph(
       val blockingDep =
         target.parameters.nonDispatchParameters.firstOrNull { param ->
           !param.isAssisted &&
-            param.contextualTypeKey.propagatesSuspend(
-              { it in suspendSet },
-              { key -> bindings[key] },
-            )
+            suspendBindingRules.propagates(param.contextualTypeKey) { it in suspendSet }
         } ?: return@forEachValue
       val head =
         bindingStackEntryForDependency(target, blockingDep.contextualTypeKey, blockingDep.typeKey)
           .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-      val trace = buildSuspendTrace(bindings, suspendSet, blockingDep.typeKey, head)
+      val trace =
+        buildSuspendTrace(bindings, suspendSet, suspendBindingRules, blockingDep.typeKey, head)
       val message = buildString {
         appendLine(
           "[${MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED.fullId}] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings. Declare '${binding.function.name}' as a suspend function so it can await them."
@@ -1590,6 +1623,7 @@ internal class IrBindingGraph(
   private fun buildSuspendTrace(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     suspendSet: Set<IrTypeKey>,
+    suspendBindingRules: SuspendBindingRules<IrType, IrTypeKey, IrContextualTypeKey, IrBinding>,
     start: IrTypeKey,
     head: IrBindingStack.Entry,
   ): List<IrBindingStack.Entry> {
@@ -1609,7 +1643,7 @@ internal class IrBindingGraph(
       }
       val nextDep =
         current.dependencies.firstOrNull { dep ->
-          dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
+          dep.typeKey in suspendSet && !suspendBindingRules.stopsPropagation(dep)
         } ?: break
       result +=
         bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)
@@ -1621,13 +1655,6 @@ internal class IrBindingGraph(
 
   private companion object {
     private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
-  }
-
-  private fun IrContextualTypeKey.isValidSuspendBoundary(
-    bindings: ScatterMap<IrTypeKey, IrBinding>
-  ): Boolean {
-    if (isSuspendCapableBoundary) return true
-    return (bindings[typeKey] as? IrBinding.GraphDependency)?.canPassThrough(this) == true
   }
 
   private fun IrBinding.injectedFunctionUsesSuspendLazy(): Boolean {

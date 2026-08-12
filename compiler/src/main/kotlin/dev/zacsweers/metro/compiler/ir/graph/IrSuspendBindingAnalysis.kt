@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.SuspendBindingWorklist
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import org.jetbrains.kotlin.ir.types.IrType
 
 /**
  * Metro's IR-specific entry point for finding bindings that require suspend initialization.
@@ -24,14 +26,20 @@ internal class SuspendBindingAnalysis(
   findBinding: (IrTypeKey) -> IrBinding?,
   currentGraphGeneration: () -> Int = { 0 },
 ) {
+  internal val rules =
+    SuspendBindingRules<IrType, IrTypeKey, IrContextualTypeKey, IrBinding>(
+      findBinding = findBinding,
+      bindingCanPassThrough = { binding, dependency ->
+        binding is IrBinding.GraphDependency && binding.canPassThrough(dependency)
+      },
+    )
+
   private val worklist =
     SuspendBindingWorklist(
       findBinding = findBinding,
       bindingIsSuspend = { it.isSuspend },
       skipDependencyTraversal = { it is IrBinding.AssistedFactory },
-      canPassThrough = { binding, dependency ->
-        binding is IrBinding.GraphDependency && binding.canPassThrough(dependency)
-      },
+      rules = rules,
       currentGraphGeneration = currentGraphGeneration,
     )
 
@@ -39,36 +47,3 @@ internal class SuspendBindingAnalysis(
 
   fun isSuspend(key: IrTypeKey): Boolean = worklist.isSuspend(key)
 }
-
-/**
- * Whether this request defers initialization and therefore stops suspend propagation.
- *
- * Validation separately rejects synchronous `Provider` or `Lazy` wrappers over a suspend binding.
- * That invalid request must not also make its consumer transitively suspend.
- */
-internal val IrContextualTypeKey.stopsSuspendPropagation: Boolean
-  get() = isDeferrable
-
-/**
- * Whether this request stops suspend propagation because it defers initialization or because a
- * graph dependency can pass the exact wrapper value through.
- *
- * Shared by graph validation and child queries against an unsealed parent graph.
- */
-internal fun IrContextualTypeKey.stopsSuspendPropagation(
-  findBinding: (IrTypeKey) -> IrBinding?
-): Boolean {
-  if (stopsSuspendPropagation) return true
-  return (findBinding(typeKey) as? IrBinding.GraphDependency)?.canPassThrough(this) == true
-}
-
-/**
- * Whether this dependency makes its consumer suspend: the requested binding is suspend and this
- * request does not defer or pass it through.
- *
- * Shared by graph validation and code generation so both use the same propagation rules.
- */
-internal fun IrContextualTypeKey.propagatesSuspend(
-  isSuspendKey: (IrTypeKey) -> Boolean,
-  findBinding: (IrTypeKey) -> IrBinding?,
-): Boolean = isSuspendKey(typeKey) && !stopsSuspendPropagation(findBinding)
