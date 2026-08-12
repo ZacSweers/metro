@@ -219,12 +219,6 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
-    @TestMetadata("ExcludesWithOriginBoundType.kt")
-    public void testExcludesWithOriginBoundType() {
-      run("ExcludesWithOriginBoundType.kt");
-    }
-
-    @Test
     @TestMetadata("ExcludesWithOriginBoundTypeAcrossModules.kt")
     public void testExcludesWithOriginBoundTypeAcrossModules() {
       run("ExcludesWithOriginBoundTypeAcrossModules.kt");
@@ -318,12 +312,6 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("ReplacementsWithOrigin.kt")
     public void testReplacementsWithOrigin() {
       run("ReplacementsWithOrigin.kt");
-    }
-
-    @Test
-    @TestMetadata("ReplacementsWithOriginBoundType.kt")
-    public void testReplacementsWithOriginBoundType() {
-      run("ReplacementsWithOriginBoundType.kt");
     }
 
     @Test

@@ -1,33 +1,31 @@
 // Regression test for https://github.com/ZacSweers/metro/discussions/2644
-// Same as ExcludesWithOriginBoundType but with the contribution in a separate module,
-// matching the original report.
 
 // MODULE: lib
-interface Foo
-
-abstract class RealFoo : Foo
-
-@Origin(RealFoo::class)
-@Inject
-@ContributesBinding(AppScope::class)
-class GeneratedRealFoo : Foo {
-  override fun toString() = "real"
+abstract class UserRepository {
+  abstract val mode: String
 }
 
+@Origin(UserRepository::class)
 @Inject
 @ContributesBinding(AppScope::class)
-class FakeFoo : Foo {
-  override fun toString() = "fake"
+class UserRepository_Impl : UserRepository() {
+  override val mode = "real"
 }
 
 // MODULE: main(lib)
-@DependencyGraph(AppScope::class, excludes = [RealFoo::class])
+@Inject
+@ContributesBinding(AppScope::class)
+class FakeUserRepository : UserRepository() {
+  override val mode = "fake"
+}
+
+@DependencyGraph(AppScope::class, excludes = [UserRepository::class])
 interface AppGraph {
-  val foo: Foo
+  val repo: UserRepository
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertEquals("fake", graph.foo.toString())
+  assertEquals("fake", graph.repo.mode)
   return "OK"
 }

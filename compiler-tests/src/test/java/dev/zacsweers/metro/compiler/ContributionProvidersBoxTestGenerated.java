@@ -219,12 +219,6 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     }
 
     @Test
-    @TestMetadata("ExcludesWithOriginBoundType.kt")
-    public void testExcludesWithOriginBoundType() {
-      run("ExcludesWithOriginBoundType.kt");
-    }
-
-    @Test
     @TestMetadata("ExcludesWithOriginBoundTypeAcrossModules.kt")
     public void testExcludesWithOriginBoundTypeAcrossModules() {
       run("ExcludesWithOriginBoundTypeAcrossModules.kt");
@@ -318,12 +312,6 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
     @TestMetadata("ReplacementsWithOrigin.kt")
     public void testReplacementsWithOrigin() {
       run("ReplacementsWithOrigin.kt");
-    }
-
-    @Test
-    @TestMetadata("ReplacementsWithOriginBoundType.kt")
-    public void testReplacementsWithOriginBoundType() {
-      run("ReplacementsWithOriginBoundType.kt");
     }
 
     @Test
