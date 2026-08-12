@@ -325,7 +325,7 @@ internal object CircuitInjectClassChecker : FirClassChecker(MppCheckerKind.Commo
     val screenClassId =
       annotation
         .classArgument(session, CircuitNames.screen, index = 0)
-        ?.resolveClassId(typeResolver) ?: return
+        ?.resolveClassId(session, typeResolver) ?: return
     val screenParams =
       assistedFunction.valueParameterSymbols.filter {
         it.resolvedReturnTypeRef.coneType.classId == screenClassId

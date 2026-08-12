@@ -48,6 +48,9 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
   val pluginContext: IrPluginContext
   val metadataDeclarationRegistrarCompat: IrGeneratedDeclarationsRegistrarCompat
   val metroSymbols: Symbols
+
+  /** Metro-owned because Kotlin 2.5 no longer exposes a collector through [IrPluginContext]. */
+  val metroMessageCollector: MessageCollector
   val options: MetroOptions
   val icCapabilities: IcCapabilities
   val coroutinesRuntimeAvailability: CoroutinesRuntimeAvailability
@@ -100,7 +103,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 
   fun log(message: String) {
     @Suppress("DEPRECATION")
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
+    metroMessageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $message")
     logFile?.appendText("$message\n")
   }
 
@@ -113,13 +116,13 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
     val file = logFile ?: return
     val rendered = message()
     @Suppress("DEPRECATION")
-    messageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $rendered")
+    metroMessageCollector.report(CompilerMessageSeverity.LOGGING, "$LOG_PREFIX $rendered")
     file.appendText("$rendered\n")
   }
 
   fun logVerbose(message: String) {
     @Suppress("DEPRECATION")
-    messageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
+    metroMessageCollector.report(CompilerMessageSeverity.STRONG_WARNING, "$LOG_PREFIX $message")
   }
 
   fun logLookup(
@@ -166,11 +169,7 @@ internal interface IrMetroContext : IrPluginContext, CompatContext {
 internal class IrMetroContextImpl(
   compatContext: CompatContext,
   override val pluginContext: IrPluginContext,
-  @Suppress("DEPRECATION")
-  @Deprecated(
-    "Consider using diagnosticReporter instead. See https://youtrack.jetbrains.com/issue/KT-78277 for more details"
-  )
-  override val messageCollector: MessageCollector,
+  override val metroMessageCollector: MessageCollector,
   symbols: Symbols,
   override val coroutinesRuntimeAvailability: CoroutinesRuntimeAvailability,
   override val options: MetroOptions,

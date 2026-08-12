@@ -9,22 +9,17 @@ import dev.zacsweers.metro.compiler.api.fir.MetroFirDeclarationGenerationExtensi
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
-import dev.zacsweers.metro.compiler.fir.classIdCompat
-import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.generators.ContributionsFirGenerator
 import dev.zacsweers.metro.compiler.fir.resolveClassId
-import dev.zacsweers.metro.compiler.fir.resolvedArgumentConeKotlinType
 import dev.zacsweers.metro.compiler.memoize
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
-import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.FirSupertypeGenerationExtension.TypeResolveService
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -136,19 +131,29 @@ internal fun FirAnnotation.installInComponents(
   session: FirSession,
   typeResolver: MetroFirTypeResolver?,
 ): List<ClassId> =
-  installInComponentsImpl(session) { call -> typeResolver?.let { call.resolveClassId(it) } }
+  installInComponentsImpl(session) { call ->
+    if (typeResolver == null) {
+      call.resolveClassId(session)
+    } else {
+      call.resolveClassId(session, typeResolver)
+    }
+  }
 
 internal fun FirAnnotation.installInComponents(
   session: FirSession,
   typeResolver: TypeResolveService?,
 ): List<ClassId> =
   installInComponentsImpl(session) { call ->
-    typeResolver?.let { call.resolvedArgumentConeKotlinType(it)?.classId }
+    if (typeResolver == null) {
+      call.resolveClassId(session)
+    } else {
+      call.resolveClassId(session, typeResolver)
+    }
   }
 
 private inline fun FirAnnotation.installInComponentsImpl(
   session: FirSession,
-  resolveFallback: (FirGetClassCall) -> ClassId?,
+  resolveComponentClassId: (FirGetClassCall) -> ClassId?,
 ): List<ClassId> {
   val arg =
     argumentAsOrNull<FirExpression>(session, StandardNames.DEFAULT_VALUE_PARAMETER, index = 0)
@@ -159,9 +164,5 @@ private inline fun FirAnnotation.installInComponentsImpl(
       is FirVarargArgumentsExpression -> arg.arguments.filterIsInstance<FirGetClassCall>()
       else -> emptyList()
     }
-  return classCalls.mapNotNull { call ->
-    call.coneTypeIfResolved()?.classId
-      ?: (call.argument as? FirResolvedQualifier)?.classIdCompat
-      ?: resolveFallback(call)
-  }
+  return classCalls.mapNotNull(resolveComponentClassId)
 }

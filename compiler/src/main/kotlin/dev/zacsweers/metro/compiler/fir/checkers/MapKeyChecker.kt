@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
-import dev.zacsweers.metro.compiler.fir.resolvedClassId
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
@@ -144,7 +144,7 @@ internal object MapKeyChecker : FirClassChecker(MppCheckerKind.Common) {
           )
         } else {
           val defaultClassId =
-            defaultValueExpression.expectAsOrNull<FirGetClassCall>()?.resolvedClassId()
+            defaultValueExpression.expectAsOrNull<FirGetClassCall>()?.resolveClassId(session)
           if (defaultClassId != StandardClassIds.Nothing) {
             reporter.reportOn(
               defaultValueExpression.source ?: param.source ?: ctor.source,

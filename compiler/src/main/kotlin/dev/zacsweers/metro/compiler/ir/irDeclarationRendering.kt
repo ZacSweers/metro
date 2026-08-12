@@ -6,6 +6,7 @@ import com.intellij.openapi.util.TextRange
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSpan
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Style
@@ -44,7 +45,6 @@ import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.properties
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.sourceElement
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -254,7 +254,7 @@ private fun StringBuilder.renderForDiagnosticImpl(
       type = declaration.type
     }
     is IrFunction -> {
-      property = declaration.propertyIfAccessor.expectAsOrNull<IrProperty>()
+      property = declaration.propertyIfAccessorCompat.expectAsOrNull<IrProperty>()
       name = (property ?: declaration).name
       type = declaration.returnType
     }
@@ -510,7 +510,7 @@ private fun IrOverridableDeclaration<*>.sourceDeclarationForDiagnostic(): IrDecl
   return when (this) {
     is IrProperty -> sourceClass.properties.firstOrNull { it.name == name }
     is IrSimpleFunction -> {
-      val property = propertyIfAccessor.expectAsOrNull<IrProperty>()
+      val property = propertyIfAccessorCompat.expectAsOrNull<IrProperty>()
       if (property != null) {
         sourceClass.properties.firstOrNull { it.name == property.name }
       } else {

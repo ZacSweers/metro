@@ -19,7 +19,7 @@ androidx-lifecycle = "2.10.0"
 androidx-lint-gradle = "1.0.0"
 annotation = "1.10.0"
 anvil = "0.5.4"
-circuit = "0.36.0"
+circuit = "0.36.1"
 compose-jb = "1.10.3"
 jetbrains-lifecycle-navigation3 = "2.10.0"
 jetbrains-navigation3 = "1.1.1"
@@ -27,7 +27,7 @@ dagger = "2.60.1"
 gjf = "1.35.0"
 jdk = "25"
 robolectric = "4.17-beta-2"
-junit-jupiter = "6.1.2"
+junit-jupiter = "6.1.3"
 jvmTarget = "11"
 compilerJvmTarget = "21"
 ideaJvmTarget = "21"
@@ -50,7 +50,7 @@ okhttp = "5.4.0"
 okio = "3.18.1"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.1"
-tracing = "2.0.0-rc01"
+tracing = "2.0.0"
 wire = "6.4.5"
 
 [plugins]
@@ -91,10 +91,10 @@ android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref 
 
 androidx-activity = "androidx.activity:activity-compose:1.13.0"
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
-androidx-appcompat = "androidx.appcompat:appcompat:1.7.1"
+androidx-appcompat = "androidx.appcompat:appcompat:1.8.0"
 androidx-collection = "androidx.collection:collection:1.6.0"
 androidx-core = "androidx.core:core-ktx:1.18.0"
-androidx-fragment = "androidx.fragment:fragment-ktx:1.8.9"
+androidx-fragment = "androidx.fragment:fragment-ktx:1.9.0"
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-lint-gradle = { module = "androidx.lint:lint-gradle", version.ref = "androidx-lint-gradle" }
 androidx-material3 = "com.google.android.material:material:1.14.0"
@@ -207,7 +207,7 @@ picnic = "com.jakewharton.picnic:picnic:0.7.0"
 
 poko-annotations = { module = "dev.drewhamilton.poko:poko-annotations", version.ref = "poko" }
 
-r8 = "com.android.tools:r8:9.3.16"
+r8 = "com.android.tools:r8:9.4.12"
 
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 

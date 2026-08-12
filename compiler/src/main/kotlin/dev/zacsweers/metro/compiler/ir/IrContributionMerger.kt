@@ -7,9 +7,10 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.coneTypeIfResolved
 import dev.zacsweers.metro.compiler.fir.replacesArgument
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.computeMergePlan
 import dev.zacsweers.metro.compiler.safePathString
@@ -22,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -80,6 +80,14 @@ internal class IrContributionMerger(
 
   private fun callerCacheKey(callingDeclaration: IrDeclaration): ClassId? =
     (callingDeclaration as? IrClass)?.classId
+
+  private fun IrClass.originClassIdChain(callingDeclaration: IrDeclaration): List<ClassId> {
+    return computeOriginClassIdChain(
+      startClass = this,
+      originClassId = { currentClass -> currentClass.originClassId() },
+      resolveClass = { originClassId -> callingDeclaration.lookupClass(originClassId)?.owner },
+    )
+  }
 
   context(traceScope: TraceScope)
   fun computeContributions(
@@ -198,7 +206,7 @@ internal class IrContributionMerger(
                   // For Metro contributions, we need to check the parent class ID
                   // This is always the `MetroContribution`, the contribution's parent is the actual
                   // class
-                  it.rawType().classIdOrFail.parentClassId!!
+                  it.rawType().classIdOrFail.outerClassId!!
                 }
 
             val bindingContainers =
@@ -230,10 +238,11 @@ internal class IrContributionMerger(
                 // MetroContribution nested classes generated from those containers don't always
                 // carry that annotation, so fall back to the parent to preserve replacement
                 // behavior in IR-only graph-extension merging.
-                val originClassId =
-                  contributionClass.originClassId()
-                    ?: contributionClass.parentAsClass.originClassId()
-                originClassId?.let {
+                val originChain =
+                  contributionClass.originClassIdChain(callingDeclaration).ifEmpty {
+                    contributionClass.parentAsClass.originClassIdChain(callingDeclaration)
+                  }
+                for (originClassId in originChain) {
                   originToContributions.getAndAdd(originClassId, contributionClassId)
                 }
               }
@@ -241,7 +250,7 @@ internal class IrContributionMerger(
 
             // Also check binding containers (e.g., @ContributesTo classes)
             for ((containerClassId, containerClass) in bindingContainers) {
-              containerClass.originClassId()?.let { originClassId ->
+              for (originClassId in containerClass.originClassIdChain(callingDeclaration)) {
                 originToContributions.getAndAdd(originClassId, containerClassId)
               }
             }
@@ -250,7 +259,7 @@ internal class IrContributionMerger(
             // interfaces can be added both as direct graph supertypes and as binding containers.
             // Replacements/exclusions need to prune both views of the same source interface.
             for ((externalClassId, externalClass) in externalSupertypes) {
-              externalClass.originClassId()?.let { originClassId ->
+              for (originClassId in externalClass.originClassIdChain(callingDeclaration)) {
                 originToContributions.getAndAdd(originClassId, externalClassId)
               }
             }
@@ -293,7 +302,7 @@ internal class IrContributionMerger(
             firBody = { session, annotations ->
               annotations
                 .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
-                .mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.coneTypeIfResolved()?.classId }
+                .mapNotNull { it.expectAsOrNull<FirGetClassCall>()?.resolveClassId(session) }
             },
           )
           .toSet()
@@ -321,7 +330,7 @@ internal class IrContributionMerger(
             excluded = excluded,
             originToIds = originToContributions,
             nestedChildrenOf = { target ->
-              presentIds.filterTo(mutableSetOf()) { it.parentClassId == target }
+              presentIds.filterTo(mutableSetOf()) { it.outerClassId == target }
             },
             replacesOf = ::replacesForId,
           )

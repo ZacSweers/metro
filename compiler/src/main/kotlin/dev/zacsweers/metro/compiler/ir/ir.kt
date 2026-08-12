@@ -293,6 +293,23 @@ internal fun IrConstructorCall.getAnnotationArgument(name: Name): IrExpression? 
   }
 }
 
+internal fun IrConstructorCall.classReferenceArgument(
+  name: Name,
+  fallbackIndex: Int,
+): IrClassReference? {
+  val argument = getAnnotationArgument(name) ?: arguments.getOrNull(fallbackIndex)
+  return argument as? IrClassReference
+}
+
+internal fun IrConstructorCall.classReferenceArrayArgument(
+  name: Name,
+  fallbackIndex: Int,
+): List<IrClassReference> {
+  val argument = getAnnotationArgument(name) ?: arguments.getOrNull(fallbackIndex)
+  val vararg = argument as? IrVararg ?: return emptyList()
+  return vararg.elements.filterIsInstance<IrClassReference>()
+}
+
 // Compat copies because of IrAnnotation in 2.4.0
 internal fun IrAnnotationContainer.getAnnotation(name: FqName): IrConstructorCall? =
   annotationsCompat().find {
@@ -1403,7 +1420,7 @@ internal fun Set<IrClassReference>.mapToClassIds(): Set<ClassId> {
 }
 
 internal fun IrConstructorCall.additionalScopes(): Set<IrClassReference> {
-  return additionalScopesArgument().toClassReferences()
+  return classReferenceArrayArgument(Symbols.Names.additionalScopes, fallbackIndex = 1).toSet()
 }
 
 internal fun IrConstructorCall.includesArgument() =
@@ -1429,7 +1446,7 @@ internal fun IrConstructorCall.bindingContainerClasses(
 }
 
 internal fun IrVararg?.toClassReferences(): Set<IrClassReference> {
-  return this?.elements?.expectAsOrNull<List<IrClassReference>>()?.toSet() ?: return emptySet()
+  return this?.elements?.filterIsInstance<IrClassReference>()?.toSet().orEmpty()
 }
 
 internal fun IrConstructorCall.requireScope(): ClassId {
@@ -1441,10 +1458,7 @@ internal fun IrConstructorCall.scopeOrNull(): ClassId? {
 }
 
 internal fun IrConstructorCall.scopeClassOrNull(): IrClass? {
-  return getAnnotationArgument(Symbols.Names.scope)
-    ?.expectAsOrNull<IrClassReference>()
-    ?.classType
-    ?.rawTypeOrNull()
+  return classReferenceArgument(Symbols.Names.scope, fallbackIndex = 0)?.classType?.rawTypeOrNull()
 }
 
 internal fun IrConstructorCall.allScopes(): Set<ClassId> = buildSet {
@@ -1464,8 +1478,7 @@ internal fun IrConstructorCall.originOrNull(): ClassId? {
 }
 
 internal fun IrConstructorCall.originClassOrNull(): IrClass? {
-  return getAnnotationArgument(StandardNames.DEFAULT_VALUE_PARAMETER)
-    ?.expectAsOrNull<IrClassReference>()
+  return classReferenceArgument(StandardNames.DEFAULT_VALUE_PARAMETER, fallbackIndex = 0)
     ?.classType
     ?.rawTypeOrNull()
 }
@@ -2577,9 +2590,7 @@ internal fun IrConstructorCall.bindingTypeArgument(): IrTypeKey? {
 }
 
 internal fun IrConstructorCall.anvilKClassBoundTypeArgument(): IrType? {
-  return getAnnotationArgument(Symbols.Names.boundType)
-    ?.expectAsOrNull<IrClassReference>()
-    ?.classType
+  return classReferenceArgument(Symbols.Names.boundType, fallbackIndex = 1)?.classType
 }
 
 internal fun IrConstructorCall.anvilIgnoreQualifier(): Boolean {

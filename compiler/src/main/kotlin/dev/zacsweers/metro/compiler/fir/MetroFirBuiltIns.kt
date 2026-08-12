@@ -31,6 +31,11 @@ internal class MetroFirBuiltIns(
   private val traceContext: TraceContext,
 ) : FirExtensionSessionComponent(session) {
 
+  /** Resolves a typealias RHS in the alias declaration's own file and importing scopes. */
+  internal val typeAliasResolverFactory by memoize {
+    MetroFirTypeResolver.Factory(session).caching()
+  }
+
   private val firDriver by memoize {
     if (!session.isCli()) null else traceContext.newFirDriverOrNull(rawModuleName)
   }

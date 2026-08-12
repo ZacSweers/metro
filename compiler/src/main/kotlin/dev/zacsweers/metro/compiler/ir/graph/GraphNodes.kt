@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.BitFieldBuilder
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
@@ -18,7 +19,6 @@ import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.expectAs
-import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
@@ -43,11 +43,12 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.bindingContainerClasses
+import dev.zacsweers.metro.compiler.ir.classReferenceArgument
+import dev.zacsweers.metro.compiler.ir.classReferenceArrayArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
-import dev.zacsweers.metro.compiler.ir.getAnnotationArgument
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -97,10 +98,7 @@ import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
-import org.jetbrains.kotlin.ir.expressions.IrExpression
-import org.jetbrains.kotlin.ir.expressions.IrVararg
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.types.classOrFail
@@ -119,7 +117,6 @@ import org.jetbrains.kotlin.ir.util.nestedClasses
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.ir.util.primaryConstructor
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.ClassId
 
 internal class GraphNodes(
@@ -244,35 +241,37 @@ internal class GraphNodes(
     private fun computeDeclaredScopes(): Set<IrAnnotation> {
       return buildSet {
         val implicitScope =
-          dependencyGraphAnno?.getAnnotationArgument(Symbols.Names.scope)?.let { scopeArg ->
-            scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
-              aggregationScopes += it.classIdOrFail
+          dependencyGraphAnno
+            ?.classReferenceArgument(Symbols.Names.scope, fallbackIndex = 0)
+            ?.let { scopeArg ->
+              scopeArg.classType.rawTypeOrNull()?.let {
+                aggregationScopes += it.classIdOrFail
+              }
+              // Create a synthetic SingleIn(scope)
+              pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+                irCall(metroSymbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
+              }
             }
-            // Create a synthetic SingleIn(scope)
-            pluginContext.createIrBuilder(graphDeclaration.symbol).run {
-              irCall(metroSymbols.metroSingleInConstructor).apply { arguments[0] = scopeArg }
-            }
-          }
 
         if (implicitScope != null) {
           add(IrAnnotation(implicitScope))
-          dependencyGraphAnno
-            .getAnnotationArgument(Symbols.Names.additionalScopes)
-            ?.expectAs<IrVararg>()
-            ?.elements
-            ?.forEach { scopeArg ->
-              scopeArg.expectAsOrNull<IrClassReference>()?.classType?.rawTypeOrNull()?.let {
-                aggregationScopes += it.classIdOrFail
-              }
-              val scopeClassExpression = scopeArg.expectAs<IrExpression>()
-              val newAnno =
-                pluginContext.createIrBuilder(graphDeclaration.symbol).run {
-                  irCall(metroSymbols.metroSingleInConstructor).apply {
-                    arguments[0] = scopeClassExpression
-                  }
-                }
-              add(IrAnnotation(newAnno))
+          val additionalScopeArgs =
+            dependencyGraphAnno.classReferenceArrayArgument(
+              Symbols.Names.additionalScopes,
+              fallbackIndex = 1,
+            )
+          for (scopeArg in additionalScopeArgs) {
+            scopeArg.classType.rawTypeOrNull()?.let {
+              aggregationScopes += it.classIdOrFail
             }
+            val newAnno =
+              pluginContext.createIrBuilder(graphDeclaration.symbol).run {
+                irCall(metroSymbols.metroSingleInConstructor).apply {
+                  arguments[0] = scopeArg
+                }
+              }
+            add(IrAnnotation(newAnno))
+          }
         }
         addAll(graphDeclaration.scopeAnnotations())
       }
@@ -494,7 +493,7 @@ internal class GraphNodes(
       val declWithName =
         when (overriddenDeclaration) {
           is IrSimpleFunction ->
-            overriddenDeclaration.propertyIfAccessor.expectAs<IrDeclarationWithName>()
+            overriddenDeclaration.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
           is IrProperty -> overriddenDeclaration as IrDeclarationWithName
         }
 

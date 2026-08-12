@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.abstractFunctions
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
+import dev.zacsweers.metro.compiler.ir.classReferenceArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
@@ -59,7 +60,6 @@ import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.expressions.IrBody
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
@@ -354,22 +354,13 @@ private class CircuitIrFactoryTargetResolver(
   }
 
   private fun IrConstructorCall.extractCircuitInjectArgs(): Pair<IrClassSymbol, IrClassSymbol>? {
-    val screenArg =
-      arguments[0] as? IrClassReference
-        ?: argument(CircuitNames.screen) as? IrClassReference
+    val screenSymbol =
+      classReferenceArgument(CircuitNames.screen, fallbackIndex = 0)?.symbol as? IrClassSymbol
         ?: return null
-    val scopeArg =
-      arguments[1] as? IrClassReference
-        ?: argument(Symbols.Names.scope) as? IrClassReference
+    val scopeSymbol =
+      classReferenceArgument(CircuitNames.scope, fallbackIndex = 1)?.symbol as? IrClassSymbol
         ?: return null
-    val screenSymbol = screenArg.symbol as? IrClassSymbol ?: return null
-    val scopeSymbol = scopeArg.symbol as? IrClassSymbol ?: return null
     return screenSymbol to scopeSymbol
-  }
-
-  private fun IrConstructorCall.argument(name: Name): IrExpression? {
-    val parameter = symbol.owner.parameters.firstOrNull { it.name == name } ?: return null
-    return arguments[parameter.indexInParameters]
   }
 
   private fun IrValueParameter.isFunctionProvidedParam(

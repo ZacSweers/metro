@@ -1281,6 +1281,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ImplicitClassKeyTypeAlias.kt")
+    public void testImplicitClassKeyTypeAlias() {
+      run("ImplicitClassKeyTypeAlias.kt");
+    }
+
+    @Test
     @TestMetadata("IncompatibleMapValueType.kt")
     public void testIncompatibleMapValueType() {
       run("IncompatibleMapValueType.kt");

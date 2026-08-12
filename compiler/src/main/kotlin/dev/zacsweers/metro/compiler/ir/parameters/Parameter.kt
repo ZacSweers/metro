@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.parameters
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.generatedContextParameterName
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -42,7 +43,6 @@ import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
 import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.ir.util.remapTypeParameters
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.SpecialNames.UNDERSCORE_FOR_UNUSED_VAR
@@ -410,7 +410,7 @@ internal fun IrFunction.memberInjectParameters(
 
   val valueParams =
     if (isPropertyAccessor) {
-      val property = propertyIfAccessor as IrProperty
+      val property = propertyIfAccessorCompat as IrProperty
       listOf(
         property.toMemberInjectParameter(
           uniqueName = nameAllocator.newName(property.name.asString()).asName(),

@@ -13,8 +13,8 @@ import dev.zacsweers.metro.compiler.fir.diagnosticString
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
+import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedBindingContainersClassIds
-import dev.zacsweers.metro.compiler.fir.resolvedClassId
 import dev.zacsweers.metro.compiler.fir.resolvedIncludesClassIds
 import dev.zacsweers.metro.compiler.fir.subcomponentsArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
@@ -192,7 +192,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
         ?: emptyList()
     val seen = mutableMapOf<ClassId, FirGetClassCall>()
     for (includedClassCall in includesToCheck) {
-      val classId = includedClassCall.resolvedClassId() ?: continue
+      val classId = includedClassCall.resolveClassId(session) ?: continue
       val previous = seen.put(classId, includedClassCall)
       if (previous != null) {
         listOf(includedClassCall, previous).forEach {
@@ -206,8 +206,7 @@ internal object BindingContainerClassChecker : FirClassChecker(MppCheckerKind.Co
 
       // includes can only be objects, interfaces/abstract classes, or simple non-generic classes
       // with a noarg constructor
-      val target =
-        includedClassCall.resolvedClassId()?.toLookupTag()?.toClassSymbolCompat(session) ?: continue
+      val target = classId.toLookupTag().toClassSymbolCompat(session) ?: continue
 
       // Target must be a binding container
       if (!target.isBindingContainer(session)) {

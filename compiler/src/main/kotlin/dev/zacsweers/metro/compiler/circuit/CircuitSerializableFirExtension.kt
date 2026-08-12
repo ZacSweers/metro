@@ -13,17 +13,13 @@ import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.compatContext
 import dev.zacsweers.metro.compiler.fir.markAsDeprecatedHidden
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
-import dev.zacsweers.metro.compiler.fir.resolveClassId
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
-import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.extensions.ExperimentalTopLevelDeclarationsGenerationApi
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.MemberGenerationContext
@@ -164,11 +160,9 @@ public class CircuitSerializableFirExtension(
         serializedType
           .annotationsIn(session, setOf(CircuitClassIds.CircuitSerializable))
           .firstOrNull() ?: return@getOrPut null
-      if (annotation !is FirAnnotationCall) return@getOrPut null
       val scopeClassId =
-        annotation
-          .argumentAsOrNull<FirGetClassCall>(session, CircuitNames.scope, 0)
-          ?.resolveClassId(typeResolver) ?: return@getOrPut null
+        annotation.extractCircuitScopeClassId(session, typeResolver, argumentIndex = 0)
+          ?: return@getOrPut null
       CircuitSerializerRegistrationTarget(
         serializedType = serializedType,
         registrationClassId = registrationClassId,

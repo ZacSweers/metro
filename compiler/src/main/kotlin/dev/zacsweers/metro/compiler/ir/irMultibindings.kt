@@ -9,12 +9,12 @@ import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
+import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.declarations.IrOverridableDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
@@ -128,8 +128,9 @@ internal fun hasImplicitClassKey(mapKey: IrConstructorCall): Boolean {
 context(context: IrMetroContext)
 internal fun isImplicitClassKeySentinel(mapKey: IrConstructorCall): Boolean {
   if (!hasImplicitClassKey(mapKey)) return false
-  val valueArg = mapKey.arguments[0] ?: return true // No value → use implicit
-  val classRef = valueArg as? IrClassReference ?: return false
+  val classRef =
+    mapKey.classReferenceArgument(StandardNames.DEFAULT_VALUE_PARAMETER, fallbackIndex = 0)
+      ?: return true // No value → use implicit
   return classRef.classType.classOrNull?.owner?.classId == StandardClassIds.Nothing
 }
 

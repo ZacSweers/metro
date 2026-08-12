@@ -1,28 +1,35 @@
-interface Foo
+abstract class Foo {
+  abstract val value: String
+}
 
-@Origin(RealFoo::class)
+@Origin(Foo::class)
+class IntermediateGeneratedFoo
+
+@Origin(IntermediateGeneratedFoo::class)
 @Inject
 @ContributesBinding(AppScope::class)
-class GeneratedRealFoo : RealFoo()
-
-abstract class RealFoo : Foo
+class GeneratedFoo : Foo() {
+  override val value = "real"
+}
 
 @Inject
 @ContributesBinding(AppScope::class)
-class FakeFoo : Foo
+class FakeFoo : Foo() {
+  override val value = "fake"
+}
 
 @DependencyGraph(Unit::class)
 interface UnitGraph {
   val appGraph: AppGraph
 }
 
-@GraphExtension(AppScope::class, excludes = [RealFoo::class])
+@GraphExtension(AppScope::class, excludes = [Foo::class])
 interface AppGraph {
   val foo: Foo
 }
 
 fun box(): String {
   val graph = createGraph<UnitGraph>().appGraph
-  assertEquals("FakeFoo", graph.foo::class.simpleName)
+  assertEquals("fake", graph.foo.value)
   return "OK"
 }

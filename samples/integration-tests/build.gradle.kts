@@ -89,7 +89,6 @@ fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms() {
   // Tier 2
   linuxArm64()
   watchosSimulatorArm64()
-  watchosArm32()
   watchosArm64()
   tvosSimulatorArm64()
   tvosArm64()

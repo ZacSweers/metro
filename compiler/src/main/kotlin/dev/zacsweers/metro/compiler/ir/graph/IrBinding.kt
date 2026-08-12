@@ -7,6 +7,7 @@ import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedContent
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.capitalizeUS
+import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
@@ -64,7 +65,6 @@ import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.isSuspend
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
-import org.jetbrains.kotlin.ir.util.propertyIfAccessor
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 
@@ -751,7 +751,7 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
     override val parameters: Parameters = Parameters.empty()
 
     override val reportableDeclaration: IrDeclarationWithName? by memoize {
-      getter?.propertyIfAccessor?.expectAs<IrDeclarationWithName>()
+      getter?.propertyIfAccessorCompat?.expectAs<IrDeclarationWithName>()
     }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String {

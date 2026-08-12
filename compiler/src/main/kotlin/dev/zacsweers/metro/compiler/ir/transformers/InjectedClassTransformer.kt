@@ -6,6 +6,7 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
+import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
@@ -374,13 +375,16 @@ internal class InjectedClassTransformer(
             isPrimary = true
           }
           .apply {
+            val fieldNameAllocator =
+              NameAllocator(preallocateKeywords = false, mode = NameAllocator.Mode.COUNT)
             addParameters(
               params = dedupedParameters,
               wrapInProvider = true,
               stubDefaults = false,
               typeRemapper = { type -> factoryTypeRemapper.remapType(type) },
             ) { parameter, irParam ->
-              val field = irParam.addBackingFieldTo(factoryCls)
+              val fieldName = fieldNameAllocator.newName(irParam.name.asString())
+              val field = irParam.addBackingFieldTo(factoryCls, fieldName)
               nameToField[irParam.name] = field
               providerFieldsByKey[parameter.toCanonicalProviderKey()] = field
             }

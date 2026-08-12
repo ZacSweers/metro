@@ -11,7 +11,6 @@ import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotation
 import org.jetbrains.kotlin.fir.expressions.builder.buildAnnotationArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.builder.buildArgumentList
@@ -20,7 +19,7 @@ import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.toFirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -55,11 +54,11 @@ internal fun FirSession.buildCircuitContributesIntoSetAnnotation(
             }
         }
         coneTypeOrNull =
-          ConeClassLikeTypeImpl(
-            StandardClassIds.KClass.toLookupTag(),
-            arrayOf(scopeType),
-            isMarkedNullable = false,
-          )
+          StandardClassIds.KClass.toLookupTag()
+            .constructClassType(
+              arrayOf(scopeType),
+              isMarkedNullable = false,
+            )
       }
     }
   }
@@ -70,7 +69,6 @@ internal fun FirAnnotation.extractCircuitScopeClassId(
   typeResolver: MetroFirTypeResolver,
   argumentIndex: Int,
 ): ClassId? {
-  if (this !is FirAnnotationCall) return null
   return classArgument(session, Symbols.Names.scope, index = argumentIndex)
-    ?.resolveClassId(typeResolver)
+    ?.resolveClassId(session, typeResolver)
 }

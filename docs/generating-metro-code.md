@@ -38,7 +38,7 @@ You can configure Metro to recognize custom origin annotations through the Gradl
 ```kotlin
 metro {
   interop {
-    origin.add("com.example.GeneratedFrom")
+    origin.add("com/example/GeneratedFrom")
   }
 }
 ```

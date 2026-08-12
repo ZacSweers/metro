@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
+import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
@@ -22,7 +23,6 @@ import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
 import dev.zacsweers.metro.compiler.fir.rankValue
-import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
@@ -377,6 +377,20 @@ internal class ContributedInterfaceSupertypeGenerator(
     )
   }
 
+  private fun FirClassSymbol<*>.originClassIdChain(): List<ClassId> {
+    return computeOriginClassIdChain(
+      startClass = this,
+      originClassId = { currentClass ->
+        typeResolverFactory.create(currentClass)?.let { currentTypeResolver ->
+          currentClass.originClassId(session, currentTypeResolver)
+        }
+      },
+      resolveClass = { originClassId ->
+        originClassId.toSymbol(session)?.expectAsOrNull<FirClassSymbol<*>>()
+      },
+    )
+  }
+
   private fun computeContributionSupertypes(
     classLikeDeclaration: FirClassLikeDeclaration,
     typeResolver: TypeResolveService,
@@ -433,7 +447,7 @@ internal class ContributedInterfaceSupertypeGenerator(
                 contributionClassId
               } else {
                 // This is always the `MetroContribution`, the contribution is its parent
-                contributionClassId.parentClassId ?: continue
+                contributionClassId.outerClassId ?: continue
               }
             put(classId, contribution)
           }
@@ -486,28 +500,20 @@ internal class ContributedInterfaceSupertypeGenerator(
     session.trace({ "Build origin map" }, category = TraceCategories.FIR_SUPERTYPE) {
       // Check regular contributions (classes with nested `MetroContribution`)
       for ((parentClassId, _) in contributions) {
-        val parentSymbol = parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-        if (parentSymbol != null) {
-          val localTypeResolver = typeResolverFactory.create(parentSymbol) ?: continue
-
-          parentSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-            originToContributions.getAndAdd(originClassId, parentClassId)
-          }
+        val parentSymbol =
+          parentClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>() ?: continue
+        for (originClassId in parentSymbol.originClassIdChain()) {
+          originToContributions.getAndAdd(originClassId, parentClassId)
         }
       }
 
       // Also check binding containers (e.g., @ContributesTo classes)
       for ((containerClassId, isBindingContainer) in contributionMappingsByClassId) {
-        if (isBindingContainer) {
-          val containerSymbol =
-            containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>()
-          if (containerSymbol != null) {
-            val localTypeResolver = typeResolverFactory.create(containerSymbol) ?: continue
-
-            containerSymbol.originClassId(session, localTypeResolver)?.let { originClassId ->
-              originToContributions.getAndAdd(originClassId, containerClassId)
-            }
-          }
+        if (!isBindingContainer) continue
+        val containerSymbol =
+          containerClassId.toSymbol(session)?.expectAsOrNull<FirRegularClassSymbol>() ?: continue
+        for (originClassId in containerSymbol.originClassIdChain()) {
+          originToContributions.getAndAdd(originClassId, containerClassId)
         }
       }
 
@@ -625,7 +631,7 @@ internal class ContributedInterfaceSupertypeGenerator(
 
           contributingType
             .annotationsIn(session, session.classIds.allContributesAnnotationsWithContainers)
-            .filter { it.scopeArgument(session)?.resolveClassId(localTypeResolver) in scopes }
+            .filter { it.resolvedScopeClassId(session, localTypeResolver) in scopes }
             .flatMap { annotation ->
               annotation.resolvedReplacedClassIds(session, localTypeResolver)
             }
@@ -709,7 +715,7 @@ internal class ContributedInterfaceSupertypeGenerator(
           // Filter out binding containers and self-references — they participate in replacements
           // but not in supertypes
           if (
-            metroContribution.classId?.parentClassId?.parentClassId == declarationClassId ||
+            metroContribution.classId?.outerClassId?.outerClassId == declarationClassId ||
               contributionMappingsByClassId[metroContribution.classId] == true
           ) {
             return@flatMap emptyList()

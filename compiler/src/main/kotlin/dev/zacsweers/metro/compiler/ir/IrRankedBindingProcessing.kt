@@ -5,9 +5,8 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.rankValue
-import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
-import dev.zacsweers.metro.compiler.fir.scopeArgument
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.Fir2IrComponents
@@ -117,8 +116,7 @@ internal class IrRankedBindingProcessing(private val boundTypeResolver: IrBoundT
   ): ContributedBinding<IrClass, IrTypeKey>? {
     // Use the FIR-specific scope resolution approach that handles external annotations correctly
     val scope =
-      annotation.scopeArgument(session)?.resolveClassId(MetroFirTypeResolver.forIrUse())
-        ?: return null
+      annotation.resolvedScopeClassId(session, MetroFirTypeResolver.forIrUse()) ?: return null
     if (scope !in allScopes) return null
 
     val ignoreQualifier =

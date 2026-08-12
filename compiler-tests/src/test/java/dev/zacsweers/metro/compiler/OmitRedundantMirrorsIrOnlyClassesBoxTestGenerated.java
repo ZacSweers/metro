@@ -129,9 +129,27 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ContributesToTypeAliasScope.kt")
+    public void testContributesToTypeAliasScope() {
+      run("ContributesToTypeAliasScope.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToTypeAliasScopeAcrossModules.kt")
+    public void testContributesToTypeAliasScopeAcrossModules() {
+      run("ContributesToTypeAliasScopeAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ContributingMultibileNullableBindings.kt")
     public void testContributingMultibileNullableBindings() {
       run("ContributingMultibileNullableBindings.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionClassArrayTypeAliases.kt")
+    public void testContributionClassArrayTypeAliases() {
+      run("ContributionClassArrayTypeAliases.kt");
     }
 
     @Test
@@ -198,6 +216,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       run("ExcludesWithOrigin.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludesWithOriginBoundTypeAcrossModules.kt")
+    public void testExcludesWithOriginBoundTypeAcrossModules() {
+      run("ExcludesWithOriginBoundTypeAcrossModules.kt");
     }
 
     @Test
@@ -450,6 +474,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("AnvilContributesToNestedScope.kt")
+      public void testAnvilContributesToNestedScope() {
+        run("AnvilContributesToNestedScope.kt");
+      }
+
+      @Test
       @TestMetadata("ContributedBindingContainerExclusions.kt")
       public void testContributedBindingContainerExclusions() {
         run("ContributedBindingContainerExclusions.kt");
@@ -477,6 +507,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       @TestMetadata("ContributedGraphsSupportRankings.kt")
       public void testContributedGraphsSupportRankings() {
         run("ContributedGraphsSupportRankings.kt");
+      }
+
+      @Test
+      @TestMetadata("ContributesBindingBoundTypeTypeAlias.kt")
+      public void testContributesBindingBoundTypeTypeAlias() {
+        run("ContributesBindingBoundTypeTypeAlias.kt");
       }
 
       @Test
@@ -622,6 +658,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("CircuitInjectTypeAliasArguments.kt")
+      public void testCircuitInjectTypeAliasArguments() {
+        run("CircuitInjectTypeAliasArguments.kt");
+      }
+
+      @Test
+      @TestMetadata("CircuitSerializableTypeAliasScope.kt")
+      public void testCircuitSerializableTypeAliasScope() {
+        run("CircuitSerializableTypeAliasScope.kt");
+      }
+
+      @Test
       @TestMetadata("CircuitSerializerRegistrationMultiModule.kt")
       public void testCircuitSerializerRegistrationMultiModule() {
         run("CircuitSerializerRegistrationMultiModule.kt");
@@ -736,6 +784,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("SubCircuitAssistedFactoryTypeAliasScreen.kt")
+      public void testSubCircuitAssistedFactoryTypeAliasScreen() {
+        run("SubCircuitAssistedFactoryTypeAliasScreen.kt");
+      }
+
+      @Test
       @TestMetadata("SubCircuitMultiModule.kt")
       public void testSubCircuitMultiModule() {
         run("SubCircuitMultiModule.kt");
@@ -810,6 +864,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @Test
     public void testAllFilesPresentInBindingcontainers() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/bindingcontainers"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("BindingContainerClassArrayTypeAliases.kt")
+    public void testBindingContainerClassArrayTypeAliases() {
+      run("BindingContainerClassArrayTypeAliases.kt");
     }
 
     @Test
@@ -1250,6 +1310,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("InjectedGenericsClassWorksWithBinds.kt")
     public void testInjectedGenericsClassWorksWithBinds() {
       run("InjectedGenericsClassWorksWithBinds.kt");
+    }
+
+    @Test
+    @TestMetadata("KClassQualifierTypeAlias.kt")
+    public void testKClassQualifierTypeAlias() {
+      run("KClassQualifierTypeAlias.kt");
     }
 
     @Test
@@ -2966,6 +3032,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("HiltInstallInTypeAlias.kt")
+      public void testHiltInstallInTypeAlias() {
+        run("HiltInstallInTypeAlias.kt");
+      }
+
+      @Test
       @TestMetadata("HiltModuleInSingletonComponent.kt")
       public void testHiltModuleInSingletonComponent() {
         run("HiltModuleInSingletonComponent.kt");
@@ -3170,6 +3242,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @Test
     public void testAllFilesPresentInMultibindings() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/multibindings"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("ClassKeyTypeAlias.kt")
+    public void testClassKeyTypeAlias() {
+      run("ClassKeyTypeAlias.kt");
     }
 
     @Test

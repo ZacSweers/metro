@@ -34,7 +34,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.impl.ConeClassLikeTypeImpl
+import org.jetbrains.kotlin.fir.types.constructClassType
 import org.jetbrains.kotlin.fir.types.toLookupTag
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
@@ -141,11 +141,11 @@ internal class GenerateImplExtension(session: FirSession, compatContext: CompatC
             arguments += buildResolvedQualifierCompat(scopeClassId, scopeSymbol, scopeType)
           }
           coneTypeOrNull =
-            ConeClassLikeTypeImpl(
-              StandardClassIds.KClass.toLookupTag(),
-              arrayOf(scopeType),
-              isMarkedNullable = false,
-            )
+            StandardClassIds.KClass.toLookupTag()
+              .constructClassType(
+                arrayOf(scopeType),
+                isMarkedNullable = false,
+              )
         }
       }
     }
@@ -155,14 +155,14 @@ internal class GenerateImplExtension(session: FirSession, compatContext: CompatC
     classSymbol: FirClassSymbol<*>,
     context: MemberGenerationContext,
   ): Set<Name> {
-    val parentClassId = classSymbol.classId.parentClassId ?: return emptySet()
+    val parentClassId = classSymbol.classId.outerClassId ?: return emptySet()
     if (generateImplClasses.none { it.classId == parentClassId }) return emptySet()
     if (classSymbol.classId.shortClassName != IMPL_NAME) return emptySet()
     return setOf(SpecialNames.INIT)
   }
 
   override fun generateConstructors(context: MemberGenerationContext): List<FirConstructorSymbol> {
-    val parentClassId = context.owner.classId.parentClassId ?: return emptyList()
+    val parentClassId = context.owner.classId.outerClassId ?: return emptyList()
     if (generateImplClasses.none { it.classId == parentClassId }) return emptyList()
     if (context.owner.classId.shortClassName != IMPL_NAME) return emptyList()
 

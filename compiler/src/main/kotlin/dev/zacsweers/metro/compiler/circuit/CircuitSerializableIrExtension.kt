@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.api.fir.metroOriginData
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
+import dev.zacsweers.metro.compiler.ir.classReferenceArgument
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.finderFor
@@ -28,7 +29,6 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
-import org.jetbrains.kotlin.ir.expressions.IrClassReference
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -154,12 +154,7 @@ private class CircuitSerializableIrDeclarationGenerator(
   }
 
   private fun IrConstructorCall.circuitSerializableScope(): IrClassSymbol? {
-    val positionalScope = arguments.getOrNull(0) as? IrClassReference
-    val namedScope =
-      symbol.owner.parameters
-        .firstOrNull { it.name == CircuitNames.scope }
-        ?.let { parameter -> arguments.getOrNull(parameter.indexInParameters) } as? IrClassReference
-    return (positionalScope ?: namedScope)?.symbol as? IrClassSymbol
+    return classReferenceArgument(CircuitNames.scope, fallbackIndex = 0)?.symbol as? IrClassSymbol
   }
 
   private fun IrFile.hasTopLevelClass(classId: ClassId): Boolean {
