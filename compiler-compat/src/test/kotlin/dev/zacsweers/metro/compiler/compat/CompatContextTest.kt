@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.compat
 
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class CompatContextTest {
@@ -18,6 +19,14 @@ class CompatContextTest {
     override fun create(): CompatContext {
       error("Not implemented for tests")
     }
+  }
+
+  private class ThrowingCurrentVersionFactory(override val minVersion: String) :
+    CompatContext.Factory {
+    override val currentVersion: String
+      get() = error("currentVersion should not be read")
+
+    override fun create(): CompatContext = error("Not implemented for tests")
   }
 
   internal fun CompatContext.Companion.resolveFactory(
@@ -162,20 +171,35 @@ class CompatContextTest {
   @Test
   fun `filters out factories that throw when getting currentVersion`() {
     val goodFactory = FakeFactory(minVersion = "2.2.0", reportedCurrentVersion = "2.3.0")
-    val badFactory =
-      object : CompatContext.Factory {
-        override val minVersion: String = "2.3.0"
-        override val currentVersion: String
-          get() = throw RuntimeException("Cannot determine version")
-
-        override fun create(): CompatContext = error("Not implemented")
-      }
+    val badFactory = ThrowingCurrentVersionFactory(minVersion = "2.3.0")
 
     val factories = sequenceOf(badFactory, goodFactory)
-    val resolved = CompatContext.resolveFactory(factories, testVersionString = "2.3.0")
+    val resolved = CompatContext.resolveFactory(knownVersion = null, factories = factories)
 
     // Bad factory should be filtered out, good factory selected
     assertThat(resolved.minVersion).isEqualTo("2.2.0")
+  }
+
+  @Test
+  fun `known version does not read factory currentVersion`() {
+    val factory = ThrowingCurrentVersionFactory(minVersion = "2.3.0")
+
+    val resolved = CompatContext.resolveFactory(sequenceOf(factory), testVersionString = "2.3.0")
+
+    assertThat(resolved).isSameInstanceAs(factory)
+  }
+
+  @Test
+  fun `known version error does not read factory currentVersion`() {
+    val factory = ThrowingCurrentVersionFactory(minVersion = "3.0.0")
+
+    val error =
+      assertFailsWith<IllegalStateException> {
+        CompatContext.resolveFactory(sequenceOf(factory), testVersionString = "2.3.0")
+      }
+
+    assertThat(error.message).contains("Unrecognized Kotlin version!")
+    assertThat(error.message).contains("Detected version(s): 2.3.0")
   }
 
   @Test

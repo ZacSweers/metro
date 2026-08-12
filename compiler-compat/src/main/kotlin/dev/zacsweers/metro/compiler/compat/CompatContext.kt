@@ -93,9 +93,12 @@ public interface CompatContext {
       factories: Sequence<Factory> = loadFactories(),
     ): Factory {
       // TODO short-circuit if we hit a factory with the exact version
+      val factoryList = factories.toList()
       val factoryDataList =
-        factories
-          .mapNotNull { factory ->
+        if (knownVersion != null) {
+          factoryList.map { factory -> FactoryData(knownVersion, factory) }
+        } else {
+          factoryList.mapNotNull { factory ->
             // Filter out any factories that can't compute the Kotlin version, as
             // they're _definitely_ not compatible
             try {
@@ -104,10 +107,16 @@ public interface CompatContext {
               null
             }
           }
-          .toList()
+        }
 
       val currentVersion =
         knownVersion ?: factoryDataList.firstOrNull()?.version ?: error("No factories available")
+      val detectedVersions =
+        if (knownVersion != null) {
+          listOf(knownVersion)
+        } else {
+          factoryDataList.map { it.version }.distinct()
+        }
 
       val targetFactory = resolveFactoryForVersion(currentVersion, factoryDataList)
       return targetFactory
@@ -115,8 +124,8 @@ public interface CompatContext {
           """
             Unrecognized Kotlin version!
 
-            Available factories for: ${factories.joinToString(separator = "\n") { it.minVersion }}
-            Detected version(s): ${factories.map { it.currentVersion }.distinct().joinToString(separator = "\n")}
+            Available factories for: ${factoryList.joinToString(separator = "\n") { it.minVersion }}
+            Detected version(s): ${detectedVersions.joinToString(separator = "\n")}
           """
             .trimIndent()
         )
