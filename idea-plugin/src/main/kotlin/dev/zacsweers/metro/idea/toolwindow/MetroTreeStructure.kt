@@ -24,6 +24,7 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
@@ -92,8 +93,13 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
       }
     }
 
-    // Content-aware so refreshed categories replace stale tree nodes instead of matching them
-    override val identity: Any = title to bindings.map { it.typeKey }
+    override val identity: Any =
+      CategoryIdentity(
+        title = title,
+        grouped = grouped,
+        ambiguousQualifiers = ambiguousQualifiers,
+        bindings = bindings.map { it.treeIdentity() },
+      )
   }
 
   class BindingRow(
@@ -120,7 +126,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val text: String = multibindingId
     override val grayText: String = "${contributions.size} contributions"
     override val icon: Icon = MetroIcons.MULTIBINDING
-    override val identity: Any = multibindingId to contributions.map { it.typeKey }
+    override val identity: Any = multibindingId to contributions.map { it.treeIdentity() }
   }
 
   class Validation(parent: MetroTreeNode, val result: KaGraphValidationResult, stale: Boolean) :
@@ -168,6 +174,89 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val icon: Icon = AllIcons.General.Information
     override val identity: Any = Unit
   }
+}
+
+private data class CategoryIdentity(
+  val title: String,
+  val grouped: Boolean,
+  val ambiguousQualifiers: Set<Name>,
+  val bindings: List<BindingTreeIdentity>,
+)
+
+/** Content used by child rows, kept independent of short-lived Analysis API model instances. */
+private data class BindingTreeIdentity(
+  val kind: String,
+  val contextKey: ContextKeyTreeIdentity,
+  val declarationFile: String?,
+  val declarationOffset: Int?,
+  val scope: String?,
+  val implementationName: String?,
+  val multibindingId: String?,
+  val mapKeyValue: String?,
+  val originClassId: String?,
+  val containerId: String?,
+  val includedContainerKey: String?,
+  val replaces: List<String>,
+  val contributionScopes: List<String>,
+  val dependencies: List<ContextKeyTreeIdentity>,
+  val isSuspend: Boolean,
+  val label: String,
+  val subtypeData: Any?,
+)
+
+private data class ContextKeyTreeIdentity(
+  val rendered: String,
+  val hasDefault: Boolean,
+  val rawType: String?,
+)
+
+private fun KaContextualTypeKey.treeIdentity(): ContextKeyTreeIdentity {
+  return ContextKeyTreeIdentity(
+    rendered = render(short = false),
+    hasDefault = hasDefault,
+    rawType = rawType?.renderedType,
+  )
+}
+
+private fun KaBinding.treeIdentity(): BindingTreeIdentity {
+  val subtypeData =
+    when (this) {
+      is KaBinding.ConstructorInjected -> memberDependencies.map { it.treeIdentity() }
+      is KaBinding.Provided -> null
+      is KaBinding.Alias -> consumedKey?.treeIdentity() to isClassContribution
+      is KaBinding.Multibinding -> allowEmpty to sourceBindings.map { it.render(short = false) }
+      is KaBinding.BoundInstance -> isGraphInput to isBindingContainerInput
+      is KaBinding.AssistedFactory ->
+        listOf(
+          targetConstructorDependencies.map { it.treeIdentity() },
+          targetMemberDependencies.map { it.treeIdentity() },
+          factoryFunctionName,
+          factoryFunctionIsSuspend,
+        )
+      is KaBinding.GraphDependency -> ownerKey.render(short = false) to accessorIsSuspend
+      is KaBinding.GraphInstance -> null
+      is KaBinding.GraphExtension -> ownerKey.render(short = false)
+      is KaBinding.CustomWrapper -> wrappedContextKey.treeIdentity()
+    }
+  return BindingTreeIdentity(
+    kind = javaClass.name,
+    contextKey = contextualTypeKey.treeIdentity(),
+    declarationFile = pointer.virtualFile?.url,
+    declarationOffset = pointer.element?.textOffset,
+    scope = scope?.render(short = false),
+    implementationName = implementationName,
+    multibindingId = multibindingId,
+    mapKeyValue = mapKeyValue,
+    originClassId = originClassId?.asFqNameString(),
+    containerId = containerId?.asFqNameString(),
+    includedContainerKey = includedContainerKey?.render(short = false),
+    replaces = replaces.map { it.asFqNameString() }.sorted(),
+    contributionScopes = contributionScopes.map { it.asFqNameString() }.sorted(),
+    dependencies = dependencies.map { it.treeIdentity() },
+    isSuspend = isSuspend,
+    label = label,
+    subtypeData = subtypeData,
+  )
 }
 
 /** `@com.example.reddit.InternalApi` renders as `@c.e.r.InternalApi`. */

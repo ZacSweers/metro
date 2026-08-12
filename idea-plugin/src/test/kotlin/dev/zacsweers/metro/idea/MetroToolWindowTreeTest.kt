@@ -4,7 +4,9 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeDescriptor
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -199,6 +201,48 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
     assertFalse(unscopedBefore == unscopedAfter)
     assertEquals(listOf("String"), structure.children(unscopedAfter).map { it.text })
+  }
+
+  fun testRefreshedNodesReplaceBindingsWhoseKeyDidNotChange() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Api
+
+        @Inject class FirstApi : Api
+        @Inject class SecondApi : Api
+
+        interface ApiBindings {
+          @Binds fun bindApi(impl: FirstApi): Api
+        }
+
+        @DependencyGraph(bindingContainers = [ApiBindings::class])
+        interface AppGraph
+        """
+      )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val before =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertTrue("Api -> FirstApi" in structure.children(before).map { it.text })
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val implementationOffset = document.text.indexOf("impl: FirstApi") + "impl: ".length
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.replaceString(
+        implementationOffset,
+        implementationOffset + "FirstApi".length,
+        "SecondApi",
+      )
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val after = structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertFalse(before == after)
+    val rows = structure.children(after).map { it.text }
+    assertTrue(rows.toString(), "Api -> SecondApi" in rows)
+    assertFalse(rows.toString(), "Api -> FirstApi" in rows)
   }
 
   fun testUnusedUnionsExtensionUsage() {
