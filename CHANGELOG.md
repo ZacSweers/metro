@@ -7,13 +7,19 @@ Changelog
 ### Fixes
 
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
-- **[IR]** Fix `excludes`/`replaces` not removing contributed bindings whose contributing class declares an `@Origin` pointing at the excluded/replaced class.
+- **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
 
 ### Changes
 
 - Support Kotlin `2.5.0-dev-3513`.
 - Remove the `watchosArm32` target, which Kotlin no longer supports.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@eygraber](https://github.com/eygraber)
 
 1.4.1
 -----
