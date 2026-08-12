@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Metro Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --baseline-color: #4CAF50; --metro-color: #4CAF50; --control-color: #607D8B; --metro-noop-color: #795548; --dagger-ksp-color: #2196F3; --dagger-kapt-color: #FF9800; --kotlin-inject-color: #9C27B0; --koin-color: #E91E63; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 2rem; text-align: center; }
+        .header h1 { margin: 0 0 0.5rem 0; font-weight: 300; font-size: 2rem; }
+        .header .subtitle { opacity: 0.8; font-size: 0.9rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .refs-info { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .ref-card { background: white; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 250px; }
+        .ref-card.baseline { border-left: 4px solid var(--metro-color); }
+        .ref-card.comparison { border-left: 4px solid var(--dagger-ksp-color); }
+        .ref-card h3 { margin: 0 0 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; color: #666; }
+        .ref-card .ref-name { font-size: 1.2rem; font-weight: 600; font-family: monospace; }
+        .ref-card .commit { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .ref-card .commit a, .metadata-group a { color: inherit; text-underline-offset: 0.15em; }
+        .versions-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .versions-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; }
+        .version-item { display: flex; justify-content: space-between; gap: 1rem; min-width: 0; border-right: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; padding: 0.55rem 0.75rem; }
+        .version-item .label { color: #666; }
+        .version-item .value { flex: 0 0 auto; min-width: 0; font-family: 'SF Mono', Monaco, monospace; text-align: right; white-space: nowrap; }
+        .versions-section p { margin: 1rem 0 0; color: #666; font-size: 0.85rem; }
+        .versions-section a { color: inherit; text-underline-offset: 0.15em; }
+        .benchmark-section { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .benchmark-section h2 { margin: 0 0 0.25rem 0; font-size: 1.3rem; font-weight: 500; }
+        .benchmark-section .chart-hint { font-size: 0.8rem; color: #888; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eee; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 0.8rem; text-transform: uppercase; }
+        td.numeric, th.numeric { text-align: right; font-family: 'SF Mono', Monaco, monospace; }
+        td.framework { font-weight: 500; }
+        .baseline-select { cursor: pointer; width: 30px; }
+        .baseline-radio { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; }
+        .baseline-radio.selected { border-color: var(--baseline-color); background: var(--baseline-color); }
+        .baseline-row { background: #f3f6f7; }
+        .vs-baseline { color: #888; font-size: 0.85em; }
+        .vs-baseline.baseline { font-weight: 500; }
+        .vs-baseline.slower { color: #e53935; }
+        .vs-baseline.faster { color: #43a047; }
+        .diff { font-weight: 500; }
+        .diff.positive { color: #e53935; }
+        .diff.negative { color: #43a047; }
+        .diff.neutral { color: #888; }
+        .legend { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; }
+        .no-data { color: #999; font-style: italic; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 8px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card .value { font-size: 2rem; font-weight: 600; color: var(--metro-color); }
+        .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .metadata-section { background: white; border-radius: 8px; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metadata-section h2 { margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .metadata-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+        .metadata-group { min-width: 0; }
+        .metadata-group h3 { margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: #555; text-transform: uppercase; }
+        .metadata-group dl { margin: 0; display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start; font-size: 0.85rem; }
+        .metadata-group dt { min-width: 0; color: #888; overflow-wrap: anywhere; }
+        .metadata-group dd { min-width: 0; margin: 0; font-family: 'SF Mono', Monaco, monospace; color: #333; overflow-wrap: anywhere; word-break: break-word; }
+        .notes-section { background: #fffdf4; border: 1px solid #f0e2a2; border-radius: 8px; padding: 1.25rem 1.5rem; margin: 2rem 0; font-size: 0.9rem; line-height: 1.5; }
+        .notes-section h2 { margin: 0 0 0.75rem 0; font-size: 1.1rem; font-weight: 500; color: #665c2c; }
+        .notes-section ul { margin: 0; padding-left: 1.25rem; }
+        .notes-section li + li { margin-top: 0.5rem; }
+        .gc-time { color: #888; font-size: 0.85em; }
+        .stability { display: block; color: #888; font-size: 0.78em; margin-top: 0.2rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Metro Build Benchmark Results</h1>
+        <div class="subtitle" id="date"></div>
+    </div>
+    <div class="container">
+        <div class="refs-info" id="refs-info"></div>
+        <div class="versions-section" id="versions"></div>
+        <div class="notes-section">
+            <h2>Notes</h2>
+            <ul>
+                <li>
+                    The Koin benchmarks deserve a couple notes because the work is not exactly like-for-like:
+                    <ul>
+                        <li>Koin's compiler plugin does less work. It aggregates definitions, generates module and factory wiring, and checks for missing dependencies and cycles, but leaves final graph resolution to runtime. Metro, Dagger, and kotlin-inject resolve and validate graphs from their roots and generate static implementations at compile time.</li>
+                        <li>Koin's runtime does more work as a result. The graph work deferred during compilation happens during startup.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Legend</strong>
+                    <ul>
+                        <li><strong>GC</strong> is time spent in garbage collection.</li>
+                        <li><strong>MAD</strong> shows variation around the median.</li>
+                        <li><strong>Half-run drift</strong> compares the first and second halves of the run.</li>
+                        <li><strong>Outliers</strong> are samples more than 20% from the median. All ten samples remain included.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div id="benchmarks"></div>
+        <div class="metadata-section" id="metadata"></div>
+    </div>
+<script>
+const benchmarkData =
+{
+  "title": "Build Benchmark Comparison",
+  "date": "2026-07-30T07:14:03-04:00",
+  "moduleCount": 500,
+  "refs": {
+    "ref1": { "label": "1.4.0-SNAPSHOT", "commit": "cf8e67783 Merge branch 'main' into z/updateBenchmarks (Metro 1.4.0-SNAPSHOT)", "dirtyDiffFingerprint": "clean" }
+  },
+  "metadata": {"git":{"branch":"z/updateBenchmarks","sha":"cf8e677835e3eb084e8d933e8b0568fb74505cb2","shaShort":"cf8e67783","dirtyDiffFingerprint":"clean"},"versions":{"metro":"1.4.0-SNAPSHOT","kotlin":"2.4.0","dagger":"2.60.1","ksp":"2.3.10","kotlinInject":"0.9.0","anvil":"0.5.4","kotlinInjectAnvil":"0.1.7","koin":"4.2.2","koinCompiler":"1.1.0"},"build":{"gradle":"9.6.1","gradleProfiler":"Gradle Profiler version 0.25.2","jdk":"25.0.4","jvmTarget":"11","kotlinCompilerExecutionStrategy":"in-process"},"workload":{"seed":0,"fingerprint":"sha256:7b20f05437d03f4742fc1bfa884d66091e025d86651c5f519f4a3f97e28ebdf4","moduleCount":500,"modulesByLayer":{"core":80,"features":350,"app":70},"dependencyEdgeCount":874,"contributionCount":2756,"contributionsByKind":{"binding":887,"plugin":982,"initializer":887},"subcomponents":{"l1":7,"l2PerL1":0,"l3PerL2":0,"total":7}},"daggerOptions":{"mapMultibindingDuplicateDetectionFix":"ENABLED (explicit)","useBindingGraphFix":"ENABLED default","ignoreProvisionKeyWildcards":"ENABLED default","validateTransitiveComponentDependencies":"ENABLED default","strictSuperficialValidation":"ENABLED default","fullBindingGraphValidation":"NONE default","fastInit":"DISABLED","providerMultibindings":false},"system":{"os":"Darwin","cpu":"Apple M4 Pro","ram":"48 GB","daemonJvmArgs":"-Xmx8g -Dfile.encoding=UTF-8 -Duser.country=US -Duser.language=en -Duser.variant -Dfile.encoding=UTF-8 -Dorg.gradle.profiler.scenario=abi_change","daemonJvmArgsSource":"Gradle Profiler profile.log","gradleUserHome":"/private/tmp/metro-final-profiler-home.Dm7aGp","minimumIdleCpuPercent":85,"idleSamplesRequired":3,"cooldownSeconds":30},"stability":{"incrementalWarmups":5,"graphProcessingWarmups":10,"measuredSamples":10,"maxRelativeMadPercent":10,"maxHalfDriftPercent":10,"outlierThresholdPercent":20,"maxOutlierCount":1,"outliersDiscarded":false},"timestamp":"2026-07-30T07:12:36-04:00"},
+  "benchmarks": [
+    {
+      "name": "ABI Change",
+      "key": "abi_change",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 5541.98,
+          "gc1": 156.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[5802.81,5605.67,5558.04,5565.94,5525.93,5518.26,5593.27,5497.83,5465.72,5497.81],"medianMs":5541.985000000001,"relativeMadPercent":0.7969166282478284,"earlyMedianMs":5565.94,"lateMedianMs":5497.83,"halfDriftPercent":1.2289820344154605,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 23237.71,
+          "gc1": 1227.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[25674.07,24333.55,24154.41,23237.63,23091.19,23482.29,23232.4,23237.79,23198.6,22711.33],"medianMs":23237.71,"relativeMadPercent":0.8415200981508122,"earlyMedianMs":24154.41,"lateMedianMs":23232.4,"halfDriftPercent":3.9677317601433124,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 25186.34,
+          "gc1": 881.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[25192.4,25705.18,25254.92,25006.89,25118.51,24225.71,25180.28,25777.76,24749.61,25669.88],"medianMs":25186.34,"relativeMadPercent":1.2232424401481126,"earlyMedianMs":25192.4,"lateMedianMs":25180.28,"halfDriftPercent":0.04812132290758649,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 11612.84,
+          "gc1": 390.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[11977.82,11734.06,11812.58,11647.72,11504.6,11790.21,11574.27,11478.56,11526.03,11577.96],"medianMs":11612.84,"relativeMadPercent":0.9879581566610713,"earlyMedianMs":11734.06,"lateMedianMs":11574.27,"halfDriftPercent":1.3759769358744205,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 5751.73,
+          "gc1": 167.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[6037.68,5922.36,5708.77,5926.01,5894.8,5794.69,5682.17,5647.44,5703.04,5545.38],"medianMs":5751.73,"relativeMadPercent":2.150309559037025,"earlyMedianMs":5922.36,"lateMedianMs":5682.17,"halfDriftPercent":4.175960971742408,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        }
+      ]
+    },
+    {
+      "name": "Non-ABI Change",
+      "key": "non_abi_change",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 3334.62,
+          "gc1": 126.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[3491.41,3487.13,3517.86,3341.93,3303.37,3343.36,3327.31,3198.32,3212.98,3199.08],"medianMs":3334.62,"relativeMadPercent":3.8562115023600865,"earlyMedianMs":3487.13,"lateMedianMs":3212.98,"halfDriftPercent":8.221326567944777,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 4242.79,
+          "gc1": 152.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[4564.09,4436.31,4274.83,4229.33,4275.93,4256.25,4162.68,4109.58,4142.98,4171.02],"medianMs":4242.79,"relativeMadPercent":1.7898599742150707,"earlyMedianMs":4275.93,"lateMedianMs":4162.68,"halfDriftPercent":2.6692341595978117,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 8552.66,
+          "gc1": 337.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[8715.08,8834.58,8614.26,8554.33,8482.36,8550.99,8407.74,8472.76,8598.12,8301.5],"medianMs":8552.66,"relativeMadPercent":0.8780893897337139,"earlyMedianMs":8614.26,"lateMedianMs":8472.76,"halfDriftPercent":1.6544560405768498,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 3642.12,
+          "gc1": 139.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[3982.92,3917.47,3815.81,3681.08,3677.66,3606.58,3582.39,3496.82,3539.43,3527.2],"medianMs":3642.12,"relativeMadPercent":2.9874084324514314,"earlyMedianMs":3815.81,"lateMedianMs":3539.43,"halfDriftPercent":7.58843750343207,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 3793.64,
+          "gc1": 157.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[4140.19,4005.36,3814.48,3800.56,3809.46,3786.72,3725.54,3729.23,3672.75,3708.82],"medianMs":3793.64,"relativeMadPercent":1.7464756803492127,"earlyMedianMs":3814.48,"lateMedianMs":3725.54,"halfDriftPercent":2.344450185046553,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        }
+      ]
+    },
+    {
+      "name": "Plain Kotlin ABI",
+      "key": "plain_abi_change",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 5552.48,
+          "gc1": 156.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[5742.54,5512.76,5687.04,5554.12,5800.15,5523.04,5550.85,5562.04,5483.3,5396.84],"medianMs":5552.485000000001,"relativeMadPercent":0.9807320506043758,"earlyMedianMs":5687.04,"lateMedianMs":5523.04,"halfDriftPercent":2.953632472667643,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 22796.95,
+          "gc1": 1208.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[23317.01,23410.71,22991.81,22808.81,22859.73,22693.94,22477.11,22543.66,22785.09,22587.76],"medianMs":22796.95,"relativeMadPercent":0.8861931091659255,"earlyMedianMs":22991.81,"lateMedianMs":22587.76,"halfDriftPercent":1.772386218331851,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 25003.37,
+          "gc1": 873.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[25516.48,25007.54,23783.1,25483.05,24954.07,25407.01,24298.57,24955.57,25187.1,24999.2],"medianMs":25003.370000000003,"relativeMadPercent":1.1745816663913538,"earlyMedianMs":25007.54,"lateMedianMs":24999.2,"halfDriftPercent":0.03335550367810477,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 11869.53,
+          "gc1": 353.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[12209.93,12021.61,12154.37,11897.67,11734.05,11841.4,11807.17,11940.07,11807.23,11734.81],"medianMs":11869.535,"relativeMadPercent":0.8646505528649616,"earlyMedianMs":12021.61,"lateMedianMs":11807.23,"halfDriftPercent":1.8061364661715984,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 5711.29,
+          "gc1": 170.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[5977.01,6039.56,5788.0,5773.99,5696.81,5614.75,5725.78,5640.3,5571.45,5553.13],"medianMs":5711.295,"relativeMadPercent":1.5167313192542147,"earlyMedianMs":5788.0,"lateMedianMs":5614.75,"halfDriftPercent":3.0334626385084293,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        }
+      ]
+    },
+    {
+      "name": "Plain Kotlin Non-ABI",
+      "key": "plain_non_abi_change",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 3069.72,
+          "gc1": 103.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[3417.2,3354.42,3278.67,3127.08,3035.02,3050.68,2998.55,2939.7,2965.76,3088.76],"medianMs":3069.7200000000003,"relativeMadPercent":2.852540296834892,"earlyMedianMs":3278.67,"lateMedianMs":2998.55,"halfDriftPercent":9.125262238901263,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 4175.16,
+          "gc1": 137.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[4496.27,4288.0,4305.0,4235.42,4122.65,4032.09,4213.14,4081.75,4137.19,4053.59],"medianMs":4175.165,"relativeMadPercent":2.4699622649643787,"earlyMedianMs":4288.0,"lateMedianMs":4081.75,"halfDriftPercent":4.939924529928757,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 9360.64,
+          "gc1": 341.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[9519.83,9666.15,9399.31,9321.97,9185.98,9592.89,9167.39,9501.43,9260.92,9106.39],"medianMs":9360.64,"relativeMadPercent":1.7832648194995235,"earlyMedianMs":9399.31,"lateMedianMs":9260.92,"halfDriftPercent":1.4784245521673671,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 3635.17,
+          "gc1": 143.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[3999.27,3829.19,3879.9,3681.36,3588.98,3557.72,3570.39,3560.17,3694.49,3542.13],"medianMs":3635.17,"relativeMadPercent":2.0968757994811833,"earlyMedianMs":3829.19,"lateMedianMs":3560.17,"halfDriftPercent":7.400479207299796,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 3732.87,
+          "gc1": 130.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[4050.32,3912.41,3937.44,3788.52,3705.63,3754.86,3710.89,3683.9,3630.76,3683.35],"medianMs":3732.875,"relativeMadPercent":1.4086997287613443,"earlyMedianMs":3912.41,"lateMedianMs":3683.9,"halfDriftPercent":6.121555101630774,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        }
+      ]
+    },
+    {
+      "name": "Graph Processing",
+      "key": "raw_compilation",
+      "results": [
+        {
+          "framework": "Metro",
+          "key": "metro",
+          "ref1": 6198.08,
+          "gc1": 224.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[6264.91,6230.98,6221.81,6078.21,6115.99,6174.36,6134.31,6242.33,6083.34,6224.15],"medianMs":6198.085,"relativeMadPercent":0.8713981818577796,"earlyMedianMs":6221.81,"lateMedianMs":6174.36,"halfDriftPercent":0.7655590396065999,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KSP)",
+          "key": "dagger_ksp",
+          "ref1": 12311.12,
+          "gc1": 353.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[12773.37,12608.03,12194.66,12427.59,12174.48,12137.23,12427.87,12003.35,11957.08,12436.41],"medianMs":12311.125,"relativeMadPercent":1.261216988699249,"earlyMedianMs":12427.59,"lateMedianMs":12137.23,"halfDriftPercent":2.3585171948136385,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Dagger (KAPT)",
+          "key": "dagger_kapt",
+          "ref1": 11732.67,
+          "gc1": 351.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[11726.03,11721.18,11704.89,11739.31,11766.34,11821.88,11826.82,11776.71,11617.72,11556.03],"medianMs":11732.67,"relativeMadPercent":0.33116929053659194,"earlyMedianMs":11726.03,"lateMedianMs":11776.71,"halfDriftPercent":0.43195623843505754,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "kotlin-inject",
+          "key": "kotlin_inject_anvil",
+          "ref1": 23699.26,
+          "gc1": 402.50,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[24073.49,23261.06,24717.33,23841.51,22987.76,23557.01,21775.02,21488.99,24480.81,24721.27],"medianMs":23699.26,"relativeMadPercent":3.149992868975662,"earlyMedianMs":23841.51,"lateMedianMs":23557.01,"halfDriftPercent":1.2004594236275732,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        },
+        {
+          "framework": "Koin",
+          "key": "koin",
+          "ref1": 3643.34,
+          "gc1": 149.00,
+          "stability1": {"status":"pass","reason":null,"sampleCount":10,"samplesMs":[3820.91,3668.81,3720.25,3680.2,3617.87,3617.71,3602.2,3600.03,3695.65,3580.98],"medianMs":3643.34,"relativeMadPercent":1.1589640275132196,"earlyMedianMs":3680.2,"lateMedianMs":3602.2,"halfDriftPercent":2.1408926973601146,"outlierCount":0,"limits":{"expectedSamples":10,"maxRelativeMadPercent":10.0,"maxHalfDriftPercent":10.0,"outlierThresholdPercent":20.0,"maxOutlierCount":1}},
+          "ref2": null,
+          "gc2": null,
+          "stability2": null
+        }
+      ]
+    }
+  ]
+}
+;
+const colors = { 'control': '#607D8B', 'metro': '#4CAF50', 'metro_noop': '#795548', 'dagger_ksp': '#2196F3', 'dagger_kapt': '#FF9800', 'kotlin_inject_anvil': '#9C27B0', 'koin': '#E91E63' };
+const displayNames = { 'control': 'Control', 'metro': 'Metro', 'metro_noop': 'Metro-NOOP', 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
+const benchmarkDescriptions = {
+    'abi_change': 'Lower is better. Measures recompilation after a public API change in a shared module.',
+    'non_abi_change': 'Lower is better. Measures recompilation after an implementation-only change in a shared module.',
+    'plain_abi_change': 'Lower is better. Measures a public API change in shared code that does not use dependency injection.',
+    'plain_non_abi_change': 'Lower is better. Measures an implementation-only change in shared code that does not use dependency injection.',
+    'raw_compilation': 'Lower is better. Measures the top-level graph or container processing task.',
+};
+
+// State for selectable baseline
+const firstBenchmarkResults = benchmarkData.benchmarks[0]?.results || [];
+const defaultBaselineResult = firstBenchmarkResults.find(result => result.key === 'metro' && result.ref1 !== null)
+    || firstBenchmarkResults.find(result => result.key === 'control' && result.ref1 !== null)
+    || firstBenchmarkResults.find(result => result.ref1 !== null);
+let selectedBaseline = defaultBaselineResult?.key;
+document.documentElement.style.setProperty('--baseline-color', colors[selectedBaseline] || '#888');
+
+function formatTime(ms) {
+    if (ms === null || ms === undefined) return '—';
+    return (ms / 1000).toFixed(1) + 's';
+}
+
+function formatGcTime(ms) {
+    if (ms === null || ms === undefined) return '';
+    return (ms / 1000).toFixed(2) + 's';
+}
+
+function formatTimeWithGc(time, gc, stability) {
+    if (time === null || time === undefined) return '—';
+    let result = formatTime(time);
+    if (gc !== null && gc !== undefined) {
+        result += ` <span class="gc-time">(gc: ${formatGcTime(gc)})</span>`;
+    }
+    if (stability) {
+        result += `<span class="stability">MAD ${stability.relativeMadPercent.toFixed(1)}% · half-run drift ${stability.halfDriftPercent.toFixed(1)}% · outliers ${stability.outlierCount}</span>`;
+    }
+    return result;
+}
+
+// Calculate percentage difference vs baseline: (value - baseline) / baseline * 100
+// e.g., 30s vs 24s baseline = (30-24)/24*100 = +25%
+function calculateVsBaseline(value, baselineValue) {
+    if (!value || !baselineValue) return { text: '—', class: '' };
+    if (value === baselineValue) return { text: 'baseline', class: 'baseline' };
+    const pct = ((value - baselineValue) / baselineValue * 100).toFixed(1);
+    const mult = (value / baselineValue).toFixed(2);
+    if (pct < 0) {
+        return { text: `${pct}% (${mult}x)`, class: 'faster' };
+    }
+    return { text: `+${pct}% (${mult}x)`, class: 'slower' };
+}
+
+function calculateDiff(newVal, oldVal) {
+    if (!newVal || !oldVal) return { text: '—', class: 'neutral' };
+    const pct = ((newVal - oldVal) / oldVal * 100).toFixed(2);
+    if (Math.abs(pct) < 0.01) return { text: '+0.00%', class: 'neutral' };
+    const prefix = pct > 0 ? '+' : '';
+    return { text: `${prefix}${pct}%`, class: pct > 0 ? 'positive' : 'negative' };
+}
+
+function displayMetroVersion(version) {
+    return version?.replace(/-SNAPSHOT$/, '') || '—';
+}
+
+function renderVersions() {
+    const container = document.getElementById('versions');
+    const m = benchmarkData.metadata;
+    if (!m) { container.style.display = 'none'; return; }
+    const items = [
+        ['Metro', displayMetroVersion(m.versions?.metro)],
+        ['Kotlin', m.versions?.kotlin],
+        ['Dagger', m.versions?.dagger],
+        ['KSP', m.versions?.ksp],
+        ['Anvil', m.versions?.anvil],
+        ['kotlin-inject', m.versions?.kotlinInject],
+        ['kotlin-inject-anvil', m.versions?.kotlinInjectAnvil],
+        ['Koin', m.versions?.koin],
+        ['Koin Compiler', m.versions?.koinCompiler],
+        ['Gradle', m.build?.gradle],
+        ['Gradle Profiler', m.build?.gradleProfiler?.replace(/^Gradle Profiler version\s+/, '')],
+        ['JDK', m.build?.jdk],
+        ['JVM Target', m.build?.jvmTarget],
+    ];
+    container.innerHTML = `
+        <h2>Versions</h2>
+        <div class="versions-grid">${items.map(([label, value]) => `<div class="version-item"><span class="label">${label}</span><span class="value">${value || '—'}</span></div>`).join('')}</div>
+        <p>See the <a href="#build-environment">full build environment and workload</a> at the bottom of the report.</p>`;
+}
+
+function formatCommit(commit) {
+    if (!commit) return 'unknown';
+    const [sha, ...subjectParts] = commit.split(' ');
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) return commit;
+    let subjectText = subjectParts.join(' ');
+    const recordedMetroVersion = benchmarkData.metadata?.versions?.metro;
+    if (recordedMetroVersion) {
+        subjectText = subjectText.replaceAll(recordedMetroVersion, displayMetroVersion(recordedMetroVersion));
+    }
+    const subject = subjectText ? ` ${subjectText}` : '';
+    return `<a href="https://github.com/ZacSweers/metro/commit/${sha}">${sha}</a>${subject}`;
+}
+
+function renderRefsInfo() {
+    const container = document.getElementById('refs-info');
+    let html = '';
+    if (benchmarkData.refs.ref1 && !benchmarkData.refs.ref2) {
+        html += `<div class="ref-card baseline"><h3>Source</h3><div class="ref-name">Metro ${frameworkVersion('metro')}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
+    } else if (benchmarkData.refs.ref1) {
+        html += `<div class="ref-card baseline"><h3>Baseline (ref1)</h3><div class="ref-name">${benchmarkData.refs.ref1.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref1.commit)}</div></div>`;
+    }
+    if (benchmarkData.refs.ref2) {
+        html += `<div class="ref-card comparison"><h3>Comparison (ref2)</h3><div class="ref-name">${benchmarkData.refs.ref2.label}</div><div class="commit">${formatCommit(benchmarkData.refs.ref2.commit)}</div></div>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderSummaryStats() {
+    const container = document.getElementById('summary-stats');
+    let totalSpeedup = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    let counts = { dagger_ksp: 0, dagger_kapt: 0, kotlin_inject_anvil: 0, koin: 0 };
+    benchmarkData.benchmarks.forEach(benchmark => {
+        const metroResult = benchmark.results.find(r => r.key === 'metro');
+        if (!metroResult || !metroResult.ref1) return;
+        benchmark.results.forEach(result => {
+            if (result.key !== 'metro' && result.ref1) {
+                totalSpeedup[result.key] += result.ref1 / metroResult.ref1;
+                counts[result.key]++;
+            }
+        });
+    });
+    let html = '';
+    const names = { 'dagger_ksp': 'Dagger (KSP)', 'dagger_kapt': 'Dagger (KAPT)', 'kotlin_inject_anvil': 'kotlin-inject', 'koin': 'Koin' };
+    Object.keys(totalSpeedup).forEach(key => {
+        if (counts[key] > 0) {
+            const avgSpeedup = (totalSpeedup[key] / counts[key]).toFixed(1);
+            html += `<div class="stat-card"><div class="value">${avgSpeedup}x</div><div class="label">faster than ${names[key]}</div></div>`;
+        }
+    });
+    container.innerHTML = html;
+}
+
+function getBaselineLabel() {
+    const result = benchmarkData.benchmarks[0]?.results.find(r => r.key === selectedBaseline);
+    return result?.framework || 'Baseline';
+}
+
+function frameworkVersion(key) {
+    const versions = benchmarkData.metadata?.versions || {};
+    switch (key) {
+        case 'control':
+            return versions.kotlin ? `Kotlin ${versions.kotlin}` : '—';
+        case 'metro':
+            return displayMetroVersion(versions.metro);
+        case 'dagger_ksp':
+            if (versions.dagger && versions.ksp) {
+                return `${versions.dagger} / KSP ${versions.ksp}`;
+            }
+            return versions.dagger || (versions.ksp ? `KSP ${versions.ksp}` : '—');
+        case 'dagger_kapt':
+            return versions.dagger || '—';
+        case 'kotlin_inject_anvil':
+            const kotlinInjectVersions = [];
+            if (versions.kotlinInject) kotlinInjectVersions.push(versions.kotlinInject);
+            if (versions.kotlinInjectAnvil) kotlinInjectVersions.push(`anvil ${versions.kotlinInjectAnvil}`);
+            if (versions.ksp) kotlinInjectVersions.push(`KSP ${versions.ksp}`);
+            return kotlinInjectVersions.join(' / ') || '—';
+        case 'koin':
+            if (versions.koin && versions.koinCompiler) {
+                return `${versions.koin} / compiler ${versions.koinCompiler}`;
+            }
+            return versions.koin || versions.koinCompiler || '—';
+        default:
+            return '—';
+    }
+}
+
+function renderBenchmarks() {
+    const container = document.getElementById('benchmarks');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    let html = '';
+    benchmarkData.benchmarks.forEach((benchmark, idx) => {
+        html += `<div class="benchmark-section"><h2>${benchmark.name}</h2>
+            <div class="chart-hint">${benchmarkDescriptions[benchmark.key] || 'Lower is better.'}</div>
+            <div class="legend">${benchmark.results.map(r => `<div class="legend-item"><div class="legend-color" style="background: ${colors[r.key]}"></div><span>${r.framework}</span></div>`).join('')}</div>
+            <div class="chart-container"><canvas id="chart-${idx}"></canvas></div>
+            <table><thead><tr><th></th><th>Framework</th>${isComparison
+                ? `<th class="numeric">${benchmarkData.refs.ref1.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">${benchmarkData.refs.ref2.label}</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th><th class="numeric">Difference</th>`
+                : `<th class="numeric">Time</th><th class="numeric">vs <span class="baseline-header">${getBaselineLabel()}</span></th>`}
+            </tr></thead><tbody id="table-${idx}"></tbody></table></div>`;
+    });
+    container.innerHTML = html;
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderChart(benchmark, idx); renderTable(benchmark, idx); });
+}
+
+const charts = [];
+function renderChart(benchmark, idx) {
+    const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    const labels = [], ref1Data = [], ref2Data = [], backgroundColors = [];
+    benchmark.results.forEach(result => {
+        labels.push(result.framework);
+        ref1Data.push(result.ref1 ? result.ref1 / 1000 : 0);
+        ref2Data.push(result.ref2 ? result.ref2 / 1000 : 0);
+        backgroundColors.push(colors[result.key]);
+    });
+    const datasets = [];
+    if (benchmarkData.refs.ref1) datasets.push({ label: benchmarkData.refs.ref1.label, data: ref1Data, backgroundColor: backgroundColors.map(c => c + 'CC'), borderColor: backgroundColors, borderWidth: 2 });
+    if (benchmarkData.refs.ref2) datasets.push({ label: benchmarkData.refs.ref2.label, data: ref2Data, backgroundColor: backgroundColors.map(c => c + '66'), borderColor: backgroundColors, borderWidth: 2, borderDash: [5, 5] });
+    charts[idx] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: ctx => {
+        const label = isComparison ? ctx.dataset.label : benchmark.results[ctx.dataIndex].framework;
+        return label + ': ' + ctx.raw.toFixed(1) + 's';
+    } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } } });
+}
+
+function renderTable(benchmark, idx) {
+    const tbody = document.getElementById(`table-${idx}`);
+    const isComparison = Boolean(benchmarkData.refs.ref2);
+    const baselineRef1 = benchmark.results.find(r => r.key === selectedBaseline)?.ref1;
+    const baselineRef2 = benchmark.results.find(r => r.key === selectedBaseline)?.ref2;
+    let html = '';
+    benchmark.results.forEach(result => {
+        const isBaseline = result.key === selectedBaseline;
+        const vsBaseline1 = calculateVsBaseline(result.ref1, baselineRef1);
+        const vsBaseline2 = calculateVsBaseline(result.ref2, baselineRef2);
+        const diff = calculateDiff(result.ref2, result.ref1);
+        html += `<tr class="${isBaseline ? 'baseline-row' : ''}" data-key="${result.key}">
+            <td class="baseline-select" onclick="setBaseline('${result.key}')"><span class="baseline-radio ${isBaseline ? 'selected' : ''}"></span></td>
+            <td class="framework" style="color: ${colors[result.key]}">${result.framework}</td>
+            ${isComparison
+                ? `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td><td class="numeric">${result.ref2 ? formatTimeWithGc(result.ref2, result.gc2, result.stability2) : '<span class="no-data">(not run)</span>'}</td><td class="numeric vs-baseline ${vsBaseline2.class}">${vsBaseline2.text}</td><td class="numeric diff ${diff.class}">${diff.text}</td>`
+                : `<td class="numeric">${result.ref1 ? formatTimeWithGc(result.ref1, result.gc1, result.stability1) : '<span class="no-data">N/A</span>'}</td><td class="numeric vs-baseline ${vsBaseline1.class}">${vsBaseline1.text}</td>`}</tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function setBaseline(key) {
+    selectedBaseline = key;
+    document.documentElement.style.setProperty('--baseline-color', colors[key] || '#888');
+    // Update all tables
+    benchmarkData.benchmarks.forEach((benchmark, idx) => { renderTable(benchmark, idx); });
+    // Update header labels
+    document.querySelectorAll('.baseline-header').forEach(el => { el.textContent = getBaselineLabel(); });
+}
+
+function renderMetadata() {
+    const container = document.getElementById('metadata');
+    if (!benchmarkData.metadata) { container.style.display = 'none'; return; }
+    const m = benchmarkData.metadata;
+    container.innerHTML = `
+        <h2 id="build-environment">Build Environment and Workload</h2>
+        <div class="metadata-grid">
+            <div class="metadata-group">
+                <h3>Generated Workload</h3>
+                <dl>
+                    <dt>Seed</dt><dd>${m.workload?.seed ?? '—'}</dd>
+                    <dt>Fingerprint</dt><dd>${m.workload?.fingerprint || '—'}</dd>
+                    <dt>Modules</dt><dd>${m.workload?.moduleCount ?? '—'} total (${m.workload?.modulesByLayer?.core ?? '—'} core, ${m.workload?.modulesByLayer?.features ?? '—'} feature, ${m.workload?.modulesByLayer?.app ?? '—'} app)</dd>
+                    <dt>Dependency edges</dt><dd>${m.workload?.dependencyEdgeCount ?? '—'}</dd>
+                    <dt>Contributions</dt><dd>${m.workload?.contributionCount ?? '—'} total (${m.workload?.contributionsByKind?.binding ?? '—'} bindings, ${m.workload?.contributionsByKind?.plugin ?? '—'} plugins, ${m.workload?.contributionsByKind?.initializer ?? '—'} initializers)</dd>
+                    <dt>Subcomponents</dt><dd>${m.workload?.subcomponents?.total ?? '—'} total (L1 ${m.workload?.subcomponents?.l1 ?? '—'}, L2/L1 ${m.workload?.subcomponents?.l2PerL1 ?? '—'}, L3/L2 ${m.workload?.subcomponents?.l3PerL2 ?? '—'})</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Library Versions</h3>
+                <dl>
+                    <dt>Metro</dt><dd>${displayMetroVersion(m.versions?.metro)}</dd>
+                    <dt>Kotlin</dt><dd>${m.versions?.kotlin || '—'}</dd>
+                    <dt>Dagger</dt><dd>${m.versions?.dagger || '—'}</dd>
+                    <dt>KSP</dt><dd>${m.versions?.ksp || '—'}</dd>
+                    <dt>kotlin-inject</dt><dd>${m.versions?.kotlinInject || '—'}</dd>
+                    <dt>Anvil</dt><dd>${m.versions?.anvil || '—'}</dd>
+                    <dt>kotlin-inject-anvil</dt><dd>${m.versions?.kotlinInjectAnvil || '—'}</dd>
+                    <dt>Koin</dt><dd>${m.versions?.koin || '—'}</dd>
+                    <dt>Koin Compiler</dt><dd>${m.versions?.koinCompiler || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Build Tools</h3>
+                <dl>
+                    <dt>Gradle</dt><dd>${m.build?.gradle || '—'}</dd>
+                    <dt>Gradle Profiler</dt><dd>${m.build?.gradleProfiler || '—'}</dd>
+                    <dt>JDK</dt><dd>${m.build?.jdk || '—'}</dd>
+                    <dt>JVM Target</dt><dd>${m.build?.jvmTarget || '—'}</dd>
+                    <dt>Kotlin Compiler Execution</dt><dd>${m.build?.kotlinCompilerExecutionStrategy || '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>System</h3>
+                <dl>
+                    <dt>OS</dt><dd>${m.system?.os || '—'}</dd>
+                    <dt>CPU</dt><dd>${m.system?.cpu || '—'}</dd>
+                    <dt>RAM</dt><dd>${m.system?.ram || '—'}</dd>
+                    <dt>Daemon JVM Args</dt><dd>${m.system?.daemonJvmArgs || '—'}</dd>
+                    <dt>JVM Args Source</dt><dd>${m.system?.daemonJvmArgsSource || '—'}</dd>
+                    <dt>Gradle User Home</dt><dd>${m.system?.gradleUserHome || '—'}</dd>
+                    <dt>Minimum CPU Idle</dt><dd>${m.system?.minimumIdleCpuPercent ?? '—'}%</dd>
+                    <dt>Stable Idle Samples</dt><dd>${m.system?.idleSamplesRequired ?? '—'}</dd>
+                    <dt>Iteration Cooldown</dt><dd>${m.system?.cooldownSeconds ?? '—'} seconds</dd>
+                    <dt>Incremental Warmups</dt><dd>${m.stability?.incrementalWarmups ?? '—'}</dd>
+                    <dt>Graph Processing Warmups</dt><dd>${m.stability?.graphProcessingWarmups ?? '—'}</dd>
+                    <dt>Measured Samples</dt><dd>${m.stability?.measuredSamples ?? '—'}</dd>
+                    <dt>Maximum Relative MAD</dt><dd>${m.stability?.maxRelativeMadPercent ?? '—'}%</dd>
+                    <dt>Maximum Half-Run Drift</dt><dd>${m.stability?.maxHalfDriftPercent ?? '—'}%</dd>
+                    <dt>Outlier Threshold</dt><dd>${m.stability?.outlierThresholdPercent ?? '—'}%</dd>
+                    <dt>Maximum Outlier Count</dt><dd>${m.stability?.maxOutlierCount ?? '—'}</dd>
+                    <dt>Outliers Discarded</dt><dd>${m.stability?.outliersDiscarded === false ? 'No' : '—'}</dd>
+                </dl>
+            </div>
+            <div class="metadata-group">
+                <h3>Dagger Options (KSP and KAPT)</h3>
+                <dl>
+                    <dt>mapMultibindingDuplicateDetectionFix</dt><dd>${m.daggerOptions?.mapMultibindingDuplicateDetectionFix || '—'}</dd>
+                    <dt>useBindingGraphFix</dt><dd>${m.daggerOptions?.useBindingGraphFix || '—'}</dd>
+                    <dt>ignoreProvisionKeyWildcards</dt><dd>${m.daggerOptions?.ignoreProvisionKeyWildcards || '—'}</dd>
+                    <dt>validateTransitiveComponentDependencies</dt><dd>${m.daggerOptions?.validateTransitiveComponentDependencies || '—'}</dd>
+                    <dt>strictSuperficialValidation</dt><dd>${m.daggerOptions?.strictSuperficialValidation || '—'}</dd>
+                    <dt>fullBindingGraphValidation</dt><dd>${m.daggerOptions?.fullBindingGraphValidation || '—'}</dd>
+                    <dt>fastInit</dt><dd>${m.daggerOptions?.fastInit || '—'}</dd>
+                    <dt>providerMultibindings</dt><dd>${m.daggerOptions?.providerMultibindings ?? '—'}</dd>
+                </dl>
+            </div>
+        </div>`;
+}
+
+document.getElementById('date').textContent = new Date(benchmarkData.date).toLocaleString();
+renderRefsInfo(); renderVersions(); renderBenchmarks(); renderMetadata();
+</script>
+</body>
+</html>
