@@ -187,6 +187,26 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
 
+  fun testRequiredAccessorWinsWhenOptionalAccessorForSameKeyComesFirst() {
+    val result =
+      validate(
+        """
+
+        interface HttpClient
+
+        @DependencyGraph
+        interface AppGraph {
+          @OptionalBinding fun optionalHttpClient(): HttpClient = error("unused")
+          val requiredHttpClient: HttpClient
+        }
+        """
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "requiredHttpClient" in diagnostic.render())
+  }
+
   fun testHardCycleAbortsWithDependencyCycle() {
     val result =
       validate(

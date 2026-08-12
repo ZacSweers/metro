@@ -18,6 +18,7 @@ import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
+import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -108,7 +109,10 @@ internal class KaBindingGraph(
     for (consumer in graphConsumers) {
       // hasDefault is what makes the shared core treat an absent optional binding as not missing
       val contextKey = consumer.contextKey.withDefault(consumer.isOptional)
-      roots[contextKey] = KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName)
+      roots.putGraphRoot(
+        contextKey,
+        KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName),
+      )
     }
 
     val topology =

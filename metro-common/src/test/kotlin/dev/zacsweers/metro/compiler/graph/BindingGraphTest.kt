@@ -13,6 +13,34 @@ import org.junit.Test
 class BindingGraphTest : TraceScope by TraceScope.noop() {
 
   @Test
+  fun `required graph root replaces an optional root for the same key`() {
+    val typeKey = StringTypeKey("Missing")
+    val optional = StringContextualTypeKey.create(typeKey, hasDefault = true)
+    val required = StringContextualTypeKey.create(typeKey)
+    val roots = linkedMapOf<StringContextualTypeKey, String>()
+
+    roots.putGraphRoot(optional, "optional")
+    roots.putGraphRoot(required, "required")
+
+    assertThat(roots.keys.single()).isSameInstanceAs(required)
+    assertThat(roots.values.single()).isEqualTo("required")
+  }
+
+  @Test
+  fun `optional graph root does not replace a required root for the same key`() {
+    val typeKey = StringTypeKey("Missing")
+    val required = StringContextualTypeKey.create(typeKey)
+    val optional = StringContextualTypeKey.create(typeKey, hasDefault = true)
+    val roots = linkedMapOf<StringContextualTypeKey, String>()
+
+    roots.putGraphRoot(required, "required")
+    roots.putGraphRoot(optional, "optional")
+
+    assertThat(roots.keys.single()).isSameInstanceAs(required)
+    assertThat(roots.values.single()).isEqualTo("required")
+  }
+
+  @Test
   fun put() {
     val key = "key".typeKey
     val (graph) = buildGraph { binding("key") }

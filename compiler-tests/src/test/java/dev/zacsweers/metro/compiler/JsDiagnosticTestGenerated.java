@@ -740,6 +740,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("RequiredAccessorWinsOptionalAccessor.kt")
+      public void testRequiredAccessorWinsOptionalAccessor() {
+        run("RequiredAccessorWinsOptionalAccessor.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationResultsInMissingBindingMultiModule.kt")
       public void testRequiredAnnotationResultsInMissingBindingMultiModule() {
         run("RequiredAnnotationResultsInMissingBindingMultiModule.kt");

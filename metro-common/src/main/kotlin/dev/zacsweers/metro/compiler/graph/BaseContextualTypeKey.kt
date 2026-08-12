@@ -68,3 +68,28 @@ public interface BaseContextualTypeKey<
     useRelativeClassNames: Boolean = false,
   ): String
 }
+
+/**
+ * Records a graph root without allowing an optional request to weaken a required request for the
+ * same key. Contextual-key equality intentionally ignores [BaseContextualTypeKey.hasDefault], so a
+ * normal map update would otherwise retain whichever key object was inserted first.
+ */
+public fun <
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, TypeKey>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
+  Entry,
+> MutableMap<ContextualTypeKey, Entry>.putGraphRoot(
+  key: ContextualTypeKey,
+  entry: Entry,
+) {
+  val existingKey = keys.firstOrNull { it == key }
+  when {
+    existingKey == null -> put(key, entry)
+    existingKey.hasDefault && !key.hasDefault -> {
+      remove(existingKey)
+      put(key, entry)
+    }
+    existingKey.hasDefault == key.hasDefault -> put(key, entry)
+  }
+}
