@@ -3,6 +3,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.drewhamilton.poko.gradle.PokoFirIdeMode
 import dev.zacsweers.metro.gradle.RequiresIdeSupport
+import org.gradle.api.tasks.bundling.Zip
 
 // Bootstrap: add the Metro compiler plugin JAR to the buildscript classpath from Maven Central.
 // Buildscript resolution is NOT subject to project-level composite build dependency substitution,
@@ -151,6 +152,14 @@ val r8Libraries = configurations.dependencyScope("r8Libraries")
 val r8LibraryClasspath =
   configurations.resolvable("r8LibraryClasspath") { extendsFrom(r8Libraries) }
 
+val cremaFixtureRuntime = configurations.dependencyScope("cremaFixtureRuntime")
+
+val cremaFixtureRuntimeClasspath =
+  configurations.resolvable("cremaFixtureRuntimeClasspath") {
+    extendsFrom(cremaFixtureRuntime)
+    isTransitive = false
+  }
+
 configurations.named("compileOnly").configure { extendsFrom(embedded) }
 
 configurations.named("testImplementation").configure { extendsFrom(embedded) }
@@ -243,6 +252,20 @@ val shadowJar =
     }
   }
 
+tasks.register<Zip>("cremaFixture") {
+  group = "distribution"
+  description = "Bundles Metro's external compiler plugin fixture for Native Image testing."
+  archiveFileName.set("metro-crema-fixture.zip")
+  destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+
+  from(shadowJar.flatMap { it.archiveFile }) { rename { "metro-compiler.jar" } }
+  from(cremaFixtureRuntimeClasspath) { rename { "metro-runtime.jar" } }
+  from(layout.projectDirectory.dir("crema-fixture")) { exclude("run-smoke-test.sh") }
+  from(layout.projectDirectory.file("crema-fixture/run-smoke-test.sh")) {
+    filePermissions { unix("rwxr-xr-x") }
+  }
+}
+
 /**
  * The wire and poko plugin add their dependencies automatically. This is not needed because we can
  * either ignore or embed them so we remove them.
@@ -270,6 +293,10 @@ for (c in arrayOf("apiElements", "runtimeElements")) {
 dependencies {
   add(shadowR8.name, libs.r8)
   add(r8Libraries.name, libs.kotlin.stdlib)
+  add(
+    cremaFixtureRuntime.name,
+    project(path = ":runtime", configuration = "jvmRuntimeElements"),
+  )
 
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
