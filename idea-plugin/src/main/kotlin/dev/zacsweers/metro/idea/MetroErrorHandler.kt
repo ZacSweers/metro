@@ -10,13 +10,51 @@ import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.diagnostic.ErrorReportSubmitter
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent
 import com.intellij.openapi.diagnostic.SubmittedReportInfo
+import com.intellij.openapi.diagnostic.SubmittedReportInfo.SubmissionStatus
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.util.Consumer
 import java.awt.Component
 
-class MetroErrorHandler : ErrorReportSubmitter() {
-  private val bugsnag: Bugsnag? =
-    BUGSNAG_KEY.takeIf { it.isNotBlank() }
-      ?.let { key ->
+/** Transport behind IntelliJ's error-report contract, separated so completion is testable. */
+internal fun interface MetroErrorReporter {
+  fun report(event: IdeaLoggingEvent, throwable: Throwable, additionalInfo: String?)
+}
+
+class MetroErrorHandler internal constructor(private val reporter: MetroErrorReporter?) :
+  ErrorReportSubmitter() {
+
+  constructor() : this(createBugsnagReporter())
+
+  override fun getReportActionText(): String = "Send to Metro"
+
+  override fun submit(
+    events: Array<out IdeaLoggingEvent>,
+    additionalInfo: String?,
+    parentComponent: Component,
+    consumer: Consumer<in SubmittedReportInfo>,
+  ): Boolean {
+    val activeReporter = reporter ?: return false
+    return try {
+      for (event in events) {
+        val throwable =
+          (event.data as? AbstractMessage)?.throwable
+            ?: event.throwable
+            ?: RuntimeException(event.message)
+        activeReporter.report(event, throwable, additionalInfo)
+      }
+      consumer.consume(SubmittedReportInfo(null, null, SubmissionStatus.NEW_ISSUE))
+      true
+    } catch (e: Exception) {
+      logger<MetroErrorHandler>().warn("Could not send Metro error report", e)
+      consumer.consume(SubmittedReportInfo(null, e.message, SubmissionStatus.FAILED))
+      false
+    }
+  }
+
+  private companion object {
+    fun createBugsnagReporter(): MetroErrorReporter? {
+      val key = BUGSNAG_KEY.takeIf { it.isNotBlank() } ?: return null
+      val client =
         Bugsnag(key, false).apply {
           setAutoCaptureSessions(false)
           startSession()
@@ -37,31 +75,16 @@ class MetroErrorHandler : ErrorReportSubmitter() {
             true
           }
         }
-      }
-
-  override fun getReportActionText(): String = "Send to Metro"
-
-  override fun submit(
-    events: Array<out IdeaLoggingEvent>,
-    additionalInfo: String?,
-    parentComponent: Component,
-    consumer: Consumer<in SubmittedReportInfo>,
-  ): Boolean {
-    val client = bugsnag ?: return true
-    for (event in events) {
-      val throwable =
-        (event.data as? AbstractMessage)?.throwable
-          ?: event.throwable
-          ?: RuntimeException(event.message)
-      try {
-        Bugsnag.addThreadMetadata("Data", "message", event.message)
-        Bugsnag.addThreadMetadata("Data", "additional info", additionalInfo.orEmpty())
-        Bugsnag.addThreadMetadata("Data", "stacktrace", event.throwableText)
-        client.notify(throwable, Severity.ERROR)
-      } finally {
-        Bugsnag.clearThreadMetadata("Data")
+      return MetroErrorReporter { event, throwable, additionalInfo ->
+        try {
+          Bugsnag.addThreadMetadata("Data", "message", event.message)
+          Bugsnag.addThreadMetadata("Data", "additional info", additionalInfo.orEmpty())
+          Bugsnag.addThreadMetadata("Data", "stacktrace", event.throwableText)
+          client.notify(throwable, Severity.ERROR)
+        } finally {
+          Bugsnag.clearThreadMetadata("Data")
+        }
       }
     }
-    return true
   }
 }
