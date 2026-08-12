@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786488280674,
+  "lastUpdate": 1786569583655,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21112,6 +21112,62 @@ window.BENCHMARK_DATA = {
             "value": 18430.422,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.56%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bdb1ece6~1",
+          "message": "[before] Follow @Origin chains in IrContributionMerger (#26",
+          "timestamp": "2026-08-12T20:22:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bdb1ece68981ad0e115368c29728b47665dedea4"
+        },
+        "date": 1786569583655,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18737.538,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Eliezer Graber",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bdb1ece68981ad0e115368c29728b47665dedea4",
+          "message": "[after] Follow @Origin chains in IrContributionMerger (#26",
+          "timestamp": "2026-08-12T20:22:15Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bdb1ece68981ad0e115368c29728b47665dedea4"
+        },
+        "date": 1786569583656,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19523.044,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +4.19%"
           }
         ]
       }
