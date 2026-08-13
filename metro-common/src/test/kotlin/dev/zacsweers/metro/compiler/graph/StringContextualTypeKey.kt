@@ -43,7 +43,7 @@ private constructor(
     ): StringContextualTypeKey {
       val wrappedType = parseWrappedType(typeKey.type)
       return StringContextualTypeKey(
-        typeKey = StringTypeKey(wrappedType.canonicalType()),
+        typeKey = typeKey.copy(type = wrappedType.canonicalType()),
         wrappedType = wrappedType,
         hasDefault = hasDefault,
         rawType = rawType,
