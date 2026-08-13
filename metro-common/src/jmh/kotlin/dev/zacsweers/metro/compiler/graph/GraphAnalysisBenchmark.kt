@@ -40,7 +40,10 @@ open class GraphAnalysisBenchmark {
   private lateinit var keys: List<StringTypeKey>
   private lateinit var contextKeys: List<StringContextualTypeKey>
   private lateinit var bindings: List<StringBinding>
+  private lateinit var deferredBindings: List<StringBinding>
   private lateinit var bindingsByKey: Map<StringTypeKey, StringBinding>
+  private lateinit var deferredBindingsByKey: Map<StringTypeKey, StringBinding>
+  private lateinit var suspendSourceKeys: Set<StringTypeKey>
   private lateinit var roots: Map<StringContextualTypeKey, StringBindingStack.Entry>
   private lateinit var rootEntries: List<StringBindingStack.Entry>
   private lateinit var optionalRootEntries: List<StringBindingStack.Entry>
@@ -59,6 +62,20 @@ open class GraphAnalysisBenchmark {
       StringBinding(key, dependencyIndexes(index).map { contextKeys[it] })
     }
     bindingsByKey = bindings.associateBy { it.typeKey }
+    suspendSourceKeys = keys.filterIndexedTo(hashSetOf()) { index, _ -> index % 64 == 0 }
+    deferredBindings = keys.mapIndexed { index, key ->
+      StringBinding(
+        key,
+        dependencyIndexes(index).map { dependencyIndex ->
+          if (index % 8 == 0) {
+            StringContextualTypeKey.create(StringTypeKey("() -> Node$dependencyIndex"))
+          } else {
+            contextKeys[dependencyIndex]
+          }
+        },
+      )
+    }
+    deferredBindingsByKey = deferredBindings.associateBy { it.typeKey }
     roots = linkedMapOf(contextKeys.last() to rootEntries.last())
 
     contributionIds =
@@ -73,10 +90,11 @@ open class GraphAnalysisBenchmark {
   @Benchmark
   fun sealGraph(blackhole: Blackhole) {
     val graph = newGraph()
+    val stack = StringBindingStack("BenchmarkGraph")
     for (binding in bindings) {
-      graph.tryPut(binding)
+      graph.tryPut(binding, stack)
     }
-    val result = with(TraceScope.noop()) { graph.seal(roots = roots) }
+    val result = with(TraceScope.noop()) { graph.seal(roots = roots, shrinkUnusedBindings = false) }
     blackhole.consume(result)
   }
 
@@ -109,6 +127,13 @@ open class GraphAnalysisBenchmark {
   @Benchmark
   fun propagateSparseSuspendSources(blackhole: Blackhole) {
     blackhole.consume(newWorklist(hasSuspendSources = true).analyze(keys))
+  }
+
+  @Benchmark
+  fun propagateAcrossDeferredBoundaries(blackhole: Blackhole) {
+    blackhole.consume(
+      newWorklist(hasSuspendSources = true, useDeferredBoundaries = true).analyze(keys)
+    )
   }
 
   @Benchmark
@@ -149,17 +174,19 @@ open class GraphAnalysisBenchmark {
   }
 
   private fun newWorklist(
-    hasSuspendSources: Boolean
+    hasSuspendSources: Boolean,
+    useDeferredBoundaries: Boolean = false,
   ): SuspendBindingWorklist<String, StringTypeKey, StringContextualTypeKey, StringBinding> {
+    val indexedBindings = if (useDeferredBoundaries) deferredBindingsByKey else bindingsByKey
     val rules =
       SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, StringBinding>(
-        findBinding = bindingsByKey::get,
+        findBinding = indexedBindings::get,
         bindingCanPassThrough = { _, _ -> false },
       )
     return SuspendBindingWorklist(
-      findBinding = bindingsByKey::get,
+      findBinding = indexedBindings::get,
       bindingIsSuspend = { binding ->
-        hasSuspendSources && binding.typeKey.type.removePrefix("Node").toInt() % 64 == 0
+        hasSuspendSources && binding.typeKey in suspendSourceKeys
       },
       skipDependencyTraversal = { false },
       rules = rules,

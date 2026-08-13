@@ -75,4 +75,7 @@ jmh {
   iterations = 10
   fork = 2
   resultFormat = "JSON"
+  if (providers.gradleProperty("metro.jmh.profileGc").isPresent) {
+    profilers.add("gc")
+  }
 }
