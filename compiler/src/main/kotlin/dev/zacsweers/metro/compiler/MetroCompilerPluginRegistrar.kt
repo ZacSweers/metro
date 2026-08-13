@@ -42,14 +42,23 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
     get() = true
 
   override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-    val options = MetroOptions.load(configuration)
+    val enabled = configuration.metroOptionValue(MetroOption.ENABLED).expectAs<Boolean>()
+    if (!enabled) return
 
-    if (!options.enabled) return
+    val compilerVersion =
+      configuration
+        .metroOptionValue(MetroOption.COMPILER_VERSION)
+        .expectAs<String>()
+        .takeUnless(String::isBlank)
+    val compilerVersionAliases =
+      configuration
+        .metroOptionValue(MetroOption.COMPILER_VERSION_ALIASES)
+        .expectAs<Map<String, String>>()
 
     val version =
-      options.compilerVersion?.let(::KotlinToolingVersion)
+      compilerVersion?.let(::KotlinToolingVersion)
         ?: CompatContext.Factory.loadCompilerVersionOrNull()?.let { rawVersion ->
-          CompilerVersionAliases.map(rawVersion, options.compilerVersionAliases)
+          CompilerVersionAliases.map(rawVersion, compilerVersionAliases)
             ?: run {
               System.err.println(
                 "[METRO] Skipping enabling Metro extensions in IDE. " +
@@ -59,6 +68,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             }
         }
 
+    val options = MetroOptions.load(configuration, version, isIde)
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
 
     if (!enableFir) {

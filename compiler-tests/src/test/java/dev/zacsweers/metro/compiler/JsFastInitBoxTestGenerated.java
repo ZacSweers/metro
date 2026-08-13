@@ -2166,6 +2166,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("DaggerInteropDeeplyNestedClassNameExceedsFileLengthLimit.kt")
+      public void testDaggerInteropDeeplyNestedClassNameExceedsFileLengthLimit() {
+        run("DaggerInteropDeeplyNestedClassNameExceedsFileLengthLimit.kt");
+      }
+
+      @Test
       @TestMetadata("GenericMemberInjection.kt")
       public void testGenericMemberInjection() {
         run("GenericMemberInjection.kt");
