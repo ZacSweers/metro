@@ -69,11 +69,7 @@ plugins:
   - search
   # Versioned Metro docs site for each release
   # https://github.com/squidfunk/mike (Zensical fork)
-  # Workaround for https://github.com/squidfunk/mike/issues/4
-  # `canonical_version: null` works around a zensical bug where the mike plugin
-  # defaults aren't merged when the plugin is listed without explicit config.
-  - mike:
-      canonical_version: null
+  - mike
   # https://github.com/sondregronas/mkdocs-callouts
   - callouts
   # Last update date in the footer of each page
