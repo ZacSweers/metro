@@ -22,7 +22,6 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
-import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
@@ -41,18 +40,14 @@ import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import java.awt.event.MouseEvent
 import javax.swing.Icon
-import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
-import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtTypeReference
-import org.jetbrains.kotlin.psi.KtUserType
 
 private val BINDING_OPTION =
   GutterIconDescriptor.Option("metro.provider", "Metro binding", MetroIcons.PROVIDER)
@@ -147,7 +142,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val typeReference =
       (declaration as? KtNamedFunction)?.valueParameters?.singleOrNull()?.typeReference
     val targetName = typeReference?.text ?: "target"
-    val targets = injectedMembersOf(typeReference)
+    val targets = entries.mapNotNull { it.injectedMemberPointer }.distinct()
     val tooltip = buildString {
       append("Metro injector: injects ")
       append(entries.size)
@@ -177,29 +172,6 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       emptyText = "No injected members found in $targetName",
       targets = targets,
     )
-  }
-
-  /** The `@Inject`-annotated member declarations of the class behind [typeReference]. */
-  private fun injectedMembersOf(
-    typeReference: KtTypeReference?
-  ): List<SmartPsiElementPointer<out PsiElement>> {
-    val reference =
-      (typeReference?.typeElement as? KtUserType)?.referenceExpression?.mainReference
-        ?: return emptyList()
-    // Platform flows (and tests) compute markers on the EDT; background passes are the norm
-    val targetClass =
-      allowAnalysisOnEdt { reference.resolve() } as? KtClassOrObject ?: return emptyList()
-    val injectShortNames =
-      targetClass.metroIdeState().options.allInjectAnnotations.mapTo(mutableSetOf()) {
-        it.shortClassName.asString()
-      }
-    val pointerManager = SmartPointerManager.getInstance(targetClass.project)
-    return targetClass.declarations
-      .filter { member ->
-        member !is KtClassOrObject &&
-          member.annotationEntries.any { it.shortName?.asString() in injectShortNames }
-      }
-      .map { pointerManager.createSmartPsiElementPointer<PsiElement>(it) }
   }
 
   private fun bindingMarker(

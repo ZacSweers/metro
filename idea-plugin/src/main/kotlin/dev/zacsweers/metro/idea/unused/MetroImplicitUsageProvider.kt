@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.unused
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
@@ -145,10 +146,14 @@ private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Bool
   // PSI/UAST reference resolution can fail for library annotations outside JVM contexts (like
   // klib-backed annotations in KMP common source sets); the Analysis API is authoritative.
   val typeReference = typeReference ?: return false
-  return allowAnalysisOnEdt {
+  val application = ApplicationManager.getApplication()
+  if (application.isDispatchThread && !application.isUnitTestMode) return false
+
+  val resolve = {
     analyze(typeReference) {
       val classId = (typeReference.type.fullyExpandedType as? KaClassType)?.classId
       classId != null && classId in classIds
     }
   }
+  return if (application.isDispatchThread) allowAnalysisOnEdt(resolve) else resolve()
 }
