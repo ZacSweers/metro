@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786597350400,
+  "lastUpdate": 1786645743967,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21280,6 +21280,62 @@ window.BENCHMARK_DATA = {
             "value": 10748.57,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.55%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mitch Ware",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mitch Ware",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "feb5ae4d~1",
+          "message": "[before] Fix IC issue with graph extension member changes (",
+          "timestamp": "2026-08-13T17:31:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/feb5ae4dd512fcccb619e2042d379a8dab60f09c"
+        },
+        "date": 1786645743967,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19850.416,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Mitch Ware",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Mitch Ware",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "feb5ae4dd512fcccb619e2042d379a8dab60f09c",
+          "message": "[after] Fix IC issue with graph extension member changes (",
+          "timestamp": "2026-08-13T17:31:26Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/feb5ae4dd512fcccb619e2042d379a8dab60f09c"
+        },
+        "date": 1786645743968,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18423.05,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.19%"
           }
         ]
       }
