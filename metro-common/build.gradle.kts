@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.kotlin.plugin.serialization)
   alias(libs.plugins.poko)
+  alias(libs.plugins.jmh)
   id("metro.publish")
 }
 
@@ -48,4 +49,30 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation(libs.truth)
+
+  jmh(libs.kotlin.compiler)
+  jmh(libs.androidx.collection)
+  jmh(libs.androidx.tracing)
+  jmh(libs.poko.annotations)
+}
+
+// The benchmark needs the small graph models already used by unit tests, not the test suites.
+val graphBenchmarkFixtures =
+  fileTree("src/test/kotlin") {
+    include("**/StringTypeKey.kt")
+    include("**/StringContextualTypeKey.kt")
+    include("**/StringBinding.kt")
+    include("**/StringBindingStack.kt")
+    include("**/StringGraph.kt")
+  }
+
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileJmhKotlin") {
+  source(graphBenchmarkFixtures)
+}
+
+jmh {
+  warmupIterations = 4
+  iterations = 10
+  fork = 2
+  resultFormat = "JSON"
 }

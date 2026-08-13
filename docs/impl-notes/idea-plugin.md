@@ -14,6 +14,16 @@ The compiler and plugin reuse graph population, sorting, cycle detection, diagno
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
 
+The shared graph algorithms also have a standalone JMH stress benchmark:
+
+```shell
+./gradlew :metro-common:jmh --quiet
+```
+
+It exercises graph sealing, root insertion, suspend propagation, and contribution merging with
+100, 1,000, and 10,000 bindings. The benchmark reuses the shared graph tests' lightweight string
+models, so it needs neither a running IDE nor a generated application project.
+
 ## Layers
 
 Data flows in one direction:
