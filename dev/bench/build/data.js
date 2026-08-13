@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786577904453,
+  "lastUpdate": 1786597350400,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21224,6 +21224,62 @@ window.BENCHMARK_DATA = {
             "value": 18056.670000000002,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -6.07%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d2c9a920~1",
+          "message": "[before] Move FIR hint gen logic to compiler (#2657)",
+          "timestamp": "2026-08-13T04:16:20Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d2c9a920a0632e7ce8f9678f8d9cb7b898a019b6"
+        },
+        "date": 1786597350400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 10584.953,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "d2c9a920a0632e7ce8f9678f8d9cb7b898a019b6",
+          "message": "[after] Move FIR hint gen logic to compiler (#2657)",
+          "timestamp": "2026-08-13T04:16:20Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/d2c9a920a0632e7ce8f9678f8d9cb7b898a019b6"
+        },
+        "date": 1786597350401,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 10748.57,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.55%"
           }
         ]
       }
