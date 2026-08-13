@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroSimpleFunction
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.linkDeclarationsInCompilation
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.reportCompat
@@ -56,6 +57,9 @@ internal class IrGraphExtensionGenerator(
     contributedAccessor: MetroSimpleFunction,
   ): IrClass {
     return generatedClassesCache.computeIfAbsent(CacheKey(typeKey, parentGraph.classIdOrFail)) {
+      val sourceGraph = typeKey.type.rawType()
+      linkDeclarationsInCompilation(parentGraph, sourceGraph)
+
       val sourceSamFunction =
         contributedAccessor.ir
           .overriddenSymbolsSequence()

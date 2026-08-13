@@ -9,6 +9,7 @@ Changelog
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 - **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
+- **[IC]** Regenerate parent graph implementations when graph extension members change during incremental compilation.
 
 ### Changes
 
@@ -22,6 +23,7 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@eygraber](https://github.com/eygraber)
+- [@erawhctim](https://github.com/erawhctim)
 
 1.4.1
 -----
