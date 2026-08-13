@@ -13,6 +13,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.flatMapToSet
+import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -23,8 +24,11 @@ import dev.zacsweers.metro.idea.model.KaGraphNode
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.scopeAnnotation
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
+import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
@@ -79,6 +83,7 @@ internal class LibraryIndexPostProcessor(
       ProgressManager.checkCanceled()
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
       for (hintFunction in KotlinTopLevelFunctionFqnNameIndex[hintFqName, project, allScope]) {
+        ProgressManager.checkCanceled()
         val virtualFile = hintFunction.containingFile.virtualFile ?: continue
         // Project-source contributions are already covered by the annotation sweeps; hints only
         // exist as generated declarations in binaries.
@@ -90,12 +95,10 @@ internal class LibraryIndexPostProcessor(
 
     val visibleModulesByHint = visibleModulesByHint(hints, useSites)
     for (hint in hints) {
+      ProgressManager.checkCanceled()
       val visibleModules = visibleModulesByHint.getValue(hint.function)
       if (visibleModules.isEmpty()) continue
-      val isNonPublic =
-        hint.function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
-          hint.function.hasModifier(KtTokens.PRIVATE_KEYWORD)
-      val hintAvailability = if (isNonPublic) HintAvailability(visibleModules) else null
+      val hintAvailability = if (hint.isNonPublic) HintAvailability(visibleModules) else null
       val context = useSites.getValue(visibleModules.first())
       processLibraryHint(hint.function, hint.scopeId, context, hintAvailability)
     }
@@ -154,7 +157,41 @@ internal class LibraryIndexPostProcessor(
         classSymbol.annotations
           .filter { it.classId in options.allContributesAnnotations }
           .flatMapToSet { classListArgument(it, "replaces") }
-      for (data in bindingData(ktClass, options)) {
+      val classBindings = bindingData(ktClass, options)
+      val originBindings =
+        if (originPsi != null && originPsi != ktClass) bindingData(originPsi, options)
+        else emptyList()
+      val originSymbol =
+        if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
+        else classSymbol
+      val fallbackContributionRank =
+        originSymbol
+          ?.annotations
+          ?.asSequence()
+          ?.filter { it.classId in options.contributesBindingAnnotations }
+          ?.filter { scopeId in annotationScopeKeys(it) }
+          ?.mapNotNull { annotation ->
+            val value =
+              annotation.arguments
+                .firstOrNull { it.name.asString() == "rank" }
+                ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value }
+            when (value) {
+              is Long -> value
+              is Int -> value.toLong()
+              else -> null
+            }
+          }
+          ?.singleOrNull()
+      // Explicit generated @Binds members are authoritative when a binary origin has multiple
+      // supertypes and its contribution annotation's bound-type argument cannot be recovered.
+      // A single scope-matched rank still belongs to those aliases even without class BindingData.
+      val rankedContributions =
+        (classBindings + originBindings).filter { contribution ->
+          contribution.kind == BindingData.Kind.ALIAS &&
+            contribution.isClassContribution &&
+            contribution.contributionRank != Long.MIN_VALUE
+        }
+      for (data in classBindings) {
         bindings +=
           data.toKaBinding(
             ptr(ktClass),
@@ -170,8 +207,20 @@ internal class LibraryIndexPostProcessor(
       // MetroContribution interfaces with @Binds members.
       val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()
       for (holder in memberHolders) {
+        ProgressManager.checkCanceled()
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
           for (data in bindingData(member, options)) {
+            val matchingContribution = rankedContributions.firstOrNull { contribution ->
+              contribution.key == data.key && scopeId in contribution.contributionScopes
+            }
+            val inheritedRank =
+              when {
+                matchingContribution != null -> matchingContribution.contributionRank
+                fallbackContributionRank != null -> fallbackContributionRank
+                else -> data.contributionRank
+              }
+            val isRankedClassContribution =
+              matchingContribution != null || fallbackContributionRank != null
             bindings +=
               data.toKaBinding(
                 ptr(member),
@@ -180,6 +229,8 @@ internal class LibraryIndexPostProcessor(
                   data.implementationName ?: originClassId?.shortClassName?.asString(),
                 replaces = classReplaces,
                 contributionScopes = setOf(scopeId),
+                contributionRank = inheritedRank,
+                isClassContribution = isRankedClassContribution || data.isClassContribution,
                 hintAvailability = hintAvailability,
               )
           }
@@ -188,15 +239,35 @@ internal class LibraryIndexPostProcessor(
     }
   }
 
-  /** Modules from which Kotlin considers each [LibraryHint] visible. */
-  @OptIn(KaExperimentalApi::class)
+  /**
+   * Modules from which Kotlin considers each [LibraryHint] visible.
+   *
+   * Public hints need only one module whose classpath contains the declaration. Internal/private
+   * hints retain their complete use-site visibility sets so friend and source-set rules remain
+   * authoritative, but unrelated module/hint pairs never enter an Analysis API session.
+   */
+  @OptIn(KaExperimentalApi::class, KaPlatformInterface::class)
   private fun visibleModulesByHint(
     hints: List<LibraryHint>,
     useSites: Map<KaModule, KtElement>,
   ): Map<KtNamedFunction, Set<KaModule>> {
     val result = hints.associateTo(linkedMapOf()) { it.function to linkedSetOf<KaModule>() }
+    val pendingPublic = hints.filterTo(linkedSetOf()) { !it.isNonPublic }
+    val nonPublic = hints.filter { it.isNonPublic }
     for ((module, useSite) in useSites) {
       ProgressManager.checkCanceled()
+      val resolutionScope = KaResolutionScope.forModule(module)
+      val publicIterator = pendingPublic.iterator()
+      while (publicIterator.hasNext()) {
+        ProgressManager.checkCanceled()
+        val hint = publicIterator.next()
+        if (!resolutionScope.contains(hint.function)) continue
+        result.getValue(hint.function) += module
+        publicIterator.remove()
+      }
+
+      val candidates = nonPublic.filter { resolutionScope.contains(it.function) }
+      if (candidates.isEmpty()) continue
       analyze(useSite) {
         val checker =
           createUseSiteVisibilityChecker(
@@ -204,7 +275,8 @@ internal class LibraryIndexPostProcessor(
             receiverExpression = null,
             position = useSite,
           )
-        for (hint in hints) {
+        for (hint in candidates) {
+          ProgressManager.checkCanceled()
           val hintSymbol = hint.function.symbol as? KaNamedFunctionSymbol ?: continue
           if (checker.isVisible(hintSymbol)) {
             result.getValue(hint.function) += module
@@ -224,6 +296,7 @@ internal class LibraryIndexPostProcessor(
   private fun resolveLibraryInjectBindings() {
     val queue = ArrayDeque<LibraryInjectRequest>()
     for (consumer in consumers) {
+      ProgressManager.checkCanceled()
       val classId = consumer.typeClassId ?: continue
       if (consumer.multibindingId != null || consumer.key.qualifier != null) continue
       val context = consumer.pointer.element ?: continue
@@ -272,6 +345,7 @@ internal class LibraryIndexPostProcessor(
               classSymbol.name.asString(),
               constructorDependencies = constructorDependencies,
               memberDependencies = memberDependencies,
+              memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol),
             ),
           )
         }
@@ -305,5 +379,9 @@ internal class LibraryIndexPostProcessor(
     val binding: KaBinding.ConstructorInjected,
   )
 
-  private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction)
+  private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction) {
+    val isNonPublic: Boolean =
+      function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
+        function.hasModifier(KtTokens.PRIVATE_KEYWORD)
+  }
 }

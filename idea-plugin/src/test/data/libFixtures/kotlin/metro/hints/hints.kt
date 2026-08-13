@@ -14,6 +14,8 @@ import libtest.LibContainedImplContributions
 import libtest.LibDualImplContributions
 import libtest.LibExplicitImpl
 import libtest.LibHiddenImpl
+import libtest.LibHigherRankedService
+import libtest.LibLowerRankedService
 import libtest.LibServiceImpl
 
 fun dev_zacsweers_metro_AppScope(contributed: LibServiceImpl) {}
@@ -21,6 +23,10 @@ fun dev_zacsweers_metro_AppScope(contributed: LibServiceImpl) {}
 fun dev_zacsweers_metro_AppScope(contributed: LibAnalyticsImpl) {}
 
 fun dev_zacsweers_metro_AppScope(contributed: LibExplicitImpl) {}
+
+fun dev_zacsweers_metro_AppScope(contributed: LibLowerRankedService) {}
+
+fun dev_zacsweers_metro_AppScope(contributed: LibHigherRankedService) {}
 
 fun dev_zacsweers_metro_AppScope(contributed: LibContainedImplContributions.ToAppScope) {}
 

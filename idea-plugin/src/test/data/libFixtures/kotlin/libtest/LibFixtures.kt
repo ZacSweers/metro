@@ -11,9 +11,11 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Origin
 import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.internal.MetroContribution
+import kotlin.reflect.KClass
 
 interface LibJson
 
@@ -27,6 +29,9 @@ interface LibBaseGraph {
 interface LibService
 
 interface LibAnalytics
+
+/** Exercises annotation defaults when the qualifier declaration is only available as a binary. */
+@Qualifier annotation class LibEndpoint(val name: String = "main", val version: Int = 1)
 
 /** Resolvable on demand as a constructor-injected library class. */
 @Inject @SingleIn(AppScope::class) class LibHttpClient
@@ -44,6 +49,27 @@ interface LibAnalytics
 interface LibExplicit
 
 interface LibMarker
+
+/** Mirrors Anvil's rank-bearing contribution annotation in compiled dependency metadata. */
+annotation class LibRankedBinding(val scope: KClass<*>, val rank: Int)
+
+interface LibRankedService
+
+@Inject
+@LibRankedBinding(AppScope::class, rank = 50)
+class LibLowerRankedService : LibRankedService, LibMarker {
+  interface MetroContributionToAppScope {
+    @Binds val LibLowerRankedService.bindLibRankedService: LibRankedService
+  }
+}
+
+@Inject
+@LibRankedBinding(AppScope::class, rank = 100)
+class LibHigherRankedService : LibRankedService, LibMarker {
+  interface MetroContributionToAppScope {
+    @Binds val LibHigherRankedService.bindLibRankedService: LibRankedService
+  }
+}
 
 @Inject
 @ContributesBinding(AppScope::class, binding = binding<LibExplicit>())
