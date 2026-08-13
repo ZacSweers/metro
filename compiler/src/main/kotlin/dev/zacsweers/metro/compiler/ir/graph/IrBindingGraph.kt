@@ -21,13 +21,13 @@ import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
-import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -39,10 +39,12 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.MISSING_RUNTIME_COROUTINES_MESSAGE
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
+import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.originContextOrNull
@@ -133,7 +135,9 @@ internal class IrBindingGraph(
     typeKey in transitivelySuspendKeys
 
   internal fun dependencyRequiresSuspend(contextKey: IrContextualTypeKey): Boolean {
-    return suspendBindingRules.propagates(contextKey, ::isTransitivelySuspend)
+    if (!isTransitivelySuspend(contextKey.typeKey) || contextKey.isDeferrable) return false
+    val binding = realGraph.bindings[contextKey.typeKey] as? IrBinding.GraphDependency
+    return binding?.canPassThrough(contextKey) != true
   }
 
   private fun recordRuntimeCoroutinesUse(contextKey: IrContextualTypeKey) {
@@ -294,14 +298,6 @@ internal class IrBindingGraph(
       errorReporter = this,
       missingBindingHints = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
-    )
-
-  private val suspendBindingRules =
-    SuspendBindingRules<IrType, IrTypeKey, IrContextualTypeKey, IrBinding>(
-      findBinding = realGraph.bindings::get,
-      bindingCanPassThrough = { binding, dependency ->
-        binding is IrBinding.GraphDependency && binding.canPassThrough(dependency)
-      },
     )
 
   private fun findSuspendCycleKey(
@@ -485,6 +481,8 @@ internal class IrBindingGraph(
     val sortedKeys = topologyResult.sortedKeys
     val deferredTypes = topologyResult.deferredTypes
     val reachableKeys = topologyResult.reachableKeys
+
+    validateRuntimeCoroutinesAvailability()
 
     if (hasErrors) {
       // Flush any collected errors before returning
@@ -1080,12 +1078,71 @@ internal class IrBindingGraph(
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
+    val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
+    var hasDirectSuspendBinding = false
+    var hasDisabledSuspendProviderUse = false
     bindings.forEachValue { binding ->
+      if (suspendProvidersEnabled) {
+        if (binding.isSuspend) {
+          hasDirectSuspendBinding = true
+        }
+      } else {
+        // Injected functions store generated provider parameters. Check their source parameters
+        // instead so an upstream module cannot hide disabled suspend-provider use.
+        val hasSyntheticInjectedFunctionDependencies =
+          binding is IrBinding.ConstructorInjected && binding.type.injectedFunctionOrNull() != null
+        val bindingUsesSuspendWrapper =
+          binding.containsSuspendWrapperUse() ||
+            binding.contextualTypeKey.wrappedType.containsSuspendWrapper()
+        val dependencyUsesSuspendWrapper =
+          !hasSyntheticInjectedFunctionDependencies &&
+            binding.dependencies.any { it.wrappedType.containsSuspendWrapper() }
+        if (binding.isSuspend || bindingUsesSuspendWrapper || dependencyUsesSuspendWrapper) {
+          hasDisabledSuspendProviderUse = true
+        }
+      }
+      // Once a graph needs runtime-coroutines, skip further source-symbol lookups.
+      if (
+        !requiresRuntimeCoroutines &&
+          suspendProvidersEnabled &&
+          binding.typeKey in adjacency.forward
+      ) {
+        val hasSuspendLazyDependency =
+          binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
+            binding.dependencies.any { it.wrappedType.containsSuspendLazy() } ||
+            binding.injectedFunctionUsesSuspendLazy() ||
+            (binding is IrBinding.AssistedFactory &&
+              binding.targetBinding.dependencies.any { it.wrappedType.containsSuspendLazy() })
+        if (hasSuspendLazyDependency) {
+          requiresRuntimeCoroutines = true
+        }
+      }
       checkScope(binding, stack, diagnosticRoutes)
       validateMultibindings(binding, bindings, diagnosticRoutes)
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
-    validateSuspendBindings(bindings, roots, adjacency)
+    if (!suspendProvidersEnabled) {
+      for ((contextKey, metroFunction) in node.accessors) {
+        if (metroFunction.ir.isSuspend || contextKey.wrappedType.containsSuspendWrapper()) {
+          hasDisabledSuspendProviderUse = true
+        }
+      }
+      if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
+      return
+    }
+    if (hasDirectSuspendBinding) {
+      validateSuspendBindings(bindings, roots, adjacency)
+    }
+  }
+
+  private fun reportSuspendProvidersNotEnabled() {
+    // FIR reports local declarations. IR catches upstream declarations compiled with different
+    // options, so attach that error to the consuming graph.
+    reportError(
+      node.sourceGraph,
+      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] $SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE",
+      MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
+    )
   }
 
   private fun validateSuspendBindings(
@@ -1106,6 +1163,51 @@ internal class IrBindingGraph(
         .validate()
     transitivelySuspendKeys = validation.suspendKeys
     requiresRuntimeCoroutines = validation.requiresRuntimeCoroutines
+  }
+
+  private fun validateRuntimeCoroutinesAvailability() {
+    if (!requiresRuntimeCoroutines || coroutinesRuntimeAvailability.isAvailable) return
+    val tag = "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}]"
+    val trigger = describeRuntimeCoroutinesTrigger()
+    val message =
+      if (trigger == null) {
+        "$tag $MISSING_RUNTIME_COROUTINES_MESSAGE"
+      } else {
+        "$tag $trigger $MISSING_RUNTIME_COROUTINES_MESSAGE"
+      }
+    reportError(node.sourceGraph, message, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.factory)
+  }
+
+  /** Renders the runtime requirement only when the optional artifact is actually missing. */
+  private fun describeRuntimeCoroutinesTrigger(): String? {
+    val scopedSuspendKeys = mutableListOf<IrTypeKey>()
+    val suspendLazyKeys = mutableListOf<IrTypeKey>()
+    realGraph.bindings.forEachValue { binding ->
+      if (binding.isScoped() && binding.typeKey in transitivelySuspendKeys) {
+        scopedSuspendKeys += binding.typeKey
+      }
+      val requestsSuspendLazy =
+        binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
+          binding.dependencies.any { it.wrappedType.containsSuspendLazy() } ||
+          binding.injectedFunctionUsesSuspendLazy()
+      if (requestsSuspendLazy) {
+        suspendLazyKeys += binding.typeKey
+      }
+    }
+    for (accessor in node.accessors) {
+      if (accessor.contextKey.wrappedType.containsSuspendLazy()) {
+        suspendLazyKeys += accessor.contextKey.typeKey
+      }
+    }
+    if (scopedSuspendKeys.isNotEmpty()) {
+      val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
+      return "The scoped suspend binding `$key` caches its awaited value, which needs the optional runtime-coroutines artifact."
+    }
+    if (suspendLazyKeys.isNotEmpty()) {
+      val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
+      return "`$key` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact."
+    }
+    return null
   }
 
   private fun reportError(

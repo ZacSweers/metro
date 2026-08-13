@@ -38,15 +38,8 @@ public class SuspendBindingValidator<
       Binding,
       Request,
     > {
-    val allKeys = mutableSetOf<TypeKey>()
-    val metadataByKey = mutableMapOf<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>()
-    bindings.forEachValue { binding ->
-      allKeys += binding.typeKey
-      metadataByKey[binding.typeKey] = metadata(binding)
-    }
-
     if (!suspendProvidersEnabled) {
-      val issue = disabledFeatureIssue(metadataByKey)
+      val issue = disabledFeatureIssue()
       return SuspendBindingValidationResult(
         suspendKeys = emptySet(),
         issues = listOfNotNull(issue),
@@ -54,16 +47,21 @@ public class SuspendBindingValidator<
       )
     }
 
+    val allKeys = mutableSetOf<TypeKey>()
+    val metadataByKey = mutableMapOf<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>()
+    bindings.forEachValue { binding ->
+      allKeys += binding.typeKey
+      metadataByKey[binding.typeKey] = metadata(binding)
+    }
+
     val analysis = analyze(allKeys)
     val suspendKeys = analysis.suspendKeys
     val issues =
       mutableListOf<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>()
-    val consumersByKey = indexConsumers()
     val suspendMultibindings =
       validateMultibindings(
         analysis,
         metadataByKey,
-        consumersByKey,
         issues,
       )
     validateGraphRequests(analysis, suspendMultibindings, issues)
@@ -87,13 +85,13 @@ public class SuspendBindingValidator<
     return SuspendBindingValidationResult(suspendKeys, issues, runtimeRequirement.required)
   }
 
-  private fun disabledFeatureIssue(
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>
-  ): SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>? {
+  private fun disabledFeatureIssue():
+    SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>? {
     var bindingUse: Binding? = null
     bindings.forEachValue { binding ->
       if (bindingUse != null) return@forEachValue
-      val bindingMetadata = metadataByKey.getValue(binding.typeKey)
+      // Disabled graphs need only the first offending binding, not a project-wide metadata map.
+      val bindingMetadata = metadata(binding)
       val usesSuspendWrapper =
         binding.contextualTypeKey.wrappedType.containsSuspendWrapper() ||
           (bindingMetadata.inspectDependencySuspendWrappers &&
@@ -143,10 +141,10 @@ public class SuspendBindingValidator<
   private fun validateMultibindings(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
     metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
-    consumersByKey: Map<TypeKey, List<BindingDependency<Binding, ContextualTypeKey>>>,
     issues: MutableList<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>,
   ): Set<TypeKey> {
     val suspendMultibindings = mutableSetOf<TypeKey>()
+    var consumersByKey: Map<TypeKey, List<BindingDependency<Binding, ContextualTypeKey>>>? = null
     bindings.forEachValue { binding ->
       checkCanceled()
       val multibinding = metadataByKey.getValue(binding.typeKey).multibinding ?: return@forEachValue
@@ -164,7 +162,13 @@ public class SuspendBindingValidator<
         issues += multibindingIssue(binding, multibinding, request, firstSuspendElement, analysis)
       }
 
-      for ((consumer, dependency) in consumersByKey[binding.typeKey].orEmpty()) {
+      // Most graphs have no suspend multibindings, so avoid indexing every dependency edge.
+      var consumers = consumersByKey
+      if (consumers == null) {
+        consumers = indexConsumers()
+        consumersByKey = consumers
+      }
+      for ((consumer, dependency) in consumers[binding.typeKey].orEmpty()) {
         if (metadataByKey.getValue(consumer.typeKey).assistedFactory != null) continue
         if (rules.supportsSuspendMultibindingConsumption(multibinding.isSet, dependency)) continue
         issues +=
@@ -427,32 +431,46 @@ public class SuspendBindingValidator<
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
     metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
   ): RuntimeRequirement {
-    val scopedSuspendKeys = mutableListOf<TypeKey>()
-    val suspendLazyKeys = mutableListOf<TypeKey>()
+    var requiresScopedSuspendRuntime = false
+    var requiresSuspendLazyRuntime = false
+    val scopedSuspendKeys = if (runtimeCoroutinesAvailable) null else mutableListOf<TypeKey>()
+    val suspendLazyKeys = if (runtimeCoroutinesAvailable) null else mutableListOf<TypeKey>()
     bindings.forEachValue { binding ->
       val bindingMetadata = metadataByKey.getValue(binding.typeKey)
       if (!bindingMetadata.isReachable) return@forEachValue
       if (bindingMetadata.isScoped && binding.typeKey in analysis.suspendKeys) {
-        scopedSuspendKeys += binding.typeKey
+        requiresScopedSuspendRuntime = true
+        scopedSuspendKeys?.add(binding.typeKey)
       }
       val requestsSuspendLazy =
         bindingMetadata.hasAdditionalSuspendLazyUse ||
           binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
           binding.dependencies.any { it.wrappedType.containsSuspendLazy() }
-      if (requestsSuspendLazy) suspendLazyKeys += binding.typeKey
+      if (requestsSuspendLazy) {
+        requiresSuspendLazyRuntime = true
+        suspendLazyKeys?.add(binding.typeKey)
+      }
     }
     for (request in requests) {
       if (request.contextKey.wrappedType.containsSuspendLazy()) {
-        suspendLazyKeys += request.contextKey.typeKey
+        requiresSuspendLazyRuntime = true
+        suspendLazyKeys?.add(request.contextKey.typeKey)
       }
     }
     for (request in additionalRuntimeRequests) {
       if (request.wrappedType.containsSuspendLazy()) {
-        suspendLazyKeys += request.typeKey
+        requiresSuspendLazyRuntime = true
+        suspendLazyKeys?.add(request.typeKey)
       }
     }
 
-    if (scopedSuspendKeys.isNotEmpty()) {
+    val requiresRuntime =
+      runtimeCoroutinesAlreadyRequired || requiresScopedSuspendRuntime || requiresSuspendLazyRuntime
+    if (!requiresRuntime || runtimeCoroutinesAvailable) {
+      return RuntimeRequirement(requiresRuntime, trigger = null)
+    }
+
+    if (!scopedSuspendKeys.isNullOrEmpty()) {
       val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
       return RuntimeRequirement(
         required = true,
@@ -461,7 +479,7 @@ public class SuspendBindingValidator<
             "runtime-coroutines artifact. ",
       )
     }
-    if (suspendLazyKeys.isNotEmpty()) {
+    if (!suspendLazyKeys.isNullOrEmpty()) {
       val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
       return RuntimeRequirement(
         required = true,

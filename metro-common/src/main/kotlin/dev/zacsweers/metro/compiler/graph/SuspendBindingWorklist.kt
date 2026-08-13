@@ -58,8 +58,7 @@ public class SuspendBindingWorklist<
    * requests can add the same consumer more than once, but [markSuspend] makes those duplicates
    * harmless.
    */
-  private val reverseEdges =
-    mutableMapOf<TypeKey, MutableList<PropagationEdge<TypeKey, ContextualTypeKey>>>()
+  private val reverseEdges = mutableMapOf<TypeKey, MutableList<TypeKey>>()
 
   /**
    * Edges waiting for their dependency binding to resolve.
@@ -74,21 +73,10 @@ public class SuspendBindingWorklist<
   /** Keys already known to require suspend initialization. */
   private val suspendKeys = mutableSetOf<TypeKey>()
 
-  /** Bindings that directly provide their value from a suspend declaration. */
-  private val directSuspendKeys = mutableSetOf<TypeKey>()
-
-  /** The dependency edge that first caused each transitively suspend binding to be marked. */
-  private val suspendCauses = mutableMapOf<TypeKey, ContextualTypeKey>()
-
   /** Newly marked keys whose consumers still need to be visited. */
   private val newlySuspend = ArrayDeque<TypeKey>()
 
   private class PendingEdge<TypeKey, ContextualTypeKey>(
-    val consumer: TypeKey,
-    val dependency: ContextualTypeKey,
-  )
-
-  private class PropagationEdge<TypeKey, ContextualTypeKey>(
     val consumer: TypeKey,
     val dependency: ContextualTypeKey,
   )
@@ -112,16 +100,15 @@ public class SuspendBindingWorklist<
     return suspendKeys
   }
 
-  /** Runs the analysis and returns both suspend keys and stable paths to direct suspend sources. */
+  /** Runs the analysis and creates witness paths only when a diagnostic asks for one. */
   public fun analyzeWithPaths(
     keys: Iterable<TypeKey>
   ): SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey> {
     analyze(keys)
-    return SuspendBindingAnalysisResult(
-      suspendKeys.toSet(),
-      directSuspendKeys.toSet(),
-      suspendCauses.toMap(),
-    )
+    val snapshot = suspendKeys.toSet()
+    return SuspendBindingAnalysisResult(snapshot) { start, dependencyTypeKey ->
+      pathFrom(start, snapshot, dependencyTypeKey)
+    }
   }
 
   public fun isSuspend(key: TypeKey): Boolean = key in analyze(listOf(key))
@@ -145,9 +132,9 @@ public class SuspendBindingWorklist<
         if (rules.canPassThrough(depBinding, dependency)) {
           continue
         }
-        reverseEdges.getOrPut(depKey, ::mutableListOf) += PropagationEdge(key, dependency)
+        reverseEdges.getOrPut(depKey, ::mutableListOf) += key
         if (depKey in suspendKeys) {
-          markSuspend(key, dependency)
+          markSuspend(key)
         }
         if (depKey !in expandedKeys) {
           pending += depKey
@@ -169,7 +156,6 @@ public class SuspendBindingWorklist<
     unresolvedGenerations -= key
     discoveredBindings[key] = binding
     if (bindingIsSuspend(binding)) {
-      directSuspendKeys += key
       markSuspend(key)
     }
     // Classify edges that were waiting on this key's binding.
@@ -178,21 +164,17 @@ public class SuspendBindingWorklist<
         if (rules.canPassThrough(binding, edge.dependency)) {
           continue
         }
-        reverseEdges.getOrPut(key, ::mutableListOf) +=
-          PropagationEdge(edge.consumer, edge.dependency)
+        reverseEdges.getOrPut(key, ::mutableListOf) += edge.consumer
         if (key in suspendKeys) {
-          markSuspend(edge.consumer, edge.dependency)
+          markSuspend(edge.consumer)
         }
       }
     }
     return binding
   }
 
-  private fun markSuspend(key: TypeKey, cause: ContextualTypeKey? = null) {
+  private fun markSuspend(key: TypeKey) {
     if (suspendKeys.add(key)) {
-      if (cause != null) {
-        suspendCauses[key] = cause
-      }
       newlySuspend += key
     }
   }
@@ -200,10 +182,34 @@ public class SuspendBindingWorklist<
   private fun propagate() {
     while (newlySuspend.isNotEmpty()) {
       val key = newlySuspend.removeFirst()
-      for (edge in reverseEdges[key].orEmpty()) {
-        markSuspend(edge.consumer, edge.dependency)
+      for (consumer in reverseEdges[key].orEmpty()) {
+        markSuspend(consumer)
       }
     }
+  }
+
+  private fun pathFrom(
+    start: TypeKey,
+    snapshot: Set<TypeKey>,
+    dependencyTypeKey: (ContextualTypeKey) -> TypeKey,
+  ): SuspendBindingPath<TypeKey, ContextualTypeKey>? {
+    if (start !in snapshot) return null
+    val path = mutableListOf<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
+    val visited = mutableSetOf<TypeKey>()
+    var current = start
+    while (visited.add(current)) {
+      val binding = discoveredBindings[current] ?: return null
+      if (bindingIsSuspend(binding)) {
+        return SuspendBindingPath(start, path, current)
+      }
+      val dependency =
+        binding.dependencies.firstOrNull { candidate ->
+          dependencyTypeKey(candidate) in snapshot && !rules.stopsPropagation(candidate)
+        } ?: return null
+      path += SuspendBindingPathEdge(current, dependency)
+      current = dependencyTypeKey(dependency)
+    }
+    return null
   }
 }
 
@@ -217,8 +223,8 @@ public data class SuspendBindingPathEdge<TypeKey, ContextualTypeKey>(
 public class SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>
 internal constructor(
   public val suspendKeys: Set<TypeKey>,
-  private val directSuspendKeys: Set<TypeKey>,
-  private val suspendCauses: Map<TypeKey, ContextualTypeKey>,
+  private val findPath:
+    (TypeKey, (ContextualTypeKey) -> TypeKey) -> SuspendBindingPath<TypeKey, ContextualTypeKey>?,
 ) {
   /**
    * Returns a witness path from [start] to a directly suspend binding. Its edge list is empty when
@@ -229,19 +235,7 @@ internal constructor(
     start: TypeKey,
     dependencyTypeKey: (ContextualTypeKey) -> TypeKey,
   ): SuspendBindingPath<TypeKey, ContextualTypeKey>? {
-    if (start !in suspendKeys) return null
-    val path = mutableListOf<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
-    val visited = mutableSetOf<TypeKey>()
-    var current = start
-    while (visited.add(current)) {
-      if (current in directSuspendKeys) {
-        return SuspendBindingPath(start, path, current)
-      }
-      val dependency = suspendCauses[current] ?: return null
-      path += SuspendBindingPathEdge(current, dependency)
-      current = dependencyTypeKey(dependency)
-    }
-    return null
+    return findPath(start, dependencyTypeKey)
   }
 }
 

@@ -78,7 +78,8 @@ internal class IrSuspendBindingValidator(
           rules = analysis.rules,
           suspendProvidersEnabled = metroContext.options.enableSuspendProviders,
           functionProvidersEnabled = metroContext.options.enableFunctionProviders,
-          runtimeCoroutinesAvailable = metroContext.coroutinesRuntimeAvailability.isAvailable,
+          // The compiler checks this once after sealing, including graphs without suspend bindings.
+          runtimeCoroutinesAvailable = true,
           runtimeCoroutinesAlreadyRequired = runtimeCoroutinesAlreadyRequired,
           additionalRuntimeRequests = roots.keys,
         )
@@ -144,10 +145,6 @@ internal class IrSuspendBindingValidator(
       isSuspend = isSuspend,
       isReachable = isReachable,
       isScoped = isScoped(),
-      hasAdditionalSuspendWrapperUse = containsSuspendWrapperUse(),
-      inspectDependencySuspendWrappers =
-        this !is ConstructorInjected || type.injectedFunctionOrNull() == null,
-      hasAdditionalSuspendLazyUse = injectedFunctionUsesSuspendLazy(),
       multibinding = multibinding,
       memberInjections = memberInjections,
       assistedFactory = assistedFactory,
@@ -279,32 +276,6 @@ internal class IrSuspendBindingValidator(
     return result
   }
 
-  /** Checks source parameter metadata that may have been compiled with a different option value. */
-  private fun IrBinding.containsSuspendWrapperUse(): Boolean {
-    if (this is ConstructorInjected) {
-      val injectedFunction = type.injectedFunctionOrNull()?.owner
-      if (injectedFunction != null) {
-        return injectedFunction.parameters().nonDispatchParameters.any {
-          !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendWrapper()
-        }
-      }
-    }
-    val sourceParameters =
-      if (this is AssistedFactory) targetBinding.parameters.allParameters
-      else parameters.allParameters
-    return sourceParameters.any {
-      !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendWrapper()
-    }
-  }
-
-  private fun IrBinding.injectedFunctionUsesSuspendLazy(): Boolean {
-    val injectedClass = (this as? ConstructorInjected)?.type ?: return false
-    val injectedFunction = injectedClass.injectedFunctionOrNull()?.owner ?: return false
-    return injectedFunction.parameters().nonDispatchParameters.any {
-      !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendLazy()
-    }
-  }
-
   private fun suspendFunctionRender(typeRender: String): String {
     return if (metroContext.options.enableFunctionProviders) {
       "suspend () -> $typeRender"
@@ -315,6 +286,34 @@ internal class IrSuspendBindingValidator(
 
   private companion object {
     private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
+  }
+}
+
+/** Checks source parameter metadata that may have been compiled with a different option value. */
+context(context: IrMetroContext)
+internal fun IrBinding.containsSuspendWrapperUse(): Boolean {
+  if (this is ConstructorInjected) {
+    val injectedFunction = type.injectedFunctionOrNull()?.owner
+    if (injectedFunction != null) {
+      return injectedFunction.parameters().nonDispatchParameters.any {
+        !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendWrapper()
+      }
+    }
+  }
+  val sourceParameters =
+    if (this is AssistedFactory) targetBinding.parameters.allParameters
+    else parameters.allParameters
+  return sourceParameters.any {
+    !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendWrapper()
+  }
+}
+
+context(context: IrMetroContext)
+internal fun IrBinding.injectedFunctionUsesSuspendLazy(): Boolean {
+  val injectedClass = (this as? ConstructorInjected)?.type ?: return false
+  val injectedFunction = injectedClass.injectedFunctionOrNull()?.owner ?: return false
+  return injectedFunction.parameters().nonDispatchParameters.any {
+    !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendLazy()
   }
 }
 

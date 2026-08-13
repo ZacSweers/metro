@@ -77,6 +77,34 @@ class SuspendBindingValidatorTest {
   }
 
   @Test
+  fun `feature disabled validation stops metadata extraction after the first suspend binding`() {
+    val fixture = ValidationFixture(suspendProvidersEnabled = false)
+    fixture.put(
+      binding("Source", isSuspend = true),
+      binding("Unused", isSuspend = true),
+      binding("AnotherUnused", isSuspend = true),
+    )
+
+    val result = fixture.validate()
+
+    assertThat(result.issues.single().diagnosticId)
+      .isEqualTo(MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED)
+    assertThat(fixture.metadataCallCount).isEqualTo(1)
+    assertThat(fixture.analysisCallCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `feature disabled without suspend use never runs graph analysis`() {
+    val fixture = ValidationFixture(suspendProvidersEnabled = false)
+    fixture.put(binding("Source"), binding("Consumer", "Source"))
+
+    val result = fixture.validate(request("Consumer"))
+
+    assertThat(result.issues).isEmpty()
+    assertThat(fixture.analysisCallCount).isEqualTo(0)
+  }
+
+  @Test
   fun `suspend boundaries do not make their consumers invalid`() {
     val fixture = ValidationFixture(runtimeCoroutinesAvailable = true)
     fixture.put(binding("Source", isSuspend = true))
@@ -126,6 +154,11 @@ private class ValidationFixture(
   private val runtimeCoroutinesAvailable: Boolean = false,
 ) {
   private val bindings = MutableScatterMap<StringTypeKey, ValidationBinding>()
+  var metadataCallCount = 0
+    private set
+
+  var analysisCallCount = 0
+    private set
 
   fun put(vararg newBindings: ValidationBinding) {
     for (binding in newBindings) {
@@ -156,8 +189,14 @@ private class ValidationFixture(
     return SuspendBindingValidator(
         bindings = bindings,
         requests = requests.toList(),
-        metadata = { it.metadata },
-        analyze = analysis::analyzeWithPaths,
+        metadata = {
+          metadataCallCount++
+          it.metadata
+        },
+        analyze = { keys ->
+          analysisCallCount++
+          analysis.analyzeWithPaths(keys)
+        },
         rules = rules,
         suspendProvidersEnabled = suspendProvidersEnabled,
         functionProvidersEnabled = true,

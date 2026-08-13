@@ -15,6 +15,9 @@ Sharing must not slow down the compiler. Compiler contribution merging and FIR b
 keep their existing in-place paths where a generic IDE-friendly representation would allocate or
 scan more than the original compiler implementation.
 
+Graph roots retain the compiler's single map-write fast path. Suspend validation stays out of
+ordinary compilations and only builds diagnostic paths after suspend behavior actually needs them.
+
 Anvil contribution ranking uses the same inline selection helper in FIR, IR, and the IDE. Moving
 that small helper does not change compiler contribution scans, feature gates, or allocations.
 
@@ -30,6 +33,7 @@ The shared graph algorithms also have a standalone JMH stress benchmark:
 It exercises graph sealing, root insertion, suspend propagation, and contribution merging with
 100, 1,000, and 10,000 bindings. The benchmark reuses the shared graph tests' lightweight string
 models, so it needs neither a running IDE nor a generated application project.
+Add `-Pmetro.jmh.profileGc` to include allocation and garbage-collection measurements.
 
 ## Layers
 

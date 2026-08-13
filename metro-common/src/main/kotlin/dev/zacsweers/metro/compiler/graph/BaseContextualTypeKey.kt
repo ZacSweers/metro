@@ -78,18 +78,22 @@ public fun <
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, TypeKey>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
-  Entry,
+  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
 > MutableMap<ContextualTypeKey, Entry>.putGraphRoot(
   key: ContextualTypeKey,
   entry: Entry,
 ) {
-  val existingKey = keys.firstOrNull { it == key }
-  when {
-    existingKey == null -> put(key, entry)
-    existingKey.hasDefault && !key.hasDefault -> {
-      remove(existingKey)
-      put(key, entry)
-    }
-    existingKey.hasDefault == key.hasDefault -> put(key, entry)
+  // New roots use one map write, matching the compiler's original insertion cost.
+  val previous = put(key, entry) ?: return
+  val previousKey = previous.contextKey
+  if (previousKey.hasDefault == key.hasDefault) return
+
+  if (previousKey.hasDefault) {
+    // Updating an equal map key keeps the old key object, so replace the optional key itself.
+    remove(key)
+    put(key, entry)
+  } else {
+    // An optional request must not replace the existing required request or its source.
+    put(key, previous)
   }
 }
