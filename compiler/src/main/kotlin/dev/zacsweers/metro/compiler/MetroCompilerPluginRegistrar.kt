@@ -68,7 +68,7 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
             }
         }
 
-    val options = MetroOptions.load(configuration, version)
+    val options = MetroOptions.load(configuration, version, isIde)
     val enableFir = version != null || (isIde && options.forceEnableFirInIde)
 
     if (!enableFir) {

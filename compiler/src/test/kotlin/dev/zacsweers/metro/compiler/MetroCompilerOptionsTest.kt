@@ -3,12 +3,14 @@
 package dev.zacsweers.metro.compiler
 
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
-import org.jetbrains.kotlin.cli.create
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.junit.Test
 
 class MetroCompilerOptionsTest {
+
+  private val compatContext by lazy { CompatContext.create() }
 
   @Test
   fun `FIR contribution hint defaults follow compiler capabilities when option is absent`() {
@@ -17,6 +19,13 @@ class MetroCompilerOptionsTest {
     }
     for (version in listOf("2.3.10", "2.3.20-dev-6203")) {
       assertThat(loadOptions(version).generateContributionHintsInFir).isFalse()
+    }
+  }
+
+  @Test
+  fun `FIR contribution hints default to FIR in IDE mode`() {
+    for (version in listOf("2.3.20-ij253-87", "2.3.255-dev-255")) {
+      assertThat(loadOptions(version, isIde = true).generateContributionHintsInFir).isTrue()
     }
   }
 
@@ -44,6 +53,16 @@ class MetroCompilerOptionsTest {
       }
 
     assertThat(options.generateContributionHints).isFalse()
+    assertThat(options.generateContributionHintsInFir).isFalse()
+  }
+
+  @Test
+  fun `explicit FIR contribution hint option overrides IDE default`() {
+    val options =
+      loadOptions("2.3.20-ij253-87", isIde = true) {
+        MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.put(this, "false")
+      }
+
     assertThat(options.generateContributionHintsInFir).isFalse()
   }
 
@@ -82,11 +101,12 @@ class MetroCompilerOptionsTest {
 
   private fun loadOptions(
     compilerVersion: String,
+    isIde: Boolean = false,
     configure: CompilerConfiguration.() -> Unit = {},
   ): MetroOptions {
     val version = KotlinToolingVersion(compilerVersion)
-    val configuration = CompilerConfiguration.create().apply(configure)
-    return MetroOptions.load(configuration, version)
+    val configuration = createCompilerConfiguration().apply(configure)
+    return MetroOptions.load(configuration, version, isIde)
   }
 
   private fun validationErrors(
@@ -103,14 +123,18 @@ class MetroCompilerOptionsTest {
 
   private fun validationErrors(compilerVersion: String, options: MetroOptions): List<String> {
     val errors = mutableListOf<String>()
+    val configuration = createCompilerConfiguration()
 
     val valid =
-      options.validate(KotlinToolingVersion(compilerVersion), CompilerConfiguration.create()) {
-        error ->
+      options.validate(KotlinToolingVersion(compilerVersion), configuration) { error ->
         errors += error
       }
 
     assertThat(valid).isEqualTo(errors.isEmpty())
     return errors
+  }
+
+  private fun createCompilerConfiguration(): CompilerConfiguration {
+    return with(compatContext) { createCompilerConfigurationCompat() }
   }
 }

@@ -99,6 +99,10 @@ import org.jetbrains.kotlin.util.PrivateForInline
 
 public class CompatContextImpl : CompatContext {
 
+  override fun createCompilerConfigurationCompat(): CompilerConfiguration {
+    return CompilerConfiguration()
+  }
+
   override fun KtSourcelessDiagnosticFactory.createCompat(
     message: String,
     location: CompilerMessageSourceLocation?,

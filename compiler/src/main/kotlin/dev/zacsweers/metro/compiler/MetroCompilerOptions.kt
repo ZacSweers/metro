@@ -43,6 +43,7 @@ internal fun CompilerConfiguration.metroOptionValue(option: MetroOption): Any =
 internal fun MetroOptions.Companion.load(
   configuration: CompilerConfiguration,
   kotlinCompilerVersion: KotlinToolingVersion?,
+  isIde: Boolean,
 ): MetroOptions = buildOptions {
   for (entry in MetroOption.entries) {
     configuration[entry.raw.key]?.let { applyOptionValue(entry, it) }
@@ -52,7 +53,7 @@ internal fun MetroOptions.Companion.load(
     configuration[MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.key] != null
   val firHintsAreRequiredByDefault =
     generateContributionHints &&
-      kotlinCompilerVersion?.let(::kotlinVersionSupportsTopLevelFirGen) == true
+      (isIde || kotlinCompilerVersion?.let(::kotlinVersionSupportsTopLevelFirGen) == true)
   if (!firHintOptionIsConfigured && firHintsAreRequiredByDefault) {
     generateContributionHintsInFir = true
   }
