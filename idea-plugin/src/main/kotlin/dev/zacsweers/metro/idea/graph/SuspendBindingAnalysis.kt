@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.graph
 
+import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
 import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.SuspendBindingWorklist
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -28,4 +29,8 @@ internal class SuspendBindingAnalysis(findBinding: (KaTypeKey) -> KaBinding?) {
     )
 
   fun analyze(keys: Iterable<KaTypeKey>): Set<KaTypeKey> = worklist.analyze(keys)
+
+  fun analyzeWithPaths(
+    keys: Iterable<KaTypeKey>
+  ): SuspendBindingAnalysisResult<KaTypeKey, KaContextualTypeKey> = worklist.analyzeWithPaths(keys)
 }

@@ -115,7 +115,7 @@ The IDE adapter uses Metro's shared binding-graph implementation to report:
   boundaries, unsupported suspend multibindings, member injection, assisted factories, and a
   missing optional `runtime-coroutines` artifact.
 
-Suspend validation uses the same transitive propagation worklist and request-boundary policy as the compiler. It recognizes `suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` boundaries, and preserves exact wrapper pass-through from factory-included graph dependencies. Differential tests compare successful and failing suspend graphs with compiler reports.
+Suspend validation uses the same validator as the compiler, including transitive propagation, accessor boundaries, multibindings, wrapper restrictions, member injection, assisted factories, and runtime requirements. It recognizes `suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` boundaries, and preserves exact wrapper pass-through from factory-included graph dependencies. Differential tests compare successful and failing suspend graphs with compiler reports.
 
 The last result remains visible in the tool window and on the graph's gutter badge. Results are
 marked stale after relevant code changes until validation runs again. Unexpected plugin failures

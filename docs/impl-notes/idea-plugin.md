@@ -9,7 +9,7 @@ Give Metro users compiler-grade insight in the editor without running the compil
 - On-demand graph validation with compiler-aligned diagnostics.
 - Unused-declaration suppression for declarations only Metro-generated code calls.
 
-The compiler and plugin reuse the graph population, sorting, cycle detection, diagnostic models, and suspend propagation rules from `metro-common`. Validation that depends on frontend declarations still has separate IR and Analysis API adapters, with differential tests comparing IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.
+The compiler and plugin reuse graph population, sorting, cycle detection, diagnostic models, and graph-level suspend binding validation from `metro-common`. IR and Analysis API adapters only extract frontend-specific metadata, select source anchors, and render shared witness paths. Differential tests compare IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.
 
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
@@ -79,7 +79,7 @@ canonical-render equality), and declarations are held as `SmartPsiElementPointer
 
 ### Validation
 
-The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.compiler.graph.MutableBindingGraph`, diagnostics, suspend propagation, and request-boundary policy). The plugin adapts to it with classes named after their IR counterparts. Validation that needs frontend-specific declarations remains in the two adapters and must be covered by compiler/IDE parity fixtures.
+The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.compiler.graph.MutableBindingGraph`, diagnostics, and suspend propagation and validation). The plugin adapts to it with classes named after their IR counterparts. Frontend-specific declaration extraction, source anchors, and stack rendering remain in the two adapters and are covered by compiler/IDE parity fixtures.
 
 | IDE (`idea/graph/`) | Compiler (`ir/graph/`) |
 |---------------------|------------------------|
@@ -102,7 +102,7 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   across modules) and survive index invalidation flagged as stale rather than vanishing.
   `validateWithExtensions` seals extensions before their parents, mirroring the compiler's
   traversal.
-- `graph/SuspendBindingValidator.kt`: applies the shared suspend propagation and request-boundary policy to Analysis API bindings, then builds IDEA-specific source anchors and request traces. Suspend parity fixtures cover valid transitive/deferred paths and representative invalid accessor and wrapper paths.
+- `graph/SuspendBindingValidator.kt`: converts Analysis API bindings and graph requests to shared suspend-validation metadata, then turns shared issues and witness paths into navigable IDEA diagnostics. It contains no suspend validation policy. Suspend parity fixtures cover valid transitive/deferred paths and representative failures.
 
 Validation is strictly on demand. Nothing seals during index builds or highlighting passes.
 

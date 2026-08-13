@@ -299,7 +299,7 @@ internal class IndexBuilder(
         scope = scopeAnnotation(symbol, options),
         implementationName = name,
         originClassId = classId,
-        dependencies = dependencies,
+        constructorDependencies = dependencies,
       )
     for (parameter in function.valueParameters) {
       addParameterConsumer(parameter, originClassId = classId)

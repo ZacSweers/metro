@@ -270,7 +270,7 @@ internal class LibraryIndexPostProcessor(
               request.key,
               scopeAnnotation(classSymbol, options),
               classSymbol.name.asString(),
-              dependencies = constructorDependencies + memberDependencies,
+              constructorDependencies = constructorDependencies,
               memberDependencies = memberDependencies,
             ),
           )

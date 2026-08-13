@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.ir.graph
 
+import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
 import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.SuspendBindingWorklist
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
@@ -44,6 +45,10 @@ internal class SuspendBindingAnalysis(
     )
 
   fun analyze(keys: Iterable<IrTypeKey>): Set<IrTypeKey> = worklist.analyze(keys)
+
+  fun analyzeWithPaths(
+    keys: Iterable<IrTypeKey>
+  ): SuspendBindingAnalysisResult<IrTypeKey, IrContextualTypeKey> = worklist.analyzeWithPaths(keys)
 
   fun isSuspend(key: IrTypeKey): Boolean = worklist.isSuspend(key)
 }

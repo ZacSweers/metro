@@ -58,7 +58,7 @@ internal fun BindingData.toKaBinding(
         originClassId = originClassId,
         replaces = replaces,
         contributionScopes = contributionScopes,
-        dependencies = dependencies,
+        constructorDependencies = constructorDependencies,
         memberDependencies = memberDependencies,
         hintAvailability = hintAvailability,
       )

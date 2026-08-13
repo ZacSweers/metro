@@ -58,7 +58,8 @@ public class SuspendBindingWorklist<
    * requests can add the same consumer more than once, but [markSuspend] makes those duplicates
    * harmless.
    */
-  private val reverseEdges = mutableMapOf<TypeKey, MutableList<TypeKey>>()
+  private val reverseEdges =
+    mutableMapOf<TypeKey, MutableList<PropagationEdge<TypeKey, ContextualTypeKey>>>()
 
   /**
    * Edges waiting for their dependency binding to resolve.
@@ -73,10 +74,21 @@ public class SuspendBindingWorklist<
   /** Keys already known to require suspend initialization. */
   private val suspendKeys = mutableSetOf<TypeKey>()
 
+  /** Bindings that directly provide their value from a suspend declaration. */
+  private val directSuspendKeys = mutableSetOf<TypeKey>()
+
+  /** The dependency edge that first caused each transitively suspend binding to be marked. */
+  private val suspendCauses = mutableMapOf<TypeKey, ContextualTypeKey>()
+
   /** Newly marked keys whose consumers still need to be visited. */
   private val newlySuspend = ArrayDeque<TypeKey>()
 
   private class PendingEdge<TypeKey, ContextualTypeKey>(
+    val consumer: TypeKey,
+    val dependency: ContextualTypeKey,
+  )
+
+  private class PropagationEdge<TypeKey, ContextualTypeKey>(
     val consumer: TypeKey,
     val dependency: ContextualTypeKey,
   )
@@ -100,6 +112,18 @@ public class SuspendBindingWorklist<
     return suspendKeys
   }
 
+  /** Runs the analysis and returns both suspend keys and stable paths to direct suspend sources. */
+  public fun analyzeWithPaths(
+    keys: Iterable<TypeKey>
+  ): SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey> {
+    analyze(keys)
+    return SuspendBindingAnalysisResult(
+      suspendKeys.toSet(),
+      directSuspendKeys.toSet(),
+      suspendCauses.toMap(),
+    )
+  }
+
   public fun isSuspend(key: TypeKey): Boolean = key in analyze(listOf(key))
 
   private fun expand(pending: ArrayDeque<TypeKey>) {
@@ -121,9 +145,9 @@ public class SuspendBindingWorklist<
         if (rules.canPassThrough(depBinding, dependency)) {
           continue
         }
-        reverseEdges.getOrPut(depKey, ::mutableListOf) += key
+        reverseEdges.getOrPut(depKey, ::mutableListOf) += PropagationEdge(key, dependency)
         if (depKey in suspendKeys) {
-          markSuspend(key)
+          markSuspend(key, dependency)
         }
         if (depKey !in expandedKeys) {
           pending += depKey
@@ -145,6 +169,7 @@ public class SuspendBindingWorklist<
     unresolvedGenerations -= key
     discoveredBindings[key] = binding
     if (bindingIsSuspend(binding)) {
+      directSuspendKeys += key
       markSuspend(key)
     }
     // Classify edges that were waiting on this key's binding.
@@ -153,17 +178,21 @@ public class SuspendBindingWorklist<
         if (rules.canPassThrough(binding, edge.dependency)) {
           continue
         }
-        reverseEdges.getOrPut(key, ::mutableListOf) += edge.consumer
+        reverseEdges.getOrPut(key, ::mutableListOf) +=
+          PropagationEdge(edge.consumer, edge.dependency)
         if (key in suspendKeys) {
-          markSuspend(edge.consumer)
+          markSuspend(edge.consumer, edge.dependency)
         }
       }
     }
     return binding
   }
 
-  private fun markSuspend(key: TypeKey) {
+  private fun markSuspend(key: TypeKey, cause: ContextualTypeKey? = null) {
     if (suspendKeys.add(key)) {
+      if (cause != null) {
+        suspendCauses[key] = cause
+      }
       newlySuspend += key
     }
   }
@@ -171,9 +200,54 @@ public class SuspendBindingWorklist<
   private fun propagate() {
     while (newlySuspend.isNotEmpty()) {
       val key = newlySuspend.removeFirst()
-      for (consumer in reverseEdges[key].orEmpty()) {
-        markSuspend(consumer)
+      for (edge in reverseEdges[key].orEmpty()) {
+        markSuspend(edge.consumer, edge.dependency)
       }
     }
   }
 }
+
+/** A dependency edge on a path from a transitively suspend binding to its direct suspend source. */
+public data class SuspendBindingPathEdge<TypeKey, ContextualTypeKey>(
+  val consumerKey: TypeKey,
+  val dependency: ContextualTypeKey,
+)
+
+/** Suspend analysis output, including one deterministic witness path for every suspend key. */
+public class SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>
+internal constructor(
+  public val suspendKeys: Set<TypeKey>,
+  private val directSuspendKeys: Set<TypeKey>,
+  private val suspendCauses: Map<TypeKey, ContextualTypeKey>,
+) {
+  /**
+   * Returns a witness path from [start] to a directly suspend binding. Its edge list is empty when
+   * [start] is itself directly suspend. Returns null when [start] is not suspend or the recorded
+   * path is incomplete.
+   */
+  public fun pathFrom(
+    start: TypeKey,
+    dependencyTypeKey: (ContextualTypeKey) -> TypeKey,
+  ): SuspendBindingPath<TypeKey, ContextualTypeKey>? {
+    if (start !in suspendKeys) return null
+    val path = mutableListOf<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
+    val visited = mutableSetOf<TypeKey>()
+    var current = start
+    while (visited.add(current)) {
+      if (current in directSuspendKeys) {
+        return SuspendBindingPath(start, path, current)
+      }
+      val dependency = suspendCauses[current] ?: return null
+      path += SuspendBindingPathEdge(current, dependency)
+      current = dependencyTypeKey(dependency)
+    }
+    return null
+  }
+}
+
+/** A stable witness path from [startKey] to [sourceKey], which is directly suspend. */
+public data class SuspendBindingPath<TypeKey, ContextualTypeKey>(
+  val startKey: TypeKey,
+  val edges: List<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>,
+  val sourceKey: TypeKey,
+)

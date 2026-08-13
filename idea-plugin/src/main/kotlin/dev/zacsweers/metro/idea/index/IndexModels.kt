@@ -45,7 +45,9 @@ internal class BindingData(
   /** See [KaBinding.contributionScopes]. */
   val contributionScopes: Set<ClassId> = emptySet(),
   /** See [KaBinding.dependencies]. */
-  val dependencies: List<KaContextualTypeKey> = emptyList(),
+  dependencies: List<KaContextualTypeKey> = emptyList(),
+  /** See [KaBinding.ConstructorInjected.constructorDependencies]. */
+  val constructorDependencies: List<KaContextualTypeKey> = emptyList(),
   /** See [KaBinding.isSuspend]. */
   val isSuspend: Boolean = false,
   /** See [KaBinding.ConstructorInjected.memberDependencies]. */
@@ -57,6 +59,14 @@ internal class BindingData(
   /** See [KaBinding.Multibinding.allowEmpty]. */
   val allowEmpty: Boolean = false,
 ) {
+  /** All dependencies used for graph traversal. */
+  val dependencies: List<KaContextualTypeKey> =
+    if (kind == Kind.CONSTRUCTOR_INJECTED) {
+      constructorDependencies + memberDependencies
+    } else {
+      dependencies
+    }
+
   /** The [KaBinding] subtype this data maps to. */
   enum class Kind {
     CONSTRUCTOR_INJECTED,

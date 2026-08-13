@@ -140,6 +140,19 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `path analysis returns a stable snapshot`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("Consumer", "Source"))
+    val initial = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    fixture.put(binding("Source", isSuspend = true))
+    assertThat(fixture.analysis.isSuspend(key("Consumer"))).isTrue()
+
+    assertThat(initial.suspendKeys).isEmpty()
+    assertThat(initial.pathFrom(key("Consumer")) { it.typeKey }).isNull()
+  }
+
+  @Test
   fun `skipped bindings do not traverse their dependencies`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("Factory", "Source", skipDependencies = true))

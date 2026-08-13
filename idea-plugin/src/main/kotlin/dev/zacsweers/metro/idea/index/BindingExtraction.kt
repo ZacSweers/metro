@@ -398,7 +398,7 @@ private fun KaSession.classBindingData(
         scope,
         ktClass.name,
         originClassId = originClassId,
-        dependencies = constructorDependencies + memberDependencies,
+        constructorDependencies = constructorDependencies,
         memberDependencies = memberDependencies,
       )
   }

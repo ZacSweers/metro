@@ -112,18 +112,18 @@ internal sealed interface KaBinding :
     override val originClassId: ClassId? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
-    override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    val constructorDependencies: List<KaContextualTypeKey> = emptyList(),
     /** The subset of [dependencies] required by member injection after construction. */
     val memberDependencies: List<KaContextualTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
+    override val dependencies: List<KaContextualTypeKey> =
+      constructorDependencies + memberDependencies
+
     override val label: String
       get() = "injected class"
-
-    val hasInjectedMembers: Boolean
-      get() = memberDependencies.isNotEmpty()
   }
 
   /** A `@Provides` callable, or a generated factory contribution modeled as one. */
