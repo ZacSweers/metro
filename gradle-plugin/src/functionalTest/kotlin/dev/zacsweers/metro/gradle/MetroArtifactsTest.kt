@@ -60,10 +60,9 @@ class MetroArtifactsTest {
   }
 
   @Test
-  fun `generateClassesInIr does not change FIR hint default`() {
+  fun `Gradle omits FIR hint option by default when generateClassesInIr is overridden`() {
     val compilerVersion = getTestCompilerToolingVersion()
     val generateClassesInIr = compilerVersion < KotlinToolingVersion("2.4.20-dev-6138")
-    val generateContributionHintsInFir = compilerVersion.supportsTopLevelFirGen()
     val fixture =
       object :
         MetroProject(
@@ -95,8 +94,53 @@ class MetroArtifactsTest {
         .single { it.name == "main.txt" }
         .readText()
     assertThat(content).contains("    generate-classes-in-ir = $generateClassesInIr")
-    assertThat(content)
-      .contains("    generate-contribution-hints-in-fir = $generateContributionHintsInFir")
+    assertThat(content).doesNotContain("    generate-contribution-hints-in-fir =")
+  }
+
+  @Test
+  fun `Gradle emits explicit FIR hint option`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            @OptIn(
+              dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class,
+              dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class,
+            )
+            metro {
+              generateContributionHintsInFir.set(false)
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "metroEnv")
+
+    val content =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .readText()
+    assertThat(content).contains("    generate-contribution-hints-in-fir = false")
   }
 
   @Test

@@ -10,6 +10,7 @@ import com.autonomousapps.kit.Source.Companion.kotlin
 import com.autonomousapps.kit.SourceType
 import com.autonomousapps.kit.truth.BuildResultSubject
 import com.autonomousapps.kit.truth.TestKitTruth.Companion.assertThat
+import dev.zacsweers.metro.compiler.internal.isTopLevelFirGenerationSupported
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Files.readAttributes
@@ -167,10 +168,8 @@ fun getTestCompilerToolingVersion(): KotlinToolingVersion =
   KotlinToolingVersion(getTestCompilerVersion())
 
 fun KotlinToolingVersion.supportsTopLevelFirGen(): Boolean {
-  return if (isDev) {
-    this >= KotlinToolingVersion("2.3.20-dev-6204")
-  } else {
-    this >= KotlinToolingVersion("2.3.20-Beta1")
+  return isTopLevelFirGenerationSupported(isDev) { minimumVersion ->
+    this >= KotlinToolingVersion(minimumVersion)
   }
 }
 

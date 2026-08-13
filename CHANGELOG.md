@@ -6,6 +6,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Consolidate contribution hint configuration logic to make it less Gradle-specific.
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 - **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
