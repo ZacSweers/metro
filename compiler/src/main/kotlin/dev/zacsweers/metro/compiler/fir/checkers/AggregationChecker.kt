@@ -27,8 +27,6 @@ import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.fir.toClassSymbolCompat
 import dev.zacsweers.metro.compiler.fir.usesContributionProviderPath
-import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
-import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -51,6 +49,7 @@ import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.types.UnexpandedTypeCheck
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
@@ -392,16 +391,10 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
           return false
         }
 
-        // @DefaultBinding takes priority over implicit single-supertype resolution (e.g.,
-        // @DefaultBinding<Factory<*>> on Factory<T> binds as Factory<*>). Shared with the IDE so
-        // both agree on ambiguity.
-        val supertypeConeTypes = supertypesExcludingAny.map { it.coneType }
-        when (
-          val result =
-            resolveImplicitBoundType(supertypeConeTypes) { it.defaultBindingType(session) }
-        ) {
-          is BoundTypeResolution.Resolved -> FirTypeKey(result.type, classQualifier)
-          is BoundTypeResolution.AmbiguousDefaultBinding -> {
+        // @DefaultBinding takes priority over the implicit single-supertype binding. Keep the
+        // original FIR type references to avoid copying supertypes for every contribution.
+        when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
+          is DefaultBindingResult.Ambiguous -> {
             reporter.reportOn(
               annotation.source,
               MetroDiagnostics.AGGREGATION_ERROR,
@@ -409,16 +402,19 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
             )
             return false
           }
-          is BoundTypeResolution.MultipleSupertypes -> {
-            reporter.reportOn(
-              annotation.source,
-              MetroDiagnostics.AGGREGATION_ERROR,
-              "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but has multiple supertypes. You must define an explicit bound type in this scenario.",
-            )
-            return false
+          is DefaultBindingResult.Found -> FirTypeKey(result.type, classQualifier)
+          DefaultBindingResult.None -> {
+            if (supertypesExcludingAny.size == 1) {
+              FirTypeKey(supertypesExcludingAny[0].coneType, classQualifier)
+            } else {
+              reporter.reportOn(
+                annotation.source,
+                MetroDiagnostics.AGGREGATION_ERROR,
+                "`@$kind`-annotated class @${classId.asSingleFqName()} doesn't declare an explicit `binding` type but has multiple supertypes. You must define an explicit bound type in this scenario.",
+              )
+              return false
+            }
           }
-          // Guarded by the hasSupertypes check above.
-          BoundTypeResolution.NoSupertypes -> return false
         }
       }
 
@@ -603,13 +599,41 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
     reporter.reportOn(declaration.source, diagnosticFactory, message)
   }
 
-  /** The `@DefaultBinding<T>` type declared by this supertype, or null if it declares none. */
-  private fun ConeKotlinType.defaultBindingType(session: FirSession): ConeKotlinType? {
-    val supertypeClassId = fullyExpandedClassId(session) ?: return null
-    val supertypeSymbol =
-      session.symbolProvider.getClassLikeSymbolByClassId(supertypeClassId) as? FirClassSymbol<*>
-        ?: return null
-    return supertypeSymbol.resolveDefaultBindingType(session)
+  sealed interface DefaultBindingResult {
+    data class Found(val type: ConeKotlinType) : DefaultBindingResult
+
+    data class Ambiguous(val types: List<ConeKotlinType>) : DefaultBindingResult
+
+    data object None : DefaultBindingResult
+  }
+
+  /**
+   * Resolves the default binding type from supertypes annotated with `@DefaultBinding`.
+   *
+   * Returns the [ConeKotlinType] if exactly one supertype has a default binding, or null if none or
+   * ambiguous (multiple supertypes with `@DefaultBinding`).
+   */
+  private fun resolveDefaultBindingFromSupertypes(
+    session: FirSession,
+    supertypes: List<FirTypeRef>,
+  ): DefaultBindingResult {
+    val defaultBindingTypes = mutableListOf<ConeKotlinType>()
+
+    for (supertype in supertypes) {
+      val supertypeClassId = supertype.coneTypeOrNull?.fullyExpandedClassId(session) ?: continue
+      val supertypeSymbol =
+        session.symbolProvider.getClassLikeSymbolByClassId(supertypeClassId) as? FirClassSymbol<*>
+          ?: continue
+
+      val resolvedType = supertypeSymbol.resolveDefaultBindingType(session) ?: continue
+      defaultBindingTypes += resolvedType
+    }
+
+    return when (defaultBindingTypes.size) {
+      0 -> DefaultBindingResult.None
+      1 -> DefaultBindingResult.Found(defaultBindingTypes[0])
+      else -> DefaultBindingResult.Ambiguous(defaultBindingTypes)
+    }
   }
 
   sealed interface Contribution {

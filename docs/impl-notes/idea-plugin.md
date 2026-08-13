@@ -11,6 +11,10 @@ Give Metro users compiler-grade insight in the editor without running the compil
 
 The compiler and plugin reuse graph population, sorting, cycle detection, diagnostic models, and graph-level suspend binding validation from `metro-common`. IR and Analysis API adapters only extract frontend-specific metadata, select source anchors, and render shared witness paths. Differential tests compare IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.
 
+Sharing must not slow down the compiler. Compiler contribution merging and FIR bound-type checks
+keep their existing in-place paths where a generic IDE-friendly representation would allocate or
+scan more than the original compiler implementation.
+
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
 
