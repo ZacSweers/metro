@@ -120,4 +120,39 @@ class ContributionMergeTest {
     val b = Item(id("B"), emptySet())
     assertThat(applyExcludesAndReplaces(listOf(a, b))).containsExactly(a, b).inOrder()
   }
+
+  private data class RankedBinding(val classId: ClassId, val typeKey: String, val rank: Long)
+
+  @Test
+  fun `higher ranked bindings replace lower ranked bindings for the same key`() {
+    val low = RankedBinding(id("Low"), "Service", rank = 1)
+    val high = RankedBinding(id("High"), "Service", rank = 2)
+
+    assertThat(outrankedBindings(low, high)).containsExactly(low.classId)
+  }
+
+  @Test
+  fun `equal highest ranked bindings are preserved`() {
+    val low = RankedBinding(id("Low"), "Service", rank = 1)
+    val first = RankedBinding(id("First"), "Service", rank = 2)
+    val second = RankedBinding(id("Second"), "Service", rank = 2)
+
+    assertThat(outrankedBindings(low, first, second)).containsExactly(low.classId)
+  }
+
+  @Test
+  fun `different binding keys do not outrank each other`() {
+    val low = RankedBinding(id("Low"), "FirstService", rank = 1)
+    val high = RankedBinding(id("High"), "SecondService", rank = 2)
+
+    assertThat(outrankedBindings(low, high)).isEmpty()
+  }
+
+  private fun outrankedBindings(vararg bindings: RankedBinding): Set<ClassId> =
+    computeOutrankedBindings(
+      bindings = bindings.toList(),
+      typeKeySelector = RankedBinding::typeKey,
+      rankSelector = RankedBinding::rank,
+      classId = RankedBinding::classId,
+    )
 }

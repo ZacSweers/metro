@@ -15,6 +15,9 @@ Sharing must not slow down the compiler. Compiler contribution merging and FIR b
 keep their existing in-place paths where a generic IDE-friendly representation would allocate or
 scan more than the original compiler implementation.
 
+Anvil contribution ranking uses the same inline selection helper in FIR, IR, and the IDE. Moving
+that small helper does not change compiler contribution scans, feature gates, or allocations.
+
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
 
