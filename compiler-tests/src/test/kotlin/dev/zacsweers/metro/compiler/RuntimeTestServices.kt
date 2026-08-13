@@ -46,7 +46,8 @@ internal fun TestServices.isJsBackend(): Boolean {
 }
 
 internal fun TestServices.isJvmBackend(): Boolean {
-  return defaultsProvider.targetBackend?.isTransitivelyCompatibleWith(TargetBackend.JVM) == true
+  val targetBackend = defaultsProvider.targetBackend ?: return true
+  return targetBackend.isTransitivelyCompatibleWith(TargetBackend.JVM)
 }
 
 class MetroRuntimeEnvironmentConfigurator(testServices: TestServices) :
