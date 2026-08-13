@@ -18,6 +18,7 @@ Changelog
 - Test Kotlin `2.4.20-RC`.
 - Remove the `watchosArm32` target, which Kotlin no longer supports.
 - Update androidx.tracing to `2.0.0` stable. Note that Metro's runtime tracing support is still experimental to incubate a little longer.
+- Test Android Studio Quail 3 stable.
 
 ### Contributors
 
