@@ -3327,8 +3327,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   /**
-   * Regression test for https://github.com/ZacSweers/metro/issues/TODO Specific to builds where AGP
-   * 9 is applied
+   * Regression test for https://github.com/ZacSweers/metro/issues/2660 (specific to Android builds)
    *
    * Adding a member-injection function to a `@GraphExtension` must invalidate the parent graph
    * file.
