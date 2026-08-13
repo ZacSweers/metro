@@ -36,6 +36,15 @@ separate in-place path. The benchmark reuses the shared graph tests' lightweight
 so it needs neither a running IDE nor a generated application project.
 Add `-Pmetro.jmh.profileGc` to include allocation and garbage-collection measurements.
 
+`metro-common/src/test/.../graph/GraphWorkload.kt` also generates a reproducible mixed workload
+from a fixed seed, so unit tests and future graph tooling can reuse the same fixture. It includes
+long dependency chains, shared high-fan-in services, wide set/map aggregates, qualified keys,
+multiple roots, legal provider/lazy cycles, constructor bindings discovered on demand, and
+unreachable bindings. Separate JMH cases compare complete graph sealing, unused-binding pruning,
+and lazy population; another measures suspend propagation through the same mixed shape. Binding
+kind and scope labels are fixture metadata: the shared graph core does not perform compiler or
+IDE scope membership checks.
+
 ## Layers
 
 Data flows in one direction:

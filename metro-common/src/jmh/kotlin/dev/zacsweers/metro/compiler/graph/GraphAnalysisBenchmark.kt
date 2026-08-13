@@ -193,3 +193,93 @@ open class GraphAnalysisBenchmark {
     )
   }
 }
+
+/**
+ * Measures mixed application-shaped graphs without multiplying the simple topology benchmarks.
+ *
+ * Binding kinds, scopes, and qualifiers describe the test workload. Scope resolution itself lives
+ * in the compiler and IDE adapters, so it is not measured by these shared graph benchmarks.
+ */
+@State(Scope.Thread)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Warmup(iterations = 4, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(2)
+open class RepresentativeGraphBenchmark {
+
+  @Param("100", "1000", "10000") var size: Int = 0
+
+  private lateinit var workload: GraphWorkload
+  private lateinit var bindingsByKey: Map<StringTypeKey, StringBinding>
+  private lateinit var suspendSourceKeys: Set<StringTypeKey>
+
+  @Setup(Level.Trial)
+  fun setUp() {
+    workload = GraphWorkload.generate(GraphWorkloadSpec(size = size))
+    bindingsByKey = workload.nodes.associate { node -> node.binding.typeKey to node.binding }
+    suspendSourceKeys = buildSet {
+      for (node in workload.nodes) {
+        if (node.index % 64 == 0 && node.binding.typeKey in workload.reachableKeys) {
+          add(node.binding.typeKey)
+        }
+      }
+    }
+  }
+
+  @Benchmark
+  fun sealRepresentativeGraph(blackhole: Blackhole) {
+    val graph = fullyPopulatedGraph()
+    val result =
+      with(TraceScope.noop()) {
+        graph.seal(roots = workload.roots, shrinkUnusedBindings = false)
+      }
+    blackhole.consume(result)
+  }
+
+  @Benchmark
+  fun sealRepresentativeGraphWithPruning(blackhole: Blackhole) {
+    val graph = fullyPopulatedGraph()
+    val result =
+      with(TraceScope.noop()) {
+        graph.seal(roots = workload.roots, shrinkUnusedBindings = true)
+      }
+    blackhole.consume(result)
+  }
+
+  @Benchmark
+  fun sealRepresentativeGraphWithLazyBindings(blackhole: Blackhole) {
+    val graph = workload.newGraph()
+    val result =
+      with(TraceScope.noop()) {
+        graph.seal(roots = workload.roots, shrinkUnusedBindings = true)
+      }
+    blackhole.consume(result)
+  }
+
+  @Benchmark
+  fun propagateSuspendInRepresentativeGraph(blackhole: Blackhole) {
+    val rules =
+      SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, StringBinding>(
+        findBinding = bindingsByKey::get,
+        bindingCanPassThrough = { _, _ -> false },
+      )
+    val worklist =
+      SuspendBindingWorklist(
+        findBinding = bindingsByKey::get,
+        bindingIsSuspend = { binding -> binding.typeKey in suspendSourceKeys },
+        skipDependencyTraversal = { false },
+        rules = rules,
+      )
+    blackhole.consume(worklist.analyze(workload.reachableKeys))
+  }
+
+  private fun fullyPopulatedGraph(): StringGraph {
+    val graph = workload.newGraph()
+    val stack = StringBindingStack("RepresentativeGraph")
+    for (binding in workload.lazyBindingsByKey.values) {
+      graph.tryPut(binding, stack)
+    }
+    return graph
+  }
+}

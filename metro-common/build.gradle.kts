@@ -56,7 +56,7 @@ dependencies {
   jmh(libs.poko.annotations)
 }
 
-// The benchmark needs the small graph models already used by unit tests, not the test suites.
+// Reuse the unit tests' graph models and seeded workload without pulling in their test suites.
 val graphBenchmarkFixtures =
   fileTree("src/test/kotlin") {
     include("**/StringTypeKey.kt")
@@ -64,6 +64,7 @@ val graphBenchmarkFixtures =
     include("**/StringBinding.kt")
     include("**/StringBindingStack.kt")
     include("**/StringGraph.kt")
+    include("**/GraphWorkload.kt")
   }
 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileJmhKotlin") {
