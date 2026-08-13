@@ -3326,6 +3326,186 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hi, world") }
   }
 
+  /**
+   * Regression test for https://github.com/ZacSweers/metro/issues/TODO Specific to builds where AGP
+   * 9 is applied
+   *
+   * Adding a member-injection function to a `@GraphExtension` must invalidate the parent graph
+   * file.
+   */
+  @Test
+  fun `adding a member to a graph extension invalidates the parent graph`() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() = listOf(injectionTargets, graphExtension, appGraph, main)
+
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  Plugin("com.android.application", System.getProperty("metro.agpVersion")),
+                  // AGP 9 supplies Kotlin itself and rejects `org.jetbrains.kotlin.android`, but
+                  // Metro's compiler plugin is only contributed to the compilation when some KGP
+                  // plugin is applied. Parcelize is the smallest one that does that.
+                  Plugin("org.jetbrains.kotlin.plugin.parcelize", getTestCompilerVersion()),
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
+                  android {
+                    namespace = "test"
+                    compileSdk = 36
+                  }
+
+                  ${buildMetroBlock()}
+                  """
+                    .trimIndent()
+                )
+              }
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null)
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
+
+        private val injectionTargets =
+          source(
+            """
+            @HasMemberInjections
+            abstract class BaseActivity {
+              @Inject lateinit var logger: Logger
+            }
+
+            class LicensesActivity : BaseActivity() {
+              @Inject lateinit var gson: Gson
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "InjectionTargets",
+          )
+
+        private val graphExtension =
+          source(
+            """
+            @GraphExtension(ActivityScope::class)
+            interface BaseActivityGraph {
+              fun inject(activity: BaseActivity)
+
+              @GraphExtension.Factory
+              interface Factory { fun create(): BaseActivityGraph }
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "BaseActivityGraph",
+          )
+
+        private val appGraph =
+          source(
+            """
+            abstract class ActivityScope private constructor()
+
+            class Logger(val name: String)
+            class Gson
+
+            @DependencyGraph(AppScope::class)
+            interface AppGraph {
+              @Provides fun logger(): Logger = Logger("app-logger")
+
+              @Provides fun gson(): Gson = Gson()
+
+              val extGraphFactory: BaseActivityGraph.Factory
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "AppGraph",
+          )
+
+        private val main =
+          source(
+            """
+            fun main(): Boolean {
+              val graphExtension = createGraph<AppGraph>().extGraphFactory.create()
+              val activity: BaseActivity = LicensesActivity()
+              graphExtension.inject(activity)
+              return activity.logger.name == "app-logger"
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val compileTask = ":compileDebugKotlin"
+
+    fun invokeAndroidMain(): Boolean {
+      val classesDir =
+        project.rootDir.resolve(
+          "build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
+        )
+      return URLClassLoader(arrayOf(classesDir.toURI().toURL()), this::class.java.classLoader)
+        .use { classLoader ->
+          classLoader
+            .loadClass("test.MainKt")
+            .declaredMethods
+            .first { it.name == "main" }
+            .invoke(null) as Boolean
+        }
+    }
+
+    fun modifyMainSource(fileName: String, content: String) {
+      val newSource = source(content, fileNameWithoutExtension = fileName, sourceSet = "main")
+      project.rootDir.resolve("src/main/kotlin/test/$fileName.kt").writeText(newSource.source)
+    }
+
+    val firstBuildResult = project.compileKotlin(compileTask)
+    assertThat(firstBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(invokeAndroidMain()).isTrue()
+
+    // Add a 2nd member injection function, which should invalidate the parent graph
+    modifyMainSource(
+      "BaseActivityGraph",
+      """
+      @GraphExtension(ActivityScope::class)
+      interface BaseActivityGraph {
+        fun inject(activity: BaseActivity)
+        fun inject(activity: LicensesActivity)
+
+        @GraphExtension.Factory
+        interface Factory {
+          fun create(): BaseActivityGraph
+        }
+      }
+      """
+        .trimIndent(),
+    )
+    modifyMainSource(
+      "Main",
+      """
+      fun main(): Boolean {
+        val graphExtension = createGraph<AppGraph>().extGraphFactory.create()
+        val activity = LicensesActivity()
+        graphExtension.inject(activity)
+        return activity.logger.name == "logger" && activity.gson != null
+      }
+      """
+        .trimIndent(),
+    )
+
+    val secondBuildResult = project.compileKotlin(compileTask)
+    assertThat(secondBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(invokeAndroidMain()).isTrue()
+  }
+
   @Test
   fun mapKeyArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
