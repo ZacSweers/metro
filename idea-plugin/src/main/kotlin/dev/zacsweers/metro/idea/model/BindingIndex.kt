@@ -30,8 +30,8 @@ internal class BindingIndex(
   val assistedSites: List<AssistedSite> = emptyList(),
   val bindingContainers: List<BindingContainerEntry> = emptyList(),
 ) {
-  private val containersById: Map<ClassId, BindingContainerEntry> by lazy {
-    bindingContainers.associateBy { it.classId }
+  private val containersById: ScatterMap<ClassId, BindingContainerEntry> by lazy {
+    bindingContainers.associateToScatter { it.classId }
   }
 
   private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
@@ -596,6 +596,14 @@ private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): Scatte
   }
   @Suppress("UNCHECKED_CAST")
   return result as ScatterMap<K, List<T>>
+}
+
+private inline fun <T, K : Any> List<T>.associateToScatter(keyOf: (T) -> K): ScatterMap<K, T> {
+  val result = MutableScatterMap<K, T>(size)
+  for (entry in this) {
+    result[keyOf(entry)] = entry
+  }
+  return result
 }
 
 /** The result of resolving a consumer against every concrete graph context in the project. */
