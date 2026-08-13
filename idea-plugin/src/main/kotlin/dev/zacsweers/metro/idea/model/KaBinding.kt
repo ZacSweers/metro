@@ -43,6 +43,10 @@ internal sealed interface KaBinding :
   val originClassId: ClassId?
     get() = null
 
+  /** Classes whose injected members are populated while constructing this binding. */
+  val memberInjectionOwnerIds: Set<ClassId>
+    get() = emptySet()
+
   /** The class whose graph membership gates this binding. */
   val containerId: ClassId?
     get() = null
@@ -57,6 +61,10 @@ internal sealed interface KaBinding :
   /** Scopes this binding is contributed to. */
   val contributionScopes: Set<ClassId>
     get() = emptySet()
+
+  /** Anvil contribution rank; unranked bindings use the same minimum value as the compiler. */
+  val contributionRank: Long
+    get() = Long.MIN_VALUE
 
   /** Module restriction inherited from a non-public compiled contribution hint. */
   val hintAvailability: HintAvailability?
@@ -115,6 +123,7 @@ internal sealed interface KaBinding :
     val constructorDependencies: List<KaContextualTypeKey> = emptyList(),
     /** The subset of [dependencies] required by member injection after construction. */
     val memberDependencies: List<KaContextualTypeKey> = emptyList(),
+    override val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
     override val hintAvailability: HintAvailability? = null,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
@@ -164,6 +173,7 @@ internal sealed interface KaBinding :
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
+    override val contributionRank: Long = Long.MIN_VALUE,
     /** True for `@ContributesBinding`-style class contributions, false for `@Binds` callables. */
     val isClassContribution: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
@@ -240,6 +250,7 @@ internal sealed interface KaBinding :
     override val originClassId: ClassId? = null,
     val targetConstructorDependencies: List<KaContextualTypeKey> = emptyList(),
     val targetMemberDependencies: List<KaContextualTypeKey> = emptyList(),
+    override val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
     val factoryFunctionName: String? = null,
     val factoryFunctionIsSuspend: Boolean = false,
   ) : KaBinding {

@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -165,7 +166,7 @@ internal fun KaSession.mapKeyInfo(annotated: KaAnnotated, options: MetroOptions)
       }
     return MapKeyInfo(
       keyTypeRender = renderKeyType(keyType),
-      annotationRender = annotation.toKaAnnotationSnapshot()?.render(short = false),
+      annotationRender = toKaAnnotationSnapshot(annotation)?.render(short = false),
     )
   }
   return null
@@ -391,6 +392,7 @@ private fun KaSession.classBindingData(
   if (ownsInjectBinding) {
     val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
     val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
+    val memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol)
     result +=
       BindingData(
         typeKey(classSymbol.defaultType, qualifier),
@@ -400,6 +402,7 @@ private fun KaSession.classBindingData(
         originClassId = originClassId,
         constructorDependencies = constructorDependencies,
         memberDependencies = memberDependencies,
+        memberInjectionOwnerIds = memberInjectionOwnerIds,
       )
   }
   // Contributed bindings alias the class's own inject binding, matching the compiler's model.
@@ -419,6 +422,16 @@ private fun KaSession.classBindingData(
     val elementKey = typeKey(boundType, qualifier)
     val contributionScopes = annotationScopeKeys(annotation)
     val replaces = classListArgument(annotation, "replaces").toSet()
+    val rankValue =
+      annotation.arguments
+        .firstOrNull { it.name.asString() == "rank" }
+        ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value }
+    val contributionRank =
+      when (rankValue) {
+        is Long -> rankValue
+        is Int -> rankValue.toLong()
+        else -> Long.MIN_VALUE
+      }
     when (classId) {
       in options.contributesBindingAnnotations ->
         result +=
@@ -431,6 +444,7 @@ private fun KaSession.classBindingData(
             originClassId = originClassId,
             replaces = replaces,
             contributionScopes = contributionScopes,
+            contributionRank = contributionRank,
             isClassContribution = true,
           )
 
@@ -582,14 +596,42 @@ internal fun KaSession.injectConstructorDependencyKeys(
  * The dependency keys of [classSymbol]'s member injection sites. Superclasses are only checked when
  * annotated with `@HasMemberInjections`, which Metro requires for inherited member injections.
  */
+internal class MemberInjectSite(
+  val ownerClassId: ClassId?,
+  val declaration: KtElement?,
+  val key: KaContextualTypeKey,
+)
+
 internal fun KaSession.memberInjectDependencyKeys(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
 ): List<KaContextualTypeKey> {
-  val result = mutableListOf<KaContextualTypeKey>()
+  return memberInjectSites(classSymbol, options).map { it.key }
+}
+
+internal fun KaSession.memberInjectSites(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): List<MemberInjectSite> {
+  val result = mutableListOf<MemberInjectSite>()
+  for (owner in memberInjectOwners(classSymbol)) {
+    collectDeclaredMemberInjectKeys(owner, options, result)
+  }
+  return result
+}
+
+/** Classes whose declared injected members are included when [classSymbol] is injected. */
+internal fun KaSession.memberInjectOwnerClassIds(classSymbol: KaNamedClassSymbol): Set<ClassId> {
+  return memberInjectOwners(classSymbol).mapNotNullTo(linkedSetOf()) { it.classId }
+}
+
+internal fun KaSession.memberInjectOwners(
+  classSymbol: KaNamedClassSymbol
+): List<KaNamedClassSymbol> {
+  val result = mutableListOf<KaNamedClassSymbol>()
   var current: KaNamedClassSymbol? = classSymbol
   while (current != null) {
-    collectDeclaredMemberInjectKeys(current, options, result)
+    result += current
     current =
       superClassSymbol(current)?.takeIf {
         it.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))
@@ -601,7 +643,7 @@ internal fun KaSession.memberInjectDependencyKeys(
 private fun KaSession.collectDeclaredMemberInjectKeys(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
-  result: MutableList<KaContextualTypeKey>,
+  result: MutableList<MemberInjectSite>,
 ) {
   val injectIds = options.allInjectAnnotations
   for (callable in classSymbol.declaredMemberScope.callables) {
@@ -613,12 +655,23 @@ private fun KaSession.collectDeclaredMemberInjectKeys(
             callable.backingFieldSymbol?.hasAnyAnnotation(injectIds) == true ||
             callable.setter?.hasAnyAnnotation(injectIds) == true
         if (injected) {
-          result += dependencyKey(callable, options)
+          result +=
+            MemberInjectSite(
+              classSymbol.classId,
+              callable.psi as? KtElement,
+              dependencyKey(callable, options),
+            )
         }
       }
       is KaNamedFunctionSymbol ->
         if (callable.hasAnyAnnotation(injectIds)) {
-          callable.valueParameters.mapTo(result) { dependencyKey(it, options) }
+          callable.valueParameters.mapTo(result) { parameter ->
+            MemberInjectSite(
+              classSymbol.classId,
+              callable.psi as? KtElement,
+              dependencyKey(parameter, options),
+            )
+          }
         }
       else -> {}
     }

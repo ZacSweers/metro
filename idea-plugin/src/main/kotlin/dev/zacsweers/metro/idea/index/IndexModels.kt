@@ -44,6 +44,8 @@ internal class BindingData(
   val replaces: Set<ClassId> = emptySet(),
   /** See [KaBinding.contributionScopes]. */
   val contributionScopes: Set<ClassId> = emptySet(),
+  /** See [KaBinding.contributionRank]. */
+  val contributionRank: Long = Long.MIN_VALUE,
   /** See [KaBinding.dependencies]. */
   dependencies: List<KaContextualTypeKey> = emptyList(),
   /** See [KaBinding.ConstructorInjected.constructorDependencies]. */
@@ -52,6 +54,8 @@ internal class BindingData(
   val isSuspend: Boolean = false,
   /** See [KaBinding.ConstructorInjected.memberDependencies]. */
   val memberDependencies: List<KaContextualTypeKey> = emptyList(),
+  /** See [KaBinding.memberInjectionOwnerIds]. */
+  val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
   /** See [KaBinding.mapKeyValue]. */
   val mapKeyValue: String? = null,
   /** See [KaBinding.Alias.isClassContribution]. */

@@ -654,6 +654,79 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
     assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
   }
+
+  fun testSameFqnBindingContainersKeepTheirOwnTransitiveIncludes() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/Containers.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        class AppValue
+
+        @BindingContainer
+        object AppIncluded {
+          @Provides fun appValue(): AppValue = AppValue()
+        }
+
+        @BindingContainer(includes = [AppIncluded::class])
+        object SharedContainer
+
+        @DependencyGraph(bindingContainers = [SharedContainer::class])
+        interface AppGraph {
+          val appValue: AppValue
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/Containers.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        class BridgeValue
+
+        @BindingContainer
+        object BridgeIncluded {
+          @Provides fun bridgeValue(): BridgeValue = BridgeValue()
+        }
+
+        @BindingContainer(includes = [BridgeIncluded::class])
+        object SharedContainer
+
+        @DependencyGraph(bindingContainers = [SharedContainer::class])
+        interface BridgeGraph {
+          val bridgeValue: BridgeValue
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val appAccessor =
+      index.consumerEntryAt(appFile.declarationsIncludingNested().property("appValue"))!!
+    val bridgeAccessor =
+      index.consumerEntryAt(bridgeFile.declarationsIncludingNested().property("bridgeValue"))!!
+    assertEquals(
+      listOf("appValue"),
+      index.resolveConsumer(appAccessor).uniformBindings.orEmpty().mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    assertEquals(
+      listOf("bridgeValue"),
+      index.resolveConsumer(bridgeAccessor).uniformBindings.orEmpty().mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
 }
 
 private fun Module.setModuleMetroOptions(vararg options: Pair<String, String>) {

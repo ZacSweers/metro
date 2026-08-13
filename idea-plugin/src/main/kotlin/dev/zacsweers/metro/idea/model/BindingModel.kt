@@ -31,6 +31,12 @@ internal class ConsumerEntry(
   val includedContainerKey: KaTypeKey? = null,
   /** Exact owning graph declaration for graph accessor consumers. */
   val graphId: GraphDeclarationId? = null,
+  /** Class that declares this injected member, when the site is not a constructor parameter. */
+  val memberOwnerClassId: ClassId? = null,
+  /**
+   * Direct injected-member target for a graph injector request, retained without extra analysis.
+   */
+  val injectedMemberPointer: SmartPsiElementPointer<out KtElement>? = null,
   /** How a graph declaration requests this key. Null for ordinary dependency sites. */
   val graphRequestKind: GraphRequestKind? = null,
   /** Whether a graph accessor is declared as a suspend function. */
@@ -86,6 +92,10 @@ internal class KaGraphNode(
   val selfIds: Set<ClassId> = emptySet(),
   /** Supertype classes whose members merge into this graph, gating their provider membership. */
   val supertypeIds: Set<ClassId> = emptySet(),
+  /** Member-injected classes explicitly requested by this graph's injector functions. */
+  val injectedMemberOwnerIds: Set<ClassId> = emptySet(),
+  /** Whether the owning module enables Anvil's rank-based contribution replacement. */
+  val daggerAnvilInteropEnabled: Boolean = false,
   /** Extension or extension factory declarations created by this graph's accessors. */
   val extensionCreations: Set<GraphReference> = emptySet(),
   /** Whether this graph's compilation classpath contains the optional coroutine runtime. */
@@ -106,8 +116,15 @@ internal class KaGraphNode(
     get() = classId?.shortClassName?.asString()
 }
 
-/** A `@BindingContainer`-annotated class and the containers it transitively includes. */
-internal class BindingContainerEntry(val classId: ClassId, val includes: Set<ClassId>)
+/** A `@BindingContainer` declaration and the containers it transitively includes. */
+internal class BindingContainerEntry(
+  val pointer: SmartPsiElementPointer<KtClassOrObject>,
+  val classId: ClassId,
+  val includes: Set<ClassId>,
+) {
+  /** Separate modules can declare containers with the same fully qualified class name. */
+  val declarationId: GraphReference = GraphReference(classId, pointer.virtualFile)
+}
 
 /**
  * Stable identity for one graph declaration across index rebuilds.
@@ -145,6 +162,10 @@ internal class GraphContext(
   val includedBindingContainers: Set<KaTypeKey>,
   /** Concrete graph-dependency inputs inherited across the graph chain. */
   val includedDependencies: Set<KaTypeKey>,
+  /** Owners injected directly by any graph along this graph's parent path. */
+  val injectedMemberOwnerIds: Set<ClassId>,
+  /** Whether this graph applies Anvil's rank-based contribution replacement. */
+  val daggerAnvilInteropEnabled: Boolean,
   /** Exact declarations in this graph path, used for graph-owned consumers. */
   val graphIds: Set<GraphDeclarationId>,
   val graphClassIds: Set<ClassId>,

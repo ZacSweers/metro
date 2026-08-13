@@ -13,6 +13,7 @@ import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
+import org.jetbrains.kotlin.psi.KtFile
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
 class MetroGraphValidationTest : BasePlatformTestCase() {
@@ -725,6 +726,66 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.Json" })
   }
 
+  fun testGenericGraphSupertypeAccessorsUseConcreteTypes() {
+    val result =
+      validate(
+        """
+        @Inject class Service
+
+        interface BaseGraph<T> {
+          val service: T
+        }
+
+        @DependencyGraph
+        interface AppGraph : BaseGraph<Service>
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.Service" })
+  }
+
+  fun testGraphIndexTracksChangesToUnannotatedSupertypeFiles() {
+    val base =
+      myFixture.addFileToProject(
+        "test/BaseGraph.kt",
+        """
+        package test
+
+        interface BaseGraph {
+          val original: String
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val graph = myFixture.configureMetroFile("@DependencyGraph interface AppGraph : BaseGraph")
+    val service = project.service<MetroResolutionService>()
+    assertEquals(
+      listOf("kotlin.String"),
+      service.index(graph).consumers.map { it.key.renderedType },
+    )
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(base))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.setText(
+        """
+        package test
+
+        interface BaseGraph {
+          val replacement: Int
+        }
+        """
+          .trimIndent()
+      )
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertEquals(
+      listOf("kotlin.Int"),
+      service.index(graph).consumers.map { it.key.renderedType },
+    )
+  }
+
   fun testSameFqnGraphsInDifferentFilesDoNotShareResults() {
     val source =
       """
@@ -737,6 +798,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         .trimIndent()
     val fileA = myFixture.addFileToProject("a/Graphs.kt", source)
     myFixture.addFileToProject("b/Graphs.kt", source)
+    // Project-file fixtures can leave the second document uncommitted.
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
 
     val index = project.service<MetroResolutionService>().index(fileA)
     val graphs = index.graphs.filter { it.classId?.asFqNameString() == "test.AppGraph" }

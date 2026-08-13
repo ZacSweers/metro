@@ -45,6 +45,8 @@ internal fun BindingData.toKaBinding(
   implementationName: String? = this.implementationName,
   replaces: Set<ClassId> = this.replaces,
   contributionScopes: Set<ClassId> = this.contributionScopes,
+  contributionRank: Long = this.contributionRank,
+  isClassContribution: Boolean = this.isClassContribution,
   hintAvailability: HintAvailability? = null,
   ownerDependency: KaContextualTypeKey? = null,
 ): KaBinding {
@@ -60,6 +62,7 @@ internal fun BindingData.toKaBinding(
         contributionScopes = contributionScopes,
         constructorDependencies = constructorDependencies,
         memberDependencies = memberDependencies,
+        memberInjectionOwnerIds = memberInjectionOwnerIds,
         hintAvailability = hintAvailability,
       )
     BindingData.Kind.PROVIDED ->
@@ -93,6 +96,7 @@ internal fun BindingData.toKaBinding(
         includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        contributionRank = contributionRank,
         isClassContribution = isClassContribution,
         hintAvailability = hintAvailability,
       )
