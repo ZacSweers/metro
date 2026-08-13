@@ -30,9 +30,10 @@ The shared graph algorithms also have a standalone JMH stress benchmark:
 ./gradlew :metro-common:jmh --quiet
 ```
 
-It exercises graph sealing, root insertion, suspend propagation, and contribution merging with
-100, 1,000, and 10,000 bindings. The benchmark reuses the shared graph tests' lightweight string
-models, so it needs neither a running IDE nor a generated application project.
+It exercises graph sealing, root insertion, suspend propagation, and the shared IDE contribution
+merge path with 100, 1,000, and 10,000 bindings. Compiler contribution processing retains its
+separate in-place path. The benchmark reuses the shared graph tests' lightweight string models,
+so it needs neither a running IDE nor a generated application project.
 Add `-Pmetro.jmh.profileGc` to include allocation and garbage-collection measurements.
 
 ## Layers
@@ -62,14 +63,21 @@ BindingIndex (membership queries)
   facet's compiler plugin args, plus an options fingerprint for cache keying. A module is active
   only when Metro compiler plugin options are present and the plugin is enabled. Kotlin modules
   without Metro stay inactive even though the compiler option itself defaults to enabled.
-- `MetroSettings`: project-level toggles (binding resolution, library resolution, inlays).
+- `MetroSettings`: project-level toggles for editor navigation, library resolution, and inlays.
+  Hiding editor navigation does not disable graph browsing or validation. Library resolution
+  applies to both editor features and graph tools.
 
 ### Index
 
-- `index/MetroResolutionService.kt`: owns the project-wide `BindingIndex`. Indexes are cached per
-  options fingerprint in an LRU of `CachedValue`s that invalidate on any PSI change. Rebuilds are
-  cheap because per-file shards are cached against each file's modification stamp, so a rebuild
-  is mostly shard cache hits plus a merge. All index access requires a read action.
+- `index/MetroResolutionService.kt`: owns the project-wide `BindingIndex`. Snapshots use semantic
+  compiler options, so module-specific report and trace paths do not create duplicate indexes.
+  The first build finds candidate files through stub indexes. Later edits update changed files and
+  any shards that depend on them, including inherited declarations and qualifier, scope, or
+  map-key annotation defaults. Changes to otherwise untracked type aliases or constants refresh
+  existing shards; project roots and semantic option changes force a new scan.
+  Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
+  types, and visible modules. Production UI-thread requests schedule a cancellable smart-mode
+  build instead of running Analysis API work on the UI thread.
 - `index/IndexBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names, then resolved with the Analysis API inside
   `analyze {}` blocks. Handles graphs (including supertype member merging and library supertype
@@ -77,17 +85,19 @@ BindingIndex (membership queries)
   inject classes, top-level function injection, contributions, assisted factories, and binding
   containers.
 - `index/BindingExtraction.kt`: symbol-to-model extraction shared by source and library paths.
-  Computes type keys, dependency keys, map key info, and multibinding ids.
+  Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.
 - `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
   binary inject classes on demand and discovers contributions from generated hint functions, the
-  same way the compiler does.
+  same way the compiler does. Generated aliases inherit their origin's Anvil contribution rank.
+  Public hints only need classpath visibility; nonpublic hints still use Kotlin's friend-module
+  visibility rules.
 
 ### Model
 
 Everything the index stores is session-free. Nothing may retain a `KaSession`, `KaType`, or
 `KaSymbol`. Types become `KaTypeSnapshot` (interned render strings plus `ClassId` and recursive
-type arguments), annotations become `KaAnnotationSnapshot` (structured resolved arguments with
-canonical-render equality), and declarations are held as `SmartPsiElementPointer`s.
+type arguments), annotations become `KaAnnotationSnapshot` (constructor-ordered resolved
+arguments, including declared defaults), and declarations are held as `SmartPsiElementPointer`s.
 
 - `model/BindingModel.kt`: `KaGraphNode`, `ConsumerEntry`, and friends.
 - `model/KaBinding.kt`: the binding model. Mirrors the compiler's `IrBinding` + sealed subtypes.
@@ -96,9 +106,10 @@ canonical-render equality), and declarations are held as `SmartPsiElementPointer
 - `model/BindingIndex.kt`: the query surface. Global lookups (`bindingsByKey`, by-file buckets in
   ScatterMaps) plus per-graph membership. `contextFor(graph)` merges the extension parent chain
   into a `GraphContext` (scopes, containers, includes, excludes, supertype ids).
-  - Membership filtering (`isBindingInContext`, `isConsumerInContext`) applies scope matching, container
-    wiring, excludes, and replaces. Replaces only drops the origin's contributions, never its own
-    injectable type.
+  - Membership filtering applies graph/module visibility, scope matching, declaration-specific
+    containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.
+    Exclusions happen before replacements, and rank runs last within each graph's own scopes.
+    Replacing or outranking a contribution never removes its separate injectable concrete type.
 
 ### Validation
 
@@ -150,7 +161,8 @@ Validation is strictly on demand. Nothing seals during index builds or highlight
   and Unused (authored bindings nothing requested, unioned with cached extension seals). Returns
   no children in dumb mode.
 - `toolwindow/MetroToolWindowPanel.kt`: `StructureTreeModel` + `AsyncTreeModel`, search filter,
-  validate/refresh toolbar, and post-validation selection of the result node.
+  validate/refresh toolbar, and post-validation selection of the result node. The tree refreshes
+  when source changes, background indexing finishes, or the IDE leaves dumb mode.
 - `toolwindow/ValidateMetroGraphAction.kt`: editor action plus the shared
   `openAndValidate(project, classId, file)` entry the gutter uses.
 
@@ -169,17 +181,20 @@ The two never sum to each other. UI copy should not imply they do.
 
 - Graph identity is the resolved class plus its declaration file. Extension creation points and
   factory inputs retain that declaration identity so unrelated modules can declare the same FQNs
-  without acquiring each other's parent chains or synthesized inputs.
+  without acquiring each other's parent chains or synthesized inputs. Binding containers follow
+  the same rule and are selected through the owning graph's module resolution scope.
+- Injected members belong only to graphs that construct their owner or explicitly inject it.
+  Owner identity is separate from contribution origin and follows marked member-injection
+  ancestors through graph extensions.
 - Multibinding ids: map ids are `<mapKeyAnnotationParamType>_<canonicalValueKey>`. The key type
   is the map key annotation's parameter type verbatim. Values canonicalize through provider
   wrappers (`Provider<V>`, `Lazy<V>`, `() -> V` all join `V`'s aggregate). Both the contribution
   and accessor sides must use the same canonicalization or they silently never join.
 - `@HasMemberInjections` gates supertype traversal for member injection. Metro requires the
   annotation, unlike Dagger.
-- Graph supertypes merge their members into the graph. Source supertypes' binding callables come
-  from the normal sweep with membership granted via `supertypeIds`; library supertypes' binding
-  callables index through their decompiled declarations because the sweep never sees library
-  files.
+- Graph supertypes merge their members into the graph through instantiated callable signatures,
+  so inherited generic accessors and providers keep their concrete type arguments. Source and
+  library supertype declarations are tracked as shard dependencies.
 - Diagnostics use the compiler's `DiagnosticRenderer` and plain profile. Shared diagnostic builders live in `metro-common`; differential fixtures compare frontend-specific diagnostics by ID and normalized one-line title.
 
 ## Build wiring
@@ -212,8 +227,9 @@ resolution tests).
 Harness gotchas that repeat:
 
 - Tests compute markers on the EDT. Calling `tooltipText` on non-Metro gutters triggers Kotlin's
-  inheritor markers into prohibited EDT analysis, so always filter to Metro icons first. Direct
-  analysis in production code that can run on the EDT needs `allowAnalysisOnEdt`.
+  inheritor markers into prohibited EDT analysis, so always filter to Metro icons first. The
+  index permits synchronous EDT analysis only in unit-test mode; production builds always run
+  in background smart read actions.
 - The daemon caches markers for unchanged files. Re-highlighting after validation requires
   `DaemonCodeAnalyzer.restart()`, same as production.
 - Validation results are retained by design, so test classes call
