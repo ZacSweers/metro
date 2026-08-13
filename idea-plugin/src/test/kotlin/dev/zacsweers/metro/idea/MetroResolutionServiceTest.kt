@@ -29,6 +29,171 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(project.service<MetroResolutionService>().index(file).bindings.isEmpty())
   }
 
+  fun testUnrelatedKotlinFileEditsPreserveTheExistingSnapshot() {
+    val unrelated =
+      myFixture.addFileToProject("test/Unrelated.kt", "package test\n\nclass Unrelated")
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+
+    myFixture.openFileInEditor(unrelated.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(unrelated.textLength)
+    myFixture.type("\nclass AlsoUnrelated")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertSame(initial, service.index(file))
+  }
+
+  fun testUnannotatedTypeAliasChangesRefreshDependentBindingKeys() {
+    val aliases =
+      myFixture.addFileToProject("test/Aliases.kt", "package test\n\ntypealias Alias = String")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides fun provideAlias(): Alias = error("unused")
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    assertEquals(
+      listOf("kotlin.String"),
+      service.index(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+    )
+
+    myFixture.openFileInEditor(aliases.virtualFile)
+    val stringOffset = aliases.text.indexOf("String")
+    myFixture.editor.selectionModel.setSelection(stringOffset, stringOffset + "String".length)
+    myFixture.type("Int")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertEquals(
+      listOf("kotlin.Int"),
+      service.index(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+    )
+  }
+
+  fun testUnannotatedConstantChangesRefreshDependentBindingQualifiers() {
+    val constants =
+      myFixture.addFileToProject(
+        "test/Constants.kt",
+        "package test\n\nconst val SERVICE_NAME = \"before\"",
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file).bindings.single().typeKey.qualifier
+    assertTrue(initial.toString().contains("before"))
+
+    myFixture.openFileInEditor(constants.virtualFile)
+    val valueOffset = constants.text.indexOf("before")
+    myFixture.editor.selectionModel.setSelection(valueOffset, valueOffset + "before".length)
+    myFixture.type("after")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file).bindings.single().typeKey.qualifier
+    assertNotSame(initial, updated)
+    assertTrue(updated.toString().contains("after"))
+  }
+
+  fun testOutputOnlyCompilerOptionsPreserveTheExistingSnapshot() {
+    project.setMetroOptions("reports-destination" to "/tmp/metro-first")
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+
+    project.setMetroOptions(
+      "reports-destination" to "/tmp/metro-second",
+      "trace-destination" to "/tmp/metro-traces",
+    )
+
+    assertSame(initial, service.index(file))
+  }
+
+  fun testGraphValidationCompilerOptionsInvalidateTheExistingSnapshot() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+
+    project.setMetroOptions("enable-suspend-providers" to "true")
+    val suspendEnabled = service.index(file)
+    assertNotSame(initial, suspendEnabled)
+
+    project.setMetroOptions(
+      "enable-suspend-providers" to "true",
+      "enable-function-providers" to "false",
+    )
+    val functionProvidersDisabled = service.index(file)
+    assertNotSame(suspendEnabled, functionProvidersDisabled)
+
+    project.setMetroOptions(
+      "enable-suspend-providers" to "true",
+      "enable-function-providers" to "false",
+      "shrink-unused-bindings" to "false",
+    )
+    assertNotSame(functionProvidersDisabled, service.index(file))
+  }
+
+  fun testNewlyAnnotatedFilesAreAddedWithoutRebuildingUnchangedDeclarations() {
+    val additional = myFixture.addFileToProject("test/Additional.kt", "package test\n\nclass Added")
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    val unchanged = initial.bindings.single { it.typeKey.renderedType == "test.ServiceImpl" }
+
+    myFixture.openFileInEditor(additional.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(additional.text.indexOf("class Added"))
+    myFixture.type("@dev.zacsweers.metro.Inject ")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file)
+    assertNotSame(initial, updated)
+    assertTrue(updated.bindings.any { it.typeKey.renderedType == "test.Added" })
+    assertSame(unchanged, updated.bindings.single { it.typeKey.renderedType == "test.ServiceImpl" })
+  }
+
+  fun testRemovingTheLastRelevantAnnotationDropsItsFileShard() {
+    val additional =
+      myFixture.addFileToProject(
+        "test/Temporary.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class Temporary",
+      )
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    assertTrue(service.index(file).bindings.any { it.typeKey.renderedType == "test.Temporary" })
+
+    myFixture.openFileInEditor(additional.virtualFile)
+    myFixture.editor.selectionModel.setSelection(
+      additional.text.indexOf("@dev.zacsweers.metro.Inject "),
+      additional.text.indexOf("class Temporary"),
+    )
+    myFixture.type(" ")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertFalse(service.index(file).bindings.any { it.typeKey.renderedType == "test.Temporary" })
+  }
+
+  fun testEditorDecorationSettingsDoNotInvalidateTheIndex() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    val settings = MetroSettings.getInstance(project).state
+    settings.enableBindingResolution = false
+    try {
+      service.settingsChanged()
+
+      assertSame(initial, service.index(file))
+    } finally {
+      settings.enableBindingResolution = true
+    }
+  }
+
   private fun configure(): KtFile {
     return myFixture.configureByText(
       "Test.kt",
@@ -500,6 +665,125 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals(
         "@SingleIn(scope = AppScope::class)",
         bindings.single().scope?.render(short = true),
+      )
+    }
+  }
+
+  fun testChangingLibraryRootsInvalidatesTheExistingSnapshot() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import libtest.LibHttpClient
+
+        @Inject class LibConsumer(val client: LibHttpClient)
+        """,
+        fileName = "LibConsumer.kt",
+      )
+    val service = project.service<MetroResolutionService>()
+    val withoutLibrary = service.index(file)
+
+    module.withMetroLibFixtureLibrary {
+      val withLibrary = service.index(file)
+      val declarations = file.declarationsIncludingNested()
+      val client = withLibrary.consumerEntryAt(declarations.parameter("client"))!!
+
+      assertNotSame(withoutLibrary, withLibrary)
+      assertEquals(
+        "libtest.LibHttpClient",
+        withLibrary.bindingsFor(client).single().typeKey.renderedType,
+      )
+    }
+
+    assertNotSame(withoutLibrary, service.index(file))
+  }
+
+  fun testUnchangedLibraryInputsReuseBinaryDeclarationsAfterSourceEdits() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibHttpClient
+
+          @Inject class LibConsumer(val client: LibHttpClient)
+          """,
+          fileName = "LibConsumer.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(file)
+      val initialLibraryBinding =
+        initial.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" }
+
+      myFixture.editor.caretModel.moveToOffset(file.textLength)
+      myFixture.type("\n")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(file)
+      val updatedLibraryBinding =
+        updated.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" }
+      assertNotSame(initial, updated)
+      assertSame(initialLibraryBinding, updatedLibraryBinding)
+    }
+  }
+
+  fun testLibraryGeneratedContributionAliasesPreserveAnvilRanks() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "libtest/LibRankedBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRankedService
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val service: LibRankedService
+          }
+          """,
+          fileName = "RankedLibraryGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val service = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+      val matching = index.resolveConsumer(service).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("bindLibRankedService"),
+        matching.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+      )
+      assertEquals(listOf(100L), matching.map { it.contributionRank })
+      assertEquals(
+        listOf("libtest.LibHigherRankedService"),
+        matching.map { it.originClassId?.asFqNameString() },
+      )
+    }
+  }
+
+  fun testLibraryQualifierDefaultsMatchExplicitValues() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibEndpoint
+
+          interface Service
+
+          @DependencyGraph
+          interface AppGraph {
+            @LibEndpoint(version = 1, name = "main") val service: Service
+            @Provides @LibEndpoint fun provideService(): Service = object : Service {}
+          }
+          """,
+          fileName = "BinaryQualifierGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+      assertEquals(
+        listOf("provideService"),
+        index.resolveConsumer(accessor).uniformBindings.orEmpty().mapNotNull {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        },
       )
     }
   }
@@ -1062,6 +1346,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       listOf("FakeRepo"),
       resolution.uniformBindings.orEmpty().map { it.implementationName },
     )
+    val graph = index.graphEntryAt(declarations.klass("ReplacesGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+    assertEquals(
+      listOf("FakeRepo"),
+      index.contributionsFor(queryContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
 
     val realEntry =
       index.bindingEntriesAt(declarations.klass("RealRepo")).single {
@@ -1579,6 +1871,352 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       otherResolution.uniformBindings.orEmpty().map { it.implementationName },
     )
     assertEquals(listOf("OtherGraph"), otherResolution.perContext.keys.map { it.graph.name })
+  }
+
+  fun testMemberInjectionSitesOnlyBelongToGraphsThatInjectTheirOwner() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        class Screen {
+          @Inject lateinit var service: Service
+        }
+
+        @DependencyGraph
+        interface ScreenGraph {
+          @Provides fun provideService(): Service = object : Service {}
+          fun inject(screen: Screen)
+        }
+
+        @DependencyGraph
+        interface OtherGraph {
+          @Provides fun provideOtherService(): Service = object : Service {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val member = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+    val resolution = index.resolveConsumer(member)
+
+    assertEquals(listOf("ScreenGraph"), resolution.perContext.keys.map { it.graph.name })
+    assertEquals(
+      listOf("provideService"),
+      resolution.uniformBindings.orEmpty().mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testMarkedInheritedMemberSitesFollowInjectedSubclass() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @HasMemberInjections
+        abstract class BaseScreen {
+          @Inject lateinit var service: Service
+        }
+
+        class Screen : BaseScreen()
+
+        @DependencyGraph
+        interface ScreenGraph {
+          @Provides fun provideService(): Service = object : Service {}
+          fun inject(screen: Screen)
+        }
+
+        @DependencyGraph
+        interface OtherGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val member = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      listOf("ScreenGraph"),
+      index.resolveConsumer(member).perContext.keys.map { it.graph.name },
+    )
+  }
+
+  fun testQualifierDefaultsMatchExplicitValues() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Qualifier
+        annotation class Endpoint(val name: String = "main", val version: Int = 1)
+
+        interface Service
+
+        @DependencyGraph
+        interface AppGraph {
+          @Endpoint(version = 1, name = "main") val service: Service
+          @Provides @Endpoint fun provideService(): Service = object : Service {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      listOf("provideService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testChangingQualifierDefaultsInvalidatesDependentShards() {
+    val qualifier =
+      myFixture.addFileToProject(
+        "test/Endpoint.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Qualifier
+
+        @Qualifier annotation class Endpoint(val name: String = "main")
+        """
+          .trimIndent(),
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @DependencyGraph
+        interface AppGraph {
+          @Endpoint("main") val service: Service
+          @Provides @Endpoint fun provideService(): Service = object : Service {}
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val declarations = file.declarationsIncludingNested()
+    val initial = service.index(file)
+    val initialConsumer = initial.consumerEntryAt(declarations.property("service"))!!
+    assertEquals(1, initial.resolveConsumer(initialConsumer).uniformBindings.orEmpty().size)
+
+    myFixture.openFileInEditor(qualifier.virtualFile)
+    val defaultValue = qualifier.text.indexOf("main")
+    myFixture.editor.selectionModel.setSelection(defaultValue, defaultValue + "main".length)
+    myFixture.type("other")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file)
+    val updatedConsumer = updated.consumerEntryAt(declarations.property("service"))!!
+    assertNotSame(initial, updated)
+    assertTrue(updated.resolveConsumer(updatedConsumer).uniformBindings.orEmpty().isEmpty())
+  }
+
+  fun testQualifierEnumClassAndArrayDefaultsMatchExplicitValues() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        enum class Flavor { DEFAULT }
+
+        @Qualifier
+        annotation class Endpoint(
+          val flavor: Flavor = Flavor.DEFAULT,
+          val type: KClass<*> = String::class,
+          val tags: Array<String> = ["primary", "backup"],
+        )
+
+        interface Service
+
+        @DependencyGraph
+        interface AppGraph {
+          @Endpoint(tags = ["primary", "backup"], type = String::class, flavor = Flavor.DEFAULT)
+          val service: Service
+
+          @Provides @Endpoint fun provideService(): Service = object : Service {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      listOf("provideService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testAnvilRanksReplaceLowerRankedContributions() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/RankedBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class RankedBinding(val scope: KClass<*>, val rank: Int = 0)
+
+        interface Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 50)
+        class LowerService : Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val accessor = index.consumerEntryAt(declarations.property("service"))!!
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+
+    assertEquals(
+      listOf("HigherService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().map { it.implementationName },
+    )
+    assertEquals(
+      listOf("HigherService"),
+      index.contributionsFor(queryContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testAnvilRanksDoNotReplaceContributionsFromParentScopes() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/RankedBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        abstract class ChildScope
+
+        annotation class RankedBinding(val scope: KClass<*>, val rank: Int = 0)
+
+        interface Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class ParentService : Service
+
+        @Inject @RankedBinding(ChildScope::class, rank = 50)
+        class ChildService : Service
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val service: Service
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface ParentGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val accessor = index.consumerEntryAt(declarations.property("service"))!!
+    val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(child).single())!!
+
+    assertEquals(
+      setOf("ParentService", "ChildService"),
+      index.bindingsFor(accessor, queryContext).mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertEquals(
+      listOf("ChildService"),
+      index.contributionsFor(queryContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    assertEquals(
+      listOf("ParentService"),
+      index.inheritedContributionsFor(queryContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testEqualAnvilRanksKeepAllContributions() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/RankedBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class RankedBinding(val scope: KClass<*>, val rank: Int = 0)
+
+        interface Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class FirstService : Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      setOf("FirstService", "SecondService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testAnvilRanksDoNotApplyWithoutInterop() {
+    project.setMetroOptions("custom-contributes-binding" to "test/RankedBinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class RankedBinding(val scope: KClass<*>, val rank: Int = 0)
+
+        interface Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 50)
+        class LowerService : Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      setOf("LowerService", "HigherService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
   }
 
   fun testConsumerResolutionDistinguishesUniformAndContextDependentBindings() {
