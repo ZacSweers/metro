@@ -3326,11 +3326,89 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
     ifJvmTarget { assertThat(project.invokeMain<String>()).isEqualTo("Hi, world") }
   }
 
+  @Test
+  fun `adding a member to a graph extension invalidates the parent graph on JVM`() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() = listOf(main, appGraph)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              @Provides fun message(): String = "hello"
+
+              val childGraphFactory: ChildGraph.Factory
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "AppGraph",
+          )
+
+        private val main =
+          source(
+            """
+            @GraphExtension
+            interface ChildGraph {
+              @GraphExtension.Factory
+              interface Factory {
+                fun create(): ChildGraph
+              }
+            }
+
+            fun main(): Boolean {
+              createGraph<AppGraph>().childGraphFactory.create()
+              return true
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val compileTask = ":compileKotlin"
+
+    fun modifyMainSource(content: String) {
+      val newSource = source(content, fileNameWithoutExtension = "Main", sourceSet = "main")
+      project.rootDir.resolve("src/main/kotlin/test/Main.kt").writeText(newSource.source)
+    }
+
+    val firstBuildResult = project.compileKotlin(compileTask)
+    assertThat(firstBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Boolean>(target = null)).isTrue()
+
+    modifyMainSource(
+      """
+      @GraphExtension
+      interface ChildGraph {
+        val message: String
+
+        @GraphExtension.Factory
+        interface Factory {
+          fun create(): ChildGraph
+        }
+      }
+
+      fun main(): Boolean =
+        createGraph<AppGraph>().childGraphFactory.create().message == "hello"
+      """
+        .trimIndent()
+    )
+
+    val secondBuildResult = project.compileKotlin(compileTask)
+    assertThat(secondBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Boolean>(target = null)).isTrue()
+  }
+
   /**
-   * Regression test for https://github.com/ZacSweers/metro/issues/2660 (specific to Android builds)
+   * Regression test for https://github.com/ZacSweers/metro/issues/2660 using AGP's built-in Kotlin
+   * compilation path.
    *
-   * Adding a member-injection function to a `@GraphExtension` must invalidate the parent graph
-   * file.
+   * Adding a member to a `@GraphExtension` must invalidate the parent graph file.
    */
   @Test
   fun `adding a member to a graph extension invalidates the parent graph`() {
@@ -3338,7 +3416,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
 
     val fixture =
       object : MetroProject(multiplatform = false) {
-        override fun sources() = listOf(injectionTargets, graphExtension, appGraph, main)
+        override fun sources() = listOf(main, appGraph)
 
         override fun buildGradleProject(): GradleProject {
           val projectSources = sources()
@@ -3376,52 +3454,14 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
             .write()
         }
 
-        private val injectionTargets =
-          source(
-            """
-            @HasMemberInjections
-            abstract class BaseActivity {
-              @Inject lateinit var logger: Logger
-            }
-
-            class LicensesActivity : BaseActivity() {
-              @Inject lateinit var gson: Gson
-            }
-            """
-              .trimIndent(),
-            fileNameWithoutExtension = "InjectionTargets",
-          )
-
-        private val graphExtension =
-          source(
-            """
-            @GraphExtension(ActivityScope::class)
-            interface BaseActivityGraph {
-              fun inject(activity: BaseActivity)
-
-              @GraphExtension.Factory
-              interface Factory { fun create(): BaseActivityGraph }
-            }
-            """
-              .trimIndent(),
-            fileNameWithoutExtension = "BaseActivityGraph",
-          )
-
         private val appGraph =
           source(
             """
-            abstract class ActivityScope private constructor()
-
-            class Logger(val name: String)
-            class Gson
-
-            @DependencyGraph(AppScope::class)
+            @DependencyGraph
             interface AppGraph {
-              @Provides fun logger(): Logger = Logger("app-logger")
+              @Provides fun message(): String = "hello"
 
-              @Provides fun gson(): Gson = Gson()
-
-              val extGraphFactory: BaseActivityGraph.Factory
+              val childGraphFactory: ChildGraph.Factory
             }
             """
               .trimIndent(),
@@ -3431,11 +3471,17 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
         private val main =
           source(
             """
+            @GraphExtension
+            interface ChildGraph {
+              @GraphExtension.Factory
+              interface Factory {
+                fun create(): ChildGraph
+              }
+            }
+
             fun main(): Boolean {
-              val graphExtension = createGraph<AppGraph>().extGraphFactory.create()
-              val activity: BaseActivity = LicensesActivity()
-              graphExtension.inject(activity)
-              return activity.logger.name == "app-logger"
+              createGraph<AppGraph>().childGraphFactory.create()
+              return true
             }
             """
               .trimIndent(),
@@ -3461,43 +3507,32 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
         }
     }
 
-    fun modifyMainSource(fileName: String, content: String) {
-      val newSource = source(content, fileNameWithoutExtension = fileName, sourceSet = "main")
-      project.rootDir.resolve("src/main/kotlin/test/$fileName.kt").writeText(newSource.source)
+    fun modifyMainSource(content: String) {
+      val newSource = source(content, fileNameWithoutExtension = "Main", sourceSet = "main")
+      project.rootDir.resolve("src/main/kotlin/test/Main.kt").writeText(newSource.source)
     }
 
     val firstBuildResult = project.compileKotlin(compileTask)
     assertThat(firstBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
     assertThat(invokeAndroidMain()).isTrue()
 
-    // Add a 2nd member injection function, which should invalidate the parent graph
+    // Add a graph extension member, which should invalidate the parent graph.
     modifyMainSource(
-      "BaseActivityGraph",
       """
-      @GraphExtension(ActivityScope::class)
-      interface BaseActivityGraph {
-        fun inject(activity: BaseActivity)
-        fun inject(activity: LicensesActivity)
+      @GraphExtension
+      interface ChildGraph {
+        val message: String
 
         @GraphExtension.Factory
         interface Factory {
-          fun create(): BaseActivityGraph
+          fun create(): ChildGraph
         }
       }
+
+      fun main(): Boolean =
+        createGraph<AppGraph>().childGraphFactory.create().message == "hello"
       """
-        .trimIndent(),
-    )
-    modifyMainSource(
-      "Main",
-      """
-      fun main(): Boolean {
-        val graphExtension = createGraph<AppGraph>().extGraphFactory.create()
-        val activity = LicensesActivity()
-        graphExtension.inject(activity)
-        return activity.logger.name == "logger" && activity.gson != null
-      }
-      """
-        .trimIndent(),
+        .trimIndent()
     )
 
     val secondBuildResult = project.compileKotlin(compileTask)
