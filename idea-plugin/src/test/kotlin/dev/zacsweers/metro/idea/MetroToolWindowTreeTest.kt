@@ -16,6 +16,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import org.jetbrains.kotlin.psi.KtFile
@@ -155,6 +156,57 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(listOf("Boolean"), structure.children(unusedCategory).map { it.text })
   }
 
+  fun testValidationNodeIdentityIncludesResultAndStaleState() {
+    val file = configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single() as MetroTreeNode.Graph
+    val result = project.service<MetroGraphValidationService>().validate(file, graph.context)
+
+    val current = MetroTreeNode.Validation(graph, result, stale = false)
+    val currentAgain = MetroTreeNode.Validation(graph, result, stale = false)
+    val stale = MetroTreeNode.Validation(graph, result, stale = true)
+    val failed =
+      MetroTreeNode.Validation(
+        graph,
+        KaGraphValidationResult.InternalError(graph.context, IllegalStateException()),
+        stale = false,
+      )
+
+    assertEquals(current, currentAgain)
+    assertFalse(current == stale)
+    assertFalse(current == failed)
+  }
+
+  fun testGraphBrowsingAndValidationRemainAvailableWhenEditorNavigationIsDisabled() {
+    val settings = MetroSettings.getInstance(project).state
+    settings.enableBindingResolution = false
+    try {
+      val file = configure()
+      val structure = structure()
+      val root = structure.rootElement as MetroTreeNode
+      val graph = structure.children(root).single() as MetroTreeNode.Graph
+
+      assertEquals("AppGraph", graph.text)
+      project.service<MetroGraphValidationService>().validate(file, graph.context)
+      assertTrue(structure.children(graph).any { it is MetroTreeNode.Validation })
+    } finally {
+      settings.enableBindingResolution = true
+    }
+  }
+
+  fun testSummaryIdentityIncludesDisplayedText() {
+    val parent = MetroTreeNode.Root()
+
+    assertEquals(
+      MetroTreeNode.Summary(parent, "3 bindings"),
+      MetroTreeNode.Summary(parent, "3 bindings"),
+    )
+    assertFalse(
+      MetroTreeNode.Summary(parent, "3 bindings") == MetroTreeNode.Summary(parent, "4 bindings")
+    )
+  }
+
   fun testInternalValidationErrorIsPresentedAsAPluginFailure() {
     configure()
     val structure = structure()
@@ -179,6 +231,25 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       assertTrue(structure.children(root).isEmpty())
     }
+  }
+
+  fun testToolWindowPanelRecoversAfterDumbMode() {
+    configure()
+    var panel: MetroToolWindowPanel? = null
+    DumbModeTestUtils.runInDumbModeSynchronously(project) {
+      panel = MetroToolWindowPanel(project)
+      assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+    }
+
+    val tree = toolWindowTree(checkNotNull(panel))
+    PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+    assertTrue("The Metro tree should populate when smart mode resumes", tree.rowCount > 0)
+    com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
+  }
+
+  private fun toolWindowTree(panel: MetroToolWindowPanel): Tree {
+    return com.intellij.util.ui.UIUtil.findComponentOfType(panel, Tree::class.java)
+      ?: error("Metro tool window has no tree")
   }
 
   fun testRefreshedNodesReplaceStaleOnes() {
@@ -389,6 +460,42 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val after = visibleTexts()
     assertTrue(after.toString(), "String" in after)
     assertTrue(after.toString(), "Boolean" !in after)
+  }
+
+  fun testValidationRefreshThroughPlatformTreeModel() {
+    val file = configure()
+    val treeStructure = structure()
+    val treeModel = StructureTreeModel(treeStructure, testRootDisposable)
+    val tree = Tree(AsyncTreeModel(treeModel, testRootDisposable))
+    tree.isRootVisible = false
+
+    fun visibleTexts(): List<String> {
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      return (0 until tree.rowCount).mapNotNull { row ->
+        (TreeUtil.getLastUserObject(NodeDescriptor::class.java, tree.getPathForRow(row))?.element
+            as? MetroTreeNode)
+          ?.text
+      }
+    }
+
+    val root = treeStructure.rootElement as MetroTreeNode
+    val graph = treeStructure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, graph.context)
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    assertTrue(visibleTexts().toString(), "Validation" in visibleTexts())
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val memberOffset = document.text.indexOf("val consumer: Consumer")
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(memberOffset, "val missing: Long\n        ")
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val currentGraph = treeStructure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, currentGraph.context)
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    val texts = visibleTexts()
+    assertTrue(texts.toString(), texts.any { it.startsWith("[Metro/MissingBinding]") })
   }
 
   fun testDiagnosticRowsWithNavigableStacks() {

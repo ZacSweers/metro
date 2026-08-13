@@ -16,6 +16,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
 import com.intellij.ui.layout.ComponentPredicate
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 
 class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
@@ -24,7 +25,7 @@ class MetroSettingsState : BaseState() {
   /** Suppresses IntelliJ's false-positive kapt configuration warning in Metro-enabled modules. */
   var suppressKaptConfigurationWarning by property(true)
 
-  /** Master switch for binding resolution: gutter icons, code vision, and inlay hints. */
+  /** Shows binding navigation in the editor without disabling graph browsing or validation. */
   var enableBindingResolution by property(true)
 
   /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
@@ -71,13 +72,12 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           .bindSelected(state::enableBindingResolution)
       resolutionSelected = cell.selected
     }
+    row {
+      checkBox("Resolve bindings from compiled dependencies")
+        .bindSelected(state::resolveFromLibraries)
+        .comment("Includes library bindings in graph browsing, validation, and editor navigation")
+    }
     indent {
-      row {
-        checkBox("Resolve bindings from compiled dependencies")
-          .bindSelected(state::resolveFromLibraries)
-          .enabledIf(resolutionSelected)
-          .comment("Scans library metadata for injected classes and contribution hints")
-      }
       row {
         checkBox("Show \"assisted\" inlay hints")
           .bindSelected(state::assistedParameterInlays)
@@ -91,6 +91,8 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
 
   override fun apply() {
     super.apply()
+    // Library resolution changes affect graph browsing even when editor decorations are hidden.
+    project.service<MetroResolutionService>().settingsChanged()
     // Re-run highlighting so the gates take effect without further edits
     DaemonCodeAnalyzer.getInstance(project).restart("MetroSettings applied")
   }

@@ -133,6 +133,9 @@ Project settings live under `Settings > Tools > Metro`.
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types
 
+Turning off binding navigation hides editor decorations only. The Metro tool window and explicit
+graph validation remain available, and library resolution can still be configured independently.
+
 Gutter marker categories are also toggleable under IntelliJ's gutter icon settings.
 
 ### Library Resolution

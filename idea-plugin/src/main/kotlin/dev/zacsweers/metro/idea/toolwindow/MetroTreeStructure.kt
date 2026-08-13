@@ -146,7 +146,8 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
           }
         is KaGraphValidationResult.InternalError -> AllIcons.General.Error
       }
-    override val identity: Any = Unit
+    // AsyncTreeModel retains equal nodes, so a new result must replace its old diagnostic rows.
+    override val identity: Any = result to stale
   }
 
   class Diagnostic(parent: MetroTreeNode, val diagnostic: KaGraphDiagnostic, index: Int) :
@@ -157,7 +158,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
         MetroSeverity.ERROR -> AllIcons.General.Error
         MetroSeverity.WARNING -> AllIcons.General.Warning
       }
-    override val identity: Any = index
+    override val identity: Any = DiagnosticIdentity(index, text, diagnostic.severity)
   }
 
   class StackEntry(
@@ -167,14 +168,20 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     index: Int,
   ) : MetroTreeNode(parent) {
     override val icon: Icon = MetroIcons.CONSUMER
-    override val identity: Any = index
+    override val identity: Any = index to text
   }
 
   class Summary(parent: MetroTreeNode, override val text: String) : MetroTreeNode(parent) {
     override val icon: Icon = AllIcons.General.Information
-    override val identity: Any = Unit
+    override val identity: Any = text
   }
 }
+
+private data class DiagnosticIdentity(
+  val index: Int,
+  val text: String,
+  val severity: MetroSeverity,
+)
 
 private data class CategoryIdentity(
   val title: String,
@@ -346,8 +353,8 @@ internal class MetroTreeStructure(
   }
 
   /**
-   * The distinct Metro-enabled indexes. Each index is project-wide, but modules with different
-   * option fingerprints get their own instance, so union across them.
+   * The distinct Metro-enabled indexes. Each index is project-wide; modules with the same binding
+   * options reuse one instance even when their report or trace destinations differ.
    */
   private fun currentIndexes(): List<BindingIndex> {
     val resolutionService = project.service<MetroResolutionService>()

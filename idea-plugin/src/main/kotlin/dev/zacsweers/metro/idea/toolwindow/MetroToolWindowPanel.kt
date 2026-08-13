@@ -13,6 +13,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.vfs.VirtualFile
@@ -58,6 +59,21 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   init {
     TreeSpeedSearch.installOn(tree)
+
+    // A window opened while indexes are unavailable must populate once smart mode returns.
+    project.messageBus
+      .connect(this)
+      .subscribe(
+        DumbService.DUMB_MODE,
+        object : DumbService.DumbModeListener {
+          override fun exitDumbMode() {
+            treeModel.invalidateAsync()
+          }
+        },
+      )
+    project.service<MetroResolutionService>().addIndexListener(this) {
+      treeModel.invalidateAsync()
+    }
 
     object : DoubleClickListener() {
         override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected()
