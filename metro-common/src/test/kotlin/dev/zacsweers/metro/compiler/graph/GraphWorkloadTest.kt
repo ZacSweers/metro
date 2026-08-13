@@ -34,7 +34,8 @@ class GraphWorkloadTest : TraceScope by TraceScope.noop() {
     assertThat(workload.unreachableKeys).hasSize(125)
 
     val aggregate = reachable.first {
-      it.kind == WorkloadBindingKind.SET_AGGREGATE || it.kind == WorkloadBindingKind.MAP_AGGREGATE
+      it.kind == WorkloadBindingKind.SET_MULTIBINDING ||
+        it.kind == WorkloadBindingKind.MAP_MULTIBINDING
     }
     assertThat(aggregate.binding.dependencies.size).isAtLeast(16)
 

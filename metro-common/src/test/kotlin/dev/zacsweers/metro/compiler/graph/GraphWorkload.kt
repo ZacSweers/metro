@@ -9,8 +9,8 @@ internal enum class WorkloadBindingKind {
   PROVIDED,
   CONSTRUCTOR_INJECTED,
   ALIAS,
-  SET_AGGREGATE,
-  MAP_AGGREGATE,
+  SET_MULTIBINDING,
+  MAP_MULTIBINDING,
   INSTANCE,
 }
 
@@ -118,9 +118,9 @@ private constructor(
         kinds[index] =
           when {
             reachableOffset > aggregateWidth && reachableOffset % 53 == 0 ->
-              WorkloadBindingKind.SET_AGGREGATE
+              WorkloadBindingKind.SET_MULTIBINDING
             reachableOffset > aggregateWidth && reachableOffset % 67 == 0 ->
-              WorkloadBindingKind.MAP_AGGREGATE
+              WorkloadBindingKind.MAP_MULTIBINDING
             reachableOffset % 17 == 0 -> WorkloadBindingKind.INSTANCE
             reachableOffset % 11 == 0 -> WorkloadBindingKind.ALIAS
             reachableOffset % 7 == 0 -> WorkloadBindingKind.CONSTRUCTOR_INJECTED
@@ -140,7 +140,8 @@ private constructor(
 
         val kind = kinds[index]
         if (
-          kind == WorkloadBindingKind.SET_AGGREGATE || kind == WorkloadBindingKind.MAP_AGGREGATE
+          kind == WorkloadBindingKind.SET_MULTIBINDING ||
+            kind == WorkloadBindingKind.MAP_MULTIBINDING
         ) {
           val count = minOf(aggregateWidth, reachableOffset)
           for (offset in 1..count) addDependency(dependencies, keys, index, index - offset)
