@@ -663,7 +663,14 @@ private fun Module.setModuleMetroOptions(vararg options: Pair<String, String>) {
   configuration.settings.initializeIfNeeded(this, null)
   configuration.settings.useProjectSettings = false
   configuration.settings.updateCompilerArguments {
-    pluginOptions = options.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
+    val configuredOptions =
+      if (options.any { (name, _) -> name == "enabled" }) {
+        options.toList()
+      } else {
+        listOf("enabled" to "true") + options
+      }
+    pluginOptions =
+      configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
   }
   val facet = facetManager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", configuration, null)
   facetModel.addFacet(facet)

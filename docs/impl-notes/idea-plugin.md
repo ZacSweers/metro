@@ -38,7 +38,9 @@ BindingIndex (membership queries)
 ### Options and settings
 
 - `MetroIdeProjectService` / `metroIdeState()`: per-module `MetroOptions` parsed from the Kotlin
-  facet's compiler plugin args, plus an options fingerprint for cache keying.
+  facet's compiler plugin args, plus an options fingerprint for cache keying. A module is active
+  only when Metro compiler plugin options are present and the plugin is enabled. Kotlin modules
+  without Metro stay inactive even though the compiler option itself defaults to enabled.
 - `MetroSettings`: project-level toggles (binding resolution, library resolution, inlays).
 
 ### Index
@@ -173,6 +175,9 @@ confusing `NoSuchMethodError`s. Never add a coroutines dependency to the plugin.
 (default package and Metro star import), `setMetroOptions`, `addMetroRuntimeLibrary`, and
 `withMetroLibFixtureLibrary` (a jar compiled from `src/test/data/libFixtures/` for binary
 resolution tests).
+
+`setMetroOptions()` always supplies `enabled=true` unless a test explicitly overrides it.
+`clearMetroOptions()` represents a module where the Metro compiler plugin is not configured.
 
 - `MetroResolutionServiceTest`: index construction and editor resolution.
 - `MetroIndexDependenciesTest`: dependency keys, contextual keys, seal-facing queries.

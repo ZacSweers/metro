@@ -42,7 +42,7 @@ class MetroKaptCompilerPluginInspectionSuppressorTest : BasePlatformTestCase() {
   }
 
   fun testDoesNotSuppressWhenMetroIsNotConfigured() {
-    project.setMetroOptions()
+    project.clearMetroOptions()
     val file = configureKotlinFile()
 
     assertFalse(suppressor.isSuppressedFor(file, KAPT_INSPECTION_ID))

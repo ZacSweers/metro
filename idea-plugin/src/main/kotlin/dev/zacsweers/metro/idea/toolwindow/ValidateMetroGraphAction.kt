@@ -44,8 +44,9 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     val element = file.findElementAt(editor.caretModel.offset) ?: return null
     val ktClass = element.parentOfType<KtClassOrObject>(withSelf = true) ?: return null
 
-    val options = project.service<MetroIdeProjectService>().state(ktClass).options
-    if (!options.enabled) return null
+    val state = project.service<MetroIdeProjectService>().state(ktClass)
+    if (!state.isEnabled) return null
+    val options = state.options
     val graphShortNames =
       (options.dependencyGraphAnnotations + options.graphExtensionAnnotations).mapToSet {
         it.shortClassName.asString()

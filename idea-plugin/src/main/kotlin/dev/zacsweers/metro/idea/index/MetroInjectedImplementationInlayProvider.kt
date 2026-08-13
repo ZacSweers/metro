@@ -43,7 +43,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
   override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
     val ktFile = file as? KtFile ?: return null
     if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) return null
-    if (!ktFile.metroIdeState().options.enabled) return null
+    if (!ktFile.metroIdeState().isEnabled) return null
     return Collector
   }
 

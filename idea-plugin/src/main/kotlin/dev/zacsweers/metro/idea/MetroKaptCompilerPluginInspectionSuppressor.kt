@@ -15,9 +15,7 @@ class MetroKaptCompilerPluginInspectionSuppressor : InspectionSuppressor {
       return false
     }
 
-    val metroState = element.metroIdeState()
-    val isMetroConfigured = metroState.optionsFingerprint.isNotEmpty()
-    return isMetroConfigured && metroState.options.enabled
+    return element.metroIdeState().isEnabled
   }
 
   override fun getSuppressActions(

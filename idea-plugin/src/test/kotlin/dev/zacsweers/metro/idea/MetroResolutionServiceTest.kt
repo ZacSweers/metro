@@ -22,6 +22,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     module.addMetroRuntimeLibrary()
   }
 
+  fun testDoesNotBuildAnIndexWhenMetroIsNotConfigured() {
+    project.clearMetroOptions()
+    val file = configure()
+
+    assertTrue(project.service<MetroResolutionService>().index(file).bindings.isEmpty())
+  }
+
   private fun configure(): KtFile {
     return myFixture.configureByText(
       "Test.kt",

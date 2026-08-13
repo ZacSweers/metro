@@ -45,6 +45,14 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     )
   }
 
+  fun testDoesNotMarkMetroDeclarationsWhenPluginIsNotConfigured() {
+    project.clearMetroOptions()
+    val declarations = kotlinFileDeclarations()
+
+    assertFalse(declarations.function("provideService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+  }
+
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
     setMetroOptions(
       "custom-binds" to "test/CustomBinds",

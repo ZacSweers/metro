@@ -48,7 +48,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) {
       return emptyList()
     }
-    if (!ktFile.metroIdeState().options.enabled) return emptyList()
+    if (!ktFile.metroIdeState().isEnabled) return emptyList()
     val index = ktFile.project.service<MetroResolutionService>().index(ktFile)
 
     val entries = mutableListOf<Pair<TextRange, CodeVisionEntry>>()

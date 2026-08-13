@@ -26,6 +26,9 @@ internal class MetroIdeModuleState(
   /** The raw plugin option strings [options] was parsed from; identifies equivalent configs. */
   val optionsFingerprint: List<String> = emptyList(),
 ) {
+  /** Metro defaults to enabled only after its compiler plugin has actually been configured. */
+  val isEnabled: Boolean = optionsFingerprint.isNotEmpty() && options.enabled
+
   val annotationClassIds: MetroIdeAnnotationClassIds = MetroIdeAnnotationClassIds(options)
 }
 

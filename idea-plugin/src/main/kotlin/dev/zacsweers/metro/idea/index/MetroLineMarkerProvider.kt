@@ -87,7 +87,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val declaration = element.parent as? KtNamedDeclaration ?: return
     if (declaration.nameIdentifier !== element) return
     if (!MetroSettings.getInstance(element.project).state.enableBindingResolution) return
-    if (!declaration.metroIdeState().options.enabled) return
+    if (!declaration.metroIdeState().isEnabled) return
 
     val index = element.project.service<MetroResolutionService>().index(declaration)
 
