@@ -100,6 +100,19 @@ import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
 
+private typealias IrMutableBindingGraph =
+  MutableBindingGraph<
+    IrType,
+    IrTypeKey,
+    IrContextualTypeKey,
+    IrBinding,
+    IrBindingStack.Entry,
+    IrBindingStack,
+  >
+
+private typealias IrDiagnosticRoutes =
+  DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>
+
 internal data class ChildGraphScopeInfo(
   val reachableKeys: Set<IrTypeKey>,
   val scopeNames: Set<ClassId>,
@@ -292,7 +305,7 @@ internal class IrBindingGraph(
       _bindingLookup ?: reportCompilerBug("Tried to access bindingLookup after it's been cleared!")
 
   private val realGraph =
-    MutableBindingGraph<_, _, _, IrBinding, _, _>(
+    IrMutableBindingGraph(
       newBindingStack = newBindingStack,
       newBindingStackEntry = { contextKey, callingBinding, roots ->
         if (callingBinding == null) {
@@ -1158,8 +1171,7 @@ internal class IrBindingGraph(
   private fun reportStructuralIssue(
     issue: BindingGraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
     stack: IrBindingStack,
-    diagnosticRoutes:
-      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
+    diagnosticRoutes: IrDiagnosticRoutes,
   ) {
     when (issue) {
       is BindingGraphValidationIssue.IncompatibleScope ->
@@ -1299,8 +1311,7 @@ internal class IrBindingGraph(
     binding: IrBinding,
     bindingScope: IrAnnotation,
     stack: IrBindingStack,
-    diagnosticRoutes:
-      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
+    diagnosticRoutes: IrDiagnosticRoutes,
   ) {
     // Does bindingScope have the same toString? Annoying! Let's disambiguate
     val bindingScopeStr =
@@ -1364,8 +1375,7 @@ internal class IrBindingGraph(
 
   private fun buildStackToRoot(
     typeKey: IrTypeKey,
-    diagnosticRoutes:
-      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
+    diagnosticRoutes: IrDiagnosticRoutes,
     stack: IrBindingStack = newBindingStack(),
   ): IrBindingStack {
     val backTrace =
@@ -1384,8 +1394,7 @@ internal class IrBindingGraph(
     binding: IrBinding.Multibinding,
     mapKey: IrAnnotation?,
     contributions: List<IrBinding>,
-    diagnosticRoutes:
-      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
+    diagnosticRoutes: IrDiagnosticRoutes,
   ) {
     if (mapKey == null) {
       reportCompilerBug("Map key should not be null for map multibindings")

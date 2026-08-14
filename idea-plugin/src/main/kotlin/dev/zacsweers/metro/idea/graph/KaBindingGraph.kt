@@ -39,6 +39,19 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import org.jetbrains.kotlin.name.StandardClassIds
 
+private typealias KaMutableBindingGraph =
+  MutableBindingGraph<
+    KaTypeSnapshot,
+    KaTypeKey,
+    KaContextualTypeKey,
+    KaBinding,
+    KaBindingStack.Entry,
+    KaBindingStack,
+  >
+
+private typealias KaDiagnosticRoutes =
+  DiagnosticRoutes<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey, KaBindingStack.Entry>
+
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
  * shared [MutableBindingGraph] and runs its validation via [seal]. Missing bindings, duplicates,
@@ -74,14 +87,7 @@ internal class KaBindingGraph(
     get() = _bindingLookup ?: error("Binding lookup already cleared")
 
   private val realGraph =
-    MutableBindingGraph<
-      KaTypeSnapshot,
-      KaTypeKey,
-      KaContextualTypeKey,
-      KaBinding,
-      KaBindingStack.Entry,
-      KaBindingStack,
-    >(
+    KaMutableBindingGraph(
       newBindingStack = { KaBindingStack(graph) },
       newBindingStackEntry = { contextKey, callingBinding, roots ->
         // A null calling binding means the key was requested directly by a root
@@ -222,13 +228,7 @@ internal class KaBindingGraph(
   private fun reportStructuralIssue(
     issue: BindingGraphValidationIssue<KaBinding, KaAnnotationSnapshot, String>,
     stack: KaBindingStack,
-    diagnosticRoutes:
-      DiagnosticRoutes<
-        KaTypeSnapshot,
-        KaTypeKey,
-        KaContextualTypeKey,
-        KaBindingStack.Entry,
-      >,
+    diagnosticRoutes: KaDiagnosticRoutes,
   ) {
     when (issue) {
       is BindingGraphValidationIssue.IncompatibleScope ->
@@ -291,13 +291,7 @@ internal class KaBindingGraph(
     mapKey: String?,
     contributions: List<KaBinding>,
     stack: KaBindingStack,
-    diagnosticRoutes:
-      DiagnosticRoutes<
-        KaTypeSnapshot,
-        KaTypeKey,
-        KaContextualTypeKey,
-        KaBindingStack.Entry,
-      >,
+    diagnosticRoutes: KaDiagnosticRoutes,
   ) {
     checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
 
@@ -325,13 +319,7 @@ internal class KaBindingGraph(
     binding: KaBinding,
     bindingScope: KaAnnotationSnapshot,
     stack: KaBindingStack,
-    diagnosticRoutes:
-      DiagnosticRoutes<
-        KaTypeSnapshot,
-        KaTypeKey,
-        KaContextualTypeKey,
-        KaBindingStack.Entry,
-      >,
+    diagnosticRoutes: KaDiagnosticRoutes,
   ) {
     val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     diagnosticStack.push(
@@ -363,13 +351,7 @@ internal class KaBindingGraph(
 
   private fun buildStackToRoot(
     key: KaTypeKey,
-    diagnosticRoutes:
-      DiagnosticRoutes<
-        KaTypeSnapshot,
-        KaTypeKey,
-        KaContextualTypeKey,
-        KaBindingStack.Entry,
-      >,
+    diagnosticRoutes: KaDiagnosticRoutes,
     fallback: KaBindingStack,
   ): KaBindingStack {
     val route =
