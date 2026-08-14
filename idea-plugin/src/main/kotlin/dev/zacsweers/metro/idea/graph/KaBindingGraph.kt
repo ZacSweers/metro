@@ -213,7 +213,7 @@ internal class KaBindingGraph(
       }
     }
     suspendKeys =
-      SuspendBindingValidator(
+      KaSuspendBindingValidator(
           graph = graph,
           graphName = graphName,
           options = options,

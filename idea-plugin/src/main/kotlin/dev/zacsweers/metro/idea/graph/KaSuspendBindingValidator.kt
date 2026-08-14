@@ -10,7 +10,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.SuspendAssistedFactoryMetadata
 import dev.zacsweers.metro.compiler.graph.SuspendBindingMetadata
-import dev.zacsweers.metro.compiler.graph.SuspendBindingValidator as CommonSuspendBindingValidator
+import dev.zacsweers.metro.compiler.graph.SuspendBindingValidator
 import dev.zacsweers.metro.compiler.graph.SuspendGraphRequest
 import dev.zacsweers.metro.compiler.graph.SuspendGraphRequestKind
 import dev.zacsweers.metro.compiler.graph.SuspendMemberInjectionMetadata
@@ -26,7 +26,7 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** Adapts IDEA binding snapshots and diagnostic locations to shared suspend validation. */
-internal class SuspendBindingValidator(
+internal class KaSuspendBindingValidator(
   private val graph: KaGraphNode,
   private val graphName: String,
   private val options: MetroOptions,
@@ -53,7 +53,7 @@ internal class SuspendBindingValidator(
       )
     }
     val validation =
-      CommonSuspendBindingValidator(
+      SuspendBindingValidator(
           bindings = bindings,
           requests = requests,
           metadata = ::suspendMetadata,
