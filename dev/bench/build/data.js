@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786645743967,
+  "lastUpdate": 1786671069914,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21336,6 +21336,62 @@ window.BENCHMARK_DATA = {
             "value": 18423.05,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -7.19%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "36f6d20b~1",
+          "message": "[before] Add Kotlin community build support (#2663)",
+          "timestamp": "2026-08-14T00:32:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/36f6d20bc4a99838130e677e5e13601e63e5b920"
+        },
+        "date": 1786671069914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17793.234,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "36f6d20bc4a99838130e677e5e13601e63e5b920",
+          "message": "[after] Add Kotlin community build support (#2663)",
+          "timestamp": "2026-08-14T00:32:04Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/36f6d20bc4a99838130e677e5e13601e63e5b920"
+        },
+        "date": 1786671069915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17308.9,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.72%"
           }
         ]
       }
