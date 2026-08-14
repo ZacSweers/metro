@@ -157,9 +157,9 @@ internal class LibraryIndexPostProcessor(
         classSymbol.annotations
           .filter { it.classId in options.allContributesAnnotations }
           .flatMapToSet { classListArgument(it, "replaces") }
-      val classBindings = bindingData(ktClass, options)
+      val classBindings = ktClass.bindingData(this, options)
       val originBindings =
-        if (originPsi != null && originPsi != ktClass) bindingData(originPsi, options)
+        if (originPsi != null && originPsi != ktClass) originPsi.bindingData(this, options)
         else emptyList()
       val originSymbol =
         if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
@@ -209,7 +209,7 @@ internal class LibraryIndexPostProcessor(
       for (holder in memberHolders) {
         ProgressManager.checkCanceled()
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
-          for (data in bindingData(member, options)) {
+          for (data in member.bindingData(this, options)) {
             val matchingContribution = rankedContributions.firstOrNull { contribution ->
               contribution.key == data.key && scopeId in contribution.contributionScopes
             }

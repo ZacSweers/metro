@@ -172,7 +172,7 @@ internal class IndexBuilder(
               else -> null
             }
           (target.symbol as? KaAnnotated)?.let { recordAnnotationDependencies(it, target) }
-          val dataEntries = bindingData(target, options)
+          val dataEntries = target.bindingData(this, options)
           val consumerOriginClassId = dataEntries.firstNotNullOfOrNull { it.originClassId }
           val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
           val ownerDependency = graphOwnerDependency(target)
@@ -322,7 +322,7 @@ internal class IndexBuilder(
       recordAnnotationDependencies(classSymbol, ktClass)
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
-      val dataEntries = bindingData(ktClass, options)
+      val dataEntries = ktClass.bindingData(this, options)
       val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
       for (data in dataEntries) {
         bindings += data.toKaBinding(ptr(ktClass))
@@ -393,11 +393,11 @@ internal class IndexBuilder(
             nestedClassIds += memberClassId
             val memberSymbol = member.symbol as? KaClassSymbol ?: continue
             if (!memberSymbol.hasAnyAnnotation(factoryAnnotations)) continue
-            val includes = factoryIncludes(memberSymbol, options, pointerManager)
-            cacheDependencies += includes.cacheDependencies
-            includedBindingContainers += includes.bindingContainers
-            includedDependencies += includes.graphDependencies
-            for (input in includes.inputs) {
+            val graphInputs = memberSymbol.graphFactoryInputs(this, options, pointerManager)
+            cacheDependencies += graphInputs.cacheDependencies
+            includedBindingContainers += graphInputs.bindingContainers
+            includedDependencies += graphInputs.graphDependencies
+            for (input in graphInputs.inputs) {
               if (processedFactoryInputs.add(input.id)) {
                 factoryInputs += input
               }
@@ -573,7 +573,7 @@ internal class IndexBuilder(
     recordAnnotationDependencies(callable.symbol, declaration)
     val containerId =
       (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
-    for (data in bindingData(callable, options)) {
+    for (data in callable.bindingData(this, options)) {
       bindings += data.toKaBinding(ptr(declaration), containerId = containerId)
     }
     for (parameter in callable.valueParameters) {

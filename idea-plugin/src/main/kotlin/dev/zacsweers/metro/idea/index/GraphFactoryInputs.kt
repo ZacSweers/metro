@@ -27,54 +27,66 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 
-private val INCLUDES_ANNOTATIONS = setOf(MetroClassIds.includes)
-
-internal class FactoryIncludes(
+internal class GraphFactoryInputs(
   val bindingContainers: Set<KaTypeKey>,
   val graphDependencies: Set<KaTypeKey>,
   val inputs: List<FactoryInputEntry>,
   val cacheDependencies: Set<PsiFile>,
 ) {
   companion object {
-    val EMPTY = FactoryIncludes(emptySet(), emptySet(), emptyList(), emptySet())
+    val EMPTY = GraphFactoryInputs(emptySet(), emptySet(), emptyList(), emptySet())
   }
 }
 
 /** Extracts the concrete inputs of a factory's semantic single abstract function. */
-internal fun KaSession.factoryIncludes(
-  factory: KaClassSymbol,
+internal fun KaClassSymbol.graphFactoryInputs(
+  session: KaSession,
   options: MetroOptions,
   pointerManager: SmartPointerManager,
-): FactoryIncludes {
-  val factoryScope = factory.defaultType.scope ?: return FactoryIncludes.EMPTY
-  val abstractFunctions =
-    factoryScope
-      .getCallableSignatures()
-      .filterIsInstance<KaFunctionSignature<*>>()
-      .filter { signature ->
-        val symbol = signature.symbol
-        symbol is KaNamedFunctionSymbol && symbol.modality == KaSymbolModality.ABSTRACT
-      }
-      .toList()
-  val function = abstractFunctions.singleOrNull() ?: return FactoryIncludes.EMPTY
-  val callable = callableBindingView(function) ?: return FactoryIncludes.EMPTY
+): GraphFactoryInputs =
+  with(session) {
+    val factoryScope =
+      this@graphFactoryInputs.defaultType.scope ?: return@with GraphFactoryInputs.EMPTY
+    val abstractFunctions =
+      factoryScope
+        .getCallableSignatures()
+        .filterIsInstance<KaFunctionSignature<*>>()
+        .filter { signature ->
+          val symbol = signature.symbol
+          symbol is KaNamedFunctionSymbol && symbol.modality == KaSymbolModality.ABSTRACT
+        }
+        .toList()
+    val function = abstractFunctions.singleOrNull() ?: return@with GraphFactoryInputs.EMPTY
+    val callable = callableBindingView(function) ?: return@with GraphFactoryInputs.EMPTY
 
-  val bindingContainers = linkedSetOf<KaTypeKey>()
-  val graphDependencies = linkedSetOf<KaTypeKey>()
-  val inputs = mutableListOf<FactoryInputEntry>()
-  val cacheDependencies = linkedSetOf<PsiFile>()
-  callable.symbol.psi?.containingFile?.let(cacheDependencies::add)
-  for (parameter in callable.valueParameters) {
-    if (!parameter.symbol.hasAnyAnnotation(INCLUDES_ANNOTATIONS)) continue
-    val parameterType = parameter.returnType.fullyExpandedType as? KaClassType ?: continue
-    val parameterClass = parameterType.symbol as? KaNamedClassSymbol ?: continue
-    parameterClass.psi?.containingFile?.let(cacheDependencies::add)
-    val parameterKey = typeKey(parameterType, qualifierAnnotation(parameter.symbol, options))
+    val bindingContainers = linkedSetOf<KaTypeKey>()
+    val graphDependencies = linkedSetOf<KaTypeKey>()
+    val inputs = mutableListOf<FactoryInputEntry>()
+    val cacheDependencies = linkedSetOf<PsiFile>()
+    callable.symbol.psi?.containingFile?.let(cacheDependencies::add)
+    for (parameter in callable.valueParameters) {
+      val isIncluded = parameter.symbol.annotations.any { it.classId == MetroClassIds.includes }
+      if (!isIncluded) continue
+      val parameterType = parameter.returnType.fullyExpandedType as? KaClassType ?: continue
+      val parameterClass = parameterType.symbol as? KaNamedClassSymbol ?: continue
+      parameterClass.psi?.containingFile?.let(cacheDependencies::add)
+      val parameterKey = typeKey(parameterType, qualifierAnnotation(parameter.symbol, options))
 
-    if (parameterClass.hasAnyAnnotation(options.bindingContainerAnnotations)) {
-      if (bindingContainers.add(parameterKey)) {
+      if (parameterClass.hasAnyAnnotation(options.bindingContainerAnnotations)) {
+        if (bindingContainers.add(parameterKey)) {
+          inputs +=
+            includedBindingContainer(
+              parameterType,
+              parameterKey,
+              parameter,
+              options,
+              pointerManager,
+              cacheDependencies,
+            )
+        }
+      } else if (graphDependencies.add(parameterKey)) {
         inputs +=
-          includedBindingContainer(
+          includedGraphDependency(
             parameterType,
             parameterKey,
             parameter,
@@ -83,20 +95,9 @@ internal fun KaSession.factoryIncludes(
             cacheDependencies,
           )
       }
-    } else if (graphDependencies.add(parameterKey)) {
-      inputs +=
-        includedGraphDependency(
-          parameterType,
-          parameterKey,
-          parameter,
-          options,
-          pointerManager,
-          cacheDependencies,
-        )
     }
+    GraphFactoryInputs(bindingContainers, graphDependencies, inputs, cacheDependencies)
   }
-  return FactoryIncludes(bindingContainers, graphDependencies, inputs, cacheDependencies)
-}
 
 private fun KaSession.includedGraphDependency(
   dependencyType: KaClassType,
@@ -233,7 +234,7 @@ private fun KaSession.addIncludedContainerCallable(
 ) {
   val source = callable.symbol.psi ?: return
   source.containingFile?.let(cacheDependencies::add)
-  val dataEntries = bindingData(callable, options)
+  val dataEntries = callable.bindingData(this, options)
   if (dataEntries.isEmpty()) return
   val pointer = pointerManager.createSmartPsiElementPointer(source)
   val ownerDependency = containerKey.canonicalContextKey().takeIf { requiresContainerInstance }
