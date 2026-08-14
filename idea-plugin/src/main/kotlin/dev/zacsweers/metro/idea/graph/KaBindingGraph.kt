@@ -12,10 +12,16 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.graph.BindingGraphValidationIssue
+import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
+import dev.zacsweers.metro.compiler.graph.MultibindingKind
+import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
@@ -25,6 +31,7 @@ import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphNode
@@ -52,6 +59,7 @@ internal class KaBindingGraph(
   private val graphConsumers = index.accessorsFor(graph)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
   private var suspendKeys: Set<KaTypeKey> = emptySet()
+  private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
   private var _bindingLookup: KaBindingLookup? = KaBindingLookup(index, queryContext, options)
@@ -125,7 +133,7 @@ internal class KaBindingGraph(
             shrinkUnusedBindings = options.shrinkUnusedBindings,
             validateBindings = ::validateBindings,
           )
-        checkEmptyMultibindings()
+        reportEmptyMultibindings()
         topo
       } catch (_: SealAborted) {
         null
@@ -173,12 +181,9 @@ internal class KaBindingGraph(
     }
   }
 
-  private fun checkEmptyMultibindings() {
-    realGraph.bindings.forEachValue { binding ->
-      if (binding !is KaBinding.Multibinding) return@forEachValue
-      if (!binding.allowEmpty && binding.sourceBindings.isEmpty()) {
-        report(emptyMultibindingDiagnostic(binding.typeKey), KaBindingStack(graph))
-      }
+  private fun reportEmptyMultibindings() {
+    for (multibinding in pendingEmptyMultibindings) {
+      report(emptyMultibindingDiagnostic(multibinding.typeKey), KaBindingStack(graph))
     }
   }
 
@@ -189,10 +194,17 @@ internal class KaBindingGraph(
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
+    val structuralValidator =
+      BindingGraphValidator(
+        bindings = bindings,
+        graphScopes = context.scopingAnnotations,
+        metadata = { it.validationMetadata() },
+      )
     bindings.forEachValue { binding ->
       ProgressManager.checkCanceled()
-      validateBindingScope(binding, stack, diagnosticRoutes)
-      validateMultibindings(binding, bindings, stack, diagnosticRoutes)
+      for (issue in structuralValidator.validate(binding)) {
+        reportStructuralIssue(issue, stack, diagnosticRoutes)
+      }
     }
     suspendKeys =
       SuspendBindingValidator(
@@ -205,6 +217,60 @@ internal class KaBindingGraph(
           report = ::reportSuspendDiagnostic,
         )
         .validate()
+  }
+
+  private fun reportStructuralIssue(
+    issue: BindingGraphValidationIssue<KaBinding, KaAnnotationSnapshot, String>,
+    stack: KaBindingStack,
+    diagnosticRoutes:
+      DiagnosticRoutes<
+        KaTypeSnapshot,
+        KaTypeKey,
+        KaContextualTypeKey,
+        KaBindingStack.Entry,
+      >,
+  ) {
+    when (issue) {
+      is BindingGraphValidationIssue.IncompatibleScope ->
+        reportIncompatibleScope(issue.binding, issue.bindingScope, stack, diagnosticRoutes)
+      is BindingGraphValidationIssue.EmptyMultibinding ->
+        pendingEmptyMultibindings +=
+          checkNotNull(issue.binding as? KaBinding.Multibinding) {
+            "Only multibindings can produce empty multibinding issues"
+          }
+      is BindingGraphValidationIssue.DuplicateMapKey ->
+        reportDuplicateMapKey(
+          checkNotNull(issue.multibinding as? KaBinding.Multibinding) {
+            "Only multibindings can produce duplicate map key issues"
+          },
+          issue.mapKey,
+          issue.contributions,
+          stack,
+          diagnosticRoutes,
+        )
+    }
+  }
+
+  private fun KaBinding.validationMetadata():
+    BindingValidationMetadata<KaTypeKey, KaAnnotationSnapshot, String> {
+    val multibinding =
+      (this as? KaBinding.Multibinding)?.let { binding ->
+        MultibindingValidationMetadata(
+          kind =
+            if (binding.typeKey.type.classId == StandardClassIds.Map) {
+              MultibindingKind.MAP
+            } else {
+              MultibindingKind.SET
+            },
+          allowEmpty = binding.allowEmpty,
+          sourceBindings = binding.sourceBindings,
+        )
+      }
+    return BindingValidationMetadata(
+      scope = scope,
+      multibinding = multibinding,
+      mapContribution = MapContributionValidationMetadata(mapKeyValue),
+    )
   }
 
   private fun reportSuspendDiagnostic(
@@ -220,9 +286,10 @@ internal class KaBindingGraph(
     }
   }
 
-  private fun validateMultibindings(
-    binding: KaBinding,
-    bindings: ScatterMap<KaTypeKey, KaBinding>,
+  private fun reportDuplicateMapKey(
+    binding: KaBinding.Multibinding,
+    mapKey: String?,
+    contributions: List<KaBinding>,
     stack: KaBindingStack,
     diagnosticRoutes:
       DiagnosticRoutes<
@@ -232,40 +299,31 @@ internal class KaBindingGraph(
         KaBindingStack.Entry,
       >,
   ) {
-    if (binding !is KaBinding.Multibinding) return
-    if (binding.typeKey.type.classId != StandardClassIds.Map) return
-    val keysWithDupes =
-      binding.sourceBindings
-        .mapNotNull { bindings[it] }
-        .groupBy { it.mapKeyValue }
-        .filterValues { it.size > 1 }
+    checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
 
-    for ((mapKey, dupes) in keysWithDupes) {
-      checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
-
-      val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
-      val locationDiagnostics = dupes.map { it.renderLocationDiagnostic(short = true) }
-      val locations = locationDiagnostics.map { it.toLocatedItem() }
-      pendingRelated = dupes
-      try {
-        report(
-          duplicateMapKeysDiagnostic(
-            typeKey = binding.typeKey,
-            mapKeyRender = mapKey,
-            locations = locations,
-            trace = diagnosticStack.toTraceSection(),
-            extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
-          ),
-          diagnosticStack,
-        )
-      } finally {
-        pendingRelated = emptyList()
-      }
+    val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
+    val locationDiagnostics = contributions.map { it.renderLocationDiagnostic(short = true) }
+    val locations = locationDiagnostics.map { it.toLocatedItem() }
+    pendingRelated = contributions
+    try {
+      report(
+        duplicateMapKeysDiagnostic(
+          typeKey = binding.typeKey,
+          mapKeyRender = mapKey,
+          locations = locations,
+          trace = diagnosticStack.toTraceSection(),
+          extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+        ),
+        diagnosticStack,
+      )
+    } finally {
+      pendingRelated = emptyList()
     }
   }
 
-  private fun validateBindingScope(
+  private fun reportIncompatibleScope(
     binding: KaBinding,
+    bindingScope: KaAnnotationSnapshot,
     stack: KaBindingStack,
     diagnosticRoutes:
       DiagnosticRoutes<
@@ -275,9 +333,6 @@ internal class KaBindingGraph(
         KaBindingStack.Entry,
       >,
   ) {
-    val bindingScope = binding.scope ?: return
-    if (bindingScope in context.scopingAnnotations) return
-
     val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     diagnosticStack.push(
       KaBindingStack.Entry(

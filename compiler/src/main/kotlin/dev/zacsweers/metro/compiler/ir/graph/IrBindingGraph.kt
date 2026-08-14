@@ -24,10 +24,16 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.BindingGraphValidationIssue
+import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
+import dev.zacsweers.metro.compiler.graph.MultibindingKind
+import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
@@ -35,6 +41,7 @@ import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
@@ -118,6 +125,9 @@ internal class IrBindingGraph(
 
   /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
   private var requiresRuntimeCoroutines = false
+
+  /** Empty multibindings are identified during sealing and reported after topology is available. */
+  private val pendingEmptyMultibindings = mutableListOf<IrBinding.Multibinding>()
 
   /** Incremented whenever [realGraph] gains a binding before it is sealed. */
   private var graphGeneration = 0
@@ -501,7 +511,7 @@ internal class IrBindingGraph(
       deferredTypes.joinToString(separator = "\n")
     }
 
-    trace("check empty multibindings") { checkEmptyMultibindings(onError) }
+    trace("report empty multibindings") { reportEmptyMultibindings(onError) }
     trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
@@ -677,8 +687,10 @@ internal class IrBindingGraph(
     realGraph.reportDuplicateBindings(key, bindings, bindingStack)
   }
 
-  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
-    val multibindings = buildList {
+  private fun reportEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
+    if (pendingEmptyMultibindings.isEmpty()) return
+
+    val graphMultibindings = buildList {
       realGraph.bindings.forEachValue { binding ->
         if (binding is IrBinding.Multibinding) {
           add(binding)
@@ -687,35 +699,35 @@ internal class IrBindingGraph(
     }
     // Get all registered multibindings for similarity checking
     val allMultibindings by memoize {
-      (multibindings + bindingLookup.getAvailableMultibindings().values).distinctBy { it.typeKey }
+      (graphMultibindings + bindingLookup.getAvailableMultibindings().values).distinctBy {
+        it.typeKey
+      }
     }
     val errors = mutableListOf<GraphError>()
-    for (multibinding in multibindings) {
-      if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        val extraNotes = buildList {
-          similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
+    for (multibinding in pendingEmptyMultibindings) {
+      val extraNotes = buildList {
+        similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
 
-          val elementType =
-            if (multibinding.isMap) {
-              multibinding.typeKey.requireMapValueType()
-            } else {
-              multibinding.typeKey.requireSetElementType()
-            }
-          functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
-        }
-        val diagnostic = emptyMultibindingDiagnostic(multibinding.typeKey, extraNotes)
-        val declarationToReport =
-          if (multibinding.declaration?.isFakeOverride == true) {
-            multibinding.declaration!!
-              .overriddenSymbolsSequence()
-              .firstOrNull { !it.owner.isFakeOverride }
-              ?.owner
+        val elementType =
+          if (multibinding.isMap) {
+            multibinding.typeKey.requireMapValueType()
           } else {
-            multibinding.declaration
+            multibinding.typeKey.requireSetElementType()
           }
-        errors +=
-          GraphError(declarationToReport, render(diagnostic), MetroDiagnostics.EMPTY_MULTIBINDING)
+        functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
       }
+      val diagnostic = emptyMultibindingDiagnostic(multibinding.typeKey, extraNotes)
+      val declarationToReport =
+        if (multibinding.declaration?.isFakeOverride == true) {
+          multibinding.declaration!!
+            .overriddenSymbolsSequence()
+            .firstOrNull { !it.owner.isFakeOverride }
+            ?.owner
+        } else {
+          multibinding.declaration
+        }
+      errors +=
+        GraphError(declarationToReport, render(diagnostic), MetroDiagnostics.EMPTY_MULTIBINDING)
     }
     if (errors.isNotEmpty()) {
       onError(errors)
@@ -1079,6 +1091,12 @@ internal class IrBindingGraph(
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
+    val structuralValidator =
+      BindingGraphValidator(
+        bindings = bindings,
+        graphScopes = node.scopes,
+        metadata = { it.validationMetadata() },
+      )
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1118,8 +1136,9 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      checkScope(binding, stack, diagnosticRoutes)
-      validateMultibindings(binding, bindings, diagnosticRoutes)
+      for (issue in structuralValidator.validate(binding)) {
+        reportStructuralIssue(issue, stack, diagnosticRoutes)
+      }
       validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
     if (!suspendProvidersEnabled) {
@@ -1134,6 +1153,53 @@ internal class IrBindingGraph(
     if (hasDirectSuspendBinding) {
       validateSuspendBindings(bindings, roots, adjacency)
     }
+  }
+
+  private fun reportStructuralIssue(
+    issue: BindingGraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
+    stack: IrBindingStack,
+    diagnosticRoutes:
+      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
+  ) {
+    when (issue) {
+      is BindingGraphValidationIssue.IncompatibleScope ->
+        reportIncompatibleScope(issue.binding, issue.bindingScope, stack, diagnosticRoutes)
+      is BindingGraphValidationIssue.EmptyMultibinding ->
+        pendingEmptyMultibindings +=
+          checkNotNull(issue.binding as? IrBinding.Multibinding) {
+            "Only multibindings can produce empty multibinding issues"
+          }
+      is BindingGraphValidationIssue.DuplicateMapKey ->
+        reportDuplicateMapKey(
+          checkNotNull(issue.multibinding as? IrBinding.Multibinding) {
+            "Only multibindings can produce duplicate map key issues"
+          },
+          issue.mapKey,
+          issue.contributions,
+          diagnosticRoutes,
+        )
+    }
+  }
+
+  private fun IrBinding.validationMetadata():
+    BindingValidationMetadata<IrTypeKey, IrAnnotation, IrAnnotation> {
+    val multibinding =
+      (this as? IrBinding.Multibinding)?.let { binding ->
+        MultibindingValidationMetadata(
+          kind = if (binding.isMap) MultibindingKind.MAP else MultibindingKind.SET,
+          allowEmpty = binding.allowEmpty,
+          sourceBindings = binding.sourceBindings,
+        )
+      }
+    val mapContribution =
+      (this as? IrBinding.BindingWithAnnotations)?.let { binding ->
+        MapContributionValidationMetadata(binding.annotations.mapKey)
+      }
+    return BindingValidationMetadata(
+      scope = scope,
+      multibinding = multibinding,
+      mapContribution = mapContribution,
+    )
   }
 
   private fun reportSuspendProvidersNotEnabled() {
@@ -1229,20 +1295,13 @@ internal class IrBindingGraph(
     metroContext.reportCompat(candidates, factory, message.trimEnd())
   }
 
-  // Check scoping compatibility
-  private fun checkScope(
+  private fun reportIncompatibleScope(
     binding: IrBinding,
+    bindingScope: IrAnnotation,
     stack: IrBindingStack,
     diagnosticRoutes:
       DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
   ) {
-    val bindingScope = binding.scope ?: return
-    // Our binding doesn't have a scope... so we don't care about scopes
-    // Our binding does have a scope... and it's compatible with our node yay
-    if (bindingScope in node.scopes) return
-
-    // Error if there are mismatched scopes
-
     // Does bindingScope have the same toString? Annoying! Let's disambiguate
     val bindingScopeStr =
       "$bindingScope".takeIf { it !in node.scopes.map { "$it" } }
@@ -1321,46 +1380,36 @@ internal class IrBindingGraph(
     return stack
   }
 
-  private fun validateMultibindings(
-    binding: IrBinding,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  private fun reportDuplicateMapKey(
+    binding: IrBinding.Multibinding,
+    mapKey: IrAnnotation?,
+    contributions: List<IrBinding>,
     diagnosticRoutes:
       DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
   ) {
-    if (binding !is IrBinding.Multibinding) return
-    if (!binding.isMap) return
-    val keysWithDupes =
-      binding.sourceBindings
-        .mapNotNull { bindings[it] }
-        .filterIsInstance<IrBinding.BindingWithAnnotations>()
-        .groupBy { it.annotations.mapKey }
-        .filterValues { it.size > 1 }
-
-    for ((mapKey, dupes) in keysWithDupes) {
-      if (mapKey == null) {
-        reportCompilerBug("Map key should not be null for map multibindings")
-      }
-
-      val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
-
-      val locationDiagnostics = dupes.map { dupe ->
-        dupe.renderLocationDiagnostic(
-          shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-          underlineTypeKey = false,
-        )
-      }
-      val locationItems = locationDiagnostics.map { it.toLocatedItem() }
-
-      val diagnostic =
-        duplicateMapKeysDiagnostic(
-          typeKey = binding.typeKey,
-          mapKeyRender = mapKey.render(short = false),
-          locations = locationItems,
-          trace = stack.toTraceSection(),
-          extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
-        )
-      report(diagnostic, stack)
+    if (mapKey == null) {
+      reportCompilerBug("Map key should not be null for map multibindings")
     }
+
+    val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
+
+    val locationDiagnostics = contributions.map { contribution ->
+      contribution.renderLocationDiagnostic(
+        shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+        underlineTypeKey = false,
+      )
+    }
+    val locationItems = locationDiagnostics.map { it.toLocatedItem() }
+
+    val diagnostic =
+      duplicateMapKeysDiagnostic(
+        typeKey = binding.typeKey,
+        mapKeyRender = mapKey.render(short = false),
+        locations = locationItems,
+        trace = stack.toTraceSection(),
+        extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+      )
+    report(diagnostic, stack)
   }
 
   // TODO can this check move to FIR injection sites?
