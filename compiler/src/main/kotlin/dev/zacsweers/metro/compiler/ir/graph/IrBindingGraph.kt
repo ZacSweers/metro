@@ -24,6 +24,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
@@ -1232,7 +1233,8 @@ internal class IrBindingGraph(
   private fun checkScope(
     binding: IrBinding,
     stack: IrBindingStack,
-    diagnosticRoutes: DiagnosticRoutes,
+    diagnosticRoutes:
+      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
   ) {
     val bindingScope = binding.scope ?: return
     // Our binding doesn't have a scope... so we don't care about scopes
@@ -1303,7 +1305,8 @@ internal class IrBindingGraph(
 
   private fun buildStackToRoot(
     typeKey: IrTypeKey,
-    diagnosticRoutes: DiagnosticRoutes,
+    diagnosticRoutes:
+      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
     stack: IrBindingStack = newBindingStack(),
   ): IrBindingStack {
     val backTrace =
@@ -1321,7 +1324,8 @@ internal class IrBindingGraph(
   private fun validateMultibindings(
     binding: IrBinding,
     bindings: ScatterMap<IrTypeKey, IrBinding>,
-    diagnosticRoutes: DiagnosticRoutes,
+    diagnosticRoutes:
+      DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>,
   ) {
     if (binding !is IrBinding.Multibinding) return
     if (!binding.isMap) return

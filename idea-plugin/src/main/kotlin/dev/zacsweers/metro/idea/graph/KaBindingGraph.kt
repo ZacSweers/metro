@@ -12,6 +12,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
+import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
@@ -187,10 +188,11 @@ internal class KaBindingGraph(
     roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
+    val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
     bindings.forEachValue { binding ->
       ProgressManager.checkCanceled()
-      validateBindingScope(binding, stack, roots, adjacency)
-      validateMultibindings(binding, bindings, stack, roots, adjacency)
+      validateBindingScope(binding, stack, diagnosticRoutes)
+      validateMultibindings(binding, bindings, stack, diagnosticRoutes)
     }
     suspendKeys =
       SuspendBindingValidator(
@@ -222,8 +224,13 @@ internal class KaBindingGraph(
     binding: KaBinding,
     bindings: ScatterMap<KaTypeKey, KaBinding>,
     stack: KaBindingStack,
-    roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
-    adjacency: GraphAdjacency<KaTypeKey>,
+    diagnosticRoutes:
+      DiagnosticRoutes<
+        KaTypeSnapshot,
+        KaTypeKey,
+        KaContextualTypeKey,
+        KaBindingStack.Entry,
+      >,
   ) {
     if (binding !is KaBinding.Multibinding) return
     if (binding.typeKey.type.classId != StandardClassIds.Map) return
@@ -236,7 +243,7 @@ internal class KaBindingGraph(
     for ((mapKey, dupes) in keysWithDupes) {
       checkNotNull(mapKey) { "Map key should not be null for map multibindings" }
 
-      val diagnosticStack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
+      val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
       val locationDiagnostics = dupes.map { it.renderLocationDiagnostic(short = true) }
       val locations = locationDiagnostics.map { it.toLocatedItem() }
       pendingRelated = dupes
@@ -260,13 +267,18 @@ internal class KaBindingGraph(
   private fun validateBindingScope(
     binding: KaBinding,
     stack: KaBindingStack,
-    roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
-    adjacency: GraphAdjacency<KaTypeKey>,
+    diagnosticRoutes:
+      DiagnosticRoutes<
+        KaTypeSnapshot,
+        KaTypeKey,
+        KaContextualTypeKey,
+        KaBindingStack.Entry,
+      >,
   ) {
     val bindingScope = binding.scope ?: return
     if (bindingScope in context.scopingAnnotations) return
 
-    val diagnosticStack = buildStackToRoot(binding.typeKey, roots, adjacency, stack)
+    val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     diagnosticStack.push(
       KaBindingStack.Entry(
         contextKey = binding.contextualTypeKey,
@@ -296,36 +308,28 @@ internal class KaBindingGraph(
 
   private fun buildStackToRoot(
     key: KaTypeKey,
-    roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
-    adjacency: GraphAdjacency<KaTypeKey>,
+    diagnosticRoutes:
+      DiagnosticRoutes<
+        KaTypeSnapshot,
+        KaTypeKey,
+        KaContextualTypeKey,
+        KaBindingStack.Entry,
+      >,
     fallback: KaBindingStack,
   ): KaBindingStack {
-    if (roots.isEmpty()) return fallback.copy()
-    val rootKeys = roots.keys.associateBy { it.typeKey }
-    val visited = mutableSetOf<KaTypeKey>()
-
-    fun route(current: KaTypeKey): List<KaTypeKey>? {
-      if (!visited.add(current)) return null
-      if (current in rootKeys) return listOf(current)
-      for (dependent in adjacency.reverse[current].orEmpty()) {
-        route(dependent)?.let {
-          return listOf(current) + it
-        }
+    val route =
+      diagnosticRoutes.routeToRoot(key) { callingKey, dependencyKey ->
+        val callingBinding = checkNotNull(realGraph.bindings[callingKey])
+        val contextKey =
+          callingBinding.dependencies.first { dependency ->
+            dependency.typeKey == dependencyKey
+          }
+        KaBindingStack.Entry.injectedAt(contextKey, callingBinding)
       }
-      visited.remove(current)
-      return null
-    }
-
-    val path = route(key) ?: return fallback.copy()
+    if (route.isEmpty()) return fallback.copy()
     val result = KaBindingStack(graph)
-    val rootKey = path.last()
-    roots.entries.firstOrNull { it.key.typeKey == rootKey }?.value?.let(result::push)
-    for (index in path.lastIndex - 1 downTo 0) {
-      val dependency = path[index]
-      val dependent = path[index + 1]
-      val binding = realGraph.bindings[dependent] ?: continue
-      val contextKey = binding.dependencies.firstOrNull { it.typeKey == dependency } ?: continue
-      result.push(KaBindingStack.Entry.injectedAt(contextKey, binding))
+    for (entry in route) {
+      result.push(entry)
     }
     return result
   }
