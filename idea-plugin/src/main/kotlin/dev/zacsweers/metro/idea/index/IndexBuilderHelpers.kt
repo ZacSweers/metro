@@ -64,6 +64,7 @@ internal fun BindingData.toKaBinding(
         memberDependencies = memberDependencies,
         memberInjectionOwnerIds = memberInjectionOwnerIds,
         hintAvailability = hintAvailability,
+        isAssisted = isAssisted,
       )
     BindingData.Kind.PROVIDED ->
       KaBinding.Provided(

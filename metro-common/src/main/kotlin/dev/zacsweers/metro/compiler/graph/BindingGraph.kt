@@ -83,7 +83,7 @@ public open class MutableBindingGraph<
       emptySet()
     },
   private val errorReporter: ErrorReporter<BindingStack> = ErrorReporter.throwing(),
-  private val missingBindingHints: (key: TypeKey) -> MissingBindingHints = {
+  private val missingBindingDiagnosticDetails: (key: TypeKey) -> MissingBindingHints = {
     MissingBindingHints()
   },
   /**
@@ -560,7 +560,7 @@ public open class MutableBindingGraph<
 
   public fun reportMissingBinding(typeKey: TypeKey, bindingStack: BindingStack) {
     if (reportedMissingKeys.add(typeKey)) {
-      val hints = missingBindingHints(typeKey)
+      val hints = missingBindingDiagnosticDetails(typeKey)
       // Don't have access to an IrPluginContext here to check it's an anyType
       val isAnyType = typeKey.render(short = false) == "kotlin.Any"
       val graphName = bindingStack.graphFqName.takeIf { it != FqName.ROOT }?.shortName()?.asString()

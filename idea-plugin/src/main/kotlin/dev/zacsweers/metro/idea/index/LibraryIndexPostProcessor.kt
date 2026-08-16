@@ -332,7 +332,7 @@ internal class LibraryIndexPostProcessor(
           val isAssisted =
             classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
               constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
-          if (!hasInject || isAssisted) return@analyze null
+          if (!hasInject && !isAssisted) return@analyze null
 
           val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
           val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
@@ -346,6 +346,7 @@ internal class LibraryIndexPostProcessor(
               constructorDependencies = constructorDependencies,
               memberDependencies = memberDependencies,
               memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol),
+              isAssisted = isAssisted,
             ),
           )
         }

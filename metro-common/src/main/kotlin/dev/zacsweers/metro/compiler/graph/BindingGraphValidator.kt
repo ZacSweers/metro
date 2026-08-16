@@ -21,22 +21,36 @@ public class BindingGraphValidator<
   private val bindings: ScatterMap<TypeKey, Binding>,
   private val graphScopes: Set<Scope>,
   private val metadata: (Binding) -> BindingValidationMetadata<TypeKey, Scope, MapKey>,
+  private val rootKeys: Set<TypeKey> = emptySet(),
+  private val reverseAdjacency: Map<TypeKey, Set<TypeKey>> = emptyMap(),
 ) {
   private val metadataByKey =
     mutableMapOf<TypeKey, BindingValidationMetadata<TypeKey, Scope, MapKey>>()
 
   /** Returns all structural issues originating at [binding]. */
-  public fun validate(binding: Binding): List<BindingGraphValidationIssue<Binding, Scope, MapKey>> =
+  public fun validate(binding: Binding): List<GraphValidationIssue<Binding, Scope, MapKey>> =
     buildList {
       val bindingMetadata = metadataFor(binding)
       val bindingScope = bindingMetadata.scope
       if (bindingScope != null && bindingScope !in graphScopes) {
-        add(BindingGraphValidationIssue.IncompatibleScope(binding, bindingScope))
+        add(GraphValidationIssue.IncompatibleScope(binding, bindingScope))
+      }
+
+      if (bindingMetadata.assistedKind == AssistedBindingKind.TARGET) {
+        for (requestingKey in reverseAdjacency[binding.typeKey].orEmpty()) {
+          val requestingBinding = bindings[requestingKey] ?: continue
+          if (metadataFor(requestingBinding).assistedKind != AssistedBindingKind.FACTORY) {
+            add(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding))
+          }
+        }
+        if (binding.typeKey in rootKeys) {
+          add(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding = null))
+        }
       }
 
       val multibinding = bindingMetadata.multibinding ?: return@buildList
       if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        add(BindingGraphValidationIssue.EmptyMultibinding(binding))
+        add(GraphValidationIssue.EmptyMultibinding(binding))
       }
       if (multibinding.kind != MultibindingKind.MAP) return@buildList
 
@@ -48,7 +62,7 @@ public class BindingGraphValidator<
       }
       for ((mapKey, contributions) in contributionsByMapKey) {
         if (contributions.size > 1) {
-          add(BindingGraphValidationIssue.DuplicateMapKey(binding, mapKey, contributions))
+          add(GraphValidationIssue.DuplicateMapKey(binding, mapKey, contributions))
         }
       }
     }

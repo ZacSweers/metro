@@ -12,12 +12,15 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
-import dev.zacsweers.metro.compiler.graph.BindingGraphValidationIssue
+import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
@@ -103,7 +106,7 @@ internal class KaBindingGraph(
         }
       },
       errorReporter = this,
-      missingBindingHints = ::missingBindingHints,
+      missingBindingDiagnosticDetails = ::missingBindingDiagnosticDetails,
     )
 
   fun seal(): KaGraphValidationResult.Completed {
@@ -199,17 +202,20 @@ internal class KaBindingGraph(
     roots: Map<KaContextualTypeKey, KaBindingStack.Entry>,
     adjacency: GraphAdjacency<KaTypeKey>,
   ) {
+    val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
     val structuralValidator =
       BindingGraphValidator(
         bindings = bindings,
         graphScopes = context.scopingAnnotations,
         metadata = { it.validationMetadata() },
+        rootKeys = rootsByTypeKey.keys,
+        reverseAdjacency = adjacency.reverse,
       )
     bindings.forEachValue { binding ->
       ProgressManager.checkCanceled()
       for (issue in structuralValidator.validate(binding)) {
-        reportStructuralIssue(issue, stack, diagnosticRoutes)
+        reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
     suspendKeys =
@@ -226,19 +232,20 @@ internal class KaBindingGraph(
   }
 
   private fun reportStructuralIssue(
-    issue: BindingGraphValidationIssue<KaBinding, KaAnnotationSnapshot, String>,
+    issue: GraphValidationIssue<KaBinding, KaAnnotationSnapshot, String>,
     stack: KaBindingStack,
     diagnosticRoutes: KaDiagnosticRoutes,
+    roots: Map<KaTypeKey, KaBindingStack.Entry>,
   ) {
     when (issue) {
-      is BindingGraphValidationIssue.IncompatibleScope ->
+      is GraphValidationIssue.IncompatibleScope ->
         reportIncompatibleScope(issue.binding, issue.bindingScope, stack, diagnosticRoutes)
-      is BindingGraphValidationIssue.EmptyMultibinding ->
+      is GraphValidationIssue.EmptyMultibinding ->
         pendingEmptyMultibindings +=
           checkNotNull(issue.binding as? KaBinding.Multibinding) {
             "Only multibindings can produce empty multibinding issues"
           }
-      is BindingGraphValidationIssue.DuplicateMapKey ->
+      is GraphValidationIssue.DuplicateMapKey ->
         reportDuplicateMapKey(
           checkNotNull(issue.multibinding as? KaBinding.Multibinding) {
             "Only multibindings can produce duplicate map key issues"
@@ -247,6 +254,16 @@ internal class KaBindingGraph(
           issue.contributions,
           stack,
           diagnosticRoutes,
+        )
+      is GraphValidationIssue.InvalidAssistedInjection ->
+        reportInvalidAssistedInjection(
+          checkNotNull(issue.binding as? KaBinding.ConstructorInjected) {
+            "Only assisted constructor bindings can produce invalid assisted injection issues"
+          },
+          issue.requestingBinding,
+          stack,
+          diagnosticRoutes,
+          roots,
         )
     }
   }
@@ -270,6 +287,12 @@ internal class KaBindingGraph(
       scope = scope,
       multibinding = multibinding,
       mapContribution = MapContributionValidationMetadata(mapKeyValue),
+      assistedKind =
+        when {
+          this is KaBinding.ConstructorInjected && isAssisted -> AssistedBindingKind.TARGET
+          this is KaBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+          else -> null
+        },
     )
   }
 
@@ -349,6 +372,34 @@ internal class KaBindingGraph(
     )
   }
 
+  private fun reportInvalidAssistedInjection(
+    binding: KaBinding.ConstructorInjected,
+    requestingBinding: KaBinding?,
+    stack: KaBindingStack,
+    diagnosticRoutes: KaDiagnosticRoutes,
+    roots: Map<KaTypeKey, KaBindingStack.Entry>,
+  ) {
+    val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
+    val injectionSite =
+      requestingBinding?.typeKey?.toText()
+        ?: roots[binding.typeKey]?.graphContext?.let { textOf(it, Style.EMPHASIS) }
+    val assistedFactory = index.assistedFactoriesForTarget(binding.typeKey).firstOrNull()
+    val related = listOfNotNull(binding, requestingBinding, assistedFactory)
+    pendingRelated = related
+    try {
+      report(
+        invalidAssistedBindingDiagnostic(
+          assistedType = binding.typeKey.toText(),
+          injectionSite = injectionSite,
+          assistedFactory = assistedFactory?.typeKey?.toText(),
+        ),
+        diagnosticStack,
+      )
+    } finally {
+      pendingRelated = emptyList()
+    }
+  }
+
   private fun buildStackToRoot(
     key: KaTypeKey,
     diagnosticRoutes: KaDiagnosticRoutes,
@@ -371,11 +422,11 @@ internal class KaBindingGraph(
     return result
   }
 
-  private fun missingBindingHints(typeKey: KaTypeKey): MissingBindingHints {
+  private fun missingBindingDiagnosticDetails(typeKey: KaTypeKey): MissingBindingHints {
     val notes = mutableListOf<Note>()
     val similar = mutableListOf<SimilarBindingItem>()
 
-    for (binding in index.bindings) {
+    for (binding in index.bindingsWithType(typeKey)) {
       when {
         binding.typeKey == typeKey -> {
           // A binding for this exact key exists but is not a member of this graph.
@@ -397,25 +448,6 @@ internal class KaBindingGraph(
               location = binding.location(),
             )
         }
-      }
-    }
-
-    val shortName = typeKey.type.classId?.shortClassName?.asString()
-    if (shortName != null) {
-      val factory =
-        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().firstOrNull {
-          it.implementationName == shortName
-        }
-      if (factory != null) {
-        notes +=
-          Note.help(
-            buildText {
-              append(typeKey.toText())
-              append(" is assisted-injected. Inject its factory ")
-              append(factory.typeKey.toText())
-              append(" instead and call its create function.")
-            }
-          )
       }
     }
 

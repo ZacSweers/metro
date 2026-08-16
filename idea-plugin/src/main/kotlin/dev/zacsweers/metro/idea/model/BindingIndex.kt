@@ -101,6 +101,15 @@ internal class BindingIndex(
     }
   }
 
+  private val bindingsByType: ScatterMap<KaTypeSnapshot, List<KaBinding>> by lazy {
+    bindings.groupToScatter { it.typeKey.type }
+  }
+
+  private val assistedFactoriesByTarget:
+    ScatterMap<KaTypeKey, List<KaBinding.AssistedFactory>> by lazy {
+    bindings.filterIsInstance<KaBinding.AssistedFactory>().groupToScatter { it.targetTypeKey }
+  }
+
   private val consumersByKey: ScatterMap<KaTypeKey, List<ConsumerEntry>> by lazy {
     consumers.groupToScatter { it.key }
   }
@@ -234,6 +243,16 @@ internal class BindingIndex(
     return bindingsByKey[key].orEmpty().filter {
       isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
     }
+  }
+
+  /** All indexed bindings for the same unqualified type, regardless of graph membership. */
+  fun bindingsWithType(key: KaTypeKey): List<KaBinding> {
+    return bindingsByType[key.type].orEmpty()
+  }
+
+  /** Known assisted factories creating [key], regardless of graph membership. */
+  fun assistedFactoriesForTarget(key: KaTypeKey): List<KaBinding.AssistedFactory> {
+    return assistedFactoriesByTarget[key].orEmpty()
   }
 
   /** Contributions collected into [multibindingId] in [queryContext]'s graph. */

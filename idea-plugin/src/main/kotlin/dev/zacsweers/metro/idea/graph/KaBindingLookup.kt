@@ -71,6 +71,14 @@ internal class KaBindingLookup(
     }
 
     val direct = candidates.filter { it !is KaBinding.Multibinding }
+    if (typeKey.qualifier == null) {
+      direct
+        .filterIsInstance<KaBinding.ConstructorInjected>()
+        .firstOrNull { it.isAssisted }
+        ?.let {
+          return setOf(it)
+        }
+    }
     return when {
       direct.isEmpty() -> emptySet()
       direct.size == 1 -> setOf(direct.single())

@@ -24,12 +24,13 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
-import dev.zacsweers.metro.compiler.graph.BindingGraphValidationIssue
+import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
@@ -320,7 +321,7 @@ internal class IrBindingGraph(
         }
       },
       errorReporter = this,
-      missingBindingHints = ::missingBindingHints,
+      missingBindingDiagnosticDetails = ::missingBindingDiagnosticDetails,
       findSuspendCycleKey = ::findSuspendCycleKey,
     )
 
@@ -859,7 +860,7 @@ internal class IrBindingGraph(
     return functionProviderMigrationHint(functionRawType)
   }
 
-  private fun missingBindingHints(key: IrTypeKey): MissingBindingHints {
+  private fun missingBindingDiagnosticDetails(key: IrTypeKey): MissingBindingHints {
     if (key.type.hasErrorTypes()) {
       return MissingBindingHints(
         notes =
@@ -1109,6 +1110,8 @@ internal class IrBindingGraph(
         bindings = bindings,
         graphScopes = node.scopes,
         metadata = { it.validationMetadata() },
+        rootKeys = rootsByTypeKey.keys,
+        reverseAdjacency = adjacency.reverse,
       )
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
@@ -1150,9 +1153,8 @@ internal class IrBindingGraph(
         }
       }
       for (issue in structuralValidator.validate(binding)) {
-        reportStructuralIssue(issue, stack, diagnosticRoutes)
+        reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
-      validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
     }
     if (!suspendProvidersEnabled) {
       for ((contextKey, metroFunction) in node.accessors) {
@@ -1169,19 +1171,20 @@ internal class IrBindingGraph(
   }
 
   private fun reportStructuralIssue(
-    issue: BindingGraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
+    issue: GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
     stack: IrBindingStack,
     diagnosticRoutes: IrDiagnosticRoutes,
+    roots: Map<IrTypeKey, IrBindingStack.Entry>,
   ) {
     when (issue) {
-      is BindingGraphValidationIssue.IncompatibleScope ->
+      is GraphValidationIssue.IncompatibleScope ->
         reportIncompatibleScope(issue.binding, issue.bindingScope, stack, diagnosticRoutes)
-      is BindingGraphValidationIssue.EmptyMultibinding ->
+      is GraphValidationIssue.EmptyMultibinding ->
         pendingEmptyMultibindings +=
           checkNotNull(issue.binding as? IrBinding.Multibinding) {
             "Only multibindings can produce empty multibinding issues"
           }
-      is BindingGraphValidationIssue.DuplicateMapKey ->
+      is GraphValidationIssue.DuplicateMapKey ->
         reportDuplicateMapKey(
           checkNotNull(issue.multibinding as? IrBinding.Multibinding) {
             "Only multibindings can produce duplicate map key issues"
@@ -1189,6 +1192,14 @@ internal class IrBindingGraph(
           issue.mapKey,
           issue.contributions,
           diagnosticRoutes,
+        )
+      is GraphValidationIssue.InvalidAssistedInjection ->
+        reportInvalidAssistedInjection(
+          checkNotNull(issue.binding as? IrBinding.ConstructorInjected) {
+            "Only assisted constructor bindings can produce invalid assisted injection issues"
+          },
+          issue.requestingBinding,
+          roots,
         )
     }
   }
@@ -1211,6 +1222,12 @@ internal class IrBindingGraph(
       scope = scope,
       multibinding = multibinding,
       mapContribution = mapContribution,
+      assistedKind =
+        when {
+          this is IrBinding.ConstructorInjected && isAssisted -> AssistedBindingKind.TARGET
+          this is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+          else -> null
+        },
     )
   }
 
@@ -1421,59 +1438,45 @@ internal class IrBindingGraph(
     report(diagnostic, stack)
   }
 
-  // TODO can this check move to FIR injection sites?
-  private fun validateAssistedInjection(
-    binding: IrBinding,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  private fun reportInvalidAssistedInjection(
+    binding: IrBinding.ConstructorInjected,
+    requestingBinding: IrBinding?,
     roots: Map<IrTypeKey, IrBindingStack.Entry>,
-    reverseAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
-    if (binding !is IrBinding.ConstructorInjected || !binding.isAssisted) return
+    val declaration =
+      requestingBinding
+        ?.parameters
+        ?.allParameters
+        ?.find { it.typeKey == binding.typeKey }
+        ?.ir
+        ?.takeIf {
+          val location = it.locationOrNull() ?: return@takeIf false
+          location.line != 0 || location.column != 0
+        } ?: requestingBinding?.reportableDeclaration ?: roots[binding.typeKey]?.declaration
 
-    fun reportInvalidBinding(declaration: IrDeclarationWithName?) {
-      // Look up the assisted factory as a hint
-      val assistedFactory =
-        bindings
-          .asMap()
-          .values
-          .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
-          ?.typeKey
-          // Check in the class itself for @AssistedFactory
-          ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
-            rawType.nestedClasses
-              .firstOrNull { nestedClass ->
-                nestedClass.isAnnotatedWithAny(
-                  metroContext.metroSymbols.classIds.assistedFactoryAnnotations
-                )
-              }
-              ?.let { IrTypeKey(it.defaultType) }
-          }
-      val diagnostic =
-        invalidAssistedBindingDiagnostic(
-          assistedType = binding.typeKey.toText(),
-          injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
-          assistedFactory = assistedFactory?.toText(),
-        )
-      collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
-    }
-
-    reverseAdjacency[binding.typeKey]?.let { dependents ->
-      for (dependentKey in dependents) {
-        val dependentBinding = bindings[dependentKey] ?: continue
-        if (dependentBinding !is IrBinding.AssistedFactory) {
-          reportInvalidBinding(
-            dependentBinding.parameters.allParameters
-              .find { it.typeKey == binding.typeKey }
-              ?.ir
-              ?.takeIf {
-                val location = it.locationOrNull() ?: return@takeIf false
-                location.line != 0 || location.column != 0
-              } ?: dependentBinding.reportableDeclaration
-          )
+    val assistedFactory =
+      realGraph.bindings
+        .asMap()
+        .values
+        .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
+        ?.typeKey
+        // Check in the class itself for @AssistedFactory
+        ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
+          rawType.nestedClasses
+            .firstOrNull { nestedClass ->
+              nestedClass.isAnnotatedWithAny(
+                metroContext.metroSymbols.classIds.assistedFactoryAnnotations
+              )
+            }
+            ?.let { IrTypeKey(it.defaultType) }
         }
-      }
-    }
-    roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration) }
+    val diagnostic =
+      invalidAssistedBindingDiagnostic(
+        assistedType = binding.typeKey.toText(),
+        injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
+        assistedFactory = assistedFactory?.toText(),
+      )
+    collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {

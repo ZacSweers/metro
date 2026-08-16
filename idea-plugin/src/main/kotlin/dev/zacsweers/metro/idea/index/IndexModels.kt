@@ -54,6 +54,8 @@ internal class BindingData(
   val isSuspend: Boolean = false,
   /** See [KaBinding.ConstructorInjected.memberDependencies]. */
   val memberDependencies: List<KaContextualTypeKey> = emptyList(),
+  /** See [KaBinding.ConstructorInjected.isAssisted]. */
+  val isAssisted: Boolean = false,
   /** See [KaBinding.memberInjectionOwnerIds]. */
   val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
   /** See [KaBinding.mapKeyValue]. */

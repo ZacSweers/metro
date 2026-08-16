@@ -327,9 +327,7 @@ internal class IndexBuilder(
       for (data in dataEntries) {
         bindings += data.toKaBinding(ptr(ktClass))
       }
-      // Gate the constructor consumers on the owning class's binding only when it originates one.
-      // Assisted-injected classes provide no own-type binding (they're built via their factory), so
-      // gating by origin would wrongly drop their dependencies from every graph.
+      // Gate constructor consumers on the owning class's binding only when it originates one.
       val originClassId = ktClass.getClassId().takeIf { dataEntries.isNotEmpty() }
       val injectConstructor = findInjectConstructor(ktClass, classSymbol, options)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
@@ -635,11 +633,12 @@ internal class IndexBuilder(
         classSymbol.declaredMemberScope.callables
           .filterIsInstance<KaNamedFunctionSymbol>()
           .firstOrNull { it.modality == KaSymbolModality.ABSTRACT }
+      val targetTypeKey = samFunction?.returnType?.let { typeKey(it, qualifier = null) }
       val createdClassSymbol =
         (samFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol as? KaNamedClassSymbol
       val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
       // The factory constructs its target directly, so it inherits the target's graph-provided
-      // dependencies. The assisted class itself has no own-type binding.
+      // dependencies without depending on the target binding itself.
       val targetConstructorDependencies =
         createdClassSymbol?.let { injectConstructorDependencyKeys(it, options) }.orEmpty()
       val targetMemberDependencies =
@@ -650,6 +649,7 @@ internal class IndexBuilder(
           typeKey(classSymbol.defaultType, qualifierAnnotation(classSymbol, options)),
           scopeAnnotation(classSymbol, options),
           createdName,
+          targetTypeKey,
           originClassId = ktClass.getClassId(),
           targetConstructorDependencies = targetConstructorDependencies,
           targetMemberDependencies = targetMemberDependencies,

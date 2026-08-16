@@ -125,6 +125,7 @@ internal sealed interface KaBinding :
     val memberDependencies: List<KaContextualTypeKey> = emptyList(),
     override val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
     override val hintAvailability: HintAvailability? = null,
+    val isAssisted: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -247,6 +248,7 @@ internal sealed interface KaBinding :
     typeKey: KaTypeKey,
     override val scope: KaAnnotationSnapshot?,
     override val implementationName: String?,
+    val targetTypeKey: KaTypeKey?,
     override val originClassId: ClassId? = null,
     val targetConstructorDependencies: List<KaContextualTypeKey> = emptyList(),
     val targetMemberDependencies: List<KaContextualTypeKey> = emptyList(),

@@ -436,7 +436,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "may not reference scoped bindings" in diagnostic.render())
   }
 
-  fun testAssistedClassInjectionIsHinted() {
+  fun testAssistedClassGraphRequestIsRejected() {
     val result =
       validate(
         """
@@ -455,8 +455,64 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
     val diagnostic = result.diagnostics.single()
-    assertEquals(MetroDiagnosticId.MISSING_BINDING, diagnostic.id)
-    assertTrue(diagnostic.render(), "assisted-injected" in diagnostic.render())
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
+    assertTrue(
+      diagnostic.render(),
+      "inject a corresponding @AssistedFactory" in diagnostic.render(),
+    )
+  }
+
+  fun testAssistedClassDependencyIsRejected() {
+    val result =
+      validate(
+        """
+
+        @AssistedInject class Widget(@Assisted val id: String)
+
+        @AssistedFactory
+        interface WidgetFactory {
+          fun create(id: String): Widget
+        }
+
+        @Inject class Screen(val widget: Widget)
+
+        @DependencyGraph
+        interface AppGraph {
+          val screen: Screen
+        }
+        """
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
+    assertTrue(diagnostic.render(), "Screen" in diagnostic.render())
+  }
+
+  fun testAssistedClassRequestWithProviderIsRejectedWithoutDuplicate() {
+    val result =
+      validate(
+        """
+
+        @AssistedInject class Widget(@Assisted val id: String)
+
+        @AssistedFactory
+        interface WidgetFactory {
+          fun create(id: String): Widget
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val widget: Widget
+
+          @Provides
+          fun provideWidget(factory: WidgetFactory): Widget = factory.create("default")
+        }
+        """
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
   }
 
   fun testGraphExtensionSealsAgainstParentChain() {

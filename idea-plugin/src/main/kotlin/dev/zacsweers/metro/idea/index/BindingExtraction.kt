@@ -392,12 +392,13 @@ private fun KtClassOrObject.classBindingData(
     val contributesAnnotations =
       classSymbol.annotations.filter { it.classId in bindingContributionAnnotations(options) }
 
-    // Assisted-injected classes are consumed through their factory, not their own type.
     val isInjectable =
       classSymbol.isInjectableKind() &&
-        (hasInject || (options.contributesAsInject && contributesAnnotations.isNotEmpty()))
+        (hasInject ||
+          isAssisted ||
+          (options.contributesAsInject && contributesAnnotations.isNotEmpty()))
     val originClassId = ktClass.getClassId()
-    val ownsInjectBinding = isInjectable && !isAssisted
+    val ownsInjectBinding = isInjectable
     if (ownsInjectBinding) {
       val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
       val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
@@ -412,6 +413,7 @@ private fun KtClassOrObject.classBindingData(
           constructorDependencies = constructorDependencies,
           memberDependencies = memberDependencies,
           memberInjectionOwnerIds = memberInjectionOwnerIds,
+          isAssisted = isAssisted,
         )
     }
     // Contributed bindings alias the class's own inject binding, matching the compiler's model.

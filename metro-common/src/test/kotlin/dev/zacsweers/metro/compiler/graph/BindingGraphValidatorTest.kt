@@ -20,8 +20,7 @@ class BindingGraphValidatorTest {
 
     val issue = validator.validate(binding).single()
 
-    assertThat(issue)
-      .isEqualTo(BindingGraphValidationIssue.IncompatibleScope(binding, "BindingScope"))
+    assertThat(issue).isEqualTo(GraphValidationIssue.IncompatibleScope(binding, "BindingScope"))
   }
 
   @Test
@@ -58,7 +57,7 @@ class BindingGraphValidatorTest {
       }
 
     assertThat(validator.validate(multibinding))
-      .containsExactly(BindingGraphValidationIssue.EmptyMultibinding(multibinding))
+      .containsExactly(GraphValidationIssue.EmptyMultibinding(multibinding))
   }
 
   @Test
@@ -108,12 +107,77 @@ class BindingGraphValidatorTest {
 
     assertThat(validator.validate(multibinding))
       .containsExactly(
-        BindingGraphValidationIssue.DuplicateMapKey(
+        GraphValidationIssue.DuplicateMapKey(
           multibinding = multibinding,
           mapKey = "same-key",
           contributions = listOf(first, second),
         )
       )
+  }
+
+  @Test
+  fun `reports an assisted target requested as a graph root`() {
+    val target = validationBinding("Target")
+    val validator =
+      validator(
+        bindings = bindingsOf(target),
+        rootKeys = setOf(target.typeKey),
+      ) {
+        BindingValidationMetadata(assistedKind = AssistedBindingKind.TARGET)
+      }
+
+    assertThat(validator.validate(target))
+      .containsExactly(
+        GraphValidationIssue.InvalidAssistedInjection(
+          binding = target,
+          requestingBinding = null,
+        )
+      )
+  }
+
+  @Test
+  fun `reports an assisted target requested by a regular binding`() {
+    val target = validationBinding("Target")
+    val consumer = validationBinding("Consumer")
+    val validator =
+      validator(
+        bindings = bindingsOf(target, consumer),
+        reverseAdjacency = mapOf(target.typeKey to setOf(consumer.typeKey)),
+      ) { binding ->
+        BindingValidationMetadata(
+          assistedKind = AssistedBindingKind.TARGET.takeIf { binding == target }
+        )
+      }
+
+    assertThat(validator.validate(target))
+      .containsExactly(
+        GraphValidationIssue.InvalidAssistedInjection(
+          binding = target,
+          requestingBinding = consumer,
+        )
+      )
+  }
+
+  @Test
+  fun `allows an assisted factory to use its target`() {
+    val target = validationBinding("Target")
+    val factory = validationBinding("Factory")
+    val validator =
+      validator(
+        bindings = bindingsOf(target, factory),
+        reverseAdjacency = mapOf(target.typeKey to setOf(factory.typeKey)),
+      ) { binding ->
+        BindingValidationMetadata(
+          assistedKind =
+            when (binding) {
+              target -> AssistedBindingKind.TARGET
+              factory -> AssistedBindingKind.FACTORY
+              else -> null
+            }
+        )
+      }
+
+    assertThat(validator.validate(target)).isEmpty()
   }
 }
 
@@ -130,8 +194,11 @@ private typealias StringBindingGraphValidator =
 private fun validator(
   bindings: MutableScatterMap<StringTypeKey, StringBinding>,
   graphScopes: Set<String> = emptySet(),
+  rootKeys: Set<StringTypeKey> = emptySet(),
+  reverseAdjacency: Map<StringTypeKey, Set<StringTypeKey>> = emptyMap(),
   metadata: (StringBinding) -> BindingValidationMetadata<StringTypeKey, String, String>,
-): StringBindingGraphValidator = BindingGraphValidator(bindings, graphScopes, metadata)
+): StringBindingGraphValidator =
+  BindingGraphValidator(bindings, graphScopes, metadata, rootKeys, reverseAdjacency)
 
 private fun validationBinding(type: String, scope: String? = null): StringBinding =
   StringBinding(StringContextualTypeKey.create(StringTypeKey(type)), scope = scope)
