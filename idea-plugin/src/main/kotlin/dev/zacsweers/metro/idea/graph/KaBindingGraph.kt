@@ -37,7 +37,7 @@ import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -454,13 +454,13 @@ internal class KaBindingGraph(
     return MissingBindingHints(notes = notes, similarBindings = similar)
   }
 
-  private fun graphExtensionBinding(extension: KaGraphNode): KaBinding.GraphExtension? {
+  private fun graphExtensionBinding(extension: KaGraphDeclaration): KaBinding.GraphExtension? {
     val extensionKey = graphTypeKey(extension) ?: return null
     val ownerKey = graphTypeKey(graph) ?: return null
     return KaBinding.GraphExtension(extension.pointer, extensionKey, ownerKey)
   }
 
-  private fun graphTypeKey(graph: KaGraphNode): KaTypeKey? {
+  private fun graphTypeKey(graph: KaGraphDeclaration): KaTypeKey? {
     val classId = graph.classId ?: return null
     val snapshot =
       KaTypeSnapshot(classId.asFqNameString(), classId.shortClassName.asString(), classId)

@@ -8,15 +8,21 @@ import dev.zacsweers.metro.compiler.graph.BaseBindingStack
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /** The Analysis API analog of the compiler's `IrBindingStack`. */
-internal class KaBindingStack(override val graph: KaGraphNode) :
-  BaseBindingStack<KaGraphNode, KaTypeSnapshot, KaTypeKey, KaBindingStack.Entry, KaBindingStack> {
+internal class KaBindingStack(override val graph: KaGraphDeclaration) :
+  BaseBindingStack<
+    KaGraphDeclaration,
+    KaTypeSnapshot,
+    KaTypeKey,
+    KaBindingStack.Entry,
+    KaBindingStack,
+  > {
   override val entries = ArrayDeque<Entry>()
   override val graphFqName: FqName =
     graph.classId?.asSingleFqName() ?: graph.name?.let(::FqName) ?: FqName.ROOT

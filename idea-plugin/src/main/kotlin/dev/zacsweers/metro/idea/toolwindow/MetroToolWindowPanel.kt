@@ -33,7 +33,7 @@ import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.awt.BorderLayout
 import java.awt.event.MouseEvent
 import javax.swing.JPanel
@@ -132,7 +132,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   /** Resolves [classId]'s graph straight from its file's index, bypassing the tree. */
-  private fun findGraph(classId: ClassId, file: VirtualFile?): KaGraphNode? {
+  private fun findGraph(classId: ClassId, file: VirtualFile?): KaGraphDeclaration? {
     val psiFile =
       file?.let { PsiManager.getInstance(project).findFile(it) } as? KtFile ?: return null
     return project.service<MetroResolutionService>().index(psiFile).graphs.firstOrNull {
@@ -175,7 +175,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
     return null
   }
 
-  private fun validateGraph(graph: KaGraphNode) {
+  private fun validateGraph(graph: KaGraphDeclaration) {
     val element = graph.pointer.element ?: return
     project.service<MetroGraphValidationService>().validateWithExtensionsAsync(element, graph) {
       validationFinished(validationVisitor(graph))
@@ -201,7 +201,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
     }
   }
 
-  private fun validationVisitor(graph: KaGraphNode): TreeVisitor {
+  private fun validationVisitor(graph: KaGraphDeclaration): TreeVisitor {
     val file = graph.pointer.virtualFile
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {

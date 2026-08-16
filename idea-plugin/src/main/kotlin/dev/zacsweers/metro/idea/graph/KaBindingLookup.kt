@@ -11,7 +11,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.name.Name
@@ -29,7 +29,7 @@ internal class KaBindingLookup(
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
 ) {
-  private val graph: KaGraphNode = queryContext.graphContext.graph
+  private val graph: KaGraphDeclaration = queryContext.graphContext.graph
 
   /**
    * Element bindings by their synthetic qualifier-swapped keys. A multibinding's dependencies use

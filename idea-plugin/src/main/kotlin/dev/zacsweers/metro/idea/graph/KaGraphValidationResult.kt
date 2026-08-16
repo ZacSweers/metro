@@ -6,14 +6,14 @@ import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.graph.GraphTopology
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 
 /** The outcome of attempting to seal one graph. */
 internal sealed interface KaGraphValidationResult {
   val context: GraphContext
 
-  val graph: KaGraphNode
+  val graph: KaGraphDeclaration
     get() = context.graph
 
   /** Validation produced a normal Metro result, including any diagnostics it found. */

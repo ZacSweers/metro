@@ -40,7 +40,7 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -392,7 +392,7 @@ class MetroResolutionService(
   private fun aggregateSource(shards: Collection<FileShard>): SourceAggregate {
     val bindings = mutableListOf<KaBinding>()
     val consumers = mutableListOf<ConsumerEntry>()
-    val graphs = mutableListOf<KaGraphNode>()
+    val graphs = mutableListOf<KaGraphDeclaration>()
     val contributions = mutableListOf<ContributionEntry>()
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
@@ -502,7 +502,7 @@ class MetroResolutionService(
   private fun shardFor(file: KtFile, forceRebuild: Boolean = false): FileShard {
     if (forceRebuild) {
       val state = file.metroIdeState()
-      return if (state.isEnabled) IndexBuilder(file.project, state.options).buildShard(file)
+      return if (state.isEnabled) FileShardBuilder(file.project, state.options).buildShard(file)
       else FileShard.EMPTY
     }
     val cached =
@@ -512,7 +512,7 @@ class MetroResolutionService(
         // themselves.
         val state = file.metroIdeState()
         val shard =
-          if (state.isEnabled) IndexBuilder(file.project, state.options).buildShard(file)
+          if (state.isEnabled) FileShardBuilder(file.project, state.options).buildShard(file)
           else FileShard.EMPTY
         CachedValueProvider.Result.create(
           shard,
@@ -524,7 +524,7 @@ class MetroResolutionService(
       }
     if (cached === FileShard.EMPTY && file.textLength > 0) {
       val state = file.metroIdeState()
-      if (state.isEnabled) return IndexBuilder(file.project, state.options).buildShard(file)
+      if (state.isEnabled) return FileShardBuilder(file.project, state.options).buildShard(file)
     }
     return cached
   }
@@ -728,7 +728,7 @@ private data class SourceState(
 private data class SourceAggregate(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
-  val graphs: List<KaGraphNode>,
+  val graphs: List<KaGraphDeclaration>,
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,

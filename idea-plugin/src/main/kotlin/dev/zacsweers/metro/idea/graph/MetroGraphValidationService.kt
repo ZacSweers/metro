@@ -18,7 +18,7 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Consumer
@@ -134,7 +134,7 @@ internal class MetroGraphValidationService(
    */
   fun validateWithExtensions(
     element: PsiElement,
-    graph: KaGraphNode,
+    graph: KaGraphDeclaration,
   ): List<KaGraphValidationResult> {
     val declarationElement = graph.pointer.element ?: element
     val index = project.service<MetroResolutionService>().index(declarationElement)
@@ -207,7 +207,7 @@ internal class MetroGraphValidationService(
   /** Runs [validateWithExtensions] like [validateAsync]. */
   fun validateWithExtensionsAsync(
     element: PsiElement,
-    graph: KaGraphNode,
+    graph: KaGraphDeclaration,
     onDone: Consumer<List<KaGraphValidationResult>>,
   ) {
     launchCoalesced(graph) {
@@ -234,7 +234,7 @@ internal class MetroGraphValidationService(
     }
   }
 
-  private fun progressTitle(graph: KaGraphNode): String =
+  private fun progressTitle(graph: KaGraphDeclaration): String =
     "Validating Metro graph ${graph.name ?: ""}".trimEnd()
 
   /** Launches [block], cancelling any in-flight run for the same graph request. */

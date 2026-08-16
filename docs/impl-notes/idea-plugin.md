@@ -87,7 +87,7 @@ BindingIndex (membership queries)
   Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
   types, and visible modules. Production UI-thread requests schedule a cancellable smart-mode
   build instead of running Analysis API work on the UI thread.
-- `index/IndexBuilder.kt`: builds one file's shard. Files are found through
+- `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names, then resolved with the Analysis API inside
   `analyze {}` blocks. Handles graphs (including supertype member merging and library supertype
   binding callables), binding callables (companion members attribute to the enclosing container),
@@ -108,12 +108,12 @@ Everything the index stores is session-free. Nothing may retain a `KaSession`, `
 type arguments), annotations become `KaAnnotationSnapshot` (constructor-ordered resolved
 arguments, including declared defaults), and declarations are held as `SmartPsiElementPointer`s.
 
-- `model/BindingModel.kt`: `KaGraphNode`, `ConsumerEntry`, and friends.
+- `model/BindingModel.kt`: `KaGraphDeclaration`, `ConsumerEntry`, and friends.
 - `model/KaBinding.kt`: the binding model. Mirrors the compiler's `IrBinding` + sealed subtypes.
 - `model/KaContextualTypeKey.kt` / `model/KaTypeSnapshot.kt`: key model. Key equality is
   string-render equality, so both sides of any match must canonicalize the same way.
 - `model/BindingIndex.kt`: the query surface. Global lookups (`bindingsByKey`, by-file buckets in
-  ScatterMaps) plus per-graph membership. `contextFor(graph)` merges the extension parent chain
+  ScatterMaps) plus per-graph membership. `contextsFor(graph)` merges the extension parent chain
   into a `GraphContext` (scopes, containers, includes, excludes, supertype ids).
   - Membership filtering applies graph/module visibility, scope matching, declaration-specific
     containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.

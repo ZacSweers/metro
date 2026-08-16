@@ -25,7 +25,7 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -65,7 +65,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     override val text: String,
     override val grayText: String?,
   ) : MetroTreeNode(parent) {
-    val graph: KaGraphNode
+    val graph: KaGraphDeclaration
       get() = context.graph
 
     override val icon: Icon = MetroIcons.GRAPH

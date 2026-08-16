@@ -24,7 +24,7 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -62,22 +62,18 @@ import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 
-/**
- * Two-phase index construction: [buildShard] extracts one file's declarations (cached per file by
- * the resolution service), and [postProcess] runs the cross-file library passes over the merged
- * shard accumulators passed in via the constructor.
- */
-internal class IndexBuilder(
+/** Extracts the Metro declarations from one file into a cacheable [FileShard]. */
+internal class FileShardBuilder(
   private val project: Project,
   private val options: MetroOptions,
-  private val bindings: MutableList<KaBinding> = mutableListOf(),
-  private val consumers: MutableList<ConsumerEntry> = mutableListOf(),
-  private val graphs: MutableList<KaGraphNode> = mutableListOf(),
-  private val contributions: MutableList<ContributionEntry> = mutableListOf(),
-  private val assistedSites: MutableList<AssistedSite> = mutableListOf(),
-  private val bindingContainerEntries: MutableList<BindingContainerEntry> = mutableListOf(),
-  private val factoryInputs: MutableList<FactoryInputEntry> = mutableListOf(),
 ) {
+  private val bindings = mutableListOf<KaBinding>()
+  private val consumers = mutableListOf<ConsumerEntry>()
+  private val graphs = mutableListOf<KaGraphDeclaration>()
+  private val contributions = mutableListOf<ContributionEntry>()
+  private val assistedSites = mutableListOf<AssistedSite>()
+  private val bindingContainerEntries = mutableListOf<BindingContainerEntry>()
+  private val factoryInputs = mutableListOf<FactoryInputEntry>()
   private val pointerManager = SmartPointerManager.getInstance(project)
 
   private val processedBindingCallables = HashSet<KtDeclaration>()
@@ -131,12 +127,6 @@ internal class IndexBuilder(
       factoryInputs,
       cacheDependencies,
     )
-  }
-
-  /** Runs the cross-file library passes over previously merged shard accumulators. */
-  fun postProcess() {
-    LibraryIndexPostProcessor(project, options, bindings, consumers, graphs, contributions)
-      .postProcess()
   }
 
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
@@ -469,7 +459,7 @@ internal class IndexBuilder(
       }
 
       graphs +=
-        KaGraphNode(
+        KaGraphDeclaration(
           graphPointer,
           scopeKeys,
           classId = graphClassId,

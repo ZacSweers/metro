@@ -74,7 +74,7 @@ internal class AssistedSite(
 )
 
 /** A `@DependencyGraph`/`@GraphExtension`-annotated class and its aggregation metadata. */
-internal class KaGraphNode(
+internal class KaGraphDeclaration(
   val pointer: SmartPsiElementPointer<KtClassOrObject>,
   val scopeKeys: Set<ClassId>,
   val classId: ClassId? = null,
@@ -153,7 +153,7 @@ internal data class GraphPath(val segments: List<GraphDeclarationId>)
  */
 internal class GraphContext(
   /** The graph itself followed by its parent chain, nearest first. */
-  val chain: List<KaGraphNode>,
+  val chain: List<KaGraphDeclaration>,
   val scopes: Set<ClassId>,
   /** Declared scope annotations across the chain, gating scoped-binding membership. */
   val scopingAnnotations: Set<KaAnnotationSnapshot>,
@@ -170,11 +170,11 @@ internal class GraphContext(
   val graphIds: Set<GraphDeclarationId>,
   val graphClassIds: Set<ClassId>,
 ) {
-  val graph: KaGraphNode
+  val graph: KaGraphDeclaration
     get() = chain.first()
 
   /** The root graph whose compilation creates this concrete graph or extension instance. */
-  val rootGraph: KaGraphNode
+  val rootGraph: KaGraphDeclaration
     get() = chain.last()
 
   /** Stable declaration identity for this exact parent path. */

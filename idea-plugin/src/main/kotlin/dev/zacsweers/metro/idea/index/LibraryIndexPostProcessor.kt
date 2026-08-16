@@ -20,7 +20,7 @@ import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.scopeAnnotation
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -52,7 +52,7 @@ internal class LibraryIndexPostProcessor(
   private val options: MetroOptions,
   private val bindings: MutableList<KaBinding>,
   private val consumers: List<ConsumerEntry>,
-  private val graphs: List<KaGraphNode>,
+  private val graphs: List<KaGraphDeclaration>,
   private val contributions: MutableList<ContributionEntry>,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)

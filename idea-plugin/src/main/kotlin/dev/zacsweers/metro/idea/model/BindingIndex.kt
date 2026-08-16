@@ -27,7 +27,7 @@ import org.jetbrains.kotlin.psi.KtElement
 internal class BindingIndex(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
-  val graphs: List<KaGraphNode>,
+  val graphs: List<KaGraphDeclaration>,
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite> = emptyList(),
   val bindingContainers: List<BindingContainerEntry> = emptyList(),
@@ -51,7 +51,7 @@ internal class BindingIndex(
     result as ScatterMap<ClassId, List<KaBinding>>
   }
 
-  private val graphContexts = ConcurrentHashMap<KaGraphNode, List<GraphContext>>()
+  private val graphContexts = ConcurrentHashMap<KaGraphDeclaration, List<GraphContext>>()
   private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
   private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val validationReplacedOriginsByContext =
@@ -138,7 +138,7 @@ internal class BindingIndex(
     consumers.groupToScatter { it.pointer.virtualFile }
   }
 
-  private val graphsByFile: ScatterMap<VirtualFile, List<KaGraphNode>> by lazy {
+  private val graphsByFile: ScatterMap<VirtualFile, List<KaGraphDeclaration>> by lazy {
     graphs.groupToScatter { it.pointer.virtualFile }
   }
 
@@ -274,12 +274,12 @@ internal class BindingIndex(
   }
 
   /** The consumer sites declared on [graph] itself, used as seal roots. */
-  fun accessorsFor(graph: KaGraphNode): List<ConsumerEntry> {
+  fun accessorsFor(graph: KaGraphDeclaration): List<ConsumerEntry> {
     return accessorsByGraph[graph.declarationId].orEmpty()
   }
 
   /** The extension graphs created by [graph]'s accessors. */
-  fun extensionsOf(graph: KaGraphNode): List<KaGraphNode> {
+  fun extensionsOf(graph: KaGraphDeclaration): List<KaGraphDeclaration> {
     if (graph.extensionCreations.isEmpty()) return emptyList()
     return graphs.filter { candidate ->
       candidate.isExtension && candidate.selfReferences.any { it in graph.extensionCreations }
@@ -287,7 +287,7 @@ internal class BindingIndex(
   }
 
   /** Every valid aggregation context for [graph]. Extensions can have multiple parent paths. */
-  fun contextsFor(graph: KaGraphNode): List<GraphContext> {
+  fun contextsFor(graph: KaGraphDeclaration): List<GraphContext> {
     return graphContexts.computeIfAbsent(graph) { buildContexts(it) }
   }
 
@@ -352,14 +352,14 @@ internal class BindingIndex(
     }
   }
 
-  private fun buildContexts(graph: KaGraphNode): List<GraphContext> {
+  private fun buildContexts(graph: KaGraphDeclaration): List<GraphContext> {
     return buildChains(graph, visited = setOf(graph)).map(::buildContext)
   }
 
   private fun buildChains(
-    graph: KaGraphNode,
-    visited: Set<KaGraphNode>,
-  ): List<List<KaGraphNode>> {
+    graph: KaGraphDeclaration,
+    visited: Set<KaGraphDeclaration>,
+  ): List<List<KaGraphDeclaration>> {
     if (!graph.isExtension) return listOf(listOf(graph))
 
     val parents = graphs.filter { candidate ->
@@ -367,7 +367,7 @@ internal class BindingIndex(
     }
     if (parents.isEmpty()) return listOf(listOf(graph))
 
-    val chains = mutableListOf<List<KaGraphNode>>()
+    val chains = mutableListOf<List<KaGraphDeclaration>>()
     for (parent in parents) {
       val parentChains = buildChains(parent, visited + parent)
       for (parentChain in parentChains) {
@@ -377,7 +377,7 @@ internal class BindingIndex(
     return chains
   }
 
-  private fun buildContext(chain: List<KaGraphNode>): GraphContext {
+  private fun buildContext(chain: List<KaGraphDeclaration>): GraphContext {
     val scopes = chain.flatMapToSet { it.scopeKeys }
     val excludes = chain.flatMapToSet { it.excludes }
     // Supertype members merge into the graph, so their classes gate membership like the graph
@@ -726,13 +726,13 @@ internal class BindingIndex(
     return consumersByFile[file].orEmpty().filter { it.pointer.element === element }
   }
 
-  fun graphEntryAt(element: KtElement): KaGraphNode? {
+  fun graphEntryAt(element: KtElement): KaGraphDeclaration? {
     val file = element.containingFile?.virtualFile ?: return null
     return graphsByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
   }
 
   /** Refreshes a retained graph declaration against this index. */
-  fun graphFor(graph: KaGraphNode): KaGraphNode? {
+  fun graphFor(graph: KaGraphDeclaration): KaGraphDeclaration? {
     return graphs.firstOrNull { it.declarationId == graph.declarationId }
   }
 
@@ -746,7 +746,7 @@ internal class BindingIndex(
     return contributions.filter { contribution -> contribution.scopeKeys.any(scopeKeys::contains) }
   }
 
-  fun graphsForScopes(scopeKeys: Set<ClassId>): List<KaGraphNode> {
+  fun graphsForScopes(scopeKeys: Set<ClassId>): List<KaGraphDeclaration> {
     if (scopeKeys.isEmpty()) return emptyList()
     return graphs.filter { graph -> graph.scopeKeys.any(scopeKeys::contains) }
   }

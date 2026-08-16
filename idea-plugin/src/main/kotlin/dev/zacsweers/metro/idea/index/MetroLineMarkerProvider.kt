@@ -36,7 +36,7 @@ import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import java.awt.event.MouseEvent
 import javax.swing.Icon
@@ -301,7 +301,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
   private fun graphMarker(
     anchor: PsiElement,
-    graph: KaGraphNode,
+    graph: KaGraphDeclaration,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val contexts = index.contextsFor(graph)
@@ -339,7 +339,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun validateMarker(
     anchor: PsiElement,
     declaration: KtNamedDeclaration,
-    graph: KaGraphNode,
+    graph: KaGraphDeclaration,
     classId: ClassId,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<PsiElement> {

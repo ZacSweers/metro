@@ -11,7 +11,7 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.name.ClassId
 
@@ -106,7 +106,7 @@ internal class FactoryInputEntry(
 internal class FileShard(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
-  val graphs: List<KaGraphNode>,
+  val graphs: List<KaGraphDeclaration>,
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,

@@ -21,13 +21,13 @@ import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphNode
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.name.StandardClassIds
 
 /** Adapts IDEA binding snapshots and diagnostic locations to shared suspend validation. */
 internal class KaSuspendBindingValidator(
-  private val graph: KaGraphNode,
+  private val graph: KaGraphDeclaration,
   private val graphName: String,
   private val options: MetroOptions,
   private val graphConsumers: List<ConsumerEntry>,
