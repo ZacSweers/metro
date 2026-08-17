@@ -17,6 +17,9 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.SimpleModificationTracker
+import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
@@ -500,10 +503,10 @@ class MetroResolutionService(
   }
 
   private fun shardFor(file: KtFile, forceRebuild: Boolean = false): FileShard {
+    // Forced rebuilds go through the same cached value so later non-force lookups can never
+    // revert to a stale pre-force shard. The per-file tracker invalidates the stored value.
     if (forceRebuild) {
-      val state = file.metroIdeState()
-      return if (state.isEnabled) FileShardBuilder(file.project, state.options).buildShard(file)
-      else FileShard.EMPTY
+      forceTracker(file).incModificationCount()
     }
     val cached =
       CachedValuesManager.getCachedValue(file) {
@@ -518,6 +521,7 @@ class MetroResolutionService(
         CachedValueProvider.Result.create(
           shard,
           file,
+          forceTracker(file),
           KotlinCompilerSettingsTracker.getInstance(file.project),
           ProjectRootModificationTracker.getInstance(file.project),
           *(builder?.psiDependencies ?: emptySet()).toTypedArray(),
@@ -528,6 +532,17 @@ class MetroResolutionService(
       if (state.isEnabled) return FileShardBuilder(file.project, state.options).buildShard(file)
     }
     return cached
+  }
+
+  /** Stored on the file so the tracker and the cached value share one lifetime. */
+  private fun forceTracker(file: KtFile): SimpleModificationTracker {
+    file.getUserData(FORCE_TRACKER_KEY)?.let {
+      return it
+    }
+    return (file as UserDataHolderEx).putUserDataIfAbsent(
+      FORCE_TRACKER_KEY,
+      SimpleModificationTracker(),
+    )
   }
 
   private fun currentInputs(): IndexInputs =
@@ -709,6 +724,8 @@ class MetroResolutionService(
     const val MAX_SHARED_DECLARATION_DEPTH = 3
   }
 }
+
+private val FORCE_TRACKER_KEY = Key.create<SimpleModificationTracker>("metro.shard.force.tracker")
 
 private data class SnapshotKey(
   val fingerprint: IndexOptionsFingerprint,
