@@ -44,6 +44,19 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertSame(initial, service.index(file))
   }
 
+  fun testIrrelevantFileQueriesPreserveTheExistingSnapshot() {
+    val unrelated =
+      myFixture.addFileToProject("test/Unrelated.kt", "package test\n\nclass Unrelated") as KtFile
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+
+    // Repeated queries from a non-Metro file must not invalidate anything.
+    assertSame(initial, service.index(unrelated))
+    assertSame(initial, service.index(unrelated))
+    assertSame(initial, service.index(file))
+  }
+
   fun testUnannotatedTypeAliasChangesRefreshDependentBindingKeys() {
     val aliases =
       myFixture.addFileToProject("test/Aliases.kt", "package test\n\ntypealias Alias = String")

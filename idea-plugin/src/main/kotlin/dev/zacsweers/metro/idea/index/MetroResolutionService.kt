@@ -594,8 +594,22 @@ class MetroResolutionService(
       return
     }
     if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) return
-    if (!containsRelevantAnnotation(file, state.shortNames)) return
+    // Editor features call index() once per declaration; a cached negative keeps files without
+    // Metro annotations from paying a full PSI walk on every call.
+    if (!isRelevantFileCached(file)) return
     invalidations.updateAndGet { it.withDirty(setOf(virtualFile)) }
+  }
+
+  private fun isRelevantFileCached(file: KtFile): Boolean {
+    return CachedValuesManager.getCachedValue(file) {
+      val shortNames =
+        sourceSnapshot.get()?.shortNames ?: projectSweepShortNames(file.metroIdeState().options)
+      CachedValueProvider.Result.create(
+        containsRelevantAnnotation(file, shortNames),
+        file,
+        KotlinCompilerSettingsTracker.getInstance(file.project),
+      )
+    }
   }
 
   private fun psiChanged(event: PsiTreeChangeEvent, structuralChange: Boolean = false) {
