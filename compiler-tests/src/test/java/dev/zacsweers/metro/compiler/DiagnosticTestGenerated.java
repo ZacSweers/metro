@@ -874,6 +874,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       }
 
       @Test
+      @TestMetadata("RequiredAccessorWinsOptionalAccessorReversed.kt")
+      public void testRequiredAccessorWinsOptionalAccessorReversed() {
+        run("RequiredAccessorWinsOptionalAccessorReversed.kt");
+      }
+
+      @Test
       @TestMetadata("RequiredAnnotationResultsInMissingBindingMultiModule.kt")
       public void testRequiredAnnotationResultsInMissingBindingMultiModule() {
         run("RequiredAnnotationResultsInMissingBindingMultiModule.kt");

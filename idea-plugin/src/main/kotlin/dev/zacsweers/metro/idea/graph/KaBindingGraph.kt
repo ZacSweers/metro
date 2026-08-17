@@ -152,8 +152,10 @@ internal class KaBindingGraph(
 
     val roots = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     for (consumer in graphConsumers) {
-      // hasDefault is what makes the shared core treat an absent optional binding as not missing
-      val contextKey = consumer.contextKey.withDefault(consumer.isOptional)
+      // hasDefault is what makes the shared core treat an absent optional binding as not missing.
+      // Union with any default already on the key so a defaulted context key never turns required.
+      val contextKey =
+        consumer.contextKey.withDefault(consumer.isOptional || consumer.contextKey.hasDefault)
       roots.putGraphRoot(
         contextKey,
         KaBindingStack.Entry.requestedAt(contextKey, consumer, graphName),
