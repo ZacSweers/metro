@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.graph
 
+import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.graph.SuspendBindingAnalysisResult
 import dev.zacsweers.metro.compiler.graph.SuspendBindingRules
 import dev.zacsweers.metro.compiler.graph.SuspendBindingWorklist
@@ -26,6 +27,7 @@ internal class SuspendBindingAnalysis(findBinding: (KaTypeKey) -> KaBinding?) {
       bindingIsSuspend = { it.isSuspend },
       skipDependencyTraversal = { it is KaBinding.AssistedFactory },
       rules = rules,
+      checkCanceled = ProgressManager::checkCanceled,
     )
 
   fun analyze(keys: Iterable<KaTypeKey>): Set<KaTypeKey> = worklist.analyze(keys)

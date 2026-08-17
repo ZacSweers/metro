@@ -4,8 +4,13 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeDescriptor
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
@@ -16,9 +21,13 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
+import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Walks [MetroTreeStructure] directly, without Swing, and asserts the produced rows. */
@@ -245,6 +254,69 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
     assertTrue("The Metro tree should populate when smart mode resumes", tree.rowCount > 0)
     com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
+  }
+
+  fun testDisposedToolWindowPanelIgnoresValidationRequests() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val panel = MetroToolWindowPanel(project)
+    Disposer.dispose(panel)
+
+    panel.selectAndValidate(checkNotNull(graph.classId), file.virtualFile)
+
+    assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+  }
+
+  fun testMissingRequestedGraphDoesNotValidateTheSelectedGraph() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      val tree = toolWindowTree(panel)
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      tree.setSelectionRow(0)
+
+      panel.selectAndValidate(ClassId.topLevel(FqName("test.MissingGraph")), file.virtualFile)
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+
+      assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testValidateGraphActionRecognizesAnImportedAnnotationAlias() {
+    val file =
+      myFixture.configureByText(
+        "AliasedGraph.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.DependencyGraph as MetroGraph
+
+        @MetroGraph
+        interface <caret>AppGraph
+        """
+          .trimIndent(),
+      )
+    val action = ValidateMetroGraphAction()
+    val dataContext = DataContext { dataId ->
+      when {
+        CommonDataKeys.PROJECT.`is`(dataId) -> project
+        CommonDataKeys.EDITOR.`is`(dataId) -> myFixture.editor
+        CommonDataKeys.PSI_FILE.`is`(dataId) -> file
+        else -> null
+      }
+    }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext)
+
+    action.update(event)
+
+    assertTrue(event.presentation.isEnabledAndVisible)
   }
 
   private fun toolWindowTree(panel: MetroToolWindowPanel): Tree {

@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
 import kotlin.random.Random
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class SuspendBindingWorklistTest {
@@ -153,6 +154,57 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `nonempty path snapshots stay stable after incremental additions`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("First", "FirstSource"), binding("FirstSource", isSuspend = true))
+    val initial = fixture.analysis.analyzeWithPaths(keys("First"))
+
+    fixture.put(binding("Second", "SecondSource"), binding("SecondSource", isSuspend = true))
+    assertThat(fixture.analysis.analyze(keys("First", "Second")))
+      .containsExactlyElementsIn(keys("First", "FirstSource", "Second", "SecondSource"))
+
+    assertThat(initial.suspendKeys).containsExactlyElementsIn(keys("First", "FirstSource"))
+    assertThat(initial.pathFrom(key("Second")) { it.typeKey }).isNull()
+    assertThat(initial.pathFrom(key("First")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("FirstSource"))
+  }
+
+  @Test
+  fun `multiple witnesses reuse one provenance index`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("First", "Middle"),
+      binding("Second", "Middle"),
+      binding("Middle", "Source"),
+      binding("Source", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("First", "Second"))
+
+    assertThat(result.pathFrom(key("First")) { it.typeKey }!!.sourceKey).isEqualTo(key("Source"))
+    val checksAfterFirstWitness = fixture.suspendCheckCount
+    assertThat(result.pathFrom(key("Second")) { it.typeKey }!!.sourceKey).isEqualTo(key("Source"))
+
+    // The second witness checks its own start and final source without indexing the graph again.
+    assertThat(fixture.suspendCheckCount - checksAfterFirstWitness).isEqualTo(2)
+  }
+
+  @Test
+  fun `witness indexing observes cancellation`() {
+    var canceled = false
+    val fixture = AnalysisFixture(checkCanceled = { if (canceled) error("canceled") })
+    fixture.put(binding("Consumer", "Source"), binding("Source", isSuspend = true))
+    val result = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+    canceled = true
+
+    val failure =
+      assertFailsWith<IllegalStateException> {
+        result.pathFrom(key("Consumer")) { it.typeKey }
+      }
+
+    assertThat(failure).hasMessageThat().isEqualTo("canceled")
+  }
+
+  @Test
   fun `cycle walks pick the adjacent suspend witness over the cycle edge`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("A", "B"), binding("B", "A", "Source"), binding("Source", isSuspend = true))
@@ -252,10 +304,12 @@ class SuspendBindingWorklistTest {
 private typealias TestAnalysis =
   SuspendBindingWorklist<String, StringTypeKey, StringContextualTypeKey, TestBinding>
 
-private class AnalysisFixture {
+private class AnalysisFixture(private val checkCanceled: () -> Unit = {}) {
   private val bindings = mutableMapOf<StringTypeKey, TestBinding>()
   private val lookupCounts = mutableMapOf<StringTypeKey, Int>()
   private var generation = 0
+  var suspendCheckCount = 0
+    private set
 
   private val rules =
     SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, TestBinding>(
@@ -269,10 +323,14 @@ private class AnalysisFixture {
         lookupCounts[key] = lookupCounts.getOrDefault(key, 0) + 1
         bindings[key]
       },
-      bindingIsSuspend = { it.isSuspend },
+      bindingIsSuspend = {
+        suspendCheckCount++
+        it.isSuspend
+      },
       skipDependencyTraversal = { it.skipDependencies },
       rules = rules,
       currentGraphGeneration = { generation },
+      checkCanceled = checkCanceled,
     )
 
   fun put(vararg newBindings: TestBinding) {

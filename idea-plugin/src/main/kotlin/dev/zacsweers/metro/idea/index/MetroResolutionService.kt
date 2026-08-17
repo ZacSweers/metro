@@ -3,6 +3,9 @@
 package dev.zacsweers.metro.idea.index
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.facet.Facet
+import com.intellij.facet.FacetManager
+import com.intellij.facet.FacetManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
@@ -17,6 +20,8 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootEvent
+import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
@@ -29,6 +34,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeAdapter
 import com.intellij.psi.PsiTreeChangeEvent
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiSearchHelper
+import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -70,6 +77,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 
@@ -173,6 +181,19 @@ class MetroResolutionService(
         },
         this,
       )
+    val connection = project.messageBus.connect(this)
+    connection.subscribe(
+      ModuleRootListener.TOPIC,
+      object : ModuleRootListener {
+        override fun rootsChanged(event: ModuleRootEvent) = projectInputsChanged()
+      },
+    )
+    connection.subscribe(
+      FacetManager.FACETS_TOPIC,
+      object : FacetManagerListener {
+        override fun facetConfigurationChanged(facet: Facet<*>) = projectInputsChanged()
+      },
+    )
     scope.launch { buildWorker() }
   }
 
@@ -278,6 +299,28 @@ class MetroResolutionService(
       ProjectRootModificationTracker.getInstance(project).modificationCount,
     )
     notifyListeners(restartDaemon = false)
+  }
+
+  /** Roots/facet changes should refresh open windows even when no editor asks for the index. */
+  private fun projectInputsChanged() {
+    val snapshot = sourceSnapshot.get()
+    if (snapshot == null) {
+      // An already-open window may be waiting for Metro to be configured for the first time.
+      scheduleInvalidationNotification()
+      return
+    }
+    val inputs = currentInputs()
+    val rootsChanged = snapshot.inputs.roots != inputs.roots
+    val compilerSettingsChanged = snapshot.inputs.compilerSettings != inputs.compilerSettings
+    if (!rootsChanged && !compilerSettingsChanged) return
+
+    val semanticSettingsChanged =
+      compilerSettingsChanged && snapshot.moduleFingerprints != moduleFingerprints()
+    if (!rootsChanged && !semanticSettingsChanged) return
+
+    val bumped = invalidations.updateAndGet { it.bumpGeneration() }
+    evictStaleCaches(bumped.generation, inputs.roots)
+    scheduleInvalidationNotification()
   }
 
   /** Entries stranded by generation or root changes can never be served again, so drop them. */
@@ -395,9 +438,10 @@ class MetroResolutionService(
     inputs: IndexInputs,
     start: Invalidations,
   ): SourceSnapshot {
-    val shortNames = projectSweepShortNames(options)
+    val annotationIds = projectSweepAnnotationIds(options)
+    val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
     val transaction = SourceSnapshotTransaction()
-    for (file in candidateFiles(shortNames)) {
+    for (file in candidateFiles(annotationIds, shortNames)) {
       ProgressManager.checkCanceled()
       val virtualFile = file.virtualFile ?: continue
       transaction.applyShard(virtualFile, shardFor(file))
@@ -527,7 +571,7 @@ class MetroResolutionService(
     return shard
   }
 
-  private fun projectSweepShortNames(fallbackOptions: MetroOptions): Set<String> {
+  private fun projectSweepAnnotationIds(fallbackOptions: MetroOptions): Set<ClassId> {
     val ids = linkedSetOf<ClassId>()
     ids += sweepAnnotationIds(fallbackOptions)
     val service = project.service<MetroIdeProjectService>()
@@ -536,7 +580,11 @@ class MetroResolutionService(
       val state = service.state(module)
       if (state.isEnabled) ids += sweepAnnotationIds(state.options)
     }
-    return ids.mapToSet { it.shortClassName.asString() }
+    return ids
+  }
+
+  private fun projectSweepShortNames(fallbackOptions: MetroOptions): Set<String> {
+    return projectSweepAnnotationIds(fallbackOptions).mapToSet { it.shortClassName.asString() }
   }
 
   /** Compiler output/report settings do not change semantic fingerprints or source declarations. */
@@ -555,8 +603,8 @@ class MetroResolutionService(
     return fingerprintsByModuleState.computeIfAbsent(state) { IndexOptionsFingerprint(it.options) }
   }
 
-  /** Files containing any Metro-relevant annotation by short name, via stub indexes. */
-  private fun candidateFiles(shortNames: Set<String>): Set<KtFile> {
+  /** Files containing any Metro-relevant annotation or an exact aliased import, via indexes. */
+  private fun candidateFiles(annotationIds: Set<ClassId>, shortNames: Set<String>): Set<KtFile> {
     val searchScope = GlobalSearchScope.projectScope(project)
     val files = LinkedHashSet<KtFile>()
     for (shortName in shortNames.sorted()) {
@@ -566,12 +614,52 @@ class MetroResolutionService(
         files += entry.containingKtFile
       }
     }
+
+    // Search a distinctive package component rather than common names like Inject/Provides.
+    // This visits import/package occurrences, not every annotation usage in the whole project.
+    val idsBySearchWord = annotationIds.groupBy { annotationId ->
+      annotationId.packageFqName.pathSegments().maxByOrNull { it.asString().length }?.asString()
+        ?: annotationId.shortClassName.asString()
+    }
+    val searchHelper = PsiSearchHelper.getInstance(project)
+    for ((searchWord, matchingIds) in idsBySearchWord) {
+      ProgressManager.checkCanceled()
+      val canonicalNames = matchingIds.mapToSet { it.asSingleFqName() }
+      searchHelper.processElementsWithWord(
+        { element, _ ->
+          ProgressManager.checkCanceled()
+          val directive = PsiTreeUtil.getParentOfType(element, KtImportDirective::class.java, false)
+          val file = directive?.containingFile as? KtFile
+          if (
+            directive?.aliasName != null &&
+              directive.importedFqName in canonicalNames &&
+              file != null
+          ) {
+            files += file
+          }
+          true
+        },
+        searchScope,
+        searchWord,
+        UsageSearchContext.IN_CODE,
+        true,
+      )
+    }
     return files
   }
 
   private fun containsRelevantAnnotation(file: KtFile, shortNames: Set<String>): Boolean {
+    val names =
+      if (file.importDirectives.any { it.aliasName != null }) {
+        shortNames +
+          file.annotationShortNamesIncludingAliases(
+            sweepAnnotationIds(file.metroIdeState().options)
+          )
+      } else {
+        shortNames
+      }
     return PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java).any { entry ->
-      entry.shortName?.asString() in shortNames
+      entry.shortName?.asString() in names
     }
   }
 
@@ -833,8 +921,13 @@ class MetroResolutionService(
     val state = sourceSnapshot.get() ?: return
     val requested = mutableSetOf<VirtualFile>()
     val dirty = mutableSetOf<VirtualFile>()
+    var sharedDeclarationsChanged = false
     for (file in files) {
+      ProgressManager.checkCanceled()
       val virtualFile = file.virtualFile ?: continue
+      if (fileHasSharedDeclarationsCached(file)) {
+        sharedDeclarationsChanged = true
+      }
       if (virtualFile !in state.shards) {
         requested += virtualFile
       }
@@ -849,7 +942,7 @@ class MetroResolutionService(
         dirty += owners
       }
     }
-    if (requested.isEmpty() && dirty.isEmpty()) {
+    if (requested.isEmpty() && dirty.isEmpty() && !sharedDeclarationsChanged) {
       return
     }
     invalidations.updateAndGet { ledger ->
@@ -857,9 +950,12 @@ class MetroResolutionService(
       if (dirty.isNotEmpty()) {
         updated = updated.withDirty(dirty)
       }
+      if (sharedDeclarationsChanged) {
+        updated = updated.withForceAll()
+      }
       updated
     }
-    if (dirty.isNotEmpty()) {
+    if (dirty.isNotEmpty() || sharedDeclarationsChanged) {
       scheduleInvalidationNotification()
     }
   }
@@ -1210,6 +1306,7 @@ private class IndexOptionsFingerprint(val options: MetroOptions) {
       options.assistedInjectAnnotations,
       options.assistedAnnotations,
       options.assistedFactoryAnnotations,
+      options.contributionProviderExclusionAnnotations,
       options.providesAnnotations,
       options.bindsAnnotations,
       options.multibindsAnnotations,
@@ -1240,6 +1337,7 @@ private class IndexOptionsFingerprint(val options: MetroOptions) {
   private val flags =
     listOf(
       options.contributesAsInject,
+      options.generateContributionProviders,
       options.enableCircuitCodegen,
       options.enableDaggerRuntimeInterop,
       options.enableDaggerAnvilInterop,
@@ -1284,4 +1382,19 @@ private fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
     addAll(bindsOptionalOfAnnotations(options))
     add(CircuitClassIds.CircuitInject)
   }
+}
+
+/**
+ * Includes local import aliases without resolving annotations or starting an Analysis API session.
+ */
+internal fun KtFile.annotationShortNamesIncludingAliases(annotationIds: Set<ClassId>): Set<String> {
+  val names = annotationIds.mapTo(mutableSetOf()) { it.shortClassName.asString() }
+  for (directive in importDirectives) {
+    val alias = directive.aliasName ?: continue
+    val importedName = directive.importedFqName ?: continue
+    if (annotationIds.any { it.asSingleFqName() == importedName }) {
+      names += alias
+    }
+  }
+  return names
 }

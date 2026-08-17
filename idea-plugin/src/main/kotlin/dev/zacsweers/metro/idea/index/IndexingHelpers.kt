@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -41,6 +42,7 @@ internal fun BindingData.toKaBinding(
   pointer: SmartPsiElementPointer<out PsiElement>,
   containerId: ClassId? = null,
   includedContainerKey: KaTypeKey? = null,
+  ownerGraphId: GraphDeclarationId? = null,
   originClassId: ClassId? = this.originClassId,
   implementationName: String? = this.implementationName,
   replaces: Set<ClassId> = this.replaces,
@@ -77,8 +79,12 @@ internal fun BindingData.toKaBinding(
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,
+        ownerGraphId = ownerGraphId,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        contributionRank = contributionRank,
+        isClassContribution = isClassContribution,
+        memberInjectionOwnerIds = memberInjectionOwnerIds,
         dependencies = listOfNotNull(ownerDependency) + dependencies,
         isSuspend = isSuspend,
         hintAvailability = hintAvailability,
@@ -96,6 +102,7 @@ internal fun BindingData.toKaBinding(
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,
+        ownerGraphId = ownerGraphId,
         replaces = replaces,
         contributionScopes = contributionScopes,
         contributionRank = contributionRank,
@@ -111,6 +118,7 @@ internal fun BindingData.toKaBinding(
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,
+        ownerGraphId = ownerGraphId,
         replaces = replaces,
         contributionScopes = contributionScopes,
         allowEmpty = allowEmpty,
@@ -133,9 +141,11 @@ internal fun BindingData.toKaBinding(
         originClassId = originClassId,
         containerId = containerId,
         includedContainerKey = includedContainerKey,
+        ownerGraphId = ownerGraphId,
         replaces = replaces,
         contributionScopes = contributionScopes,
         hintAvailability = hintAvailability,
+        isGraphPrivate = isGraphPrivate,
       )
   }
 }

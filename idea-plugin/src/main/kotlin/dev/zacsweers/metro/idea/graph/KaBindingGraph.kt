@@ -402,7 +402,7 @@ internal class KaBindingGraph(
     val renders =
       disambiguateIncompatibleScopes(
         bindingScope = bindingScope,
-        graphScopes = context.scopingAnnotations,
+        graphScopes = graph.scopingAnnotations,
         shortRender = { it.render(short = true) },
         fullRender = { it.render(short = false) },
       )

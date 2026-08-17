@@ -12,8 +12,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.util.parentOfType
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.MetroIdeProjectService
+import dev.zacsweers.metro.idea.index.annotationShortNamesIncludingAliases
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
 
@@ -48,9 +48,9 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     if (!state.isEnabled) return null
     val options = state.options
     val graphShortNames =
-      (options.dependencyGraphAnnotations + options.graphExtensionAnnotations).mapToSet {
-        it.shortClassName.asString()
-      }
+      ktClass.containingKtFile.annotationShortNamesIncludingAliases(
+        options.dependencyGraphAnnotations + options.graphExtensionAnnotations
+      )
     val isGraph = ktClass.annotationEntries.any { it.shortName?.asString() in graphShortNames }
     return ktClass.takeIf { isGraph }
   }

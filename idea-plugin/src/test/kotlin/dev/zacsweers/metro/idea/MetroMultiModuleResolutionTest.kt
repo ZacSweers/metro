@@ -462,6 +462,69 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
   }
 
+  fun testSameFqnGraphsKeepTheirOwnGenericSupertypeProviders() {
+    fixture.addFileToProject(
+      "library/shared/GenericBase.kt",
+      """
+      package shared
+
+      import dev.zacsweers.metro.Provides
+
+      interface GenericBase<T> {
+        val value: T
+
+        @Provides fun provideValue(): T = error("unused")
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/Graph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.DependencyGraph
+
+        @DependencyGraph
+        interface SharedGraph : GenericBase<String>
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/Graph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.DependencyGraph
+
+        @DependencyGraph
+        interface SharedGraph : GenericBase<Int>
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val service = fixture.project.service<MetroGraphValidationService>()
+    for ((file, expectedType) in listOf(appFile to "kotlin.String", bridgeFile to "kotlin.Int")) {
+      val declaration = file.declarationsIncludingNested().klass("SharedGraph")
+      val graph = index.graphEntryAt(declaration)!!
+      val result = service.validate(file, index.contextsFor(graph).single()).requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val providedTypes = mutableListOf<String>()
+      result.bindings.forEach { key, binding ->
+        if (binding is KaBinding.Provided) {
+          providedTypes += key.renderedType
+        }
+      }
+      assertEquals(listOf(expectedType), providedTypes)
+    }
+  }
+
   fun testSameFqnExtensionsInUnrelatedModulesKeepTheirOwnParents() {
     val appFile =
       fixture.addFileToProject(

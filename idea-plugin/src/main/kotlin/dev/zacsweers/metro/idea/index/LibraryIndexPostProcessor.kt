@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -107,9 +108,12 @@ internal class LibraryIndexPostProcessor(
 
   private fun useSitesByModule(): Map<KaModule, KtElement> {
     val result = linkedMapOf<KaModule, KtElement>()
+    val fileIndex = ProjectFileIndex.getInstance(project)
 
     fun addUseSite(element: PsiElement?) {
       if (element !is KtElement) return
+      val virtualFile = element.containingFile?.virtualFile ?: return
+      if (!fileIndex.isInContent(virtualFile)) return
       val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
       result.putIfAbsent(module, element)
     }
@@ -188,7 +192,8 @@ internal class LibraryIndexPostProcessor(
       // A single scope-matched rank still belongs to those aliases even without class BindingData.
       val rankedContributions =
         (classBindings + originBindings).filter { contribution ->
-          contribution.kind == BindingData.Kind.ALIAS &&
+          (contribution.kind == BindingData.Kind.ALIAS ||
+            contribution.kind == BindingData.Kind.PROVIDED) &&
             contribution.isClassContribution &&
             contribution.contributionRank != Long.MIN_VALUE
         }
@@ -289,11 +294,11 @@ internal class LibraryIndexPostProcessor(
   }
 
   /**
-   * Demand-driven resolution of constructor-injected classes from compiled dependencies: the
-   * annotation sweeps only cover project sources, but inject annotations survive in library
-   * metadata. Starting from consumer keys in each use-site module, transitively checks whether each
-   * resolved library class is injectable and synthesizes one entry per binary declaration.
+   * Demand-driven resolution of injected classes and assisted factories from compiled dependencies.
+   * Source consumer sites and source/hint binding dependencies seed the same transitive traversal,
+   * so generated providers also discover library dependencies without their own source consumers.
    */
+  @OptIn(KaPlatformInterface::class)
   private fun resolveLibraryInjectBindings() {
     val queue = ArrayDeque<LibraryInjectRequest>()
     for (consumer in consumers) {
@@ -305,6 +310,7 @@ internal class LibraryIndexPostProcessor(
       val context = consumer.pointer.element ?: continue
       queue += LibraryInjectRequest(consumer.key, classId, context)
     }
+    enqueueBindingDependencies(queue)
     if (queue.isEmpty()) return
 
     val visited = mutableSetOf<LibraryInjectRequestId>()
@@ -326,6 +332,37 @@ internal class LibraryIndexPostProcessor(
           // Project sources were already swept; finding nothing there was authoritative
           val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
           if (fileIndex.isInContent(virtualFile)) return@analyze null
+
+          // The class-level qualifier is part of both injected-class and assisted-factory keys.
+          if (qualifierAnnotation(classSymbol, options) != request.key.qualifier) {
+            return@analyze null
+          }
+          if (classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) {
+            val factoryFunction = assistedFactoryFunction(classSymbol)
+            val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
+            val targetSymbol =
+              (factoryFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol
+                as? KaNamedClassSymbol
+            return@analyze ResolvedLibraryBinding(
+              LibraryInjectBindingId(request.key, virtualFile),
+              KaBinding.AssistedFactory(
+                pointerManager.createSmartPsiElementPointer(psi),
+                request.key,
+                scopeAnnotation(classSymbol, options),
+                targetSymbol?.classId?.shortClassName?.asString(),
+                factoryFunction?.returnType?.let { typeKey(it, qualifier = null) },
+                originClassId = classSymbol.classId,
+                targetConstructorDependencies =
+                  targetSymbol?.let { injectConstructorDependencyKeys(it, options) }.orEmpty(),
+                targetMemberDependencies =
+                  targetSymbol?.let { memberInjectDependencyKeys(it, options) }.orEmpty(),
+                memberInjectionOwnerIds =
+                  targetSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
+                factoryFunctionName = samFunction?.name?.asString(),
+                factoryFunctionIsSuspend = samFunction?.isSuspend == true,
+              ),
+            )
+          }
           if (classSymbol.classKind != KaClassKind.CLASS) return@analyze null
 
           val constructors = classSymbol.memberScope.constructors.toList()
@@ -336,21 +373,16 @@ internal class LibraryIndexPostProcessor(
             classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
               constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
           if (!hasInject && !isAssisted) return@analyze null
-          // The class-level qualifier is part of the binding key. A mismatch means this class
-          // cannot satisfy the request, including unqualified requests of a qualified class.
-          if (qualifierAnnotation(classSymbol, options) != request.key.qualifier) {
-            return@analyze null
-          }
-
           val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
           val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
-          ResolvedLibraryInject(
+          ResolvedLibraryBinding(
             LibraryInjectBindingId(request.key, virtualFile),
             KaBinding.ConstructorInjected(
               pointerManager.createSmartPsiElementPointer(psi),
               request.key,
               scopeAnnotation(classSymbol, options),
               classSymbol.name.asString(),
+              originClassId = classSymbol.classId,
               constructorDependencies = constructorDependencies,
               memberDependencies = memberDependencies,
               memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol),
@@ -368,6 +400,59 @@ internal class LibraryIndexPostProcessor(
     }
   }
 
+  /**
+   * Hint-created providers have no source consumer entry, so their dependencies seed lookup too.
+   */
+  @OptIn(KaPlatformInterface::class)
+  private fun enqueueBindingDependencies(queue: ArrayDeque<LibraryInjectRequest>) {
+    val fileIndex = ProjectFileIndex.getInstance(project)
+    val useSites = useSitesByModule()
+    val scopes = HashMap<KaModule, DeclarationResolutionScope>()
+    for (binding in bindings) {
+      ProgressManager.checkCanceled()
+      if (binding.dependencies.isEmpty()) continue
+      val declaration = binding.pointer.element ?: continue
+      val virtualFile = binding.pointer.virtualFile ?: continue
+      if (fileIndex.isInContent(virtualFile)) {
+        // Ordinary source providers/injectables already contributed their parameter consumers.
+        // Generated class providers and assisted factories can own dependencies without such a
+        // matching source declaration, so only those need an extra source seed.
+        val needsSourceSeed =
+          binding is KaBinding.AssistedFactory ||
+            binding is KaBinding.Provided && binding.isClassContribution
+        if (!needsSourceSeed) continue
+        val context = declaration as? KtElement ?: continue
+        enqueueDependencies(binding, context, queue)
+        continue
+      }
+
+      for ((module, context) in useSites) {
+        ProgressManager.checkCanceled()
+        val availability = binding.hintAvailability
+        if (availability != null && !availability.isVisibleFrom(module)) continue
+        val resolutionScope =
+          scopes.getOrPut(module) {
+            val platformScope = KaResolutionScope.forModule(module)
+            DeclarationResolutionScope(platformScope::contains)
+          }
+        if (!resolutionScope.contains(declaration)) continue
+        enqueueDependencies(binding, context, queue)
+      }
+    }
+  }
+
+  private fun enqueueDependencies(
+    binding: KaBinding,
+    context: KtElement,
+    queue: ArrayDeque<LibraryInjectRequest>,
+  ) {
+    for (dependency in binding.dependencies) {
+      val key = dependency.typeKey
+      val classId = key.type.classId ?: continue
+      queue += LibraryInjectRequest(key, classId, context)
+    }
+  }
+
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
     return pointerManager.createSmartPsiElementPointer(element)
   }
@@ -382,9 +467,9 @@ internal class LibraryIndexPostProcessor(
 
   private data class LibraryInjectBindingId(val key: KaTypeKey, val file: VirtualFile)
 
-  private data class ResolvedLibraryInject(
+  private data class ResolvedLibraryBinding(
     val id: LibraryInjectBindingId,
-    val binding: KaBinding.ConstructorInjected,
+    val binding: KaBinding,
   )
 
   private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction) {

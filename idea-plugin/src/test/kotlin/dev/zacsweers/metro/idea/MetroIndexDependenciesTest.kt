@@ -7,6 +7,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -410,5 +411,39 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         binding.dependencies.map { it.typeKey.renderedType },
       )
     }
+  }
+
+  fun testInheritedAssistedFactoryFunctionKeepsSpecializedTargetDependencies() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Dependency
+
+        @AssistedInject
+        class Widget(@Assisted val id: String, val dependency: Dependency)
+
+        interface BaseFactory<T> {
+          fun create(id: String): T
+        }
+
+        @AssistedFactory
+        interface WidgetFactory : BaseFactory<Widget>
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: WidgetFactory
+        }
+        """,
+        fileName = "InheritedFactory.kt",
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declaration = file.declarationsIncludingNested().klass("WidgetFactory")
+    val factory = index.bindingEntriesAt(declaration).single() as KaBinding.AssistedFactory
+
+    assertEquals("test.Widget", factory.targetTypeKey?.renderedType)
+    assertEquals(
+      listOf("test.Dependency"),
+      factory.targetConstructorDependencies.map { it.typeKey.renderedType },
+    )
   }
 }

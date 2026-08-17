@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.SuspendAssistedFactoryMetadata
+import dev.zacsweers.metro.compiler.graph.SuspendBindingKind
 import dev.zacsweers.metro.compiler.graph.SuspendBindingMetadata
 import dev.zacsweers.metro.compiler.graph.SuspendBindingValidator
 import dev.zacsweers.metro.compiler.graph.SuspendGraphRequest
@@ -57,6 +58,11 @@ internal class KaSuspendBindingValidator(
           bindings = bindings,
           requests = requests,
           metadata = ::suspendMetadata,
+          bindingKind = ::suspendBindingKind,
+          bindingIsScoped = { it.scope != null },
+          multibindingIsSet = {
+            (it as KaBinding.Multibinding).typeKey.type.classId == StandardClassIds.Set
+          },
           analyze = suspendBindingAnalysis::analyzeWithPaths,
           rules = suspendBindingAnalysis.rules,
           suspendProvidersEnabled = options.enableSuspendProviders,
@@ -80,6 +86,20 @@ internal class KaSuspendBindingValidator(
       )
     }
     return validation.suspendKeys
+  }
+
+  private fun suspendBindingKind(binding: KaBinding): SuspendBindingKind {
+    return when (binding) {
+      is KaBinding.Multibinding -> SuspendBindingKind.MULTIBINDING
+      is KaBinding.AssistedFactory -> SuspendBindingKind.ASSISTED_FACTORY
+      is KaBinding.ConstructorInjected ->
+        if (binding.memberDependencies.isEmpty()) {
+          SuspendBindingKind.ORDINARY
+        } else {
+          SuspendBindingKind.MEMBER_INJECTING
+        }
+      else -> SuspendBindingKind.ORDINARY
+    }
   }
 
   private fun suspendMetadata(binding: KaBinding): SuspendBindingMetadata<KaContextualTypeKey> {

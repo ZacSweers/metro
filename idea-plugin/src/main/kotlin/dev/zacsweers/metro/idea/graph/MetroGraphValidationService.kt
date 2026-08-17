@@ -15,6 +15,7 @@ import com.intellij.psi.PsiElement
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
@@ -270,7 +271,7 @@ internal class MetroGraphValidationService(
     launchCoalesced(context.path) {
       val result =
         withBackgroundProgress(project, progressTitle(context.graph)) {
-          smartReadAction(project) { validate(element, context) }
+          retryCancelledIndexBuild { smartReadAction(project) { validate(element, context) } }
         }
       withContext(Dispatchers.EDT) { onDone.accept(result) }
     }
@@ -287,7 +288,9 @@ internal class MetroGraphValidationService(
     launchCoalesced(GraphPath(listOf(graph.declarationId))) {
       val results =
         withBackgroundProgress(project, progressTitle(graph)) {
-          smartReadAction(project) { validateWithExtensions(element, graph) }
+          retryCancelledIndexBuild {
+            smartReadAction(project) { validateWithExtensions(element, graph) }
+          }
         }
       withContext(Dispatchers.EDT) { onDone.accept(results) }
     }
@@ -302,7 +305,9 @@ internal class MetroGraphValidationService(
     launchCoalesced(context.path) {
       val results =
         withBackgroundProgress(project, progressTitle(context.graph)) {
-          smartReadAction(project) { validateWithExtensions(element, context) }
+          retryCancelledIndexBuild {
+            smartReadAction(project) { validateWithExtensions(element, context) }
+          }
         }
       withContext(Dispatchers.EDT) { onDone.accept(results) }
     }
@@ -317,6 +322,8 @@ internal class MetroGraphValidationService(
       scope.launch(start = CoroutineStart.LAZY) {
         try {
           block()
+        } catch (e: ProcessCanceledException) {
+          throw e
         } catch (e: CancellationException) {
           throw e
         } catch (e: Exception) {

@@ -17,8 +17,11 @@ import libtest.LibHiddenImpl
 import libtest.LibHigherRankedService
 import libtest.LibLowerRankedService
 import libtest.LibServiceImpl
+import libtest.LibTransitiveServiceImpl
 
 fun dev_zacsweers_metro_AppScope(contributed: LibServiceImpl) {}
+
+fun dev_zacsweers_metro_AppScope(contributed: LibTransitiveServiceImpl) {}
 
 fun dev_zacsweers_metro_AppScope(contributed: LibAnalyticsImpl) {}
 

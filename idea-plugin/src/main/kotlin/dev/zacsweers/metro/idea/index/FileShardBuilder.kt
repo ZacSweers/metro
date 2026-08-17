@@ -46,6 +46,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -77,6 +78,7 @@ internal class FileShardBuilder(
   private val pointerManager = SmartPointerManager.getInstance(project)
 
   private val processedBindingCallables = HashSet<KtDeclaration>()
+  private val processedInheritedBindingCallables = HashSet<InheritedBindingIdentity>()
   private val processedInjectClasses = HashSet<KtClassOrObject>()
   private val processedMemberInjects = HashSet<KtDeclaration>()
   private val processedContributions = HashSet<KtClassOrObject>()
@@ -95,20 +97,40 @@ internal class FileShardBuilder(
     get() = cacheDependencies
 
   fun buildShard(file: KtFile): FileShard {
+    // Read imports once per shard. Most files have no aliases, so their annotation groups retain
+    // the original short-name-only path without seven repeated PSI import walks.
+    val aliasedImports = mutableMapOf<FqName, MutableSet<String>>()
+    for (directive in file.importDirectives) {
+      val alias = directive.aliasName ?: continue
+      val importedName = directive.importedFqName ?: continue
+      aliasedImports.getOrPut(importedName, ::mutableSetOf) += alias
+    }
+
+    fun annotationNames(annotationIds: Set<ClassId>): Set<String> {
+      val names = shortNames(annotationIds)
+      if (aliasedImports.isEmpty()) return names
+      return buildSet {
+        addAll(names)
+        for (annotationId in annotationIds) {
+          addAll(aliasedImports[annotationId.asSingleFqName()].orEmpty())
+        }
+      }
+    }
+
     val bindingCallableNames =
-      shortNames(
+      annotationNames(
         options.providesAnnotations +
           options.bindsAnnotations +
           options.multibindsAnnotations +
           bindsOptionalOfAnnotations(options)
       )
-    val injectNames = shortNames(options.injectAnnotations + options.assistedInjectAnnotations)
-    val contributesNames = shortNames(options.allContributesAnnotations)
+    val injectNames = annotationNames(options.injectAnnotations + options.assistedInjectAnnotations)
+    val contributesNames = annotationNames(options.allContributesAnnotations)
     val graphNames =
-      shortNames(options.dependencyGraphAnnotations + options.graphExtensionAnnotations)
-    val assistedFactoryNames = shortNames(options.assistedFactoryAnnotations)
-    val containerNames = shortNames(options.bindingContainerAnnotations)
-    val circuitName = CircuitClassIds.CircuitInject.shortClassName.asString()
+      annotationNames(options.dependencyGraphAnnotations + options.graphExtensionAnnotations)
+    val assistedFactoryNames = annotationNames(options.assistedFactoryAnnotations)
+    val containerNames = annotationNames(options.bindingContainerAnnotations)
+    val circuitNames = annotationNames(setOf(CircuitClassIds.CircuitInject))
 
     for (entry in PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java)) {
       ProgressManager.checkCanceled()
@@ -120,7 +142,7 @@ internal class FileShardBuilder(
       if (shortName in graphNames) processGraph(declaration)
       if (shortName in assistedFactoryNames) processAssistedFactory(declaration)
       if (shortName in containerNames) processBindingContainer(declaration)
-      if (options.enableCircuitCodegen && shortName == circuitName) {
+      if (options.enableCircuitCodegen && shortName in circuitNames) {
         processCircuitInject(declaration)
       }
     }
@@ -521,9 +543,11 @@ internal class FileShardBuilder(
       if (callable.callableId?.classId != superClass.classId) continue
       callable.psi?.containingFile?.let(cacheDependencies::add)
       recordAnnotationDependencies(callable, callable.psi)
-      if (isLibrary && callable.hasAnyAnnotation(bindingCallableIds)) {
-        (callable.psi as? KtDeclaration)?.let { declaration ->
-          processInheritedBindingCallable(declaration, view)
+      if (callable.hasAnyAnnotation(bindingCallableIds)) {
+        if (isLibrary || hasSpecializedTypes(view)) {
+          (callable.psi as? KtDeclaration)?.let { declaration ->
+            processInheritedBindingCallable(declaration, view, graphId)
+          }
         }
         if (!callable.hasAnyAnnotation(options.multibindsAnnotations)) {
           continue
@@ -579,23 +603,74 @@ internal class FileShardBuilder(
     return GraphReference(classId, symbol.psi?.containingFile?.virtualFile)
   }
 
-  /** Library supertype providers need their concrete graph type arguments, not raw symbol types. */
+  /** Generic inherited providers need their concrete graph type arguments, not raw symbol types. */
   private fun KaSession.processInheritedBindingCallable(
     declaration: KtDeclaration,
     callable: CallableBindingView,
+    graphId: GraphDeclarationId,
   ) {
-    if (!processedBindingCallables.add(declaration)) return
     recordAnnotationDependencies(callable.symbol, declaration)
+    // The same generic base can be inherited with different arguments by unrelated graphs.
+    // Owning each specialized declaration by the concrete graph prevents those bindings leaking
+    // into another graph that merely shares the base class id.
     val containerId =
-      (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
+      graphId.classId
+        ?: (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
+    var addedBinding = false
     for (data in callable.bindingData(this, options)) {
-      bindings += data.toKaBinding(ptr(declaration), containerId = containerId)
+      val identity =
+        InheritedBindingIdentity(
+          declaration,
+          graphId,
+          data.key,
+          data.multibindingId,
+          data.mapKeyValue,
+        )
+      if (!processedInheritedBindingCallables.add(identity)) continue
+      bindings +=
+        data.toKaBinding(ptr(declaration), containerId = containerId, ownerGraphId = graphId)
+      addedBinding = true
     }
+    if (!addedBinding) return
     for (parameter in callable.valueParameters) {
       val source = parameter.symbol.psi as? KtElement ?: continue
-      addConsumer(source, parameter.symbol, parameter.returnType, containerId = containerId)
+      addConsumer(
+        source,
+        parameter.symbol,
+        parameter.returnType,
+        containerId = containerId,
+        graphId = graphId,
+      )
     }
   }
+
+  /** Only create a second source binding when receiver type arguments actually change its key. */
+  private fun KaSession.hasSpecializedTypes(callable: CallableBindingView): Boolean {
+    val declaration = callableBindingView(callable.symbol)
+    if (typeKey(callable.returnType, qualifier = null) != typeKey(declaration.returnType, null)) {
+      return true
+    }
+    val receiver = callable.receiver
+    val declaredReceiver = declaration.receiver
+    if (receiver != null && declaredReceiver != null) {
+      if (typeKey(receiver.returnType, null) != typeKey(declaredReceiver.returnType, null)) {
+        return true
+      }
+    }
+    return callable.valueParameters.indices.any { index ->
+      val inherited = callable.valueParameters[index]
+      val declared = declaration.valueParameters[index]
+      typeKey(inherited.returnType, null) != typeKey(declared.returnType, null)
+    }
+  }
+
+  private data class InheritedBindingIdentity(
+    val declaration: KtDeclaration,
+    val graphId: GraphDeclarationId,
+    val typeKey: KaTypeKey,
+    val multibindingId: String?,
+    val mapKeyValue: String?,
+  )
 
   /**
    * Indexes a graph injector member such as `fun inject(target: Foo)`. Each of the target's
@@ -646,13 +721,14 @@ internal class FileShardBuilder(
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
       if (!classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return@analyze
       recordAnnotationDependencies(classSymbol, ktClass)
-      val samFunction =
-        classSymbol.declaredMemberScope.callables
-          .filterIsInstance<KaNamedFunctionSymbol>()
-          .firstOrNull { it.modality == KaSymbolModality.ABSTRACT }
-      val targetTypeKey = samFunction?.returnType?.let { typeKey(it, qualifier = null) }
+      val factoryFunction = assistedFactoryFunction(classSymbol)
+      val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
+      samFunction?.psi?.containingFile?.let(cacheDependencies::add)
+      val targetTypeKey = factoryFunction?.returnType?.let { typeKey(it, qualifier = null) }
       val createdClassSymbol =
-        (samFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol as? KaNamedClassSymbol
+        (factoryFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol
+          as? KaNamedClassSymbol
+      createdClassSymbol?.psi?.containingFile?.let(cacheDependencies::add)
       val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
       // The factory constructs its target directly, so it inherits the target's graph-provided
       // dependencies without depending on the target binding itself.
@@ -858,6 +934,7 @@ internal class FileShardBuilder(
     contributionScopes: Set<ClassId> = emptySet(),
     containerId: ClassId? = null,
     memberOwnerClassId: ClassId? = null,
+    graphId: GraphDeclarationId? = null,
   ) {
     recordAnnotationDependencies(symbol, element)
     val site = consumedSite(type, symbol, options)
@@ -871,6 +948,7 @@ internal class FileShardBuilder(
         originClassId = originClassId,
         contributionScopes = contributionScopes,
         containerId = containerId,
+        graphId = graphId,
         memberOwnerClassId = memberOwnerClassId,
         isOptional = symbol.isOptionalConsumer(options),
       )

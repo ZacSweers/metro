@@ -101,6 +101,14 @@ public fun <T : MergeContribution> applyExcludesAndReplaces(
   items: List<T>,
   excluded: Set<ClassId> = emptySet(),
 ): List<T> {
+  if (items.isEmpty()) return items
+  if (items.size == 1) {
+    val item = items[0]
+    val mergeId = item.mergeId ?: return items
+    if (mergeId in excluded || mergeId in item.replaces) return emptyList()
+    return items
+  }
+
   val afterExcludes =
     if (excluded.isEmpty()) items
     else items.filter { it.mergeId == null || it.mergeId !in excluded }

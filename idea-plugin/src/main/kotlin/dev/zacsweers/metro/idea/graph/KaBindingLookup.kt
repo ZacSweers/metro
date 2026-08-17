@@ -224,11 +224,20 @@ internal class KaBindingLookup(
           return binding
         }
       } else {
-        val containerId = binding.containerId
-        // A null container means the declaring owner could not be identified, like a local graph
-        // class. Treat it as child-owned rather than delegating it upward.
-        if (containerId == null || containerId in childLocalContainerIds) {
-          return binding
+        val includedContainerKey = binding.includedContainerKey
+        if (includedContainerKey != null) {
+          // Factory-included containers carry their concrete input key instead of a container ID.
+          // Their graph ownership must survive synthetic multibinding element re-keying.
+          if (index.isBindingOwnedByCurrentGraph(binding, queryContext)) {
+            return binding
+          }
+        } else {
+          val containerId = binding.containerId
+          // A null container means the declaring owner could not be identified, like a local graph
+          // class. Treat it as child-owned rather than delegating it upward.
+          if (containerId == null || containerId in childLocalContainerIds) {
+            return binding
+          }
         }
       }
     }
@@ -371,10 +380,16 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         mapKeyValue = mapKeyValue,
         originClassId = originClassId,
         containerId = containerId,
+        ownerGraphId = ownerGraphId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        contributionRank = contributionRank,
+        isClassContribution = isClassContribution,
         dependencies = dependencies,
+        memberInjectionOwnerIds = memberInjectionOwnerIds,
         isSuspend = isSuspend,
+        hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
       )
     is KaBinding.Alias ->
@@ -388,9 +403,13 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         mapKeyValue = mapKeyValue,
         originClassId = originClassId,
         containerId = containerId,
+        ownerGraphId = ownerGraphId,
+        includedContainerKey = includedContainerKey,
         replaces = replaces,
         contributionScopes = contributionScopes,
+        contributionRank = contributionRank,
         isClassContribution = isClassContribution,
+        hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
       )
     else -> error("Unexpected multibinding contribution: ${javaClass.simpleName} for $typeKey")

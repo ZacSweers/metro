@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.ConsumerResolution
@@ -31,6 +33,104 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val file = configure()
 
     assertTrue(project.service<MetroResolutionService>().index(file).bindings.isEmpty())
+  }
+
+  fun testColdIndexFindsFilesUsingOnlyAliasedMetroAnnotations() {
+    myFixture.addFileToProject(
+      "test/AliasedGraph.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.DependencyGraph as MetroGraph
+      import dev.zacsweers.metro.Inject as MetroInject
+
+      @MetroInject class AliasedService
+
+      @MetroGraph
+      interface AliasedGraph {
+        val service: AliasedService
+      }
+      """
+        .trimIndent(),
+    )
+
+    val index = project.service<MetroResolutionService>().index(module)
+
+    assertEquals(listOf("AliasedGraph"), index.graphs.map { it.name })
+    assertEquals(listOf("test.AliasedService"), index.bindings.map { it.typeKey.renderedType })
+  }
+
+  fun testUnrelatedAliasedAnnotationDoesNotActivateMetroIndexing() {
+    myFixture.addFileToProject("other/Inject.kt", "package other\n\nannotation class Inject")
+    myFixture.addFileToProject(
+      "test/Unrelated.kt",
+      """
+      package test
+
+      import other.Inject as MetroInject
+
+      @MetroInject class Unrelated
+      """
+        .trimIndent(),
+    )
+
+    val index = project.service<MetroResolutionService>().index(module)
+
+    assertTrue(index.bindings.isEmpty())
+    assertTrue(index.graphs.isEmpty())
+  }
+
+  fun testContributionProviderOptionInvalidatesSemanticIndexFingerprint() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject @ContributesBinding(AppScope::class)
+        class ServiceImpl : Service
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    assertEquals(
+      setOf("test.Service", "test.ServiceImpl"),
+      initial.bindings.mapTo(mutableSetOf()) { it.typeKey.renderedType },
+    )
+
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val generated = service.index(file)
+    assertNotSame(initial, generated)
+    assertEquals(listOf("test.Service"), generated.bindings.map { it.typeKey.renderedType })
+    assertTrue(generated.bindings.single() is KaBinding.Provided)
+  }
+
+  fun testLibraryRootChangesNotifyExistingIndexListeners() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    service.index(file)
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+
+    module.withMetroLibFixtureLibrary {
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertTrue("Changing library roots should refresh an open Metro window", notifications > 0)
+    }
+  }
+
+  fun testRootChangesNotifyListenersBeforeTheFirstMetroSnapshot() {
+    project.clearMetroOptions()
+    val service = project.service<MetroResolutionService>()
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions()
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertTrue("An open window should notice Metro becoming available", notifications > 0)
+    }
   }
 
   fun testPlatformCancellationRetriesTheRequestedIndexBuild() {
@@ -113,6 +213,40 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(
       listOf("kotlin.Int"),
       service.index(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+    )
+  }
+
+  fun testRemovingDirectoryWithSharedAliasesAndConstantsRefreshesDependents() {
+    val shared =
+      myFixture.addFileToProject(
+        "test/shared/Definitions.kt",
+        "package test\n\ntypealias Alias = String\nconst val SERVICE_NAME = \"before\"",
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(SERVICE_NAME) fun provideAlias(): Alias = error("unused")
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    assertEquals(
+      "kotlin.String",
+      initial.bindings.single().typeKey.type.classId?.asFqNameString(),
+    )
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      checkNotNull(shared.containingDirectory).delete()
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file)
+    assertNotSame(initial, updated)
+    assertTrue(
+      "Removing shared declarations should invalidate the old resolved binding key",
+      updated.bindings.none { it.typeKey.type.classId?.asFqNameString() == "kotlin.String" },
     )
   }
 
@@ -979,6 +1113,45 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals(
         "@SingleIn(scope = AppScope::class)",
         bindings.single().scope?.render(short = true),
+      )
+    }
+  }
+
+  fun testBinaryGenericSupertypeProvidersStayInTheirOwningGraph() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibGenericBase
+
+          @DependencyGraph
+          interface StringGraph : LibGenericBase<String> {
+            val stringValue: String
+          }
+
+          @DependencyGraph
+          interface IntGraph : LibGenericBase<Int> {
+            val intValue: Int
+          }
+          """,
+          fileName = "BinaryGenericGraphs.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val declarations = file.declarationsIncludingNested()
+      val stringAccessor = index.consumerEntryAt(declarations.property("stringValue"))!!
+      val intAccessor = index.consumerEntryAt(declarations.property("intValue"))!!
+
+      assertEquals(
+        listOf("kotlin.String"),
+        index.resolveConsumer(stringAccessor).uniformBindings.orEmpty().map {
+          it.typeKey.renderedType
+        },
+      )
+      assertEquals(
+        listOf("kotlin.Int"),
+        index.resolveConsumer(intAccessor).uniformBindings.orEmpty().map {
+          it.typeKey.renderedType
+        },
       )
     }
   }

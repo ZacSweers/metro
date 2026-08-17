@@ -72,6 +72,8 @@ BindingIndex (membership queries)
   facet's compiler plugin args, plus an options fingerprint for cache keying. A module is active
   only when Metro compiler plugin options are present and the plugin is enabled. Kotlin modules
   without Metro stay inactive even though the compiler option itself defaults to enabled.
+  Contribution-provider mode follows the compiler: contributed implementation bindings stay
+  hidden unless `@ExposeImplBinding` or another compiler exemption keeps them available.
 - `MetroSettings`: project-level toggles for editor navigation, library resolution, and inlays.
   Hiding editor navigation does not disable graph browsing or validation. Library resolution
   applies to both editor features and graph tools.
@@ -80,29 +82,32 @@ BindingIndex (membership queries)
 
 - `index/MetroResolutionService.kt`: owns the project-wide `BindingIndex`. Snapshots use semantic
   compiler options, so module-specific report and trace paths do not create duplicate indexes.
-  The first build finds candidate files through stub indexes. Later edits update changed files and
-  any shards that depend on them, including inherited declarations and qualifier, scope, or
-  map-key annotation defaults, without copying unrelated shard or dependency state. Changes to
-  otherwise untracked type aliases or constants refresh existing shards, while edits to unrelated
-  declarations in the same file remain incremental. Project roots and semantic option changes
-  force a new scan, and directory changes enroll new files as a batch.
+  The first build finds candidate files through annotation stub indexes and targeted indexed
+  import searches for annotation aliases. Later edits update changed files and dependent shards,
+  including inherited declarations and qualifier, scope, or map-key annotation defaults, without
+  copying unrelated shard or dependency state. Changes to otherwise untracked type aliases or
+  constants, including directory moves, refresh existing shards. Edits to unrelated declarations
+  in the same file remain incremental. Project roots and semantic option changes notify open
+  tools and force a new scan, and directory changes enroll new files as a batch.
   Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
   types, and visible modules. Production UI-thread requests schedule a cancellable smart-mode
   build instead of running Analysis API work on the UI thread. Canceled background builds are
   retried rather than treated as plugin failures.
 - `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
-  `KotlinAnnotationsIndex` by annotation short names, then resolved with the Analysis API inside
-  `analyze {}` blocks. Handles graphs (including supertype member merging and library supertype
-  binding callables), binding callables (companion members attribute to the enclosing container),
-  graph `@Multibinds` accessors, inject classes, top-level function injection, contributions,
-  assisted factories, and binding containers.
+  `KotlinAnnotationsIndex` by annotation short names or import aliases, then resolved with the
+  Analysis API inside `analyze {}` blocks. Handles graphs (including supertype members and
+  providers specialized to the graph's concrete type arguments and declaration identity), binding
+  callables (companion members attribute to the enclosing container), graph `@Multibinds`
+  accessors, inject classes, top-level function injection, contributions, assisted factories, and
+  binding containers.
 - `index/BindingExtraction.kt`: symbol-to-model extraction shared by source and library paths.
   Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.
 - `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
-  binary inject classes on demand and discovers contributions from generated hint functions, the
-  same way the compiler does. Generated aliases inherit their origin's Anvil contribution rank.
-  Public hints only need classpath visibility; nonpublic hints still use Kotlin's friend-module
-  visibility rules.
+  binary inject classes and assisted factories on demand, including transitive dependencies of
+  generated contribution providers, and discovers contributions from generated hint functions,
+  the same way the compiler does. Generated aliases inherit their origin's Anvil contribution
+  rank. Public hints only need classpath visibility; nonpublic hints still use Kotlin's
+  friend-module visibility rules.
 
 ### Model
 
@@ -122,8 +127,8 @@ arguments, including declared defaults), and declarations are held as `SmartPsiE
     containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.
     Exclusions happen before replacements, and rank runs last within each graph's own scopes.
     Replacing or outranking a contribution never removes its separate injectable concrete type.
-    Graph-private bindings stay in their owning graph, and assisted targets are not presented as
-    ordinary injectable bindings.
+    Graph-private bindings, including optional bindings, stay in their owning graph, and assisted
+    targets are not presented as ordinary injectable bindings.
 
 ### Validation
 
@@ -145,7 +150,8 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   ever looked up, which is what keeps validation proportional to the graph rather than the
   project. Multibindings synthesize per-element keys with a synthetic `@MultibindingElement`
   qualifier, matching the compiler's key swap. Parent-owned scoped bindings, including
-  multibinding contributions, resolve through the owning graph and its module options.
+  multibinding contributions from included binding containers, resolve through the owning graph
+  and its module options.
 - `graph/MetroGraphValidationService.kt`: the entry point. Coroutine-based
   (service `CoroutineScope`, `smartReadAction`, background progress, per-graph coalescing).
   Results are retained per graph (keyed by `ClassId` plus file, since same-FQN graphs can exist
@@ -154,8 +160,9 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   `validateWithExtensions` seals extensions before their parents, mirroring the compiler's
   traversal.
 - `graph/KaSuspendBindingValidator.kt`: converts Analysis API bindings and graph requests to shared
-  suspend-validation metadata, then turns shared issues and witness paths into navigable IDEA
-  diagnostics. It contains no suspend validation policy. Suspend parity fixtures cover valid
+  suspend-validation inputs, then turns shared issues and witness paths into navigable IDEA
+  diagnostics. Witness provenance is built only when a diagnostic needs it and reused across
+  requests. The adapter contains no suspend validation policy. Suspend parity fixtures cover valid
   transitive/deferred paths and representative failures.
 
 Validation is strictly on demand. Nothing seals during index builds or highlighting passes.
@@ -182,8 +189,9 @@ Validation is strictly on demand. Nothing seals during index builds or highlight
   no children in dumb mode.
 - `toolwindow/MetroToolWindowPanel.kt`: `StructureTreeModel` + `AsyncTreeModel`, search filter,
   validate/refresh toolbar, and post-validation selection of the result node. The tree refreshes
-  when source changes, background indexing finishes, or the IDE leaves dumb mode. A validation
-  requested before its graph is indexed remains pending until that graph becomes available.
+  when source or project configuration changes, background indexing finishes, or the IDE leaves
+  dumb mode. A validation requested before its graph is indexed remains pending until that exact
+  graph becomes available. Closing the panel prevents outstanding callbacks from touching its tree.
 - `toolwindow/ValidateMetroGraphAction.kt`: editor action plus the shared
   `openAndValidate(project, classId, file)` entry the gutter uses.
 

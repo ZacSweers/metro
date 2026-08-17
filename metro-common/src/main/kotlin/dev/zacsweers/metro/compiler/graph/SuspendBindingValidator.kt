@@ -21,6 +21,11 @@ public class SuspendBindingValidator<
   private val bindings: ScatterMap<TypeKey, Binding>,
   private val requests: List<SuspendGraphRequest<ContextualTypeKey, Request>>,
   private val metadata: (Binding) -> SuspendBindingMetadata<ContextualTypeKey>,
+  private val bindingKind: (Binding) -> SuspendBindingKind,
+  private val bindingIsScoped: (Binding) -> Boolean,
+  private val multibindingIsSet: (Binding) -> Boolean,
+  private val bindingIsReachable: (Binding) -> Boolean = { true },
+  private val hasAdditionalSuspendLazyUse: (Binding) -> Boolean = { false },
   private val analyze:
     (Iterable<TypeKey>) -> SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
   private val rules: SuspendBindingRules<Type, TypeKey, ContextualTypeKey, Binding>,
@@ -31,6 +36,9 @@ public class SuspendBindingValidator<
   private val additionalRuntimeRequests: Iterable<ContextualTypeKey> = emptyList(),
   private val checkCanceled: () -> Unit = {},
 ) {
+  /** Ordinary bindings never enter this cache or require declaration metadata. */
+  private var metadataByKey: MutableMap<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>? = null
+
   public fun validate():
     SuspendBindingValidationResult<
       TypeKey,
@@ -47,29 +55,21 @@ public class SuspendBindingValidator<
       )
     }
 
-    val allKeys = mutableSetOf<TypeKey>()
-    val metadataByKey = mutableMapOf<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>()
-    bindings.forEachValue { binding ->
-      allKeys += binding.typeKey
-      metadataByKey[binding.typeKey] = metadata(binding)
-    }
-
-    val analysis = analyze(allKeys)
+    val analysis = analyze(bindings.asMap().keys)
     val suspendKeys = analysis.suspendKeys
     val issues =
       mutableListOf<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>()
     val suspendMultibindings =
       validateMultibindings(
         analysis,
-        metadataByKey,
         issues,
       )
     validateGraphRequests(analysis, suspendMultibindings, issues)
-    validateMemberInjection(analysis, metadataByKey, issues)
-    validateDependencyWrappers(analysis, metadataByKey, suspendMultibindings, issues)
-    validateAssistedFactories(analysis, metadataByKey, issues)
+    validateMemberInjection(analysis, issues)
+    validateDependencyWrappers(analysis, suspendMultibindings, issues)
+    validateAssistedFactories(analysis, issues)
 
-    val runtimeRequirement = runtimeRequirement(analysis, metadataByKey)
+    val runtimeRequirement = runtimeRequirement(analysis)
     if (runtimeRequirement.required && !runtimeCoroutinesAvailable) {
       issues +=
         issue(
@@ -83,6 +83,19 @@ public class SuspendBindingValidator<
     }
 
     return SuspendBindingValidationResult(suspendKeys, issues, runtimeRequirement.required)
+  }
+
+  private fun bindingMetadata(binding: Binding): SuspendBindingMetadata<ContextualTypeKey> {
+    val existingMetadata = metadataByKey
+    if (existingMetadata != null) {
+      return existingMetadata.getOrPut(binding.typeKey) { metadata(binding) }
+    }
+
+    val result = metadata(binding)
+    val createdMetadata = mutableMapOf<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>()
+    createdMetadata[binding.typeKey] = result
+    metadataByKey = createdMetadata
+    return result
   }
 
   private fun disabledFeatureIssue():
@@ -138,15 +151,15 @@ public class SuspendBindingValidator<
 
   private fun validateMultibindings(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
     issues: MutableList<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>,
   ): Set<TypeKey> {
     val suspendMultibindings = mutableSetOf<TypeKey>()
     var consumersByKey: Map<TypeKey, List<BindingDependency<Binding, ContextualTypeKey>>>? = null
     bindings.forEachValue { binding ->
       checkCanceled()
-      val multibinding = metadataByKey.getValue(binding.typeKey).multibinding ?: return@forEachValue
+      if (bindingKind(binding) != SuspendBindingKind.MULTIBINDING) return@forEachValue
       if (binding.typeKey !in analysis.suspendKeys) return@forEachValue
+      val isSet = multibindingIsSet(binding)
       val firstSuspendElement =
         binding.dependencies.firstOrNull { it.typeKey in analysis.suspendKeys }
           ?: return@forEachValue
@@ -154,10 +167,10 @@ public class SuspendBindingValidator<
 
       for (request in requests) {
         if (request.contextKey.typeKey != binding.typeKey) continue
-        if (rules.supportsSuspendMultibindingConsumption(multibinding.isSet, request.contextKey)) {
+        if (rules.supportsSuspendMultibindingConsumption(isSet, request.contextKey)) {
           continue
         }
-        issues += multibindingIssue(binding, multibinding, request, firstSuspendElement, analysis)
+        issues += multibindingIssue(binding, request, firstSuspendElement, analysis)
       }
 
       // Most graphs have no suspend multibindings, so avoid indexing every dependency edge.
@@ -167,12 +180,11 @@ public class SuspendBindingValidator<
         consumersByKey = consumers
       }
       for ((consumer, dependency) in consumers[binding.typeKey].orEmpty()) {
-        if (metadataByKey.getValue(consumer.typeKey).assistedFactory != null) continue
-        if (rules.supportsSuspendMultibindingConsumption(multibinding.isSet, dependency)) continue
+        if (bindingKind(consumer) == SuspendBindingKind.ASSISTED_FACTORY) continue
+        if (rules.supportsSuspendMultibindingConsumption(isSet, dependency)) continue
         issues +=
           multibindingIssue(
             binding,
-            multibinding,
             consumer,
             dependency,
             firstSuspendElement,
@@ -185,7 +197,6 @@ public class SuspendBindingValidator<
 
   private fun multibindingIssue(
     binding: Binding,
-    multibinding: SuspendMultibindingMetadata,
     request: SuspendGraphRequest<ContextualTypeKey, Request>,
     firstSuspendElement: ContextualTypeKey,
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
@@ -193,7 +204,7 @@ public class SuspendBindingValidator<
     issue(
       kind = SuspendValidationIssueKind.MULTIBINDING,
       id = MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS,
-      title = multibindingTitle(binding, multibinding),
+      title = multibindingTitle(binding),
       site = SuspendValidationSite.GraphRequest(request),
       path = analysis.pathFrom(firstSuspendElement.typeKey) { it.typeKey },
       relatedBindings = listOf(binding),
@@ -201,7 +212,6 @@ public class SuspendBindingValidator<
 
   private fun multibindingIssue(
     binding: Binding,
-    multibinding: SuspendMultibindingMetadata,
     consumer: Binding,
     dependency: ContextualTypeKey,
     firstSuspendElement: ContextualTypeKey,
@@ -210,16 +220,17 @@ public class SuspendBindingValidator<
     issue(
       kind = SuspendValidationIssueKind.MULTIBINDING,
       id = MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS,
-      title = multibindingTitle(binding, multibinding),
+      title = multibindingTitle(binding),
       site = SuspendValidationSite.BindingDependency(consumer, dependency),
       path = analysis.pathFrom(firstSuspendElement.typeKey) { it.typeKey },
       relatedBindings = listOf(binding),
     )
 
-  private fun multibindingTitle(
-    binding: Binding,
-    multibinding: SuspendMultibindingMetadata,
-  ): String {
+  private fun multibindingTitle(binding: Binding): String {
+    val multibinding =
+      checkNotNull(bindingMetadata(binding).multibinding) {
+        "Only multibindings can produce suspend multibinding issues"
+      }
     val typeRender = binding.typeKey.render(short = true)
     return if (multibinding.isSet) {
       "$typeRender aggregates suspend bindings, which is unsupported. Provider-valued set " +
@@ -270,7 +281,6 @@ public class SuspendBindingValidator<
 
   private fun validateMemberInjection(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
     issues: MutableList<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>,
   ) {
     for (request in requests) {
@@ -281,7 +291,13 @@ public class SuspendBindingValidator<
     }
 
     bindings.forEachValue { binding ->
-      for (memberInjection in metadataByKey.getValue(binding.typeKey).memberInjections) {
+      val kind = bindingKind(binding)
+      if (
+        kind != SuspendBindingKind.MEMBER_INJECTING && kind != SuspendBindingKind.ASSISTED_FACTORY
+      ) {
+        return@forEachValue
+      }
+      for (memberInjection in bindingMetadata(binding).memberInjections) {
         val dependency =
           memberInjection.dependencies.firstOrNull {
             rules.propagates(it) { key -> key in analysis.suspendKeys }
@@ -329,12 +345,11 @@ public class SuspendBindingValidator<
 
   private fun validateDependencyWrappers(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
     suspendMultibindings: Set<TypeKey>,
     issues: MutableList<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>,
   ) {
     bindings.forEachValue { binding ->
-      if (metadataByKey.getValue(binding.typeKey).assistedFactory != null) return@forEachValue
+      if (bindingKind(binding) == SuspendBindingKind.ASSISTED_FACTORY) return@forEachValue
       for (dependency in binding.dependencies) {
         if (dependency.typeKey !in analysis.suspendKeys) continue
         if (dependency.typeKey in suspendMultibindings) continue
@@ -347,11 +362,14 @@ public class SuspendBindingValidator<
 
   private fun validateAssistedFactories(
     analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
     issues: MutableList<SuspendValidationIssue<TypeKey, ContextualTypeKey, Binding, Request>>,
   ) {
     bindings.forEachValue { binding ->
-      val assisted = metadataByKey.getValue(binding.typeKey).assistedFactory ?: return@forEachValue
+      if (bindingKind(binding) != SuspendBindingKind.ASSISTED_FACTORY) return@forEachValue
+      val assisted =
+        checkNotNull(bindingMetadata(binding).assistedFactory) {
+          "Only assisted factories can produce assisted factory issues"
+        }
       for (dependency in assisted.constructorDependencies + assisted.memberDependencies) {
         if (dependency.typeKey !in analysis.suspendKeys) continue
         if (rules.isValidBoundary(dependency)) continue
@@ -426,22 +444,24 @@ public class SuspendBindingValidator<
   }
 
   private fun runtimeRequirement(
-    analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>,
-    metadataByKey: Map<TypeKey, SuspendBindingMetadata<ContextualTypeKey>>,
+    analysis: SuspendBindingAnalysisResult<TypeKey, ContextualTypeKey>
   ): RuntimeRequirement {
+    if (runtimeCoroutinesAlreadyRequired && runtimeCoroutinesAvailable) {
+      return RuntimeRequirement(required = true, trigger = null)
+    }
+
     var requiresScopedSuspendRuntime = false
     var requiresSuspendLazyRuntime = false
     val scopedSuspendKeys = if (runtimeCoroutinesAvailable) null else mutableListOf<TypeKey>()
     val suspendLazyKeys = if (runtimeCoroutinesAvailable) null else mutableListOf<TypeKey>()
     bindings.forEachValue { binding ->
-      val bindingMetadata = metadataByKey.getValue(binding.typeKey)
-      if (!bindingMetadata.isReachable) return@forEachValue
-      if (bindingMetadata.isScoped && binding.typeKey in analysis.suspendKeys) {
+      if (!bindingIsReachable(binding)) return@forEachValue
+      if (bindingIsScoped(binding) && binding.typeKey in analysis.suspendKeys) {
         requiresScopedSuspendRuntime = true
         scopedSuspendKeys?.add(binding.typeKey)
       }
       val requestsSuspendLazy =
-        bindingMetadata.hasAdditionalSuspendLazyUse ||
+        hasAdditionalSuspendLazyUse(binding) ||
           binding.contextualTypeKey.wrappedType.containsSuspendLazy() ||
           binding.dependencies.any { it.wrappedType.containsSuspendLazy() }
       if (requestsSuspendLazy) {

@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.SuspendAssistedFactoryMetadata
+import dev.zacsweers.metro.compiler.graph.SuspendBindingKind
 import dev.zacsweers.metro.compiler.graph.SuspendBindingMetadata
 import dev.zacsweers.metro.compiler.graph.SuspendBindingValidationResult
 import dev.zacsweers.metro.compiler.graph.SuspendBindingValidator
@@ -71,9 +72,24 @@ internal class IrSuspendBindingValidator(
       SuspendBindingValidator(
           bindings = bindings,
           requests = requests,
-          metadata = { binding ->
-            binding.suspendMetadata(isReachable = binding.typeKey in adjacency.forward)
+          metadata = { binding -> binding.suspendMetadata() },
+          bindingKind = { binding ->
+            when (binding) {
+              is IrBinding.Multibinding -> SuspendBindingKind.MULTIBINDING
+              is AssistedFactory -> SuspendBindingKind.ASSISTED_FACTORY
+              is MembersInjected -> SuspendBindingKind.MEMBER_INJECTING
+              is ConstructorInjected ->
+                if (binding.injectedMembers.isEmpty()) {
+                  SuspendBindingKind.ORDINARY
+                } else {
+                  SuspendBindingKind.MEMBER_INJECTING
+                }
+              else -> SuspendBindingKind.ORDINARY
+            }
           },
+          bindingIsScoped = { it.isScoped() },
+          multibindingIsSet = { (it as IrBinding.Multibinding).isSet },
+          bindingIsReachable = { it.typeKey in adjacency.forward },
           analyze = analysis::analyzeWithPaths,
           rules = analysis.rules,
           suspendProvidersEnabled = metroContext.options.enableSuspendProviders,
@@ -90,9 +106,7 @@ internal class IrSuspendBindingValidator(
     return validation
   }
 
-  private fun IrBinding.suspendMetadata(
-    isReachable: Boolean
-  ): SuspendBindingMetadata<IrContextualTypeKey> {
+  private fun IrBinding.suspendMetadata(): SuspendBindingMetadata<IrContextualTypeKey> {
     val memberInjections =
       when (this) {
         is MembersInjected ->
@@ -120,12 +134,16 @@ internal class IrSuspendBindingValidator(
       }
     val multibinding =
       (this as? IrBinding.Multibinding)?.let { binding ->
-        val arguments = binding.typeKey.type.requireSimpleType().arguments
-        SuspendMultibindingMetadata(
-          isSet = binding.isSet,
-          mapKeyType = arguments.getOrNull(0)?.typeOrFail?.render(short = true),
-          mapValueType = arguments.getOrNull(1)?.typeOrFail?.render(short = true),
-        )
+        if (binding.isSet) {
+          SuspendMultibindingMetadata(isSet = true)
+        } else {
+          val arguments = binding.typeKey.type.requireSimpleType().arguments
+          SuspendMultibindingMetadata(
+            isSet = false,
+            mapKeyType = arguments.getOrNull(0)?.typeOrFail?.render(short = true),
+            mapValueType = arguments.getOrNull(1)?.typeOrFail?.render(short = true),
+          )
+        }
       }
     val assistedFactory =
       (this as? AssistedFactory)?.let { binding ->
@@ -143,7 +161,6 @@ internal class IrSuspendBindingValidator(
       }
     return SuspendBindingMetadata(
       isSuspend = isSuspend,
-      isReachable = isReachable,
       isScoped = isScoped(),
       multibinding = multibinding,
       memberInjections = memberInjections,

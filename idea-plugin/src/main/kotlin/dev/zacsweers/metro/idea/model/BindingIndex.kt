@@ -465,6 +465,10 @@ internal class BindingIndex(
     queryContext: GraphQueryContext,
   ): Boolean {
     val graph = queryContext.graphContext.graph
+    val ownerGraphId = binding.ownerGraphId
+    if (ownerGraphId != null) {
+      return ownerGraphId == graph.declarationId
+    }
     val includedContainerKey = binding.includedContainerKey
     if (includedContainerKey != null) {
       return includedContainerKey in graph.includedBindingContainers
@@ -652,6 +656,8 @@ internal class BindingIndex(
     if (!isVisibleFrom(entry, queryContext)) return false
     if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
     val context = queryContext.graphContext
+    val ownerGraphId = entry.ownerGraphId
+    if (ownerGraphId != null && ownerGraphId !in context.graphIds) return false
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
@@ -754,14 +760,19 @@ internal class BindingIndex(
       }
     return cache.computeIfAbsent(queryContext) {
       val replaced = replacedOrigins(queryContext, includeIncompatibleScopes)
-      val ranked =
-        bindings.filterIsInstance<KaBinding.Alias>().filter { binding ->
-          binding.isClassContribution &&
-            binding.multibindingId == null &&
-            binding.originClassId != null &&
-            binding.originClassId !in replaced &&
-            isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes)
-        }
+      val ranked = bindings.filter { binding ->
+        val isClassContribution =
+          when (binding) {
+            is KaBinding.Alias -> binding.isClassContribution
+            is KaBinding.Provided -> binding.isClassContribution
+            else -> false
+          }
+        isClassContribution &&
+          binding.multibindingId == null &&
+          binding.originClassId != null &&
+          binding.originClassId !in replaced &&
+          isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes)
+      }
       val outranked = mutableSetOf<ClassId>()
       for (graph in queryContext.graphContext.chain) {
         val levelBindings = ranked.filter { binding ->

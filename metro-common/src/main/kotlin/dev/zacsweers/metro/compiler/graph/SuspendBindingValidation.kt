@@ -11,6 +11,14 @@ public enum class SuspendGraphRequestKind {
   OTHER,
 }
 
+/** Binding categories that need declaration-specific suspend validation. */
+public enum class SuspendBindingKind {
+  ORDINARY,
+  MULTIBINDING,
+  MEMBER_INJECTING,
+  ASSISTED_FACTORY,
+}
+
 /** A frontend request for a graph binding, retaining its native declaration in [source]. */
 public data class SuspendGraphRequest<ContextualTypeKey, Source>(
   val contextKey: ContextualTypeKey,

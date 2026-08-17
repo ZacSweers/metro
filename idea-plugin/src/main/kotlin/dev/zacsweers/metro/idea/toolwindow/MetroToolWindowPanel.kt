@@ -57,6 +57,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   /** A validate request whose graph was not indexed yet, retried when a fresh index lands. */
   private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
+  @Volatile private var disposed: Boolean = false
   private val treeModel = StructureTreeModel(treeStructure, this)
   private val tree =
     Tree(AsyncTreeModel(treeModel, this)).apply {
@@ -139,10 +140,13 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   /** Expands to [classId]'s graph node, selects it, and runs validation. */
   fun selectAndValidate(classId: ClassId, file: VirtualFile?) {
+    if (disposed) return
     TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
+      if (disposed) return@onProcessed
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
-      val graph = selectedGraphNode()?.graph ?: findGraph(classId, file)
+      val selectedGraph = selectedGraphNode()?.takeIf { it.matches(classId, file) }?.graph
+      val graph = selectedGraph ?: findGraph(classId, file)
       if (graph != null) {
         pendingValidation = null
         validateGraph(graph)
@@ -213,12 +217,14 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   private fun validationFinished(visitor: TreeVisitor) {
+    if (disposed || project.isDisposed) return
     // Rerun highlighting so the gutter's validation badge picks up the new result
     DaemonCodeAnalyzer.getInstance(project).restart()
     // Select the validation node once the refreshed children load, so the outcome is visible even
     // when the run produced no problems.
     treeModel.invalidateAsync().thenRun {
       SwingUtilities.invokeLater {
+        if (disposed || project.isDisposed) return@invokeLater
         TreeUtil.promiseSelect(tree, visitor)
       }
     }
@@ -264,5 +270,8 @@ internal class MetroToolWindowPanel(private val project: Project) :
     return true
   }
 
-  override fun dispose() {}
+  override fun dispose() {
+    disposed = true
+    pendingValidation = null
+  }
 }

@@ -30,9 +30,11 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -138,6 +140,20 @@ internal fun KaSession.callableBindingView(
     CallableParameterView(sourceParameters[index], parameter.returnType)
   }
   return CallableBindingView(sourceSymbol, signature.returnType, receiver, valueParameters)
+}
+
+/** Resolves an assisted factory's inherited SAM with its concrete receiver type arguments. */
+internal fun KaSession.assistedFactoryFunction(
+  classSymbol: KaNamedClassSymbol
+): CallableBindingView? {
+  val scope = classSymbol.defaultType.scope ?: return null
+  val signature =
+    scope.getCallableSignatures().filterIsInstance<KaFunctionSignature<*>>().singleOrNull {
+      candidate ->
+      val symbol = candidate.symbol
+      symbol is KaNamedFunctionSymbol && symbol.modality == KaSymbolModality.ABSTRACT
+    } ?: return null
+  return callableBindingView(signature)
 }
 
 /**
@@ -299,6 +315,7 @@ internal fun CallableBindingView.bindingData(
             null,
             implementationName,
             dependencies = listOf(wrappedContextKey),
+            isGraphPrivate = isGraphPrivate,
           )
         )
       }
@@ -406,11 +423,31 @@ private fun KtClassOrObject.classBindingData(
           isAssisted ||
           (options.contributesAsInject && contributesAnnotations.isNotEmpty()))
     val originClassId = ktClass.getClassId()
-    val ownsInjectBinding = isInjectable
+    val injectConstructor =
+      if (isInjectable) findInjectConstructorSymbol(classSymbol, options) else null
+    val hasPrivateInjectConstructor =
+      (injectConstructor?.psi as? KtConstructor<*>)?.hasModifier(KtTokens.PRIVATE_KEYWORD) == true
+    val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
+    val usesContributionProvider =
+      options.generateContributionProviders &&
+        classSymbol.origin != KaSymbolOrigin.LIBRARY &&
+        contributesAnnotations.isNotEmpty() &&
+        !isAssistedFactory &&
+        !classSymbol.hasAnyAnnotation(options.contributionProviderExclusionAnnotations) &&
+        !hasPrivateInjectConstructor
+    val ownsInjectBinding = isInjectable && !usesContributionProvider
+    val needsInjectionMetadata = isInjectable && (ownsInjectBinding || usesContributionProvider)
+    val constructorDependencies =
+      if (needsInjectionMetadata) {
+        injectConstructorDependencyKeys(classSymbol, options, injectConstructor)
+      } else {
+        emptyList()
+      }
+    val memberDependencies =
+      if (needsInjectionMetadata) memberInjectDependencyKeys(classSymbol, options) else emptyList()
+    val memberInjectionOwnerIds =
+      if (needsInjectionMetadata) memberInjectOwnerClassIds(classSymbol) else emptySet()
     if (ownsInjectBinding) {
-      val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
-      val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
-      val memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol)
       result +=
         BindingData(
           typeKey(classSymbol.defaultType, qualifier),
@@ -424,10 +461,10 @@ private fun KtClassOrObject.classBindingData(
           isAssisted = isAssisted,
         )
     }
-    // Contributed bindings alias the class's own inject binding, matching the compiler's model.
-    // No alias edge when the class originates no own-type binding.
+    // Normal contributions alias the implementation. Generated contribution providers construct
+    // it directly, keeping its own type private while retaining constructor/member dependencies.
     val consumedKey =
-      if (ownsInjectBinding) {
+      if (ownsInjectBinding || isAssistedFactory) {
         contextualTypeKey(classSymbol.defaultType, qualifier, options)
       } else {
         null
@@ -451,12 +488,16 @@ private fun KtClassOrObject.classBindingData(
           is Int -> rankValue.toLong()
           else -> Long.MIN_VALUE
         }
+      val bindingKind =
+        if (usesContributionProvider) BindingData.Kind.PROVIDED else BindingData.Kind.ALIAS
+      val providerDependencies =
+        if (usesContributionProvider) constructorDependencies + memberDependencies else emptyList()
       when (classId) {
         in options.contributesBindingAnnotations ->
           result +=
             BindingData(
               elementKey,
-              BindingData.Kind.ALIAS,
+              bindingKind,
               scope,
               ktClass.name,
               consumedKey = consumedKey,
@@ -464,6 +505,8 @@ private fun KtClassOrObject.classBindingData(
               replaces = replaces,
               contributionScopes = contributionScopes,
               contributionRank = contributionRank,
+              dependencies = providerDependencies,
+              memberInjectionOwnerIds = memberInjectionOwnerIds,
               isClassContribution = true,
             )
 
@@ -471,7 +514,7 @@ private fun KtClassOrObject.classBindingData(
           result +=
             BindingData(
               elementKey,
-              BindingData.Kind.ALIAS,
+              bindingKind,
               scope,
               ktClass.name,
               consumedKey = consumedKey,
@@ -479,6 +522,8 @@ private fun KtClassOrObject.classBindingData(
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,
+              dependencies = providerDependencies,
+              memberInjectionOwnerIds = memberInjectionOwnerIds,
               isClassContribution = true,
             )
 
@@ -487,7 +532,7 @@ private fun KtClassOrObject.classBindingData(
           result +=
             BindingData(
               elementKey,
-              BindingData.Kind.ALIAS,
+              bindingKind,
               scope,
               ktClass.name,
               consumedKey = consumedKey,
@@ -495,6 +540,8 @@ private fun KtClassOrObject.classBindingData(
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,
+              dependencies = providerDependencies,
+              memberInjectionOwnerIds = memberInjectionOwnerIds,
               mapKeyValue = mapKeyInfo.annotationRender,
               isClassContribution = true,
             )
@@ -602,9 +649,11 @@ internal fun KaSession.findInjectConstructorSymbol(
 internal fun KaSession.injectConstructorDependencyKeys(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
+  constructor: KaConstructorSymbol? = findInjectConstructorSymbol(classSymbol, options),
 ): List<KaContextualTypeKey> {
-  val constructor = findInjectConstructorSymbol(classSymbol, options) ?: return emptyList()
-  return constructor.valueParameters
+  return constructor
+    ?.valueParameters
+    .orEmpty()
     .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
     .map { dependencyKey(it, options) }
 }

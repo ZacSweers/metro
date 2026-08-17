@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroClassIds
@@ -12,8 +13,10 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
@@ -83,6 +86,55 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     } catch (e: CancellationException) {
       assertSame(cancellation, e)
     }
+    assertNull(reported)
+  }
+
+  fun testPlatformCancellationEscapesInternalErrorBoundary() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val cancellation = ProcessCanceledException()
+    var reported: Throwable? = null
+
+    try {
+      runGraphValidation(
+        context = context,
+        graphName = "test.AppGraph",
+        onInternalError = { reported = it },
+      ) {
+        throw cancellation
+      }
+      fail("Expected platform cancellation")
+    } catch (e: ProcessCanceledException) {
+      assertSame(cancellation, e)
+    }
+    assertNull(reported)
+  }
+
+  fun testPlatformCancellationRetriesGraphValidation() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val expected = project.service<MetroGraphValidationService>().validate(file, context)
+    var attempts = 0
+    var reported: Throwable? = null
+
+    val result = runBlocking {
+      retryCancelledIndexBuild {
+        runGraphValidation(
+          context = context,
+          graphName = "test.AppGraph",
+          onInternalError = { reported = it },
+        ) {
+          attempts++
+          if (attempts == 1) throw ProcessCanceledException()
+          expected.requireCompleted()
+        }
+      }
+    }
+
+    assertSame(expected, result)
+    assertEquals(2, attempts)
     assertNull(reported)
   }
 
@@ -307,6 +359,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
     val diagnostic = result.diagnostics.single()
     assertEquals(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS, diagnostic.id)
+    assertTrue(diagnostic.render(), "ChildGraph (unscoped)" in diagnostic.render())
   }
 
   fun testChildIncludedContainerParentScopedProvidesStaysLocal() {
@@ -741,14 +794,57 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
   }
 
+  fun testParentFactoryIncludedScopedSetContributionIsOwnedByParent() {
+    assertParentScopedContributionIsOwnedByParent(
+      accessor = "val values: Set<String>",
+      contribution =
+        "@Provides @IntoSet @SingleIn(AppScope::class) fun parentValue(): String = \"parent\"",
+      childContribution = "@Provides @IntoSet fun childValue(): String = \"child\"",
+      factoryIncluded = true,
+    )
+  }
+
+  fun testParentFactoryIncludedScopedMapContributionIsOwnedByParent() {
+    assertParentScopedContributionIsOwnedByParent(
+      accessor = "val values: Map<String, String>",
+      contribution =
+        "@Provides @IntoMap @StringKey(\"parent\") @SingleIn(AppScope::class) " +
+          "fun parentValue(): String = \"parent\"",
+      childContribution =
+        "@Provides @IntoMap @StringKey(\"child\") fun childValue(): String = \"child\"",
+      factoryIncluded = true,
+    )
+  }
+
   private fun assertParentScopedContributionIsOwnedByParent(
     accessor: String,
     contribution: String,
     childContribution: String,
+    factoryIncluded: Boolean = false,
   ) {
+    val parentContainer =
+      if (factoryIncluded) {
+        "@BindingContainer class ParentBindings { $contribution }"
+      } else {
+        ""
+      }
+    val parentContribution = if (factoryIncluded) "" else contribution
+    val parentFactory =
+      if (factoryIncluded) {
+        """
+        @DependencyGraph.Factory
+        interface Factory {
+          fun create(@Includes bindings: ParentBindings): AppGraph
+        }
+        """
+      } else {
+        ""
+      }
     val file =
       myFixture.configureMetroFile(
         """
+        $parentContainer
+
         @GraphExtension
         interface ChildGraph {
           $accessor
@@ -760,7 +856,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph {
           val child: ChildGraph
 
-          $contribution
+          $parentContribution
+
+          $parentFactory
         }
         """
       )
@@ -813,6 +911,43 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
           @GraphPrivate @Provides @SingleIn(AppScope::class)
           fun secret(): String = "parent"
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testGraphPrivateParentOptionalBindingIsNotVisibleToChild() {
+    project.setMetroOptions("enable-dagger-runtime-interop" to "true")
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      "package dagger\n\nannotation class BindsOptionalOf",
+    )
+    myFixture.addFileToProject("java/util/Optional.kt", "package java.util\n\nclass Optional<T>")
+
+    val result =
+      validate(
+        """
+        import dagger.BindsOptionalOf
+        import java.util.Optional
+
+        interface Service
+
+        @BindingContainer
+        interface ParentBindings {
+          @GraphPrivate @BindsOptionalOf fun optionalService(): Service
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val service: Optional<Service>
+        }
+
+        @DependencyGraph(bindingContainers = [ParentBindings::class])
+        interface AppGraph {
+          val child: ChildGraph
         }
         """,
         graphName = "ChildGraph",
@@ -1262,6 +1397,193 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.RealRepo" })
   }
 
+  fun testGeneratedContributionProviderDoesNotExposeItsImplementation() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface Service
+
+        @Inject @ContributesBinding(AppScope::class)
+        class ServiceImpl : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val implementation: ServiceImpl
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    assertTrue(
+      result.diagnostics.single().render(),
+      "ServiceImpl" in result.diagnostics.single().render(),
+    )
+  }
+
+  fun testGeneratedContributionProviderRetainsConstructorAndInheritedMemberDependencies() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject class ConstructorDependency
+        @Inject class MemberDependency
+
+        @HasMemberInjections
+        abstract class MemberBase {
+          @Inject lateinit var member: MemberDependency
+        }
+
+        @Inject @ContributesBinding(AppScope::class, binding = binding<Service>())
+        class ServiceImpl(val constructorDependency: ConstructorDependency) : MemberBase(), Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.ConstructorDependency" })
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.MemberDependency" })
+    assertFalse(result.bindings.any { key, _ -> key.renderedType == "test.ServiceImpl" })
+
+    val member = index.consumerEntryAt(file.declarationsIncludingNested().property("member"))!!
+    assertEquals(
+      listOf("AppGraph"),
+      index.resolveConsumer(member).perContext.keys.map { it.graph.name },
+    )
+  }
+
+  fun testExposedContributionProviderRetainsItsImplementation() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface Service
+
+        @ExposeImplBinding @Inject @ContributesBinding(AppScope::class)
+        class ServiceImpl : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val implementation: ServiceImpl
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.ServiceImpl" })
+  }
+
+  fun testPrivateInjectConstructorRetainsItsContributedImplementation() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface Service
+
+        @ContributesBinding(AppScope::class)
+        class ServiceImpl @Inject private constructor() : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val implementation: ServiceImpl
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.ServiceImpl" })
+  }
+
+  fun testGeneratedContributionProvidersParticipateInAnvilRanks() {
+    project.setMetroOptions(
+      "generate-contribution-providers" to "true",
+      "enable-dagger-anvil-interop" to "true",
+      "custom-contributes-binding" to "test/RankedBinding",
+    )
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class RankedBinding(val scope: KClass<*>, val rank: Int = 0)
+
+        interface Service
+
+        @ExposeImplBinding @Inject @RankedBinding(AppScope::class, rank = 50)
+        class LowerService : Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    var serviceBinding: KaBinding? = null
+    result.bindings.forEach { key, binding ->
+      if (key.renderedType == "test.Service") {
+        serviceBinding = binding
+      }
+    }
+    assertTrue(serviceBinding is KaBinding.Provided)
+    assertEquals("HigherService", serviceBinding?.implementationName)
+  }
+
+  fun testContributedAssistedFactoryRetainsItsTargetsNonAssistedDependencies() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface PublicFactory {
+          fun create(id: String): Widget
+        }
+
+        @Inject class RequiredDependency
+
+        @AssistedInject
+        class Widget(@Assisted val id: String, val dependency: RequiredDependency)
+
+        @AssistedFactory @ContributesBinding(AppScope::class)
+        interface WidgetFactory : PublicFactory {
+          override fun create(id: String): Widget
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val factory: PublicFactory
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.RequiredDependency" })
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.WidgetFactory" })
+  }
+
   fun testCompanionObjectProvidesBelongToTheirContainer() {
     val result =
       validate(
@@ -1323,6 +1645,41 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.Service" })
+  }
+
+  fun testGenericSupertypeProvidersAreSpecializedPerGraph() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface GenericBase<T> {
+          val value: T
+
+          @Provides fun provideValue(): T = error("unused")
+        }
+
+        @DependencyGraph
+        interface StringGraph : GenericBase<String>
+
+        @DependencyGraph
+        interface IntGraph : GenericBase<Int>
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val service = project.service<MetroGraphValidationService>()
+    for ((graphName, expectedType) in
+      listOf("StringGraph" to "kotlin.String", "IntGraph" to "kotlin.Int")) {
+      val graph = index.graphs.single { it.name == graphName }
+      val result = service.validate(file, index.contextsFor(graph).single()).requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val providedTypes = mutableListOf<String>()
+      result.bindings.forEach { key, binding ->
+        if (binding is KaBinding.Provided) {
+          providedTypes += key.renderedType
+        }
+      }
+      assertEquals(listOf(expectedType), providedTypes)
+    }
   }
 
   fun testGraphIndexTracksChangesToUnannotatedSupertypeFiles() {
@@ -1409,6 +1766,46 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         )
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
       assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "libtest.LibJson" })
+    }
+  }
+
+  fun testBinaryAssistedFactoryResolvesItsTransitiveDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibAssistedWidgetFactory
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: LibAssistedWidgetFactory
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testHintedBinaryContributionResolvesItsTransitiveDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibTransitiveService
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val service: LibTransitiveService
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
     }
   }
 

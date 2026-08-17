@@ -3,6 +3,9 @@
 package libtest
 
 import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ContributesBinding
@@ -26,6 +29,11 @@ interface LibBaseGraph {
   @Provides fun provideLibJson(): LibJson = object : LibJson {}
 }
 
+/** Specializes inherited binary providers separately for every concrete graph declaration. */
+interface LibGenericBase<T> {
+  @Provides fun provideValue(): T = error("unused")
+}
+
 interface LibService
 
 interface LibAnalytics
@@ -38,6 +46,22 @@ interface LibAnalytics
 
 /** Carries constructor dependencies, for binary dependency-key extraction. */
 @Inject class LibClientWithDeps(val client: LibHttpClient)
+
+/** Exercises transitive dependencies discovered from a binary contribution hint. */
+interface LibTransitiveService
+
+@Inject
+@ContributesBinding(AppScope::class)
+class LibTransitiveServiceImpl(val dependency: LibClientWithDeps) : LibTransitiveService
+
+/** Binary assisted factories expose their target's non-assisted, transitive dependencies. */
+@AssistedInject
+class LibAssistedWidget(@Assisted val id: String, val dependency: LibClientWithDeps)
+
+@AssistedFactory
+interface LibAssistedWidgetFactory {
+  fun create(id: String): LibAssistedWidget
+}
 
 /** Resolvable on demand only under its qualifier. */
 @Inject @LibEndpoint("primary") class LibQualifiedClient

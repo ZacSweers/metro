@@ -116,6 +116,37 @@ class SuspendBindingValidatorTest {
   }
 
   @Test
+  fun `ordinary enabled bindings never extract declaration metadata`() {
+    val fixture = ValidationFixture(runtimeCoroutinesAvailable = true)
+    fixture.put(
+      binding("Source", isSuspend = true),
+      binding("Middle", "Source"),
+      binding("Consumer", "Middle"),
+    )
+
+    val result = fixture.validate(request("Consumer", isSuspend = true))
+
+    assertThat(result.issues).isEmpty()
+    assertThat(fixture.metadataCallCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `a known available runtime skips repeated binding checks`() {
+    val fixture =
+      ValidationFixture(
+        runtimeCoroutinesAvailable = true,
+        runtimeCoroutinesAlreadyRequired = true,
+      )
+    fixture.put(binding("Source", isSuspend = true), binding("Consumer", "Source"))
+
+    val result = fixture.validate(request("Consumer", isSuspend = true))
+
+    assertThat(result.requiresRuntimeCoroutines).isTrue()
+    assertThat(fixture.runtimeBindingCheckCount).isEqualTo(0)
+    assertThat(fixture.metadataCallCount).isEqualTo(0)
+  }
+
+  @Test
   fun `issues retain a deterministic path to the direct suspend source`() {
     val fixture = ValidationFixture(runtimeCoroutinesAvailable = true)
     fixture.put(
@@ -152,12 +183,16 @@ class SuspendBindingValidatorTest {
 private class ValidationFixture(
   private val suspendProvidersEnabled: Boolean = true,
   private val runtimeCoroutinesAvailable: Boolean = false,
+  private val runtimeCoroutinesAlreadyRequired: Boolean = false,
 ) {
   private val bindings = MutableScatterMap<StringTypeKey, ValidationBinding>()
   var metadataCallCount = 0
     private set
 
   var analysisCallCount = 0
+    private set
+
+  var runtimeBindingCheckCount = 0
     private set
 
   fun put(vararg newBindings: ValidationBinding) {
@@ -193,6 +228,20 @@ private class ValidationFixture(
           metadataCallCount++
           it.metadata
         },
+        bindingKind = { binding ->
+          when {
+            binding.metadata.multibinding != null -> SuspendBindingKind.MULTIBINDING
+            binding.metadata.assistedFactory != null -> SuspendBindingKind.ASSISTED_FACTORY
+            binding.metadata.memberInjections.isNotEmpty() -> SuspendBindingKind.MEMBER_INJECTING
+            else -> SuspendBindingKind.ORDINARY
+          }
+        },
+        bindingIsScoped = { it.metadata.isScoped },
+        multibindingIsSet = { checkNotNull(it.metadata.multibinding).isSet },
+        bindingIsReachable = {
+          runtimeBindingCheckCount++
+          it.metadata.isReachable
+        },
         analyze = { keys ->
           analysisCallCount++
           analysis.analyzeWithPaths(keys)
@@ -201,6 +250,7 @@ private class ValidationFixture(
         suspendProvidersEnabled = suspendProvidersEnabled,
         functionProvidersEnabled = true,
         runtimeCoroutinesAvailable = runtimeCoroutinesAvailable,
+        runtimeCoroutinesAlreadyRequired = runtimeCoroutinesAlreadyRequired,
       )
       .validate()
   }

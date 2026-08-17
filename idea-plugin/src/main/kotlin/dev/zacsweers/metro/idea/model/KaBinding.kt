@@ -55,6 +55,10 @@ internal sealed interface KaBinding :
   val containerId: ClassId?
     get() = null
 
+  /** Exact graph declaration owning an inherited callable specialized for that graph. */
+  val ownerGraphId: GraphDeclarationId?
+    get() = null
+
   /** Concrete binding-container factory input whose membership gates this binding. */
   val includedContainerKey: KaTypeKey?
     get() = null
@@ -150,10 +154,15 @@ internal sealed interface KaBinding :
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val ownerGraphId: GraphDeclarationId? = null,
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
+    override val contributionRank: Long = Long.MIN_VALUE,
+    /** True for a generated `@ContributesBinding` provider rather than an authored callable. */
+    val isClassContribution: Boolean = false,
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
+    override val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
     override val isSuspend: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
     override val isGraphPrivate: Boolean = false,
@@ -176,6 +185,7 @@ internal sealed interface KaBinding :
     override val mapKeyValue: String? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val ownerGraphId: GraphDeclarationId? = null,
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
@@ -213,6 +223,7 @@ internal sealed interface KaBinding :
     override val scope: KaAnnotationSnapshot? = null,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val ownerGraphId: GraphDeclarationId? = null,
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
@@ -343,10 +354,12 @@ internal sealed interface KaBinding :
     override val implementationName: String?,
     override val originClassId: ClassId? = null,
     override val containerId: ClassId? = null,
+    override val ownerGraphId: GraphDeclarationId? = null,
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
     override val hintAvailability: HintAvailability? = null,
+    override val isGraphPrivate: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 

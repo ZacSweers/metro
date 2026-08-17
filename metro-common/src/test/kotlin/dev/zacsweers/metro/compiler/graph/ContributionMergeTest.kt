@@ -122,6 +122,20 @@ class ContributionMergeTest {
   }
 
   @Test
+  fun `a lone unchanged item keeps its original list`() {
+    val items = listOf(Item(id("Single"), emptySet()))
+
+    assertThat(applyExcludesAndReplaces(items)).isSameInstanceAs(items)
+  }
+
+  @Test
+  fun `a lone excluded item is removed`() {
+    val item = Item(id("Single"), emptySet())
+
+    assertThat(applyExcludesAndReplaces(listOf(item), setOf(id("Single")))).isEmpty()
+  }
+
+  @Test
   fun `a lone self-replacing item is removed by both entry points`() {
     val self = Item(id("Self"), setOf(id("Self")))
     assertThat(applyExcludesAndReplaces(listOf(self))).isEmpty()
