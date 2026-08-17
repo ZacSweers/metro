@@ -13,6 +13,8 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.canonicalContextKey
+import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.name.Name
 
@@ -38,9 +40,13 @@ internal class KaBindingLookup(
    */
   private val syntheticElements = HashMap<KaTypeKey, KaBinding>()
 
+  /** Parent-scoped bindings remapped to graph dependency nodes, one per key. */
+  private val parentDependencies = HashMap<KaTypeKey, KaBinding>()
+
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
     syntheticElements.clear()
+    parentDependencies.clear()
   }
 
   /**
@@ -82,7 +88,7 @@ internal class KaBindingLookup(
       if (explicit.size > 1) {
         onDuplicate(typeKey, explicit)
       }
-      return setOf(explicit.first())
+      return setOf(delegateToParentIfScoped(explicit.first()))
     }
 
     val multibindingId = contextKey.multibindingId(options)
@@ -108,11 +114,45 @@ internal class KaBindingLookup(
     }
     return when {
       implicit.isEmpty() -> emptySet()
-      implicit.size == 1 -> setOf(implicit.single())
+      implicit.size == 1 -> setOf(delegateToParentIfScoped(implicit.single()))
       else -> {
         onDuplicate(typeKey, implicit)
-        setOf(implicit.first())
+        setOf(delegateToParentIfScoped(implicit.first()))
       }
+    }
+  }
+
+  /**
+   * Remaps a binding scoped to an ancestor graph onto a dependency on that graph, matching the
+   * compiler's child-graph lookup. The ancestor's own seal resolves the binding and its
+   * dependencies, so the child only records the parent edge.
+   */
+  private fun delegateToParentIfScoped(binding: KaBinding): KaBinding {
+    val scope = binding.scope ?: return binding
+    val chain = queryContext.graphContext.chain
+    if (chain.size < 2) return binding
+    val child = chain.first()
+    if (scope in child.scopingAnnotations) return binding
+    // A scope matching no graph in the chain stays inline so scope validation reports it here.
+    if (chain.none { scope in it.scopingAnnotations }) return binding
+    // Bindings declared on the child itself stay local even when their scope names an ancestor.
+    val containerId = binding.containerId
+    if (
+      containerId != null && (containerId in child.selfIds || containerId in child.supertypeIds)
+    ) {
+      return binding
+    }
+    val parentKey = chain[1].graphTypeKey() ?: return binding
+    return parentDependencies.getOrPut(binding.typeKey) {
+      KaBinding.GraphDependency(
+        pointer = binding.pointer,
+        contextualTypeKey = binding.typeKey.canonicalContextKey(),
+        ownerKey = parentKey,
+        // Direct suspendness only. The compiler also resolves transitive parent suspendness,
+        // which the child seal cannot see; accepted approximation.
+        accessorIsSuspend = binding.isSuspend,
+        isParentScoped = true,
+      )
     }
   }
 

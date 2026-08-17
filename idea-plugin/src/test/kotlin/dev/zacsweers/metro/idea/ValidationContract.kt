@@ -105,13 +105,17 @@ internal class CompilerContractReader(
   fun contract(case: ParityCase): ValidationContract {
     val metadata = case.metadataReport?.let { readMetadata(it) }
     val keyMap = metadata?.keyMap.orEmpty()
+    // Generated implementation names are outside the parity contract. Child reports key the
+    // parent dependency by its generated graph class, so fold those onto the source graph key.
+    val implKeyMap = case.graphPath.associateBy { "$it.Impl" }
     return ValidationContract(
       graphPath = case.graphPath,
       roots = metadata?.roots,
-      populatedKeys = case.populatedReport?.let { readKeys(it, keyMap, sort = true) },
+      populatedKeys = case.populatedReport?.let { readKeys(it, keyMap, implKeyMap, sort = true) },
       bindings = metadata?.bindings,
-      validatedKeys = case.validatedReport?.let { readKeys(it, keyMap, sort = false) },
-      deferredKeys = case.deferredReport?.let { readKeys(it, keyMap, sort = true).toSet() },
+      validatedKeys = case.validatedReport?.let { readKeys(it, keyMap, implKeyMap, sort = false) },
+      deferredKeys =
+        case.deferredReport?.let { readKeys(it, keyMap, implKeyMap, sort = true).toSet() },
       diagnostics = case.diagnosticReport?.let(::readDiagnostics).orEmpty(),
     )
   }
@@ -169,9 +173,16 @@ internal class CompilerContractReader(
   private fun readKeys(
     report: String,
     knownKeys: Map<String, String>,
+    implKeyMap: Map<String, String>,
     sort: Boolean,
   ): List<String> {
-    val rawKeys = reportsRoot.resolve(report).readLines().filter(String::isNotBlank)
+    val rawKeys =
+      reportsRoot
+        .resolve(report)
+        .readLines()
+        .filter(String::isNotBlank)
+        .map { implKeyMap[it] ?: it }
+        .distinct()
     val missingEntries = rawKeys.filterNot(knownKeys::containsKey).map { KeyEntry(it, null) }
     val fallbackMap = canonicalKeyMap(missingEntries)
     val keys = rawKeys.map { knownKeys[it] ?: fallbackMap.getValue(it) }

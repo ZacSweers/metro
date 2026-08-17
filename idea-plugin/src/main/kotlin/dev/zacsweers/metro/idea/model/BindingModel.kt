@@ -116,6 +116,14 @@ internal class KaGraphDeclaration(
     get() = classId?.shortClassName?.asString()
 }
 
+/** The graph's own type as a key, used for graph instance and parent dependency nodes. */
+internal fun KaGraphDeclaration.graphTypeKey(): KaTypeKey? {
+  val classId = classId ?: return null
+  val snapshot =
+    KaTypeSnapshot(classId.asFqNameString(), classId.shortClassName.asString(), classId)
+  return KaTypeKey(snapshot)
+}
+
 /** A `@BindingContainer` declaration and the containers it transitively includes. */
 internal class BindingContainerEntry(
   val pointer: SmartPsiElementPointer<KtClassOrObject>,

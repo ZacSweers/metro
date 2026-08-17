@@ -278,11 +278,13 @@ internal sealed interface KaBinding :
     val ownerKey: KaTypeKey,
     /** Whether the included graph accessor itself is suspend. */
     val accessorIsSuspend: Boolean,
+    /** Whether this node stands in for a binding scoped to an ancestor graph. */
+    val isParentScoped: Boolean = false,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 
     override val label: String
-      get() = "included dependency accessor"
+      get() = if (isParentScoped) "parent graph binding" else "included dependency accessor"
 
     override val isSuspend: Boolean
       get() = accessorIsSuspend || contextualTypeKey.wrappedType.requiresSuspendToUnwrap()

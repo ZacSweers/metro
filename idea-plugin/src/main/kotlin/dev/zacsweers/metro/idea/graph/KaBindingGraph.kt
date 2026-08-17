@@ -39,6 +39,8 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.canonicalContextKey
+import dev.zacsweers.metro.idea.model.graphTypeKey
 import org.jetbrains.kotlin.name.StandardClassIds
 
 private typealias KaMutableBindingGraph =
@@ -111,7 +113,22 @@ internal class KaBindingGraph(
   fun seal(): KaGraphValidationResult.Completed {
     val setupStack = KaBindingStack(graph)
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
-    for (extension in index.extensionsOf(graph)) {
+    val extensions = index.extensionsOf(graph)
+    if (extensions.isNotEmpty()) {
+      // Extension children depend on this graph's instance and reserve its key in the compiler's
+      // parent seal. Keep it explicitly so the instance joins the sorted root set and the
+      // validated order matches the compiler (explicit keys win ties over discovered ones).
+      graph.graphTypeKey()?.let { selfKey ->
+        val selfContextKey = selfKey.canonicalContextKey()
+        keeps[selfContextKey] =
+          KaBindingStack.Entry(
+            contextKey = selfContextKey,
+            pointer = graph.pointer,
+            isSynthetic = true,
+          )
+      }
+    }
+    for (extension in extensions) {
       val binding = graphExtensionBinding(extension) ?: continue
       realGraph.tryPut(binding, setupStack)
       keeps[binding.contextualTypeKey] =
@@ -454,12 +471,7 @@ internal class KaBindingGraph(
     return KaBinding.GraphExtension(extension.pointer, extensionKey, ownerKey)
   }
 
-  private fun graphTypeKey(graph: KaGraphDeclaration): KaTypeKey? {
-    val classId = graph.classId ?: return null
-    val snapshot =
-      KaTypeSnapshot(classId.asFqNameString(), classId.shortClassName.asString(), classId)
-    return KaTypeKey(snapshot)
-  }
+  private fun graphTypeKey(graph: KaGraphDeclaration): KaTypeKey? = graph.graphTypeKey()
 }
 
 /** Thrown by [KaBindingGraph.reportFatal] and caught by [KaBindingGraph.seal]. */

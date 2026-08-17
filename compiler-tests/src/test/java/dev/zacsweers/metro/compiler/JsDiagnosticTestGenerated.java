@@ -941,6 +941,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ScopedParentExtension.kt")
+    public void testScopedParentExtension() {
+      run("ScopedParentExtension.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendFailure.kt")
     public void testSuspendFailure() {
       run("SuspendFailure.kt");

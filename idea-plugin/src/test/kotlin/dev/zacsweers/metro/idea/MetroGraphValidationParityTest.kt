@@ -90,6 +90,33 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     )
   }
 
+  fun testScopedParentExtensionMatchesCompiler() {
+    val fixture = "ScopedParentExtension"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.extension.scoped.AppGraph"),
+        metadataReport = "$fixture/graph-metadata/graph-parity-extension-scoped-AppGraph.json.txt",
+        populatedReport = "$fixture/keys-populated/parity/extension/scoped/AppGraph/Impl.txt",
+        validatedReport = "$fixture/keys-validated/parity/extension/scoped/AppGraph/Impl.txt",
+        deferredReport = "$fixture/keys-deferred/parity/extension/scoped/AppGraph/Impl.txt",
+      )
+    )
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath =
+          listOf("parity.extension.scoped.ChildGraph", "parity.extension.scoped.AppGraph"),
+        populatedReport =
+          "$fixture/keys-populated/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl.txt",
+        validatedReport =
+          "$fixture/keys-validated/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl.txt",
+        deferredReport =
+          "$fixture/keys-deferred/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl.txt",
+      )
+    )
+  }
+
   fun testMultiParentGraphExtensionMatchesCompiler() {
     val fixture = "MultiParentExtension"
     for (parent in listOf("LeftGraph", "RightGraph")) {
