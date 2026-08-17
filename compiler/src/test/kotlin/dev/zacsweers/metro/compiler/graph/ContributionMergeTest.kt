@@ -121,6 +121,36 @@ class ContributionMergeTest {
     assertThat(applyExcludesAndReplaces(listOf(a, b))).containsExactly(a, b).inOrder()
   }
 
+  @Test
+  fun `a lone self-replacing item is removed by both entry points`() {
+    val self = Item(id("Self"), setOf(id("Self")))
+    assertThat(applyExcludesAndReplaces(listOf(self))).isEmpty()
+
+    val plan =
+      computeMergePlan(
+        presentIds = setOf(id("Self")),
+        excluded = emptySet(),
+        replacesOf = { setOf(id("Self")) },
+      )
+    assertThat(plan.removed).containsExactly(id("Self"))
+  }
+
+  @Test
+  fun `excluding both an origin and its generated contribution matches both`() {
+    // The compiler's in-place merge can flag the generated contribution as an unmatched exclusion
+    // depending on iteration order. The shared plan treats both targets as matched; this pins the
+    // plan's answer as the reference behavior.
+    val plan =
+      computeMergePlan(
+        presentIds = setOf(id("AProvider"), id("B")),
+        excluded = setOf(id("A"), id("AProvider")),
+        originToIds = mapOf(id("A") to setOf(id("AProvider"))),
+        replacesOf = { emptySet() },
+      )
+    assertThat(plan.removed).containsExactly(id("AProvider"))
+    assertThat(plan.unmatchedExclusions).isEmpty()
+  }
+
   private data class RankedBinding(val classId: ClassId, val typeKey: String, val rank: Long)
 
   @Test

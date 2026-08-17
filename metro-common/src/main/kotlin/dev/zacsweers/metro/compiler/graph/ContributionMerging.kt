@@ -104,9 +104,11 @@ public fun <T : MergeContribution> applyExcludesAndReplaces(
   val afterExcludes =
     if (excluded.isEmpty()) items
     else items.filter { it.mergeId == null || it.mergeId !in excluded }
-  if (afterExcludes.size < 2) return afterExcludes
+  if (afterExcludes.isEmpty()) return afterExcludes
   val replaced = afterExcludes.flatMapTo(hashSetOf()) { it.replaces }
   if (replaced.isEmpty()) return afterExcludes
+  // Survivor replaces match against all survivors, including the declaring item itself, keeping
+  // this in agreement with computeMergePlan for self-replacing contributions.
   return afterExcludes.filter { it.mergeId == null || it.mergeId !in replaced }
 }
 
