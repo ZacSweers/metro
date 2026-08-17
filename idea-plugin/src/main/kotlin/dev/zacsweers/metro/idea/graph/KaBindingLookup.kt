@@ -82,8 +82,20 @@ internal class KaBindingLookup(
       }
     }
 
-    // Explicit bindings win over class-derived ones and multibinding synthesis, matching the
-    // compiler's cache-first lookup. Only same-tier collisions are duplicates.
+    // An unqualified assisted type can only be created through its factory. The compiler rejects
+    // direct requests even when an explicit provider exists, so resolve to the assisted class
+    // first and let validation report it.
+    if (typeKey.qualifier == null) {
+      implicit
+        .filterIsInstance<KaBinding.ConstructorInjected>()
+        .firstOrNull { it.isAssisted }
+        ?.let {
+          return setOf(it)
+        }
+    }
+
+    // Explicit bindings win over ordinary inject constructors and multibinding synthesis,
+    // matching the compiler's cache-first lookup. Only same-tier collisions are duplicates.
     if (explicit.isNotEmpty()) {
       if (explicit.size > 1) {
         onDuplicate(typeKey, explicit)
@@ -104,14 +116,6 @@ internal class KaBindingLookup(
       }
     }
 
-    if (typeKey.qualifier == null) {
-      implicit
-        .filterIsInstance<KaBinding.ConstructorInjected>()
-        .firstOrNull { it.isAssisted }
-        ?.let {
-          return setOf(it)
-        }
-    }
     return when {
       implicit.isEmpty() -> emptySet()
       implicit.size == 1 -> setOf(delegateToParentIfScoped(implicit.single()))

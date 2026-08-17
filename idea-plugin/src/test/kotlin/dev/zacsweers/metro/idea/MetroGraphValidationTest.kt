@@ -489,9 +489,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "Screen" in diagnostic.render())
   }
 
-  fun testExplicitProviderOfAssistedTypeWinsOverAssistedClass() {
-    // The compiler resolves the explicit provider before class-based assisted lookup, so this
-    // graph is valid ("do your own assistance").
+  fun testAssistedClassRequestWithProviderIsRejectedWithoutDuplicate() {
+    // The compiler rejects unqualified requests of assisted types even with an explicit
+    // provider, as its AssistedTypesCannotBeProvidedWithoutQualifiers fixture shows.
     val result =
       validate(
         """
@@ -512,7 +512,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
   }
 
   fun testExplicitProviderOfInjectClassWinsWithoutDuplicate() {
