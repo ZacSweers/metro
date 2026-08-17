@@ -53,11 +53,16 @@ private fun readGitRepoCommit(projectDirectory: Path): String? {
   }
 
   val headRef = headContents.removePrefix("ref:").trim()
-  val headFile = gitDirectory.resolve(headRef)
-  if (headFile.exists()) {
-    return headFile.readText(Charsets.UTF_8).trim().lowercase(Locale.US).takeIf { isGitHash(it) }
+  // A linked worktree keeps HEAD in its private dir while branch refs live in the shared common
+  // dir, so check both loose locations before the packed-refs fallback.
+  val commonDirectory = resolveCommonDirectory(gitDirectory)
+  for (refsRoot in linkedSetOf(gitDirectory, commonDirectory)) {
+    val headFile = refsRoot.resolve(headRef)
+    if (headFile.exists()) {
+      return headFile.readText(Charsets.UTF_8).trim().lowercase(Locale.US).takeIf { isGitHash(it) }
+    }
   }
-  return readPackedRef(gitDirectory, headRef)
+  return readPackedRef(commonDirectory, headRef)
 }
 
 /** Handles both a plain `.git` directory and a worktree's `gitdir: <path>` pointer file. */
@@ -72,16 +77,17 @@ private fun resolveGitDirectory(projectDirectory: Path): Path? {
   return target.takeIf { it.exists() }
 }
 
-/** Refs disappear from loose files after `git gc` packs them into `packed-refs`. */
-private fun readPackedRef(gitDirectory: Path, ref: String): String? {
-  // A worktree's private dir keeps refs in the shared common dir.
+/** The shared common dir holding refs for every worktree of a repository. */
+private fun resolveCommonDirectory(gitDirectory: Path): Path {
   val commonDirFile = gitDirectory.resolve("commondir")
-  val refsRoot =
-    if (commonDirFile.isRegularFile()) {
-      gitDirectory.resolve(commonDirFile.readText(Charsets.UTF_8).trim()).normalize()
-    } else {
-      gitDirectory
-    }
+  if (!commonDirFile.isRegularFile()) {
+    return gitDirectory
+  }
+  return gitDirectory.resolve(commonDirFile.readText(Charsets.UTF_8).trim()).normalize()
+}
+
+/** Refs disappear from loose files after `git gc` packs them into `packed-refs`. */
+private fun readPackedRef(refsRoot: Path, ref: String): String? {
   val packedRefs = refsRoot.resolve("packed-refs")
   if (!packedRefs.exists()) return null
   for (line in packedRefs.readText(Charsets.UTF_8).lineSequence()) {
