@@ -699,6 +699,58 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testQualifiedLibraryInjectClassesResolveOnDemand() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureByText(
+          "LibConsumer.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.Inject
+          import libtest.LibEndpoint
+          import libtest.LibQualifiedClient
+
+          @Inject class LibConsumer(@LibEndpoint("primary") val client: LibQualifiedClient)
+          """
+            .trimIndent(),
+        ) as KtFile
+      val index = project.service<MetroResolutionService>().index(file)
+      val declarations = file.declarationsIncludingNested()
+
+      val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
+      val bindings = index.bindingsFor(clientParam)
+      assertEquals(listOf("injected class"), bindings.map { it.label })
+      assertEquals(
+        "LibQualifiedClient",
+        (bindings.single().pointer.element as? KtNamedDeclaration)?.name,
+      )
+    }
+  }
+
+  fun testQualifiedLibraryInjectClassesDoNotSatisfyUnqualifiedConsumers() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureByText(
+          "LibConsumer.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.Inject
+          import libtest.LibQualifiedClient
+
+          @Inject class LibConsumer(val client: LibQualifiedClient)
+          """
+            .trimIndent(),
+        ) as KtFile
+      val index = project.service<MetroResolutionService>().index(file)
+      val declarations = file.declarationsIncludingNested()
+
+      val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
+      assertTrue(index.bindingsFor(clientParam).isEmpty())
+    }
+  }
+
   fun testChangingLibraryRootsInvalidatesTheExistingSnapshot() {
     val file =
       myFixture.configureMetroFile(

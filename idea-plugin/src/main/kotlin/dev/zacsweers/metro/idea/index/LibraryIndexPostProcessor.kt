@@ -22,6 +22,7 @@ import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -298,7 +299,7 @@ internal class LibraryIndexPostProcessor(
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null || consumer.key.qualifier != null) continue
+      if (consumer.multibindingId != null) continue
       val context = consumer.pointer.element ?: continue
       queue += LibraryInjectRequest(consumer.key, classId, context)
     }
@@ -333,6 +334,11 @@ internal class LibraryIndexPostProcessor(
             classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
               constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
           if (!hasInject && !isAssisted) return@analyze null
+          // The class-level qualifier is part of the binding key. A mismatch means this class
+          // cannot satisfy the request, including unqualified requests of a qualified class.
+          if (qualifierAnnotation(classSymbol, options) != request.key.qualifier) {
+            return@analyze null
+          }
 
           val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
           val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
@@ -355,7 +361,6 @@ internal class LibraryIndexPostProcessor(
       for (dependency in resolved.binding.dependencies) {
         val key = dependency.typeKey
         val classId = key.type.classId ?: continue
-        if (key.qualifier != null) continue
         queue += LibraryInjectRequest(key, classId, request.context)
       }
     }

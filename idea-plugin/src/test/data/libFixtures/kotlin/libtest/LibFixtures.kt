@@ -39,6 +39,9 @@ interface LibAnalytics
 /** Carries constructor dependencies, for binary dependency-key extraction. */
 @Inject class LibClientWithDeps(val client: LibHttpClient)
 
+/** Resolvable on demand only under its qualifier. */
+@Inject @LibEndpoint("primary") class LibQualifiedClient
+
 @Inject @ContributesBinding(AppScope::class) class LibServiceImpl : LibService
 
 @Inject @ContributesIntoSet(AppScope::class) class LibAnalyticsImpl : LibAnalytics

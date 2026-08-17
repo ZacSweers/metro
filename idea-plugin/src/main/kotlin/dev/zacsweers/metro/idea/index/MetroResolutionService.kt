@@ -768,7 +768,7 @@ private data class SourceAggregate(
       ProgressManager.checkCanceled()
       val module = addModule(consumer.pointer.element) ?: continue
       val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null || consumer.key.qualifier != null) continue
+      if (consumer.multibindingId != null) continue
       injectRequests += LibraryInjectInput(module, consumer.key, classId)
     }
     return LibraryInputs(scopeIds, participatingModules, injectRequests)
