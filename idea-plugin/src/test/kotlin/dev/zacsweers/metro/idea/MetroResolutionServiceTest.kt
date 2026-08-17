@@ -144,6 +144,36 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(updated.toString().contains("after"))
   }
 
+  fun testRemovingConstKeywordRefreshesDependentBindingQualifiers() {
+    // The edit deletes the shared declaration itself, so only the pre-change tree shows it.
+    // Before-events observing the cached answer are what catch this.
+    val constants =
+      myFixture.addFileToProject(
+        "test/Constants.kt",
+        "package test\n\nconst val SERVICE_NAME = \"before\"",
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file).bindings.single().typeKey.qualifier
+    assertTrue(initial.toString().contains("before"))
+
+    myFixture.openFileInEditor(constants.virtualFile)
+    val constOffset = constants.text.indexOf("const val")
+    myFixture.editor.selectionModel.setSelection(constOffset, constOffset + "const val".length)
+    myFixture.type("val")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file).bindings.single().typeKey.qualifier
+    assertTrue(updated.toString(), updated?.toString()?.contains("before") != true)
+  }
+
   fun testConstantChangesInIndexedFilesRefreshDependentBindingQualifiers() {
     // The constant lives in a file that is itself indexed, so the dependent shard has no
     // recorded edge to it and relies on the shared-declaration fallback.

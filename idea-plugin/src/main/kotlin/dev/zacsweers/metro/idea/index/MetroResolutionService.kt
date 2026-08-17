@@ -9,6 +9,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
@@ -146,6 +147,10 @@ class MetroResolutionService(
           override fun beforePropertyChange(event: PsiTreeChangeEvent) =
             psiChanged(event, structuralChange = isFileStructureChange(event))
 
+          override fun beforeChildReplacement(event: PsiTreeChangeEvent) = psiChanged(event)
+
+          override fun beforeChildrenChange(event: PsiTreeChangeEvent) = psiChanged(event)
+
           override fun childAdded(event: PsiTreeChangeEvent) =
             psiChanged(event, structuralChange = isFileStructureChange(event))
 
@@ -178,6 +183,12 @@ class MetroResolutionService(
             smartReadAction(project) { buildCurrentIndex(module, key) }
           } catch (exception: CancellationException) {
             throw exception
+          } catch (failure: Throwable) {
+            // The worker must survive analysis failures or every future EDT-scheduled build
+            // would silently stop. Requesters reschedule on their next query.
+            logger<MetroResolutionService>()
+              .warn("Metro index build failed for ${module.name}", failure)
+            continue
           }
         if (built === BindingIndex.EMPTY) {
           continue
@@ -331,12 +342,16 @@ class MetroResolutionService(
           incremental(prev!!, inputs, start)
         }
 
-      // Cold sweeps consume requested files. Incremental passes leave them for a future sweep.
-      val drained = if (coldSweep) start.drainAll() else start.drainDirty()
+      // Publish the snapshot before draining the ledger. A builder that observes the drained
+      // ledger then also observes this snapshot, so no builder can pair a drained ledger with
+      // the previous snapshot and re-publish or cache stale state. If the drain CAS below fails,
+      // the early publish is harmless because the files it incorporated are still marked dirty
+      // and simply replay from their per-file cached values on the retry.
+      sourceSnapshot.set(next)
+      val drained = start.drainAll()
       if (!invalidations.compareAndSet(start, drained)) {
         continue
       }
-      sourceSnapshot.set(next)
 
       snapshots[key]
         ?.takeIf { it.matches(start.generation, inputs.roots) }
@@ -401,7 +416,13 @@ class MetroResolutionService(
     inputs: IndexInputs,
     start: Invalidations,
   ): SourceSnapshot {
-    if (start.dirty.isEmpty()) {
+    val dirty =
+      if (start.forceAll) {
+        prev.shards.keys + start.dirty
+      } else {
+        start.dirty
+      }
+    if (dirty.isEmpty() && start.requested.isEmpty()) {
       // Output-only compiler-option changes update inputs without touching any shard.
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
@@ -410,14 +431,27 @@ class MetroResolutionService(
     for ((dependencyFile, ownerSet) in prev.dependencyOwners) {
       owners[dependencyFile] = LinkedHashSet(ownerSet)
     }
-    for (virtualFile in start.dirty) {
+    for (virtualFile in dirty) {
       ProgressManager.checkCanceled()
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
       if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
         withoutShard(shards, owners, virtualFile)
         continue
       }
-      applyShard(shards, owners, virtualFile, shardFor(file, virtualFile in start.forced))
+      val forced = start.forceAll || virtualFile in start.forced
+      applyShard(shards, owners, virtualFile, shardFor(file, forced))
+    }
+    // Requested files were enqueued before their stubs or directory events settled. Draining
+    // them here keeps them from lingering in the ledger until a cold sweep.
+    for (virtualFile in start.requested) {
+      ProgressManager.checkCanceled()
+      if (!virtualFile.isValid || virtualFile in shards) {
+        continue
+      }
+      val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
+      if (containsRelevantAnnotation(file, prev.shortNames)) {
+        applyShard(shards, owners, virtualFile, shardFor(file))
+      }
     }
     return SourceSnapshot(inputs, prev.moduleFingerprints, prev.shortNames, shards, owners)
   }
@@ -586,9 +620,14 @@ class MetroResolutionService(
           *(builder?.psiDependencies ?: emptySet()).toTypedArray(),
         )
       }
-    if (cached === FileShard.EMPTY && file.textLength > 0) {
+    if (!forceRebuild && cached === FileShard.EMPTY && file.textLength > 0) {
       val state = file.metroIdeState()
-      if (state.isEnabled) return FileShardBuilder(file.project, state.options).buildShard(file)
+      if (state.isEnabled) {
+        // The cached value was computed while the module read as disabled, usually a stub-loading
+        // race. Recompute through the force tracker so the fresh result is stored and later
+        // passes stop re-analyzing.
+        return shardFor(file, forceRebuild = true)
+      }
     }
     return cached
   }
@@ -655,7 +694,7 @@ class MetroResolutionService(
       directoryChanged(directory)
       return
     }
-    if (file == null) return
+    if (file == null || !file.isValid) return
     val virtualFile = file.virtualFile ?: return
     val state = sourceSnapshot.get()
     if (state == null) {
@@ -667,11 +706,12 @@ class MetroResolutionService(
     val requestFile = structuralChange && virtualFile !in state.shards
     val ownerFiles = state.dependencyOwners[virtualFile]
     val alreadyIndexed = virtualFile in state.shards
-    val newlyRelevant = !alreadyIndexed && containsRelevantAnnotation(file, state.shortNames)
+    val newlyRelevant = !alreadyIndexed && isRelevantFileCached(file)
     // Applies even to indexed files and files with recorded owners. A file can mix indexed
     // declarations with constants or aliases that unrelated shards reference without any
-    // recorded dependency edge.
-    val globalSemanticChange = hasSharedSemanticDeclarations(file)
+    // recorded dependency edge. The cached value makes before-events observe the pre-change
+    // answer, which is what catches an edit that removes the shared declaration itself.
+    val globalSemanticChange = fileHasSharedDeclarationsCached(file)
     val affectsIndexedDeclarations =
       alreadyIndexed ||
         !ownerFiles.isNullOrEmpty() ||
@@ -689,15 +729,11 @@ class MetroResolutionService(
     if (ownerFiles != null) {
       dirty += ownerFiles
     }
-    val forced: Set<VirtualFile>
-    if (globalSemanticChange) {
-      dirty += state.shards.keys
-      forced = state.shards.keys
-    } else {
-      forced = emptySet()
-    }
     invalidations.updateAndGet { ledger ->
-      var updated = ledger.withDirty(dirty, forced)
+      var updated = ledger.withDirty(dirty)
+      if (globalSemanticChange) {
+        updated = updated.withForceAll()
+      }
       if (requestFile) {
         updated = updated.withRequested(virtualFile)
       }
@@ -712,6 +748,12 @@ class MetroResolutionService(
    * annotation and factory declaration files. Narrowing this needs referenced-declaration files
    * recorded during type-key snapshotting.
    */
+  private fun fileHasSharedDeclarationsCached(file: KtFile): Boolean {
+    return CachedValuesManager.getCachedValue(file) {
+      CachedValueProvider.Result.create(hasSharedSemanticDeclarations(file), file)
+    }
+  }
+
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
     // Consts commonly live inside objects and companion objects, so recurse through all nesting.
     fun KtDeclaration.isShared(): Boolean =
@@ -857,31 +899,28 @@ private class Invalidations(
   val dirty: Set<VirtualFile> = emptySet(),
   val forced: Set<VirtualFile> = emptySet(),
   val requested: Set<VirtualFile> = emptySet(),
+  /** Re-shard every indexed file, recorded as a flag so listeners never copy the shard set. */
+  val forceAll: Boolean = false,
 ) {
   fun bumpGeneration(): Invalidations =
-    Invalidations(stamp + 1, generation + 1, dirty, forced, requested)
+    Invalidations(stamp + 1, generation + 1, dirty, forced, requested, forceAll)
 
-  fun withDirty(
-    files: Set<VirtualFile>,
-    forcedFiles: Set<VirtualFile> = emptySet(),
-  ): Invalidations =
-    Invalidations(stamp + 1, generation + 1, dirty + files, forced + forcedFiles, requested)
+  fun withDirty(files: Set<VirtualFile>): Invalidations =
+    Invalidations(stamp + 1, generation + 1, dirty + files, forced, requested, forceAll)
 
-  /** Requested files feed a future cold sweep and do not invalidate published results. */
+  fun withForceAll(): Invalidations =
+    Invalidations(stamp + 1, generation + 1, dirty, forced, requested, forceAll = true)
+
+  /** Requested files feed a future pass and do not invalidate published results. */
   fun withRequested(file: VirtualFile): Invalidations =
     if (file in requested) {
       this
     } else {
-      Invalidations(stamp + 1, generation, dirty, forced, requested + file)
+      Invalidations(stamp + 1, generation, dirty, forced, requested + file, forceAll)
     }
 
-  /** The ledger after a successful incremental publish. */
-  fun drainDirty(): Invalidations =
-    Invalidations(stamp + 1, generation, emptySet(), emptySet(), requested)
-
-  /** The ledger after a successful cold sweep, which also consumed requested files. */
-  fun drainAll(): Invalidations =
-    Invalidations(stamp + 1, generation, emptySet(), emptySet(), emptySet())
+  /** The ledger after a successful publish, which consumed every pending entry. */
+  fun drainAll(): Invalidations = Invalidations(stamp + 1, generation)
 }
 
 /** An immutable source view. Incremental passes copy it with only the changed shards replaced. */
