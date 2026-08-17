@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -60,6 +61,8 @@ internal class LibraryIndexPostProcessor(
   private val consumers: List<ConsumerEntry>,
   private val graphs: List<KaGraphDeclaration>,
   private val contributions: MutableList<ContributionEntry>,
+  private val sourceFactoryUseSites: SourceAssistedFactoryUseSites,
+  private val consumerGraphContexts: ConsumerGraphContexts,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
   private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
@@ -311,8 +314,16 @@ internal class LibraryIndexPostProcessor(
       if (consumer.multibindingId != null) {
         continue
       }
-      val context = consumer.pointer.element ?: continue
-      queue += LibraryInjectRequest(consumer.key, classId, context)
+      val containerOwners = consumerGraphContexts.includedContainerPointers(consumer)
+      if (containerOwners == null) {
+        val context = consumerGraphContexts.pointer(consumer).element ?: continue
+        queue += LibraryInjectRequest(consumer.key, classId, context)
+      } else {
+        for (owner in containerOwners) {
+          val context = owner.element ?: continue
+          queue += LibraryInjectRequest(consumer.key, classId, context)
+        }
+      }
     }
     enqueueBindingDependencies(queue)
     if (queue.isEmpty()) return
@@ -337,24 +348,30 @@ internal class LibraryIndexPostProcessor(
           val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
           if (fileIndex.isInContent(virtualFile)) return@analyze null
 
-          // The class-level qualifier is part of both injected-class and assisted-factory keys.
-          if (qualifierAnnotation(classSymbol, options) != request.key.qualifier) {
+          val actualQualifier = qualifierAnnotation(classSymbol, options)
+          val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
+          // Keep a factory under its actual key even when the request has the wrong qualifier:
+          // lazy-factory validation still needs its declaration, but normal lookup must not match.
+          if (actualQualifier != request.key.qualifier && !isAssistedFactory) {
             return@analyze null
           }
+          val factoryKey =
+            if (actualQualifier == request.key.qualifier) request.key
+            else KaTypeKey(request.key.type, actualQualifier)
           val defaultType = classSymbol.defaultType as? KaClassType ?: return@analyze null
           val requestedType =
             if (request.key.type.typeArguments.isEmpty()) defaultType
             else restoreClassType(request.key.type) ?: defaultType
-          if (classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) {
+          if (isAssistedFactory) {
             val factoryFunction = assistedFactoryFunction(requestedType)
             val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
             val targetType = factoryFunction?.returnType?.fullyExpandedType as? KaClassType
             val targetSymbol = targetType?.symbol as? KaNamedClassSymbol
             return@analyze ResolvedLibraryBinding(
-              LibraryInjectBindingId(request.key, virtualFile),
+              LibraryInjectBindingId(factoryKey, virtualFile),
               KaBinding.AssistedFactory(
                 pointerManager.createSmartPsiElementPointer(psi),
-                request.key,
+                factoryKey,
                 scopeAnnotation(classSymbol, options),
                 targetSymbol?.classId?.shortClassName?.asString(),
                 factoryFunction?.returnType?.let { typeKey(it, qualifier = null) },
@@ -429,10 +446,13 @@ internal class LibraryIndexPostProcessor(
   private fun enqueueBindingDependencies(queue: ArrayDeque<LibraryInjectRequest>) {
     val fileIndex = ProjectFileIndex.getInstance(project)
     val useSites = useSitesByModule()
-    val sourceFactoryUseSites = sourceAssistedFactoryUseSites(project, bindings, consumers)
     val seededFactoryUseSites =
       if (sourceFactoryUseSites.isEmpty()) null
-      else Collections.newSetFromMap(IdentityHashMap<Map<KaModule, KtElement>, Boolean>())
+      else {
+        Collections.newSetFromMap(
+          IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
+        )
+      }
     val scopes = HashMap<KaModule, DeclarationResolutionScope>()
     for (binding in bindings) {
       ProgressManager.checkCanceled()
@@ -453,7 +473,8 @@ internal class LibraryIndexPostProcessor(
             continue
           }
           if (!requestingModules.isNullOrEmpty()) {
-            for (context in requestingModules.values) {
+            for (pointer in requestingModules.values) {
+              val context = pointer.element ?: continue
               enqueueDependencies(binding, context, queue)
             }
             continue
@@ -523,10 +544,12 @@ internal fun sourceAssistedFactoryUseSites(
   project: Project,
   bindings: List<KaBinding>,
   consumers: List<ConsumerEntry>,
-): Map<KaBinding.AssistedFactory, Map<KaModule, KtElement>> {
+  graphs: List<KaGraphDeclaration>,
+  graphContexts: ConsumerGraphContexts = ConsumerGraphContexts(graphs),
+): SourceAssistedFactoryUseSites {
   val fileIndex = ProjectFileIndex.getInstance(project)
-  val factoryGroups = HashMap<SourceAssistedFactoryIdentity, SourceAssistedFactoryGroup>()
-  val groupsByKey = HashMap<KaTypeKey, MutableList<SourceAssistedFactoryGroup>>()
+  var factoryGroups: MutableMap<SourceAssistedFactoryIdentity, SourceAssistedFactoryGroup>? = null
+  var groupsByKey: MutableMap<KaTypeKey, MutableList<SourceAssistedFactoryGroup>>? = null
   for (binding in bindings) {
     ProgressManager.checkCanceled()
     if (binding !is KaBinding.AssistedFactory || binding.dependencies.isEmpty()) continue
@@ -534,57 +557,138 @@ internal fun sourceAssistedFactoryUseSites(
     if (!fileIndex.isInContent(virtualFile)) continue
     val identity =
       SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, virtualFile)
-    val existingGroup = factoryGroups[identity]
-    if (existingGroup != null) {
-      existingGroup.bindings += binding
-      continue
-    }
+    val groups =
+      factoryGroups
+        ?: HashMap<SourceAssistedFactoryIdentity, SourceAssistedFactoryGroup>().also {
+          factoryGroups = it
+        }
+    if (identity in groups) continue
     val declaration = binding.pointer.element ?: continue
-    val group = SourceAssistedFactoryGroup(declaration, mutableListOf(binding))
-    factoryGroups[identity] = group
-    groupsByKey.getOrPut(binding.typeKey) { mutableListOf() }.add(group)
+    val group = SourceAssistedFactoryGroup(declaration)
+    groups[identity] = group
+    val keyedGroups =
+      groupsByKey
+        ?: HashMap<KaTypeKey, MutableList<SourceAssistedFactoryGroup>>().also {
+          groupsByKey = it
+        }
+    keyedGroups.getOrPut(binding.typeKey) { mutableListOf() }.add(group)
   }
-  if (factoryGroups.isEmpty()) return emptyMap()
+  val activeGroups = factoryGroups ?: return SourceAssistedFactoryUseSites.EMPTY
+  val activeGroupsByKey = groupsByKey ?: return SourceAssistedFactoryUseSites.EMPTY
 
   val scopes = HashMap<KaModule, DeclarationResolutionScope>()
   for (consumer in consumers) {
     ProgressManager.checkCanceled()
-    val groups = groupsByKey[consumer.key] ?: continue
-    val context = consumer.pointer.element ?: continue
-    val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
-    for (group in groups) {
-      ProgressManager.checkCanceled()
-      if (!group.checkedModules.add(module)) continue
-      val resolutionScope =
-        scopes.getOrPut(module) {
-          val platformScope = KaResolutionScope.forModule(module)
-          DeclarationResolutionScope(platformScope::contains)
-        }
-      if (!resolutionScope.contains(group.declaration)) continue
-      group.useSites[module] = context
+    val groups = activeGroupsByKey[consumer.key] ?: continue
+    val containerOwners = graphContexts.includedContainerPointers(consumer)
+    if (containerOwners == null) {
+      registerSourceFactoryUseSite(project, graphContexts.pointer(consumer), groups, scopes)
+    } else {
+      for (owner in containerOwners) {
+        registerSourceFactoryUseSite(project, owner, groups, scopes)
+      }
     }
   }
 
-  val result = HashMap<KaBinding.AssistedFactory, Map<KaModule, KtElement>>()
-  for (group in factoryGroups.values) {
-    for (binding in group.bindings) {
-      ProgressManager.checkCanceled()
-      result[binding] = group.useSites
-    }
+  val result =
+    HashMap<SourceAssistedFactoryIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>()
+  for ((identity, group) in activeGroups) {
+    ProgressManager.checkCanceled()
+    result[identity] = Collections.unmodifiableMap(LinkedHashMap(group.useSites))
   }
-  return result
+  return SourceAssistedFactoryUseSites(Collections.unmodifiableMap(result))
 }
 
-private data class SourceAssistedFactoryIdentity(
+@OptIn(KaPlatformInterface::class)
+private fun registerSourceFactoryUseSite(
+  project: Project,
+  pointer: SmartPsiElementPointer<out KtElement>,
+  groups: List<SourceAssistedFactoryGroup>,
+  scopes: MutableMap<KaModule, DeclarationResolutionScope>,
+) {
+  val context = pointer.element ?: return
+  val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
+  for (group in groups) {
+    ProgressManager.checkCanceled()
+    if (!group.checkedModules.add(module)) continue
+    val resolutionScope =
+      scopes.getOrPut(module) {
+        val platformScope = KaResolutionScope.forModule(module)
+        DeclarationResolutionScope(platformScope::contains)
+      }
+    if (!resolutionScope.contains(group.declaration)) continue
+    group.useSites[module] = pointer
+  }
+}
+
+/** Inherited callables resolve from their exact owning graph, not the upstream declaration file. */
+@OptIn(KaPlatformInterface::class)
+internal class ConsumerGraphContexts(private val graphs: List<KaGraphDeclaration>) {
+  private val pointersByGraphId:
+    Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>> by lazy {
+    graphs.associate { it.declarationId to it.pointer }
+  }
+  private val pointersByIncludedContainer:
+    Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>> by lazy {
+    val pointers = linkedMapOf<KaTypeKey, MutableList<SmartPsiElementPointer<out KtElement>>>()
+    val modulesByContainer = HashMap<KaTypeKey, MutableSet<KaModule>>()
+    for (graph in graphs) {
+      ProgressManager.checkCanceled()
+      if (graph.includedBindingContainers.isEmpty()) continue
+      val declaration = graph.pointer.element ?: continue
+      val module =
+        KaModuleProvider.getModule(declaration.project, declaration, useSiteModule = null)
+      for (container in graph.includedBindingContainers) {
+        val modules = modulesByContainer.getOrPut(container) { mutableSetOf() }
+        if (!modules.add(module)) continue
+        pointers.getOrPut(container) { mutableListOf() }.add(graph.pointer)
+      }
+    }
+    pointers
+  }
+
+  fun pointer(consumer: ConsumerEntry): SmartPsiElementPointer<out KtElement> {
+    val graphId = consumer.graphId ?: return consumer.pointer
+    return pointersByGraphId[graphId] ?: consumer.pointer
+  }
+
+  /** Factory-input shards are shared, so every graph including their exact key can own a site. */
+  fun includedContainerPointers(
+    consumer: ConsumerEntry
+  ): List<SmartPsiElementPointer<out KtElement>>? {
+    if (consumer.graphId != null) return null
+    val containerKey = consumer.includedContainerKey ?: return null
+    return pointersByIncludedContainer[containerKey]
+  }
+}
+
+/** Session-free source factory groups that remain reusable when equivalent shards are rebuilt. */
+internal class SourceAssistedFactoryUseSites(
+  private val groups:
+    Map<SourceAssistedFactoryIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>
+) {
+  operator fun get(
+    binding: KaBinding.AssistedFactory
+  ): Map<KaModule, SmartPsiElementPointer<out KtElement>>? {
+    val virtualFile = binding.pointer.virtualFile ?: return null
+    return groups[
+      SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, virtualFile)]
+  }
+
+  fun isEmpty(): Boolean = groups.isEmpty()
+
+  companion object {
+    val EMPTY = SourceAssistedFactoryUseSites(emptyMap())
+  }
+}
+
+internal data class SourceAssistedFactoryIdentity(
   val key: KaTypeKey,
   val originClassId: ClassId?,
   val virtualFile: VirtualFile,
 )
 
-private class SourceAssistedFactoryGroup(
-  val declaration: PsiElement,
-  val bindings: MutableList<KaBinding.AssistedFactory>,
-) {
+private class SourceAssistedFactoryGroup(val declaration: PsiElement) {
   val checkedModules = HashSet<KaModule>()
-  val useSites = linkedMapOf<KaModule, KtElement>()
+  val useSites = linkedMapOf<KaModule, SmartPsiElementPointer<out KtElement>>()
 }

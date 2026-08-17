@@ -415,11 +415,16 @@ internal class FileShardBuilder(
             nestedClassIds += memberClassId
             val memberSymbol = member.symbol as? KaClassSymbol ?: continue
             if (!memberSymbol.hasAnyAnnotation(factoryAnnotations)) continue
-            val graphInputs = memberSymbol.graphFactoryInputs(this, options, pointerManager)
+            val graphInputs =
+              memberSymbol.graphFactoryInputs(this, options, pointerManager, graphId)
             cacheDependencies += graphInputs.cacheDependencies
             includedBindingContainers += graphInputs.bindingContainers
             includedDependencies += graphInputs.graphDependencies
             for (input in graphInputs.inputs) {
+              val inputBinding = input.bindings.firstOrNull()
+              if (inputBinding is KaBinding.BoundInstance) {
+                bindings += inputBinding
+              }
               if (processedFactoryInputs.add(input.id)) {
                 factoryInputs += input
               }
@@ -711,7 +716,11 @@ internal class FileShardBuilder(
       owner.classId?.let(injectedMemberOwnerIds::add)
       owner.psi?.containingFile?.let(cacheDependencies::add)
     }
-    for (site in memberInjectSites(targetType, options)) {
+    for (site in
+      memberInjectSites(targetType, options) { dependencyType ->
+        ProgressManager.checkCanceled()
+        processRequestedAssistedFactory(dependencyType)
+      }) {
       val contextKey = site.key
       consumers +=
         ConsumerEntry(
@@ -781,10 +790,18 @@ internal class FileShardBuilder(
     val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
     // The factory constructs its target directly, so its target dependencies use the actual type
     // arguments requested by the graph instead of the target class's unspecialized default type.
+    // Discover factory-typed dependencies with those same concrete arguments. The identity was
+    // recorded above, so mutually dependent factories cannot recurse indefinitely.
+    val processDependencyType: (KaType) -> Unit = { dependencyType ->
+      ProgressManager.checkCanceled()
+      processRequestedAssistedFactory(dependencyType)
+    }
     val targetConstructorDependencies =
-      targetType?.let { injectConstructorDependencyKeys(it, options) }.orEmpty()
+      targetType
+        ?.let { injectConstructorDependencyKeys(it, options, processDependencyType) }
+        .orEmpty()
     val targetMemberDependencies =
-      targetType?.let { memberInjectDependencyKeys(it, options) }.orEmpty()
+      targetType?.let { memberInjectDependencyKeys(it, options, processDependencyType) }.orEmpty()
     bindings +=
       KaBinding.AssistedFactory(
         ptr(declaration),

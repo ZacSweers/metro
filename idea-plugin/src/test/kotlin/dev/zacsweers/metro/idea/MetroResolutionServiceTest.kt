@@ -218,6 +218,55 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(service.index(file).bindings.isEmpty())
   }
 
+  fun testBatchedCompilerSettingsChangesKeepTheLatestIndexAndNotifyOnce() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    UIUtil.dispatchAllInvocationEvents()
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    project.setMetroOptions(
+      "generate-contribution-providers" to "true",
+      "reports-destination" to "/tmp/metro-batched",
+    )
+    project.setMetroOptions(
+      "generate-contribution-providers" to "true",
+      "enable-suspend-providers" to "true",
+    )
+
+    // A direct editor query must see the newest options before deferred listeners run.
+    val latest = service.index(file)
+    assertNotSame(initial, latest)
+    assertEquals(0, notifications)
+
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(1, notifications)
+    assertSame(latest, service.index(file))
+  }
+
+  fun testBatchedOutputOnlyCompilerSettingsDoNotNotifyOrReplaceTheIndex() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    UIUtil.dispatchAllInvocationEvents()
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+
+    project.setMetroOptions("reports-destination" to "/tmp/metro-first")
+    project.setMetroOptions("reports-destination" to "/tmp/metro-second")
+    project.setMetroOptions(
+      "reports-destination" to "/tmp/metro-third",
+      "trace-destination" to "/tmp/metro-traces",
+    )
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(0, notifications)
+    assertSame(initial, service.index(file))
+  }
+
   fun testPlatformCancellationRetriesTheRequestedIndexBuild() {
     var attempts = 0
 
@@ -1320,6 +1369,35 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testWrongQualifiedBinaryFactoryRemainsMissingButRetainsItsActualMetadata() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibEndpoint
+          import libtest.LibGenericAssistedExample
+
+          @DependencyGraph
+          interface AppGraph {
+            @LibEndpoint("selected")
+            val factory: LibGenericAssistedExample.Factory<Int>
+          }
+          """,
+          fileName = "WrongQualifiedBinaryFactory.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val accessor = file.declarationsIncludingNested().property("factory")
+      val consumer = checkNotNull(index.consumerEntryAt(accessor))
+
+      assertTrue(index.bindingsFor(consumer).isEmpty())
+      val actualFactory =
+        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == "libtest.LibGenericAssistedExample.Factory<kotlin.Int>"
+        }
+      assertNull(actualFactory.typeKey.qualifier)
+    }
+  }
+
   fun testQualifiedLibraryInjectClassesResolveOnDemand() {
     module.withMetroLibFixtureLibrary {
       val file =
@@ -1428,6 +1506,78 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testUnrelatedFactoryFileEditsReuseItsExistingBinaryDependencyOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val factoryFile =
+        myFixture.addFileToProject(
+          "test/StableFactory.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.*
+
+          @AssistedInject
+          class StableExample<T>(@Assisted val id: String, val dependency: T) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(id: String): StableExample<T>
+            }
+          }
+
+          @Inject class UnrelatedDependency
+          """
+            .trimIndent(),
+        ) as KtFile
+      val graphFile =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibClientWithDeps
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: StableExample.Factory<LibClientWithDeps>
+          }
+          """,
+          fileName = "StableFactoryGraph.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(graphFile)
+      val initialFactory =
+        initial.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == "test.StableExample.Factory<libtest.LibClientWithDeps>"
+        }
+      val initialClient =
+        initial.bindings.single { it.typeKey.renderedType == "libtest.LibClientWithDeps" }
+      val initialHttpClient =
+        initial.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" }
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(factoryFile))
+      val previousName = "UnrelatedDependency"
+      val nameOffset = document.text.indexOf(previousName)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(nameOffset, nameOffset + previousName.length, "RenamedDependency")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(graphFile)
+      val updatedFactory =
+        updated.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == "test.StableExample.Factory<libtest.LibClientWithDeps>"
+        }
+      assertNotSame(initial, updated)
+      assertNotSame(initialFactory, updatedFactory)
+      assertSame(
+        initialClient,
+        updated.bindings.single { it.typeKey.renderedType == "libtest.LibClientWithDeps" },
+      )
+      assertSame(
+        initialHttpClient,
+        updated.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" },
+      )
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "test.RenamedDependency" })
+    }
+  }
+
   fun testRepeatedSourceGenericFactoryRequestsShareTheirLibraryUseSites() {
     module.withMetroLibFixtureLibrary {
       myFixture.addFileToProject(
@@ -1484,7 +1634,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         specializedFactories.size > 1,
       )
 
-      val useSites = sourceAssistedFactoryUseSites(project, index.bindings, index.consumers)
+      val useSites =
+        sourceAssistedFactoryUseSites(project, index.bindings, index.consumers, index.graphs)
       val sharedUseSites = checkNotNull(useSites[specializedFactories.first()])
       assertEquals(1, sharedUseSites.size)
       for (factory in specializedFactories) {

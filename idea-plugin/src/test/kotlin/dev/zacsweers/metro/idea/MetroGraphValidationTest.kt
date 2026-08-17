@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtParameter
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
 class MetroGraphValidationTest : BasePlatformTestCase() {
@@ -201,6 +202,52 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(
       result.bindings.any { key, binding ->
         key.renderedType == "test.Bar" && binding is KaBinding.BoundInstance && binding.isGraphInput
+      }
+    )
+  }
+
+  fun testChildFactoryInputSupersedesTheSameParentInput() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface ExternalDependency
+
+        @GraphExtension
+        interface ChildGraph {
+          val dependency: ExternalDependency
+
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(@Includes childDependency: ExternalDependency): ChildGraph
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val childFactory: ChildGraph.Factory
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes parentDependency: ExternalDependency): AppGraph
+          }
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+    val childResult = results.first().requireCompleted()
+
+    assertTrue(
+      childResult.diagnostics.joinToString { it.render() },
+      childResult.diagnostics.isEmpty(),
+    )
+    assertTrue(
+      childResult.bindings.any { key, binding ->
+        key.renderedType == "test.ExternalDependency" &&
+          binding is KaBinding.BoundInstance &&
+          (binding.pointer.element as? KtParameter)?.name == "childDependency"
       }
     )
   }
@@ -413,6 +460,94 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "Multiple bindings found for" in diagnostic.render())
     // The duplicate sources ride along for navigation
     assertEquals(2, diagnostic.related.size)
+  }
+
+  fun testChildInheritedGenericProviderSupersedesTheSameParentDeclaration() {
+    val result =
+      validate(
+        """
+        interface GenericProviders<T> {
+          @Provides fun provideText(value: T): String = value.toString()
+        }
+
+        @GraphExtension
+        interface ChildGraph : GenericProviders<Int> {
+          val text: String
+        }
+
+        @DependencyGraph
+        interface AppGraph : GenericProviders<Int> {
+          val child: ChildGraph
+
+          @Provides fun provideInt(): Int = 1
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val childBinding =
+      result.bindings.asMap().values.single {
+        it is KaBinding.Provided && it.typeKey.renderedType == "kotlin.String"
+      }
+    assertEquals(result.graph.declarationId, childBinding.ownerGraphId)
+  }
+
+  fun testChildInheritedGenericAliasSupersedesTheSameParentDeclaration() {
+    val result =
+      validate(
+        """
+        interface Service
+        @Inject class RealService : Service
+
+        interface GenericBindings<T : Service> {
+          @Binds fun bindService(value: T): Service
+        }
+
+        @GraphExtension
+        interface ChildGraph : GenericBindings<RealService> {
+          val service: Service
+        }
+
+        @DependencyGraph
+        interface AppGraph : GenericBindings<RealService> {
+          val child: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val childBinding =
+      result.bindings.asMap().values.single {
+        it is KaBinding.Alias && it.typeKey.renderedType == "test.Service"
+      }
+    assertEquals(result.graph.declarationId, childBinding.ownerGraphId)
+  }
+
+  fun testDifferentInheritedGenericProvidersInOneGraphRemainDuplicates() {
+    val result =
+      validate(
+        """
+        interface FirstProviders<T> {
+          @Provides fun first(value: T): String = value.toString()
+        }
+
+        interface SecondProviders<T> {
+          @Provides fun second(value: T): String = value.toString()
+        }
+
+        @DependencyGraph
+        interface AppGraph : FirstProviders<Int>, SecondProviders<Int> {
+          val text: String
+
+          @Provides fun provideInt(): Int = 1
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
+    assertEquals(2, result.diagnostics.single().related.size)
   }
 
   fun testDuplicateMapKeysAreReported() {
@@ -658,6 +793,385 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
     assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
     assertTrue(diagnostic.render(), "Screen" in diagnostic.render())
+  }
+
+  fun testLazyAssistedFactoryReportsEachGraphAccessor() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val propertyFactory: Lazy<Widget.Factory>
+
+          fun functionFactory(): Lazy<Widget.Factory>
+        }
+        """
+      )
+
+    assertEquals(
+      listOf(MetroDiagnosticId.INVALID_BINDING, MetroDiagnosticId.INVALID_BINDING),
+      result.diagnostics.map { it.id },
+    )
+    assertTrue(
+      result.diagnostics.all {
+        "does not support injecting Lazy<Factory>" in it.render()
+      }
+    )
+    assertEquals(2, result.diagnostics.map { it.stack.first().pointer }.distinct().size)
+  }
+
+  fun testLazyAssistedFactoryConstructorDependencyIsRejected() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject class Consumer(val factory: Lazy<Widget.Factory>)
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+    assertTrue(diagnostic.render(), "Widget.Factory" in diagnostic.render())
+  }
+
+  fun testQualifiedLazyAssistedFactoryDependencyIsRejectedBeforeMissingBinding() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject class Consumer(@Chosen val factory: Lazy<Widget.Factory>)
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
+  }
+
+  fun testEachSameKeyLazyFactoryConstructorParameterIsRejected() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject
+        class Consumer(
+          val first: Lazy<Widget.Factory>,
+          val second: Lazy<Widget.Factory>,
+        )
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+
+    assertEquals(2, result.diagnostics.count { it.id == MetroDiagnosticId.INVALID_BINDING })
+  }
+
+  fun testLazyAssistedFactoryProviderDependencyIsRejected() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val text: String
+
+          @Provides fun provideText(factory: Lazy<Widget.Factory>): String = "ready"
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testLazyAssistedFactoryInjectedMemberIsRejected() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject
+        class Consumer {
+          @Inject lateinit var factory: Lazy<Widget.Factory>
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testLazyAssistedMemberRequestedThroughAnInjectorIsReportedOnce() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject
+        class Consumer {
+          @Inject lateinit var factory: Lazy<Widget.Factory>
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+
+          fun inject(consumer: Consumer)
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testInjectorOnlyLazyAssistedMemberIsReportedOnce() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        class Target {
+          @Inject lateinit var factory: Lazy<Widget.Factory>
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          fun inject(target: Target)
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testLazyAssistedFactoryInsideItsOwnTargetIsRejected() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget<T>(@Assisted val id: String, val factory: Lazy<Factory<T>>) {
+          @AssistedFactory
+          interface Factory<T> {
+            fun create(id: String): Widget<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Widget.Factory<Int>
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+    assertTrue(
+      result.diagnostics.single().render(),
+      "Lazy<Factory>" in result.diagnostics.single().render(),
+    )
+  }
+
+  fun testQualifiedLazyAssistedFactoryIsRejectedBeforeMissingBinding() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          @Chosen val factory: Lazy<Widget.Factory>
+        }
+        """
+      )
+
+    assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
+    assertTrue(
+      result.diagnostics.first().render(),
+      "Lazy<Factory>" in result.diagnostics.first().render(),
+    )
+  }
+
+  fun testExplicitQualifiedFactoryProviderDoesNotMakeLazyInjectionValid() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          @Chosen val factory: Lazy<Widget.Factory>
+
+          @Provides @Chosen fun provideFactory(): Widget.Factory = error("unused")
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testBinaryLazyAssistedFactoryIsRejected() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibGenericAssistedExample
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: Lazy<LibGenericAssistedExample.Factory<Int>>
+
+            @Provides fun provideInt(): Int = 1
+          }
+          """
+        )
+
+      assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+    }
+  }
+
+  fun testQualifiedBinaryLazyAssistedFactoryIsRejected() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibEndpoint
+          import libtest.LibGenericAssistedExample
+
+          @DependencyGraph
+          interface AppGraph {
+            @LibEndpoint("selected")
+            val factory: Lazy<LibGenericAssistedExample.Factory<Int>>
+
+            @Provides fun provideInt(): Int = 1
+          }
+          """
+        )
+
+      assertEquals(MetroDiagnosticId.INVALID_BINDING, result.diagnostics.first().id)
+    }
+  }
+
+  fun testProviderOfLazyAssistedFactoryDoesNotUseTheDirectLazyDiagnostic() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject class Consumer(val factory: Provider<Lazy<Widget.Factory>>)
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
 
   fun testAssistedClassIsOnlyAvailableForGraphValidation() {
@@ -954,6 +1468,59 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testPublicOptionalBindingSurvivesEarlierPrivateDeclaration() {
+    assertPublicOptionalBindingSurvivesPrivateDeclaration(privateFirst = true)
+  }
+
+  fun testPublicOptionalBindingSurvivesLaterPrivateDeclaration() {
+    assertPublicOptionalBindingSurvivesPrivateDeclaration(privateFirst = false)
+  }
+
+  private fun assertPublicOptionalBindingSurvivesPrivateDeclaration(privateFirst: Boolean) {
+    project.setMetroOptions("enable-dagger-runtime-interop" to "true")
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      "package dagger\n\nannotation class BindsOptionalOf",
+    )
+    myFixture.addFileToProject("java/util/Optional.kt", "package java.util\n\nclass Optional<T>")
+    val privateDeclaration = "@GraphPrivate @BindsOptionalOf fun privateService(): Service"
+    val publicDeclaration = "@BindsOptionalOf fun publicService(): Service"
+    val declarations =
+      if (privateFirst) {
+        "$privateDeclaration\n$publicDeclaration"
+      } else {
+        "$publicDeclaration\n$privateDeclaration"
+      }
+
+    val result =
+      validate(
+        """
+        import dagger.BindsOptionalOf
+        import java.util.Optional
+
+        interface Service
+
+        @BindingContainer
+        interface ParentBindings {
+          $declarations
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val service: Optional<Service>
+        }
+
+        @DependencyGraph(bindingContainers = [ParentBindings::class])
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
   }
 
   fun testGraphPrivateGetterIsNotVisibleToChild() {
@@ -2027,6 +2594,130 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
     assertTrue(
       result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.String>" }
+    )
+  }
+
+  fun testNestedGenericAssistedFactoriesUseConcreteDependenciesTransitively() {
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        @AssistedInject
+        class Inner<T>(@Assisted val id: String, @Chosen val value: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Inner<T>
+          }
+        }
+
+        @AssistedInject
+        class Middle<T>(@Assisted val id: String, val inner: Provider<Inner.Factory<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Middle<T>
+          }
+        }
+
+        @AssistedInject
+        class Outer<T>(@Assisted val id: String, val middle: Middle.Factory<T>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Outer<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Outer.Factory<Int>
+
+          @Provides @Chosen fun provideInt(): Int = 1
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factoryTypes =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
+        it.typeKey.renderedType
+      }
+    assertEquals(
+      setOf(
+        "test.Inner.Factory<kotlin.Int>",
+        "test.Middle.Factory<kotlin.Int>",
+        "test.Outer.Factory<kotlin.Int>",
+      ),
+      factoryTypes.toSet(),
+    )
+  }
+
+  fun testMutuallyDependentGenericAssistedFactoriesDoNotRecurseIndefinitely() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Left<T>(@Assisted val id: String, val right: Right.Factory<T>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Left<T>
+          }
+        }
+
+        @AssistedInject
+        class Right<T>(@Assisted val id: String, val left: Provider<Left.Factory<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Right<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Left.Factory<Int>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertEquals(
+      2,
+      result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().size,
+    )
+  }
+
+  fun testGenericGraphInjectorSpecializesFactoryTypedInheritedMembers() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget<T>(@Assisted val id: String, val value: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Widget<T>
+          }
+        }
+
+        @HasMemberInjections
+        open class MemberBase<T> {
+          @Inject lateinit var factory: Widget.Factory<T>
+        }
+
+        class Target<T> : MemberBase<T>()
+
+        @DependencyGraph
+        interface AppGraph {
+          fun inject(target: Target<Int>)
+
+          @Provides fun provideInt(): Int = 1
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, _ ->
+        key.renderedType == "test.Widget.Factory<kotlin.Int>"
+      }
     )
   }
 

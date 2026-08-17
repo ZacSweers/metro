@@ -156,15 +156,18 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       }
     }
     val renderedKeys = consumers.map { it.key.render(short = true) }.distinct()
+    val distinctBindings = index.distinctBindingDeclarations(bindings)
+    val bindingsDiffer =
+      renderedKeys.size > 1 || distinctBindings.size > 1 || hasMissingRequiredContext
     val tooltip = buildString {
       append("Metro dependency: ")
       append(renderedKeys.joinToString(" / "))
-      append(" · bindings differ across ")
+      append(if (bindingsDiffer) " · bindings differ across " else " · available in ")
       append(contexts.size)
       append(" graph contexts")
-      if (bindings.size > 1) {
+      if (distinctBindings.size > 1) {
         append(" · ")
-        append(bindings.size)
+        append(distinctBindings.size)
         append(" candidates")
       }
     }
@@ -174,7 +177,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       tooltip = tooltip,
       popupTitle = "Bindings across graph contexts",
       emptyText = "No Metro bindings found across graph contexts",
-      targets = bindings.map { it.pointer },
+      targets = distinctBindings.map { it.pointer },
     )
   }
 

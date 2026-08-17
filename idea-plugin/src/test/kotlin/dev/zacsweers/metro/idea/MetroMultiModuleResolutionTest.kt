@@ -18,6 +18,7 @@ import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.ConsumerGraphContexts
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ContributionEntry
@@ -585,6 +586,413 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       )
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testInheritedGenericFactoryRequestsUseTheirExactSameFqnGraphModule() {
+    fixture.addFileToProject(
+      "library/shared/GenericFactoryBase.kt",
+      """
+      package shared
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class GenericTarget<T>(@Assisted val id: String, val dependency: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): GenericTarget<T>
+        }
+      }
+
+      interface GenericBase<T> {
+        val factory: GenericTarget.Factory<T>
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/shared/InheritedGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface SharedGraph : GenericBase<LibClientWithDeps>
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/shared/InheritedGraph.kt",
+        """
+        package shared
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Inject
+
+        @Inject class BridgeDependency
+
+        @DependencyGraph(AppScope::class)
+        interface SharedGraph : GenericBase<BridgeDependency>
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    // The same graph FQN is declared in both modules; only the app can see the binary dependency.
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val validation = fixture.project.service<MetroGraphValidationService>()
+      val appGraph =
+        checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("SharedGraph")))
+      val appResult =
+        validation.validate(appFile, index.contextsFor(appGraph).single()).requireCompleted()
+      assertTrue(
+        appResult.diagnostics.joinToString { it.render() },
+        appResult.diagnostics.isEmpty(),
+      )
+      assertTrue(
+        appResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+      )
+      assertTrue(appResult.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+
+      val bridgeGraph =
+        checkNotNull(
+          index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("SharedGraph"))
+        )
+      val bridgeResult =
+        validation.validate(bridgeFile, index.contextsFor(bridgeGraph).single()).requireCompleted()
+      assertTrue(
+        bridgeResult.diagnostics.joinToString { it.render() },
+        bridgeResult.diagnostics.isEmpty(),
+      )
+      assertTrue(
+        bridgeResult.bindings.any { key, _ -> key.renderedType == "shared.BridgeDependency" }
+      )
+      assertFalse(
+        bridgeResult.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+      )
+    }
+  }
+
+  fun testInheritedBinaryFactoryAndInjectAccessorsUseTheOwningGraphModule() {
+    fixture.addFileToProject(
+      "library/lib/AccessorBases.kt",
+      """
+      package lib
+
+      interface InjectedBase<T> {
+        val dependency: T
+      }
+
+      interface FactoryBase<T> {
+        val factory: T
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/InheritedBinaryGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Provides
+        import lib.FactoryBase
+        import lib.InjectedBase
+        import libtest.LibClientWithDeps
+        import libtest.LibGenericAssistedExample
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph :
+          InjectedBase<LibClientWithDeps>,
+          FactoryBase<LibGenericAssistedExample.Factory<Int>> {
+          @Provides fun number(): Int = 1
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, index.contextsFor(graph).single())
+          .requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+      assertTrue(
+        result.bindings.any { key, _ ->
+          key.renderedType == "libtest.LibGenericAssistedExample.Factory<kotlin.Int>"
+        }
+      )
+    }
+  }
+
+  fun testInheritedProviderParametersAndReceiversUseTheOwningGraphModule() {
+    fixture.addFileToProject(
+      "library/lib/InheritedProviders.kt",
+      """
+      package lib
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class GenericTarget<T>(@Assisted val id: String, val dependency: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): GenericTarget<T>
+        }
+      }
+
+      interface ParameterService
+      interface ReceiverService
+
+      interface ParameterProviders<T> {
+        @Provides fun parameterService(factory: GenericTarget.Factory<T>): ParameterService =
+          object : ParameterService {}
+      }
+
+      interface ReceiverProviders<T> {
+        @Provides fun GenericTarget.Factory<T>.receiverService(): ReceiverService =
+          object : ReceiverService {}
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/InheritedProviderGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import lib.ParameterProviders
+        import lib.ParameterService
+        import lib.ReceiverProviders
+        import lib.ReceiverService
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph :
+          ParameterProviders<LibClientWithDeps>,
+          ReceiverProviders<LibClientWithDeps> {
+          val parameterService: ParameterService
+          val receiverService: ReceiverService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, index.contextsFor(graph).single())
+          .requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testIncludedGenericContainerConsumersUseEveryOwningGraphModule() {
+    fixture.addFileToProject(
+      "library/lib/GenericContainer.kt",
+      """
+      package lib
+
+      import dev.zacsweers.metro.BindingContainer
+      import dev.zacsweers.metro.Provides
+
+      @BindingContainer
+      abstract class GenericContainer<T> {
+        @Provides fun text(dependency: T): String = dependency.toString()
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/IncludedGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+        import lib.GenericContainer
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val text: String
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes container: GenericContainer<LibClientWithDeps>): AppGraph
+          }
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface OtherAppGraph {
+          val text: String
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes container: GenericContainer<LibClientWithDeps>): OtherAppGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val bridgeFile =
+      fixture.addFileToProject(
+        "bridge/bridge/IncludedGraph.kt",
+        """
+        package bridge
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+        import lib.GenericContainer
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface BridgeGraph {
+          val text: String
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes container: GenericContainer<LibClientWithDeps>): BridgeGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val bridgeModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(bridgeFile))
+
+    appModule.withMetroLibFixtureLibrary {
+      bridgeModule.withMetroLibFixtureLibrary {
+        PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+        IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+        val index = fixture.project.service<MetroResolutionService>().index(appFile)
+        val includedConsumer =
+          index.consumers.single {
+            it.includedContainerKey?.renderedType ==
+              "lib.GenericContainer<libtest.LibClientWithDeps>" &&
+              it.key.renderedType == "libtest.LibClientWithDeps"
+          }
+        val owners =
+          checkNotNull(
+            ConsumerGraphContexts(index.graphs).includedContainerPointers(includedConsumer)
+          )
+        assertEquals("Two graphs in the app module should share one owner", 2, owners.size)
+        val ownerModules =
+          owners.mapTo(mutableSetOf()) { pointer ->
+            ModuleUtilCore.findModuleForPsiElement(checkNotNull(pointer.element))
+          }
+        assertEquals(setOf(appModule, bridgeModule), ownerModules)
+
+        val validation = fixture.project.service<MetroGraphValidationService>()
+        val graphDeclarations =
+          listOf(appFile to "AppGraph", appFile to "OtherAppGraph", bridgeFile to "BridgeGraph")
+        for ((file, name) in graphDeclarations) {
+          val graph =
+            checkNotNull(index.graphEntryAt(file.declarationsIncludingNested().klass(name)))
+          val result =
+            validation.validate(file, index.contextsFor(graph).single()).requireCompleted()
+          assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+          assertTrue(
+            result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" }
+          )
+          assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+        }
+      }
+    }
+  }
+
+  fun testSameFqnGraphsReportOnlyTheirOwnLazyAssistedFactorySites() {
+    fun addGraph(path: String): KtFile {
+      return fixture.addFileToProject(
+        path,
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          fun interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject class Consumer(val factory: Lazy<Widget.Factory>)
+
+        @DependencyGraph
+        interface SharedGraph {
+          val consumer: Consumer
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    }
+
+    val appFile = addGraph("app/shared/LazyGraphs.kt")
+    val bridgeFile = addGraph("bridge/shared/LazyGraphs.kt")
+    checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile)).addKotlinStdlibLibrary()
+    checkNotNull(ModuleUtilCore.findModuleForPsiElement(bridgeFile)).addKotlinStdlibLibrary()
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    for (file in listOf(appFile, bridgeFile)) {
+      val declaration = file.declarationsIncludingNested().klass("SharedGraph")
+      val graph = checkNotNull(index.graphEntryAt(declaration))
+      val result = validation.validate(file, index.contextsFor(graph).single()).requireCompleted()
+      val diagnostic = result.diagnostics.single()
+
+      assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
+      assertTrue(
+        diagnostic.stack.joinToString(),
+        diagnostic.stack.mapNotNull { it.pointer?.virtualFile }.all { it == file.virtualFile },
+      )
+      assertTrue(
+        diagnostic.related.joinToString { it.typeKey.renderedType },
+        diagnostic.related.all { it.pointer.virtualFile == file.virtualFile },
+      )
     }
   }
 

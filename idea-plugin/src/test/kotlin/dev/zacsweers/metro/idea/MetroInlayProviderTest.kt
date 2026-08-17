@@ -115,6 +115,71 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
     )
   }
 
+  fun testIdenticalGenericSpecializationsKeepTheirImplementationInlay() {
+    doTestProvider(
+      "MatchingGenericProviders.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      interface Api
+
+      @Inject @ContributesBinding(AppScope::class)
+      class RealApi : Api
+
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T/*<#  RealApi #>*/): String = value.toString()
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface FirstGraph : GenericBase<Api> {
+        val text: String
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface SecondGraph : GenericBase<Api> {
+        val text: String
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
+
+  fun testParentAndChildSpecializedAliasesKeepTheirImplementationInlay() {
+    doTestProvider(
+      "InheritedParentChildBindings.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      interface Api
+      @Inject class RealApi : Api
+
+      interface GenericBase<T : Api> {
+        @Binds fun bindApi(value: T): Api
+
+        @Provides fun provideText(value: Api/*<#  RealApi #>*/): String = value.toString()
+      }
+
+      @GraphExtension
+      interface ChildGraph : GenericBase<RealApi> {
+        val text: String
+      }
+
+      @DependencyGraph
+      interface AppGraph : GenericBase<RealApi> {
+        val text: String
+        val child: ChildGraph
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
+
   fun testDifferentGenericProviderSpecializationsDoNotShowAnImplementationInlay() {
     doTestProvider(
       "ContextDependentGenericProvider.kt",

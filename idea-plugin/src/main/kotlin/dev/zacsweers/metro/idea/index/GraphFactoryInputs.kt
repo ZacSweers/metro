@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -43,6 +44,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
   session: KaSession,
   options: MetroOptions,
   pointerManager: SmartPointerManager,
+  graphId: GraphDeclarationId,
 ): GraphFactoryInputs =
   with(session) {
     val factoryScope =
@@ -82,6 +84,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
               options,
               pointerManager,
               cacheDependencies,
+              graphId,
             )
         }
       } else if (graphDependencies.add(parameterKey)) {
@@ -93,6 +96,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
             options,
             pointerManager,
             cacheDependencies,
+            graphId,
           )
       }
     }
@@ -106,6 +110,7 @@ private fun KaSession.includedGraphDependency(
   options: MetroOptions,
   pointerManager: SmartPointerManager,
   cacheDependencies: MutableSet<PsiFile>,
+  graphId: GraphDeclarationId,
 ): FactoryInputEntry {
   val bindings = mutableListOf<KaBinding>()
   val ownerElement = parameter.symbol.psi ?: dependencyType.symbol.psi
@@ -116,6 +121,7 @@ private fun KaSession.includedGraphDependency(
         dependencyKey,
         containerId = null,
         isGraphInput = true,
+        ownerGraphId = graphId,
       )
   }
 
@@ -160,6 +166,7 @@ private fun KaSession.includedBindingContainer(
   options: MetroOptions,
   pointerManager: SmartPointerManager,
   cacheDependencies: MutableSet<PsiFile>,
+  graphId: GraphDeclarationId,
 ): FactoryInputEntry {
   val bindings = mutableListOf<KaBinding>()
   val consumers = mutableListOf<ConsumerEntry>()
@@ -171,6 +178,7 @@ private fun KaSession.includedBindingContainer(
         containerKey,
         containerId = null,
         isBindingContainerInput = true,
+        ownerGraphId = graphId,
       )
   }
   val containerScope = containerType.scope

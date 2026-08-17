@@ -251,6 +251,9 @@ internal sealed interface KaBinding :
     /** True for a concrete binding container supplied through a factory `@Includes` parameter. */
     val isBindingContainerInput: Boolean = false,
     override val isGraphPrivate: Boolean = false,
+    override val ownerGraphId: GraphDeclarationId? = null,
+    /** Other graphs inheriting this exact factory parameter declaration. */
+    val additionalOwnerGraphIds: Set<GraphDeclarationId> = emptySet(),
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 

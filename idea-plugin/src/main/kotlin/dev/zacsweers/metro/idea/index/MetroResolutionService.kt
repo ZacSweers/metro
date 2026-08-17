@@ -33,6 +33,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeAdapter
 import com.intellij.psi.PsiTreeChangeEvent
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
@@ -51,7 +52,10 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
@@ -119,6 +123,8 @@ class MetroResolutionService(
   /** Pre-change shared declarations, so broad PSI events do not invalidate unrelated edits. */
   private val sharedDeclarationFingerprints = ConcurrentHashMap<VirtualFile, String>()
   private val invalidationPending = AtomicBoolean()
+  /** The first source state in a batch of roots, facet, or compiler-settings callbacks. */
+  private val pendingProjectInputs = AtomicReference<PendingProjectInputs?>(null)
   private val disposed = AtomicBoolean()
 
   /**
@@ -315,7 +321,17 @@ class MetroResolutionService(
 
   /** Roots/facet changes should refresh open windows even when no editor asks for the index. */
   private fun projectInputsChanged() {
-    val snapshot = sourceSnapshot.get()
+    val pending = PendingProjectInputs(sourceSnapshot.get())
+    if (!pendingProjectInputs.compareAndSet(null, pending)) return
+    ApplicationManager.getApplication().invokeLater {
+      val scheduled = pendingProjectInputs.getAndSet(null) ?: return@invokeLater
+      if (disposed.get() || project.isDisposed) return@invokeLater
+      reconcileProjectInputs(scheduled.snapshot)
+    }
+  }
+
+  /** A sync can change many modules together; compare their semantic options once per batch. */
+  private fun reconcileProjectInputs(snapshot: SourceSnapshot?) {
     if (snapshot == null) {
       // An already-open window may be waiting for Metro to be configured for the first time.
       scheduleInvalidationNotification()
@@ -326,16 +342,24 @@ class MetroResolutionService(
     val compilerSettingsChanged = snapshot.inputs.compilerSettings != inputs.compilerSettings
     if (!rootsChanged && !compilerSettingsChanged) return
 
+    val currentFingerprints = if (compilerSettingsChanged) moduleFingerprints() else null
     val semanticSettingsChanged =
-      compilerSettingsChanged && snapshot.moduleFingerprints != moduleFingerprints()
+      compilerSettingsChanged && snapshot.moduleFingerprints != currentFingerprints
     if (!rootsChanged && !semanticSettingsChanged) {
       // Reenabling Metro can match the last built options after disabling evicted every index.
       if (snapshots.isEmpty()) scheduleInvalidationNotification()
       return
     }
 
-    val bumped = invalidations.updateAndGet { it.bumpGeneration() }
-    evictStaleCaches(bumped.generation, inputs.roots)
+    val latest = sourceSnapshot.get()
+    val currentSourceAlreadyPublished =
+      latest != null &&
+        latest.inputs == inputs &&
+        (!semanticSettingsChanged || latest.moduleFingerprints == currentFingerprints)
+    if (!currentSourceAlreadyPublished) {
+      val bumped = invalidations.updateAndGet { it.bumpGeneration() }
+      evictStaleCaches(bumped.generation, inputs.roots)
+    }
     scheduleInvalidationNotification()
   }
 
@@ -426,7 +450,7 @@ class MetroResolutionService(
       val source = aggregateSource(next)
       val library =
         if (key.resolveFromLibraries) {
-          libraryShardFor(key.fingerprint, inputs.roots, source)
+          libraryShardFor(key.fingerprint, inputs.roots, next, source)
         } else {
           LibraryShard.EMPTY
         }
@@ -532,10 +556,28 @@ class MetroResolutionService(
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
     val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
+    var factoryInputBindings: CanonicalFactoryInputBindings? = null
     for (virtualFile in snapshot.shardOrder) {
       ProgressManager.checkCanceled()
       val shard = snapshot.shards[virtualFile] ?: continue
-      bindings += shard.bindings
+      if (shard.factoryInputs.isEmpty()) {
+        bindings += shard.bindings
+      } else {
+        for (binding in shard.bindings) {
+          val isOwnedFactoryInput =
+            binding is KaBinding.BoundInstance &&
+              binding.ownerGraphId != null &&
+              (binding.isGraphInput || binding.isBindingContainerInput)
+          if (!isOwnedFactoryInput) {
+            bindings += binding
+            continue
+          }
+          val instances =
+            factoryInputBindings
+              ?: CanonicalFactoryInputBindings(bindings).also { factoryInputBindings = it }
+          instances.add(binding)
+        }
+      }
       consumers += shard.consumers
       graphs += shard.graphs
       contributions += shard.contributions
@@ -543,8 +585,14 @@ class MetroResolutionService(
       bindingContainers += shard.bindingContainers
       for (input in shard.factoryInputs) factoryInputs.putIfAbsent(input.id, input)
     }
+    factoryInputBindings?.finish()
     for (input in factoryInputs.values) {
-      bindings += input.bindings
+      val sharedBindings = input.bindings
+      if (sharedBindings.firstOrNull() is KaBinding.BoundInstance) {
+        bindings.addAll(sharedBindings.subList(1, sharedBindings.size))
+      } else {
+        bindings += sharedBindings
+      }
       consumers += input.consumers
     }
     return SourceAggregate(
@@ -560,9 +608,11 @@ class MetroResolutionService(
   private fun libraryShardFor(
     fingerprint: IndexOptionsFingerprint,
     rootsGeneration: Long,
+    snapshot: SourceSnapshot,
     source: SourceAggregate,
   ): LibraryShard {
-    val key = LibraryCacheKey(fingerprint, rootsGeneration, source.libraryInputs(project))
+    val summary = snapshot.librarySummary.getOrCreate(project, source)
+    val key = LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs)
     libraryShards[key]?.let {
       return it
     }
@@ -576,6 +626,8 @@ class MetroResolutionService(
         source.consumers,
         source.graphs,
         contributions,
+        summary.factoryUseSites,
+        summary.consumerGraphContexts,
       )
       .postProcess()
     val shard =
@@ -1016,6 +1068,7 @@ class MetroResolutionService(
 
   override fun dispose() {
     disposed.set(true)
+    pendingProjectInputs.set(null)
     buildSignal.close()
     pendingBuilds.clear()
     listeners.clear()
@@ -1030,6 +1083,87 @@ class MetroResolutionService(
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
   }
 }
+
+/** Keeps one factory instance per source parameter while retaining every exact graph owner. */
+private class CanonicalFactoryInputBindings(private val bindings: MutableList<KaBinding>) {
+  private val groups = LinkedHashMap<FactoryInputBindingIdentity, FactoryInputBindingGroup>()
+
+  fun add(binding: KaBinding.BoundInstance) {
+    val file = binding.pointer.virtualFile
+    val range = binding.pointer.psiRange
+    if (file == null || range == null) {
+      bindings += binding
+      return
+    }
+
+    val identity =
+      FactoryInputBindingIdentity(
+        binding.typeKey,
+        file,
+        range.startOffset,
+        range.endOffset,
+        binding.isGraphInput,
+        binding.isBindingContainerInput,
+      )
+    val existing = groups[identity]
+    if (existing == null) {
+      groups[identity] = FactoryInputBindingGroup(bindings.size, binding)
+      bindings += binding
+      return
+    }
+
+    val ownerGraphId = binding.ownerGraphId
+    if (ownerGraphId != null && ownerGraphId != existing.binding.ownerGraphId) {
+      val owners =
+        existing.additionalOwners
+          ?: linkedSetOf<GraphDeclarationId>().also { existing.additionalOwners = it }
+      owners += ownerGraphId
+    }
+    if (binding.additionalOwnerGraphIds.isNotEmpty()) {
+      val owners =
+        existing.additionalOwners
+          ?: linkedSetOf<GraphDeclarationId>().also { existing.additionalOwners = it }
+      owners += binding.additionalOwnerGraphIds
+      existing.binding.ownerGraphId?.let(owners::remove)
+    }
+  }
+
+  fun finish() {
+    for (group in groups.values) {
+      ProgressManager.checkCanceled()
+      val owners = group.additionalOwners
+      if (owners.isNullOrEmpty()) continue
+
+      val binding = group.binding
+      bindings[group.index] =
+        KaBinding.BoundInstance(
+          pointer = binding.pointer,
+          typeKey = binding.typeKey,
+          containerId = binding.containerId,
+          isGraphInput = binding.isGraphInput,
+          isBindingContainerInput = binding.isBindingContainerInput,
+          isGraphPrivate = binding.isGraphPrivate,
+          ownerGraphId = binding.ownerGraphId,
+          additionalOwnerGraphIds = Collections.unmodifiableSet(LinkedHashSet(owners)),
+        )
+    }
+  }
+}
+
+private data class FactoryInputBindingIdentity(
+  val key: KaTypeKey,
+  val file: VirtualFile,
+  val startOffset: Int,
+  val endOffset: Int,
+  val isGraphInput: Boolean,
+  val isBindingContainerInput: Boolean,
+)
+
+private class FactoryInputBindingGroup(
+  val index: Int,
+  val binding: KaBinding.BoundInstance,
+  var additionalOwners: MutableSet<GraphDeclarationId>? = null,
+)
 
 /** Retries platform read-action cancellations without cancelling the long-lived index worker. */
 internal suspend fun <T> retryCancelledIndexBuild(build: suspend () -> T): T {
@@ -1051,6 +1185,11 @@ private data class SnapshotKey(
 )
 
 private data class IndexInputs(val roots: Long, val compilerSettings: Long)
+
+/**
+ * Captures the pre-change state once so deferred callbacks retain activation and refresh events.
+ */
+private data class PendingProjectInputs(val snapshot: SourceSnapshot?)
 
 private data class IndexSnapshot(
   val index: BindingIndex,
@@ -1112,9 +1251,19 @@ private class SourceSnapshot(
   val shardOrder: List<VirtualFile>,
   /** Dependency file to the shard files that must rebuild when it changes. */
   val dependencyOwners: PartitionedFileMap<Set<VirtualFile>>,
+  /** Reused when changed shards leave every effective binary lookup input unchanged. */
+  val librarySummary: SourceLibrarySummaryReference,
 ) {
   fun withInputs(newInputs: IndexInputs): SourceSnapshot =
-    SourceSnapshot(newInputs, moduleFingerprints, shortNames, shards, shardOrder, dependencyOwners)
+    SourceSnapshot(
+      newInputs,
+      moduleFingerprints,
+      shortNames,
+      shards,
+      shardOrder,
+      dependencyOwners,
+      librarySummary,
+    )
 }
 
 /** Collects one immutable source transition without copying unrelated shards or owner sets. */
@@ -1178,7 +1327,26 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
           }
         }
       }
-    return SourceSnapshot(inputs, moduleFingerprints, shortNames, shards, order, owners)
+    val previousSummary = previous?.librarySummary
+    val libraryInputsChanged =
+      previous == null ||
+        shardChanges.any { (file, updated) ->
+          val before = previous.shards[file]?.librarySignature()
+          val after = updated?.librarySignature()
+          before != after
+        }
+    val librarySummary =
+      if (!libraryInputsChanged && previousSummary != null) previousSummary
+      else SourceLibrarySummaryReference()
+    return SourceSnapshot(
+      inputs,
+      moduleFingerprints,
+      shortNames,
+      shards,
+      order,
+      owners,
+      librarySummary,
+    )
   }
 
   private fun currentShard(file: VirtualFile): FileShard? {
@@ -1196,6 +1364,126 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
     return LinkedHashSet(existing).also { ownerChanges[file] = it }
   }
 }
+
+/** Only values that change classpath lookup or the actual factory use site participate here. */
+private fun FileShard.librarySignature(): SourceLibraryShardSignature {
+  return SourceLibraryShardSignature(
+    graphs.map { graph ->
+      GraphLibrarySignature(
+        graph.declarationId,
+        graph.scopeKeys,
+        graph.includedBindingContainers,
+        graph.pointer.element != null,
+      )
+    },
+    contributions.map { contribution ->
+      ContributionLibrarySignature(
+        contribution.scopeKeys,
+        contribution.pointer.virtualFile,
+        contribution.pointer.element != null,
+      )
+    },
+    consumers.map(::consumerLibrarySignature),
+    bindings.mapNotNull(::bindingLibrarySignature),
+    factoryInputs.map { input ->
+      FactoryInputLibrarySignature(
+        input.id,
+        input.consumers.map(::consumerLibrarySignature),
+        input.bindings.mapNotNull(::bindingLibrarySignature),
+      )
+    },
+  )
+}
+
+private fun consumerLibrarySignature(consumer: ConsumerEntry): ConsumerLibrarySignature {
+  return ConsumerLibrarySignature(
+    consumer.contextKey,
+    consumer.typeClassId,
+    consumer.multibindingId,
+    consumer.graphId,
+    consumer.includedContainerKey,
+    consumer.pointer.virtualFile,
+    consumer.pointer.element != null,
+    consumer.contributionScopes,
+  )
+}
+
+private fun bindingLibrarySignature(binding: KaBinding): BindingLibrarySignature? {
+  val isAssistedFactory = binding is KaBinding.AssistedFactory
+  val isGeneratedContribution = binding is KaBinding.Provided && binding.isClassContribution
+  val graphInput = binding as? KaBinding.BoundInstance
+  val isFactoryInput =
+    graphInput != null && (graphInput.isGraphInput || graphInput.isBindingContainerInput)
+  if (!isAssistedFactory && !isGeneratedContribution && !isFactoryInput) return null
+  if (!isFactoryInput && binding.dependencies.isEmpty()) return null
+  return BindingLibrarySignature(
+    binding.typeKey,
+    binding.originClassId,
+    binding.pointer.virtualFile,
+    binding.pointer.element != null,
+    isAssistedFactory,
+    binding.scope,
+    binding.contributionScopes,
+    binding.dependencies,
+    binding.ownerGraphId,
+    graphInput?.additionalOwnerGraphIds.orEmpty(),
+    graphInput?.isGraphInput == true,
+    graphInput?.isBindingContainerInput == true,
+  )
+}
+
+private data class SourceLibraryShardSignature(
+  val graphs: List<GraphLibrarySignature>,
+  val contributions: List<ContributionLibrarySignature>,
+  val consumers: List<ConsumerLibrarySignature>,
+  val bindings: List<BindingLibrarySignature>,
+  val factoryInputs: List<FactoryInputLibrarySignature>,
+)
+
+private data class GraphLibrarySignature(
+  val declarationId: GraphDeclarationId,
+  val scopes: Set<ClassId>,
+  val includedContainers: Set<KaTypeKey>,
+  val pointerIsValid: Boolean,
+)
+
+private data class ContributionLibrarySignature(
+  val scopes: Set<ClassId>,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
+)
+
+private data class ConsumerLibrarySignature(
+  val key: KaContextualTypeKey,
+  val classId: ClassId?,
+  val multibindingId: String?,
+  val graphId: GraphDeclarationId?,
+  val includedContainerKey: KaTypeKey?,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
+  val contributionScopes: Set<ClassId>,
+)
+
+private data class BindingLibrarySignature(
+  val key: KaTypeKey,
+  val originClassId: ClassId?,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
+  val isAssistedFactory: Boolean,
+  val scope: KaAnnotationSnapshot?,
+  val contributionScopes: Set<ClassId>,
+  val dependencies: List<KaContextualTypeKey>,
+  val ownerGraphId: GraphDeclarationId?,
+  val additionalOwnerGraphIds: Set<GraphDeclarationId>,
+  val isGraphInput: Boolean,
+  val isBindingContainerInput: Boolean,
+)
+
+private data class FactoryInputLibrarySignature(
+  val id: FactoryInputEntry.Id,
+  val consumers: List<ConsumerLibrarySignature>,
+  val bindings: List<BindingLibrarySignature>,
+)
 
 /** Fixed-width immutable hash buckets; a transition copies only buckets whose entries change. */
 private class PartitionedFileMap<V : Any>
@@ -1240,6 +1528,41 @@ private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
   }
 }
 
+/** A failed or canceled calculation is never published; equivalent source snapshots share this. */
+private class SourceLibrarySummaryReference {
+  @Volatile private var summary: SourceLibrarySummary? = null
+
+  fun getOrCreate(project: Project, source: SourceAggregate): SourceLibrarySummary {
+    summary?.let {
+      return it
+    }
+    synchronized(this) {
+      summary?.let {
+        return it
+      }
+      val consumerGraphContexts = ConsumerGraphContexts(source.graphs)
+      val factoryUseSites =
+        sourceAssistedFactoryUseSites(
+          project,
+          source.bindings,
+          source.consumers,
+          source.graphs,
+          consumerGraphContexts,
+        )
+      val inputs = source.libraryInputs(project, factoryUseSites, consumerGraphContexts)
+      val result = SourceLibrarySummary(inputs, factoryUseSites, consumerGraphContexts)
+      summary = result
+      return result
+    }
+  }
+}
+
+private data class SourceLibrarySummary(
+  val inputs: LibraryInputs,
+  val factoryUseSites: SourceAssistedFactoryUseSites,
+  val consumerGraphContexts: ConsumerGraphContexts,
+)
+
 private data class SourceAggregate(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
@@ -1248,14 +1571,21 @@ private data class SourceAggregate(
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
 ) {
-  fun libraryInputs(project: Project): LibraryInputs {
+  fun libraryInputs(
+    project: Project,
+    sourceFactoryUseSites: SourceAssistedFactoryUseSites,
+    consumerGraphContexts: ConsumerGraphContexts,
+  ): LibraryInputs {
     val scopeIds = linkedSetOf<ClassId>()
     val participatingModules = linkedSetOf<KaModule>()
     val injectRequests = linkedSetOf<LibraryInjectInput>()
-    val sourceFactoryUseSites = sourceAssistedFactoryUseSites(project, bindings, consumers)
     val seededFactoryUseSites =
       if (sourceFactoryUseSites.isEmpty()) null
-      else Collections.newSetFromMap(IdentityHashMap<Map<KaModule, KtElement>, Boolean>())
+      else {
+        Collections.newSetFromMap(
+          IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
+        )
+      }
 
     fun addModule(element: PsiElement?): KaModule? {
       if (element !is KtElement) return null
@@ -1276,12 +1606,19 @@ private data class SourceAggregate(
     }
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
-      val module = addModule(consumer.pointer.element) ?: continue
-      val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null) {
-        continue
+      val classId = consumer.typeClassId
+      val containerOwners = consumerGraphContexts.includedContainerPointers(consumer)
+      if (containerOwners == null) {
+        val module = addModule(consumerGraphContexts.pointer(consumer).element) ?: continue
+        if (classId == null || consumer.multibindingId != null) continue
+        injectRequests += LibraryInjectInput(module, consumer.key, classId)
+      } else {
+        for (owner in containerOwners) {
+          val module = addModule(owner.element) ?: continue
+          if (classId == null || consumer.multibindingId != null) continue
+          injectRequests += LibraryInjectInput(module, consumer.key, classId)
+        }
       }
-      injectRequests += LibraryInjectInput(module, consumer.key, classId)
     }
     for (binding in bindings) {
       ProgressManager.checkCanceled()

@@ -88,11 +88,15 @@ BindingIndex (membership queries)
   copying unrelated shard or dependency state. Changes to otherwise untracked type aliases or
   constants, including directory moves, refresh existing shards. Edits to unrelated declarations
   in the same file remain incremental. Project roots, Kotlin compiler settings, and facet changes
-  notify open tools and force a new scan, and directory changes enroll new files as a batch.
-  Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
-  types, binding-derived dependencies, and their actual use-site modules. Production UI-thread
-  requests schedule a cancellable smart-mode build instead of running Analysis API work on the
-  UI thread. Canceled background builds are retried rather than treated as plugin failures.
+  coalesce into one semantic check per event batch while direct queries still see current options.
+  Directory changes enroll new files as a batch. Compiled-library results have a separate cache
+  keyed by classpath, graph scopes, requested types, binding-derived dependencies, and their
+  actual use-site modules. Equivalent per-file library inputs reuse the same session-free source
+  summary, so unrelated edits do not repeat factory visibility checks. Inherited graph requests
+  use their exact owning graph declaration and module instead of the upstream declaration file.
+  Production UI-thread requests schedule a cancellable smart-mode build instead of running
+  Analysis API work on the UI thread. Canceled background builds are retried rather than treated
+  as plugin failures.
 - `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names or import aliases, then resolved with the
   Analysis API inside `analyze {}` blocks. Handles graphs (including supertype members and

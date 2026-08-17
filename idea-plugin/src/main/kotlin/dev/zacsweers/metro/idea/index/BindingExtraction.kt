@@ -670,11 +670,12 @@ internal fun KaSession.injectConstructorDependencyKeys(
 internal fun KaSession.injectConstructorDependencyKeys(
   classType: KaClassType,
   options: MetroOptions,
+  onDependencyType: ((KaType) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
   val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
   val constructor = findInjectConstructorSymbol(classSymbol, options) ?: return emptyList()
   val typeParameters = classSymbol.typeParameters
-  if (typeParameters.isEmpty()) {
+  if (typeParameters.isEmpty() && onDependencyType == null) {
     return injectConstructorDependencyKeys(classSymbol, options, constructor)
   }
 
@@ -682,15 +683,17 @@ internal fun KaSession.injectConstructorDependencyKeys(
     val argument = classType.typeArguments.getOrNull(index)?.type ?: return@mapIndexedNotNull null
     parameter to argument
   }
-  if (substitutions.isEmpty()) {
+  if (substitutions.isEmpty() && onDependencyType == null) {
     return injectConstructorDependencyKeys(classSymbol, options, constructor)
   }
 
-  val substitutor = createSubstitutor(substitutions.toMap())
+  val substitutor = if (substitutions.isEmpty()) null else createSubstitutor(substitutions.toMap())
   return constructor.valueParameters
     .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
     .map { parameter ->
-      dependencyKey(substitutor.substitute(parameter.returnType), parameter, options)
+      val dependencyType = substitutor?.substitute(parameter.returnType) ?: parameter.returnType
+      onDependencyType?.invoke(dependencyType)
+      dependencyKey(dependencyType, parameter, options)
     }
 }
 
@@ -715,19 +718,24 @@ internal fun KaSession.memberInjectDependencyKeys(
 internal fun KaSession.memberInjectDependencyKeys(
   classType: KaClassType,
   options: MetroOptions,
+  onDependencyType: ((KaType) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
-  return memberInjectSites(classType, options).map { it.key }
+  return memberInjectSites(classType, options, onDependencyType).map { it.key }
 }
 
 /** Preserves member source locations while specializing direct and inherited injection sites. */
 internal fun KaSession.memberInjectSites(
   classType: KaClassType,
   options: MetroOptions,
+  onDependencyType: ((KaType) -> Unit)? = null,
 ): List<MemberInjectSite> {
   val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
   val owners = memberInjectOwners(classSymbol)
   if (
-    classSymbol.typeParameters.isEmpty() && classType.typeArguments.isEmpty() && owners.size == 1
+    classSymbol.typeParameters.isEmpty() &&
+      classType.typeArguments.isEmpty() &&
+      owners.size == 1 &&
+      onDependencyType == null
   ) {
     return memberInjectSites(classSymbol, options)
   }
@@ -748,6 +756,7 @@ internal fun KaSession.memberInjectSites(
             symbol.backingFieldSymbol?.hasAnyAnnotation(injectIds) == true ||
             symbol.setter?.hasAnyAnnotation(injectIds) == true
         if (injected) {
+          onDependencyType?.invoke(view.returnType)
           result +=
             MemberInjectSite(
               ownerId,
@@ -759,6 +768,7 @@ internal fun KaSession.memberInjectSites(
       is KaNamedFunctionSymbol -> {
         if (symbol.hasAnyAnnotation(options.allInjectAnnotations)) {
           view.valueParameters.mapTo(result) { parameter ->
+            onDependencyType?.invoke(parameter.returnType)
             MemberInjectSite(
               ownerId,
               symbol.psi as? KtElement,

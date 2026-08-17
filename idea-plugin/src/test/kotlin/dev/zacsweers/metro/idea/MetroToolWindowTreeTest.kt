@@ -22,6 +22,7 @@ import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
@@ -122,6 +123,67 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       listOf("DebugAnalytics", "ProdAnalytics"),
       structure.children(multibinding).map { it.text },
     )
+  }
+
+  fun testRepeatedSourceFactoryRequestsAppearOnceInTheTree() {
+    myFixture.addFileToProject(
+      "test/SharedFactory.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class Widget<T>(@Assisted val id: String, val value: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): Widget<T>
+        }
+      }
+      """
+        .trimIndent(),
+    )
+    repeat(4) { number ->
+      myFixture.addFileToProject(
+        "test/Consumer$number.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        @Inject class Consumer$number(val factory: Widget.Factory<Int>)
+        """
+          .trimIndent(),
+      )
+    }
+    myFixture.configureMetroFile(
+      """
+      @DependencyGraph
+      interface AppGraph {
+        val factory: Widget.Factory<Int>
+        val consumer: Consumer0
+
+        @Provides fun provideInt(): Int = 1
+      }
+      """,
+      fileName = "FactoryGraph.kt",
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val unscoped =
+      structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    val factoryRows =
+      structure.children(unscoped).filterIsInstance<MetroTreeNode.BindingRow>().filter {
+        it.binding is KaBinding.AssistedFactory &&
+          it.binding.typeKey.renderedType == "test.Widget.Factory<kotlin.Int>"
+      }
+
+    assertEquals(1, factoryRows.size)
+    assertEquals(unscoped.bindings.size.toString(), unscoped.grayText)
   }
 
   fun testFilterNarrowsRows() {

@@ -166,6 +166,44 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testMatchingGenericSpecializationsUseAnHonestConsumerTooltip() {
+    myFixture.configureMetroFile(
+      """
+      interface Api
+
+      @Inject @ContributesBinding(AppScope::class)
+      class RealApi : Api
+
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T): String = value.toString()
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface FirstGraph : GenericBase<Api> {
+        val text: String
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface SecondGraph : GenericBase<Api> {
+        val text: String
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER }
+        .mapNotNull { it.tooltipText }
+
+    assertTrue("Expected a shared implementation tooltip in:\n$tooltips") {
+      tooltips.any { "Metro dependency: Api · available in 2 graph contexts" in it }
+    }
+    assertTrue("Matching implementations must not be described as different:\n$tooltips") {
+      tooltips.none { "Metro dependency: Api · bindings differ" in it }
+    }
+  }
+
   fun testValidateMarkerBadgesValidationState() {
     val file =
       myFixture.configureMetroFile(
