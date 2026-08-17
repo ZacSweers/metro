@@ -299,7 +299,9 @@ internal class LibraryIndexPostProcessor(
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null) continue
+      if (consumer.multibindingId != null) {
+        continue
+      }
       val context = consumer.pointer.element ?: continue
       queue += LibraryInjectRequest(consumer.key, classId, context)
     }

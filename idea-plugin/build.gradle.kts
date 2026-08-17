@@ -51,10 +51,14 @@ val explicitReleaseBuild =
 
 // Gradle accepts camel-hump task abbreviations like `pubPl`, so match them the same way.
 fun matchesTaskAbbreviation(requested: String, taskName: String): Boolean {
-  if (requested.isEmpty()) return false
+  if (requested.isEmpty()) {
+    return false
+  }
   val pattern = buildString {
     for (ch in requested) {
-      if (ch.isUpperCase()) append("[a-z0-9]*")
+      if (ch.isUpperCase()) {
+        append("[a-z0-9]*")
+      }
       append(Regex.escape(ch.toString()))
     }
     append("[a-zA-Z0-9]*")

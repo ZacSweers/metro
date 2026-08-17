@@ -303,8 +303,11 @@ internal fun IrBinding.containsSuspendWrapperUse(): Boolean {
     }
   }
   val sourceParameters =
-    if (this is AssistedFactory) targetBinding.parameters.allParameters
-    else parameters.allParameters
+    if (this is AssistedFactory) {
+      targetBinding.parameters.allParameters
+    } else {
+      parameters.allParameters
+    }
   return sourceParameters.any {
     !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendWrapper()
   }

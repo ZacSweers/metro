@@ -68,10 +68,16 @@ private fun readGitRepoCommit(projectDirectory: Path): String? {
 /** Handles both a plain `.git` directory and a worktree's `gitdir: <path>` pointer file. */
 private fun resolveGitDirectory(projectDirectory: Path): Path? {
   val gitPath = projectDirectory.resolve(".git")
-  if (gitPath.isDirectory()) return gitPath
-  if (!gitPath.isRegularFile()) return null
+  if (gitPath.isDirectory()) {
+    return gitPath
+  }
+  if (!gitPath.isRegularFile()) {
+    return null
+  }
   val pointer = gitPath.readText(Charsets.UTF_8).trim()
-  if (!pointer.startsWith("gitdir:")) return null
+  if (!pointer.startsWith("gitdir:")) {
+    return null
+  }
   val target = projectDirectory.resolve(pointer.removePrefix("gitdir:").trim()).normalize()
   // Worktree gitdirs hold their own HEAD. Shared refs stay in the common dir it points into.
   return target.takeIf { it.exists() }
@@ -89,12 +95,20 @@ private fun resolveCommonDirectory(gitDirectory: Path): Path {
 /** Refs disappear from loose files after `git gc` packs them into `packed-refs`. */
 private fun readPackedRef(refsRoot: Path, ref: String): String? {
   val packedRefs = refsRoot.resolve("packed-refs")
-  if (!packedRefs.exists()) return null
+  if (!packedRefs.exists()) {
+    return null
+  }
   for (line in packedRefs.readText(Charsets.UTF_8).lineSequence()) {
-    if (line.isBlank() || line.startsWith("#") || line.startsWith("^")) continue
+    if (line.isBlank() || line.startsWith("#") || line.startsWith("^")) {
+      continue
+    }
     val separator = line.indexOf(' ')
-    if (separator != 40) continue
-    if (line.substring(separator + 1).trim() != ref) continue
+    if (separator != 40) {
+      continue
+    }
+    if (line.substring(separator + 1).trim() != ref) {
+      continue
+    }
     return line.substring(0, separator).lowercase(Locale.US).takeIf { isGitHash(it) }
   }
   return null

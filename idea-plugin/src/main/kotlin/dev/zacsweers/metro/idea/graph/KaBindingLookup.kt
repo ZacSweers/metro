@@ -149,11 +149,17 @@ internal class KaBindingLookup(
   private fun delegateToParentIfScoped(binding: KaBinding): KaBinding {
     val scope = binding.scope ?: return binding
     val chain = queryContext.graphContext.chain
-    if (chain.size < 2) return binding
+    if (chain.size < 2) {
+      return binding
+    }
     val child = chain.first()
-    if (scope in child.scopingAnnotations) return binding
+    if (scope in child.scopingAnnotations) {
+      return binding
+    }
     // A scope matching no graph in the chain stays inline so scope validation reports it here.
-    if (chain.none { scope in it.scopingAnnotations }) return binding
+    if (chain.none { scope in it.scopingAnnotations }) {
+      return binding
+    }
     // Bindings declared on the child itself stay local even when their scope names an ancestor.
     val containerId = binding.containerId
     if (

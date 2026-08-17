@@ -120,7 +120,9 @@ internal class KaBindingGraph(
     cycleKeys: List<KaTypeKey>,
     bindings: ScatterMap<KaTypeKey, KaBinding>,
   ): KaTypeKey? {
-    if (!options.enableSuspendProviders) return null
+    if (!options.enableSuspendProviders) {
+      return null
+    }
     val suspendKeys = SuspendBindingAnalysis(bindings::get).analyze(cycleKeys)
     return cycleKeys.firstOrNull { it in suspendKeys }
   }

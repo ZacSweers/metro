@@ -179,7 +179,9 @@ class MetroResolutionService(
           } catch (exception: CancellationException) {
             throw exception
           }
-        if (built === BindingIndex.EMPTY) continue
+        if (built === BindingIndex.EMPTY) {
+          continue
+        }
         withContext(Dispatchers.EDT) {
           val current = snapshots[key]
           if (!project.isDisposed && current?.index === built) {
@@ -247,7 +249,9 @@ class MetroResolutionService(
    */
   internal fun settingsChanged() {
     val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
-    if (lastResolveFromLibraries.getAndSet(resolveFromLibraries) == resolveFromLibraries) return
+    if (lastResolveFromLibraries.getAndSet(resolveFromLibraries) == resolveFromLibraries) {
+      return
+    }
     val bumped = invalidations.updateAndGet { it.bumpGeneration() }
     if (!resolveFromLibraries) {
       synchronized(libraryShards) { libraryShards.clear() }
@@ -321,12 +325,17 @@ class MetroResolutionService(
 
       val coldSweep = prev == null || prev.inputs.roots != inputs.roots || fingerprintChanged
       val next =
-        if (coldSweep) coldSweep(moduleState.options, inputs, start)
-        else incremental(prev!!, inputs, start)
+        if (coldSweep) {
+          coldSweep(moduleState.options, inputs, start)
+        } else {
+          incremental(prev!!, inputs, start)
+        }
 
       // Cold sweeps consume requested files. Incremental passes leave them for a future sweep.
       val drained = if (coldSweep) start.drainAll() else start.drainDirty()
-      if (!invalidations.compareAndSet(start, drained)) continue
+      if (!invalidations.compareAndSet(start, drained)) {
+        continue
+      }
       sourceSnapshot.set(next)
 
       snapshots[key]
@@ -376,7 +385,9 @@ class MetroResolutionService(
     // Stub loading can surface requested files before their annotations reach the stub index.
     for (virtualFile in start.requested) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid || virtualFile in shards) continue
+      if (!virtualFile.isValid || virtualFile in shards) {
+        continue
+      }
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
       if (containsRelevantAnnotation(file, shortNames)) {
         applyShard(shards, owners, virtualFile, shardFor(file))
@@ -434,7 +445,9 @@ class MetroResolutionService(
     for (dependencyFile in previous.dependencyFiles) {
       val ownerSet = owners[dependencyFile] ?: continue
       ownerSet -= virtualFile
-      if (ownerSet.isEmpty()) owners.remove(dependencyFile)
+      if (ownerSet.isEmpty()) {
+        owners.remove(dependencyFile)
+      }
     }
   }
 
@@ -612,10 +625,14 @@ class MetroResolutionService(
       invalidations.updateAndGet { it.withRequested(virtualFile) }
       return
     }
-    if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) return
+    if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) {
+      return
+    }
     // Editor features call index() once per declaration. A cached negative keeps files without
     // Metro annotations from paying a full PSI walk on every call.
-    if (!isRelevantFileCached(file)) return
+    if (!isRelevantFileCached(file)) {
+      return
+    }
     invalidations.updateAndGet { it.withDirty(setOf(virtualFile)) }
   }
 
@@ -642,7 +659,9 @@ class MetroResolutionService(
     val virtualFile = file.virtualFile ?: return
     val state = sourceSnapshot.get()
     if (state == null) {
-      if (structuralChange) invalidations.updateAndGet { it.withRequested(virtualFile) }
+      if (structuralChange) {
+        invalidations.updateAndGet { it.withRequested(virtualFile) }
+      }
       return
     }
     val requestFile = structuralChange && virtualFile !in state.shards
@@ -660,12 +679,16 @@ class MetroResolutionService(
         structuralChange ||
         globalSemanticChange
     if (!affectsIndexedDeclarations) {
-      if (requestFile) invalidations.updateAndGet { it.withRequested(virtualFile) }
+      if (requestFile) {
+        invalidations.updateAndGet { it.withRequested(virtualFile) }
+      }
       return
     }
 
     val dirty = linkedSetOf(virtualFile)
-    if (ownerFiles != null) dirty += ownerFiles
+    if (ownerFiles != null) {
+      dirty += ownerFiles
+    }
     val forced: Set<VirtualFile>
     if (globalSemanticChange) {
       dirty += state.shards.keys
@@ -675,7 +698,9 @@ class MetroResolutionService(
     }
     invalidations.updateAndGet { ledger ->
       var updated = ledger.withDirty(dirty, forced)
-      if (requestFile) updated = updated.withRequested(virtualFile)
+      if (requestFile) {
+        updated = updated.withRequested(virtualFile)
+      }
       updated
     }
     scheduleInvalidationNotification()
@@ -719,22 +744,34 @@ class MetroResolutionService(
     val dirty = linkedSetOf<VirtualFile>()
     for (file in files) {
       val virtualFile = file.virtualFile ?: continue
-      if (virtualFile !in state.shards) requested += virtualFile
+      if (virtualFile !in state.shards) {
+        requested += virtualFile
+      }
       val owners = state.dependencyOwners[virtualFile]
       val relevant = virtualFile in state.shards || !owners.isNullOrEmpty()
       val newlyRelevant = containsRelevantAnnotation(file, state.shortNames)
-      if (!relevant && !newlyRelevant) continue
+      if (!relevant && !newlyRelevant) {
+        continue
+      }
       dirty += virtualFile
-      if (owners != null) dirty += owners
+      if (owners != null) {
+        dirty += owners
+      }
     }
-    if (requested.isEmpty() && dirty.isEmpty()) return
+    if (requested.isEmpty() && dirty.isEmpty()) {
+      return
+    }
     invalidations.updateAndGet { ledger ->
       var updated = ledger
       for (virtualFile in requested) updated = updated.withRequested(virtualFile)
-      if (dirty.isNotEmpty()) updated = updated.withDirty(dirty)
+      if (dirty.isNotEmpty()) {
+        updated = updated.withDirty(dirty)
+      }
       updated
     }
-    if (dirty.isNotEmpty()) scheduleInvalidationNotification()
+    if (dirty.isNotEmpty()) {
+      scheduleInvalidationNotification()
+    }
   }
 
   private fun changedFile(event: PsiTreeChangeEvent): KtFile? {
@@ -832,8 +869,11 @@ private class Invalidations(
 
   /** Requested files feed a future cold sweep and do not invalidate published results. */
   fun withRequested(file: VirtualFile): Invalidations =
-    if (file in requested) this
-    else Invalidations(stamp + 1, generation, dirty, forced, requested + file)
+    if (file in requested) {
+      this
+    } else {
+      Invalidations(stamp + 1, generation, dirty, forced, requested + file)
+    }
 
   /** The ledger after a successful incremental publish. */
   fun drainDirty(): Invalidations =
@@ -891,7 +931,9 @@ private data class SourceAggregate(
       ProgressManager.checkCanceled()
       val module = addModule(consumer.pointer.element) ?: continue
       val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null) continue
+      if (consumer.multibindingId != null) {
+        continue
+      }
       injectRequests += LibraryInjectInput(module, consumer.key, classId)
     }
     return LibraryInputs(scopeIds, participatingModules, injectRequests)

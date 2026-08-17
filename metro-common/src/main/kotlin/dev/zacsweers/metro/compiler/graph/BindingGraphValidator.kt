@@ -54,7 +54,9 @@ public class BindingGraphValidator<
     if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
       onIssue(GraphValidationIssue.EmptyMultibinding(binding))
     }
-    if (multibinding.kind != MultibindingKind.MAP) return
+    if (multibinding.kind != MultibindingKind.MAP) {
+      return
+    }
 
     val contributionsByMapKey = linkedMapOf<MapKey?, MutableList<Binding>>()
     for (sourceKey in multibinding.sourceBindings) {

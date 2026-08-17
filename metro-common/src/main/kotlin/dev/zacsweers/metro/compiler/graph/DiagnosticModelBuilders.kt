@@ -127,7 +127,11 @@ public fun <S : Any> disambiguateIncompatibleScopes(
   val graphShorts = graphScopes.map(shortRender)
   val bindingRender = if (bindingShort in graphShorts) fullRender(bindingScope) else bindingShort
   val graphRenders = graphScopes.mapIndexed { index, scope ->
-    if (graphShorts[index] == bindingShort) fullRender(scope) else graphShorts[index]
+    if (graphShorts[index] == bindingShort) {
+      fullRender(scope)
+    } else {
+      graphShorts[index]
+    }
   }
   return IncompatibleScopeRenders(bindingRender, graphRenders)
 }
