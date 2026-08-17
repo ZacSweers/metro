@@ -4,12 +4,19 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
+- **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+
 ### Fixes
 
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 - **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
+- **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR/interop]** Fix a compiler crash when Dagger interop is enabled and deeply nested classes have long names.
+- **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
 
 ### Changes
 
