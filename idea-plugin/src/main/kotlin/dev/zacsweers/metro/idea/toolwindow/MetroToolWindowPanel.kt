@@ -49,7 +49,14 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   // No history popup, so the search icon doesn't render a misleading dropdown arrow
   private val searchField = SearchTextField(false)
-  private val treeStructure = MetroTreeStructure(project) { searchField.text }
+
+  // The tree structure computes children on a background invoker, so it reads a snapshot of the
+  // search text instead of touching the Swing component off the EDT.
+  @Volatile private var searchText: String = ""
+  private val treeStructure = MetroTreeStructure(project) { searchText }
+
+  /** A validate request whose graph was not indexed yet; retried when a fresh index lands. */
+  private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
   private val treeModel = StructureTreeModel(treeStructure, this)
   private val tree =
     Tree(AsyncTreeModel(treeModel, this)).apply {
@@ -73,6 +80,13 @@ internal class MetroToolWindowPanel(private val project: Project) :
       )
     project.service<MetroResolutionService>().addIndexListener(this) {
       treeModel.invalidateAsync()
+      pendingValidation?.let { (classId, file) ->
+        val graph = findGraph(classId, file)
+        if (graph != null) {
+          pendingValidation = null
+          validateGraph(graph)
+        }
+      }
     }
 
     object : DoubleClickListener() {
@@ -83,6 +97,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
     searchField.addDocumentListener(
       object : DocumentAdapter() {
         override fun textChanged(e: DocumentEvent) {
+          searchText = searchField.text
           treeModel.invalidateAsync()
         }
       }
@@ -127,7 +142,14 @@ internal class MetroToolWindowPanel(private val project: Project) :
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
       val graph = selectedGraphNode()?.graph ?: findGraph(classId, file)
-      graph?.let(::validateGraph)
+      if (graph != null) {
+        pendingValidation = null
+        validateGraph(graph)
+      } else {
+        // A cold index returns nothing on the EDT and builds in the background; retry when the
+        // fresh index lands instead of dropping the action.
+        pendingValidation = classId to file
+      }
     }
   }
 
