@@ -62,20 +62,21 @@ internal class MetroGraphValidationService(
   }
 
   // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
-  // browsing session from retaining every sealed graph forever. The synchronized wrapper is
-  // required because async validation seals on pooled threads and access ordering mutates
-  // internal links even on reads.
+  // browsing session from retaining every sealed graph forever, while staying large enough that
+  // one validate-with-extensions traversal cannot evict its own earlier results before the tool
+  // window reads them. The synchronized wrapper is required because async validation seals on
+  // pooled threads and access ordering mutates internal links even on reads.
   private val results: MutableMap<GraphPath, CachedEntry> =
     Collections.synchronizedMap(
       object : LinkedHashMap<GraphPath, CachedEntry>(8, 0.75f, true) {
         override fun removeEldestEntry(
           eldest: MutableMap.MutableEntry<GraphPath, CachedEntry>
-        ): Boolean = size > 8
+        ): Boolean = size > MAX_CACHED_RESULTS
       }
     )
 
-  /** In-flight validations by graph, so repeat requests coalesce into one computation. */
-  private val inFlight = ConcurrentHashMap<Any, Job>()
+  /** In-flight validations by stable graph path, so repeat requests coalesce into one run. */
+  private val inFlight = ConcurrentHashMap<GraphPath, Job>()
 
   /** Drops all retained results. */
   fun clearResults() {
@@ -123,7 +124,10 @@ internal class MetroGraphValidationService(
           checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
         KaBindingGraph(index, queryContext, options).seal()
       }
-    if (key != null) results[key] = CachedEntry(result, index)
+    // Internal errors stay uncached so a transient plugin failure is retried on the next run.
+    if (key != null && result is KaGraphValidationResult.Completed) {
+      results[key] = CachedEntry(result, index)
+    }
     return result
   }
 
@@ -210,7 +214,9 @@ internal class MetroGraphValidationService(
     graph: KaGraphDeclaration,
     onDone: Consumer<List<KaGraphValidationResult>>,
   ) {
-    launchCoalesced(graph) {
+    // Keyed by the root path so this coalesces with validateAsync for the same graph and stays
+    // stable across index rebuilds, unlike the declaration instance.
+    launchCoalesced(GraphPath(listOf(graph.declarationId))) {
       val results =
         withBackgroundProgress(project, progressTitle(graph)) {
           smartReadAction(project) { validateWithExtensions(element, graph) }
@@ -238,7 +244,7 @@ internal class MetroGraphValidationService(
     "Validating Metro graph ${graph.name ?: ""}".trimEnd()
 
   /** Launches [block], cancelling any in-flight run for the same graph request. */
-  private fun launchCoalesced(key: Any, block: suspend CoroutineScope.() -> Unit) {
+  private fun launchCoalesced(key: GraphPath, block: suspend CoroutineScope.() -> Unit) {
     val job =
       scope.launch(start = CoroutineStart.LAZY) {
         try {
@@ -257,6 +263,10 @@ internal class MetroGraphValidationService(
   private fun moduleOptions(declarationElement: PsiElement): MetroOptions {
     val module = ModuleUtilCore.findModuleForPsiElement(declarationElement) ?: return MetroOptions()
     return project.service<MetroIdeProjectService>().state(module).options
+  }
+
+  private companion object {
+    const val MAX_CACHED_RESULTS = 64
   }
 }
 
