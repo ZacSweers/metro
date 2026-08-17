@@ -301,6 +301,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
   }
 
   fun testTopLevelFunctionInjectionOriginatesAClassBinding() {
+    project.setMetroOptions("enable-top-level-function-injection" to "true")
     val file =
       myFixture.configureMetroFile(
         """
@@ -323,6 +324,26 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val declarations = file.declarationsIncludingNested()
     val serviceParam = index.consumerEntryAt(declarations.parameter("service"))!!
     assertEquals("test.Service", serviceParam.key.renderedType)
+  }
+
+  fun testTopLevelFunctionInjectionIsInertWhenDisabled() {
+    // Default options: the compiler generates nothing for top-level inject functions, so the
+    // index must not surface a binding or consumers for them.
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject fun App(service: Service, @Assisted id: String) {
+        }
+        """,
+        fileName = "App.kt",
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+
+    assertTrue(index.bindings.none { it.typeKey.renderedType == "test.App" })
+    val declarations = file.declarationsIncludingNested()
+    assertNull(index.consumerEntryAt(declarations.parameter("service")))
   }
 
   fun testMultibindingAccessorResolvesItsContributions() {

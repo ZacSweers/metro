@@ -369,6 +369,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   }
 
   fun testConcreteInjectedClassConsumersAcrossInjectionShapes() {
+    project.setMetroOptions("enable-top-level-function-injection" to "true")
     val file =
       myFixture.configureByText(
         "Shapes.kt",

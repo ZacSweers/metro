@@ -259,7 +259,11 @@ internal class FileShardBuilder(
           val symbol = declaration.symbol as? KaNamedFunctionSymbol ?: return@analyze
           if (!symbol.hasAnyAnnotation(options.allInjectAnnotations)) return@analyze
           if (declaration.isTopLevel) {
-            processInjectFunction(declaration, symbol)
+            // The compiler only generates injectable classes for top-level inject functions when
+            // the option is on, so an indexed binding would be a phantom otherwise.
+            if (options.enableTopLevelFunctionInjection) {
+              processInjectFunction(declaration, symbol)
+            }
           } else {
             // Member injection site: parameters are consumers
             for (parameter in declaration.valueParameters) {
