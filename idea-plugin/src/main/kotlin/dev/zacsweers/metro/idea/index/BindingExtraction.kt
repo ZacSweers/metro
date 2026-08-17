@@ -578,13 +578,11 @@ internal fun KaSession.findInjectConstructorSymbol(
   options: MetroOptions,
 ): KaConstructorSymbol? {
   if (!classSymbol.isInjectableKind()) return null
-  val injectish = options.allInjectAnnotations
-  val classLevel =
-    classSymbol.hasAnyAnnotation(injectish) ||
-      (options.contributesAsInject &&
-        classSymbol.annotations.any { it.classId in bindingContributionAnnotations(options) })
+  val classLevel = hasClassLevelInject(classSymbol, options)
   val constructors = classSymbol.memberScope.constructors.toList()
-  val annotatedConstructor = constructors.firstOrNull { it.hasAnyAnnotation(injectish) }
+  val annotatedConstructor = constructors.firstOrNull {
+    it.hasAnyAnnotation(options.allInjectAnnotations)
+  }
   if (annotatedConstructor != null) return annotatedConstructor
   return if (classLevel) constructors.firstOrNull { it.isPrimary } else null
 }
@@ -696,15 +694,6 @@ private fun KaSession.superClassSymbol(classSymbol: KaNamedClassSymbol): KaNamed
     if (symbol.classKind == KaClassKind.CLASS) return symbol
   }
   return null
-}
-
-/** Every key the graph must provide to construct and member-inject [classSymbol]. */
-internal fun KaSession.injectClassDependencyKeys(
-  classSymbol: KaNamedClassSymbol,
-  options: MetroOptions,
-): List<KaContextualTypeKey> {
-  return injectConstructorDependencyKeys(classSymbol, options) +
-    memberInjectDependencyKeys(classSymbol, options)
 }
 
 /** Class-literal list argument values, such as `excludes`, `replaces`, and `bindingContainers`. */

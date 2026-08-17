@@ -415,15 +415,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         NotNullLazyValue.lazy {
           // Cluster KMP source sets in hierarchy order: commonMain first, then intermediate
           // source sets like nativeMain, then leaf platforms, alphabetical within each.
-          targets
-            .mapNotNull { it.element }
-            .sortedWith(
-              compareBy(
-                { sourceSetDepth(it) },
-                { ModuleUtilCore.findModuleForPsiElement(it)?.name.orEmpty() },
-                { (it as? KtNamedDeclaration)?.name.orEmpty() },
-              )
-            )
+          targets.mapNotNull { it.element }.sortedWith(sourceSetOrder)
         }
       )
       .setTooltipText(tooltip)
@@ -487,16 +479,7 @@ private fun showTargets(
   title: String,
   targets: List<SmartPsiElementPointer<out PsiElement>>,
 ) {
-  val elements =
-    targets
-      .mapNotNull { it.element }
-      .sortedWith(
-        compareBy(
-          { sourceSetDepth(it) },
-          { ModuleUtilCore.findModuleForPsiElement(it)?.name.orEmpty() },
-          { (it as? KtNamedDeclaration)?.name.orEmpty() },
-        )
-      )
+  val elements = targets.mapNotNull { it.element }.sortedWith(sourceSetOrder)
   when {
     elements.isEmpty() -> {}
     elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
@@ -518,6 +501,17 @@ private fun showTargets(
  * The element's position in the KMP source-set hierarchy: 0 for commonMain, increasing through
  * intermediate source sets (nativeMain) to leaf platforms (iosArm64Main), via `dependsOn` edges.
  */
+/**
+ * Clusters KMP source sets in hierarchy order: commonMain first, then intermediate source sets like
+ * nativeMain, then leaf platforms, alphabetical within each.
+ */
+private val sourceSetOrder: Comparator<PsiElement> =
+  compareBy(
+    { sourceSetDepth(it) },
+    { ModuleUtilCore.findModuleForPsiElement(it)?.name.orEmpty() },
+    { (it as? KtNamedDeclaration)?.name.orEmpty() },
+  )
+
 private fun sourceSetDepth(element: PsiElement): Int {
   val module =
     KaModuleProvider.getModule(element.project, element, useSiteModule = null) as? KaSourceModule

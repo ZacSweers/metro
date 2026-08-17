@@ -160,6 +160,21 @@ internal fun KaAnnotated.scopeKeys(annotationClassIds: Set<ClassId>): Set<ClassI
   return annotations.flatMapToSet { annotationScopeKeys(it) }
 }
 
+/**
+ * Whether the class itself, rather than one of its constructors, carries inject semantics. Both
+ * inject-constructor selectors below and in BindingExtraction share this decision; they keep their
+ * own symbol access (PSI vs member scope) but must agree on it and on preferring an annotated
+ * constructor over the primary one.
+ */
+internal fun KaSession.hasClassLevelInject(
+  classSymbol: KaNamedClassSymbol,
+  options: MetroOptions,
+): Boolean {
+  return classSymbol.hasAnyAnnotation(options.allInjectAnnotations) ||
+    (options.contributesAsInject &&
+      classSymbol.annotations.any { it.classId in bindingContributionAnnotations(options) })
+}
+
 internal fun KaSession.findInjectConstructor(
   ktClass: KtClassOrObject,
   classSymbol: KaNamedClassSymbol,
@@ -167,14 +182,10 @@ internal fun KaSession.findInjectConstructor(
 ): KtConstructor<*>? {
   // Non-injectable kinds have no graph-resolved constructor, so they originate no consumers.
   if (!classSymbol.isInjectableKind()) return null
-  val injectish = options.allInjectAnnotations
-  val classLevel =
-    classSymbol.hasAnyAnnotation(injectish) ||
-      (options.contributesAsInject &&
-        classSymbol.annotations.any { it.classId in bindingContributionAnnotations(options) })
+  val classLevel = hasClassLevelInject(classSymbol, options)
   val constructors = listOfNotNull(ktClass.primaryConstructor) + ktClass.secondaryConstructors
   val annotatedConstructor = constructors.firstOrNull { ctor ->
-    ctor.symbol.hasAnyAnnotation(injectish)
+    ctor.symbol.hasAnyAnnotation(options.allInjectAnnotations)
   }
   return annotatedConstructor ?: if (classLevel) ktClass.primaryConstructor else null
 }
