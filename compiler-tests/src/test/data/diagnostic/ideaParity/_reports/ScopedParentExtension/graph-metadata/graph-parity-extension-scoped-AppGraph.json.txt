@@ -5,12 +5,7 @@
   ],
   "aggregationScopes": [],
   "roots": {
-    "accessors": [
-      {
-        "key": "parity.extension.scoped.Cache",
-        "isDeferrable": false
-      }
-    ],
+    "accessors": [],
     "injectors": []
   },
   "extensions": {
@@ -101,7 +96,7 @@
     "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 1,
+    "accessors": 0,
     "injectors": 0,
     "graphExtensionAccessors": 1,
     "graphExtensionFactories": 0,

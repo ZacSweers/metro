@@ -95,6 +95,46 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
     assertDiagnostic(result, MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR)
   }
 
+  fun testParentScopedBindingCarriesTransitiveSuspendIntoChild() {
+    // Cache is not directly suspend. Its suspendness only exists through the parent's resolution
+    // of Database, so the child's delegated node must resolve it through the parent view.
+    project.setMetroOptions("enable-suspend-providers" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class CacheScope private constructor()
+
+        class Database
+
+        @SingleIn(CacheScope::class) @Inject class Cache(val database: Database)
+
+        @Inject class ChildThing(val cache: Cache)
+
+        @GraphExtension
+        interface ChildGraph {
+          val childThing: ChildThing
+        }
+
+        @SingleIn(CacheScope::class)
+        @DependencyGraph
+        interface AppGraph {
+          val childGraph: ChildGraph
+
+          @Provides suspend fun provideDatabase(): Database = Database()
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(child).single())
+        .requireCompleted()
+
+    assertDiagnostic(result, MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR)
+  }
+
   fun testSuspendFunctionDependencyStopsPropagation() {
     val result =
       validate(

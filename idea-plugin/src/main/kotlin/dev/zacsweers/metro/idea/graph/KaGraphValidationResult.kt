@@ -25,6 +25,8 @@ internal sealed interface KaGraphValidationResult {
     val bindings: ScatterMap<KaTypeKey, KaBinding>,
     /** Bindings that directly or transitively require suspend initialization. */
     val suspendKeys: Set<KaTypeKey>,
+    /** Keys this context delegates to its immediate parent for validation. */
+    val parentReservations: Set<KaTypeKey> = emptySet(),
   ) : KaGraphValidationResult
 
   /** Validation stopped because the IDE plugin itself failed unexpectedly. */

@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
@@ -43,10 +44,24 @@ internal class KaBindingLookup(
   /** Parent-scoped bindings remapped to graph dependency nodes, one per key. */
   private val parentDependencies = HashMap<KaTypeKey, KaBinding>()
 
+  /** Keys this context delegates upward. The parent seal must validate them as its own. */
+  private val reservedForParent = linkedSetOf<KaTypeKey>()
+
+  /** A lazily built view of the parent context for transitive suspend resolution. */
+  private var parentSuspendLookup: KaBindingLookup? = null
+  private var parentSuspendAnalysis: SuspendBindingAnalysis? = null
+
+  val reservedParentKeys: Set<KaTypeKey>
+    get() = reservedForParent
+
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
     syntheticElements.clear()
     parentDependencies.clear()
+    reservedForParent.clear()
+    parentSuspendLookup?.clear()
+    parentSuspendLookup = null
+    parentSuspendAnalysis = null
   }
 
   /**
@@ -147,17 +162,45 @@ internal class KaBindingLookup(
       return binding
     }
     val parentKey = chain[1].graphTypeKey() ?: return binding
+    reservedForParent += binding.typeKey
     return parentDependencies.getOrPut(binding.typeKey) {
       KaBinding.GraphDependency(
         pointer = binding.pointer,
         contextualTypeKey = binding.typeKey.canonicalContextKey(),
         ownerKey = parentKey,
-        // Direct suspendness only, an accepted approximation. The compiler also resolves
-        // transitive parent suspendness, which the child seal cannot see.
-        accessorIsSuspend = binding.isSuspend,
+        accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
       )
     }
+  }
+
+  /**
+   * Whether the delegated binding requires suspend initialization in its owning graph, resolved
+   * through the parent context's own lookup so transitive suspend dependencies count.
+   */
+  private fun parentTransitiveSuspend(binding: KaBinding): Boolean {
+    if (binding.isSuspend) {
+      return true
+    }
+    if (!options.enableSuspendProviders) {
+      return false
+    }
+    val analysis = parentSuspendAnalysis ?: createParentSuspendAnalysis() ?: return false
+    return binding.typeKey in analysis.analyze(listOf(binding.typeKey))
+  }
+
+  private fun createParentSuspendAnalysis(): SuspendBindingAnalysis? {
+    val chain = queryContext.graphContext.chain
+    val parentPath = GraphPath(chain.drop(1).map { it.declarationId })
+    val parentContext = index.findContext(parentPath) ?: return null
+    val parentQueryContext = index.queryContext(parentContext) ?: return null
+    val lookup = KaBindingLookup(index, parentQueryContext, options)
+    parentSuspendLookup = lookup
+    val analysis = SuspendBindingAnalysis { key ->
+      lookup.lookup(key.canonicalContextKey()) { _, _ -> }.firstOrNull { it.typeKey == key }
+    }
+    parentSuspendAnalysis = analysis
+    return analysis
   }
 
   private fun graphInstance(typeKey: KaTypeKey): KaBinding.GraphInstance? {

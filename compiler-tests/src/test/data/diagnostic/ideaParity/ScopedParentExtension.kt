@@ -31,12 +31,9 @@ interface ChildGraph {
 @SingleIn(CacheScope::class)
 @DependencyGraph
 interface AppGraph {
+  // Only the child consumes Cache, so the parent validates it purely through the child's
+  // upward key reservation.
   val childGraph: ChildGraph
-
-  // The parent also consumes the scoped binding, keeping parent-side reports aligned. A child-only
-  // consumer would still work in the compiler through key reservation, which the IDE's independent
-  // per-context seals do not mirror.
-  val cache: Cache
 }
 
 // METRO_JVM_ONLY

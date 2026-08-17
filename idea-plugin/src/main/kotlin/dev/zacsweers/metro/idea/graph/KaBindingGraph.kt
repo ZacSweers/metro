@@ -4,6 +4,8 @@ package dev.zacsweers.metro.idea.graph
 
 import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -66,6 +68,8 @@ internal class KaBindingGraph(
   private val index: BindingIndex,
   queryContext: GraphQueryContext,
   private val options: MetroOptions,
+  /** Keys extension children delegate to this graph, validated here like the compiler does. */
+  private val reservations: List<ReservedParentKey> = emptyList(),
 ) :
   // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
   TraceScope by TraceScope.noop(),
@@ -149,6 +153,17 @@ internal class KaBindingGraph(
           isSynthetic = true,
         )
     }
+    for (reservation in reservations) {
+      val contextKey = reservation.key.canonicalContextKey()
+      keeps.putIfAbsent(
+        contextKey,
+        KaBindingStack.Entry(
+          contextKey = contextKey,
+          pointer = reservation.pointer,
+          isSynthetic = true,
+        ),
+      )
+    }
 
     val roots = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     for (consumer in graphConsumers) {
@@ -162,6 +177,7 @@ internal class KaBindingGraph(
       )
     }
 
+    var reservedParentKeys: Set<KaTypeKey> = emptySet()
     val topology =
       try {
         val topo =
@@ -179,7 +195,8 @@ internal class KaBindingGraph(
       } catch (_: SealAborted) {
         null
       } finally {
-        // Clear out the binding lookup now that we're done
+        // Capture the delegated keys, then clear the lookup now that we're done.
+        reservedParentKeys = _bindingLookup?.reservedParentKeys?.toSet().orEmpty()
         _bindingLookup = null
       }
 
@@ -191,6 +208,7 @@ internal class KaBindingGraph(
       topology,
       realGraph.bindings,
       suspendKeys,
+      reservedParentKeys,
     )
   }
 
@@ -489,6 +507,12 @@ internal class KaBindingGraph(
 
   private fun graphTypeKey(graph: KaGraphDeclaration): KaTypeKey? = graph.graphTypeKey()
 }
+
+/** A key an extension child delegates to its parent seal, anchored at the child declaration. */
+internal class ReservedParentKey(
+  val key: KaTypeKey,
+  val pointer: SmartPsiElementPointer<out PsiElement>,
+)
 
 /** Thrown by [KaBindingGraph.reportFatal] and caught by [KaBindingGraph.seal]. */
 private class SealAborted : RuntimeException() {

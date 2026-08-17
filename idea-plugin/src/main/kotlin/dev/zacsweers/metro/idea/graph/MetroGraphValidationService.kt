@@ -116,13 +116,27 @@ internal class MetroGraphValidationService(
         }
     }
 
+    // Extension children seal first, mirroring the compiler's traversal, so any keys they
+    // delegate upward are validated in this seal through the reservations below. Cached child
+    // results still carry their reservations, so cache hits stay correct.
+    val reservations = mutableListOf<ReservedParentKey>()
+    for (extensionContext in index.extensionContextsOf(context)) {
+      val childElement = extensionContext.graph.pointer.element ?: continue
+      val childResult = validate(ValidationInput(childElement, index, extensionContext))
+      if (childResult is KaGraphValidationResult.Completed) {
+        for (reservedKey in childResult.parentReservations) {
+          reservations += ReservedParentKey(reservedKey, childResult.context.graph.pointer)
+        }
+      }
+    }
+
     val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
     val result =
       runGraphValidation(context, graphName) {
         val options = moduleOptions(input.declarationElement)
         val queryContext =
           checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
-        KaBindingGraph(index, queryContext, options).seal()
+        KaBindingGraph(index, queryContext, options, reservations).seal()
       }
     // Internal errors stay uncached so a transient plugin failure is retried on the next run.
     if (key != null && result is KaGraphValidationResult.Completed) {
