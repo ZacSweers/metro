@@ -48,11 +48,11 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
@@ -103,18 +103,27 @@ class MetroResolutionService(
     )
 
   private val listeners = Collections.newSetFromMap(ConcurrentHashMap<() -> Unit, Boolean>())
-  private val inFlight = ConcurrentHashMap<SnapshotKey, Job>()
   private val invalidationPending = AtomicBoolean()
   private val disposed = AtomicBoolean()
-  private val stateLock = Any()
-  private val dirtyFiles = linkedSetOf<VirtualFile>()
-  private val forciblyRebuiltFiles = linkedSetOf<VirtualFile>()
-  private val requestedFiles = linkedSetOf<VirtualFile>()
-  private val dependencyOwners = linkedMapOf<VirtualFile, MutableSet<VirtualFile>>()
-  private var sourceState: SourceState? = null
-  private var generation: Long = 0
-  private var lastResolveFromLibraries =
-    MetroSettings.getInstance(project).state.resolveFromLibraries
+
+  /**
+   * The pending-invalidation ledger. Every mutation replaces the whole immutable value, so a
+   * builder can drain it at the start of a pass and publish results with one compare-and-set: any
+   * concurrent invalidation changes the reference and fails the publish, forcing a re-drain.
+   * Builders always run inside read actions, so PSI itself cannot change mid-pass; the ledger is
+   * the only state other threads can move underneath a build.
+   */
+  private val invalidations = AtomicReference(Invalidations())
+
+  /** The last fully built source view. Published atomically after a successful drain. */
+  private val sourceSnapshot = AtomicReference<SourceSnapshot?>(null)
+
+  /** Keys whose background builds were requested from the EDT, drained by [buildWorker]. */
+  private val pendingBuilds = ConcurrentHashMap<SnapshotKey, Module>()
+  private val buildSignal = Channel<Unit>(Channel.CONFLATED)
+
+  private val lastResolveFromLibraries =
+    AtomicBoolean(MetroSettings.getInstance(project).state.resolveFromLibraries)
   private val fingerprintsByModuleState: MutableMap<MetroIdeModuleState, IndexOptionsFingerprint> =
     Collections.synchronizedMap(
       object : LinkedHashMap<MetroIdeModuleState, IndexOptionsFingerprint>(16, 0.75f, true) {
@@ -155,6 +164,30 @@ class MetroResolutionService(
         },
         this,
       )
+    scope.launch { buildWorker() }
+  }
+
+  /** Drains EDT-requested background builds one at a time on the service scope. */
+  private suspend fun buildWorker() {
+    for (unused in buildSignal) {
+      while (true) {
+        val (key, module) = pendingBuilds.entries.firstOrNull() ?: break
+        pendingBuilds.remove(key, module)
+        val built =
+          try {
+            smartReadAction(project) { buildCurrentIndex(module, key) }
+          } catch (exception: CancellationException) {
+            throw exception
+          }
+        if (built === BindingIndex.EMPTY) continue
+        withContext(Dispatchers.EDT) {
+          val current = snapshots[key]
+          if (!project.isDisposed && current?.index === built) {
+            notifyListeners(restartDaemon = true)
+          }
+        }
+      }
+    }
   }
 
   /** Returns the current index for [element]'s module, or an empty index when Metro is inactive. */
@@ -178,16 +211,14 @@ class MetroResolutionService(
     val key =
       SnapshotKey(fingerprint, MetroSettings.getInstance(project).state.resolveFromLibraries)
     val inputs = currentInputs()
-    synchronized(stateLock) {
-      val sourceInputs = sourceState?.inputs
-      val compilerSettingsChanged = sourceInputs?.compilerSettings != inputs.compilerSettings
-      if (!compilerSettingsChanged && sourceInputs?.roots == inputs.roots) {
-        snapshots[key]
-          ?.takeIf { it.matches(generation, inputs.roots) }
-          ?.let {
-            return it.index
-          }
-      }
+    val sourceInputs = sourceSnapshot.get()?.inputs
+    val compilerSettingsChanged = sourceInputs?.compilerSettings != inputs.compilerSettings
+    if (!compilerSettingsChanged && sourceInputs?.roots == inputs.roots) {
+      snapshots[key]
+        ?.takeIf { it.matches(invalidations.get().generation, inputs.roots) }
+        ?.let {
+          return it.index
+        }
     }
 
     val application = ApplicationManager.getApplication()
@@ -216,46 +247,25 @@ class MetroResolutionService(
    */
   internal fun settingsChanged() {
     val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
-    synchronized(stateLock) {
-      if (resolveFromLibraries == lastResolveFromLibraries) return
-      lastResolveFromLibraries = resolveFromLibraries
-      generation++
-    }
-    inFlight.values.forEach(Job::cancel)
+    if (lastResolveFromLibraries.getAndSet(resolveFromLibraries) == resolveFromLibraries) return
+    invalidations.updateAndGet { it.bumpGeneration() }
     notifyListeners(restartDaemon = false)
   }
 
   private fun scheduleBuild(module: Module, key: SnapshotKey) {
-    val existing = inFlight[key]
-    if (existing != null && existing.isActive) return
-
-    val job =
-      scope.launch(start = CoroutineStart.LAZY) {
-        try {
-          val built = smartReadAction(project) { buildCurrentIndex(module, key) }
-          if (built === BindingIndex.EMPTY) return@launch
-          withContext(Dispatchers.EDT) {
-            val current = snapshots[key]
-            if (!project.isDisposed && current?.index === built) {
-              notifyListeners(restartDaemon = true)
-            }
-          }
-        } catch (exception: CancellationException) {
-          throw exception
-        }
-      }
-    val registered =
-      inFlight.compute(key) { _, previous ->
-        if (previous != null && previous.isActive) previous else job
-      }
-    if (registered !== job) {
-      job.cancel()
-      return
-    }
-    job.invokeOnCompletion { inFlight.remove(key, job) }
-    job.start()
+    pendingBuilds.putIfAbsent(key, module)
+    buildSignal.trySend(Unit)
   }
 
+  /**
+   * Builds (or reuses) the index for [key] with an optimistic drain/compute/publish loop:
+   * 1. Drain the invalidation ledger and read the last published source snapshot.
+   * 2. Compute a new immutable snapshot outside any lock. Analysis is allowed here; the caller's
+   *    read action keeps PSI stable for the whole pass.
+   * 3. Publish with a single compare-and-set against the drained ledger. A concurrent invalidation
+   *    fails the publish and the loop re-drains; unchanged shards replay from their per-file cached
+   *    values, so retries are cheap.
+   */
   private fun buildCurrentIndex(module: Module, key: SnapshotKey): BindingIndex {
     if (DumbService.isDumb(project)) return BindingIndex.EMPTY
     val moduleState = project.service<MetroIdeProjectService>().state(module)
@@ -267,24 +277,46 @@ class MetroResolutionService(
       )
     if (currentKey != key) return BindingIndex.EMPTY
 
-    synchronized(stateLock) {
+    while (true) {
+      ProgressManager.checkCanceled()
+      var start = invalidations.get()
       val inputs = currentInputs()
-      val sourceInputs = sourceState?.inputs
-      if (sourceInputs == inputs) {
+      val prev = sourceSnapshot.get()
+
+      if (prev != null && prev.inputs == inputs) {
         snapshots[key]
-          ?.takeIf { it.matches(generation, inputs.roots) }
+          ?.takeIf { it.matches(start.generation, inputs.roots) }
           ?.let {
             return it.index
           }
       }
 
-      val state = reconcileSourceState(moduleState.options, inputs)
+      val compilerSettingsChanged =
+        prev != null && prev.inputs.compilerSettings != inputs.compilerSettings
+      val fingerprintChanged =
+        compilerSettingsChanged && prev!!.moduleFingerprints != moduleFingerprints()
+      if (fingerprintChanged) {
+        // Semantic option change: everything keyed by the old generation is stale. Bump once and
+        // adopt the bumped ledger as this pass's drain point so the loop cannot spin.
+        start = invalidations.updateAndGet { it.bumpGeneration() }
+      }
+
+      val coldSweep = prev == null || prev.inputs.roots != inputs.roots || fingerprintChanged
+      val next =
+        if (coldSweep) coldSweep(moduleState.options, inputs, start)
+        else incremental(prev!!, inputs, start)
+
+      // Cold sweeps consume requested files; incremental passes leave them for a future sweep.
+      val drained = if (coldSweep) start.drainAll() else start.drainDirty()
+      if (!invalidations.compareAndSet(start, drained)) continue
+      sourceSnapshot.set(next)
+
       snapshots[key]
-        ?.takeIf { it.matches(generation, inputs.roots) }
+        ?.takeIf { it.matches(start.generation, inputs.roots) }
         ?.let {
           return it.index
         }
-      val source = aggregateSource(state.shards.values)
+      val source = aggregateSource(next.shards.values)
       val library =
         if (key.resolveFromLibraries) {
           libraryShardFor(key.fingerprint, inputs.roots, source)
@@ -300,95 +332,90 @@ class MetroResolutionService(
           assistedSites = source.assistedSites,
           bindingContainers = source.bindingContainers,
         )
-      snapshots[key] = IndexSnapshot(index, generation, inputs.roots)
+      // Only cache when nothing invalidated the pass semantically; a plain re-drain of new dirty
+      // files under the same generation still describes this exact source snapshot.
+      if (invalidations.get().generation == start.generation) {
+        snapshots[key] = IndexSnapshot(index, start.generation, inputs.roots)
+      }
       return index
     }
   }
 
-  /**
-   * Refreshes only changed declarations; roots and compiler configuration require a fresh sweep.
-   */
-  private fun reconcileSourceState(options: MetroOptions, inputs: IndexInputs): SourceState {
-    val existing = sourceState
-    val compilerSettingsChanged =
-      existing != null && existing.inputs.compilerSettings != inputs.compilerSettings
-    val fingerprintChanged =
-      compilerSettingsChanged && existing.moduleFingerprints != moduleFingerprints()
-    if (existing == null || existing.inputs.roots != inputs.roots || fingerprintChanged) {
-      if (fingerprintChanged) generation++
-      val shortNames = projectSweepShortNames(options)
-      val rebuilt = SourceState(inputs, moduleFingerprints(), shortNames, linkedMapOf())
-      // A cancelled cold sweep must not leave the previous state paired with partial owner maps.
-      sourceState = null
-      dependencyOwners.clear()
-      dirtyFiles.clear()
-      forciblyRebuiltFiles.clear()
-      for (file in candidateFiles(shortNames)) {
-        ProgressManager.checkCanceled()
-        val virtualFile = file.virtualFile ?: continue
-        updateShard(rebuilt, virtualFile, shardFor(file))
-      }
-      // Stub loading can create more PSI files synchronously while this cold sweep is running.
-      while (requestedFiles.isNotEmpty()) {
-        ProgressManager.checkCanceled()
-        val virtualFile = requestedFiles.first()
-        if (virtualFile.isValid && virtualFile !in rebuilt.shards) {
-          val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-          if (file != null && containsRelevantAnnotation(file, shortNames)) {
-            updateShard(rebuilt, virtualFile, shardFor(file))
-          }
-        }
-        requestedFiles.remove(virtualFile)
-      }
-      sourceState = rebuilt
-      return rebuilt
-    }
-
-    if (existing.inputs.compilerSettings != inputs.compilerSettings) {
-      existing.inputs = inputs
-    }
-
-    if (dirtyFiles.isEmpty()) return existing
-    while (dirtyFiles.isNotEmpty()) {
+  private fun coldSweep(
+    options: MetroOptions,
+    inputs: IndexInputs,
+    start: Invalidations,
+  ): SourceSnapshot {
+    val shortNames = projectSweepShortNames(options)
+    val shards = linkedMapOf<VirtualFile, FileShard>()
+    val owners = linkedMapOf<VirtualFile, MutableSet<VirtualFile>>()
+    for (file in candidateFiles(shortNames)) {
       ProgressManager.checkCanceled()
-      val virtualFile = dirtyFiles.first()
+      val virtualFile = file.virtualFile ?: continue
+      applyShard(shards, owners, virtualFile, shardFor(file))
+    }
+    // Stub loading can surface requested files before their annotations reach the stub index.
+    for (virtualFile in start.requested) {
+      ProgressManager.checkCanceled()
+      if (!virtualFile.isValid || virtualFile in shards) continue
+      val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
+      if (containsRelevantAnnotation(file, shortNames)) {
+        applyShard(shards, owners, virtualFile, shardFor(file))
+      }
+    }
+    return SourceSnapshot(inputs, moduleFingerprints(), shortNames, shards, owners)
+  }
+
+  private fun incremental(
+    prev: SourceSnapshot,
+    inputs: IndexInputs,
+    start: Invalidations,
+  ): SourceSnapshot {
+    if (start.dirty.isEmpty()) {
+      // Output-only compiler-option changes update inputs without touching any shard.
+      return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
+    }
+    val shards = LinkedHashMap(prev.shards)
+    val owners = LinkedHashMap<VirtualFile, MutableSet<VirtualFile>>(prev.dependencyOwners.size)
+    for ((dependencyFile, ownerSet) in prev.dependencyOwners) {
+      owners[dependencyFile] = LinkedHashSet(ownerSet)
+    }
+    for (virtualFile in start.dirty) {
+      ProgressManager.checkCanceled()
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-      if (file == null || !file.isValid) {
-        removeShard(existing, virtualFile)
-        dirtyFiles.remove(virtualFile)
-        forciblyRebuiltFiles.remove(virtualFile)
+      if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
+        withoutShard(shards, owners, virtualFile)
         continue
       }
-      val isRelevant = containsRelevantAnnotation(file, existing.shortNames)
-      if (!isRelevant) {
-        removeShard(existing, virtualFile)
-        dirtyFiles.remove(virtualFile)
-        forciblyRebuiltFiles.remove(virtualFile)
-        continue
-      }
-      val forceRebuild = virtualFile in forciblyRebuiltFiles
-      updateShard(existing, virtualFile, shardFor(file, forceRebuild))
-      dirtyFiles.remove(virtualFile)
-      forciblyRebuiltFiles.remove(virtualFile)
+      applyShard(shards, owners, virtualFile, shardFor(file, virtualFile in start.forced))
     }
-    return existing
+    return SourceSnapshot(inputs, prev.moduleFingerprints, prev.shortNames, shards, owners)
   }
 
-  private fun updateShard(state: SourceState, virtualFile: VirtualFile, shard: FileShard) {
-    removeShard(state, virtualFile)
+  private fun applyShard(
+    shards: MutableMap<VirtualFile, FileShard>,
+    owners: MutableMap<VirtualFile, MutableSet<VirtualFile>>,
+    virtualFile: VirtualFile,
+    shard: FileShard,
+  ) {
+    withoutShard(shards, owners, virtualFile)
     if (shard === FileShard.EMPTY) return
-    state.shards[virtualFile] = shard
+    shards[virtualFile] = shard
     for (dependencyFile in shard.dependencyFiles) {
-      dependencyOwners.getOrPut(dependencyFile) { linkedSetOf() }.add(virtualFile)
+      owners.getOrPut(dependencyFile) { linkedSetOf() }.add(virtualFile)
     }
   }
 
-  private fun removeShard(state: SourceState, virtualFile: VirtualFile) {
-    val previous = state.shards.remove(virtualFile) ?: return
+  private fun withoutShard(
+    shards: MutableMap<VirtualFile, FileShard>,
+    owners: MutableMap<VirtualFile, MutableSet<VirtualFile>>,
+    virtualFile: VirtualFile,
+  ) {
+    val previous = shards.remove(virtualFile) ?: return
     for (dependencyFile in previous.dependencyFiles) {
-      val owners = dependencyOwners[dependencyFile] ?: continue
-      owners -= virtualFile
-      if (owners.isEmpty()) dependencyOwners.remove(dependencyFile)
+      val ownerSet = owners[dependencyFile] ?: continue
+      ownerSet -= virtualFile
+      if (ownerSet.isEmpty()) owners.remove(dependencyFile)
     }
   }
 
@@ -561,20 +588,14 @@ class MetroResolutionService(
   /** An opened file may be available before its stub index or directory-creation event settles. */
   private fun enrollRequestedFile(file: KtFile) {
     val virtualFile = file.virtualFile ?: return
-    var invalidated = false
-    synchronized(stateLock) {
-      val state = sourceState
-      if (state == null) {
-        requestedFiles += virtualFile
-        return
-      }
-      if (virtualFile in state.shards || virtualFile in dirtyFiles) return
-      if (!containsRelevantAnnotation(file, state.shortNames)) return
-      dirtyFiles += virtualFile
-      generation++
-      invalidated = true
+    val state = sourceSnapshot.get()
+    if (state == null) {
+      invalidations.updateAndGet { it.withRequested(virtualFile) }
+      return
     }
-    if (invalidated) inFlight.values.forEach(Job::cancel)
+    if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) return
+    if (!containsRelevantAnnotation(file, state.shortNames)) return
+    invalidations.updateAndGet { it.withDirty(setOf(virtualFile)) }
   }
 
   private fun psiChanged(event: PsiTreeChangeEvent, structuralChange: Boolean = false) {
@@ -586,35 +607,42 @@ class MetroResolutionService(
     }
     if (file == null) return
     val virtualFile = file.virtualFile ?: return
-    synchronized(stateLock) {
-      val state = sourceState
-      if (state == null) {
-        if (structuralChange) requestedFiles += virtualFile
-        return
-      }
-      if (structuralChange && virtualFile !in state.shards) requestedFiles += virtualFile
-      val ownerFiles = dependencyOwners[virtualFile]
-      val alreadyIndexed = virtualFile in state.shards
-      val newlyRelevant = !alreadyIndexed && containsRelevantAnnotation(file, state.shortNames)
-      val globalSemanticChange =
-        !alreadyIndexed && ownerFiles.isNullOrEmpty() && hasSharedSemanticDeclarations(file)
-      val affectsIndexedDeclarations =
-        alreadyIndexed ||
-          !ownerFiles.isNullOrEmpty() ||
-          newlyRelevant ||
-          structuralChange ||
-          globalSemanticChange
-      if (!affectsIndexedDeclarations) return
-
-      dirtyFiles += virtualFile
-      if (ownerFiles != null) dirtyFiles += ownerFiles
-      if (globalSemanticChange) {
-        dirtyFiles += state.shards.keys
-        forciblyRebuiltFiles += state.shards.keys
-      }
-      generation++
+    val state = sourceSnapshot.get()
+    if (state == null) {
+      if (structuralChange) invalidations.updateAndGet { it.withRequested(virtualFile) }
+      return
     }
-    inFlight.values.forEach(Job::cancel)
+    val requestFile = structuralChange && virtualFile !in state.shards
+    val ownerFiles = state.dependencyOwners[virtualFile]
+    val alreadyIndexed = virtualFile in state.shards
+    val newlyRelevant = !alreadyIndexed && containsRelevantAnnotation(file, state.shortNames)
+    val globalSemanticChange =
+      !alreadyIndexed && ownerFiles.isNullOrEmpty() && hasSharedSemanticDeclarations(file)
+    val affectsIndexedDeclarations =
+      alreadyIndexed ||
+        !ownerFiles.isNullOrEmpty() ||
+        newlyRelevant ||
+        structuralChange ||
+        globalSemanticChange
+    if (!affectsIndexedDeclarations) {
+      if (requestFile) invalidations.updateAndGet { it.withRequested(virtualFile) }
+      return
+    }
+
+    val dirty = linkedSetOf(virtualFile)
+    if (ownerFiles != null) dirty += ownerFiles
+    val forced: Set<VirtualFile>
+    if (globalSemanticChange) {
+      dirty += state.shards.keys
+      forced = state.shards.keys
+    } else {
+      forced = emptySet()
+    }
+    invalidations.updateAndGet { ledger ->
+      var updated = ledger.withDirty(dirty, forced)
+      if (requestFile) updated = updated.withRequested(virtualFile)
+      updated
+    }
     scheduleInvalidationNotification()
   }
 
@@ -647,26 +675,27 @@ class MetroResolutionService(
     }
     if (files.isEmpty()) return
 
-    var changed = false
-    synchronized(stateLock) {
-      val state = sourceState ?: return
-      for (file in files) {
-        val virtualFile = file.virtualFile ?: continue
-        if (virtualFile !in state.shards) requestedFiles += virtualFile
-        val owners = dependencyOwners[virtualFile]
-        val relevant = virtualFile in state.shards || !owners.isNullOrEmpty()
-        val newlyRelevant = containsRelevantAnnotation(file, state.shortNames)
-        if (!relevant && !newlyRelevant) continue
-        dirtyFiles += virtualFile
-        if (owners != null) dirtyFiles += owners
-        changed = true
-      }
-      if (changed) generation++
+    val state = sourceSnapshot.get() ?: return
+    val requested = linkedSetOf<VirtualFile>()
+    val dirty = linkedSetOf<VirtualFile>()
+    for (file in files) {
+      val virtualFile = file.virtualFile ?: continue
+      if (virtualFile !in state.shards) requested += virtualFile
+      val owners = state.dependencyOwners[virtualFile]
+      val relevant = virtualFile in state.shards || !owners.isNullOrEmpty()
+      val newlyRelevant = containsRelevantAnnotation(file, state.shortNames)
+      if (!relevant && !newlyRelevant) continue
+      dirty += virtualFile
+      if (owners != null) dirty += owners
     }
-    if (changed) {
-      inFlight.values.forEach(Job::cancel)
-      scheduleInvalidationNotification()
+    if (requested.isEmpty() && dirty.isEmpty()) return
+    invalidations.updateAndGet { ledger ->
+      var updated = ledger
+      for (virtualFile in requested) updated = updated.withRequested(virtualFile)
+      if (dirty.isNotEmpty()) updated = updated.withDirty(dirty)
+      updated
     }
+    if (dirty.isNotEmpty()) scheduleInvalidationNotification()
   }
 
   private fun changedFile(event: PsiTreeChangeEvent): KtFile? {
@@ -709,13 +738,12 @@ class MetroResolutionService(
 
   override fun dispose() {
     disposed.set(true)
-    inFlight.values.forEach(Job::cancel)
+    buildSignal.close()
+    pendingBuilds.clear()
     listeners.clear()
     snapshots.clear()
     libraryShards.clear()
     fingerprintsByModuleState.clear()
-    forciblyRebuiltFiles.clear()
-    requestedFiles.clear()
   }
 
   private companion object {
@@ -743,12 +771,53 @@ private data class IndexSnapshot(
     generation == currentGeneration && rootsGeneration == currentRootsGeneration
 }
 
-private data class SourceState(
-  var inputs: IndexInputs,
+/**
+ * Pending invalidations as one immutable value. [stamp] moves on every transition so a builder's
+ * publish compare-and-set observes any concurrent change; [generation] moves only on semantic
+ * invalidations and keys the snapshot cache.
+ */
+private class Invalidations(
+  val stamp: Long = 0,
+  val generation: Long = 0,
+  val dirty: Set<VirtualFile> = emptySet(),
+  val forced: Set<VirtualFile> = emptySet(),
+  val requested: Set<VirtualFile> = emptySet(),
+) {
+  fun bumpGeneration(): Invalidations =
+    Invalidations(stamp + 1, generation + 1, dirty, forced, requested)
+
+  fun withDirty(
+    files: Set<VirtualFile>,
+    forcedFiles: Set<VirtualFile> = emptySet(),
+  ): Invalidations =
+    Invalidations(stamp + 1, generation + 1, dirty + files, forced + forcedFiles, requested)
+
+  /** Requested files feed a future cold sweep and do not invalidate published results. */
+  fun withRequested(file: VirtualFile): Invalidations =
+    if (file in requested) this
+    else Invalidations(stamp + 1, generation, dirty, forced, requested + file)
+
+  /** The ledger after a successful incremental publish. */
+  fun drainDirty(): Invalidations =
+    Invalidations(stamp + 1, generation, emptySet(), emptySet(), requested)
+
+  /** The ledger after a successful cold sweep, which also consumed requested files. */
+  fun drainAll(): Invalidations =
+    Invalidations(stamp + 1, generation, emptySet(), emptySet(), emptySet())
+}
+
+/** An immutable source view; incremental passes copy it with only the changed shards replaced. */
+private class SourceSnapshot(
+  val inputs: IndexInputs,
   val moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
   val shortNames: Set<String>,
-  val shards: MutableMap<VirtualFile, FileShard>,
-)
+  val shards: Map<VirtualFile, FileShard>,
+  /** Dependency file to the shard files that must rebuild when it changes. */
+  val dependencyOwners: Map<VirtualFile, Set<VirtualFile>>,
+) {
+  fun withInputs(newInputs: IndexInputs): SourceSnapshot =
+    SourceSnapshot(newInputs, moduleFingerprints, shortNames, shards, dependencyOwners)
+}
 
 private data class SourceAggregate(
   val bindings: List<KaBinding>,
