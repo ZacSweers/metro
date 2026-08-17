@@ -26,14 +26,6 @@ public enum class AssistedBindingKind {
   FACTORY,
 }
 
-/** Frontend-normalized facts used by [BindingGraphValidator]. */
-public data class BindingValidationMetadata<TypeKey, Scope : Any, MapKey : Any>(
-  val scope: Scope? = null,
-  val multibinding: MultibindingValidationMetadata<TypeKey>? = null,
-  val mapContribution: MapContributionValidationMetadata<MapKey>? = null,
-  val assistedKind: AssistedBindingKind? = null,
-)
-
 /** A frontend-independent structural binding graph failure. */
 public sealed interface GraphValidationIssue<
   out Binding,

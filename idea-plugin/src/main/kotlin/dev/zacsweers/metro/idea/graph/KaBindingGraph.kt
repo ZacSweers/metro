@@ -16,7 +16,6 @@ import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
-import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -208,13 +207,16 @@ internal class KaBindingGraph(
       BindingGraphValidator(
         bindings = bindings,
         graphScopes = context.scopingAnnotations,
-        metadata = { it.validationMetadata() },
+        scopeOf = { it.scope },
+        assistedKindOf = ::assistedKindOf,
+        multibindingOf = ::multibindingMetadataOf,
+        mapContributionOf = { MapContributionValidationMetadata(it.mapKeyValue) },
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
     bindings.forEachValue { binding ->
       ProgressManager.checkCanceled()
-      for (issue in structuralValidator.validate(binding)) {
+      structuralValidator.validate(binding) { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
@@ -268,33 +270,28 @@ internal class KaBindingGraph(
     }
   }
 
-  private fun KaBinding.validationMetadata():
-    BindingValidationMetadata<KaTypeKey, KaAnnotationSnapshot, String> {
-    val multibinding =
-      (this as? KaBinding.Multibinding)?.let { binding ->
-        MultibindingValidationMetadata(
-          kind =
-            if (binding.typeKey.type.classId == StandardClassIds.Map) {
-              MultibindingKind.MAP
-            } else {
-              MultibindingKind.SET
-            },
-          allowEmpty = binding.allowEmpty,
-          sourceBindings = binding.sourceBindings,
-        )
-      }
-    return BindingValidationMetadata(
-      scope = scope,
-      multibinding = multibinding,
-      mapContribution = MapContributionValidationMetadata(mapKeyValue),
-      assistedKind =
-        when {
-          this is KaBinding.ConstructorInjected && isAssisted -> AssistedBindingKind.TARGET
-          this is KaBinding.AssistedFactory -> AssistedBindingKind.FACTORY
-          else -> null
-        },
-    )
-  }
+  private fun assistedKindOf(binding: KaBinding): AssistedBindingKind? =
+    when {
+      binding is KaBinding.ConstructorInjected && binding.isAssisted -> AssistedBindingKind.TARGET
+      binding is KaBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+      else -> null
+    }
+
+  private fun multibindingMetadataOf(
+    binding: KaBinding
+  ): MultibindingValidationMetadata<KaTypeKey>? =
+    (binding as? KaBinding.Multibinding)?.let {
+      MultibindingValidationMetadata(
+        kind =
+          if (it.typeKey.type.classId == StandardClassIds.Map) {
+            MultibindingKind.MAP
+          } else {
+            MultibindingKind.SET
+          },
+        allowEmpty = it.allowEmpty,
+        sourceBindings = it.sourceBindings,
+      )
+    }
 
   private fun reportSuspendDiagnostic(
     diagnostic: MetroDiagnostic,

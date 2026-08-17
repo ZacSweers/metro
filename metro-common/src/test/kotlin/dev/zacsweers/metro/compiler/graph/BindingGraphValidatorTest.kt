@@ -14,11 +14,10 @@ class BindingGraphValidatorTest {
       validator(
         bindings = bindingsOf(binding),
         graphScopes = setOf("GraphScope"),
-      ) { candidate ->
-        BindingValidationMetadata(scope = candidate.scope)
-      }
+        scopeOf = { it.scope },
+      )
 
-    val issue = validator.validate(binding).single()
+    val issue = validator.validateAll(binding).single()
 
     assertThat(issue).isEqualTo(GraphValidationIssue.IncompatibleScope(binding, "BindingScope"))
   }
@@ -30,33 +29,32 @@ class BindingGraphValidatorTest {
       validator(
         bindings = bindingsOf(binding),
         graphScopes = setOf("SharedScope"),
-      ) { candidate ->
-        BindingValidationMetadata(scope = candidate.scope)
-      }
+        scopeOf = { it.scope },
+      )
 
-    assertThat(validator.validate(binding)).isEmpty()
+    assertThat(validator.validateAll(binding)).isEmpty()
   }
 
   @Test
   fun `reports a forbidden empty multibinding`() {
     val multibinding = validationBinding("Set<String>")
     val validator =
-      validator(bindingsOf(multibinding)) { candidate ->
-        BindingValidationMetadata(
-          multibinding =
-            candidate
-              .takeIf { it == multibinding }
-              ?.let {
-                MultibindingValidationMetadata(
-                  kind = MultibindingKind.SET,
-                  allowEmpty = false,
-                  sourceBindings = emptyList(),
-                )
-              }
-        )
-      }
+      validator(
+        bindings = bindingsOf(multibinding),
+        multibindingOf = { candidate ->
+          candidate
+            .takeIf { it == multibinding }
+            ?.let {
+              MultibindingValidationMetadata(
+                kind = MultibindingKind.SET,
+                allowEmpty = false,
+                sourceBindings = emptyList(),
+              )
+            }
+        },
+      )
 
-    assertThat(validator.validate(multibinding))
+    assertThat(validator.validateAll(multibinding))
       .containsExactly(GraphValidationIssue.EmptyMultibinding(multibinding))
   }
 
@@ -64,18 +62,18 @@ class BindingGraphValidatorTest {
   fun `allows an explicitly empty multibinding`() {
     val multibinding = validationBinding("Set<String>")
     val validator =
-      validator(bindingsOf(multibinding)) {
-        BindingValidationMetadata(
-          multibinding =
-            MultibindingValidationMetadata(
-              kind = MultibindingKind.SET,
-              allowEmpty = true,
-              sourceBindings = emptyList(),
-            )
-        )
-      }
+      validator(
+        bindings = bindingsOf(multibinding),
+        multibindingOf = {
+          MultibindingValidationMetadata(
+            kind = MultibindingKind.SET,
+            allowEmpty = true,
+            sourceBindings = emptyList(),
+          )
+        },
+      )
 
-    assertThat(validator.validate(multibinding)).isEmpty()
+    assertThat(validator.validateAll(multibinding)).isEmpty()
   }
 
   @Test
@@ -85,27 +83,29 @@ class BindingGraphValidatorTest {
     val multibinding = validationBinding("Map<String, Value>")
     val bindings = bindingsOf(first, second, multibinding)
     val validator =
-      validator(bindings) { binding ->
-        when (binding) {
-          multibinding ->
-            BindingValidationMetadata(
-              multibinding =
-                MultibindingValidationMetadata(
-                  kind = MultibindingKind.MAP,
-                  allowEmpty = false,
-                  sourceBindings = listOf(first.typeKey, second.typeKey),
-                )
-            )
-          first,
-          second ->
-            BindingValidationMetadata(
-              mapContribution = MapContributionValidationMetadata("same-key")
-            )
-          else -> error("Unexpected binding: $binding")
-        }
-      }
+      validator(
+        bindings = bindings,
+        multibindingOf = { binding ->
+          binding
+            .takeIf { it == multibinding }
+            ?.let {
+              MultibindingValidationMetadata(
+                kind = MultibindingKind.MAP,
+                allowEmpty = false,
+                sourceBindings = listOf(first.typeKey, second.typeKey),
+              )
+            }
+        },
+        mapContributionOf = { binding ->
+          when (binding) {
+            first,
+            second -> MapContributionValidationMetadata("same-key")
+            else -> null
+          }
+        },
+      )
 
-    assertThat(validator.validate(multibinding))
+    assertThat(validator.validateAll(multibinding))
       .containsExactly(
         GraphValidationIssue.DuplicateMapKey(
           multibinding = multibinding,
@@ -122,11 +122,10 @@ class BindingGraphValidatorTest {
       validator(
         bindings = bindingsOf(target),
         rootKeys = setOf(target.typeKey),
-      ) {
-        BindingValidationMetadata(assistedKind = AssistedBindingKind.TARGET)
-      }
+        assistedKindOf = { AssistedBindingKind.TARGET },
+      )
 
-    assertThat(validator.validate(target))
+    assertThat(validator.validateAll(target))
       .containsExactly(
         GraphValidationIssue.InvalidAssistedInjection(
           binding = target,
@@ -143,13 +142,10 @@ class BindingGraphValidatorTest {
       validator(
         bindings = bindingsOf(target, consumer),
         reverseAdjacency = mapOf(target.typeKey to setOf(consumer.typeKey)),
-      ) { binding ->
-        BindingValidationMetadata(
-          assistedKind = AssistedBindingKind.TARGET.takeIf { binding == target }
-        )
-      }
+        assistedKindOf = { binding -> AssistedBindingKind.TARGET.takeIf { binding == target } },
+      )
 
-    assertThat(validator.validate(target))
+    assertThat(validator.validateAll(target))
       .containsExactly(
         GraphValidationIssue.InvalidAssistedInjection(
           binding = target,
@@ -166,18 +162,16 @@ class BindingGraphValidatorTest {
       validator(
         bindings = bindingsOf(target, factory),
         reverseAdjacency = mapOf(target.typeKey to setOf(factory.typeKey)),
-      ) { binding ->
-        BindingValidationMetadata(
-          assistedKind =
-            when (binding) {
-              target -> AssistedBindingKind.TARGET
-              factory -> AssistedBindingKind.FACTORY
-              else -> null
-            }
-        )
-      }
+        assistedKindOf = { binding ->
+          when (binding) {
+            target -> AssistedBindingKind.TARGET
+            factory -> AssistedBindingKind.FACTORY
+            else -> null
+          }
+        },
+      )
 
-    assertThat(validator.validate(target)).isEmpty()
+    assertThat(validator.validateAll(target)).isEmpty()
   }
 }
 
@@ -191,14 +185,32 @@ private typealias StringBindingGraphValidator =
     String,
   >
 
+private fun StringBindingGraphValidator.validateAll(
+  binding: StringBinding
+): List<GraphValidationIssue<StringBinding, String, String>> = buildList {
+  validate(binding) { add(it) }
+}
+
 private fun validator(
   bindings: MutableScatterMap<StringTypeKey, StringBinding>,
   graphScopes: Set<String> = emptySet(),
   rootKeys: Set<StringTypeKey> = emptySet(),
   reverseAdjacency: Map<StringTypeKey, Set<StringTypeKey>> = emptyMap(),
-  metadata: (StringBinding) -> BindingValidationMetadata<StringTypeKey, String, String>,
+  scopeOf: (StringBinding) -> String? = { null },
+  assistedKindOf: (StringBinding) -> AssistedBindingKind? = { null },
+  multibindingOf: (StringBinding) -> MultibindingValidationMetadata<StringTypeKey>? = { null },
+  mapContributionOf: (StringBinding) -> MapContributionValidationMetadata<String>? = { null },
 ): StringBindingGraphValidator =
-  BindingGraphValidator(bindings, graphScopes, metadata, rootKeys, reverseAdjacency)
+  BindingGraphValidator(
+    bindings = bindings,
+    graphScopes = graphScopes,
+    scopeOf = scopeOf,
+    assistedKindOf = assistedKindOf,
+    multibindingOf = multibindingOf,
+    mapContributionOf = mapContributionOf,
+    rootKeys = rootKeys,
+    reverseAdjacency = reverseAdjacency,
+  )
 
 private fun validationBinding(type: String, scope: String? = null): StringBinding =
   StringBinding(StringContextualTypeKey.create(StringTypeKey(type)), scope = scope)

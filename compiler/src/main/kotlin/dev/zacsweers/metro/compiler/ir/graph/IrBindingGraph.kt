@@ -26,7 +26,6 @@ import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
-import dev.zacsweers.metro.compiler.graph.BindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
@@ -1109,7 +1108,10 @@ internal class IrBindingGraph(
       BindingGraphValidator(
         bindings = bindings,
         graphScopes = node.scopes,
-        metadata = { it.validationMetadata() },
+        scopeOf = { it.scope },
+        assistedKindOf = ::assistedKindOf,
+        multibindingOf = ::multibindingMetadataOf,
+        mapContributionOf = ::mapContributionOf,
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
@@ -1152,7 +1154,7 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      for (issue in structuralValidator.validate(binding)) {
+      structuralValidator.validate(binding) { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
@@ -1204,32 +1206,30 @@ internal class IrBindingGraph(
     }
   }
 
-  private fun IrBinding.validationMetadata():
-    BindingValidationMetadata<IrTypeKey, IrAnnotation, IrAnnotation> {
-    val multibinding =
-      (this as? IrBinding.Multibinding)?.let { binding ->
-        MultibindingValidationMetadata(
-          kind = if (binding.isMap) MultibindingKind.MAP else MultibindingKind.SET,
-          allowEmpty = binding.allowEmpty,
-          sourceBindings = binding.sourceBindings,
-        )
-      }
-    val mapContribution =
-      (this as? IrBinding.BindingWithAnnotations)?.let { binding ->
-        MapContributionValidationMetadata(binding.annotations.mapKey)
-      }
-    return BindingValidationMetadata(
-      scope = scope,
-      multibinding = multibinding,
-      mapContribution = mapContribution,
-      assistedKind =
-        when {
-          this is IrBinding.ConstructorInjected && isAssisted -> AssistedBindingKind.TARGET
-          this is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
-          else -> null
-        },
-    )
-  }
+  private fun assistedKindOf(binding: IrBinding): AssistedBindingKind? =
+    when {
+      binding is IrBinding.ConstructorInjected && binding.isAssisted -> AssistedBindingKind.TARGET
+      binding is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+      else -> null
+    }
+
+  private fun multibindingMetadataOf(
+    binding: IrBinding
+  ): MultibindingValidationMetadata<IrTypeKey>? =
+    (binding as? IrBinding.Multibinding)?.let {
+      MultibindingValidationMetadata(
+        kind = if (it.isMap) MultibindingKind.MAP else MultibindingKind.SET,
+        allowEmpty = it.allowEmpty,
+        sourceBindings = it.sourceBindings,
+      )
+    }
+
+  private fun mapContributionOf(
+    binding: IrBinding
+  ): MapContributionValidationMetadata<IrAnnotation>? =
+    (binding as? IrBinding.BindingWithAnnotations)?.let {
+      MapContributionValidationMetadata(it.annotations.mapKey)
+    }
 
   private fun reportSuspendProvidersNotEnabled() {
     // FIR reports local declarations. IR catches upstream declarations compiled with different

@@ -7,8 +7,9 @@ import androidx.collection.ScatterMap
 /**
  * Applies structural graph rules independently of IR or the Analysis API.
  *
- * Frontends provide declaration-derived metadata and remain responsible for source anchors,
- * diagnostic rendering, and choosing when an issue is reported during graph sealing.
+ * Frontends provide small accessors over their native binding types and remain responsible for
+ * source anchors, diagnostic rendering, and choosing when an issue is reported during graph
+ * sealing. The accessor shape keeps the common no-issue path free of per-binding allocations.
  */
 public class BindingGraphValidator<
   Type : Any,
@@ -20,54 +21,51 @@ public class BindingGraphValidator<
 >(
   private val bindings: ScatterMap<TypeKey, Binding>,
   private val graphScopes: Set<Scope>,
-  private val metadata: (Binding) -> BindingValidationMetadata<TypeKey, Scope, MapKey>,
+  private val scopeOf: (Binding) -> Scope?,
+  private val assistedKindOf: (Binding) -> AssistedBindingKind?,
+  private val multibindingOf: (Binding) -> MultibindingValidationMetadata<TypeKey>?,
+  private val mapContributionOf: (Binding) -> MapContributionValidationMetadata<MapKey>?,
   private val rootKeys: Set<TypeKey> = emptySet(),
   private val reverseAdjacency: Map<TypeKey, Set<TypeKey>> = emptyMap(),
 ) {
-  private val metadataByKey =
-    mutableMapOf<TypeKey, BindingValidationMetadata<TypeKey, Scope, MapKey>>()
+  /** Reports every structural issue originating at [binding] to [onIssue]. */
+  public fun validate(
+    binding: Binding,
+    onIssue: (GraphValidationIssue<Binding, Scope, MapKey>) -> Unit,
+  ) {
+    val bindingScope = scopeOf(binding)
+    if (bindingScope != null && bindingScope !in graphScopes) {
+      onIssue(GraphValidationIssue.IncompatibleScope(binding, bindingScope))
+    }
 
-  /** Returns all structural issues originating at [binding]. */
-  public fun validate(binding: Binding): List<GraphValidationIssue<Binding, Scope, MapKey>> =
-    buildList {
-      val bindingMetadata = metadataFor(binding)
-      val bindingScope = bindingMetadata.scope
-      if (bindingScope != null && bindingScope !in graphScopes) {
-        add(GraphValidationIssue.IncompatibleScope(binding, bindingScope))
-      }
-
-      if (bindingMetadata.assistedKind == AssistedBindingKind.TARGET) {
-        for (requestingKey in reverseAdjacency[binding.typeKey].orEmpty()) {
-          val requestingBinding = bindings[requestingKey] ?: continue
-          if (metadataFor(requestingBinding).assistedKind != AssistedBindingKind.FACTORY) {
-            add(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding))
-          }
-        }
-        if (binding.typeKey in rootKeys) {
-          add(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding = null))
+    if (assistedKindOf(binding) == AssistedBindingKind.TARGET) {
+      for (requestingKey in reverseAdjacency[binding.typeKey].orEmpty()) {
+        val requestingBinding = bindings[requestingKey] ?: continue
+        if (assistedKindOf(requestingBinding) != AssistedBindingKind.FACTORY) {
+          onIssue(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding))
         }
       }
-
-      val multibinding = bindingMetadata.multibinding ?: return@buildList
-      if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        add(GraphValidationIssue.EmptyMultibinding(binding))
-      }
-      if (multibinding.kind != MultibindingKind.MAP) return@buildList
-
-      val contributionsByMapKey = linkedMapOf<MapKey?, MutableList<Binding>>()
-      for (sourceKey in multibinding.sourceBindings) {
-        val contribution = bindings[sourceKey] ?: continue
-        val mapContribution = metadataFor(contribution).mapContribution ?: continue
-        contributionsByMapKey.getOrPut(mapContribution.mapKey, ::mutableListOf) += contribution
-      }
-      for ((mapKey, contributions) in contributionsByMapKey) {
-        if (contributions.size > 1) {
-          add(GraphValidationIssue.DuplicateMapKey(binding, mapKey, contributions))
-        }
+      if (binding.typeKey in rootKeys) {
+        onIssue(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding = null))
       }
     }
 
-  private fun metadataFor(binding: Binding): BindingValidationMetadata<TypeKey, Scope, MapKey> {
-    return metadataByKey.getOrPut(binding.typeKey) { metadata(binding) }
+    val multibinding = multibindingOf(binding) ?: return
+    if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
+      onIssue(GraphValidationIssue.EmptyMultibinding(binding))
+    }
+    if (multibinding.kind != MultibindingKind.MAP) return
+
+    val contributionsByMapKey = linkedMapOf<MapKey?, MutableList<Binding>>()
+    for (sourceKey in multibinding.sourceBindings) {
+      val contribution = bindings[sourceKey] ?: continue
+      val mapContribution = mapContributionOf(contribution) ?: continue
+      contributionsByMapKey.getOrPut(mapContribution.mapKey, ::mutableListOf) += contribution
+    }
+    for ((mapKey, contributions) in contributionsByMapKey) {
+      if (contributions.size > 1) {
+        onIssue(GraphValidationIssue.DuplicateMapKey(binding, mapKey, contributions))
+      }
+    }
   }
 }
