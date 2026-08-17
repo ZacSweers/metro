@@ -2325,7 +2325,14 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     for ((graphName, expectedType) in
       listOf("StringGraph" to "kotlin.String", "IntGraph" to "kotlin.Int")) {
       val graph = index.graphs.single { it.name == graphName }
-      val result = service.validate(file, index.contextsFor(graph).single()).requireCompleted()
+      val context = index.contextsFor(graph).single()
+      val queryContext = checkNotNull(index.queryContext(context))
+      val indexedProvidedTypes =
+        index.bindingsInContext(queryContext).filterIsInstance<KaBinding.Provided>().map {
+          it.typeKey.renderedType
+        }
+      assertEquals(listOf(expectedType), indexedProvidedTypes)
+      val result = service.validate(file, context).requireCompleted()
 
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
       val providedTypes = mutableListOf<String>()

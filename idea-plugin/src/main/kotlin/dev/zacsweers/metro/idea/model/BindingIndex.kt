@@ -100,6 +100,25 @@ internal class BindingIndex(
     }
   }
 
+  /** A concrete specialization replaces its raw declaration even when its return key changes. */
+  private val specializedDeclarationIdentities: Set<SpecializedDeclarationIdentity> by lazy {
+    if (specializedBindingIdentities.isEmpty()) {
+      emptySet()
+    } else {
+      buildSet {
+        for (identity in specializedBindingIdentities.keys) {
+          add(
+            SpecializedDeclarationIdentity(
+              identity.graphId,
+              identity.pointer,
+              identity.bindingClass,
+            )
+          )
+        }
+      }
+    }
+  }
+
   private val contextsByScope: ScatterMap<ClassId, List<GraphContext>> by lazy {
     val result = MutableScatterMap<ClassId, MutableList<GraphContext>>()
     for (context in allGraphContexts) {
@@ -725,7 +744,7 @@ internal class BindingIndex(
           is KaBinding.CustomWrapper -> true
           else -> false
         }
-    if (isUnspecializedContainerCallable && specializedBindingIdentities.isNotEmpty()) {
+    if (isUnspecializedContainerCallable && specializedDeclarationIdentities.isNotEmpty()) {
       if (isSupersededInheritedBinding(entry, queryContext.graphContext)) return false
     }
     if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
@@ -796,9 +815,8 @@ internal class BindingIndex(
   private fun isSupersededInheritedBinding(binding: KaBinding, context: GraphContext): Boolean {
     val pointerIdentity = pointerIdentity(binding.pointer) ?: return false
     for (graphId in context.graphIds) {
-      val identity =
-        SpecializedBindingIdentity(graphId, pointerIdentity, binding.javaClass, binding.typeKey)
-      if (identity in specializedBindingIdentities) return true
+      val identity = SpecializedDeclarationIdentity(graphId, pointerIdentity, binding.javaClass)
+      if (identity in specializedDeclarationIdentities) return true
     }
     return false
   }
@@ -948,6 +966,12 @@ internal class BindingIndex(
     val pointer: SourcePointerIdentity,
     val bindingClass: Class<*>,
     val bindingKey: KaTypeKey,
+  )
+
+  private data class SpecializedDeclarationIdentity(
+    val graphId: GraphDeclarationId,
+    val pointer: SourcePointerIdentity,
+    val bindingClass: Class<*>,
   )
 
   private data class SpecializedConsumerIdentity(

@@ -125,6 +125,37 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     )
   }
 
+  fun testGenericInheritedProvidersDoNotShowRawTypeParameters() {
+    myFixture.configureMetroFile(
+      """
+      interface GenericBase<T> {
+        val value: T
+
+        @Provides fun provideValue(): T = error("unused")
+      }
+
+      @DependencyGraph
+      interface StringGraph : GenericBase<String>
+
+      @DependencyGraph
+      interface IntGraph : GenericBase<Int>
+      """
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphs = structure.children(root).associateBy { it.text }
+    for ((graphName, expectedType) in listOf("StringGraph" to "String", "IntGraph" to "Int")) {
+      val graph = checkNotNull(graphs[graphName])
+      val unscoped =
+        structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+          it.text == "Unscoped"
+        }
+      assertEquals(listOf(expectedType), structure.children(unscoped).map { it.text })
+      assertEquals("1", unscoped.grayText)
+    }
+  }
+
   fun testRepeatedSourceFactoryRequestsAppearOnceInTheTree() {
     myFixture.addFileToProject(
       "test/SharedFactory.kt",
