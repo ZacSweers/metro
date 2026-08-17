@@ -917,7 +917,7 @@ internal class BindingIndex(
     return SourcePointerIdentity(file, range.startOffset, range.endOffset)
   }
 
-  /** Separate graph specializations can wrap the same concrete source binding in new objects. */
+  /** Separate graph specializations can share a navigation target without resolving identically. */
   fun distinctBindingDeclarations(entries: Collection<KaBinding>): List<KaBinding> {
     if (entries.size < 2) return entries.toList()
     val seen = HashSet<BindingDeclarationIdentity>()
@@ -934,7 +934,9 @@ internal class BindingIndex(
     return result
   }
 
-  internal fun bindingDeclarationIdentities(entries: Collection<KaBinding>): Set<Any> {
+  /** The same source declaration can consume different concrete dependencies in each graph. */
+  internal fun bindingResolutionIdentities(entries: Collection<KaBinding>): Set<Any> {
+    if (entries.isEmpty()) return emptySet()
     val result = HashSet<Any>(entries.size)
     for (binding in entries) {
       val sourceIdentity = pointerIdentity(binding.pointer)
@@ -942,7 +944,12 @@ internal class BindingIndex(
         if (sourceIdentity == null) {
           binding
         } else {
-          BindingDeclarationIdentity(sourceIdentity, binding.javaClass, binding.typeKey)
+          BindingResolutionIdentity(
+            sourceIdentity,
+            binding.javaClass,
+            binding.contextualTypeKey,
+            binding.dependencies,
+          )
         }
       result += identity
     }
@@ -959,6 +966,13 @@ internal class BindingIndex(
     val pointer: SourcePointerIdentity,
     val bindingClass: Class<*>,
     val bindingKey: KaTypeKey,
+  )
+
+  private data class BindingResolutionIdentity(
+    val pointer: SourcePointerIdentity,
+    val bindingClass: Class<*>,
+    val contextKey: KaContextualTypeKey,
+    val dependencies: List<KaContextualTypeKey>,
   )
 
   private data class SpecializedBindingIdentity(
@@ -1112,13 +1126,14 @@ internal class BindingIndex(
     if (entries.any { it.graphRequestKind == null }) {
       val first = entries.firstOrNull() ?: return null
       val firstBindings = resolveConsumer(first).uniformBindings ?: return null
-      val firstDeclarations = bindingDeclarationIdentities(firstBindings)
+      val firstResolution = bindingResolutionIdentities(firstBindings)
       // Separate graphs can inherit the same concrete parameter and the same implementation. Keep
       // its ordinary inlay unless either the requested key or the resolved bindings really differ.
-      for (entry in entries) {
+      for (entryIndex in 1 until entries.size) {
+        val entry = entries[entryIndex]
         if (entry.contextKey != first.contextKey) return null
         val bindings = resolveConsumer(entry).uniformBindings ?: return null
-        if (bindingDeclarationIdentities(bindings) != firstDeclarations) return null
+        if (bindingResolutionIdentities(bindings) != firstResolution) return null
       }
       return first
     }
@@ -1209,15 +1224,24 @@ internal class ConsumerResolution(
       candidateBindings = global
       uniformBindings = global
       emptyContexts = emptySet()
+    } else if (perContext.isEmpty()) {
+      candidateBindings = emptyList()
+      uniformBindings = emptyList()
+      emptyContexts = emptySet()
+    } else if (perContext.size == 1) {
+      val (context, bindings) = perContext.entries.single()
+      val distinctBindings = bindings.distinct()
+      candidateBindings = index.distinctBindingDeclarations(distinctBindings)
+      uniformBindings = distinctBindings
+      emptyContexts = if (distinctBindings.isEmpty()) setOf(context) else emptySet()
     } else {
       candidateBindings = index.distinctBindingDeclarations(perContext.values.flatten())
       emptyContexts = perContext.filterValues { it.isEmpty() }.keys
-      val firstBindings = perContext.values.firstOrNull()?.distinct().orEmpty()
-      val firstBindingSet = index.bindingDeclarationIdentities(firstBindings)
+      val firstBindings = perContext.values.first().distinct()
+      val firstBindingSet = index.bindingResolutionIdentities(firstBindings)
       val contextsAgree =
-        perContext.isNotEmpty() &&
-          perContext.values.all { index.bindingDeclarationIdentities(it) == firstBindingSet }
-      uniformBindings = if (perContext.isEmpty() || contextsAgree) firstBindings else null
+        perContext.values.all { index.bindingResolutionIdentities(it) == firstBindingSet }
+      uniformBindings = if (contextsAgree) firstBindings else null
     }
   }
 }

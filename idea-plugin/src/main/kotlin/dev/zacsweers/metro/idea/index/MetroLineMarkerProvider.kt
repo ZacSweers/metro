@@ -143,22 +143,36 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   ): RelatedItemLineMarkerInfo<*> {
     val contexts = linkedSetOf<String>()
     val bindings = linkedSetOf<KaBinding>()
+    val firstContextKey = consumers.first().contextKey
+    var firstResolution: Set<Any>? = null
+    var requestedKeysDiffer = false
+    var resolutionsDiffer = false
     var hasMissingRequiredContext = false
     for (consumer in consumers) {
+      if (consumer.contextKey != firstContextKey) requestedKeysDiffer = true
       val resolution = index.resolveConsumer(consumer)
       contexts +=
         resolution.perContext.keys.map { context ->
           context.path.toString()
         }
-      resolution.perContext.values.forEach(bindings::addAll)
+      for (contextBindings in resolution.perContext.values) {
+        bindings += contextBindings
+        if (resolutionsDiffer) continue
+        val identities = index.bindingResolutionIdentities(contextBindings)
+        val previousResolution = firstResolution
+        if (previousResolution == null) {
+          firstResolution = identities
+        } else if (identities != previousResolution) {
+          resolutionsDiffer = true
+        }
+      }
       if (!consumer.isOptional && resolution.emptyContexts.isNotEmpty()) {
         hasMissingRequiredContext = true
       }
     }
     val renderedKeys = consumers.map { it.key.render(short = true) }.distinct()
     val distinctBindings = index.distinctBindingDeclarations(bindings)
-    val bindingsDiffer =
-      renderedKeys.size > 1 || distinctBindings.size > 1 || hasMissingRequiredContext
+    val bindingsDiffer = requestedKeysDiffer || resolutionsDiffer || hasMissingRequiredContext
     val tooltip = buildString {
       append("Metro dependency: ")
       append(renderedKeys.joinToString(" / "))

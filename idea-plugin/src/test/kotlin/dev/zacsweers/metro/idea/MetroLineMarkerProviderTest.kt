@@ -204,6 +204,51 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testDifferentAliasTargetsUseContextDependentConsumerTooltips() {
+    myFixture.configureMetroFile(
+      """
+      interface Api
+      @Inject class RealA : Api
+      @Inject class RealB : Api
+
+      interface GenericBindings<T : Api> {
+        @Binds fun bindApi(value: T): Api
+
+        @Provides fun provideText(value: Api): String = value.toString()
+      }
+
+      interface GenericConsumers<T> {
+        @Provides fun provideCount(value: T): Int = value.hashCode()
+      }
+
+      @DependencyGraph
+      interface FirstGraph : GenericBindings<RealA>, GenericConsumers<Api> {
+        val text: String
+        val count: Int
+      }
+
+      @DependencyGraph
+      interface SecondGraph : GenericBindings<RealB>, GenericConsumers<Api> {
+        val text: String
+        val count: Int
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER }
+        .mapNotNull { it.tooltipText }
+        .filter { it.startsWith("Metro dependency: Api") }
+
+    // Both the ordinary Api parameter and the generic parameter specialized to Api must agree.
+    assertEquals(2, tooltips.size)
+    assertTrue("Different alias targets must stay context-dependent:\n$tooltips") {
+      tooltips.all { "bindings differ across 2 graph contexts" in it }
+    }
+  }
+
   fun testValidateMarkerBadgesValidationState() {
     val file =
       myFixture.configureMetroFile(

@@ -180,6 +180,45 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
     )
   }
 
+  fun testDifferentAliasTargetsDoNotShowImplementationInlays() {
+    doTestProvider(
+      "DifferentAliasTargets.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      interface Api
+      @Inject class RealA : Api
+      @Inject class RealB : Api
+
+      interface GenericBindings<T : Api> {
+        @Binds fun bindApi(value: T): Api
+
+        @Provides fun provideText(value: Api): String = value.toString()
+      }
+
+      interface GenericConsumers<T> {
+        @Provides fun provideCount(value: T): Int = value.hashCode()
+      }
+
+      @DependencyGraph
+      interface FirstGraph : GenericBindings<RealA>, GenericConsumers<Api> {
+        val text: String
+        val count: Int
+      }
+
+      @DependencyGraph
+      interface SecondGraph : GenericBindings<RealB>, GenericConsumers<Api> {
+        val text: String
+        val count: Int
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
+
   fun testDifferentGenericProviderSpecializationsDoNotShowAnImplementationInlay() {
     doTestProvider(
       "ContextDependentGenericProvider.kt",
