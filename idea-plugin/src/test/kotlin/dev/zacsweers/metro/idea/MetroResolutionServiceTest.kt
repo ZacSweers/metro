@@ -144,6 +144,47 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(updated.toString().contains("after"))
   }
 
+  fun testConstantChangesInIndexedFilesRefreshDependentBindingQualifiers() {
+    // The constant lives in a file that is itself indexed, so the dependent shard has no
+    // recorded edge to it and relies on the shared-declaration fallback.
+    val constants =
+      myFixture.addFileToProject(
+        "test/Constants.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        @Inject class Marker
+
+        const val SERVICE_NAME = "before"
+        """
+          .trimIndent(),
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial =
+      service.index(file).bindings.single { it.typeKey.renderedType == "kotlin.String" }.typeKey
+    assertTrue(initial.toString().contains("before"))
+
+    myFixture.openFileInEditor(constants.virtualFile)
+    val valueOffset = constants.text.indexOf("before")
+    myFixture.editor.selectionModel.setSelection(valueOffset, valueOffset + "before".length)
+    myFixture.type("after")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.index(file).bindings.single { it.typeKey.renderedType == "kotlin.String" }.typeKey
+    assertTrue(updated.toString().contains("after"))
+  }
+
   fun testOutputOnlyCompilerOptionsPreserveTheExistingSnapshot() {
     project.setMetroOptions("reports-destination" to "/tmp/metro-first")
     val file = configure()

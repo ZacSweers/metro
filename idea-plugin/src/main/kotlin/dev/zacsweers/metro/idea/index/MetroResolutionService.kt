@@ -649,8 +649,10 @@ class MetroResolutionService(
     val ownerFiles = state.dependencyOwners[virtualFile]
     val alreadyIndexed = virtualFile in state.shards
     val newlyRelevant = !alreadyIndexed && containsRelevantAnnotation(file, state.shortNames)
-    val globalSemanticChange =
-      !alreadyIndexed && ownerFiles.isNullOrEmpty() && hasSharedSemanticDeclarations(file)
+    // Applies even to indexed files and files with recorded owners. A file can mix indexed
+    // declarations with constants or aliases that unrelated shards reference without any
+    // recorded dependency edge.
+    val globalSemanticChange = hasSharedSemanticDeclarations(file)
     val affectsIndexedDeclarations =
       alreadyIndexed ||
         !ownerFiles.isNullOrEmpty() ||
@@ -686,16 +688,15 @@ class MetroResolutionService(
    * recorded during type-key snapshotting.
    */
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
-    // Consts commonly live inside objects and companion objects, so recurse a few levels.
-    fun KtDeclaration.isShared(depth: Int): Boolean =
+    // Consts commonly live inside objects and companion objects, so recurse through all nesting.
+    fun KtDeclaration.isShared(): Boolean =
       when {
         this is KtTypeAlias -> true
         this is KtProperty && hasModifier(KtTokens.CONST_KEYWORD) -> true
-        this is KtClassOrObject && depth < MAX_SHARED_DECLARATION_DEPTH ->
-          declarations.any { it.isShared(depth + 1) }
+        this is KtClassOrObject -> declarations.any { it.isShared() }
         else -> false
       }
-    return file.declarations.any { it.isShared(0) }
+    return file.declarations.any { it.isShared() }
   }
 
   /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
@@ -787,7 +788,6 @@ class MetroResolutionService(
   private companion object {
     const val MAX_CACHED_INDEXES = 8
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
-    const val MAX_SHARED_DECLARATION_DEPTH = 3
   }
 }
 
