@@ -73,6 +73,8 @@ internal class IrBoundTypeResolver(
     return explicitBindingType ?: resolveImplicitBoundType(contributingClass, ignoreQualifier)
   }
 
+  // Semantics must stay identical to the shared `resolveImplicitBoundType` in metro-common,
+  // which the IDE uses (see BoundTypeResolution.kt).
   private fun resolveImplicitBoundType(clazz: IrClass, ignoreQualifier: Boolean): IrTypeKey? {
     val cacheKey =
       IrTypeKey(

@@ -14,8 +14,10 @@ public const val REPORT_METRO_MESSAGE: String =
  * to [LazyThreadSafetyMode.NONE] when `parallelThreads == 0`, removing the per-access CAS/volatile
  * cost from memoized properties on the hot compile path.
  *
- * Treated as process-global mutable state, matching the existing single-compilation-per-process
- * assumption.
+ * Mutable global state, one copy per classloader. The CLI compiler ships its own copy inside the
+ * shaded compiler jar and the IDEA plugin bundles another, so the registrar's swap never reaches
+ * IDE callers. Only swap to an unsynchronized mode when everything in the owning classloader is
+ * single-threaded.
  */
 @Volatile
 public var memoizeThreadSafetyMode: LazyThreadSafetyMode = LazyThreadSafetyMode.PUBLICATION

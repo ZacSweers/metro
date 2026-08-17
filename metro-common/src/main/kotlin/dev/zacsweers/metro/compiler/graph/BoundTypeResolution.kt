@@ -4,8 +4,12 @@ package dev.zacsweers.metro.compiler.graph
 
 /**
  * The outcome of resolving a `@ContributesBinding`-style class's *implicit* bound type from its
- * supertypes (i.e. when no explicit `binding<T>()`/`boundType` is given). Shared so the compiler's
- * aggregation checker and the IDE resolve it identically.
+ * supertypes (i.e. when no explicit `binding<T>()`/`boundType` is given).
+ *
+ * The IDE resolves through this function. The compiler has its own copies of the same logic in
+ * `AggregationChecker` (FIR) and `IrBoundTypeResolver` (IR) to avoid allocations on hot paths. All
+ * three must agree. `BoundTypeResolutionTest` covers this function with the same cases the
+ * compiler's aggregation tests cover for FIR, so change all of them together.
  */
 public sealed interface BoundTypeResolution<out T : Any> {
   /** A single bound type was determined. */

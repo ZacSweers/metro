@@ -393,6 +393,8 @@ internal object AggregationChecker : FirClassChecker(MppCheckerKind.Common) {
 
         // @DefaultBinding takes priority over the implicit single-supertype binding. Keep the
         // original FIR type references to avoid copying supertypes for every contribution.
+        // Semantics must stay identical to the shared `resolveImplicitBoundType` in metro-common,
+        // which the IDE uses (see BoundTypeResolution.kt).
         when (val result = resolveDefaultBindingFromSupertypes(session, supertypesExcludingAny)) {
           is DefaultBindingResult.Ambiguous -> {
             reporter.reportOn(
