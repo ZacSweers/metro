@@ -7,6 +7,7 @@ import com.bugsnag.Severity
 import com.intellij.diagnostic.AbstractMessage
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.ErrorReportSubmitter
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent
 import com.intellij.openapi.diagnostic.SubmittedReportInfo
@@ -20,8 +21,13 @@ internal fun interface MetroErrorReporter {
   fun report(event: IdeaLoggingEvent, throwable: Throwable, additionalInfo: String?)
 }
 
-class MetroErrorHandler internal constructor(private val reporter: MetroErrorReporter?) :
-  ErrorReportSubmitter() {
+class MetroErrorHandler
+internal constructor(
+  private val reporter: MetroErrorReporter?,
+  private val executor: (Runnable) -> Unit = { runnable ->
+    ApplicationManager.getApplication().executeOnPooledThread(runnable)
+  },
+) : ErrorReportSubmitter() {
 
   constructor() : this(createBugsnagReporter())
 
@@ -34,21 +40,24 @@ class MetroErrorHandler internal constructor(private val reporter: MetroErrorRep
     consumer: Consumer<in SubmittedReportInfo>,
   ): Boolean {
     val activeReporter = reporter ?: return false
-    return try {
-      for (event in events) {
-        val throwable =
-          (event.data as? AbstractMessage)?.throwable
-            ?: event.throwable
-            ?: RuntimeException(event.message)
-        activeReporter.report(event, throwable, additionalInfo)
+    // The platform calls submit from the fatal-error dialog on the EDT; the network report runs
+    // on a background thread and the consumer is invoked on completion.
+    executor {
+      try {
+        for (event in events) {
+          val throwable =
+            (event.data as? AbstractMessage)?.throwable
+              ?: event.throwable
+              ?: RuntimeException(event.message)
+          activeReporter.report(event, throwable, additionalInfo)
+        }
+        consumer.consume(SubmittedReportInfo(null, null, SubmissionStatus.NEW_ISSUE))
+      } catch (e: Exception) {
+        logger<MetroErrorHandler>().warn("Could not send Metro error report", e)
+        consumer.consume(SubmittedReportInfo(null, e.message, SubmissionStatus.FAILED))
       }
-      consumer.consume(SubmittedReportInfo(null, null, SubmissionStatus.NEW_ISSUE))
-      true
-    } catch (e: Exception) {
-      logger<MetroErrorHandler>().warn("Could not send Metro error report", e)
-      consumer.consume(SubmittedReportInfo(null, e.message, SubmissionStatus.FAILED))
-      false
     }
+    return true
   }
 
   private companion object {

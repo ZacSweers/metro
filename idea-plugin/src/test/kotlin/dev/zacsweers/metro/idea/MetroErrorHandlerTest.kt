@@ -30,7 +30,11 @@ class MetroErrorHandlerTest : TestCase() {
   fun testSuccessfulReporterCompletesSubmission() {
     val reported = mutableListOf<Throwable>()
     var submitted: SubmittedReportInfo? = null
-    val handler = MetroErrorHandler(MetroErrorReporter { _, throwable, _ -> reported += throwable })
+    val handler =
+      MetroErrorHandler(
+        MetroErrorReporter { _, throwable, _ -> reported += throwable },
+        executor = Runnable::run,
+      )
     val first = IllegalStateException("first")
     val second = IllegalArgumentException("second")
 
@@ -50,7 +54,8 @@ class MetroErrorHandlerTest : TestCase() {
   fun testReporterFailureCompletesSubmissionAsFailed() {
     val failure = IllegalStateException("offline")
     var submitted: SubmittedReportInfo? = null
-    val handler = MetroErrorHandler(MetroErrorReporter { _, _, _ -> throw failure })
+    val handler =
+      MetroErrorHandler(MetroErrorReporter { _, _, _ -> throw failure }, executor = Runnable::run)
 
     val started =
       handler.submit(
@@ -60,7 +65,8 @@ class MetroErrorHandlerTest : TestCase() {
         consumer = Consumer { submitted = it },
       )
 
-    assertFalse(started)
+    // The submission starts; the failure arrives through the consumer once the report runs.
+    assertTrue(started)
     assertEquals(SubmissionStatus.FAILED, submitted?.status)
     assertEquals("offline", submitted?.linkText)
   }
