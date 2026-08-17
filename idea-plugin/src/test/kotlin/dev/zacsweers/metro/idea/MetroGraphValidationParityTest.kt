@@ -115,11 +115,29 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
     }
   }
 
+  fun testExplicitBindingPrecedenceMatchesCompiler() {
+    val fixture = "ExplicitOverInject"
+    assertParity(
+      ParityCase(
+        fixtureName = fixture,
+        graphPath = listOf("parity.precedence.explicitinject.AppGraph"),
+        metadataReport =
+          "$fixture/graph-metadata/graph-parity-precedence-explicitinject-AppGraph.json.txt",
+        populatedReport =
+          "$fixture/keys-populated/parity/precedence/explicitinject/AppGraph/Impl.txt",
+        validatedReport =
+          "$fixture/keys-validated/parity/precedence/explicitinject/AppGraph/Impl.txt",
+        deferredReport =
+          "$fixture/keys-deferred/parity/precedence/explicitinject/AppGraph/Impl.txt",
+      )
+    )
+  }
+
   fun testValidationFailuresMatchCompiler() {
     val cases =
       listOf(
         failureCase("MissingBinding", "missing", hasPopulatedReport = true),
-        failureCase("DuplicateBinding", "duplicate", hasPopulatedReport = false),
+        failureCase("DuplicateBinding", "duplicate", hasPopulatedReport = true),
         failureCase("DependencyCycle", "cycle", hasPopulatedReport = true),
         failureCase("DuplicateMapKey", "mapkey", hasPopulatedReport = true),
         failureCase("EmptyMultibinding", "empty", hasPopulatedReport = true),

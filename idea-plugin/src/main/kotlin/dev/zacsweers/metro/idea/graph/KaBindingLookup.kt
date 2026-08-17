@@ -61,18 +61,45 @@ internal class KaBindingLookup(
     }
 
     val candidates = index.bindingsForKey(typeKey, queryContext)
-    val multibindingId = contextKey.multibindingId(options)
-    if (multibindingId != null) {
-      val declarations = candidates.filterIsInstance<KaBinding.Multibinding>()
-      val contributions = index.multibindingContributions(multibindingId, queryContext)
-      if (contributions.isNotEmpty() || declarations.isNotEmpty()) {
-        return synthesizeMultibinding(contextKey, multibindingId, contributions, declarations)
+    val explicit = mutableListOf<KaBinding>()
+    val implicit = mutableListOf<KaBinding>()
+    val multibindingDeclarations = mutableListOf<KaBinding.Multibinding>()
+    for (candidate in candidates) {
+      when (candidate) {
+        is KaBinding.Multibinding -> multibindingDeclarations += candidate
+        // Class-derived bindings the compiler discovers through class-based lookup.
+        is KaBinding.ConstructorInjected,
+        is KaBinding.AssistedFactory -> implicit += candidate
+        // Everything else corresponds to the compiler's explicit binding cache: provides,
+        // aliases, graph factory inputs, includes, extensions, and custom wrappers.
+        else -> explicit += candidate
       }
     }
 
-    val direct = candidates.filter { it !is KaBinding.Multibinding }
+    // Explicit bindings win over class-derived ones and multibinding synthesis, matching the
+    // compiler's cache-first lookup. Only same-tier collisions are duplicates.
+    if (explicit.isNotEmpty()) {
+      if (explicit.size > 1) {
+        onDuplicate(typeKey, explicit)
+      }
+      return setOf(explicit.first())
+    }
+
+    val multibindingId = contextKey.multibindingId(options)
+    if (multibindingId != null) {
+      val contributions = index.multibindingContributions(multibindingId, queryContext)
+      if (contributions.isNotEmpty() || multibindingDeclarations.isNotEmpty()) {
+        return synthesizeMultibinding(
+          contextKey,
+          multibindingId,
+          contributions,
+          multibindingDeclarations,
+        )
+      }
+    }
+
     if (typeKey.qualifier == null) {
-      direct
+      implicit
         .filterIsInstance<KaBinding.ConstructorInjected>()
         .firstOrNull { it.isAssisted }
         ?.let {
@@ -80,11 +107,11 @@ internal class KaBindingLookup(
         }
     }
     return when {
-      direct.isEmpty() -> emptySet()
-      direct.size == 1 -> setOf(direct.single())
+      implicit.isEmpty() -> emptySet()
+      implicit.size == 1 -> setOf(implicit.single())
       else -> {
-        onDuplicate(typeKey, direct)
-        setOf(direct.first())
+        onDuplicate(typeKey, implicit)
+        setOf(implicit.first())
       }
     }
   }

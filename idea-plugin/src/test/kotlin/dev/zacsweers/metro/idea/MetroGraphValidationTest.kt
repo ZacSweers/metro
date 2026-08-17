@@ -489,7 +489,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "Screen" in diagnostic.render())
   }
 
-  fun testAssistedClassRequestWithProviderIsRejectedWithoutDuplicate() {
+  fun testExplicitProviderOfAssistedTypeWinsOverAssistedClass() {
+    // The compiler resolves the explicit provider before class-based assisted lookup, so this
+    // graph is valid ("do your own assistance").
     val result =
       validate(
         """
@@ -510,9 +512,28 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val diagnostic = result.diagnostics.single()
-    assertEquals(MetroDiagnosticId.INVALID_BINDING, diagnostic.id)
-    assertTrue(diagnostic.render(), "uses assisted injection" in diagnostic.render())
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+  }
+
+  fun testExplicitProviderOfInjectClassWinsWithoutDuplicate() {
+    // An explicit binding silently shadows the class's own inject constructor, matching the
+    // compiler's cache-first lookup.
+    val result =
+      validate(
+        """
+
+        @Inject class Thing
+
+        @DependencyGraph
+        interface AppGraph {
+          val thing: Thing
+
+          @Provides
+          fun provideThing(): Thing = Thing()
+        }
+        """
+      )
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
   }
 
   fun testGraphExtensionSealsAgainstParentChain() {

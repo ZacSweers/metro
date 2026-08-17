@@ -905,6 +905,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ExplicitOverInject.kt")
+    public void testExplicitOverInject() {
+      run("ExplicitOverInject.kt");
+    }
+
+    @Test
     @TestMetadata("ExtensionGraph.kt")
     public void testExtensionGraph() {
       run("ExtensionGraph.kt");
