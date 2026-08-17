@@ -81,11 +81,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
     project.service<MetroResolutionService>().addIndexListener(this) {
       treeModel.invalidateAsync()
       pendingValidation?.let { (classId, file) ->
-        val graph = findGraph(classId, file)
-        if (graph != null) {
-          pendingValidation = null
-          validateGraph(graph)
-        }
+        // One retry on the first fresh index. A graph that still is not there was a stale
+        // request, and firing it on some later index update would surprise the user.
+        pendingValidation = null
+        findGraph(classId, file)?.let(::validateGraph)
       }
     }
 

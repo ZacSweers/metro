@@ -21,6 +21,7 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -61,17 +62,23 @@ internal class MetroGraphValidationService(
     return context.path.takeUnless { hasLocalGraph }
   }
 
+  /**
+   * High-water mark of contexts sealed in a single traversal. Graph paths are unbounded, so the
+   * retention floor grows with the largest real traversal and the tool window can always reread a
+   * whole run from the cache.
+   */
+  private val retainFloor = AtomicInteger(0)
+
   // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
-  // browsing session from retaining every sealed graph forever, while staying large enough that
-  // one validate-with-extensions traversal cannot evict its own earlier results before the tool
-  // window reads them. The synchronized wrapper is required because async validation seals on
-  // pooled threads and access ordering mutates internal links even on reads.
+  // browsing session from retaining every sealed graph forever. The synchronized wrapper is
+  // required because async validation seals on pooled threads and access ordering mutates
+  // internal links even on reads.
   private val results: MutableMap<GraphPath, CachedEntry> =
     Collections.synchronizedMap(
       object : LinkedHashMap<GraphPath, CachedEntry>(8, 0.75f, true) {
         override fun removeEldestEntry(
           eldest: MutableMap.MutableEntry<GraphPath, CachedEntry>
-        ): Boolean = size > MAX_CACHED_RESULTS
+        ): Boolean = size > maxOf(MAX_CACHED_RESULTS, retainFloor.get())
       }
     )
 
@@ -118,15 +125,19 @@ internal class MetroGraphValidationService(
 
     // Extension children seal first, mirroring the compiler's traversal, so any keys they
     // delegate upward are validated in this seal through the reservations below. Cached child
-    // results still carry their reservations, so cache hits stay correct.
+    // results still carry their reservations, so cache hits stay correct. Each child resolves
+    // through its own declaration module so per-module options and library views apply.
     val reservations = mutableListOf<ReservedParentKey>()
+    var childFailed = false
     for (extensionContext in index.extensionContextsOf(context)) {
-      val childElement = extensionContext.graph.pointer.element ?: continue
-      val childResult = validate(ValidationInput(childElement, index, extensionContext))
+      val childInput = validationInputOrNull(input.declarationElement, extensionContext) ?: continue
+      val childResult = validate(childInput)
       if (childResult is KaGraphValidationResult.Completed) {
         for (reservedKey in childResult.parentReservations) {
           reservations += ReservedParentKey(reservedKey, childResult.context.graph.pointer)
         }
+      } else {
+        childFailed = true
       }
     }
 
@@ -138,8 +149,9 @@ internal class MetroGraphValidationService(
           checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
         KaBindingGraph(index, queryContext, options, reservations).seal()
       }
-    // Internal errors stay uncached so a transient plugin failure is retried on the next run.
-    if (key != null && result is KaGraphValidationResult.Completed) {
+    // Internal errors stay uncached so a transient plugin failure is retried on the next run. A
+    // parent sealed without a crashed child's reservations must also retry once the child does.
+    if (key != null && result is KaGraphValidationResult.Completed && !childFailed) {
       results[key] = CachedEntry(result, index)
     }
     return result
@@ -184,10 +196,22 @@ internal class MetroGraphValidationService(
         visit(extension)
       }
       results += validate(input)
+      retainFloor.updateAndGet { floor -> maxOf(floor, results.size + 1) }
     }
 
     rootContexts.forEach(::visit)
     return results
+  }
+
+  private fun validationInputOrNull(
+    declarationFallback: PsiElement,
+    context: GraphContext,
+  ): ValidationInput? {
+    val declarationElement = context.graph.pointer.element ?: declarationFallback
+    val index = project.service<MetroResolutionService>().index(declarationElement)
+    val currentContext = index.findContext(context.path) ?: return null
+    val currentDeclarationElement = currentContext.graph.pointer.element ?: return null
+    return ValidationInput(currentDeclarationElement, index, currentContext)
   }
 
   private fun validationInput(
