@@ -35,8 +35,10 @@ import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
+import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
+import dev.zacsweers.metro.compiler.graph.incompatibleScopeDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
@@ -1329,35 +1331,23 @@ internal class IrBindingGraph(
     stack: IrBindingStack,
     diagnosticRoutes: IrDiagnosticRoutes,
   ) {
-    // Does bindingScope have the same toString? Annoying! Let's disambiguate
-    val bindingScopeStr =
-      "$bindingScope".takeIf { it !in node.scopes.map { "$it" } }
-        ?: bindingScope.render(short = false)
+    // Binding and graph scopes can share a toString, so disambiguate colliding renders.
+    val renders =
+      disambiguateIncompatibleScopes(
+        bindingScope = bindingScope,
+        graphScopes = node.scopes,
+        shortRender = { "$it" },
+        fullRender = { it.render(short = false) },
+      )
 
-    val nodeScopesStrs =
-      node.scopes.map { "$it".takeIf { it != "$bindingScope" } ?: it.render(short = false) }
-
-    val isUnscoped = node.scopes.isEmpty()
     val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
     val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     stack.push(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
-        usage = "(scoped to '$bindingScopeStr')",
+        usage = "(scoped to '${renders.bindingScope}')",
       )
     )
-    val title = buildText {
-      append(node.sourceGraph.kotlinFqName.asString(), Style.EMPHASIS)
-      if (isUnscoped) {
-        // Unscoped graph but scoped binding
-        append(" (unscoped) may not reference scoped bindings")
-      } else {
-        // Scope mismatch
-        append(
-          " (scopes ${nodeScopesStrs.joinToString { "'$it'" }}) may not reference bindings from different scopes"
-        )
-      }
-    }
 
     val notes = buildList {
       if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
@@ -1379,11 +1369,10 @@ internal class IrBindingGraph(
     }
 
     val diagnostic =
-      MetroDiagnostic(
-        id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
-        severity = MetroSeverity.ERROR,
-        title = title,
-        sections = listOfNotNull(stack.toTraceSection()),
+      incompatibleScopeDiagnostic(
+        graphName = node.sourceGraph.kotlinFqName.asString(),
+        renders = renders,
+        trace = stack.toTraceSection(),
         notes = notes,
       )
     collectDiagnostic(diagnostic, declarationToReport)

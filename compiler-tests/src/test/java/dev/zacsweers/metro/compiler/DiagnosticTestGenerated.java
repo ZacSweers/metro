@@ -1057,6 +1057,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ScopeShortNameCollision.kt")
+    public void testScopeShortNameCollision() {
+      run("ScopeShortNameCollision.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendFailure.kt")
     public void testSuspendFailure() {
       run("SuspendFailure.kt");

@@ -124,6 +124,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         failureCase("DuplicateMapKey", "mapkey", hasPopulatedReport = true),
         failureCase("EmptyMultibinding", "empty", hasPopulatedReport = true),
         failureCase("IncompatibleScope", "scope", hasPopulatedReport = true),
+        failureCase("ScopeShortNameCollision", "scopecollision", hasPopulatedReport = true),
       )
     for (case in cases) assertParity(case)
   }

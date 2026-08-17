@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.Text
 import dev.zacsweers.metro.compiler.diagnostics.TraceEntry
 import dev.zacsweers.metro.compiler.diagnostics.buildText
@@ -103,6 +104,57 @@ public fun emptyMultibindingDiagnostic(
         )
         addAll(extraNotes)
       },
+  )
+}
+
+/** Scope renders for an incompatible-scope diagnostic, disambiguated where short names collide. */
+public class IncompatibleScopeRenders(
+  public val bindingScope: String,
+  public val graphScopes: List<String>,
+)
+
+/**
+ * Renders the binding scope and graph scopes with short names, upgrading to full renders whenever a
+ * binding scope and a graph scope would otherwise print identically.
+ */
+public fun <S : Any> disambiguateIncompatibleScopes(
+  bindingScope: S,
+  graphScopes: Collection<S>,
+  shortRender: (S) -> String,
+  fullRender: (S) -> String,
+): IncompatibleScopeRenders {
+  val bindingShort = shortRender(bindingScope)
+  val graphShorts = graphScopes.map(shortRender)
+  val bindingRender = if (bindingShort in graphShorts) fullRender(bindingScope) else bindingShort
+  val graphRenders = graphScopes.mapIndexed { index, scope ->
+    if (graphShorts[index] == bindingShort) fullRender(scope) else graphShorts[index]
+  }
+  return IncompatibleScopeRenders(bindingRender, graphRenders)
+}
+
+/** The diagnostic for a scoped binding referenced by a graph without a matching scope. */
+public fun incompatibleScopeDiagnostic(
+  graphName: String,
+  renders: IncompatibleScopeRenders,
+  trace: DiagnosticSection.BindingTrace?,
+  notes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append(graphName, Style.EMPHASIS)
+        if (renders.graphScopes.isEmpty()) {
+          append(" (unscoped) may not reference scoped bindings")
+        } else {
+          append(
+            " (scopes ${renders.graphScopes.joinToString { "'$it'" }}) may not reference bindings from different scopes"
+          )
+        }
+      },
+    sections = listOfNotNull(trace),
+    notes = notes,
   )
 }
 

@@ -198,7 +198,9 @@ internal class CompilerContractReader(
           add(
             DiagnosticContract(
               id = "Metro/${match.groupValues[1]}",
-              title = normalizeWhitespace(titleLines.joinToString(" ")),
+              // Titles can embed annotation renders, so strip argument-name spelling differences
+              // the same way key and scope renders are normalized.
+              title = normalizeRender(titleLines.joinToString(" ")),
             )
           )
         }
@@ -296,7 +298,7 @@ internal fun ValidationContract.Companion.fromIdea(
         .map { diagnostic ->
           DiagnosticContract(
             id = diagnostic.id.fullId,
-            title = normalizeWhitespace(diagnostic.diagnostic.title.toString()),
+            title = normalizeRender(diagnostic.diagnostic.title.toString()),
           )
         }
         .sortedWith(diagnosticComparator),

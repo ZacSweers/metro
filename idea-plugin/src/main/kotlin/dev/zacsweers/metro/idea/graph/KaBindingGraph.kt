@@ -6,8 +6,6 @@ import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
-import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
-import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
@@ -25,8 +23,10 @@ import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
+import dev.zacsweers.metro.compiler.graph.incompatibleScopeDiagnostic
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
@@ -341,29 +341,26 @@ internal class KaBindingGraph(
     stack: KaBindingStack,
     diagnosticRoutes: KaDiagnosticRoutes,
   ) {
+    val renders =
+      disambiguateIncompatibleScopes(
+        bindingScope = bindingScope,
+        graphScopes = context.scopingAnnotations,
+        shortRender = { it.render(short = true) },
+        fullRender = { it.render(short = false) },
+      )
     val diagnosticStack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     diagnosticStack.push(
       KaBindingStack.Entry(
         contextKey = binding.contextualTypeKey,
-        usage = "(scoped to '${bindingScope.render(short = true)}')",
+        usage = "(scoped to '${renders.bindingScope}')",
         pointer = binding.pointer,
       )
     )
-    val title = buildText {
-      append(graphName, Style.EMPHASIS)
-      if (context.scopingAnnotations.isEmpty()) {
-        append(" (unscoped) may not reference scoped bindings")
-      } else {
-        val scopes = context.scopingAnnotations.joinToString { "'${it.render(short = true)}'" }
-        append(" (scopes $scopes) may not reference bindings from different scopes")
-      }
-    }
     report(
-      MetroDiagnostic(
-        id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
-        severity = MetroSeverity.ERROR,
-        title = title,
-        sections = listOfNotNull(diagnosticStack.toTraceSection()),
+      incompatibleScopeDiagnostic(
+        graphName = graphName,
+        renders = renders,
+        trace = diagnosticStack.toTraceSection(),
       ),
       diagnosticStack,
     )
