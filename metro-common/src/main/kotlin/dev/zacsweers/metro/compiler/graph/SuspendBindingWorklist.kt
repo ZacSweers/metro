@@ -230,7 +230,7 @@ internal constructor(
 ) {
   /**
    * Returns a witness path from [start] toward a directly suspend binding. Its edge list is empty
-   * when [start] is itself directly suspend. Returns null only when [start] is not suspend; a path
+   * when [start] is itself directly suspend. Returns null only when [start] is not suspend. A path
    * whose walk could not reach a direct suspend source is returned partial with
    * [SuspendBindingPath.sourceIsSuspend] false.
    */
@@ -244,7 +244,7 @@ internal constructor(
 
 /**
  * A stable witness path from [startKey] toward [sourceKey]. When [sourceIsSuspend] is true the walk
- * reached a directly suspend binding; otherwise the path is partial because a binding was missing
+ * reached a directly suspend binding. Otherwise the path is partial because a binding was missing
  * or no propagating dependency remained.
  */
 public data class SuspendBindingPath<TypeKey, ContextualTypeKey>(

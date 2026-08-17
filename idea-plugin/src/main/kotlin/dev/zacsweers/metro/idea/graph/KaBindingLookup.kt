@@ -76,7 +76,7 @@ internal class KaBindingLookup(
         // Class-derived bindings the compiler discovers through class-based lookup.
         is KaBinding.ConstructorInjected,
         is KaBinding.AssistedFactory -> implicit += candidate
-        // Everything else corresponds to the compiler's explicit binding cache: provides,
+        // Everything else maps to the compiler's explicit binding cache, like provides,
         // aliases, graph factory inputs, includes, extensions, and custom wrappers.
         else -> explicit += candidate
       }
@@ -148,8 +148,8 @@ internal class KaBindingLookup(
         pointer = binding.pointer,
         contextualTypeKey = binding.typeKey.canonicalContextKey(),
         ownerKey = parentKey,
-        // Direct suspendness only. The compiler also resolves transitive parent suspendness,
-        // which the child seal cannot see; accepted approximation.
+        // Direct suspendness only, an accepted approximation. The compiler also resolves
+        // transitive parent suspendness, which the child seal cannot see.
         accessorIsSuspend = binding.isSuspend,
         isParentScoped = true,
       )

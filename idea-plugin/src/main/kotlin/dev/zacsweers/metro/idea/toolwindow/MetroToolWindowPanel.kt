@@ -55,7 +55,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
   @Volatile private var searchText: String = ""
   private val treeStructure = MetroTreeStructure(project) { searchText }
 
-  /** A validate request whose graph was not indexed yet; retried when a fresh index lands. */
+  /** A validate request whose graph was not indexed yet, retried when a fresh index lands. */
   private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
   private val treeModel = StructureTreeModel(treeStructure, this)
   private val tree =
@@ -146,7 +146,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
         pendingValidation = null
         validateGraph(graph)
       } else {
-        // A cold index returns nothing on the EDT and builds in the background; retry when the
+        // A cold index returns nothing on the EDT and builds in the background. Retry when the
         // fresh index lands instead of dropping the action.
         pendingValidation = classId to file
       }

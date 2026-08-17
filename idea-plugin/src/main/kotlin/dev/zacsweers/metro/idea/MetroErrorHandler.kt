@@ -40,7 +40,7 @@ internal constructor(
     consumer: Consumer<in SubmittedReportInfo>,
   ): Boolean {
     val activeReporter = reporter ?: return false
-    // The platform calls submit from the fatal-error dialog on the EDT; the network report runs
+    // The platform calls submit from the fatal-error dialog on the EDT. The network report runs
     // on a background thread and the consumer is invoked on completion.
     executor {
       try {

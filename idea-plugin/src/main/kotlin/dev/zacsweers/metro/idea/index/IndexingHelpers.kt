@@ -162,7 +162,7 @@ internal fun KaAnnotated.scopeKeys(annotationClassIds: Set<ClassId>): Set<ClassI
 
 /**
  * Whether the class itself, rather than one of its constructors, carries inject semantics. Both
- * inject-constructor selectors below and in BindingExtraction share this decision; they keep their
+ * inject-constructor selectors below and in BindingExtraction share this decision. They keep their
  * own symbol access (PSI vs member scope) but must agree on it and on preferring an annotated
  * constructor over the primary one.
  */

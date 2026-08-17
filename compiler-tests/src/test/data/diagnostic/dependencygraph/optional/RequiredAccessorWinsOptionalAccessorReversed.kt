@@ -3,7 +3,7 @@
 
 interface HttpClient
 
-// Same as RequiredAccessorWinsOptionalAccessor with the declaration order flipped: the required
+// Same as RequiredAccessorWinsOptionalAccessor with the declaration order flipped. The required
 // request must win regardless of which accessor registers the key first.
 @DependencyGraph
 interface AppGraph {

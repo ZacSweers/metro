@@ -89,7 +89,7 @@ internal class FileShardBuilder(
 
   /**
    * The PSI files backing [FileShard.dependencyFiles], for the caller's CachedValue registration.
-   * Read once after [buildShard]; the shard model itself never retains PSI.
+   * Read once after [buildShard]. The shard model itself never retains PSI.
    */
   val psiDependencies: Set<PsiFile>
     get() = cacheDependencies

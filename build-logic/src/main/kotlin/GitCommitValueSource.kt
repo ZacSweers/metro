@@ -68,7 +68,7 @@ private fun resolveGitDirectory(projectDirectory: Path): Path? {
   val pointer = gitPath.readText(Charsets.UTF_8).trim()
   if (!pointer.startsWith("gitdir:")) return null
   val target = projectDirectory.resolve(pointer.removePrefix("gitdir:").trim()).normalize()
-  // Worktree gitdirs hold their own HEAD; shared refs stay in the common dir it points into.
+  // Worktree gitdirs hold their own HEAD. Shared refs stay in the common dir it points into.
   return target.takeIf { it.exists() }
 }
 

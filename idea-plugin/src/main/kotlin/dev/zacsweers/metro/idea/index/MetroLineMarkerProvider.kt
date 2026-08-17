@@ -502,7 +502,7 @@ private fun showTargets(
  * intermediate source sets (nativeMain) to leaf platforms (iosArm64Main), via `dependsOn` edges.
  */
 /**
- * Clusters KMP source sets in hierarchy order: commonMain first, then intermediate source sets like
+ * Clusters KMP source sets in hierarchy order, commonMain first, then intermediate source sets like
  * nativeMain, then leaf platforms, alphabetical within each.
  */
 private val sourceSetOrder: Comparator<PsiElement> =

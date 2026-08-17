@@ -327,7 +327,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
   }
 
   fun testTopLevelFunctionInjectionIsInertWhenDisabled() {
-    // Default options: the compiler generates nothing for top-level inject functions, so the
+    // With default options the compiler generates nothing for top-level inject functions, so the
     // index must not surface a binding or consumers for them.
     val file =
       myFixture.configureMetroFile(

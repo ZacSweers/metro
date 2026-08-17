@@ -65,7 +65,7 @@ class MetroErrorHandlerTest : TestCase() {
         consumer = Consumer { submitted = it },
       )
 
-    // The submission starts; the failure arrives through the consumer once the report runs.
+    // The submission starts. The failure arrives through the consumer once the report runs.
     assertTrue(started)
     assertEquals(SubmissionStatus.FAILED, submitted?.status)
     assertEquals("offline", submitted?.linkText)

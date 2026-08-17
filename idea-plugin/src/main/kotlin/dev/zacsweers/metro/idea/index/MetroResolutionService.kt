@@ -108,9 +108,9 @@ class MetroResolutionService(
 
   /**
    * The pending-invalidation ledger. Every mutation replaces the whole immutable value, so a
-   * builder can drain it at the start of a pass and publish results with one compare-and-set: any
+   * builder can drain it at the start of a pass and publish results with one compare-and-set. Any
    * concurrent invalidation changes the reference and fails the publish, forcing a re-drain.
-   * Builders always run inside read actions, so PSI itself cannot change mid-pass; the ledger is
+   * Builders always run inside read actions, so PSI itself cannot change mid-pass. The ledger is
    * the only state other threads can move underneath a build.
    */
   private val invalidations = AtomicReference(Invalidations())
@@ -259,7 +259,7 @@ class MetroResolutionService(
     notifyListeners(restartDaemon = false)
   }
 
-  /** Memory hygiene: entries stranded by generation or root changes can never be served again. */
+  /** Entries stranded by generation or root changes can never be served again, so drop them. */
   private fun evictStaleCaches(currentGeneration: Long, currentRoots: Long) {
     synchronized(snapshots) {
       snapshots.values.removeIf { !it.matches(currentGeneration, currentRoots) }
@@ -277,10 +277,10 @@ class MetroResolutionService(
   /**
    * Builds (or reuses) the index for [key] with an optimistic drain/compute/publish loop:
    * 1. Drain the invalidation ledger and read the last published source snapshot.
-   * 2. Compute a new immutable snapshot outside any lock. Analysis is allowed here; the caller's
-   *    read action keeps PSI stable for the whole pass.
+   * 2. Compute a new immutable snapshot outside any lock. Analysis is allowed here, and the
+   *    caller's read action keeps PSI stable for the whole pass.
    * 3. Publish with a single compare-and-set against the drained ledger. A concurrent invalidation
-   *    fails the publish and the loop re-drains; unchanged shards replay from their per-file cached
+   *    fails the publish and the loop re-drains. Unchanged shards replay from their per-file cached
    *    values, so retries are cheap.
    */
   private fun buildCurrentIndex(module: Module, key: SnapshotKey): BindingIndex {
@@ -313,7 +313,8 @@ class MetroResolutionService(
       val fingerprintChanged =
         compilerSettingsChanged && prev!!.moduleFingerprints != moduleFingerprints()
       if (fingerprintChanged) {
-        // Semantic option change: everything keyed by the old generation is stale. Bump once and
+        // A semantic option change makes everything keyed by the old generation stale. Bump once
+        // and
         // adopt the bumped ledger as this pass's drain point so the loop cannot spin.
         start = invalidations.updateAndGet { it.bumpGeneration() }
       }
@@ -323,7 +324,7 @@ class MetroResolutionService(
         if (coldSweep) coldSweep(moduleState.options, inputs, start)
         else incremental(prev!!, inputs, start)
 
-      // Cold sweeps consume requested files; incremental passes leave them for a future sweep.
+      // Cold sweeps consume requested files. Incremental passes leave them for a future sweep.
       val drained = if (coldSweep) start.drainAll() else start.drainDirty()
       if (!invalidations.compareAndSet(start, drained)) continue
       sourceSnapshot.set(next)
@@ -349,7 +350,7 @@ class MetroResolutionService(
           assistedSites = source.assistedSites,
           bindingContainers = source.bindingContainers,
         )
-      // Only cache when nothing invalidated the pass semantically; a plain re-drain of new dirty
+      // Only cache when nothing invalidated the pass semantically. A plain re-drain of new dirty
       // files under the same generation still describes this exact source snapshot.
       if (invalidations.get().generation == start.generation) {
         snapshots[key] = IndexSnapshot(index, start.generation, inputs.roots)
@@ -561,7 +562,7 @@ class MetroResolutionService(
         val state = file.metroIdeState()
         val builder = if (state.isEnabled) FileShardBuilder(file.project, state.options) else null
         val shard = builder?.buildShard(file) ?: FileShard.EMPTY
-        // Dependency PSI is only handed to the platform's cache registration here; the shard
+        // Dependency PSI is only handed to the platform's cache registration here. The shard
         // model and the service retain virtual files instead of pinning PSI.
         CachedValueProvider.Result.create(
           shard,
@@ -612,7 +613,7 @@ class MetroResolutionService(
       return
     }
     if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) return
-    // Editor features call index() once per declaration; a cached negative keeps files without
+    // Editor features call index() once per declaration. A cached negative keeps files without
     // Metro annotations from paying a full PSI walk on every call.
     if (!isRelevantFileCached(file)) return
     invalidations.updateAndGet { it.withDirty(setOf(virtualFile)) }
@@ -810,7 +811,7 @@ private data class IndexSnapshot(
 
 /**
  * Pending invalidations as one immutable value. [stamp] moves on every transition so a builder's
- * publish compare-and-set observes any concurrent change; [generation] moves only on semantic
+ * publish compare-and-set observes any concurrent change. [generation] moves only on semantic
  * invalidations and keys the snapshot cache.
  */
 private class Invalidations(
@@ -843,7 +844,7 @@ private class Invalidations(
     Invalidations(stamp + 1, generation, emptySet(), emptySet(), emptySet())
 }
 
-/** An immutable source view; incremental passes copy it with only the changed shards replaced. */
+/** An immutable source view. Incremental passes copy it with only the changed shards replaced. */
 private class SourceSnapshot(
   val inputs: IndexInputs,
   val moduleFingerprints: Map<Module, IndexOptionsFingerprint>,

@@ -138,8 +138,8 @@ class ContributionMergeTest {
   @Test
   fun `excluding both an origin and its generated contribution matches both`() {
     // The compiler's in-place merge can flag the generated contribution as an unmatched exclusion
-    // depending on iteration order. The shared plan treats both targets as matched; this pins the
-    // plan's answer as the reference behavior.
+    // depending on iteration order. The shared plan treats both targets as matched, and this test
+    // keeps the plan's answer as the reference behavior.
     val plan =
       computeMergePlan(
         presentIds = setOf(id("AProvider"), id("B")),
