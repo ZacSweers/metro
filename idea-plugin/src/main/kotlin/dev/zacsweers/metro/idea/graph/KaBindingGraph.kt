@@ -6,6 +6,7 @@ import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
@@ -21,10 +22,8 @@ import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
-import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
-import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
@@ -35,6 +34,7 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -70,6 +70,7 @@ internal class KaBindingGraph(
   private val options: MetroOptions,
   /** Keys extension children delegate to this graph, validated here like the compiler does. */
   private val reservations: List<ReservedParentKey> = emptyList(),
+  private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) :
   // The TraceScope delegation satisfies seal()'s tracing context parameter with a no-op tracer
   TraceScope by TraceScope.noop(),
@@ -84,7 +85,8 @@ internal class KaBindingGraph(
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
-  private var _bindingLookup: KaBindingLookup? = KaBindingLookup(index, queryContext, options)
+  private var _bindingLookup: KaBindingLookup? =
+    KaBindingLookup(index, queryContext, options, resolveParentGraph)
     set(value) {
       if (value == null) {
         field?.clear()
@@ -156,6 +158,11 @@ internal class KaBindingGraph(
         )
     }
     for (reservation in reservations) {
+      // The parent may not request this collection itself, so its synthetic element exists only
+      // because a child requested it. Carry the original element into the parent's lookup.
+      if (reservation.key.qualifier?.classId == MetroClassIds.multibindingElement) {
+        bindingLookup.registerReservedBinding(reservation.binding)
+      }
       val contextKey = reservation.key.canonicalContextKey()
       keeps.putIfAbsent(
         contextKey,
@@ -179,7 +186,7 @@ internal class KaBindingGraph(
       )
     }
 
-    var reservedParentKeys: Set<KaTypeKey> = emptySet()
+    var reservedParentBindings: Map<KaTypeKey, KaBinding> = emptyMap()
     val topology =
       try {
         val topo =
@@ -197,8 +204,8 @@ internal class KaBindingGraph(
       } catch (_: SealAborted) {
         null
       } finally {
-        // Capture the delegated keys, then clear the lookup now that we're done.
-        reservedParentKeys = _bindingLookup?.reservedParentKeys?.toSet().orEmpty()
+        // Capture the delegated bindings, then clear the lookup now that we're done.
+        reservedParentBindings = _bindingLookup?.reservedParentBindings?.toMap().orEmpty()
         _bindingLookup = null
       }
 
@@ -210,7 +217,7 @@ internal class KaBindingGraph(
       topology,
       realGraph.bindings,
       suspendKeys,
-      reservedParentKeys,
+      reservedParentBindings,
     )
   }
 
@@ -265,8 +272,19 @@ internal class KaBindingGraph(
         graphScopes = graph.scopingAnnotations,
         scopeOf = { it.scope },
         assistedKindOf = ::assistedKindOf,
-        multibindingOf = ::multibindingMetadataOf,
-        mapContributionOf = { MapContributionValidationMetadata(it.mapKeyValue) },
+        multibindingKindOf = { binding ->
+          if (binding !is KaBinding.Multibinding) {
+            null
+          } else if (binding.typeKey.type.classId == StandardClassIds.Map) {
+            MultibindingKind.MAP
+          } else {
+            MultibindingKind.SET
+          }
+        },
+        multibindingAllowsEmpty = { (it as KaBinding.Multibinding).allowEmpty },
+        multibindingSourceKeys = { (it as KaBinding.Multibinding).sourceBindings },
+        isMapContribution = { it.multibindingId != null },
+        mapKeyOf = { it.mapKeyValue },
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
@@ -331,22 +349,6 @@ internal class KaBindingGraph(
       binding is KaBinding.ConstructorInjected && binding.isAssisted -> AssistedBindingKind.TARGET
       binding is KaBinding.AssistedFactory -> AssistedBindingKind.FACTORY
       else -> null
-    }
-
-  private fun multibindingMetadataOf(
-    binding: KaBinding
-  ): MultibindingValidationMetadata<KaTypeKey>? =
-    (binding as? KaBinding.Multibinding)?.let {
-      MultibindingValidationMetadata(
-        kind =
-          if (it.typeKey.type.classId == StandardClassIds.Map) {
-            MultibindingKind.MAP
-          } else {
-            MultibindingKind.SET
-          },
-        allowEmpty = it.allowEmpty,
-        sourceBindings = it.sourceBindings,
-      )
     }
 
   private fun reportSuspendDiagnostic(
@@ -517,6 +519,7 @@ internal class KaBindingGraph(
 internal class ReservedParentKey(
   val key: KaTypeKey,
   val pointer: SmartPsiElementPointer<out PsiElement>,
+  val binding: KaBinding,
 )
 
 /** Thrown by [KaBindingGraph.reportFatal] and caught by [KaBindingGraph.seal]. */

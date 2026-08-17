@@ -3,11 +3,15 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -27,6 +31,32 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val file = configure()
 
     assertTrue(project.service<MetroResolutionService>().index(file).bindings.isEmpty())
+  }
+
+  fun testPlatformCancellationRetriesTheRequestedIndexBuild() {
+    var attempts = 0
+
+    val result = runBlocking {
+      retryCancelledIndexBuild {
+        attempts++
+        if (attempts == 1) throw ProcessCanceledException()
+        "ready"
+      }
+    }
+
+    assertEquals("ready", result)
+    assertEquals(2, attempts)
+  }
+
+  fun testCoroutineCancellationStillStopsIndexBuildRetries() {
+    val cancellation = CancellationException("project disposed")
+
+    try {
+      runBlocking { retryCancelledIndexBuild<String> { throw cancellation } }
+      fail("Expected coroutine cancellation")
+    } catch (failure: CancellationException) {
+      assertSame(cancellation, failure)
+    }
   }
 
   fun testUnrelatedKotlinFileEditsPreserveTheExistingSnapshot() {
@@ -83,6 +113,38 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(
       listOf("kotlin.Int"),
       service.index(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+    )
+  }
+
+  fun testTypeAliasImportChangesRefreshDependentBindingKeys() {
+    val aliases =
+      myFixture.addFileToProject(
+        "test/Aliases.kt",
+        "package test\n\nimport kotlin.String as Value\n\ntypealias Alias = Value",
+      )
+    val providers =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides fun provideAlias(): Alias = error("unused")
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    assertEquals(
+      "kotlin.String",
+      service.index(providers).bindings.single().typeKey.type.classId?.asFqNameString(),
+    )
+
+    myFixture.openFileInEditor(aliases.virtualFile)
+    val stringOffset = aliases.text.indexOf("String")
+    myFixture.editor.selectionModel.setSelection(stringOffset, stringOffset + "String".length)
+    myFixture.type("Int")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertEquals(
+      "kotlin.Int",
+      service.index(providers).bindings.single().typeKey.type.classId?.asFqNameString(),
     )
   }
 
@@ -213,6 +275,144 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val updated =
       service.index(file).bindings.single { it.typeKey.renderedType == "kotlin.String" }.typeKey
     assertTrue(updated.toString().contains("after"))
+  }
+
+  fun testUnrelatedEditsInConstantFilesDoNotRebuildOtherShards() {
+    val mixed =
+      myFixture.addFileToProject(
+        "test/Mixed.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class Marker\n\n" +
+          "const val SERVICE_NAME = \"unchanged\"",
+      )
+    val providers =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(SERVICE_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val original =
+      service.index(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+
+    myFixture.openFileInEditor(mixed.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(
+      mixed.text.indexOf("class Marker") + "class Marker".length
+    )
+    myFixture.type(" { fun unrelated() = 1 }")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.index(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+    assertSame("An unrelated class edit must not force every shard to rebuild", original, updated)
+  }
+
+  fun testUnrelatedEditsInTypeAliasFilesDoNotRebuildOtherShards() {
+    val mixed =
+      myFixture.addFileToProject(
+        "test/Mixed.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class Marker\n\n" + "typealias Alias = String",
+      )
+    val providers =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides fun provideAlias(): Alias = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val original =
+      service.index(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+
+    myFixture.openFileInEditor(mixed.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(
+      mixed.text.indexOf("class Marker") + "class Marker".length
+    )
+    myFixture.type(" { fun unrelated() = 1 }")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.index(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+    assertSame("An unrelated class edit must not force every shard to rebuild", original, updated)
+  }
+
+  fun testIncrementalShardReplacementPreservesDeclarationOrder() {
+    val first =
+      myFixture.addFileToProject(
+        "test/First.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class First",
+      )
+    myFixture.addFileToProject(
+      "test/Second.kt",
+      "package test\n\n@dev.zacsweers.metro.Inject class Second",
+    )
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val original = service.index(file).bindings.map { it.typeKey.renderedType }
+
+    myFixture.openFileInEditor(first.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(first.textLength)
+    myFixture.type(" { fun unrelated() = 1 }")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    assertEquals(original, service.index(file).bindings.map { it.typeKey.renderedType })
+  }
+
+  fun testRemovingOneSharedDependencyOwnerKeepsOtherOwnersCurrent() {
+    val dependency =
+      myFixture.addFileToProject(
+        "test/BaseGraph.kt",
+        "package test\n\ninterface BaseGraph { val value: String }",
+      )
+    val first =
+      myFixture.addFileToProject(
+        "test/FirstGraph.kt",
+        "package test\n\n@dev.zacsweers.metro.DependencyGraph " +
+          "interface FirstGraph : BaseGraph",
+      )
+    val second = myFixture.configureMetroFile("@DependencyGraph interface SecondGraph : BaseGraph")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(second)
+    val initialGraph = initial.graphs.single { it.name == "SecondGraph" }
+    assertEquals(
+      listOf("kotlin.String"),
+      initial.accessorsFor(initialGraph).map { it.key.renderedType },
+    )
+
+    myFixture.openFileInEditor(first.virtualFile)
+    val supertypeOffset = first.text.indexOf(" : BaseGraph")
+    myFixture.editor.selectionModel.setSelection(
+      supertypeOffset,
+      supertypeOffset + " : BaseGraph".length,
+    )
+    myFixture.type(" ")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    service.index(second)
+
+    myFixture.openFileInEditor(dependency.virtualFile)
+    val stringOffset = dependency.text.indexOf("String")
+    myFixture.editor.selectionModel.setSelection(stringOffset, stringOffset + "String".length)
+    myFixture.type("Int")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(second)
+    val updatedGraph = updated.graphs.single { it.name == "SecondGraph" }
+    assertEquals(
+      listOf("kotlin.Int"),
+      updated.accessorsFor(updatedGraph).map { it.key.renderedType },
+    )
   }
 
   fun testOutputOnlyCompilerOptionsPreserveTheExistingSnapshot() {

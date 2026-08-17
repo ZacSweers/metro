@@ -13,6 +13,7 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -56,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
@@ -104,6 +106,8 @@ class MetroResolutionService(
     )
 
   private val listeners = Collections.newSetFromMap(ConcurrentHashMap<() -> Unit, Boolean>())
+  /** Pre-change shared declarations, so broad PSI events do not invalidate unrelated edits. */
+  private val sharedDeclarationFingerprints = ConcurrentHashMap<VirtualFile, String>()
   private val invalidationPending = AtomicBoolean()
   private val disposed = AtomicBoolean()
 
@@ -180,7 +184,9 @@ class MetroResolutionService(
         pendingBuilds.remove(key, module)
         val built =
           try {
-            smartReadAction(project) { buildCurrentIndex(module, key) }
+            retryCancelledIndexBuild {
+              smartReadAction(project) { buildCurrentIndex(module, key) }
+            }
           } catch (exception: CancellationException) {
             throw exception
           } catch (failure: Throwable) {
@@ -358,7 +364,7 @@ class MetroResolutionService(
         ?.let {
           return it.index
         }
-      val source = aggregateSource(next.shards.values)
+      val source = aggregateSource(next)
       val library =
         if (key.resolveFromLibraries) {
           libraryShardFor(key.fingerprint, inputs.roots, source)
@@ -390,25 +396,24 @@ class MetroResolutionService(
     start: Invalidations,
   ): SourceSnapshot {
     val shortNames = projectSweepShortNames(options)
-    val shards = mutableMapOf<VirtualFile, FileShard>()
-    val owners = mutableMapOf<VirtualFile, MutableSet<VirtualFile>>()
+    val transaction = SourceSnapshotTransaction()
     for (file in candidateFiles(shortNames)) {
       ProgressManager.checkCanceled()
       val virtualFile = file.virtualFile ?: continue
-      applyShard(shards, owners, virtualFile, shardFor(file))
+      transaction.applyShard(virtualFile, shardFor(file))
     }
     // Stub loading can surface requested files before their annotations reach the stub index.
     for (virtualFile in start.requested) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid || virtualFile in shards) {
+      if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
         continue
       }
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
       if (containsRelevantAnnotation(file, shortNames)) {
-        applyShard(shards, owners, virtualFile, shardFor(file))
+        transaction.applyShard(virtualFile, shardFor(file))
       }
     }
-    return SourceSnapshot(inputs, moduleFingerprints(), shortNames, shards, owners)
+    return transaction.snapshot(inputs, moduleFingerprints(), shortNames)
   }
 
   private fun incremental(
@@ -418,7 +423,10 @@ class MetroResolutionService(
   ): SourceSnapshot {
     val dirty =
       if (start.forceAll) {
-        prev.shards.keys + start.dirty
+        buildSet {
+          addAll(prev.shardOrder)
+          addAll(start.dirty)
+        }
       } else {
         start.dirty
       }
@@ -426,70 +434,37 @@ class MetroResolutionService(
       // Output-only compiler-option changes update inputs without touching any shard.
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
-    val shards = LinkedHashMap(prev.shards)
-    val owners = LinkedHashMap<VirtualFile, MutableSet<VirtualFile>>(prev.dependencyOwners.size)
-    for ((dependencyFile, ownerSet) in prev.dependencyOwners) {
-      owners[dependencyFile] = LinkedHashSet(ownerSet)
-    }
+    val transaction = SourceSnapshotTransaction(prev)
     for (virtualFile in dirty) {
       ProgressManager.checkCanceled()
       if (!virtualFile.isValid) {
-        withoutShard(shards, owners, virtualFile)
+        transaction.removeShard(virtualFile)
         continue
       }
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
       if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
-        withoutShard(shards, owners, virtualFile)
+        transaction.removeShard(virtualFile)
         continue
       }
       val forced = start.forceAll || virtualFile in start.forced
-      applyShard(shards, owners, virtualFile, shardFor(file, forced))
+      transaction.applyShard(virtualFile, shardFor(file, forced))
     }
     // Requested files were enqueued before their stubs or directory events settled. Draining
     // them here keeps them from lingering in the ledger until a cold sweep.
     for (virtualFile in start.requested) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid || virtualFile in shards) {
+      if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
         continue
       }
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
       if (containsRelevantAnnotation(file, prev.shortNames)) {
-        applyShard(shards, owners, virtualFile, shardFor(file))
+        transaction.applyShard(virtualFile, shardFor(file))
       }
     }
-    return SourceSnapshot(inputs, prev.moduleFingerprints, prev.shortNames, shards, owners)
+    return transaction.snapshot(inputs, prev.moduleFingerprints, prev.shortNames)
   }
 
-  private fun applyShard(
-    shards: MutableMap<VirtualFile, FileShard>,
-    owners: MutableMap<VirtualFile, MutableSet<VirtualFile>>,
-    virtualFile: VirtualFile,
-    shard: FileShard,
-  ) {
-    withoutShard(shards, owners, virtualFile)
-    if (shard === FileShard.EMPTY) return
-    shards[virtualFile] = shard
-    for (dependencyFile in shard.dependencyFiles) {
-      owners.getOrPut(dependencyFile) { mutableSetOf() }.add(virtualFile)
-    }
-  }
-
-  private fun withoutShard(
-    shards: MutableMap<VirtualFile, FileShard>,
-    owners: MutableMap<VirtualFile, MutableSet<VirtualFile>>,
-    virtualFile: VirtualFile,
-  ) {
-    val previous = shards.remove(virtualFile) ?: return
-    for (dependencyFile in previous.dependencyFiles) {
-      val ownerSet = owners[dependencyFile] ?: continue
-      ownerSet -= virtualFile
-      if (ownerSet.isEmpty()) {
-        owners.remove(dependencyFile)
-      }
-    }
-  }
-
-  private fun aggregateSource(shards: Collection<FileShard>): SourceAggregate {
+  private fun aggregateSource(snapshot: SourceSnapshot): SourceAggregate {
     val bindings = mutableListOf<KaBinding>()
     val consumers = mutableListOf<ConsumerEntry>()
     val graphs = mutableListOf<KaGraphDeclaration>()
@@ -497,8 +472,9 @@ class MetroResolutionService(
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
     val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
-    for (shard in shards) {
+    for (virtualFile in snapshot.shardOrder) {
       ProgressManager.checkCanceled()
+      val shard = snapshot.shards[virtualFile] ?: continue
       bindings += shard.bindings
       consumers += shard.consumers
       graphs += shard.graphs
@@ -711,11 +687,9 @@ class MetroResolutionService(
     val ownerFiles = state.dependencyOwners[virtualFile]
     val alreadyIndexed = virtualFile in state.shards
     val newlyRelevant = !alreadyIndexed && isRelevantFileCached(file)
-    // Applies even to indexed files and files with recorded owners. A file can mix indexed
-    // declarations with constants or aliases that unrelated shards reference without any
-    // recorded dependency edge. The cached value makes before-events observe the pre-change
-    // answer, which is what catches an edit that removes the shared declaration itself.
-    val globalSemanticChange = fileHasSharedDeclarationsCached(file)
+    // A file can mix indexed declarations with constants or aliases that unrelated shards
+    // reference. Only a change to those declarations needs the whole-project fallback.
+    val globalSemanticChange = sharedDeclarationChanged(event, file, structuralChange)
     val affectsIndexedDeclarations =
       alreadyIndexed ||
         !ownerFiles.isNullOrEmpty() ||
@@ -758,16 +732,87 @@ class MetroResolutionService(
     }
   }
 
-  private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
-    // Consts commonly live inside objects and companion objects, so recurse through all nesting.
-    fun KtDeclaration.isShared(): Boolean =
-      when {
-        this is KtTypeAlias -> true
-        this is KtProperty && hasModifier(KtTokens.CONST_KEYWORD) -> true
-        this is KtClassOrObject -> declarations.any { it.isShared() }
-        else -> false
+  private fun sharedDeclarationChanged(
+    event: PsiTreeChangeEvent,
+    file: KtFile,
+    structuralChange: Boolean,
+  ): Boolean {
+    val virtualFile = file.virtualFile ?: return false
+    val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)
+    val previous = sharedDeclarationFingerprints[virtualFile]
+    if (!hasSharedDeclarations) {
+      if (previous != null) {
+        sharedDeclarationFingerprints.remove(virtualFile)
+        return true
       }
-    return file.declarations.any { it.isShared() }
+      return changedSharedElement(event)
+    }
+
+    val current = sharedDeclarationFingerprint(file)
+    sharedDeclarationFingerprints[virtualFile] = current
+    if (previous != null && previous != current) return true
+    if (structuralChange) return true
+    return changedSharedElement(event)
+  }
+
+  /** Names and declaration text catch value, alias, containing-object, and import changes. */
+  private fun sharedDeclarationFingerprint(file: KtFile): String {
+    return buildString {
+      append(file.packageFqName.asString())
+      append('\n')
+      append(file.importList?.text.orEmpty())
+
+      fun appendDeclarations(declarations: List<KtDeclaration>, owner: String) {
+        for (declaration in declarations) {
+          when {
+            declaration is KtTypeAlias -> {
+              append('\n')
+              append(owner)
+              append(declaration.text)
+            }
+            declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD) -> {
+              append('\n')
+              append(owner)
+              append(declaration.text)
+            }
+            declaration is KtClassOrObject -> {
+              appendDeclarations(declaration.declarations, "$owner${declaration.name}.")
+            }
+          }
+        }
+      }
+
+      appendDeclarations(file.declarations, owner = "")
+    }
+  }
+
+  private fun changedSharedElement(event: PsiTreeChangeEvent): Boolean {
+    val candidate = event.child ?: event.element ?: event.parent ?: return false
+    if (candidate is KtFile || candidate is PsiDirectory) return false
+    if (candidate is KtClassOrObject && hasSharedSemanticDeclarations(candidate)) return true
+
+    var current: PsiElement? = candidate
+    while (current != null && current !is KtFile) {
+      if (current is KtTypeAlias) return true
+      if (current is KtProperty && current.hasModifier(KtTokens.CONST_KEYWORD)) return true
+      current = current.parent
+    }
+    return false
+  }
+
+  private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
+    return file.declarations.any(::hasSharedSemanticDeclarations)
+  }
+
+  private fun hasSharedSemanticDeclarations(declaration: KtDeclaration): Boolean {
+    // Consts commonly live inside objects and companion objects, so recurse through all nesting.
+    return when {
+      declaration is KtTypeAlias -> true
+      declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD) -> true
+      declaration is KtClassOrObject ->
+        declaration.declarations.any(::hasSharedSemanticDeclarations)
+      else -> false
+    }
   }
 
   /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
@@ -808,8 +853,7 @@ class MetroResolutionService(
       return
     }
     invalidations.updateAndGet { ledger ->
-      var updated = ledger
-      for (virtualFile in requested) updated = updated.withRequested(virtualFile)
+      var updated = ledger.withRequested(requested)
       if (dirty.isNotEmpty()) {
         updated = updated.withDirty(dirty)
       }
@@ -863,6 +907,7 @@ class MetroResolutionService(
     buildSignal.close()
     pendingBuilds.clear()
     listeners.clear()
+    sharedDeclarationFingerprints.clear()
     snapshots.clear()
     libraryShards.clear()
     fingerprintsByModuleState.clear()
@@ -871,6 +916,18 @@ class MetroResolutionService(
   private companion object {
     const val MAX_CACHED_INDEXES = 8
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
+  }
+}
+
+/** Retries platform read-action cancellations without cancelling the long-lived index worker. */
+internal suspend fun <T> retryCancelledIndexBuild(build: suspend () -> T): T {
+  while (true) {
+    try {
+      return build()
+    } catch (_: ProcessCanceledException) {
+      // Yield before retrying so a cancelled service scope still stops the worker promptly.
+      yield()
+    }
   }
 }
 
@@ -923,6 +980,12 @@ private class Invalidations(
       Invalidations(stamp + 1, generation, dirty, forced, requested + file, forceAll)
     }
 
+  /** Directory events merge all requests once instead of repeatedly copying the growing set. */
+  fun withRequested(files: Set<VirtualFile>): Invalidations {
+    if (files.isEmpty() || requested.containsAll(files)) return this
+    return Invalidations(stamp + 1, generation, dirty, forced, requested + files, forceAll)
+  }
+
   /** The ledger after a successful publish, which consumed every pending entry. */
   fun drainAll(): Invalidations = Invalidations(stamp + 1, generation)
 }
@@ -932,12 +995,137 @@ private class SourceSnapshot(
   val inputs: IndexInputs,
   val moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
   val shortNames: Set<String>,
-  val shards: Map<VirtualFile, FileShard>,
+  val shards: PartitionedFileMap<FileShard>,
+  /** Reused across ordinary replacements so declaration and duplicate ordering stays stable. */
+  val shardOrder: List<VirtualFile>,
   /** Dependency file to the shard files that must rebuild when it changes. */
-  val dependencyOwners: Map<VirtualFile, Set<VirtualFile>>,
+  val dependencyOwners: PartitionedFileMap<Set<VirtualFile>>,
 ) {
   fun withInputs(newInputs: IndexInputs): SourceSnapshot =
-    SourceSnapshot(newInputs, moduleFingerprints, shortNames, shards, dependencyOwners)
+    SourceSnapshot(newInputs, moduleFingerprints, shortNames, shards, shardOrder, dependencyOwners)
+}
+
+/** Collects one immutable source transition without copying unrelated shards or owner sets. */
+private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = null) {
+  private val shardChanges = linkedMapOf<VirtualFile, FileShard?>()
+  private val ownerChanges = linkedMapOf<VirtualFile, MutableSet<VirtualFile>?>()
+
+  fun containsShard(file: VirtualFile): Boolean = currentShard(file) != null
+
+  fun applyShard(file: VirtualFile, shard: FileShard) {
+    removeShard(file)
+    if (shard === FileShard.EMPTY) return
+
+    shardChanges[file] = shard
+    for (dependencyFile in shard.dependencyFiles) {
+      mutableOwners(dependencyFile).add(file)
+    }
+  }
+
+  fun removeShard(file: VirtualFile) {
+    val existing = currentShard(file) ?: return
+    shardChanges[file] = null
+    for (dependencyFile in existing.dependencyFiles) {
+      val owners = mutableOwners(dependencyFile)
+      owners.remove(file)
+      if (owners.isEmpty()) {
+        ownerChanges[dependencyFile] = null
+      }
+    }
+  }
+
+  fun snapshot(
+    inputs: IndexInputs,
+    moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
+    shortNames: Set<String>,
+  ): SourceSnapshot {
+    val previousShards = previous?.shards ?: PartitionedFileMap.empty()
+    val previousOwners = previous?.dependencyOwners ?: PartitionedFileMap.empty()
+    val ownerUpdates = linkedMapOf<VirtualFile, Set<VirtualFile>?>()
+    for ((file, owners) in ownerChanges) {
+      ownerUpdates[file] = owners?.toSet()
+    }
+    val shards = previousShards.withChanges(shardChanges)
+    val owners = previousOwners.withChanges(ownerUpdates)
+
+    val existingOrder = previous?.shardOrder.orEmpty()
+    val membershipChanged = shardChanges.any { (file, updated) ->
+      val existed = previous?.shards?.get(file) != null
+      existed != (updated != null)
+    }
+    val order =
+      if (previous != null && !membershipChanged) {
+        existingOrder
+      } else {
+        buildList {
+          for (file in existingOrder) {
+            if (file in shards) add(file)
+          }
+          for ((file, shard) in shardChanges) {
+            if (shard != null && previous?.shards?.get(file) == null) add(file)
+          }
+        }
+      }
+    return SourceSnapshot(inputs, moduleFingerprints, shortNames, shards, order, owners)
+  }
+
+  private fun currentShard(file: VirtualFile): FileShard? {
+    if (shardChanges.containsKey(file)) return shardChanges[file]
+    return previous?.shards?.get(file)
+  }
+
+  private fun mutableOwners(file: VirtualFile): MutableSet<VirtualFile> {
+    if (ownerChanges.containsKey(file)) {
+      val existing = ownerChanges[file]
+      if (existing != null) return existing
+      return linkedSetOf<VirtualFile>().also { ownerChanges[file] = it }
+    }
+    val existing = previous?.dependencyOwners?.get(file).orEmpty()
+    return LinkedHashSet(existing).also { ownerChanges[file] = it }
+  }
+}
+
+/** Fixed-width immutable hash buckets; a transition copies only buckets whose entries change. */
+private class PartitionedFileMap<V : Any>
+private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
+
+  operator fun contains(file: VirtualFile): Boolean {
+    return buckets[bucketIndex(file)]?.containsKey(file) == true
+  }
+
+  operator fun get(file: VirtualFile): V? = buckets[bucketIndex(file)]?.get(file)
+
+  fun withChanges(changes: Map<VirtualFile, V?>): PartitionedFileMap<V> {
+    if (changes.isEmpty()) return this
+
+    val changedBuckets = mutableMapOf<Int, LinkedHashMap<VirtualFile, V>>()
+    for ((file, value) in changes) {
+      val index = bucketIndex(file)
+      val bucket = changedBuckets.getOrPut(index) { LinkedHashMap(buckets[index].orEmpty()) }
+      if (value == null) {
+        bucket.remove(file)
+      } else {
+        bucket[file] = value
+      }
+    }
+    val updatedBuckets = buckets.copyOf()
+    for ((index, bucket) in changedBuckets) {
+      updatedBuckets[index] = if (bucket.isEmpty()) null else bucket
+    }
+    return PartitionedFileMap(updatedBuckets)
+  }
+
+  private fun bucketIndex(file: VirtualFile): Int {
+    val hash = file.hashCode()
+    return (hash xor (hash ushr 16)) and (BUCKET_COUNT - 1)
+  }
+
+  companion object {
+    const val BUCKET_COUNT = 128
+
+    fun <V : Any> empty(): PartitionedFileMap<V> =
+      PartitionedFileMap(arrayOfNulls<Map<VirtualFile, V>>(BUCKET_COUNT))
+  }
 }
 
 private data class SourceAggregate(

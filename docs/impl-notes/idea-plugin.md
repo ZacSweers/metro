@@ -82,17 +82,20 @@ BindingIndex (membership queries)
   compiler options, so module-specific report and trace paths do not create duplicate indexes.
   The first build finds candidate files through stub indexes. Later edits update changed files and
   any shards that depend on them, including inherited declarations and qualifier, scope, or
-  map-key annotation defaults. Changes to otherwise untracked type aliases or constants refresh
-  existing shards; project roots and semantic option changes force a new scan.
+  map-key annotation defaults, without copying unrelated shard or dependency state. Changes to
+  otherwise untracked type aliases or constants refresh existing shards, while edits to unrelated
+  declarations in the same file remain incremental. Project roots and semantic option changes
+  force a new scan, and directory changes enroll new files as a batch.
   Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
   types, and visible modules. Production UI-thread requests schedule a cancellable smart-mode
-  build instead of running Analysis API work on the UI thread.
+  build instead of running Analysis API work on the UI thread. Canceled background builds are
+  retried rather than treated as plugin failures.
 - `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names, then resolved with the Analysis API inside
   `analyze {}` blocks. Handles graphs (including supertype member merging and library supertype
   binding callables), binding callables (companion members attribute to the enclosing container),
-  inject classes, top-level function injection, contributions, assisted factories, and binding
-  containers.
+  graph `@Multibinds` accessors, inject classes, top-level function injection, contributions,
+  assisted factories, and binding containers.
 - `index/BindingExtraction.kt`: symbol-to-model extraction shared by source and library paths.
   Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.
 - `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
@@ -119,6 +122,8 @@ arguments, including declared defaults), and declarations are held as `SmartPsiE
     containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.
     Exclusions happen before replacements, and rank runs last within each graph's own scopes.
     Replacing or outranking a contribution never removes its separate injectable concrete type.
+    Graph-private bindings stay in their owning graph, and assisted targets are not presented as
+    ordinary injectable bindings.
 
 ### Validation
 
@@ -133,19 +138,25 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
 
 - `graph/KaBindingGraph.kt`: one instance per seal. Feeds roots (accessors and injector keys)
   into `MutableBindingGraph.seal`, which produces missing bindings, duplicates, and cycle
-  classification. Post-seal it validates aggregates (duplicate map keys, empty multibindings) and
-  contributes missing-binding hints. Lookup state is cleared after sealing.
+  classification. Shared structural validation checks duplicate map keys, empty multibindings,
+  scopes, and assisted targets without allocating compiler-side metadata wrappers for each
+  binding. Lookup state is cleared after sealing.
 - `graph/KaBindingLookup.kt`: pull-based binding resolution. Only keys reachable from roots are
   ever looked up, which is what keeps validation proportional to the graph rather than the
-  project. Aggregates synthesize per-element keys with a synthetic `@MultibindingElement`
-  qualifier, matching the compiler's key swap.
+  project. Multibindings synthesize per-element keys with a synthetic `@MultibindingElement`
+  qualifier, matching the compiler's key swap. Parent-owned scoped bindings, including
+  multibinding contributions, resolve through the owning graph and its module options.
 - `graph/MetroGraphValidationService.kt`: the entry point. Coroutine-based
   (service `CoroutineScope`, `smartReadAction`, background progress, per-graph coalescing).
   Results are retained per graph (keyed by `ClassId` plus file, since same-FQN graphs can exist
-  across modules) and survive index invalidation flagged as stale rather than vanishing.
+  across modules) in a bounded cache and survive index invalidation flagged as stale rather than
+  vanishing.
   `validateWithExtensions` seals extensions before their parents, mirroring the compiler's
   traversal.
-- `graph/SuspendBindingValidator.kt`: converts Analysis API bindings and graph requests to shared suspend-validation metadata, then turns shared issues and witness paths into navigable IDEA diagnostics. It contains no suspend validation policy. Suspend parity fixtures cover valid transitive/deferred paths and representative failures.
+- `graph/KaSuspendBindingValidator.kt`: converts Analysis API bindings and graph requests to shared
+  suspend-validation metadata, then turns shared issues and witness paths into navigable IDEA
+  diagnostics. It contains no suspend validation policy. Suspend parity fixtures cover valid
+  transitive/deferred paths and representative failures.
 
 Validation is strictly on demand. Nothing seals during index builds or highlighting passes.
 
@@ -171,7 +182,8 @@ Validation is strictly on demand. Nothing seals during index builds or highlight
   no children in dumb mode.
 - `toolwindow/MetroToolWindowPanel.kt`: `StructureTreeModel` + `AsyncTreeModel`, search filter,
   validate/refresh toolbar, and post-validation selection of the result node. The tree refreshes
-  when source changes, background indexing finishes, or the IDE leaves dumb mode.
+  when source changes, background indexing finishes, or the IDE leaves dumb mode. A validation
+  requested before its graph is indexed remains pending until that graph becomes available.
 - `toolwindow/ValidateMetroGraphAction.kt`: editor action plus the shared
   `openAndValidate(project, classId, file)` entry the gutter uses.
 

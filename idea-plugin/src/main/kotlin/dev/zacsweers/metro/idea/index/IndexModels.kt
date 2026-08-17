@@ -63,6 +63,8 @@ internal class BindingData(
   val isClassContribution: Boolean = false,
   /** See [KaBinding.Multibinding.allowEmpty]. */
   val allowEmpty: Boolean = false,
+  /** See [KaBinding.isGraphPrivate]. */
+  val isGraphPrivate: Boolean = false,
 ) {
   /** All dependencies used for graph traversal. */
   val dependencies: List<KaContextualTypeKey> =

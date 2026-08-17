@@ -82,6 +82,7 @@ internal fun BindingData.toKaBinding(
         dependencies = listOfNotNull(ownerDependency) + dependencies,
         isSuspend = isSuspend,
         hintAvailability = hintAvailability,
+        isGraphPrivate = isGraphPrivate,
       )
     BindingData.Kind.ALIAS ->
       KaBinding.Alias(
@@ -100,6 +101,7 @@ internal fun BindingData.toKaBinding(
         contributionRank = contributionRank,
         isClassContribution = isClassContribution,
         hintAvailability = hintAvailability,
+        isGraphPrivate = isGraphPrivate,
       )
     BindingData.Kind.MULTIBINDING ->
       KaBinding.Multibinding(
@@ -113,9 +115,15 @@ internal fun BindingData.toKaBinding(
         contributionScopes = contributionScopes,
         allowEmpty = allowEmpty,
         hintAvailability = hintAvailability,
+        isGraphPrivate = isGraphPrivate,
       )
     BindingData.Kind.BOUND_INSTANCE ->
-      KaBinding.BoundInstance(pointer = pointer, typeKey = key, containerId = containerId)
+      KaBinding.BoundInstance(
+        pointer = pointer,
+        typeKey = key,
+        containerId = containerId,
+        isGraphPrivate = isGraphPrivate,
+      )
     BindingData.Kind.CUSTOM_WRAPPER ->
       KaBinding.CustomWrapper(
         pointer = pointer,

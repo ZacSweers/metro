@@ -247,6 +247,39 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testAssistedTargetDoesNotAppearAsAnInjectableBinding() {
+    myFixture.configureMetroFile(
+      """
+      @AssistedInject class Widget(@Assisted val id: String)
+
+      @AssistedFactory
+      interface WidgetFactory {
+        fun create(id: String): Widget
+      }
+
+      @Inject class Screen(val widget: Widget)
+
+      @DependencyGraph
+      interface AppGraph {
+        val screen: Screen
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val gutters = myFixture.findAllGutters()
+    val providerTooltips =
+      gutters.filter { it.icon === MetroIcons.PROVIDER }.mapNotNull { it.tooltipText }
+    val missingTooltips =
+      gutters.filter { it.icon === MetroIcons.CONSUMER_UNRESOLVED }.mapNotNull { it.tooltipText }
+
+    assertTrue(providerTooltips.toString()) {
+      providerTooltips.none { it.startsWith("Metro injected class: Widget") }
+    }
+    assertTrue(missingTooltips.toString()) {
+      missingTooltips.any { it.startsWith("Metro dependency: Widget") }
+    }
+  }
+
   fun testBindingMissingFromSomeContextsUsesAttentionMarker() {
     myFixture.configureMetroFile(
       """

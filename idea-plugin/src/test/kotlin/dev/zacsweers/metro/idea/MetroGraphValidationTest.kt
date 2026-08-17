@@ -6,6 +6,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
@@ -386,6 +387,32 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.stack.isNotEmpty())
   }
 
+  fun testParentScopedMapContributionKeepsItsMapKeyWhenDelegated() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val values: Map<String, String>
+
+          @Provides @IntoMap @StringKey("same")
+          fun childValue(): String = "child"
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides @IntoMap @StringKey("same") @SingleIn(AppScope::class)
+          fun parentValue(): String = "parent"
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
+  }
+
   fun testEmptyMultibindingIsReported() {
     val result =
       validate(
@@ -580,6 +607,42 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "Screen" in diagnostic.render())
   }
 
+  fun testAssistedClassIsOnlyAvailableForGraphValidation() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject class Widget(@Assisted val id: String)
+
+        @AssistedFactory
+        interface WidgetFactory {
+          fun create(id: String): Widget
+        }
+
+        @Inject class Screen(val widget: Widget)
+
+        @DependencyGraph
+        interface AppGraph {
+          val screen: Screen
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val widget = declarations.klass("Widget")
+    val consumer = checkNotNull(index.consumerEntryAt(declarations.parameter("widget")))
+
+    assertTrue(index.bindingEntriesAt(widget).isEmpty())
+    assertTrue(index.bindingsFor(consumer).isEmpty())
+
+    val graph = index.graphs.single()
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
   fun testAssistedClassRequestWithProviderIsRejectedWithoutDuplicate() {
     // The compiler rejects unqualified requests of assisted types even with an explicit
     // provider, as its AssistedTypesCannotBeProvidedWithoutQualifiers fixture shows.
@@ -656,6 +719,353 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.ChildThing" })
+  }
+
+  fun testParentScopedSetContributionIsOwnedByParent() {
+    assertParentScopedContributionIsOwnedByParent(
+      accessor = "val values: Set<String>",
+      contribution =
+        "@Provides @IntoSet @SingleIn(AppScope::class) fun parentValue(): String = \"parent\"",
+      childContribution = "@Provides @IntoSet fun childValue(): String = \"child\"",
+    )
+  }
+
+  fun testParentScopedMapContributionIsOwnedByParent() {
+    assertParentScopedContributionIsOwnedByParent(
+      accessor = "val values: Map<String, String>",
+      contribution =
+        "@Provides @IntoMap @StringKey(\"parent\") @SingleIn(AppScope::class) " +
+          "fun parentValue(): String = \"parent\"",
+      childContribution =
+        "@Provides @IntoMap @StringKey(\"child\") fun childValue(): String = \"child\"",
+    )
+  }
+
+  private fun assertParentScopedContributionIsOwnedByParent(
+    accessor: String,
+    contribution: String,
+    childContribution: String,
+  ) {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          $accessor
+
+          $childContribution
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+
+          $contribution
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+    val childResult = results.first().requireCompleted()
+    val parentResult = results.last().requireCompleted()
+
+    assertTrue(childResult.diagnostics.toString(), childResult.diagnostics.isEmpty())
+    assertTrue(parentResult.diagnostics.toString(), parentResult.diagnostics.isEmpty())
+    assertTrue(
+      "The child should depend on its parent's scoped collection element",
+      childResult.bindings.any { key, binding ->
+        key.qualifier?.classId == MetroClassIds.multibindingElement &&
+          binding is KaBinding.GraphDependency &&
+          binding.isParentScoped
+      },
+    )
+    assertTrue(
+      "The parent should retain the real element even without its own collection accessor",
+      parentResult.bindings.any { key, binding ->
+        key.qualifier?.classId == MetroClassIds.multibindingElement && binding is KaBinding.Provided
+      },
+    )
+    assertTrue(
+      "The child's collection should also keep contributions declared by the child",
+      childResult.bindings.any { key, binding ->
+        key.qualifier?.classId == MetroClassIds.multibindingElement && binding is KaBinding.Provided
+      },
+    )
+  }
+
+  fun testGraphPrivateParentBindingIsNotVisibleToChild() {
+    val result =
+      validate(
+        """
+        @Inject class ParentValue(val secret: String)
+
+        @GraphExtension
+        interface ChildGraph {
+          val secret: String
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val parentValue: ParentValue
+          val child: ChildGraph
+
+          @GraphPrivate @Provides @SingleIn(AppScope::class)
+          fun secret(): String = "parent"
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testGraphPrivateGetterIsNotVisibleToChild() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val secret: String
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @get:GraphPrivate @get:Provides
+          val secret: String
+            get() = "parent"
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testPrivateParentBindingDoesNotHidePublicGrandparentBinding() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface GrandchildGraph {
+          val value: String
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val grandchild: GrandchildGraph
+
+          @GraphPrivate @Provides fun childValue(): String = "private child"
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun parentValue(): String = "public parent"
+        }
+        """,
+        graphName = "GrandchildGraph",
+      )
+
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, binding ->
+        key.renderedType == "kotlin.String" && !binding.isGraphPrivate
+      }
+    )
+  }
+
+  fun testGraphPrivateSetContributionsStayInTheirOwnerGraph() {
+    assertGraphPrivateContributionsStayInOwnerGraph(
+      collectionType = "Set<String>",
+      privateContribution =
+        "@GraphPrivate @Provides @IntoSet fun privateValue(): String = \"private\"",
+      publicContribution = "@Provides @IntoSet fun publicValue(): String = \"public\"",
+    )
+  }
+
+  fun testGraphPrivateMapContributionsStayInTheirOwnerGraph() {
+    assertGraphPrivateContributionsStayInOwnerGraph(
+      collectionType = "Map<String, String>",
+      privateContribution =
+        "@GraphPrivate @Provides @IntoMap @StringKey(\"private\") " +
+          "fun privateValue(): String = \"private\"",
+      publicContribution =
+        "@Provides @IntoMap @StringKey(\"public\") " + "fun publicValue(): String = \"public\"",
+    )
+  }
+
+  private fun assertGraphPrivateContributionsStayInOwnerGraph(
+    collectionType: String,
+    privateContribution: String,
+    publicContribution: String,
+  ) {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val childValues: $collectionType
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @GraphPrivate @Multibinds val parentValues: $collectionType
+          val child: ChildGraph
+
+          $privateContribution
+          $publicContribution
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+    val childResult = results.first().requireCompleted()
+    val parentResult = results.last().requireCompleted()
+
+    assertTrue(childResult.diagnostics.toString(), childResult.diagnostics.isEmpty())
+    assertTrue(parentResult.diagnostics.toString(), parentResult.diagnostics.isEmpty())
+    assertFalse(childResult.bindings.any { _, binding -> binding.isGraphPrivate })
+    assertTrue(
+      "The parent's private collection declaration should remain private",
+      parentResult.bindings.any { _, binding ->
+        binding is KaBinding.Multibinding && binding.isGraphPrivate
+      },
+    )
+    assertTrue(
+      "The parent's private collection element should remain available to its owner",
+      parentResult.bindings.any { _, binding ->
+        binding is KaBinding.Provided && binding.isGraphPrivate
+      },
+    )
+    assertTrue(
+      "The public parent element should still reach the child's collection",
+      childResult.bindings.any { _, binding ->
+        binding is KaBinding.Provided && !binding.isGraphPrivate
+      },
+    )
+  }
+
+  fun testPublicParentAliasCanExposePrivateImplementation() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val text: CharSequence
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+
+          @GraphPrivate @Provides @SingleIn(AppScope::class)
+          fun secret(): String = "parent"
+
+          @Binds fun text(value: String): CharSequence
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, binding ->
+        key.renderedType == "kotlin.CharSequence" && binding is KaBinding.GraphDependency
+      }
+    )
+    assertFalse(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
+  }
+
+  fun testGraphPrivateParentAliasIsNotVisibleToChild() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val text: CharSequence
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun value(): String = "parent"
+
+          @GraphPrivate @Binds fun text(value: String): CharSequence
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testPublicParentAliasRemainsVisibleToGrandchild() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface GrandchildGraph {
+          val text: CharSequence
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val grandchild: GrandchildGraph
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+
+          @GraphPrivate @Provides @SingleIn(AppScope::class)
+          fun secret(): String = "parent"
+
+          @Binds fun text(value: String): CharSequence
+        }
+        """,
+        graphName = "GrandchildGraph",
+      )
+
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, binding ->
+        key.renderedType == "kotlin.CharSequence" && binding is KaBinding.GraphDependency
+      }
+    )
+    assertFalse(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
+  }
+
+  fun testGraphPrivateFactoryInputIsNotVisibleToChild() {
+    val result =
+      validate(
+        """
+        @GraphExtension
+        interface ChildGraph {
+          val secret: String
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@GraphPrivate @Provides secret: String): AppGraph
+          }
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
   }
 
   fun testMultiParentExtensionSealsEachParentPathIndependently() {

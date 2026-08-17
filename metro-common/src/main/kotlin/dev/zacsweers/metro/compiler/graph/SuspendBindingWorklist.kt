@@ -194,33 +194,53 @@ public class SuspendBindingWorklist<
     dependencyTypeKey: (ContextualTypeKey) -> TypeKey,
   ): SuspendBindingPath<TypeKey, ContextualTypeKey>? {
     if (start !in snapshot) return null
-    val path = mutableListOf<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
-    val visited = mutableSetOf<TypeKey>()
-    var current = start
-    while (visited.add(current)) {
-      val binding = discoveredBindings[current] ?: break
+    val pending = ArrayDeque<TypeKey>()
+    val previousEdges = mutableMapOf<TypeKey, SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
+    var lastVisited = start
+    pending.addLast(start)
+
+    // A breadth-first walk finds a real suspend source even when an earlier branch enters a cycle.
+    while (pending.isNotEmpty()) {
+      val current = pending.removeFirst()
+      lastVisited = current
+      val binding = discoveredBindings[current] ?: continue
       if (bindingIsSuspend(binding)) {
-        return SuspendBindingPath(start, path, current, sourceIsSuspend = true)
+        return buildPath(start, current, previousEdges, sourceIsSuspend = true)
       }
-      val eligible =
-        binding.dependencies.filter { candidate ->
-          dependencyTypeKey(candidate) in snapshot && !rules.stopsPropagation(candidate)
+
+      for (dependency in binding.dependencies) {
+        val dependencyKey = dependencyTypeKey(dependency)
+        if (dependencyKey !in snapshot || rules.stopsPropagation(dependency)) {
+          continue
         }
-      // Prefer a direct suspend source, then unexplored keys, so a cycle edge cannot hide an
-      // adjacent suspend witness and truncate the trace.
-      val dependency =
-        eligible.firstOrNull { candidate ->
-          discoveredBindings[dependencyTypeKey(candidate)]?.let(bindingIsSuspend) == true
+        if (dependencyKey == start || dependencyKey in previousEdges) {
+          continue
         }
-          ?: eligible.firstOrNull { dependencyTypeKey(it) !in visited }
-          ?: eligible.firstOrNull()
-          ?: break
-      path += SuspendBindingPathEdge(current, dependency)
-      current = dependencyTypeKey(dependency)
+        previousEdges[dependencyKey] = SuspendBindingPathEdge(current, dependency)
+        pending.addLast(dependencyKey)
+      }
     }
+
     // A missing binding, a dead end, or an exhausted cycle. Keep the partial walk so diagnostics
     // can still show where the requirement came from.
-    return SuspendBindingPath(start, path, current, sourceIsSuspend = false)
+    return buildPath(start, lastVisited, previousEdges, sourceIsSuspend = false)
+  }
+
+  private fun buildPath(
+    start: TypeKey,
+    source: TypeKey,
+    previousEdges: Map<TypeKey, SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>,
+    sourceIsSuspend: Boolean,
+  ): SuspendBindingPath<TypeKey, ContextualTypeKey> {
+    val path = mutableListOf<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
+    var current = source
+    while (current != start) {
+      val edge = previousEdges.getValue(current)
+      path += edge
+      current = edge.consumerKey
+    }
+    path.reverse()
+    return SuspendBindingPath(start, path, source, sourceIsSuspend)
   }
 }
 

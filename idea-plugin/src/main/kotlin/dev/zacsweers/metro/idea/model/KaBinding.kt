@@ -31,6 +31,10 @@ internal sealed interface KaBinding :
   val isSuspend: Boolean
     get() = false
 
+  /** Whether this binding stays inside the graph that declares or wires it. */
+  val isGraphPrivate: Boolean
+    get() = false
+
   /** Short name of the implementation backing this binding when it differs from the key type. */
   val implementationName: String?
     get() = null
@@ -152,6 +156,7 @@ internal sealed interface KaBinding :
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
     override val isSuspend: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
+    override val isGraphPrivate: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -178,6 +183,7 @@ internal sealed interface KaBinding :
     /** True for `@ContributesBinding`-style class contributions, false for `@Binds` callables. */
     val isClassContribution: Boolean = false,
     override val hintAvailability: HintAvailability? = null,
+    override val isGraphPrivate: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -214,6 +220,7 @@ internal sealed interface KaBinding :
     val allowEmpty: Boolean = false,
     val sourceBindings: List<KaTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
+    override val isGraphPrivate: Boolean = false,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = sourceBindings.map {
       it.canonicalContextKey()
@@ -232,6 +239,7 @@ internal sealed interface KaBinding :
     val isGraphInput: Boolean = false,
     /** True for a concrete binding container supplied through a factory `@Includes` parameter. */
     val isBindingContainerInput: Boolean = false,
+    override val isGraphPrivate: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -280,6 +288,9 @@ internal sealed interface KaBinding :
     val accessorIsSuspend: Boolean,
     /** Whether this node stands in for a binding scoped to an ancestor graph. */
     val isParentScoped: Boolean = false,
+    /** Collection information survives parent delegation for duplicate map-key checks. */
+    override val multibindingId: String? = null,
+    override val mapKeyValue: String? = null,
   ) : KaBinding {
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 

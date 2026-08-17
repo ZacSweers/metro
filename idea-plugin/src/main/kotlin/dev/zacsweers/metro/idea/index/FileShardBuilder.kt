@@ -416,7 +416,15 @@ internal class FileShardBuilder(
             // consume.
             val isOptionalAccessor = symbol.isOptionalConsumer(options)
             if (symbol.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
-            if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
+            // A graph's abstract @Multibinds member is both its collection declaration and the
+            // accessor exposing that collection. Other binding callables are not accessors.
+            val isMultibindingAccessor = symbol.hasAnyAnnotation(options.multibindsAnnotations)
+            if (
+              !isMultibindingAccessor &&
+                symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
+            ) {
+              continue
+            }
             if (symbol.returnType.isUnitType) continue
             // Accessors of a @GraphExtension (or its factory) are creation points of the child
             // graph, not dependencies on a binding; they only anchor the extension's parent chain.
@@ -517,7 +525,9 @@ internal class FileShardBuilder(
         (callable.psi as? KtDeclaration)?.let { declaration ->
           processInheritedBindingCallable(declaration, view)
         }
-        continue
+        if (!callable.hasAnyAnnotation(options.multibindsAnnotations)) {
+          continue
+        }
       }
       if (callable is KaNamedFunctionSymbol && view.valueParameters.isNotEmpty()) {
         (callable.psi as? KtNamedFunction)?.let {
@@ -529,7 +539,13 @@ internal class FileShardBuilder(
       if (view.receiver != null) continue
       val isOptionalAccessor = callable.isOptionalConsumer(options)
       if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
-      if (callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) continue
+      val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
+      if (
+        !isMultibindingAccessor &&
+          callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
+      ) {
+        continue
+      }
       if (view.returnType.isUnitType) continue
       val returnClassType = view.returnType.fullyExpandedType as? KaClassType
       val returnClassSymbol = returnClassType?.symbol

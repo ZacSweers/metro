@@ -167,6 +167,44 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `cycle branches cannot hide a suspend witness on another branch`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("A", "B", "C"),
+      binding("B", "A"),
+      binding("C", "D"),
+      binding("D", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("D"))
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("C")).inOrder()
+  }
+
+  @Test
+  fun `suspend witness uses the shortest available dependency path`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("A", "Long", "Short"),
+      binding("Long", "Middle"),
+      binding("Middle", "FarSource"),
+      binding("Short", "NearSource"),
+      binding("FarSource", isSuspend = true),
+      binding("NearSource", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("NearSource"))
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("Short")).inOrder()
+  }
+
+  @Test
   fun `skipped bindings do not traverse their dependencies`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("Factory", "Source", skipDependencies = true))

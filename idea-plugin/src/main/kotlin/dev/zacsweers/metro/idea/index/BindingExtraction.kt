@@ -220,6 +220,10 @@ internal fun CallableBindingView.bindingData(
     val qualifier = qualifierAnnotation(symbol, options)
     val scope = scopeAnnotation(symbol, options)
     val returnType = callable.returnType
+    val isGraphPrivate =
+      symbol.annotations.any { it.classId == MetroClassIds.graphPrivate } ||
+        getterSymbol?.annotations?.any { it.classId == MetroClassIds.graphPrivate } == true ||
+        fieldSymbol?.annotations?.any { it.classId == MetroClassIds.graphPrivate } == true
 
     val mapKeyInfo =
       if (has(options.intoMapAnnotations)) {
@@ -277,6 +281,7 @@ internal fun CallableBindingView.bindingData(
             consumedKey,
             multibindingId,
             mapKeyValue = mapKeyInfo?.annotationRender,
+            isGraphPrivate = isGraphPrivate,
           )
         )
       }
@@ -311,6 +316,7 @@ internal fun CallableBindingView.bindingData(
             scope,
             null,
             allowEmpty = allowEmpty,
+            isGraphPrivate = isGraphPrivate,
           )
         )
       }
@@ -343,6 +349,7 @@ internal fun CallableBindingView.bindingData(
             dependencies = dependencies,
             isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
             mapKeyValue = mapKeyInfo?.annotationRender,
+            isGraphPrivate = isGraphPrivate,
           )
         )
       }
@@ -364,6 +371,7 @@ private fun KtParameter.instanceBindingData(
         BindingData.Kind.BOUND_INSTANCE,
         null,
         null,
+        isGraphPrivate = symbol.annotations.any { it.classId == MetroClassIds.graphPrivate },
       )
     )
   }

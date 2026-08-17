@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -20,6 +21,13 @@ import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
+/** The index and compiler options belonging to a parent graph's own declaration module. */
+internal class ParentGraphLookup(
+  val index: BindingIndex,
+  val queryContext: GraphQueryContext,
+  val options: MetroOptions,
+)
+
 /**
  * The Analysis API analog of the compiler's `BindingLookup`. Resolves bindings for requested keys
  * on demand, so only keys reachable from the seal roots are ever looked up.
@@ -32,6 +40,7 @@ internal class KaBindingLookup(
   private val index: BindingIndex,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
+  private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) {
   private val graph: KaGraphDeclaration = queryContext.graphContext.graph
 
@@ -45,8 +54,8 @@ internal class KaBindingLookup(
   /** Parent-scoped bindings remapped to graph dependency nodes, one per key. */
   private val parentDependencies = HashMap<KaTypeKey, KaBinding>()
 
-  /** Keys this context delegates upward. The parent seal must validate them as its own. */
-  private val reservedForParent = mutableSetOf<KaTypeKey>()
+  /** Bindings this context delegates upward. The parent seal must validate them as its own. */
+  private val reservedForParent = LinkedHashMap<KaTypeKey, KaBinding>()
 
   /** Containers and classes the child context itself wires, whose bindings never delegate. */
   private val childLocalContainerIds: Set<ClassId> by
@@ -62,9 +71,15 @@ internal class KaBindingLookup(
   /** A lazily built view of the parent context for transitive suspend resolution. */
   private var parentSuspendLookup: KaBindingLookup? = null
   private var parentSuspendAnalysis: SuspendBindingAnalysis? = null
+  private var parentSuspendAnalysisChecked = false
 
-  val reservedParentKeys: Set<KaTypeKey>
+  val reservedParentBindings: Map<KaTypeKey, KaBinding>
     get() = reservedForParent
+
+  /** Makes a child-only synthetic multibinding element available to its owning parent graph. */
+  fun registerReservedBinding(binding: KaBinding) {
+    syntheticElements.putIfAbsent(binding.typeKey, binding)
+  }
 
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
@@ -74,6 +89,7 @@ internal class KaBindingLookup(
     parentSuspendLookup?.clear()
     parentSuspendLookup = null
     parentSuspendAnalysis = null
+    parentSuspendAnalysisChecked = false
   }
 
   /**
@@ -87,7 +103,7 @@ internal class KaBindingLookup(
     ProgressManager.checkCanceled()
     val typeKey = contextKey.typeKey
     syntheticElements[typeKey]?.let {
-      return setOf(it)
+      return setOf(delegateToParentIfScoped(it))
     }
     graphInstance(typeKey)?.let {
       return setOf(it)
@@ -168,11 +184,26 @@ internal class KaBindingLookup(
    * dependencies, so the child only records the parent edge.
    */
   private fun delegateToParentIfScoped(binding: KaBinding): KaBinding {
-    val scope = binding.scope ?: return binding
     val chain = queryContext.graphContext.chain
     if (chain.size < 2) {
       return binding
     }
+
+    // A public parent alias may expose a private implementation without exposing the private key.
+    // Resolve that alias entirely in the parent, where its implementation remains visible.
+    if (binding is KaBinding.Alias && !binding.isGraphPrivate) {
+      val consumedKey = binding.consumedKey
+      val belongsToAncestor = !index.isBindingOwnedByCurrentGraph(binding, queryContext)
+      if (
+        belongsToAncestor &&
+          consumedKey != null &&
+          index.hasPrivateAncestorBinding(consumedKey.typeKey, queryContext)
+      ) {
+        return delegateToParent(binding, chain)
+      }
+    }
+
+    val scope = binding.scope ?: return binding
     val child = chain.first()
     if (scope in child.scopingAnnotations) {
       return binding
@@ -201,8 +232,15 @@ internal class KaBindingLookup(
         }
       }
     }
+    return delegateToParent(binding, chain)
+  }
+
+  private fun delegateToParent(
+    binding: KaBinding,
+    chain: List<KaGraphDeclaration>,
+  ): KaBinding {
     val parentKey = chain[1].graphTypeKey() ?: return binding
-    reservedForParent += binding.typeKey
+    reservedForParent.putIfAbsent(binding.typeKey, binding)
     return parentDependencies.getOrPut(binding.typeKey) {
       KaBinding.GraphDependency(
         pointer = binding.pointer,
@@ -210,6 +248,8 @@ internal class KaBindingLookup(
         ownerKey = parentKey,
         accessorIsSuspend = parentTransitiveSuspend(binding),
         isParentScoped = true,
+        multibindingId = binding.multibindingId,
+        mapKeyValue = binding.mapKeyValue,
       )
     }
   }
@@ -222,10 +262,17 @@ internal class KaBindingLookup(
     if (binding.isSuspend) {
       return true
     }
-    if (!options.enableSuspendProviders) {
-      return false
+    var analysis = parentSuspendAnalysis
+    if (analysis == null) {
+      if (parentSuspendAnalysisChecked) {
+        return false
+      }
+      parentSuspendAnalysisChecked = true
+      analysis = createParentSuspendAnalysis() ?: return false
     }
-    val analysis = parentSuspendAnalysis ?: createParentSuspendAnalysis() ?: return false
+    if (binding.typeKey.qualifier?.classId == MULTIBINDING_ELEMENT_CLASS_ID) {
+      parentSuspendLookup?.registerReservedBinding(binding)
+    }
     return binding.typeKey in analysis.analyze(listOf(binding.typeKey))
   }
 
@@ -233,8 +280,19 @@ internal class KaBindingLookup(
     val chain = queryContext.graphContext.chain
     val parentPath = GraphPath(chain.drop(1).map { it.declarationId })
     val parentContext = index.findContext(parentPath) ?: return null
-    val parentQueryContext = index.queryContext(parentContext) ?: return null
-    val lookup = KaBindingLookup(index, parentQueryContext, options)
+    val resolvedParent = resolveParentGraph(parentContext)
+    val parent =
+      if (resolvedParent != null) {
+        resolvedParent
+      } else {
+        val parentQueryContext = index.queryContext(parentContext) ?: return null
+        ParentGraphLookup(index, parentQueryContext, options)
+      }
+    if (!parent.options.enableSuspendProviders) {
+      return null
+    }
+    val lookup =
+      KaBindingLookup(parent.index, parent.queryContext, parent.options, resolveParentGraph)
     parentSuspendLookup = lookup
     val analysis = SuspendBindingAnalysis { key ->
       lookup.lookup(key.canonicalContextKey()) { _, _ -> }.firstOrNull { it.typeKey == key }
@@ -261,7 +319,7 @@ internal class KaBindingLookup(
     contributions: List<KaBinding>,
     declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
-    val elements = contributions.mapIndexed { i, contribution ->
+    val sourceElements = contributions.mapIndexed { i, contribution ->
       val elementId = "${contribution.originClassId?.asFqNameString() ?: "element"}#$i"
       val qualifier =
         KaAnnotationSnapshot(
@@ -275,8 +333,11 @@ internal class KaBindingLookup(
     }
     // Multibindings can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
     // wins so both multibindings reference the same element nodes.
-    for (element in elements) {
-      syntheticElements.putIfAbsent(element.typeKey, element)
+    val elements = ArrayList<KaBinding>(sourceElements.size)
+    for (element in sourceElements) {
+      val resolvedElement = delegateToParentIfScoped(element)
+      syntheticElements.putIfAbsent(element.typeKey, resolvedElement)
+      elements += resolvedElement
     }
 
     val anchor = declarations.firstOrNull() ?: contributions.firstOrNull()
@@ -287,6 +348,7 @@ internal class KaBindingLookup(
         contextualTypeKey = contextKey,
         allowEmpty = declarations.any { it.allowEmpty },
         sourceBindings = elements.map { it.typeKey },
+        isGraphPrivate = declarations.any { it.isGraphPrivate },
       )
     return setOf(multibinding) + elements
   }
@@ -313,6 +375,7 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         contributionScopes = contributionScopes,
         dependencies = dependencies,
         isSuspend = isSuspend,
+        isGraphPrivate = isGraphPrivate,
       )
     is KaBinding.Alias ->
       KaBinding.Alias(
@@ -328,6 +391,7 @@ private fun KaBinding.withElementKey(elementKey: KaTypeKey): KaBinding {
         replaces = replaces,
         contributionScopes = contributionScopes,
         isClassContribution = isClassContribution,
+        isGraphPrivate = isGraphPrivate,
       )
     else -> error("Unexpected multibinding contribution: ${javaClass.simpleName} for $typeKey")
   }

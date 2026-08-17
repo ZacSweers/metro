@@ -63,11 +63,11 @@ internal class MetroGraphValidationService(
   }
 
   /**
-   * High-water mark of contexts sealed in a single traversal. Graph paths are unbounded, so the
-   * retention floor grows with the largest real traversal and the tool window can always reread a
-   * whole run from the cache.
+   * Contexts visited during active traversals stay available until those traversals finish. The
+   * normal cache limit applies again afterward so one large graph does not raise it forever.
    */
   private val retainFloor = AtomicInteger(0)
+  private val activeTraversals = AtomicInteger(0)
 
   // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
   // browsing session from retaining every sealed graph forever. The synchronized wrapper is
@@ -88,6 +88,9 @@ internal class MetroGraphValidationService(
   /** Drops all retained results. */
   fun clearResults() {
     results.clear()
+    if (activeTraversals.get() == 0) {
+      retainFloor.set(0)
+    }
   }
 
   /**
@@ -133,8 +136,8 @@ internal class MetroGraphValidationService(
       val childInput = validationInputOrNull(input.declarationElement, extensionContext) ?: continue
       val childResult = validate(childInput)
       if (childResult is KaGraphValidationResult.Completed) {
-        for (reservedKey in childResult.parentReservations) {
-          reservations += ReservedParentKey(reservedKey, childResult.context.graph.pointer)
+        for ((reservedKey, binding) in childResult.parentReservations) {
+          reservations += ReservedParentKey(reservedKey, childResult.context.graph.pointer, binding)
         }
       } else {
         childFailed = true
@@ -147,7 +150,10 @@ internal class MetroGraphValidationService(
         val options = moduleOptions(input.declarationElement)
         val queryContext =
           checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
-        KaBindingGraph(index, queryContext, options, reservations).seal()
+        KaBindingGraph(index, queryContext, options, reservations) { parentContext ->
+            parentGraphLookup(input.declarationElement, parentContext)
+          }
+          .seal()
       }
     // Internal errors stay uncached so a transient plugin failure is retried on the next run. A
     // parent sealed without a crashed child's reservations must also retry once the child does.
@@ -186,21 +192,45 @@ internal class MetroGraphValidationService(
     declarationFallback: PsiElement,
     rootContexts: List<GraphContext>,
   ): List<KaGraphValidationResult> {
-    val results = mutableListOf<KaGraphValidationResult>()
-    val visited = mutableSetOf<GraphPath>()
+    activeTraversals.incrementAndGet()
+    try {
+      val traversalResults = mutableListOf<KaGraphValidationResult>()
+      val visited = mutableSetOf<GraphPath>()
 
-    fun visit(context: GraphContext) {
-      val input = validationInput(declarationFallback, context)
-      if (!visited.add(input.context.path)) return
-      for (extension in input.index.extensionContextsOf(input.context)) {
-        visit(extension)
+      fun visit(context: GraphContext) {
+        val input = validationInput(declarationFallback, context)
+        if (!visited.add(input.context.path)) return
+        for (extension in input.index.extensionContextsOf(input.context)) {
+          visit(extension)
+        }
+        traversalResults += validate(input)
+        retainFloor.updateAndGet { floor -> maxOf(floor, traversalResults.size + 1) }
       }
-      results += validate(input)
-      retainFloor.updateAndGet { floor -> maxOf(floor, results.size + 1) }
-    }
 
-    rootContexts.forEach(::visit)
-    return results
+      rootContexts.forEach(::visit)
+      return traversalResults
+    } finally {
+      if (activeTraversals.decrementAndGet() == 0) {
+        retainFloor.set(0)
+        synchronized(results) {
+          val entries = results.entries.iterator()
+          while (results.size > MAX_CACHED_RESULTS && entries.hasNext()) {
+            entries.next()
+            entries.remove()
+          }
+        }
+      }
+    }
+  }
+
+  /** Parent binding analysis follows the parent's own module, index, and compiler options. */
+  private fun parentGraphLookup(
+    declarationFallback: PsiElement,
+    context: GraphContext,
+  ): ParentGraphLookup? {
+    val input = validationInputOrNull(declarationFallback, context) ?: return null
+    val queryContext = input.index.queryContext(input.context) ?: return null
+    return ParentGraphLookup(input.index, queryContext, moduleOptions(input.declarationElement))
   }
 
   private fun validationInputOrNull(

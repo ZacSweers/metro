@@ -8,16 +8,6 @@ public enum class MultibindingKind {
   MAP,
 }
 
-/** Metadata needed to validate one multibinding without inspecting frontend-native types. */
-public data class MultibindingValidationMetadata<TypeKey>(
-  val kind: MultibindingKind,
-  val allowEmpty: Boolean,
-  val sourceBindings: Collection<TypeKey>,
-)
-
-/** Metadata for a binding that contributes an element to a map multibinding. */
-public data class MapContributionValidationMetadata<MapKey : Any>(val mapKey: MapKey?)
-
 /** How a binding participates in assisted injection validation. */
 public enum class AssistedBindingKind {
   /** An assisted-injected type that can only be created through an assisted factory. */

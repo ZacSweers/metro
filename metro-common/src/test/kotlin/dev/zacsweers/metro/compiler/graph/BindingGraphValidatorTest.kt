@@ -41,16 +41,8 @@ class BindingGraphValidatorTest {
     val validator =
       validator(
         bindings = bindingsOf(multibinding),
-        multibindingOf = { candidate ->
-          candidate
-            .takeIf { it == multibinding }
-            ?.let {
-              MultibindingValidationMetadata(
-                kind = MultibindingKind.SET,
-                allowEmpty = false,
-                sourceBindings = emptyList(),
-              )
-            }
+        multibindingKindOf = { candidate ->
+          MultibindingKind.SET.takeIf { candidate == multibinding }
         },
       )
 
@@ -64,13 +56,8 @@ class BindingGraphValidatorTest {
     val validator =
       validator(
         bindings = bindingsOf(multibinding),
-        multibindingOf = {
-          MultibindingValidationMetadata(
-            kind = MultibindingKind.SET,
-            allowEmpty = true,
-            sourceBindings = emptyList(),
-          )
-        },
+        multibindingKindOf = { MultibindingKind.SET },
+        multibindingAllowsEmpty = { true },
       )
 
     assertThat(validator.validateAll(multibinding)).isEmpty()
@@ -85,24 +72,12 @@ class BindingGraphValidatorTest {
     val validator =
       validator(
         bindings = bindings,
-        multibindingOf = { binding ->
-          binding
-            .takeIf { it == multibinding }
-            ?.let {
-              MultibindingValidationMetadata(
-                kind = MultibindingKind.MAP,
-                allowEmpty = false,
-                sourceBindings = listOf(first.typeKey, second.typeKey),
-              )
-            }
+        multibindingKindOf = { candidate ->
+          MultibindingKind.MAP.takeIf { candidate == multibinding }
         },
-        mapContributionOf = { binding ->
-          when (binding) {
-            first,
-            second -> MapContributionValidationMetadata("same-key")
-            else -> error("Unexpected map contribution query: $binding")
-          }
-        },
+        multibindingSourceKeys = { listOf(first.typeKey, second.typeKey) },
+        isMapContribution = { it == first || it == second },
+        mapKeyOf = { "same-key" },
       )
 
     assertThat(validator.validateAll(multibinding))
@@ -113,6 +88,48 @@ class BindingGraphValidatorTest {
           contributions = listOf(first, second),
         )
       )
+  }
+
+  @Test
+  fun `keeps null map keys distinct from bindings without map contributions`() {
+    val first = validationBinding("FirstContribution")
+    val second = validationBinding("SecondContribution")
+    val unrelated = validationBinding("UnrelatedBinding")
+    val multibinding = validationBinding("Map<String, Value>")
+    val validator =
+      validator(
+        bindings = bindingsOf(first, second, unrelated, multibinding),
+        multibindingKindOf = { candidate ->
+          MultibindingKind.MAP.takeIf { candidate == multibinding }
+        },
+        multibindingSourceKeys = { listOf(first.typeKey, second.typeKey, unrelated.typeKey) },
+        isMapContribution = { it == first || it == second },
+        mapKeyOf = { null },
+      )
+
+    assertThat(validator.validateAll(multibinding))
+      .containsExactly(
+        GraphValidationIssue.DuplicateMapKey(
+          multibinding = multibinding,
+          mapKey = null,
+          contributions = listOf(first, second),
+        )
+      )
+  }
+
+  @Test
+  fun `does not inspect multibinding details for ordinary bindings`() {
+    val binding = validationBinding("Ordinary")
+    val validator =
+      validator(
+        bindings = bindingsOf(binding),
+        multibindingAllowsEmpty = { error("Ordinary bindings have no multibinding metadata") },
+        multibindingSourceKeys = { error("Ordinary bindings have no contribution keys") },
+        isMapContribution = { error("Ordinary bindings are not map contributions") },
+        mapKeyOf = { error("Ordinary bindings have no map keys") },
+      )
+
+    assertThat(validator.validateAll(binding)).isEmpty()
   }
 
   @Test
@@ -198,16 +215,22 @@ private fun validator(
   reverseAdjacency: Map<StringTypeKey, Set<StringTypeKey>> = emptyMap(),
   scopeOf: (StringBinding) -> String? = { null },
   assistedKindOf: (StringBinding) -> AssistedBindingKind? = { null },
-  multibindingOf: (StringBinding) -> MultibindingValidationMetadata<StringTypeKey>? = { null },
-  mapContributionOf: (StringBinding) -> MapContributionValidationMetadata<String>? = { null },
+  multibindingKindOf: (StringBinding) -> MultibindingKind? = { null },
+  multibindingAllowsEmpty: (StringBinding) -> Boolean = { false },
+  multibindingSourceKeys: (StringBinding) -> Collection<StringTypeKey> = { emptyList() },
+  isMapContribution: (StringBinding) -> Boolean = { false },
+  mapKeyOf: (StringBinding) -> String? = { null },
 ): StringBindingGraphValidator =
   BindingGraphValidator(
     bindings = bindings,
     graphScopes = graphScopes,
     scopeOf = scopeOf,
     assistedKindOf = assistedKindOf,
-    multibindingOf = multibindingOf,
-    mapContributionOf = mapContributionOf,
+    multibindingKindOf = multibindingKindOf,
+    multibindingAllowsEmpty = multibindingAllowsEmpty,
+    multibindingSourceKeys = multibindingSourceKeys,
+    isMapContribution = isMapContribution,
+    mapKeyOf = mapKeyOf,
     rootKeys = rootKeys,
     reverseAdjacency = reverseAdjacency,
   )

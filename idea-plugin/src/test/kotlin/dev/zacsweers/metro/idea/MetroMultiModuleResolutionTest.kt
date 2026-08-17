@@ -655,6 +655,72 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
   }
 
+  fun testParentSuspendResolutionUsesParentOptionsButRejectsDisabledChild() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibExtension.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        abstract class CacheScope private constructor()
+
+        class Database
+
+        @SingleIn(CacheScope::class)
+        @Inject class Cache(val database: Database)
+
+        @GraphExtension
+        interface LibExtension {
+          val cache: Cache
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import lib.CacheScope
+        import lib.Database
+        import lib.LibExtension
+
+        @SingleIn(CacheScope::class)
+        @DependencyGraph
+        interface AppGraph {
+          val extension: LibExtension
+
+          @Provides suspend fun provideDatabase(): Database = Database()
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    appModule.setModuleMetroOptions("enable-suspend-providers" to "true")
+    libraryModule.setModuleMetroOptions("enable-suspend-providers" to "false")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val appIndex = fixture.project.service<MetroResolutionService>().index(appFile)
+    val extension = appIndex.graphs.single { it.name == "LibExtension" }
+    val context = appIndex.contextsFor(extension).single { it.chain.last().name == "AppGraph" }
+    val result =
+      fixture.project
+        .service<MetroGraphValidationService>()
+        .validate(libraryFile, context)
+        .requireCompleted()
+
+    assertEquals(
+      listOf(MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED),
+      result.diagnostics.map { it.id },
+    )
+  }
+
   fun testSameFqnBindingContainersKeepTheirOwnTransitiveIncludes() {
     val appFile =
       fixture.addFileToProject(

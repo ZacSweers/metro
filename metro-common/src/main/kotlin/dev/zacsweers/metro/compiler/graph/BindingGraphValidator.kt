@@ -9,8 +9,7 @@ import androidx.collection.ScatterMap
  *
  * Frontends provide small accessors over their native binding types and remain responsible for
  * source anchors, diagnostic rendering, and choosing when an issue is reported during graph
- * sealing. The accessor shape keeps the common no-issue path from allocating result lists;
- * multibinding metadata still allocates per query, which only multibindings pay.
+ * sealing. Scalar accessors avoid allocating metadata for each binding or map contribution.
  */
 public class BindingGraphValidator<
   Type : Any,
@@ -24,8 +23,11 @@ public class BindingGraphValidator<
   private val graphScopes: Set<Scope>,
   private val scopeOf: (Binding) -> Scope?,
   private val assistedKindOf: (Binding) -> AssistedBindingKind?,
-  private val multibindingOf: (Binding) -> MultibindingValidationMetadata<TypeKey>?,
-  private val mapContributionOf: (Binding) -> MapContributionValidationMetadata<MapKey>?,
+  private val multibindingKindOf: (Binding) -> MultibindingKind?,
+  private val multibindingAllowsEmpty: (Binding) -> Boolean,
+  private val multibindingSourceKeys: (Binding) -> Collection<TypeKey>,
+  private val isMapContribution: (Binding) -> Boolean,
+  private val mapKeyOf: (Binding) -> MapKey?,
   private val rootKeys: Set<TypeKey> = emptySet(),
   private val reverseAdjacency: Map<TypeKey, Set<TypeKey>> = emptyMap(),
 ) {
@@ -51,19 +53,20 @@ public class BindingGraphValidator<
       }
     }
 
-    val multibinding = multibindingOf(binding) ?: return
-    if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
+    val multibindingKind = multibindingKindOf(binding) ?: return
+    val sourceKeys = multibindingSourceKeys(binding)
+    if (!multibindingAllowsEmpty(binding) && sourceKeys.isEmpty()) {
       onIssue(GraphValidationIssue.EmptyMultibinding(binding))
     }
-    if (multibinding.kind != MultibindingKind.MAP) {
+    if (multibindingKind != MultibindingKind.MAP) {
       return
     }
 
     val contributionsByMapKey = mutableMapOf<MapKey?, MutableList<Binding>>()
-    for (sourceKey in multibinding.sourceBindings) {
+    for (sourceKey in sourceKeys) {
       val contribution = bindings[sourceKey] ?: continue
-      val mapContribution = mapContributionOf(contribution) ?: continue
-      contributionsByMapKey.getOrPut(mapContribution.mapKey, ::mutableListOf) += contribution
+      if (!isMapContribution(contribution)) continue
+      contributionsByMapKey.getOrPut(mapKeyOf(contribution), ::mutableListOf) += contribution
     }
     for ((mapKey, contributions) in contributionsByMapKey) {
       if (contributions.size > 1) {

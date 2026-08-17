@@ -29,10 +29,8 @@ import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
 import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
-import dev.zacsweers.metro.compiler.graph.MapContributionValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
-import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
@@ -1110,12 +1108,35 @@ internal class IrBindingGraph(
         bindings = bindings,
         graphScopes = node.scopes,
         scopeOf = { it.scope },
-        assistedKindOf = ::assistedKindOf,
-        multibindingOf = ::multibindingMetadataOf,
-        mapContributionOf = ::mapContributionOf,
+        assistedKindOf = { binding ->
+          when {
+            binding is IrBinding.ConstructorInjected && binding.isAssisted ->
+              AssistedBindingKind.TARGET
+            binding is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+            else -> null
+          }
+        },
+        multibindingKindOf = { binding ->
+          val multibinding = binding as? IrBinding.Multibinding
+          if (multibinding == null) {
+            null
+          } else if (multibinding.isMap) {
+            MultibindingKind.MAP
+          } else {
+            MultibindingKind.SET
+          }
+        },
+        multibindingAllowsEmpty = { (it as IrBinding.Multibinding).allowEmpty },
+        multibindingSourceKeys = { (it as IrBinding.Multibinding).sourceBindings },
+        isMapContribution = { it is IrBinding.BindingWithAnnotations },
+        mapKeyOf = { (it as IrBinding.BindingWithAnnotations).annotations.mapKey },
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
+    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>) -> Unit =
+      { issue ->
+        reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
+      }
     val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
@@ -1155,9 +1176,7 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      structuralValidator.validate(binding) { issue ->
-        reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
-      }
+      structuralValidator.validate(binding, reportIssue)
     }
     if (!suspendProvidersEnabled) {
       for ((contextKey, metroFunction) in node.accessors) {
@@ -1206,31 +1225,6 @@ internal class IrBindingGraph(
         )
     }
   }
-
-  private fun assistedKindOf(binding: IrBinding): AssistedBindingKind? =
-    when {
-      binding is IrBinding.ConstructorInjected && binding.isAssisted -> AssistedBindingKind.TARGET
-      binding is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
-      else -> null
-    }
-
-  private fun multibindingMetadataOf(
-    binding: IrBinding
-  ): MultibindingValidationMetadata<IrTypeKey>? =
-    (binding as? IrBinding.Multibinding)?.let {
-      MultibindingValidationMetadata(
-        kind = if (it.isMap) MultibindingKind.MAP else MultibindingKind.SET,
-        allowEmpty = it.allowEmpty,
-        sourceBindings = it.sourceBindings,
-      )
-    }
-
-  private fun mapContributionOf(
-    binding: IrBinding
-  ): MapContributionValidationMetadata<IrAnnotation>? =
-    (binding as? IrBinding.BindingWithAnnotations)?.let {
-      MapContributionValidationMetadata(it.annotations.mapKey)
-    }
 
   private fun reportSuspendProvidersNotEnabled() {
     // FIR reports local declarations. IR catches upstream declarations compiled with different

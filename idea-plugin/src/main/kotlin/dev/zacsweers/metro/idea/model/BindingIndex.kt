@@ -53,6 +53,7 @@ internal class BindingIndex(
 
   private val graphContexts = ConcurrentHashMap<KaGraphDeclaration, List<GraphContext>>()
   private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
+  private val ownContainersByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val validationReplacedOriginsByContext =
     ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
@@ -270,7 +271,9 @@ internal class BindingIndex(
    * demand only.
    */
   fun bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> {
-    return bindings.filter { isBindingInContext(it, queryContext) }
+    return bindings.filter {
+      !it.isValidationOnlyAssistedTarget() && isBindingInContext(it, queryContext)
+    }
   }
 
   /** The consumer sites declared on [graph] itself, used as seal roots. */
@@ -433,25 +436,80 @@ internal class BindingIndex(
     graph: KaGraphDeclaration,
     queryContext: GraphQueryContext,
   ): Set<ClassId> {
-    val roots = hashSetOf<ClassId>()
-    roots += graph.bindingContainers
-    for (containerKey in graph.includedBindingContainers) {
-      containerKey.type.classId?.let(roots::add)
-    }
-    contributions
-      .asSequence()
-      .filter { it.classId != null && it.classId in containersById }
-      .filter { it.scopeKeys.any(graph.scopeKeys::contains) }
-      .filter {
-        isVisibleFrom(
-          it.pointer,
-          it.hintAvailability,
-          queryContext.graphModule,
-          queryContext.resolutionScope,
-        )
+    return ownContainersByContext.computeIfAbsent(queryContext) {
+      val roots = hashSetOf<ClassId>()
+      roots += graph.bindingContainers
+      for (containerKey in graph.includedBindingContainers) {
+        containerKey.type.classId?.let(roots::add)
       }
-      .mapTo(roots) { it.classId!! }
-    return resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
+      contributions
+        .asSequence()
+        .filter { it.classId != null && it.classId in containersById }
+        .filter { it.scopeKeys.any(graph.scopeKeys::contains) }
+        .filter {
+          isVisibleFrom(
+            it.pointer,
+            it.hintAvailability,
+            queryContext.graphModule,
+            queryContext.resolutionScope,
+          )
+        }
+        .mapTo(roots) { it.classId!! }
+      resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
+    }
+  }
+
+  /** Whether [binding] belongs to this graph itself rather than one of its ancestors. */
+  fun isBindingOwnedByCurrentGraph(
+    binding: KaBinding,
+    queryContext: GraphQueryContext,
+  ): Boolean {
+    val graph = queryContext.graphContext.graph
+    val includedContainerKey = binding.includedContainerKey
+    if (includedContainerKey != null) {
+      return includedContainerKey in graph.includedBindingContainers
+    }
+
+    val containerId = binding.containerId
+    if (containerId != null) {
+      return containerId in graph.selfIds ||
+        containerId in graph.supertypeIds ||
+        containerId in graphOwnContainers(graph, queryContext)
+    }
+
+    if (binding.contributionScopes.isNotEmpty()) {
+      return binding.contributionScopes.any { it in graph.scopeKeys }
+    }
+
+    return true
+  }
+
+  /** Whether an ancestor can resolve [key] through one of its private bindings. */
+  fun hasPrivateAncestorBinding(key: KaTypeKey, queryContext: GraphQueryContext): Boolean {
+    val candidates = bindingsByKey[key].orEmpty()
+    if (candidates.none { it.isGraphPrivate }) {
+      return false
+    }
+
+    val chain = queryContext.graphContext.chain
+    for (ancestorIndex in 1 until chain.size) {
+      val ancestorPath = GraphPath(chain.drop(ancestorIndex).map { it.declarationId })
+      val ancestorContext = findContext(ancestorPath) ?: continue
+      val ancestorQueryContext = queryContext(ancestorContext) ?: continue
+      for (binding in candidates) {
+        if (
+          binding.isGraphPrivate &&
+            isBindingCandidateInContext(
+              binding,
+              ancestorQueryContext,
+              includeIncompatibleScopes = true,
+            )
+        ) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   private fun resolveContainerClosure(
@@ -494,7 +552,12 @@ internal class BindingIndex(
   }
 
   private fun candidateBindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    val direct = bindingsByKey[consumer.key].orEmpty()
+    // Assisted targets are kept in the index for graph diagnostics, but are never ordinary
+    // injectable bindings for editor resolution or navigation.
+    val direct =
+      bindingsByKey[consumer.key].orEmpty().filterNot {
+        it.isValidationOnlyAssistedTarget()
+      }
     val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions
   }
@@ -587,6 +650,7 @@ internal class BindingIndex(
     includeIncompatibleScopes: Boolean = false,
   ): Boolean {
     if (!isVisibleFrom(entry, queryContext)) return false
+    if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
     val context = queryContext.graphContext
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
@@ -750,7 +814,9 @@ internal class BindingIndex(
 
   fun bindingEntriesAt(element: KtElement): List<KaBinding> {
     val file = element.containingFile?.virtualFile ?: return emptyList()
-    return bindingsByFile[file].orEmpty().filter { it.pointer.element === element }
+    return bindingsByFile[file].orEmpty().filter {
+      !it.isValidationOnlyAssistedTarget() && it.pointer.element === element
+    }
   }
 
   fun consumerEntryAt(element: KtElement): ConsumerEntry? {
@@ -806,6 +872,10 @@ private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): Scatte
   }
   @Suppress("UNCHECKED_CAST")
   return result as ScatterMap<K, List<T>>
+}
+
+private fun KaBinding.isValidationOnlyAssistedTarget(): Boolean {
+  return this is KaBinding.ConstructorInjected && isAssisted
 }
 
 /** The result of resolving a consumer against every concrete graph context in the project. */
