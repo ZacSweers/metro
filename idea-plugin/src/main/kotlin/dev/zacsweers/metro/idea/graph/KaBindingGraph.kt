@@ -6,6 +6,7 @@ import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.SimilarBindingItem
 import dev.zacsweers.metro.compiler.diagnostics.Style
@@ -158,7 +159,10 @@ internal class KaBindingGraph(
             shrinkUnusedBindings = options.shrinkUnusedBindings,
             validateBindings = ::validateBindings,
           )
-        reportEmptyMultibindings()
+        // The compiler stops before empty-multibinding reporting when the seal produced errors.
+        if (diagnostics.none { it.severity == MetroSeverity.ERROR }) {
+          reportEmptyMultibindings()
+        }
         topo
       } catch (_: SealAborted) {
         null

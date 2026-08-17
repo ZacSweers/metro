@@ -905,6 +905,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("EmptyMultibindingWithOtherError.kt")
+    public void testEmptyMultibindingWithOtherError() {
+      run("EmptyMultibindingWithOtherError.kt");
+    }
+
+    @Test
     @TestMetadata("ExplicitOverInject.kt")
     public void testExplicitOverInject() {
       run("ExplicitOverInject.kt");

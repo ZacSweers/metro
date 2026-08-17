@@ -168,6 +168,11 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         failureCase("DependencyCycle", "cycle", hasPopulatedReport = true),
         failureCase("DuplicateMapKey", "mapkey", hasPopulatedReport = true),
         failureCase("EmptyMultibinding", "empty", hasPopulatedReport = true),
+        failureCase(
+          "EmptyMultibindingWithOtherError",
+          "emptysuppressed",
+          hasPopulatedReport = true,
+        ),
         failureCase("IncompatibleScope", "scope", hasPopulatedReport = true),
         failureCase("ScopeShortNameCollision", "scopecollision", hasPopulatedReport = true),
       )

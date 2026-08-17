@@ -1033,6 +1033,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("EmptyMultibindingWithOtherError.kt")
+    public void testEmptyMultibindingWithOtherError() {
+      run("EmptyMultibindingWithOtherError.kt");
+    }
+
+    @Test
     @TestMetadata("ExplicitOverInject.kt")
     public void testExplicitOverInject() {
       run("ExplicitOverInject.kt");
