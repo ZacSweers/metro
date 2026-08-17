@@ -1,4 +1,4 @@
-/GraphPrivateBindingNotVisibleToChild.kt:36:7: error: [Metro/MissingBinding] No binding found for String
+/GraphPrivateBindingNotVisibleToChild.kt:76:7: error: [Metro/MissingBinding] No binding found for String
 
   trace (in ParentGraph.Impl.ChildGraphImpl):
       String is requested at ChildGraph.text
@@ -10,7 +10,7 @@
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
 
-/GraphPrivateBindingNotVisibleToChild.kt:38:7: error: [Metro/MissingBinding] No binding found for Optional<PrivateOptionalService>
+/GraphPrivateBindingNotVisibleToChild.kt:78:7: error: [Metro/MissingBinding] No binding found for Optional<PrivateOptionalService>
 
   trace (in ParentGraph.Impl.ChildGraphImpl):
       Optional<PrivateOptionalService> is requested at ChildGraph.privateOptional
@@ -22,7 +22,7 @@
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
 
 
-/GraphPrivateBindingNotVisibleToChild.kt:49:7: error: [Metro/MissingBinding] No binding found for Optional<PrivateOptionalService>
+/GraphPrivateBindingNotVisibleToChild.kt:97:7: error: [Metro/MissingBinding] No binding found for Optional<PrivateOptionalService>
 
   trace (in ParentGraph.Impl.ChildGraphImpl.GrandchildGraphImpl):
       Optional<PrivateOptionalService> is requested at GrandchildGraph.privateOptional

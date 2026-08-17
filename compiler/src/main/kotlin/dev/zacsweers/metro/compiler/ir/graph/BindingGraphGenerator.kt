@@ -807,8 +807,10 @@ internal class BindingGraphGenerator(
 
       // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
-        if (optKey in extendedNode.graphPrivateKeys) continue
-        optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
+        for (callable in callables) {
+          if (callable.callableMetadata.annotations.isGraphPrivate) continue
+          optionalKeys.getOrPut(optKey) { mutableSetOf() }.add(callable)
+        }
       }
 
       // Collect supertype aliases for parent graphs.
