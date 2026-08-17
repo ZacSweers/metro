@@ -132,7 +132,7 @@ internal class FileShardBuilder(
       assistedSites,
       bindingContainerEntries,
       factoryInputs,
-      cacheDependencies.mapNotNullTo(linkedSetOf()) { it.virtualFile },
+      cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
     )
   }
 

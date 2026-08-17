@@ -421,6 +421,44 @@ internal class BindingIndex(
       }
       .mapTo(containerRoots) { it.classId!! }
 
+    return resolveContainerClosure(containerRoots, useSiteModule, resolutionScope)
+  }
+
+  /**
+   * Containers [graph] itself wires: declared, factory-included, contributed into its own
+   * aggregation scopes, and everything those include transitively. Bindings from these stay local
+   * to [graph]'s context like the compiler's locally declared keys.
+   */
+  fun graphOwnContainers(
+    graph: KaGraphDeclaration,
+    queryContext: GraphQueryContext,
+  ): Set<ClassId> {
+    val roots = hashSetOf<ClassId>()
+    roots += graph.bindingContainers
+    for (containerKey in graph.includedBindingContainers) {
+      containerKey.type.classId?.let(roots::add)
+    }
+    contributions
+      .asSequence()
+      .filter { it.classId != null && it.classId in containersById }
+      .filter { it.scopeKeys.any(graph.scopeKeys::contains) }
+      .filter {
+        isVisibleFrom(
+          it.pointer,
+          it.hintAvailability,
+          queryContext.graphModule,
+          queryContext.resolutionScope,
+        )
+      }
+      .mapTo(roots) { it.classId!! }
+    return resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
+  }
+
+  private fun resolveContainerClosure(
+    containerRoots: Set<ClassId>,
+    useSiteModule: KaModule,
+    resolutionScope: DeclarationResolutionScope,
+  ): Set<ClassId> {
     val containers = hashSetOf<ClassId>()
     val visitedDeclarations = hashSetOf<GraphReference>()
     val queue = ArrayDeque(containerRoots)

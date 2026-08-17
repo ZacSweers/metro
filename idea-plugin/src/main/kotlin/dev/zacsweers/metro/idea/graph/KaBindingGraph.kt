@@ -259,7 +259,10 @@ internal class KaBindingGraph(
     val structuralValidator =
       BindingGraphValidator(
         bindings = bindings,
-        graphScopes = context.scopingAnnotations,
+        // The graph's own scopes, not the merged chain. Ancestor-scoped bindings either delegate
+        // to their owning graph or, when declared by this graph itself, must be flagged here the
+        // way the compiler excludes extended-parent scopes from its node scopes.
+        graphScopes = graph.scopingAnnotations,
         scopeOf = { it.scope },
         assistedKindOf = ::assistedKindOf,
         multibindingOf = ::multibindingMetadataOf,

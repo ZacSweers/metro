@@ -247,6 +247,97 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.deferredTypes.isNotEmpty())
   }
 
+  fun testRepeatedOptionalBindingDeclarationsAreNotDuplicates() {
+    project.setMetroOptions("enable-dagger-runtime-interop" to "true")
+    myFixture.addFileToProject(
+      "dagger/BindsOptionalOf.kt",
+      "package dagger\n\nannotation class BindsOptionalOf",
+    )
+    myFixture.addFileToProject("java/util/Optional.kt", "package java.util\n\nclass Optional<T>")
+    val result =
+      validate(
+        """
+        import dagger.BindsOptionalOf
+        import java.util.Optional
+
+        interface Service
+
+        @BindingContainer
+        interface FirstBindings {
+          @BindsOptionalOf fun optionalService(): Service
+        }
+
+        @BindingContainer
+        interface SecondBindings {
+          @BindsOptionalOf fun optionalService(): Service
+        }
+
+        @DependencyGraph(bindingContainers = [FirstBindings::class, SecondBindings::class])
+        interface AppGraph {
+          val service: Optional<Service>
+        }
+        """
+      )
+    assertTrue(result.diagnostics.toString(), result.diagnostics.isEmpty())
+  }
+
+  fun testChildDeclaredParentScopedProvidesReportsIncompatibleScope() {
+    // The scope names an ancestor but the declaration is the child's own, so it stays local and
+    // must fail scope validation like the compiler's node scopes, which exclude parent scopes.
+    val result =
+      validate(
+        """
+        class Value
+
+        @GraphExtension
+        interface ChildGraph {
+          val value: Value
+
+          @Provides @SingleIn(AppScope::class) fun provideValue(): Value = Value()
+        }
+
+        @SingleIn(AppScope::class)
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val childGraph: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS, diagnostic.id)
+  }
+
+  fun testChildIncludedContainerParentScopedProvidesStaysLocal() {
+    val result =
+      validate(
+        """
+        class Value
+
+        @BindingContainer
+        interface ChildBindings {
+          companion object {
+            @Provides @SingleIn(AppScope::class) fun provideValue(): Value = Value()
+          }
+        }
+
+        @GraphExtension(bindingContainers = [ChildBindings::class])
+        interface ChildGraph {
+          val value: Value
+        }
+
+        @SingleIn(AppScope::class)
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val childGraph: ChildGraph
+        }
+        """,
+        graphName = "ChildGraph",
+      )
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS, diagnostic.id)
+  }
+
   fun testDuplicateBindingsAreReported() {
     val result =
       validate(

@@ -17,6 +17,7 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -45,7 +46,18 @@ internal class KaBindingLookup(
   private val parentDependencies = HashMap<KaTypeKey, KaBinding>()
 
   /** Keys this context delegates upward. The parent seal must validate them as its own. */
-  private val reservedForParent = linkedSetOf<KaTypeKey>()
+  private val reservedForParent = mutableSetOf<KaTypeKey>()
+
+  /** Containers and classes the child context itself wires, whose bindings never delegate. */
+  private val childLocalContainerIds: Set<ClassId> by
+    lazy(LazyThreadSafetyMode.NONE) {
+      val child = queryContext.graphContext.chain.first()
+      buildSet {
+        addAll(child.selfIds)
+        addAll(child.supertypeIds)
+        addAll(index.graphOwnContainers(child, queryContext))
+      }
+    }
 
   /** A lazily built view of the parent context for transitive suspend resolution. */
   private var parentSuspendLookup: KaBindingLookup? = null
@@ -84,6 +96,7 @@ internal class KaBindingLookup(
     val candidates = index.bindingsForKey(typeKey, queryContext)
     val explicit = mutableListOf<KaBinding>()
     val implicit = mutableListOf<KaBinding>()
+    val optional = mutableListOf<KaBinding>()
     val multibindingDeclarations = mutableListOf<KaBinding.Multibinding>()
     for (candidate in candidates) {
       when (candidate) {
@@ -91,8 +104,10 @@ internal class KaBindingLookup(
         // Class-derived bindings the compiler discovers through class-based lookup.
         is KaBinding.ConstructorInjected,
         is KaBinding.AssistedFactory -> implicit += candidate
+        // @BindsOptionalOf declarations resolve on their own tier in the compiler.
+        is KaBinding.CustomWrapper -> optional += candidate
         // Everything else maps to the compiler's explicit binding cache, like provides,
-        // aliases, graph factory inputs, includes, extensions, and custom wrappers.
+        // aliases, graph factory inputs, includes, and extensions.
         else -> explicit += candidate
       }
     }
@@ -131,6 +146,12 @@ internal class KaBindingLookup(
       }
     }
 
+    // The compiler consumes the first optional declaration and never treats repeats as
+    // duplicates, so they resolve after multibindings on their own tier.
+    optional.firstOrNull()?.let {
+      return setOf(it)
+    }
+
     return when {
       implicit.isEmpty() -> emptySet()
       implicit.size == 1 -> setOf(delegateToParentIfScoped(implicit.single()))
@@ -160,12 +181,25 @@ internal class KaBindingLookup(
     if (chain.none { scope in it.scopingAnnotations }) {
       return binding
     }
-    // Bindings declared on the child itself stay local even when their scope names an ancestor.
-    val containerId = binding.containerId
-    if (
-      containerId != null && (containerId in child.selfIds || containerId in child.supertypeIds)
-    ) {
-      return binding
+    // Everything the child itself declares or wires stays local even when its scope names an
+    // ancestor, like the compiler's locally declared keys. Class-derived bindings have no local
+    // owner and always delegate by scope.
+    val isClassDerived =
+      binding is KaBinding.ConstructorInjected || binding is KaBinding.AssistedFactory
+    if (!isClassDerived) {
+      if (binding.contributionScopes.isNotEmpty()) {
+        // Contributions the child aggregates merge into the child.
+        if (binding.contributionScopes.any { it in child.scopeKeys }) {
+          return binding
+        }
+      } else {
+        val containerId = binding.containerId
+        // A null container means the declaring owner could not be identified, like a local graph
+        // class. Treat it as child-owned rather than delegating it upward.
+        if (containerId == null || containerId in childLocalContainerIds) {
+          return binding
+        }
+      }
     }
     val parentKey = chain[1].graphTypeKey() ?: return binding
     reservedForParent += binding.typeKey

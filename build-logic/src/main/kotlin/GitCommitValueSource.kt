@@ -56,7 +56,7 @@ private fun readGitRepoCommit(projectDirectory: Path): String? {
   // A linked worktree keeps HEAD in its private dir while branch refs live in the shared common
   // dir, so check both loose locations before the packed-refs fallback.
   val commonDirectory = resolveCommonDirectory(gitDirectory)
-  for (refsRoot in linkedSetOf(gitDirectory, commonDirectory)) {
+  for (refsRoot in setOf(gitDirectory, commonDirectory)) {
     val headFile = refsRoot.resolve(headRef)
     if (headFile.exists()) {
       return headFile.readText(Charsets.UTF_8).trim().lowercase(Locale.US).takeIf { isGitHash(it) }

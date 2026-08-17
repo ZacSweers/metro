@@ -58,7 +58,7 @@ public class BindingGraphValidator<
       return
     }
 
-    val contributionsByMapKey = linkedMapOf<MapKey?, MutableList<Binding>>()
+    val contributionsByMapKey = mutableMapOf<MapKey?, MutableList<Binding>>()
     for (sourceKey in multibinding.sourceBindings) {
       val contribution = bindings[sourceKey] ?: continue
       val mapContribution = mapContributionOf(contribution) ?: continue

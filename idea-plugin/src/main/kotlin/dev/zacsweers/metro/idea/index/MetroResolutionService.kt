@@ -390,8 +390,8 @@ class MetroResolutionService(
     start: Invalidations,
   ): SourceSnapshot {
     val shortNames = projectSweepShortNames(options)
-    val shards = linkedMapOf<VirtualFile, FileShard>()
-    val owners = linkedMapOf<VirtualFile, MutableSet<VirtualFile>>()
+    val shards = mutableMapOf<VirtualFile, FileShard>()
+    val owners = mutableMapOf<VirtualFile, MutableSet<VirtualFile>>()
     for (file in candidateFiles(shortNames)) {
       ProgressManager.checkCanceled()
       val virtualFile = file.virtualFile ?: continue
@@ -466,7 +466,7 @@ class MetroResolutionService(
     if (shard === FileShard.EMPTY) return
     shards[virtualFile] = shard
     for (dependencyFile in shard.dependencyFiles) {
-      owners.getOrPut(dependencyFile) { linkedSetOf() }.add(virtualFile)
+      owners.getOrPut(dependencyFile) { mutableSetOf() }.add(virtualFile)
     }
   }
 
@@ -725,7 +725,7 @@ class MetroResolutionService(
       return
     }
 
-    val dirty = linkedSetOf(virtualFile)
+    val dirty = mutableSetOf(virtualFile)
     if (ownerFiles != null) {
       dirty += ownerFiles
     }
@@ -782,8 +782,8 @@ class MetroResolutionService(
     if (files.isEmpty()) return
 
     val state = sourceSnapshot.get() ?: return
-    val requested = linkedSetOf<VirtualFile>()
-    val dirty = linkedSetOf<VirtualFile>()
+    val requested = mutableSetOf<VirtualFile>()
+    val dirty = mutableSetOf<VirtualFile>()
     for (file in files) {
       val virtualFile = file.virtualFile ?: continue
       if (virtualFile !in state.shards) {
