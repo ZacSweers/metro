@@ -60,6 +60,8 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtProperty
@@ -604,10 +606,16 @@ class MetroResolutionService(
 
   /** Unannotated aliases/constants can change keys across unrelated files without PSI pointers. */
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
-    return file.declarations.any { declaration ->
-      declaration is KtTypeAlias ||
-        declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD)
-    }
+    // Consts commonly live inside objects and companion objects, so recurse a few levels.
+    fun KtDeclaration.isShared(depth: Int): Boolean =
+      when {
+        this is KtTypeAlias -> true
+        this is KtProperty && hasModifier(KtTokens.CONST_KEYWORD) -> true
+        this is KtClassOrObject && depth < MAX_SHARED_DECLARATION_DEPTH ->
+          declarations.any { it.isShared(depth + 1) }
+        else -> false
+      }
+    return file.declarations.any { it.isShared(0) }
   }
 
   /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
@@ -699,6 +707,7 @@ class MetroResolutionService(
   private companion object {
     const val MAX_CACHED_INDEXES = 8
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
+    const val MAX_SHARED_DECLARATION_DEPTH = 3
   }
 }
 

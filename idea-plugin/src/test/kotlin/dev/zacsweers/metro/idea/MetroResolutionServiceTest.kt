@@ -102,6 +102,35 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(updated.toString().contains("after"))
   }
 
+  fun testUnannotatedNestedConstantChangesRefreshDependentBindingQualifiers() {
+    val constants =
+      myFixture.addFileToProject(
+        "test/Constants.kt",
+        "package test\n\nobject Constants {\n  const val SERVICE_NAME = \"before\"\n}",
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(Constants.SERVICE_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file).bindings.single().typeKey.qualifier
+    assertTrue(initial.toString().contains("before"))
+
+    myFixture.openFileInEditor(constants.virtualFile)
+    val valueOffset = constants.text.indexOf("before")
+    myFixture.editor.selectionModel.setSelection(valueOffset, valueOffset + "before".length)
+    myFixture.type("after")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.index(file).bindings.single().typeKey.qualifier
+    assertNotSame(initial, updated)
+    assertTrue(updated.toString().contains("after"))
+  }
+
   fun testOutputOnlyCompilerOptionsPreserveTheExistingSnapshot() {
     project.setMetroOptions("reports-destination" to "/tmp/metro-first")
     val file = configure()
