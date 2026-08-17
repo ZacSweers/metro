@@ -76,8 +76,8 @@ public class SuspendBindingValidator<
           kind = SuspendValidationIssueKind.MISSING_RUNTIME_COROUTINES,
           id = MetroDiagnosticId.MISSING_RUNTIME_COROUTINES,
           title =
-            runtimeRequirement.trigger.orEmpty() +
-              "Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath.",
+            runtimeRequirement.trigger?.let { "$it " }.orEmpty() +
+              SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX,
           site = SuspendValidationSite.Graph,
         )
     }
@@ -118,9 +118,7 @@ public class SuspendBindingValidator<
     return issue(
       kind = SuspendValidationIssueKind.FEATURE_DISABLED,
       id = MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED,
-      title =
-        "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler " +
-          "option or set `metro.enableSuspendProviders` to true.",
+      title = SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
       site = site,
       relatedBindings = listOfNotNull(bindingUse),
     )
@@ -474,18 +472,14 @@ public class SuspendBindingValidator<
       val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
       return RuntimeRequirement(
         required = true,
-        trigger =
-          "The scoped suspend binding `$key` caches its awaited value, which needs the optional " +
-            "runtime-coroutines artifact. ",
+        trigger = SuspendDiagnosticMessages.scopedSuspendRuntimeTrigger(key),
       )
     }
     if (!suspendLazyKeys.isNullOrEmpty()) {
       val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
       return RuntimeRequirement(
         required = true,
-        trigger =
-          "`$key` requests a `SuspendLazy` value, which needs the optional runtime-coroutines " +
-            "artifact. ",
+        trigger = SuspendDiagnosticMessages.suspendLazyRuntimeTrigger("`$key`"),
       )
     }
     return RuntimeRequirement(runtimeCoroutinesAlreadyRequired, trigger = null)

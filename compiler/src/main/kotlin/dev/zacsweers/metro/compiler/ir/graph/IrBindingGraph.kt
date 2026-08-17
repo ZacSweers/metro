@@ -21,7 +21,6 @@ import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
@@ -35,6 +34,7 @@ import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MultibindingValidationMetadata
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
 import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
@@ -47,7 +47,6 @@ import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.MISSING_RUNTIME_COROUTINES_MESSAGE
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
@@ -1236,7 +1235,7 @@ internal class IrBindingGraph(
     // options, so attach that error to the consuming graph.
     reportError(
       node.sourceGraph,
-      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] $SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE",
+      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] ${SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED}",
       MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
     )
   }
@@ -1267,9 +1266,9 @@ internal class IrBindingGraph(
     val trigger = describeRuntimeCoroutinesTrigger()
     val message =
       if (trigger == null) {
-        "$tag $MISSING_RUNTIME_COROUTINES_MESSAGE"
+        "$tag ${SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX}"
       } else {
-        "$tag $trigger $MISSING_RUNTIME_COROUTINES_MESSAGE"
+        "$tag $trigger ${SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX}"
       }
     reportError(node.sourceGraph, message, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.factory)
   }
@@ -1297,11 +1296,11 @@ internal class IrBindingGraph(
     }
     if (scopedSuspendKeys.isNotEmpty()) {
       val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
-      return "The scoped suspend binding `$key` caches its awaited value, which needs the optional runtime-coroutines artifact."
+      return SuspendDiagnosticMessages.scopedSuspendRuntimeTrigger(key)
     }
     if (suspendLazyKeys.isNotEmpty()) {
       val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
-      return "`$key` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact."
+      return SuspendDiagnosticMessages.suspendLazyRuntimeTrigger("`$key`")
     }
     return null
   }

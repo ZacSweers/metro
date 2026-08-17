@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.render.DiagnosticRenderer
 import dev.zacsweers.metro.compiler.diagnostics.render.RenderProfile
 import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -130,7 +131,7 @@ internal fun validateInjectionSiteType(
     reporter.reportOn(
       typeRef.source ?: source,
       MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
-      SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
+      SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
     )
     return true
   }
