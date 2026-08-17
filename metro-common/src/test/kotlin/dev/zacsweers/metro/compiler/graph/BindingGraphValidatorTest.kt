@@ -100,7 +100,7 @@ class BindingGraphValidatorTest {
           when (binding) {
             first,
             second -> MapContributionValidationMetadata("same-key")
-            else -> null
+            else -> error("Unexpected map contribution query: $binding")
           }
         },
       )

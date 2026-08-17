@@ -498,10 +498,6 @@ private fun showTargets(
 }
 
 /**
- * The element's position in the KMP source-set hierarchy: 0 for commonMain, increasing through
- * intermediate source sets (nativeMain) to leaf platforms (iosArm64Main), via `dependsOn` edges.
- */
-/**
  * Clusters KMP source sets in hierarchy order, commonMain first, then intermediate source sets like
  * nativeMain, then leaf platforms, alphabetical within each.
  */
@@ -512,6 +508,10 @@ private val sourceSetOrder: Comparator<PsiElement> =
     { (it as? KtNamedDeclaration)?.name.orEmpty() },
   )
 
+/**
+ * The element's position in the KMP source-set hierarchy: 0 for commonMain, increasing through
+ * intermediate source sets (nativeMain) to leaf platforms (iosArm64Main), via `dependsOn` edges.
+ */
 private fun sourceSetDepth(element: PsiElement): Int {
   val module =
     KaModuleProvider.getModule(element.project, element, useSiteModule = null) as? KaSourceModule

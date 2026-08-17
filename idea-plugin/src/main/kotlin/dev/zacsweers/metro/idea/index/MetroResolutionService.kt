@@ -433,6 +433,10 @@ class MetroResolutionService(
     }
     for (virtualFile in dirty) {
       ProgressManager.checkCanceled()
+      if (!virtualFile.isValid) {
+        withoutShard(shards, owners, virtualFile)
+        continue
+      }
       val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
       if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
         withoutShard(shards, owners, virtualFile)

@@ -202,10 +202,19 @@ public class SuspendBindingWorklist<
       if (bindingIsSuspend(binding)) {
         return SuspendBindingPath(start, path, current, sourceIsSuspend = true)
       }
-      val dependency =
-        binding.dependencies.firstOrNull { candidate ->
+      val eligible =
+        binding.dependencies.filter { candidate ->
           dependencyTypeKey(candidate) in snapshot && !rules.stopsPropagation(candidate)
-        } ?: break
+        }
+      // Prefer a direct suspend source, then unexplored keys, so a cycle edge cannot hide an
+      // adjacent suspend witness and truncate the trace.
+      val dependency =
+        eligible.firstOrNull { candidate ->
+          discoveredBindings[dependencyTypeKey(candidate)]?.let(bindingIsSuspend) == true
+        }
+          ?: eligible.firstOrNull { dependencyTypeKey(it) !in visited }
+          ?: eligible.firstOrNull()
+          ?: break
       path += SuspendBindingPathEdge(current, dependency)
       current = dependencyTypeKey(dependency)
     }

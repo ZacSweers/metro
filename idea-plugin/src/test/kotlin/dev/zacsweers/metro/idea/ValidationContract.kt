@@ -107,7 +107,19 @@ internal class CompilerContractReader(
     val keyMap = metadata?.keyMap.orEmpty()
     // Generated implementation names are outside the parity contract. Child reports key the
     // parent dependency by its generated graph class, so fold those onto the source graph key.
-    val implKeyMap = case.graphPath.associateBy { "$it.Impl" }
+    // Nested extension impls are named Root.Impl.<Child>Impl, so walk the chain root-first.
+    val implKeyMap = buildMap {
+      var implName = ""
+      for ((index, graphFqName) in case.graphPath.asReversed().withIndex()) {
+        implName =
+          if (index == 0) {
+            "$graphFqName.Impl"
+          } else {
+            "$implName.${graphFqName.substringAfterLast('.')}Impl"
+          }
+        put(implName, graphFqName)
+      }
+    }
     return ValidationContract(
       graphPath = case.graphPath,
       roots = metadata?.roots,
@@ -210,8 +222,8 @@ internal class CompilerContractReader(
             DiagnosticContract(
               id = "Metro/${match.groupValues[1]}",
               // Titles can embed annotation renders, so strip argument-name spelling differences
-              // the same way key and scope renders are normalized.
-              title = normalizeRender(titleLines.joinToString(" ")),
+              // inside those spans only.
+              title = normalizeTitle(titleLines.joinToString(" ")),
             )
           )
         }
@@ -309,7 +321,7 @@ internal fun ValidationContract.Companion.fromIdea(
         .map { diagnostic ->
           DiagnosticContract(
             id = diagnostic.id.fullId,
-            title = normalizeRender(diagnostic.diagnostic.title.toString()),
+            title = normalizeTitle(diagnostic.diagnostic.title.toString()),
           )
         }
         .sortedWith(diagnosticComparator),
@@ -445,6 +457,16 @@ private fun normalizeRender(value: String): String {
   return normalizeWhitespace(withoutArgumentNames.removeSuffix(" = ..."))
 }
 
+/**
+ * Titles mix prose with annotation renders. Argument-name spelling is only stripped inside
+ * annotation-looking spans so a genuine title divergence elsewhere still fails the comparison.
+ */
+private fun normalizeTitle(value: String): String {
+  val stripped =
+    ANNOTATION_SPAN.replace(value) { span -> ANNOTATION_ARGUMENT_NAME.replace(span.value, "$1") }
+  return normalizeWhitespace(stripped)
+}
+
 private fun normalizeWhitespace(value: String): String = value.trim().replace(WHITESPACE, " ")
 
 private fun compilerParityDataRoot(): Path {
@@ -463,6 +485,7 @@ private val FILE_DIRECTIVE = Regex("""// FILE: (.+)$""")
 private val DIAGNOSTIC_MARKUP_OPEN = Regex("""<![^>]*!>""")
 private val DIAGNOSTIC_HEADER = Regex(""".*\[Metro/([^]]+)] (.*)""")
 private val ANNOTATION_ARGUMENT_NAME = Regex("""([,(]\s*)[A-Za-z_][A-Za-z0-9_]*\s*=\s*""")
+private val ANNOTATION_SPAN = Regex("""@[A-Za-z0-9_.]+\([^)]*\)""")
 private val MULTIBINDING_ELEMENT =
   Regex("""@dev\.zacsweers\.metro(?:\.internal)?\.MultibindingElement\("([^"]+)", "[^"]+"\) (.+)""")
 private val WHITESPACE = Regex("""\s+""")

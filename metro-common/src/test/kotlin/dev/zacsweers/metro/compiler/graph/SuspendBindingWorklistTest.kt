@@ -153,16 +153,16 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
-  fun `exhausted cycle walks return a partial path`() {
+  fun `cycle walks pick the adjacent suspend witness over the cycle edge`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("A", "B"), binding("B", "A", "Source"), binding("Source", isSuspend = true))
     val result = fixture.analysis.analyzeWithPaths(keys("A"))
     assertThat(result.suspendKeys).containsExactlyElementsIn(keys("A", "B", "Source"))
 
-    // The walk follows B's first in-snapshot dependency back into the cycle and never reaches
-    // Source. The partial path still records the walked edges for diagnostics.
+    // B's first dependency leads back into the cycle, but Source is directly suspend and wins.
     val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
-    assertThat(path.sourceIsSuspend).isFalse()
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("Source"))
     assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("B")).inOrder()
   }
 

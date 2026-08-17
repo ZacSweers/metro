@@ -9,7 +9,8 @@ import androidx.collection.ScatterMap
  *
  * Frontends provide small accessors over their native binding types and remain responsible for
  * source anchors, diagnostic rendering, and choosing when an issue is reported during graph
- * sealing. The accessor shape keeps the common no-issue path free of per-binding allocations.
+ * sealing. The accessor shape keeps the common no-issue path from allocating result lists;
+ * multibinding metadata still allocates per query, which only multibindings pay.
  */
 public class BindingGraphValidator<
   Type : Any,
