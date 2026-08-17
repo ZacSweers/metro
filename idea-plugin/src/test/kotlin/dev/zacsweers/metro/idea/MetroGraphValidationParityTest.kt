@@ -217,6 +217,15 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         metroOptions = options,
       )
     )
+    assertParity(
+      ParityCase(
+        fixtureName = "SuspendCycle",
+        graphPath = listOf("parity.suspend.cycle.AppGraph"),
+        populatedReport = "SuspendCycle/keys-populated/parity/suspend/cycle/AppGraph/Impl.txt",
+        diagnosticReport = "SuspendCycle.ir.diag.txt",
+        metroOptions = options,
+      )
+    )
   }
 
   private fun failureCase(

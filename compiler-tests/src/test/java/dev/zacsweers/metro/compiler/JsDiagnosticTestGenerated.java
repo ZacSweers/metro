@@ -953,6 +953,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("SuspendCycle.kt")
+    public void testSuspendCycle() {
+      run("SuspendCycle.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendFailure.kt")
     public void testSuspendFailure() {
       run("SuspendFailure.kt");

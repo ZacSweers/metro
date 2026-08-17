@@ -1081,6 +1081,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("SuspendCycle.kt")
+    public void testSuspendCycle() {
+      run("SuspendCycle.kt");
+    }
+
+    @Test
     @TestMetadata("SuspendFailure.kt")
     public void testSuspendFailure() {
       run("SuspendFailure.kt");

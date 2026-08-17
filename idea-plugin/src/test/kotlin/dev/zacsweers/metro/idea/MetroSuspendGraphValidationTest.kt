@@ -31,6 +31,28 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
       .requireCompleted()
   }
 
+  fun testSuspendCycleSuggestsSuspendDeferral() {
+    val result =
+      validate(
+        """
+        @Inject class A(val b: B)
+
+        class B
+
+        @DependencyGraph
+        interface AppGraph {
+          suspend fun a(): A
+
+          @Provides suspend fun provideB(a: A): B = B()
+        }
+        """
+      )
+
+    val diagnostic = result.diagnostics.single()
+    assertEquals(MetroDiagnosticId.DEPENDENCY_CYCLE, diagnostic.id)
+    assertTrue(diagnostic.render(), "suspend () ->" in diagnostic.render())
+  }
+
   fun testSuspendAccessorAllowsTransitiveSuspendBinding() {
     val result =
       validate(
