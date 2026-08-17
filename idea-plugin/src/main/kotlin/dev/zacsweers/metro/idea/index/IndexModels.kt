@@ -3,7 +3,6 @@
 package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiFile
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -112,7 +111,7 @@ internal class FileShard(
   val bindingContainers: List<BindingContainerEntry>,
   val factoryInputs: List<FactoryInputEntry>,
   /** Referenced declaration files whose changes require this shard to be rebuilt. */
-  val cacheDependencies: Set<PsiFile>,
+  val dependencyFiles: Set<VirtualFile>,
 ) {
   companion object {
     val EMPTY =

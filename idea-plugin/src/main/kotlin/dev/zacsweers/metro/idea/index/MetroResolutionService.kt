@@ -375,16 +375,14 @@ class MetroResolutionService(
     removeShard(state, virtualFile)
     if (shard === FileShard.EMPTY) return
     state.shards[virtualFile] = shard
-    for (dependency in shard.cacheDependencies) {
-      val dependencyFile = dependency.virtualFile ?: continue
+    for (dependencyFile in shard.dependencyFiles) {
       dependencyOwners.getOrPut(dependencyFile) { linkedSetOf() }.add(virtualFile)
     }
   }
 
   private fun removeShard(state: SourceState, virtualFile: VirtualFile) {
     val previous = state.shards.remove(virtualFile) ?: return
-    for (dependency in previous.cacheDependencies) {
-      val dependencyFile = dependency.virtualFile ?: continue
+    for (dependencyFile in previous.dependencyFiles) {
       val owners = dependencyOwners[dependencyFile] ?: continue
       owners -= virtualFile
       if (owners.isEmpty()) dependencyOwners.remove(dependencyFile)
@@ -513,15 +511,16 @@ class MetroResolutionService(
         // members and factory includes even when those files contain no Metro annotations
         // themselves.
         val state = file.metroIdeState()
-        val shard =
-          if (state.isEnabled) FileShardBuilder(file.project, state.options).buildShard(file)
-          else FileShard.EMPTY
+        val builder = if (state.isEnabled) FileShardBuilder(file.project, state.options) else null
+        val shard = builder?.buildShard(file) ?: FileShard.EMPTY
+        // Dependency PSI is only handed to the platform's cache registration here; the shard
+        // model and the service retain virtual files instead of pinning PSI.
         CachedValueProvider.Result.create(
           shard,
           file,
           KotlinCompilerSettingsTracker.getInstance(file.project),
           ProjectRootModificationTracker.getInstance(file.project),
-          *shard.cacheDependencies.toTypedArray(),
+          *(builder?.psiDependencies ?: emptySet()).toTypedArray(),
         )
       }
     if (cached === FileShard.EMPTY && file.textLength > 0) {

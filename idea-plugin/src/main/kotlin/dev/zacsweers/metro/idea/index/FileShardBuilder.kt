@@ -87,6 +87,13 @@ internal class FileShardBuilder(
   private val processedFactoryInputs = HashSet<FactoryInputEntry.Id>()
   private val cacheDependencies = HashSet<PsiFile>()
 
+  /**
+   * The PSI files backing [FileShard.dependencyFiles], for the caller's CachedValue registration.
+   * Read once after [buildShard]; the shard model itself never retains PSI.
+   */
+  val psiDependencies: Set<PsiFile>
+    get() = cacheDependencies
+
   fun buildShard(file: KtFile): FileShard {
     val bindingCallableNames =
       shortNames(
@@ -125,7 +132,7 @@ internal class FileShardBuilder(
       assistedSites,
       bindingContainerEntries,
       factoryInputs,
-      cacheDependencies,
+      cacheDependencies.mapNotNullTo(linkedSetOf()) { it.virtualFile },
     )
   }
 
