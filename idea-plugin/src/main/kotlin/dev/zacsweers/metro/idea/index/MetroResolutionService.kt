@@ -248,8 +248,25 @@ class MetroResolutionService(
   internal fun settingsChanged() {
     val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
     if (lastResolveFromLibraries.getAndSet(resolveFromLibraries) == resolveFromLibraries) return
-    invalidations.updateAndGet { it.bumpGeneration() }
+    val bumped = invalidations.updateAndGet { it.bumpGeneration() }
+    if (!resolveFromLibraries) {
+      synchronized(libraryShards) { libraryShards.clear() }
+    }
+    evictStaleCaches(
+      bumped.generation,
+      ProjectRootModificationTracker.getInstance(project).modificationCount,
+    )
     notifyListeners(restartDaemon = false)
+  }
+
+  /** Memory hygiene: entries stranded by generation or root changes can never be served again. */
+  private fun evictStaleCaches(currentGeneration: Long, currentRoots: Long) {
+    synchronized(snapshots) {
+      snapshots.values.removeIf { !it.matches(currentGeneration, currentRoots) }
+    }
+    synchronized(libraryShards) {
+      libraryShards.keys.removeIf { it.rootsGeneration != currentRoots }
+    }
   }
 
   private fun scheduleBuild(module: Module, key: SnapshotKey) {
@@ -336,6 +353,7 @@ class MetroResolutionService(
       // files under the same generation still describes this exact source snapshot.
       if (invalidations.get().generation == start.generation) {
         snapshots[key] = IndexSnapshot(index, start.generation, inputs.roots)
+        evictStaleCaches(start.generation, inputs.roots)
       }
       return index
     }
@@ -660,7 +678,12 @@ class MetroResolutionService(
     scheduleInvalidationNotification()
   }
 
-  /** Unannotated aliases/constants can change keys across unrelated files without PSI pointers. */
+  /**
+   * Unannotated aliases/constants can change keys across unrelated files without PSI pointers.
+   * Edits to such files force a whole-project re-shard because dependency tracking only records
+   * annotation and factory declaration files. Narrowing this needs referenced-declaration files
+   * recorded during type-key snapshotting.
+   */
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
     // Consts commonly live inside objects and companion objects, so recurse a few levels.
     fun KtDeclaration.isShared(depth: Int): Boolean =
