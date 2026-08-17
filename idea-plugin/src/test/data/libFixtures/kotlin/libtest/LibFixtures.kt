@@ -13,6 +13,7 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.Origin
+import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
@@ -62,6 +63,82 @@ class LibAssistedWidget(@Assisted val id: String, val dependency: LibClientWithD
 interface LibAssistedWidgetFactory {
   fun create(id: String): LibAssistedWidget
 }
+
+/** Mirrors the compiler's cross-module assisted factories with concrete type substitutions. */
+@AssistedInject
+class LibGenericAssistedExample<T>(@Assisted val inputT: T, val graphT: T) {
+  @AssistedFactory
+  fun interface Factory<T> {
+    fun create(inputT: T): LibGenericAssistedExample<T>
+  }
+
+  @AssistedFactory
+  fun interface Factory2 {
+    fun create(inputT: Int): LibGenericAssistedExample<Int>
+  }
+}
+
+/** The assisted input and the graph dependency can resolve to different concrete types. */
+@AssistedInject
+class LibGenericAssistedDifferent<T, R>(@Assisted val inputT: T, val graphT: R) {
+  @AssistedFactory
+  fun interface Factory<T, R> {
+    fun create(inputT: T): LibGenericAssistedDifferent<T, R>
+  }
+
+  @AssistedFactory
+  fun interface Factory2<T> {
+    fun create(inputT: Int): LibGenericAssistedDifferent<Int, T>
+  }
+}
+
+interface LibGenericAssistedBaseFactory<T> {
+  fun create(inputT: T): LibGenericAssistedExample<T>
+}
+
+/** Binary inherited factory functions must retain the requested factory's type argument. */
+@AssistedFactory
+interface LibInheritedGenericAssistedFactory<T> : LibGenericAssistedBaseFactory<T>
+
+/** Deferred wrappers must keep both the concrete graph key and their provider semantics. */
+@AssistedInject
+class LibWrappedGenericAssisted<T>(@Assisted val inputT: T, val graphT: Provider<T>) {
+  @AssistedFactory
+  fun interface Factory<T> {
+    fun create(inputT: T): LibWrappedGenericAssisted<T>
+  }
+}
+
+/** Suspend factory functions also resolve their target's generic graph dependency concretely. */
+@AssistedInject
+class LibSuspendGenericAssisted<T>(@Assisted val id: String, val graphT: T) {
+  @AssistedFactory
+  interface Factory<T> {
+    suspend fun create(id: String): LibSuspendGenericAssisted<T>
+  }
+}
+
+/** Qualifiers apply to the specialized graph dependency, not the assisted factory argument. */
+@AssistedInject
+class LibQualifiedGenericAssisted<T>(
+  @Assisted val inputT: T,
+  @LibEndpoint("primary") val graphT: T,
+) {
+  @AssistedFactory
+  fun interface Factory<T> {
+    fun create(inputT: T): LibQualifiedGenericAssisted<T>
+  }
+}
+
+@AssistedInject
+class LibRetargetedWidgetA(@Assisted val id: String, val dependency: LibRetargetedDependencyA)
+
+@AssistedInject
+class LibRetargetedWidgetB(@Assisted val id: String, val dependency: LibRetargetedDependencyB)
+
+@Inject class LibRetargetedDependencyA
+
+@Inject class LibRetargetedDependencyB(val dependency: LibClientWithDeps)
 
 /** Resolvable on demand only under its qualifier. */
 @Inject @LibEndpoint("primary") class LibQualifiedClient

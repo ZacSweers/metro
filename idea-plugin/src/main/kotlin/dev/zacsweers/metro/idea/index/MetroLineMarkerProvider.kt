@@ -112,13 +112,70 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     if (CONSUMER_OPTION.isEnabled) {
       val consumerEntries = index.consumerEntriesAt(declaration)
       when {
-        // Injector members like `fun inject(target: Foo)` anchor one entry per injected key
-        consumerEntries.size > 1 ->
-          result += injectorMarker(element, declaration, consumerEntries, index)
-        consumerEntries.size == 1 ->
-          result += consumerMarker(element, consumerEntries.single(), index)
+        consumerEntries.size == 1 -> {
+          val consumer = consumerEntries.single()
+          if (consumer.graphRequestKind == ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR) {
+            result += injectorMarker(element, declaration, consumerEntries, index)
+          } else {
+            result += consumerMarker(element, consumer, index)
+          }
+        }
+        consumerEntries.size > 1 -> {
+          // Injector members like `fun inject(target: Foo)` anchor one entry per injected key.
+          val injectorEntries = consumerEntries.filter {
+            it.graphRequestKind == ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR
+          }
+          if (injectorEntries.isNotEmpty()) {
+            result += injectorMarker(element, declaration, injectorEntries, index)
+          } else {
+            result += specializedConsumerMarker(element, consumerEntries, index)
+          }
+        }
       }
     }
+  }
+
+  /** One inherited generic parameter remains an ordinary consumer across graph specializations. */
+  private fun specializedConsumerMarker(
+    anchor: PsiElement,
+    consumers: List<ConsumerEntry>,
+    index: BindingIndex,
+  ): RelatedItemLineMarkerInfo<*> {
+    val contexts = linkedSetOf<String>()
+    val bindings = linkedSetOf<KaBinding>()
+    var hasMissingRequiredContext = false
+    for (consumer in consumers) {
+      val resolution = index.resolveConsumer(consumer)
+      contexts +=
+        resolution.perContext.keys.map { context ->
+          context.path.toString()
+        }
+      resolution.perContext.values.forEach(bindings::addAll)
+      if (!consumer.isOptional && resolution.emptyContexts.isNotEmpty()) {
+        hasMissingRequiredContext = true
+      }
+    }
+    val renderedKeys = consumers.map { it.key.render(short = true) }.distinct()
+    val tooltip = buildString {
+      append("Metro dependency: ")
+      append(renderedKeys.joinToString(" / "))
+      append(" · bindings differ across ")
+      append(contexts.size)
+      append(" graph contexts")
+      if (bindings.size > 1) {
+        append(" · ")
+        append(bindings.size)
+        append(" candidates")
+      }
+    }
+    return navMarker(
+      anchor = anchor,
+      icon = if (hasMissingRequiredContext) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
+      tooltip = tooltip,
+      popupTitle = "Bindings across graph contexts",
+      emptyText = "No Metro bindings found across graph contexts",
+      targets = bindings.map { it.pointer },
+    )
   }
 
   /** Injector members like `fun inject(target: Foo)` navigate to the target's injected members. */

@@ -16,6 +16,7 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import dev.zacsweers.metro.idea.toKaAnnotationSnapshot
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
@@ -146,7 +147,13 @@ internal fun KaSession.callableBindingView(
 internal fun KaSession.assistedFactoryFunction(
   classSymbol: KaNamedClassSymbol
 ): CallableBindingView? {
-  val scope = classSymbol.defaultType.scope ?: return null
+  val classType = classSymbol.defaultType as? KaClassType ?: return null
+  return assistedFactoryFunction(classType)
+}
+
+/** Resolves an assisted factory's SAM for the concrete type requested by its graph. */
+internal fun KaSession.assistedFactoryFunction(factoryType: KaClassType): CallableBindingView? {
+  val scope = factoryType.scope ?: return null
   val signature =
     scope.getCallableSignatures().filterIsInstance<KaFunctionSignature<*>>().singleOrNull {
       candidate ->
@@ -436,17 +443,17 @@ private fun KtClassOrObject.classBindingData(
         !classSymbol.hasAnyAnnotation(options.contributionProviderExclusionAnnotations) &&
         !hasPrivateInjectConstructor
     val ownsInjectBinding = isInjectable && !usesContributionProvider
-    val needsInjectionMetadata = isInjectable && (ownsInjectBinding || usesContributionProvider)
+    val needsConstructorMetadata = isInjectable && (ownsInjectBinding || usesContributionProvider)
     val constructorDependencies =
-      if (needsInjectionMetadata) {
+      if (needsConstructorMetadata) {
         injectConstructorDependencyKeys(classSymbol, options, injectConstructor)
       } else {
         emptyList()
       }
     val memberDependencies =
-      if (needsInjectionMetadata) memberInjectDependencyKeys(classSymbol, options) else emptyList()
+      if (ownsInjectBinding) memberInjectDependencyKeys(classSymbol, options) else emptyList()
     val memberInjectionOwnerIds =
-      if (needsInjectionMetadata) memberInjectOwnerClassIds(classSymbol) else emptySet()
+      if (ownsInjectBinding) memberInjectOwnerClassIds(classSymbol) else emptySet()
     if (ownsInjectBinding) {
       result +=
         BindingData(
@@ -461,8 +468,8 @@ private fun KtClassOrObject.classBindingData(
           isAssisted = isAssisted,
         )
     }
-    // Normal contributions alias the implementation. Generated contribution providers construct
-    // it directly, keeping its own type private while retaining constructor/member dependencies.
+    // Normal contributions alias the implementation. Generated contribution providers call its
+    // constructor directly, so they neither expose its own type nor perform member injection.
     val consumedKey =
       if (ownsInjectBinding || isAssistedFactory) {
         contextualTypeKey(classSymbol.defaultType, qualifier, options)
@@ -491,7 +498,7 @@ private fun KtClassOrObject.classBindingData(
       val bindingKind =
         if (usesContributionProvider) BindingData.Kind.PROVIDED else BindingData.Kind.ALIAS
       val providerDependencies =
-        if (usesContributionProvider) constructorDependencies + memberDependencies else emptyList()
+        if (usesContributionProvider) constructorDependencies else emptyList()
       when (classId) {
         in options.contributesBindingAnnotations ->
           result +=
@@ -658,6 +665,35 @@ internal fun KaSession.injectConstructorDependencyKeys(
     .map { dependencyKey(it, options) }
 }
 
+/** Resolves constructor dependencies with the concrete arguments of an assisted factory target. */
+@OptIn(KaExperimentalApi::class)
+internal fun KaSession.injectConstructorDependencyKeys(
+  classType: KaClassType,
+  options: MetroOptions,
+): List<KaContextualTypeKey> {
+  val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
+  val constructor = findInjectConstructorSymbol(classSymbol, options) ?: return emptyList()
+  val typeParameters = classSymbol.typeParameters
+  if (typeParameters.isEmpty()) {
+    return injectConstructorDependencyKeys(classSymbol, options, constructor)
+  }
+
+  val substitutions = typeParameters.mapIndexedNotNull { index, parameter ->
+    val argument = classType.typeArguments.getOrNull(index)?.type ?: return@mapIndexedNotNull null
+    parameter to argument
+  }
+  if (substitutions.isEmpty()) {
+    return injectConstructorDependencyKeys(classSymbol, options, constructor)
+  }
+
+  val substitutor = createSubstitutor(substitutions.toMap())
+  return constructor.valueParameters
+    .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+    .map { parameter ->
+      dependencyKey(substitutor.substitute(parameter.returnType), parameter, options)
+    }
+}
+
 /**
  * The dependency keys of [classSymbol]'s member injection sites. Superclasses are only checked when
  * annotated with `@HasMemberInjections`, which Metro requires for inherited member injections.
@@ -673,6 +709,68 @@ internal fun KaSession.memberInjectDependencyKeys(
   options: MetroOptions,
 ): List<KaContextualTypeKey> {
   return memberInjectSites(classSymbol, options).map { it.key }
+}
+
+/** Resolves direct and inherited member injections through the target's specialized type scope. */
+internal fun KaSession.memberInjectDependencyKeys(
+  classType: KaClassType,
+  options: MetroOptions,
+): List<KaContextualTypeKey> {
+  return memberInjectSites(classType, options).map { it.key }
+}
+
+/** Preserves member source locations while specializing direct and inherited injection sites. */
+internal fun KaSession.memberInjectSites(
+  classType: KaClassType,
+  options: MetroOptions,
+): List<MemberInjectSite> {
+  val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
+  val owners = memberInjectOwners(classSymbol)
+  if (
+    classSymbol.typeParameters.isEmpty() && classType.typeArguments.isEmpty() && owners.size == 1
+  ) {
+    return memberInjectSites(classSymbol, options)
+  }
+
+  val scope = classType.scope ?: return memberInjectSites(classSymbol, options)
+  val ownerIds = owners.mapNotNullTo(linkedSetOf()) { it.classId }
+  val result = mutableListOf<MemberInjectSite>()
+  for (signature in scope.getCallableSignatures()) {
+    val view = callableBindingView(signature) ?: continue
+    val symbol = view.symbol
+    val ownerId = symbol.callableId?.classId ?: continue
+    if (ownerId !in ownerIds) continue
+    when (symbol) {
+      is KaPropertySymbol -> {
+        val injectIds = options.allInjectAnnotations
+        val injected =
+          symbol.hasAnyAnnotation(injectIds) ||
+            symbol.backingFieldSymbol?.hasAnyAnnotation(injectIds) == true ||
+            symbol.setter?.hasAnyAnnotation(injectIds) == true
+        if (injected) {
+          result +=
+            MemberInjectSite(
+              ownerId,
+              symbol.psi as? KtElement,
+              dependencyKey(view.returnType, symbol, options),
+            )
+        }
+      }
+      is KaNamedFunctionSymbol -> {
+        if (symbol.hasAnyAnnotation(options.allInjectAnnotations)) {
+          view.valueParameters.mapTo(result) { parameter ->
+            MemberInjectSite(
+              ownerId,
+              symbol.psi as? KtElement,
+              dependencyKey(parameter.returnType, parameter.symbol, options),
+            )
+          }
+        }
+      }
+      else -> {}
+    }
+  }
+  return result
 }
 
 internal fun KaSession.memberInjectSites(

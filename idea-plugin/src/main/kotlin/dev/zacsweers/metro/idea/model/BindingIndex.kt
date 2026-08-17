@@ -83,6 +83,17 @@ internal class BindingIndex(
     result as ScatterMap<GraphDeclarationId, List<GraphContext>>
   }
 
+  /** Session-free pointer identities keep inherited-callable replacement lookups constant-time. */
+  private val specializedBindingIdentities: Set<SpecializedBindingIdentity> by lazy {
+    buildSet {
+      for (binding in bindings) {
+        val graphId = binding.ownerGraphId ?: continue
+        val identity = pointerIdentity(binding.pointer) ?: continue
+        add(SpecializedBindingIdentity(graphId, identity, binding.javaClass))
+      }
+    }
+  }
+
   private val contextsByScope: ScatterMap<ClassId, List<GraphContext>> by lazy {
     val result = MutableScatterMap<ClassId, MutableList<GraphContext>>()
     for (context in allGraphContexts) {
@@ -137,6 +148,29 @@ internal class BindingIndex(
 
   private val consumersByFile: ScatterMap<VirtualFile, List<ConsumerEntry>> by lazy {
     consumers.groupToScatter { it.pointer.virtualFile }
+  }
+
+  private val specializedConsumerIdentities: Set<SpecializedConsumerIdentity> by lazy {
+    buildSet {
+      for (consumer in consumers) {
+        val graphId = consumer.graphId ?: continue
+        if (consumer.graphRequestKind != null) continue
+        val identity = pointerIdentity(consumer.pointer) ?: continue
+        add(SpecializedConsumerIdentity(graphId, identity))
+      }
+    }
+  }
+
+  /** Specializations can be discovered independently from several consuming source-file shards. */
+  private val duplicatedAssistedFactoryKeys: Set<KaTypeKey> by lazy {
+    val seen = HashSet<Triple<ClassId?, VirtualFile?, KaTypeKey>>()
+    buildSet {
+      for (binding in bindings) {
+        if (binding !is KaBinding.AssistedFactory) continue
+        val identity = Triple(binding.originClassId, binding.pointer.virtualFile, binding.typeKey)
+        if (!seen.add(identity)) add(binding.typeKey)
+      }
+    }
   }
 
   private val graphsByFile: ScatterMap<VirtualFile, List<KaGraphDeclaration>> by lazy {
@@ -241,7 +275,7 @@ internal class BindingIndex(
   ): List<KaBinding> {
     // Membership filtering already applies context-wide excludes and replaces via the cached
     // replacedOrigins set.
-    return bindingsByKey[key].orEmpty().filter {
+    return bindingsByKey[key].orEmpty().withoutDuplicateAssistedFactories(key).filter {
       isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
     }
   }
@@ -559,9 +593,12 @@ internal class BindingIndex(
     // Assisted targets are kept in the index for graph diagnostics, but are never ordinary
     // injectable bindings for editor resolution or navigation.
     val direct =
-      bindingsByKey[consumer.key].orEmpty().filterNot {
-        it.isValidationOnlyAssistedTarget()
-      }
+      bindingsByKey[consumer.key]
+        .orEmpty()
+        .withoutDuplicateAssistedFactories(consumer.key)
+        .filterNot {
+          it.isValidationOnlyAssistedTarget()
+        }
     val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions
   }
@@ -581,6 +618,12 @@ internal class BindingIndex(
       return false
     }
     val context = queryContext.graphContext
+
+    val isUnspecializedContainerConsumer = consumer.graphId == null && consumer.containerId != null
+    if (isUnspecializedContainerConsumer && specializedConsumerIdentities.isNotEmpty()) {
+      if (isSupersededInheritedConsumer(consumer, context)) return false
+    }
+
     val originClassId = consumer.originClassId
     if (originClassId != null) {
       if (originClassId in context.excludes) return false
@@ -654,6 +697,19 @@ internal class BindingIndex(
     includeIncompatibleScopes: Boolean = false,
   ): Boolean {
     if (!isVisibleFrom(entry, queryContext)) return false
+    val isUnspecializedContainerCallable =
+      entry.ownerGraphId == null &&
+        entry.containerId != null &&
+        when (entry) {
+          is KaBinding.Provided,
+          is KaBinding.Alias,
+          is KaBinding.Multibinding,
+          is KaBinding.CustomWrapper -> true
+          else -> false
+        }
+    if (isUnspecializedContainerCallable && specializedBindingIdentities.isNotEmpty()) {
+      if (isSupersededInheritedBinding(entry, queryContext.graphContext)) return false
+    }
     if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
     val context = queryContext.graphContext
     val ownerGraphId = entry.ownerGraphId
@@ -707,6 +763,64 @@ internal class BindingIndex(
       is KaBinding.GraphExtension -> true
     }
   }
+
+  private fun isSupersededInheritedBinding(binding: KaBinding, context: GraphContext): Boolean {
+    val pointerIdentity = pointerIdentity(binding.pointer) ?: return false
+    for (graphId in context.graphIds) {
+      val identity = SpecializedBindingIdentity(graphId, pointerIdentity, binding.javaClass)
+      if (identity in specializedBindingIdentities) return true
+    }
+    return false
+  }
+
+  private fun isSupersededInheritedConsumer(
+    consumer: ConsumerEntry,
+    context: GraphContext,
+  ): Boolean {
+    val pointerIdentity = pointerIdentity(consumer.pointer) ?: return false
+    for (graphId in context.graphIds) {
+      if (SpecializedConsumerIdentity(graphId, pointerIdentity) in specializedConsumerIdentities) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private fun List<KaBinding>.withoutDuplicateAssistedFactories(
+    requestedKey: KaTypeKey? = null
+  ): List<KaBinding> {
+    if (size < 2) return this
+    if (requestedKey != null && requestedKey !in duplicatedAssistedFactoryKeys) return this
+    if (requestedKey == null && none { it is KaBinding.AssistedFactory }) return this
+    val seen = HashSet<Triple<ClassId?, VirtualFile?, KaTypeKey>>()
+    return filter { binding ->
+      binding !is KaBinding.AssistedFactory ||
+        seen.add(Triple(binding.originClassId, binding.pointer.virtualFile, binding.typeKey))
+    }
+  }
+
+  private fun pointerIdentity(pointer: SmartPsiElementPointer<*>): SourcePointerIdentity? {
+    val file = pointer.virtualFile ?: return null
+    val range = pointer.psiRange ?: return null
+    return SourcePointerIdentity(file, range.startOffset, range.endOffset)
+  }
+
+  private data class SourcePointerIdentity(
+    val file: VirtualFile,
+    val startOffset: Int,
+    val endOffset: Int,
+  )
+
+  private data class SpecializedBindingIdentity(
+    val graphId: GraphDeclarationId,
+    val pointer: SourcePointerIdentity,
+    val bindingClass: Class<*>,
+  )
+
+  private data class SpecializedConsumerIdentity(
+    val graphId: GraphDeclarationId,
+    val pointer: SourcePointerIdentity,
+  )
 
   private fun replacedOrigins(
     queryContext: GraphQueryContext,
@@ -825,20 +939,27 @@ internal class BindingIndex(
 
   fun bindingEntriesAt(element: KtElement): List<KaBinding> {
     val file = element.containingFile?.virtualFile ?: return emptyList()
-    return bindingsByFile[file].orEmpty().filter {
+    return bindingsByFile[file].orEmpty().withoutDuplicateAssistedFactories().filter {
       !it.isValidationOnlyAssistedTarget() && it.pointer.element === element
     }
   }
 
   fun consumerEntryAt(element: KtElement): ConsumerEntry? {
-    val file = element.containingFile?.virtualFile ?: return null
-    return consumersByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+    val entries = consumerEntriesAt(element)
+    if (entries.size == 1) return entries.single()
+    // An inherited generic parameter can have a different concrete type in each graph. There is
+    // no uniform implementation inlay for that source site, unlike a real multi-key injector.
+    if (entries.any { it.graphRequestKind == null }) return null
+    return entries.firstOrNull()
   }
 
   /** All consumer entries anchored at [element]. Injector members anchor one per injected key. */
   fun consumerEntriesAt(element: KtElement): List<ConsumerEntry> {
     val file = element.containingFile?.virtualFile ?: return emptyList()
-    return consumersByFile[file].orEmpty().filter { it.pointer.element === element }
+    val entries = consumersByFile[file].orEmpty().filter { it.pointer.element === element }
+    val hasSpecializedEntries = entries.any { it.graphId != null && it.graphRequestKind == null }
+    if (!hasSpecializedEntries) return entries
+    return entries.filter { it.graphId != null }
   }
 
   fun graphEntryAt(element: KtElement): KaGraphDeclaration? {

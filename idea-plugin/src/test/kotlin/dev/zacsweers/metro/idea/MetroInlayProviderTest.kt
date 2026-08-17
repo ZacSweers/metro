@@ -86,4 +86,71 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       MetroInjectedImplementationInlayProvider(),
     )
   }
+
+  fun testGenericProviderParameterUsesItsConcreteImplementationInlay() {
+    doTestProvider(
+      "GenericProvider.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      interface Api
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class RealApi : Api
+
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T/*<#  RealApi #>*/): String = value.toString()
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph : GenericBase<Api> {
+        val text: String
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
+
+  fun testDifferentGenericProviderSpecializationsDoNotShowAnImplementationInlay() {
+    doTestProvider(
+      "ContextDependentGenericProvider.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      abstract class OtherScope
+      interface AppApi
+      interface OtherApi
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class AppImplementation : AppApi
+
+      @Inject
+      @ContributesBinding(OtherScope::class)
+      class OtherImplementation : OtherApi
+
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T): String = value.toString()
+      }
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph : GenericBase<AppApi> {
+        val text: String
+      }
+
+      @DependencyGraph(OtherScope::class)
+      interface OtherGraph : GenericBase<OtherApi> {
+        val text: String
+      }
+      """
+        .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
 }

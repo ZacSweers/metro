@@ -5,11 +5,14 @@ package dev.zacsweers.metro.idea
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
@@ -131,6 +134,88 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       assertTrue("An open window should notice Metro becoming available", notifications > 0)
     }
+  }
+
+  fun testCompilerSettingsChangesNotifyExistingIndexListenersWithoutRootChanges() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    service.index(file)
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+    val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
+
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(
+      initialRoots,
+      ProjectRootModificationTracker.getInstance(project).modificationCount,
+    )
+    assertTrue("Compiler options should refresh an open Metro window", notifications > 0)
+  }
+
+  fun testCompilerSettingsEnableMetroBeforeTheFirstSnapshotWithoutRootChanges() {
+    project.clearMetroOptions()
+    val service = project.service<MetroResolutionService>()
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+    val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
+
+    project.setMetroOptions()
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(
+      initialRoots,
+      ProjectRootModificationTracker.getInstance(project).modificationCount,
+    )
+    assertTrue("An open window should notice Metro becoming available", notifications > 0)
+  }
+
+  fun testCompilerSettingsDisableAndReenableMetroWithoutRootChanges() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    assertFalse(service.index(file).bindings.isEmpty())
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+    val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
+
+    project.setMetroOptions("enabled" to "false")
+    UIUtil.dispatchAllInvocationEvents()
+    assertTrue(service.index(file).bindings.isEmpty())
+    val disabledNotifications = notifications
+    assertTrue("Disabling Metro should refresh an open window", disabledNotifications > 0)
+
+    project.setMetroOptions()
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(
+      initialRoots,
+      ProjectRootModificationTracker.getInstance(project).modificationCount,
+    )
+    assertTrue(
+      "Reenabling Metro should refresh an open window",
+      notifications > disabledNotifications,
+    )
+    assertFalse(service.index(file).bindings.isEmpty())
+  }
+
+  fun testRemovingMetroCompilerSettingsNotifiesExistingIndexListenersWithoutRootChanges() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    service.index(file)
+    var notifications = 0
+    service.addIndexListener(testRootDisposable) { notifications++ }
+    val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
+
+    project.clearMetroOptions()
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertEquals(
+      initialRoots,
+      ProjectRootModificationTracker.getInstance(project).modificationCount,
+    )
+    assertTrue("Removing Metro options should refresh an open window", notifications > 0)
+    assertTrue(service.index(file).bindings.isEmpty())
   }
 
   fun testPlatformCancellationRetriesTheRequestedIndexBuild() {
@@ -1156,6 +1241,85 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testBinaryGenericAssistedFactoriesKeepConcreteTargetsAndGraphDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibGenericAssistedDifferent
+          import libtest.LibGenericAssistedExample
+          import libtest.LibInheritedGenericAssistedFactory
+          import libtest.LibQualifiedGenericAssisted
+          import libtest.LibWrappedGenericAssisted
+
+          @DependencyGraph
+          interface AppGraph {
+            val first: LibGenericAssistedExample.Factory<Int>
+            val second: LibGenericAssistedExample.Factory2
+            val third: LibGenericAssistedDifferent.Factory<Int, String>
+            val fourth: LibGenericAssistedDifferent.Factory2<String>
+            val inherited: LibInheritedGenericAssistedFactory<Int>
+            val qualified: LibQualifiedGenericAssisted.Factory<Int>
+            val wrapped: LibWrappedGenericAssisted.Factory<Int>
+          }
+          """,
+          fileName = "BinaryGenericFactories.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val factories = index.bindings.filterIsInstance<KaBinding.AssistedFactory>()
+
+      fun factory(type: String): KaBinding.AssistedFactory = factories.single {
+        it.typeKey.renderedType == type
+      }
+
+      val first = factory("libtest.LibGenericAssistedExample.Factory<kotlin.Int>")
+      assertEquals(
+        "libtest.LibGenericAssistedExample<kotlin.Int>",
+        first.targetTypeKey?.renderedType,
+      )
+      assertEquals(listOf("kotlin.Int"), first.dependencies.map { it.typeKey.renderedType })
+
+      val second = factory("libtest.LibGenericAssistedExample.Factory2")
+      assertEquals(
+        "libtest.LibGenericAssistedExample<kotlin.Int>",
+        second.targetTypeKey?.renderedType,
+      )
+      assertEquals(listOf("kotlin.Int"), second.dependencies.map { it.typeKey.renderedType })
+
+      val third = factory("libtest.LibGenericAssistedDifferent.Factory<kotlin.Int, kotlin.String>")
+      assertEquals(
+        "libtest.LibGenericAssistedDifferent<kotlin.Int, kotlin.String>",
+        third.targetTypeKey?.renderedType,
+      )
+      assertEquals(listOf("kotlin.String"), third.dependencies.map { it.typeKey.renderedType })
+
+      val fourth = factory("libtest.LibGenericAssistedDifferent.Factory2<kotlin.String>")
+      assertEquals(
+        "libtest.LibGenericAssistedDifferent<kotlin.Int, kotlin.String>",
+        fourth.targetTypeKey?.renderedType,
+      )
+      assertEquals(listOf("kotlin.String"), fourth.dependencies.map { it.typeKey.renderedType })
+
+      val inherited = factory("libtest.LibInheritedGenericAssistedFactory<kotlin.Int>")
+      assertEquals(
+        "libtest.LibGenericAssistedExample<kotlin.Int>",
+        inherited.targetTypeKey?.renderedType,
+      )
+      assertEquals(listOf("kotlin.Int"), inherited.dependencies.map { it.typeKey.renderedType })
+
+      val qualified = factory("libtest.LibQualifiedGenericAssisted.Factory<kotlin.Int>")
+      val qualifiedDependency = qualified.dependencies.single().typeKey
+      assertEquals("kotlin.Int", qualifiedDependency.renderedType)
+      assertTrue(qualifiedDependency.qualifier?.render(short = true)?.contains("primary") == true)
+
+      val wrapped = factory("libtest.LibWrappedGenericAssisted.Factory<kotlin.Int>")
+      val wrappedDependency = wrapped.dependencies.single()
+      assertEquals("kotlin.Int", wrappedDependency.typeKey.renderedType)
+      assertTrue(wrappedDependency.wrappedType is WrappedType.Provider)
+      assertTrue(wrappedDependency.isDeferrable)
+    }
+  }
+
   fun testQualifiedLibraryInjectClassesResolveOnDemand() {
     module.withMetroLibFixtureLibrary {
       val file =
@@ -1261,6 +1425,188 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         updated.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" }
       assertNotSame(initial, updated)
       assertSame(initialLibraryBinding, updatedLibraryBinding)
+    }
+  }
+
+  fun testRepeatedSourceGenericFactoryRequestsShareTheirLibraryUseSites() {
+    module.withMetroLibFixtureLibrary {
+      myFixture.addFileToProject(
+        "test/SharedFactory.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class SharedExample<T>(@Assisted val id: String, val dependency: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): SharedExample<T>
+          }
+        }
+        """
+          .trimIndent(),
+      )
+      repeat(8) { index ->
+        myFixture.addFileToProject(
+          "test/Consumer$index.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.Inject
+          import libtest.LibClientWithDeps
+
+          @Inject class Consumer$index(val factory: SharedExample.Factory<LibClientWithDeps>)
+          """
+            .trimIndent(),
+        )
+      }
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibClientWithDeps
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: SharedExample.Factory<LibClientWithDeps>
+            val consumer: Consumer0
+          }
+          """,
+          fileName = "SharedFactoryGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val specializedFactories =
+        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().filter {
+          it.typeKey.renderedType == "test.SharedExample.Factory<libtest.LibClientWithDeps>"
+        }
+      assertTrue(
+        "Separate consumer shards should share one factory declaration",
+        specializedFactories.size > 1,
+      )
+
+      val useSites = sourceAssistedFactoryUseSites(project, index.bindings, index.consumers)
+      val sharedUseSites = checkNotNull(useSites[specializedFactories.first()])
+      assertEquals(1, sharedUseSites.size)
+      for (factory in specializedFactories) {
+        assertSame(sharedUseSites, useSites[factory])
+      }
+
+      val accessor = file.declarationsIncludingNested().property("factory")
+      val consumer = checkNotNull(index.consumerEntryAt(accessor))
+      assertEquals(
+        1,
+        index.bindingsFor(consumer).filterIsInstance<KaBinding.AssistedFactory>().size,
+      )
+      assertTrue(index.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(index.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testRetargetingSourceAssistedFactoryRefreshesBinaryDependencyOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRetargetedWidgetA
+          import libtest.LibRetargetedWidgetB
+
+          @AssistedFactory
+          interface WidgetFactory {
+            fun create(id: String): LibRetargetedWidgetA
+          }
+
+          @DependencyGraph
+          interface AppGraph {
+            val widgetFactory: WidgetFactory
+          }
+          """,
+          fileName = "RetargetedFactory.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(file)
+      assertTrue(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertFalse(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      val oldTarget = "): LibRetargetedWidgetA"
+      val targetOffset = document.text.indexOf(oldTarget)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(
+          targetOffset,
+          targetOffset + oldTarget.length,
+          "): LibRetargetedWidgetB",
+        )
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(file)
+      assertNotSame(initial, updated)
+      assertFalse(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertTrue(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+    }
+  }
+
+  fun testChangingGeneratedProviderConstructorDependencyRefreshesBinaryOverlay() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRetargetedDependencyA
+          import libtest.LibRetargetedDependencyB
+
+          interface Service
+
+          @Inject
+          @ContributesBinding(AppScope::class)
+          class ServiceImpl(val dependency: LibRetargetedDependencyA) : Service
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val service: Service
+          }
+          """,
+          fileName = "GeneratedProvider.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(file)
+      assertTrue(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertFalse(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      val oldDependency = "dependency: LibRetargetedDependencyA"
+      val dependencyOffset = document.text.indexOf(oldDependency)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(
+          dependencyOffset,
+          dependencyOffset + oldDependency.length,
+          "dependency: LibRetargetedDependencyB",
+        )
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(file)
+      assertNotSame(initial, updated)
+      assertFalse(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertTrue(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
     }
   }
 

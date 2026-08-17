@@ -1422,19 +1422,19 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
   }
 
-  fun testGeneratedContributionProviderRetainsConstructorAndInheritedMemberDependencies() {
+  fun testGeneratedContributionProviderRequiresConstructorDependenciesOnly() {
     project.setMetroOptions("generate-contribution-providers" to "true")
     val file =
       myFixture.configureMetroFile(
         """
         interface Service
+        interface MissingMember
 
         @Inject class ConstructorDependency
-        @Inject class MemberDependency
 
         @HasMemberInjections
         abstract class MemberBase {
-          @Inject lateinit var member: MemberDependency
+          @Inject lateinit var member: MissingMember
         }
 
         @Inject @ContributesBinding(AppScope::class, binding = binding<Service>())
@@ -1456,13 +1456,102 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.ConstructorDependency" })
-    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.MemberDependency" })
+    assertFalse(result.bindings.any { key, _ -> key.renderedType == "test.MissingMember" })
     assertFalse(result.bindings.any { key, _ -> key.renderedType == "test.ServiceImpl" })
 
     val member = index.consumerEntryAt(file.declarationsIncludingNested().property("member"))!!
-    assertEquals(
-      listOf("AppGraph"),
-      index.resolveConsumer(member).perContext.keys.map { it.graph.name },
+    assertTrue(index.resolveConsumer(member).perContext.isEmpty())
+  }
+
+  fun testGeneratedContributionProviderIgnoresSuspendMemberDependencies() {
+    project.setMetroOptions(
+      "generate-contribution-providers" to "true",
+      "enable-suspend-providers" to "true",
+    )
+
+    val result =
+      validate(
+        """
+        interface Service
+        class SuspendMember
+
+        @HasMemberInjections
+        abstract class MemberBase {
+          @Inject lateinit var member: SuspendMember
+        }
+
+        @Inject @ContributesBinding(AppScope::class, binding = binding<Service>())
+        class ServiceImpl : MemberBase(), Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+
+          @Provides suspend fun provideMember(): SuspendMember = SuspendMember()
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertFalse(result.bindings.any { key, _ -> key.renderedType == "test.SuspendMember" })
+  }
+
+  fun testGeneratedContributionProviderStillRequiresConstructorDependencies() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface Service
+        interface MissingConstructorDependency
+
+        @Inject @ContributesBinding(AppScope::class)
+        class ServiceImpl(val dependency: MissingConstructorDependency) : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    assertTrue(
+      result.diagnostics.single().render(),
+      "MissingConstructorDependency" in result.diagnostics.single().render(),
+    )
+  }
+
+  fun testExposedContributionProviderStillRequiresInjectedMembers() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+
+    val result =
+      validate(
+        """
+        interface Service
+        interface MissingMember
+
+        @HasMemberInjections
+        abstract class MemberBase {
+          @Inject lateinit var member: MissingMember
+        }
+
+        @ExposeImplBinding
+        @Inject
+        @ContributesBinding(AppScope::class, binding = binding<Service>())
+        class ServiceImpl : MemberBase(), Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    assertTrue(
+      result.diagnostics.single().render(),
+      "MissingMember" in result.diagnostics.single().render(),
     )
   }
 
@@ -1682,6 +1771,325 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     }
   }
 
+  fun testGenericSupertypeProvidersWithConcreteReturnDoNotKeepRawParameters() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface GenericBase<T> {
+          @Provides fun provideText(value: T): String = value.toString()
+        }
+
+        @DependencyGraph
+        interface IntGraph : GenericBase<Int> {
+          val text: String
+
+          @Provides fun provideInt(): Int = 1
+        }
+
+        @DependencyGraph
+        interface BooleanGraph : GenericBase<Boolean> {
+          val text: String
+
+          @Provides fun provideBoolean(): Boolean = true
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val validation = project.service<MetroGraphValidationService>()
+
+    for ((graphName, expectedParameterType) in
+      listOf("IntGraph" to "kotlin.Int", "BooleanGraph" to "kotlin.Boolean")) {
+      val graph = index.graphs.single { it.name == graphName }
+      val result = validation.validate(file, index.contextsFor(graph).single()).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val stringBindings = mutableListOf<KaBinding>()
+      result.bindings.forEach { key, binding ->
+        if (key.renderedType == "kotlin.String") stringBindings += binding
+      }
+      assertEquals(1, stringBindings.size)
+      assertEquals(
+        expectedParameterType,
+        stringBindings.single().dependencies.single().typeKey.renderedType,
+      )
+    }
+
+    val parameter = file.declarationsIncludingNested().parameter("value")
+    val consumers = index.consumerEntriesAt(parameter)
+    assertEquals(
+      setOf("kotlin.Int", "kotlin.Boolean"),
+      consumers.mapTo(mutableSetOf()) { it.key.renderedType },
+    )
+    assertEquals(
+      setOf("IntGraph", "BooleanGraph"),
+      consumers.mapTo(mutableSetOf()) { consumer ->
+        index.resolveConsumer(consumer).perContext.keys.single().graph.name
+      },
+    )
+    assertNull(index.consumerEntryAt(parameter))
+  }
+
+  fun testGenericSupertypeBindsWithConcreteReturnDoesNotKeepRawBinding() {
+    val result =
+      validate(
+        """
+        interface Service
+        @Inject class RealService : Service
+
+        interface GenericBase<T : Service> {
+          @Binds fun bindService(value: T): Service
+        }
+
+        @DependencyGraph
+        interface AppGraph : GenericBase<RealService> {
+          val service: Service
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.RealService" })
+  }
+
+  fun testGenericSupertypeBindsReceiverUsesItsConcreteDependency() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+        @Inject class RealService : Service
+
+        interface GenericBase<T : Service> {
+          @Binds val T.boundService: Service
+        }
+
+        @DependencyGraph
+        interface AppGraph : GenericBase<RealService> {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val receiver =
+      file.declarationsIncludingNested().property("boundService").receiverTypeReference!!
+    val consumer = checkNotNull(index.consumerEntryAt(receiver))
+    assertEquals("test.RealService", consumer.key.renderedType)
+    assertEquals(graph.declarationId, consumer.graphId)
+  }
+
+  fun testSourceGenericAssistedFactoriesUseConcreteRequestedTypes() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Example<T>(@Assisted val input: T, val dependency: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(input: T): Example<T>
+          }
+
+          @AssistedFactory
+          fun interface Factory2 {
+            fun create(input: Int): Example<Int>
+          }
+        }
+
+        @AssistedInject
+        class Different<T, R>(@Assisted val input: T, val dependency: R) {
+          @AssistedFactory
+          fun interface Factory<T, R> {
+            fun create(input: T): Different<T, R>
+          }
+
+          @AssistedFactory
+          fun interface Factory2<T> {
+            fun create(input: Int): Different<Int, T>
+          }
+        }
+
+        interface BaseFactory<T> {
+          fun create(input: T): Example<T>
+        }
+
+        @AssistedFactory
+        interface InheritedFactory<T> : BaseFactory<T>
+
+        @DependencyGraph
+        interface AppGraph {
+          val first: Example.Factory<Int>
+          val second: Example.Factory2
+          val third: Different.Factory<Int, String>
+          val fourth: Different.Factory2<String>
+          val inherited: InheritedFactory<Int>
+
+          @Provides fun provideInt(): Int = 1
+          @Provides fun provideString(): String = "ready"
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factories = mutableListOf<KaBinding.AssistedFactory>()
+    result.bindings.forEach { _, binding ->
+      if (binding is KaBinding.AssistedFactory) factories += binding
+    }
+    assertEquals(5, factories.size)
+    assertEquals(
+      setOf("kotlin.Int", "kotlin.String"),
+      factories.flatMapTo(mutableSetOf()) { factory ->
+        factory.targetConstructorDependencies.map { it.typeKey.renderedType }
+      },
+    )
+    assertTrue(factories.none { it.targetTypeKey?.renderedType?.contains("<T") == true })
+  }
+
+  fun testGenericAssistedFactoryRequestedFromInjectedConstructorInAnotherFile() {
+    myFixture.addFileToProject(
+      "test/GenericFactory.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class Example<T>(@Assisted val id: String, val dependency: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): Example<T>
+        }
+      }
+      """
+        .trimIndent(),
+    )
+    val graph =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Consumer(val factory: Example.Factory<Int>)
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+
+          @Provides fun provideInt(): Int = 1
+        }
+        """
+      )
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val index = project.service<MetroResolutionService>().index(graph)
+    val declaration = index.graphs.single { it.name == "AppGraph" }
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(graph, index.contextsFor(declaration).single())
+        .requireCompleted()
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" }
+    )
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.Int" })
+  }
+
+  fun testWrappedGenericAssistedFactoryRequestsUseConcreteTypes() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Example<T>(@Assisted val id: String, val dependency: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Example<T>
+          }
+        }
+
+        @Inject class Consumer(val factory: Provider<Example.Factory<Int>>)
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Provider<Example.Factory<String>>
+          val consumer: Consumer
+
+          @Provides fun provideInt(): Int = 1
+          @Provides fun provideString(): String = "ready"
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.Int>" }
+    )
+    assertTrue(
+      result.bindings.any { key, _ -> key.renderedType == "test.Example.Factory<kotlin.String>" }
+    )
+  }
+
+  fun testGenericAssistedFactoryPreservesQualifiedSuspendDependencies() {
+    project.setMetroOptions("enable-suspend-providers" to "true")
+
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Endpoint
+
+        @AssistedInject
+        class Example<T>(@Assisted val id: String, @Endpoint val dependency: T) {
+          @AssistedFactory
+          interface Factory<T> {
+            suspend fun create(id: String): Example<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Example.Factory<Int>
+
+          @Provides @Endpoint suspend fun provideInt(): Int = 1
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factories = mutableListOf<KaBinding.AssistedFactory>()
+    result.bindings.forEach { _, binding ->
+      if (binding is KaBinding.AssistedFactory) factories += binding
+    }
+    val factory = factories.single()
+    assertTrue(factory.factoryFunctionIsSuspend)
+    assertEquals("kotlin.Int", factory.targetConstructorDependencies.single().typeKey.renderedType)
+    assertNotNull(factory.targetConstructorDependencies.single().typeKey.qualifier)
+  }
+
+  fun testGenericGraphInjectorSpecializesInheritedMemberDependencies() {
+    val result =
+      validate(
+        """
+        @HasMemberInjections
+        open class MemberBase<T> {
+          @Inject lateinit var dependency: T
+        }
+
+        class Target<T> : MemberBase<T>()
+
+        @DependencyGraph
+        interface AppGraph {
+          fun inject(target: Target<String>)
+
+          @Provides fun provideString(): String = "ready"
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
+  }
+
   fun testGraphIndexTracksChangesToUnannotatedSupertypeFiles() {
     val base =
       myFixture.addFileToProject(
@@ -1779,6 +2187,128 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           @DependencyGraph(AppScope::class)
           interface AppGraph {
             val factory: LibAssistedWidgetFactory
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testBinaryGenericAssistedFactoriesUseConcreteRequestedTypes() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibGenericAssistedExample
+          import libtest.LibGenericAssistedDifferent
+          import libtest.LibInheritedGenericAssistedFactory
+          import libtest.LibWrappedGenericAssisted
+
+          @DependencyGraph
+          interface AppGraph {
+            val first: LibGenericAssistedExample.Factory<Int>
+            val second: LibGenericAssistedExample.Factory2
+            val third: LibGenericAssistedDifferent.Factory<Int, String>
+            val fourth: LibGenericAssistedDifferent.Factory2<String>
+            val inherited: LibInheritedGenericAssistedFactory<Int>
+            val wrapped: LibWrappedGenericAssisted.Factory<Int>
+
+            @Provides fun provideInt(): Int = 1
+            @Provides fun provideString(): String = "ready"
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val factories = mutableListOf<KaBinding.AssistedFactory>()
+      result.bindings.forEach { _, binding ->
+        if (binding is KaBinding.AssistedFactory) factories += binding
+      }
+      assertEquals(6, factories.size)
+      assertTrue(factories.none { it.targetTypeKey?.renderedType?.contains("<T") == true })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.Int" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.String" })
+    }
+  }
+
+  fun testBinaryGenericAssistedFactoryPreservesQualifiedDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibEndpoint
+          import libtest.LibQualifiedGenericAssisted
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: LibQualifiedGenericAssisted.Factory<Int>
+
+            @Provides @LibEndpoint("primary") fun provideInt(): Int = 1
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val factories = mutableListOf<KaBinding.AssistedFactory>()
+      result.bindings.forEach { _, binding ->
+        if (binding is KaBinding.AssistedFactory) factories += binding
+      }
+      assertNotNull(factories.single().targetConstructorDependencies.single().typeKey.qualifier)
+    }
+  }
+
+  fun testBinaryGenericSuspendAssistedFactoryUsesConcreteDependency() {
+    project.setMetroOptions("enable-suspend-providers" to "true")
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibSuspendGenericAssisted
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: LibSuspendGenericAssisted.Factory<Int>
+
+            @Provides suspend fun provideInt(): Int = 1
+          }
+          """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val factories = mutableListOf<KaBinding.AssistedFactory>()
+      result.bindings.forEach { _, binding ->
+        if (binding is KaBinding.AssistedFactory) factories += binding
+      }
+      val factory = factories.single()
+      assertTrue(factory.factoryFunctionIsSuspend)
+      assertEquals(
+        "kotlin.Int",
+        factory.targetConstructorDependencies.single().typeKey.renderedType,
+      )
+    }
+  }
+
+  fun testSourceGenericAssistedFactoryResolvesConsumerModuleBinaryDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+          import libtest.LibClientWithDeps
+
+          @AssistedInject
+          class Example<T>(@Assisted val id: String, val dependency: T) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(id: String): Example<T>
+            }
+          }
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: Example.Factory<LibClientWithDeps>
           }
           """
         )

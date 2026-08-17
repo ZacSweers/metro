@@ -807,6 +807,7 @@ internal class BindingGraphGenerator(
 
       // Collect optional keys.
       for ((optKey, callables) in extendedNode.optionalKeys) {
+        if (optKey in extendedNode.graphPrivateKeys) continue
         optionalKeys.getOrPut(optKey) { mutableSetOf() }.addAll(callables)
       }
 

@@ -227,32 +227,43 @@ public class SuspendBindingWorklist<
     dependencyTypeKey: (ContextualTypeKey) -> TypeKey,
   ): Map<TypeKey, SuspendBindingPathEdge<TypeKey, ContextualTypeKey>> {
     val pending = ArrayDeque<TypeKey>()
+    val distances = mutableMapOf<TypeKey, Int>()
     val witnessEdges = mutableMapOf<TypeKey, SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>()
 
     for (key in snapshot) {
       checkCanceled()
       val binding = discoveredBindings[key] ?: continue
       if (bindingIsSuspend(binding)) {
+        distances[key] = 0
         pending.addLast(key)
       }
     }
 
-    // Walking backward from every real source gives each consumer its shortest witness once.
+    // First find each consumer's shortest distance without letting source order break ties.
     while (pending.isNotEmpty()) {
       checkCanceled()
       val current = pending.removeFirst()
+      val consumerDistance = distances.getValue(current) + 1
       for (consumerKey in reverseEdges[current].orEmpty()) {
         checkCanceled()
-        if (consumerKey !in snapshot || consumerKey in witnessEdges) continue
-        val consumer = discoveredBindings[consumerKey] ?: continue
-        if (bindingIsSuspend(consumer)) continue
-
-        val dependency =
-          consumer.dependencies.firstOrNull {
-            dependencyTypeKey(it) == current && !rules.stopsPropagation(it)
-          } ?: continue
-        witnessEdges[consumerKey] = SuspendBindingPathEdge(consumerKey, dependency)
+        if (consumerKey !in snapshot || consumerKey in distances) continue
+        distances[consumerKey] = consumerDistance
         pending.addLast(consumerKey)
+      }
+    }
+
+    // Among equally short paths, follow the dependency the consumer declared first.
+    for ((consumerKey, distance) in distances) {
+      checkCanceled()
+      if (distance == 0) continue
+      val consumer = discoveredBindings[consumerKey] ?: continue
+      for (dependency in consumer.dependencies) {
+        checkCanceled()
+        val dependencyKey = dependencyTypeKey(dependency)
+        if (distances[dependencyKey] != distance - 1) continue
+        if (rules.stopsPropagation(dependency)) continue
+        witnessEdges[consumerKey] = SuspendBindingPathEdge(consumerKey, dependency)
+        break
       }
     }
     return witnessEdges

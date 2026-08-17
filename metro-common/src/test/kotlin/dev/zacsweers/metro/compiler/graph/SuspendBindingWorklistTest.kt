@@ -170,6 +170,21 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `older snapshots keep their witness when a preferred source appears later`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("Consumer", "Preferred", "Existing"), binding("Existing", isSuspend = true))
+    val initial = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    fixture.put(binding("Preferred", isSuspend = true))
+    val updated = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    assertThat(initial.pathFrom(key("Consumer")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("Existing"))
+    assertThat(updated.pathFrom(key("Consumer")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("Preferred"))
+  }
+
+  @Test
   fun `multiple witnesses reuse one provenance index`() {
     val fixture = AnalysisFixture()
     fixture.put(
@@ -254,6 +269,53 @@ class SuspendBindingWorklistTest {
     assertThat(path.sourceIsSuspend).isTrue()
     assertThat(path.sourceKey).isEqualTo(key("NearSource"))
     assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("Short")).inOrder()
+  }
+
+  @Test
+  fun `equal direct witnesses follow declaration order regardless of source order`() {
+    for (sourceOrder in listOf(listOf("First", "Second"), listOf("Second", "First"))) {
+      val fixture = AnalysisFixture()
+      for (source in sourceOrder) {
+        fixture.put(binding(source, isSuspend = true))
+      }
+      fixture.put(binding("Consumer", "First", "Second"))
+
+      val result = fixture.analysis.analyzeWithPaths(sourceOrder.map(::key) + key("Consumer"))
+      val path = checkNotNull(result.pathFrom(key("Consumer")) { it.typeKey })
+
+      assertThat(path.sourceKey).isEqualTo(key("First"))
+      assertThat(path.edges.single().dependency.typeKey).isEqualTo(key("First"))
+    }
+  }
+
+  @Test
+  fun `equal nested witnesses preserve each root declaration order through cycles`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("SecondSource", isSuspend = true),
+      binding("FirstSource", isSuspend = true),
+      binding("Cycle", "First"),
+      binding("Second", "SecondSource"),
+      binding("First", "Cycle", "FirstSource"),
+      binding("FirstRoot", "First", "Second"),
+      binding("SecondRoot", "Second", "First"),
+    )
+    val result =
+      fixture.analysis.analyzeWithPaths(
+        keys("SecondSource", "FirstSource", "SecondRoot", "FirstRoot")
+      )
+
+    val firstPath = checkNotNull(result.pathFrom(key("FirstRoot")) { it.typeKey })
+    assertThat(firstPath.sourceKey).isEqualTo(key("FirstSource"))
+    assertThat(firstPath.edges.map { it.consumerKey })
+      .containsExactly(key("FirstRoot"), key("First"))
+      .inOrder()
+
+    val secondPath = checkNotNull(result.pathFrom(key("SecondRoot")) { it.typeKey })
+    assertThat(secondPath.sourceKey).isEqualTo(key("SecondSource"))
+    assertThat(secondPath.edges.map { it.consumerKey })
+      .containsExactly(key("SecondRoot"), key("Second"))
+      .inOrder()
   }
 
   @Test

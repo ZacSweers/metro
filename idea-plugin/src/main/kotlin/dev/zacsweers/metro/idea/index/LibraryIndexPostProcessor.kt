@@ -23,10 +23,14 @@ import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
+import java.util.Collections
+import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
+import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
@@ -337,12 +341,15 @@ internal class LibraryIndexPostProcessor(
           if (qualifierAnnotation(classSymbol, options) != request.key.qualifier) {
             return@analyze null
           }
+          val defaultType = classSymbol.defaultType as? KaClassType ?: return@analyze null
+          val requestedType =
+            if (request.key.type.typeArguments.isEmpty()) defaultType
+            else restoreClassType(request.key.type) ?: defaultType
           if (classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) {
-            val factoryFunction = assistedFactoryFunction(classSymbol)
+            val factoryFunction = assistedFactoryFunction(requestedType)
             val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
-            val targetSymbol =
-              (factoryFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol
-                as? KaNamedClassSymbol
+            val targetType = factoryFunction?.returnType?.fullyExpandedType as? KaClassType
+            val targetSymbol = targetType?.symbol as? KaNamedClassSymbol
             return@analyze ResolvedLibraryBinding(
               LibraryInjectBindingId(request.key, virtualFile),
               KaBinding.AssistedFactory(
@@ -353,9 +360,9 @@ internal class LibraryIndexPostProcessor(
                 factoryFunction?.returnType?.let { typeKey(it, qualifier = null) },
                 originClassId = classSymbol.classId,
                 targetConstructorDependencies =
-                  targetSymbol?.let { injectConstructorDependencyKeys(it, options) }.orEmpty(),
+                  targetType?.let { injectConstructorDependencyKeys(it, options) }.orEmpty(),
                 targetMemberDependencies =
-                  targetSymbol?.let { memberInjectDependencyKeys(it, options) }.orEmpty(),
+                  targetType?.let { memberInjectDependencyKeys(it, options) }.orEmpty(),
                 memberInjectionOwnerIds =
                   targetSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
                 factoryFunctionName = samFunction?.name?.asString(),
@@ -373,8 +380,8 @@ internal class LibraryIndexPostProcessor(
             classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
               constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
           if (!hasInject && !isAssisted) return@analyze null
-          val constructorDependencies = injectConstructorDependencyKeys(classSymbol, options)
-          val memberDependencies = memberInjectDependencyKeys(classSymbol, options)
+          val constructorDependencies = injectConstructorDependencyKeys(requestedType, options)
+          val memberDependencies = memberInjectDependencyKeys(requestedType, options)
           ResolvedLibraryBinding(
             LibraryInjectBindingId(request.key, virtualFile),
             KaBinding.ConstructorInjected(
@@ -400,6 +407,21 @@ internal class LibraryIndexPostProcessor(
     }
   }
 
+  /** Rebuilds a request's concrete type inside its current, short-lived analysis session. */
+  private fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? {
+    val classId = snapshot.classId ?: return null
+    val typeArguments = ArrayList<KaClassType>(snapshot.typeArguments.size)
+    for (typeArgument in snapshot.typeArguments) {
+      val restoredArgument = restoreClassType(typeArgument) ?: return null
+      typeArguments += restoredArgument
+    }
+    return buildClassType(classId) {
+      isMarkedNullable = snapshot.renderedType.endsWith('?')
+      for (typeArgument in typeArguments) argument(typeArgument)
+    }
+      as? KaClassType
+  }
+
   /**
    * Hint-created providers have no source consumer entry, so their dependencies seed lookup too.
    */
@@ -407,6 +429,10 @@ internal class LibraryIndexPostProcessor(
   private fun enqueueBindingDependencies(queue: ArrayDeque<LibraryInjectRequest>) {
     val fileIndex = ProjectFileIndex.getInstance(project)
     val useSites = useSitesByModule()
+    val sourceFactoryUseSites = sourceAssistedFactoryUseSites(project, bindings, consumers)
+    val seededFactoryUseSites =
+      if (sourceFactoryUseSites.isEmpty()) null
+      else Collections.newSetFromMap(IdentityHashMap<Map<KaModule, KtElement>, Boolean>())
     val scopes = HashMap<KaModule, DeclarationResolutionScope>()
     for (binding in bindings) {
       ProgressManager.checkCanceled()
@@ -421,6 +447,18 @@ internal class LibraryIndexPostProcessor(
           binding is KaBinding.AssistedFactory ||
             binding is KaBinding.Provided && binding.isClassContribution
         if (!needsSourceSeed) continue
+        if (binding is KaBinding.AssistedFactory) {
+          val requestingModules = sourceFactoryUseSites[binding]
+          if (requestingModules != null && seededFactoryUseSites?.add(requestingModules) == false) {
+            continue
+          }
+          if (!requestingModules.isNullOrEmpty()) {
+            for (context in requestingModules.values) {
+              enqueueDependencies(binding, context, queue)
+            }
+            continue
+          }
+        }
         val context = declaration as? KtElement ?: continue
         enqueueDependencies(binding, context, queue)
         continue
@@ -477,4 +515,76 @@ internal class LibraryIndexPostProcessor(
       function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
         function.hasModifier(KtTokens.PRIVATE_KEYWORD)
   }
+}
+
+/** Source generic factories resolve dependencies from the modules that request their exact type. */
+@OptIn(KaPlatformInterface::class)
+internal fun sourceAssistedFactoryUseSites(
+  project: Project,
+  bindings: List<KaBinding>,
+  consumers: List<ConsumerEntry>,
+): Map<KaBinding.AssistedFactory, Map<KaModule, KtElement>> {
+  val fileIndex = ProjectFileIndex.getInstance(project)
+  val factoryGroups = HashMap<SourceAssistedFactoryIdentity, SourceAssistedFactoryGroup>()
+  val groupsByKey = HashMap<KaTypeKey, MutableList<SourceAssistedFactoryGroup>>()
+  for (binding in bindings) {
+    ProgressManager.checkCanceled()
+    if (binding !is KaBinding.AssistedFactory || binding.dependencies.isEmpty()) continue
+    val virtualFile = binding.pointer.virtualFile ?: continue
+    if (!fileIndex.isInContent(virtualFile)) continue
+    val identity =
+      SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, virtualFile)
+    val existingGroup = factoryGroups[identity]
+    if (existingGroup != null) {
+      existingGroup.bindings += binding
+      continue
+    }
+    val declaration = binding.pointer.element ?: continue
+    val group = SourceAssistedFactoryGroup(declaration, mutableListOf(binding))
+    factoryGroups[identity] = group
+    groupsByKey.getOrPut(binding.typeKey) { mutableListOf() }.add(group)
+  }
+  if (factoryGroups.isEmpty()) return emptyMap()
+
+  val scopes = HashMap<KaModule, DeclarationResolutionScope>()
+  for (consumer in consumers) {
+    ProgressManager.checkCanceled()
+    val groups = groupsByKey[consumer.key] ?: continue
+    val context = consumer.pointer.element ?: continue
+    val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
+    for (group in groups) {
+      ProgressManager.checkCanceled()
+      if (!group.checkedModules.add(module)) continue
+      val resolutionScope =
+        scopes.getOrPut(module) {
+          val platformScope = KaResolutionScope.forModule(module)
+          DeclarationResolutionScope(platformScope::contains)
+        }
+      if (!resolutionScope.contains(group.declaration)) continue
+      group.useSites[module] = context
+    }
+  }
+
+  val result = HashMap<KaBinding.AssistedFactory, Map<KaModule, KtElement>>()
+  for (group in factoryGroups.values) {
+    for (binding in group.bindings) {
+      ProgressManager.checkCanceled()
+      result[binding] = group.useSites
+    }
+  }
+  return result
+}
+
+private data class SourceAssistedFactoryIdentity(
+  val key: KaTypeKey,
+  val originClassId: ClassId?,
+  val virtualFile: VirtualFile,
+)
+
+private class SourceAssistedFactoryGroup(
+  val declaration: PsiElement,
+  val bindings: MutableList<KaBinding.AssistedFactory>,
+) {
+  val checkedModules = HashSet<KaModule>()
+  val useSites = linkedMapOf<KaModule, KtElement>()
 }

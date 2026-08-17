@@ -525,6 +525,69 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     }
   }
 
+  fun testUpstreamGenericAssistedFactoryUsesDownstreamBinaryDependencies() {
+    fixture.addFileToProject(
+      "library/lib/GenericFactory.kt",
+      """
+      package lib
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class GenericTarget<T>(@Assisted val id: String, val dependency: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): GenericTarget<T>
+        }
+      }
+      """
+        .trimIndent(),
+    )
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/GenericAppGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import lib.GenericTarget
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val factory: GenericTarget.Factory<LibClientWithDeps>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    // The factory's declaration module cannot see the binary dependency; resolution must follow
+    // the consuming graph module where its concrete type argument and classpath are available.
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, index.contextsFor(graph).single())
+          .requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(
+        result.bindings.any { key, _ ->
+          key.renderedType == "lib.GenericTarget.Factory<libtest.LibClientWithDeps>"
+        }
+      )
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
   fun testSameFqnExtensionsInUnrelatedModulesKeepTheirOwnParents() {
     val appFile =
       fixture.addFileToProject(

@@ -55,6 +55,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -68,6 +69,7 @@ import kotlinx.coroutines.yield
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsListener
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -191,7 +193,17 @@ class MetroResolutionService(
     connection.subscribe(
       FacetManager.FACETS_TOPIC,
       object : FacetManagerListener {
+        override fun facetAdded(facet: Facet<*>) = projectInputsChanged()
+
+        override fun facetRemoved(facet: Facet<*>) = projectInputsChanged()
+
         override fun facetConfigurationChanged(facet: Facet<*>) = projectInputsChanged()
+      },
+    )
+    connection.subscribe(
+      KotlinCompilerSettingsListener.TOPIC,
+      object : KotlinCompilerSettingsListener {
+        override fun <T> settingsChanged(oldSettings: T?, newSettings: T?) = projectInputsChanged()
       },
     )
     scope.launch { buildWorker() }
@@ -316,7 +328,11 @@ class MetroResolutionService(
 
     val semanticSettingsChanged =
       compilerSettingsChanged && snapshot.moduleFingerprints != moduleFingerprints()
-    if (!rootsChanged && !semanticSettingsChanged) return
+    if (!rootsChanged && !semanticSettingsChanged) {
+      // Reenabling Metro can match the last built options after disabling evicted every index.
+      if (snapshots.isEmpty()) scheduleInvalidationNotification()
+      return
+    }
 
     val bumped = invalidations.updateAndGet { it.bumpGeneration() }
     evictStaleCaches(bumped.generation, inputs.roots)
@@ -1236,6 +1252,10 @@ private data class SourceAggregate(
     val scopeIds = linkedSetOf<ClassId>()
     val participatingModules = linkedSetOf<KaModule>()
     val injectRequests = linkedSetOf<LibraryInjectInput>()
+    val sourceFactoryUseSites = sourceAssistedFactoryUseSites(project, bindings, consumers)
+    val seededFactoryUseSites =
+      if (sourceFactoryUseSites.isEmpty()) null
+      else Collections.newSetFromMap(IdentityHashMap<Map<KaModule, KtElement>, Boolean>())
 
     fun addModule(element: PsiElement?): KaModule? {
       if (element !is KtElement) return null
@@ -1262,6 +1282,37 @@ private data class SourceAggregate(
         continue
       }
       injectRequests += LibraryInjectInput(module, consumer.key, classId)
+    }
+    for (binding in bindings) {
+      ProgressManager.checkCanceled()
+      val hasAdditionalLibrarySeeds =
+        binding is KaBinding.AssistedFactory ||
+          binding is KaBinding.Provided && binding.isClassContribution
+      if (!hasAdditionalLibrarySeeds || binding.dependencies.isEmpty()) continue
+      if (binding is KaBinding.AssistedFactory) {
+        val requestingUseSites = sourceFactoryUseSites[binding]
+        if (requestingUseSites != null && seededFactoryUseSites?.add(requestingUseSites) == false) {
+          continue
+        }
+        val requestingModules = requestingUseSites?.keys
+        if (!requestingModules.isNullOrEmpty()) {
+          participatingModules += requestingModules
+          for (module in requestingModules) {
+            for (dependency in binding.dependencies) {
+              val key = dependency.typeKey
+              val classId = key.type.classId ?: continue
+              injectRequests += LibraryInjectInput(module, key, classId)
+            }
+          }
+          continue
+        }
+      }
+      val module = addModule(binding.pointer.element) ?: continue
+      for (dependency in binding.dependencies) {
+        val key = dependency.typeKey
+        val classId = key.type.classId ?: continue
+        injectRequests += LibraryInjectInput(module, key, classId)
+      }
     }
     return LibraryInputs(scopeIds, participatingModules, injectRequests)
   }

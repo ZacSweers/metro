@@ -85,6 +85,7 @@ internal class FileShardBuilder(
   private val processedGraphs = HashSet<KtClassOrObject>()
   private val processedCircuitInjects = HashSet<KtDeclaration>()
   private val processedAssistedFactories = HashSet<KtClassOrObject>()
+  private val processedAssistedFactoryTypes = HashSet<AssistedFactoryIdentity>()
   private val processedContainers = HashSet<KtClassOrObject>()
   private val processedFactoryInputs = HashSet<FactoryInputEntry.Id>()
   private val cacheDependencies = HashSet<PsiFile>()
@@ -462,6 +463,7 @@ internal class FileShardBuilder(
               continue
             }
             val site = consumedSite(symbol, options)
+            processRequestedAssistedFactory(symbol.returnType)
             consumers +=
               ConsumerEntry(
                 ptr(member),
@@ -584,6 +586,7 @@ internal class FileShardBuilder(
       }
       val psi = callable.psi as? KtElement ?: continue
       val site = consumedSite(view.returnType, callable, options)
+      processRequestedAssistedFactory(view.returnType)
       consumers +=
         ConsumerEntry(
           ptr(psi),
@@ -638,6 +641,17 @@ internal class FileShardBuilder(
         source,
         parameter.symbol,
         parameter.returnType,
+        containerId = containerId,
+        graphId = graphId,
+      )
+    }
+    val receiver = callable.receiver
+    val receiverSource = (declaration as? KtCallableDeclaration)?.receiverTypeReference
+    if (receiver != null && receiverSource != null) {
+      addConsumer(
+        receiverSource,
+        receiver.symbol,
+        receiver.returnType,
         containerId = containerId,
         graphId = graphId,
       )
@@ -697,7 +711,7 @@ internal class FileShardBuilder(
       owner.classId?.let(injectedMemberOwnerIds::add)
       owner.psi?.containingFile?.let(cacheDependencies::add)
     }
-    for (site in memberInjectSites(targetSymbol, options)) {
+    for (site in memberInjectSites(targetType, options)) {
       val contextKey = site.key
       consumers +=
         ConsumerEntry(
@@ -721,38 +735,77 @@ internal class FileShardBuilder(
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
       if (!classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return@analyze
       recordAnnotationDependencies(classSymbol, ktClass)
-      val factoryFunction = assistedFactoryFunction(classSymbol)
-      val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
-      samFunction?.psi?.containingFile?.let(cacheDependencies::add)
-      val targetTypeKey = factoryFunction?.returnType?.let { typeKey(it, qualifier = null) }
-      val createdClassSymbol =
-        (factoryFunction?.returnType?.fullyExpandedType as? KaClassType)?.symbol
-          as? KaNamedClassSymbol
-      createdClassSymbol?.psi?.containingFile?.let(cacheDependencies::add)
-      val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
-      // The factory constructs its target directly, so it inherits the target's graph-provided
-      // dependencies without depending on the target binding itself.
-      val targetConstructorDependencies =
-        createdClassSymbol?.let { injectConstructorDependencyKeys(it, options) }.orEmpty()
-      val targetMemberDependencies =
-        createdClassSymbol?.let { memberInjectDependencyKeys(it, options) }.orEmpty()
-      bindings +=
-        KaBinding.AssistedFactory(
-          ptr(ktClass),
-          typeKey(classSymbol.defaultType, qualifierAnnotation(classSymbol, options)),
-          scopeAnnotation(classSymbol, options),
-          createdName,
-          targetTypeKey,
-          originClassId = ktClass.getClassId(),
-          targetConstructorDependencies = targetConstructorDependencies,
-          targetMemberDependencies = targetMemberDependencies,
-          memberInjectionOwnerIds =
-            createdClassSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
-          factoryFunctionName = samFunction?.name?.asString(),
-          factoryFunctionIsSuspend = samFunction?.isSuspend == true,
-        )
+      val factoryType = classSymbol.defaultType as? KaClassType ?: return@analyze
+      indexAssistedFactory(ktClass, classSymbol, factoryType)
     }
   }
+
+  /** A generic source factory is materialized for the concrete type its use site requests. */
+  private fun KaSession.processRequestedAssistedFactory(type: KaType) {
+    var factoryType = type.fullyExpandedType as? KaClassType ?: return
+    while (true) {
+      val classId = factoryType.classId
+      val isWrapper =
+        classId in options.providerTypes ||
+          classId in options.lazyTypes ||
+          classId in options.suspendProviderModelingTypes ||
+          classId in options.suspendLazyTypes
+      if (!isWrapper) break
+      factoryType =
+        factoryType.typeArguments.firstOrNull()?.type?.fullyExpandedType as? KaClassType ?: return
+    }
+    val classSymbol = factoryType.symbol as? KaNamedClassSymbol ?: return
+    if (classSymbol.origin == KaSymbolOrigin.LIBRARY) return
+    if (!classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return
+    val declaration = classSymbol.psi as? KtClassOrObject ?: return
+    declaration.containingFile?.let(cacheDependencies::add)
+    recordAnnotationDependencies(classSymbol, declaration)
+    indexAssistedFactory(declaration, classSymbol, factoryType)
+  }
+
+  private fun KaSession.indexAssistedFactory(
+    declaration: KtClassOrObject,
+    classSymbol: KaNamedClassSymbol,
+    factoryType: KaClassType,
+  ) {
+    val factoryKey = typeKey(factoryType, qualifierAnnotation(classSymbol, options))
+    if (!processedAssistedFactoryTypes.add(AssistedFactoryIdentity(declaration, factoryKey))) return
+
+    val factoryFunction = assistedFactoryFunction(factoryType)
+    val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
+    samFunction?.psi?.containingFile?.let(cacheDependencies::add)
+    val targetType = factoryFunction?.returnType?.fullyExpandedType as? KaClassType
+    val targetTypeKey = targetType?.let { typeKey(it, qualifier = null) }
+    val createdClassSymbol = targetType?.symbol as? KaNamedClassSymbol
+    createdClassSymbol?.psi?.containingFile?.let(cacheDependencies::add)
+    val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
+    // The factory constructs its target directly, so its target dependencies use the actual type
+    // arguments requested by the graph instead of the target class's unspecialized default type.
+    val targetConstructorDependencies =
+      targetType?.let { injectConstructorDependencyKeys(it, options) }.orEmpty()
+    val targetMemberDependencies =
+      targetType?.let { memberInjectDependencyKeys(it, options) }.orEmpty()
+    bindings +=
+      KaBinding.AssistedFactory(
+        ptr(declaration),
+        factoryKey,
+        scopeAnnotation(classSymbol, options),
+        createdName,
+        targetTypeKey,
+        originClassId = declaration.getClassId(),
+        targetConstructorDependencies = targetConstructorDependencies,
+        targetMemberDependencies = targetMemberDependencies,
+        memberInjectionOwnerIds =
+          createdClassSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
+        factoryFunctionName = samFunction?.name?.asString(),
+        factoryFunctionIsSuspend = samFunction?.isSuspend == true,
+      )
+  }
+
+  private data class AssistedFactoryIdentity(
+    val declaration: KtClassOrObject,
+    val typeKey: KaTypeKey,
+  )
 
   /** `@BindingContainer` classes and the containers they transitively include. */
   private fun processBindingContainer(declaration: KtDeclaration) {
@@ -937,6 +990,7 @@ internal class FileShardBuilder(
     graphId: GraphDeclarationId? = null,
   ) {
     recordAnnotationDependencies(symbol, element)
+    processRequestedAssistedFactory(type)
     val site = consumedSite(type, symbol, options)
     consumers +=
       ConsumerEntry(

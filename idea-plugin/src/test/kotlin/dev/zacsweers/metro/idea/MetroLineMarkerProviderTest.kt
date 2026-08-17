@@ -99,6 +99,73 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
   }
 
+  fun testGenericProviderParameterKeepsItsConcreteConsumerMarker() {
+    myFixture.configureMetroFile(
+      """
+      @Inject class Dependency
+
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T): String = value.toString()
+      }
+
+      @DependencyGraph
+      interface AppGraph : GenericBase<Dependency> {
+        val text: String
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER }
+        .mapNotNull { it.tooltipText }
+
+    assertTrue("Expected a concrete provider-parameter consumer in:\n$tooltips") {
+      tooltips.any { it.startsWith("Metro dependency: Dependency") }
+    }
+    assertTrue("The raw generic parameter must not appear as a dependency:\n$tooltips") {
+      tooltips.none { it.startsWith("Metro dependency: T") }
+    }
+  }
+
+  fun testMultipleGenericProviderSpecializationsAreNotInjectorMarkers() {
+    myFixture.configureMetroFile(
+      """
+      interface GenericBase<T> {
+        @Provides fun provideText(value: T): String = value.toString()
+      }
+
+      @DependencyGraph
+      interface IntGraph : GenericBase<Int> {
+        val text: String
+
+        @Provides fun provideInt(): Int = 1
+      }
+
+      @DependencyGraph
+      interface BooleanGraph : GenericBase<Boolean> {
+        val text: String
+
+        @Provides fun provideBoolean(): Boolean = true
+      }
+      """
+    )
+    myFixture.doHighlighting()
+    val tooltips =
+      myFixture
+        .findAllGutters()
+        .filter { it.icon === MetroIcons.CONSUMER || it.icon === MetroIcons.CONSUMER_UNRESOLVED }
+        .mapNotNull { it.tooltipText }
+
+    assertTrue("Expected a context-dependent provider-parameter consumer in:\n$tooltips") {
+      tooltips.any { "Metro dependency: Int / Boolean" in it && "2 graph contexts" in it }
+    }
+    assertTrue("A generic provider parameter is not a graph injector:\n$tooltips") {
+      tooltips.none { it.startsWith("Metro injector:") }
+    }
+  }
+
   fun testValidateMarkerBadgesValidationState() {
     val file =
       myFixture.configureMetroFile(

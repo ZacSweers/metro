@@ -87,12 +87,12 @@ BindingIndex (membership queries)
   including inherited declarations and qualifier, scope, or map-key annotation defaults, without
   copying unrelated shard or dependency state. Changes to otherwise untracked type aliases or
   constants, including directory moves, refresh existing shards. Edits to unrelated declarations
-  in the same file remain incremental. Project roots and semantic option changes notify open
-  tools and force a new scan, and directory changes enroll new files as a batch.
+  in the same file remain incremental. Project roots, Kotlin compiler settings, and facet changes
+  notify open tools and force a new scan, and directory changes enroll new files as a batch.
   Compiled-library results have a separate cache keyed by classpath, graph scopes, requested
-  types, and visible modules. Production UI-thread requests schedule a cancellable smart-mode
-  build instead of running Analysis API work on the UI thread. Canceled background builds are
-  retried rather than treated as plugin failures.
+  types, binding-derived dependencies, and their actual use-site modules. Production UI-thread
+  requests schedule a cancellable smart-mode build instead of running Analysis API work on the
+  UI thread. Canceled background builds are retried rather than treated as plugin failures.
 - `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names or import aliases, then resolved with the
   Analysis API inside `analyze {}` blocks. Handles graphs (including supertype members and
@@ -102,12 +102,14 @@ BindingIndex (membership queries)
   binding containers.
 - `index/BindingExtraction.kt`: symbol-to-model extraction shared by source and library paths.
   Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.
+  Generated contribution providers depend only on constructor parameters, matching the actual
+  compiler-generated provider; an exposed injectable implementation retains its injected members.
 - `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
-  binary inject classes and assisted factories on demand, including transitive dependencies of
-  generated contribution providers, and discovers contributions from generated hint functions,
-  the same way the compiler does. Generated aliases inherit their origin's Anvil contribution
-  rank. Public hints only need classpath visibility; nonpublic hints still use Kotlin's
-  friend-module visibility rules.
+  binary inject classes and assisted factories on demand, specializing factory methods and target
+  dependencies to their requested generic arguments. This includes transitive dependencies of
+  generated contribution providers and discoveries from generated hint functions, the same way
+  the compiler does. Generated aliases inherit their origin's Anvil contribution rank. Public
+  hints only need classpath visibility; nonpublic hints still use Kotlin's friend-module rules.
 
 ### Model
 
@@ -223,7 +225,12 @@ The two never sum to each other. UI copy should not imply they do.
   annotation, unlike Dagger.
 - Graph supertypes merge their members into the graph through instantiated callable signatures,
   so inherited generic accessors and providers keep their concrete type arguments. Source and
-  library supertype declarations are tracked as shard dependencies.
+  library supertype declarations are tracked as shard dependencies. A specialized inherited
+  provider replaces its raw declaration only in the graph that owns that specialization.
+- Generic assisted factories use their concrete requested type for inherited factory methods and
+  assisted-target dependencies. Source declarations and compiled libraries follow the same rule.
+- Equal-length suspend diagnostic paths follow the dependency's declaration order without
+  rebuilding the shared witness search for each diagnostic.
 - Diagnostics use the compiler's `DiagnosticRenderer` and plain profile. Shared diagnostic builders live in `metro-common`; differential fixtures compare frontend-specific diagnostics by ID and normalized one-line title.
 
 ## Build wiring

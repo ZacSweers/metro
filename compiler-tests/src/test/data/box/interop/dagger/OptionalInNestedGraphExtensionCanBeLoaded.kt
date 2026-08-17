@@ -7,6 +7,13 @@ interface LoggedInScope
 
 interface FeatureScope
 
+interface FeatureOnlyDependency
+
+interface PrivateDependency
+
+@Inject
+class PrivateOptionalConsumer(@Named("private") val optional: Optional<PrivateDependency>)
+
 interface DelegateDependency
 
 @ContributesBinding(AppScope::class)
@@ -30,9 +37,18 @@ interface LoggedInDependency : DelegateDependency
 @Inject
 class LoggedInDependencyImpl : LoggedInDependency
 
-@GraphExtension(FeatureScope::class)
+@dagger.Module
+interface FeatureOptionalModule {
+  @dagger.BindsOptionalOf fun provideFeatureOptional(): FeatureOnlyDependency
+}
+
+@GraphExtension(FeatureScope::class, bindingContainers = [FeatureOptionalModule::class])
 interface FeatureGraph {
   val dependency: DelegateDependency
+
+  val inheritedOptional: Optional<LoggedInDependency>
+
+  val localOptional: Optional<FeatureOnlyDependency>
 }
 
 @GraphExtension(LoggedInScope::class)
@@ -43,15 +59,26 @@ interface LoggedInGraph {
 @dagger.Module
 interface DependencyModule {
   @dagger.BindsOptionalOf fun provideOptional(): LoggedInDependency
+
+  @Named("private")
+  @GraphPrivate
+  @dagger.BindsOptionalOf
+  fun providePrivateOptional(): PrivateDependency
 }
 
 @DependencyGraph(AppScope::class, bindingContainers = [DependencyModule::class])
 interface AppGraph {
   val loggedInGraph: LoggedInGraph
+
+  val privateOptionalConsumer: PrivateOptionalConsumer
 }
 
 fun box(): String {
   val graph = createGraph<AppGraph>()
-  assertNotNull(graph.loggedInGraph.featureGraph.dependency)
+  val featureGraph = graph.loggedInGraph.featureGraph
+  assertNotNull(featureGraph.dependency)
+  assertTrue(featureGraph.inheritedOptional.isPresent())
+  assertTrue(featureGraph.localOptional.isEmpty())
+  assertTrue(graph.privateOptionalConsumer.optional.isEmpty())
   return "OK"
 }
