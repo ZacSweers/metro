@@ -3,6 +3,8 @@
 import java.nio.file.Path
 import java.util.Locale
 import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ValueSource
@@ -30,18 +32,20 @@ private fun isGitHash(hash: String): Boolean {
   return hash.all { it in '0'..'9' || it in 'a'..'f' }
 }
 
-// Impl from https://gist.github.com/madisp/6d753bde19e278755ec2b69ccfc17114
+// Impl from https://gist.github.com/madisp/6d753bde19e278755ec2b69ccfc17114, extended to handle
+// worktree gitdir files and packed refs.
 private fun readGitRepoCommit(projectDirectory: Path): String? {
-  val gitDirectory = projectDirectory.resolve(".git")
+  val gitDirectory = resolveGitDirectory(projectDirectory) ?: return null
   val head = gitDirectory.resolve("HEAD")
   if (!head.exists()) {
     return null
   }
 
-  val headContents = head.readText(Charsets.UTF_8).lowercase(Locale.US).trim()
-
-  if (isGitHash(headContents)) {
-    return headContents
+  // Only lowercase when validating hash content. Ref paths are case sensitive on disk.
+  val headContents = head.readText(Charsets.UTF_8).trim()
+  val headHash = headContents.lowercase(Locale.US)
+  if (isGitHash(headHash)) {
+    return headHash
   }
 
   if (!headContents.startsWith("ref:")) {
@@ -50,9 +54,42 @@ private fun readGitRepoCommit(projectDirectory: Path): String? {
 
   val headRef = headContents.removePrefix("ref:").trim()
   val headFile = gitDirectory.resolve(headRef)
-  if (!headFile.exists()) {
-    return null
+  if (headFile.exists()) {
+    return headFile.readText(Charsets.UTF_8).trim().lowercase(Locale.US).takeIf { isGitHash(it) }
   }
+  return readPackedRef(gitDirectory, headRef)
+}
 
-  return headFile.readText(Charsets.UTF_8).trim().takeIf { isGitHash(it) }
+/** Handles both a plain `.git` directory and a worktree's `gitdir: <path>` pointer file. */
+private fun resolveGitDirectory(projectDirectory: Path): Path? {
+  val gitPath = projectDirectory.resolve(".git")
+  if (gitPath.isDirectory()) return gitPath
+  if (!gitPath.isRegularFile()) return null
+  val pointer = gitPath.readText(Charsets.UTF_8).trim()
+  if (!pointer.startsWith("gitdir:")) return null
+  val target = projectDirectory.resolve(pointer.removePrefix("gitdir:").trim()).normalize()
+  // Worktree gitdirs hold their own HEAD; shared refs stay in the common dir it points into.
+  return target.takeIf { it.exists() }
+}
+
+/** Refs disappear from loose files after `git gc` packs them into `packed-refs`. */
+private fun readPackedRef(gitDirectory: Path, ref: String): String? {
+  // A worktree's private dir keeps refs in the shared common dir.
+  val commonDirFile = gitDirectory.resolve("commondir")
+  val refsRoot =
+    if (commonDirFile.isRegularFile()) {
+      gitDirectory.resolve(commonDirFile.readText(Charsets.UTF_8).trim()).normalize()
+    } else {
+      gitDirectory
+    }
+  val packedRefs = refsRoot.resolve("packed-refs")
+  if (!packedRefs.exists()) return null
+  for (line in packedRefs.readText(Charsets.UTF_8).lineSequence()) {
+    if (line.isBlank() || line.startsWith("#") || line.startsWith("^")) continue
+    val separator = line.indexOf(' ')
+    if (separator != 40) continue
+    if (line.substring(separator + 1).trim() != ref) continue
+    return line.substring(0, separator).lowercase(Locale.US).takeIf { isGitHash(it) }
+  }
+  return null
 }

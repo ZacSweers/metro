@@ -49,10 +49,26 @@ val explicitReleaseBuild =
     .map { it.toBooleanStrictOrNull() == true }
     .orElse(false)
 
+// Gradle accepts camel-hump task abbreviations like `pubPl`, so match them the same way.
+fun matchesTaskAbbreviation(requested: String, taskName: String): Boolean {
+  if (requested.isEmpty()) return false
+  val pattern = buildString {
+    for (ch in requested) {
+      if (ch.isUpperCase()) append("[a-z0-9]*")
+      append(Regex.escape(ch.toString()))
+    }
+    append("[a-zA-Z0-9]*")
+  }
+  return Regex(pattern).matches(taskName)
+}
+
 val publishingTaskRequested = providers.provider {
   gradle.startParameter.taskNames
     .map { it.substringAfterLast(':') }
-    .any { it == "publishPlugin" || it == "signPlugin" }
+    .any { requested ->
+      matchesTaskAbbreviation(requested, "publishPlugin") ||
+        matchesTaskAbbreviation(requested, "signPlugin")
+    }
 }
 
 val isReleaseOrPublishingBuild =
@@ -67,7 +83,12 @@ val releaseGitSha =
 
 val gitSha = isReleaseOrPublishingBuild.flatMap { isReleaseBuild ->
   if (isReleaseBuild) {
-    releaseGitSha.orElse("")
+    // A release build without a resolvable sha should fail loudly, not publish untagged.
+    releaseGitSha.orElse(
+      providers.provider {
+        error("Could not read the git commit sha for a release/publishing build")
+      }
+    )
   } else {
     providers.provider { "" }
   }
@@ -81,10 +102,13 @@ version = versionProvider.get()
 
 val isSnapshotVersion = versionProvider.map { it.contains("SNAPSHOT") }
 
+// Computed once so every query of the version provider observes the same timestamp.
+val snapshotTimestamp by lazy { System.currentTimeMillis() }
+
 val pluginVersion =
   isReleaseOrPublishingBuild.zip(versionProvider) { releaseOrPublishing, versionName ->
     if (releaseOrPublishing && versionName.contains("SNAPSHOT")) {
-      "$versionName-${System.currentTimeMillis()}"
+      "$versionName-$snapshotTimestamp"
     } else {
       versionName
     }
@@ -302,6 +326,20 @@ tasks.test {
   dependsOn(kotlinStdlibClasspath)
   dependsOn(libFixtureJar)
   inputs.dir(compilerParityTestData).withPathSensitivity(PathSensitivity.RELATIVE)
+  // The argument provider below has no annotated properties, so these must be declared as
+  // inputs explicitly or fixture/classpath changes leave test runs UP-TO-DATE with stale jars.
+  inputs
+    .files(libFixtureJar)
+    .withPropertyName("metroLibFixtureJar")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs
+    .files(metroRuntimeClasspath)
+    .withPropertyName("metroRuntimeTestClasspath")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs
+    .files(kotlinStdlibClasspath)
+    .withPropertyName("kotlinStdlibTestClasspath")
+    .withPathSensitivity(PathSensitivity.NONE)
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
