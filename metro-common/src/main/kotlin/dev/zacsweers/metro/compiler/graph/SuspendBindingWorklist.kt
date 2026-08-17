@@ -198,18 +198,20 @@ public class SuspendBindingWorklist<
     val visited = mutableSetOf<TypeKey>()
     var current = start
     while (visited.add(current)) {
-      val binding = discoveredBindings[current] ?: return null
+      val binding = discoveredBindings[current] ?: break
       if (bindingIsSuspend(binding)) {
-        return SuspendBindingPath(start, path, current)
+        return SuspendBindingPath(start, path, current, sourceIsSuspend = true)
       }
       val dependency =
         binding.dependencies.firstOrNull { candidate ->
           dependencyTypeKey(candidate) in snapshot && !rules.stopsPropagation(candidate)
-        } ?: return null
+        } ?: break
       path += SuspendBindingPathEdge(current, dependency)
       current = dependencyTypeKey(dependency)
     }
-    return null
+    // A missing binding, a dead end, or an exhausted cycle. Keep the partial walk so diagnostics
+    // can still show where the requirement came from.
+    return SuspendBindingPath(start, path, current, sourceIsSuspend = false)
   }
 }
 
@@ -227,9 +229,10 @@ internal constructor(
     (TypeKey, (ContextualTypeKey) -> TypeKey) -> SuspendBindingPath<TypeKey, ContextualTypeKey>?,
 ) {
   /**
-   * Returns a witness path from [start] to a directly suspend binding. Its edge list is empty when
-   * [start] is itself directly suspend. Returns null when [start] is not suspend or the recorded
-   * path is incomplete.
+   * Returns a witness path from [start] toward a directly suspend binding. Its edge list is empty
+   * when [start] is itself directly suspend. Returns null only when [start] is not suspend; a path
+   * whose walk could not reach a direct suspend source is returned partial with
+   * [SuspendBindingPath.sourceIsSuspend] false.
    */
   public fun pathFrom(
     start: TypeKey,
@@ -239,9 +242,14 @@ internal constructor(
   }
 }
 
-/** A stable witness path from [startKey] to [sourceKey], which is directly suspend. */
+/**
+ * A stable witness path from [startKey] toward [sourceKey]. When [sourceIsSuspend] is true the walk
+ * reached a directly suspend binding; otherwise the path is partial because a binding was missing
+ * or no propagating dependency remained.
+ */
 public data class SuspendBindingPath<TypeKey, ContextualTypeKey>(
   val startKey: TypeKey,
   val edges: List<SuspendBindingPathEdge<TypeKey, ContextualTypeKey>>,
   val sourceKey: TypeKey,
+  val sourceIsSuspend: Boolean,
 )

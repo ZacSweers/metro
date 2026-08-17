@@ -173,7 +173,9 @@ internal class KaSuspendBindingValidator(
           .withTrailingComment(NEEDS_SUSPEND_SUPPORT)
       )
     }
-    bindings[path.sourceKey]?.let { stack.push(KaBindingStack.Entry.providedAt(it)) }
+    if (path.sourceIsSuspend) {
+      bindings[path.sourceKey]?.let { stack.push(KaBindingStack.Entry.providedAt(it)) }
+    }
     return stack
   }
 

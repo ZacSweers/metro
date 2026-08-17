@@ -268,10 +268,12 @@ internal class IrSuspendBindingValidator(
         bindingStackEntryForDependency(binding, edge.dependency, edge.dependency.typeKey)
           .withAnnotation(NEEDS_SUSPEND_SUPPORT)
     }
-    val source = bindings[path.sourceKey]
-    val sourceFunction = (source as? Provided)?.providerFactory?.function
-    if (source != null && sourceFunction != null) {
-      result += IrBindingStack.Entry.providedAt(source.contextualTypeKey, sourceFunction)
+    if (path.sourceIsSuspend) {
+      val source = bindings[path.sourceKey]
+      val sourceFunction = (source as? Provided)?.providerFactory?.function
+      if (source != null && sourceFunction != null) {
+        result += IrBindingStack.Entry.providedAt(source.contextualTypeKey, sourceFunction)
+      }
     }
     return result
   }

@@ -153,6 +153,20 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `exhausted cycle walks return a partial path`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("A", "B"), binding("B", "A", "Source"), binding("Source", isSuspend = true))
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+    assertThat(result.suspendKeys).containsExactlyElementsIn(keys("A", "B", "Source"))
+
+    // The walk follows B's first in-snapshot dependency back into the cycle and never reaches
+    // Source. The partial path still records the walked edges for diagnostics.
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+    assertThat(path.sourceIsSuspend).isFalse()
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("B")).inOrder()
+  }
+
+  @Test
   fun `skipped bindings do not traverse their dependencies`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("Factory", "Source", skipDependencies = true))
