@@ -10,16 +10,20 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
+import dev.zacsweers.metro.idea.graph.KaBindingGraph
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtProperty
 
 /** Seals graphs through [MetroGraphValidationService] and asserts the reported diagnostics. */
 class MetroGraphValidationTest : BasePlatformTestCase() {
@@ -953,7 +957,68 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
 
-    assertEquals(2, result.diagnostics.count { it.id == MetroDiagnosticId.INVALID_BINDING })
+    val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+    assertEquals(2, diagnostics.size)
+    assertEquals(
+      setOf("first", "second"),
+      diagnostics.mapTo(mutableSetOf()) {
+        (it.stack.first().pointer?.element as? KtParameter)?.name
+      },
+    )
+  }
+
+  fun testLazyFactorySourceLookupVisitsEachParameterOnce() {
+    module.addKotlinStdlibLibrary()
+    val consumerCount = 32
+    val source = buildString {
+      appendLine(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+        """
+          .trimIndent()
+      )
+      repeat(consumerCount) { number ->
+        appendLine("@Inject class Consumer$number(val factory: Lazy<Widget.Factory>)")
+      }
+      appendLine("@DependencyGraph interface AppGraph {")
+      repeat(consumerCount) { number ->
+        appendLine("  val consumer$number: Consumer$number")
+      }
+      appendLine("}")
+    }
+    val file = myFixture.configureMetroFile(source)
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val queryContext = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+    var parameterScopeChecks = 0
+    val countedContext =
+      GraphQueryContext(
+        queryContext.graphContext,
+        queryContext.graphModule,
+        DeclarationResolutionScope { element ->
+          if (element is KtParameter && element.name == "factory") parameterScopeChecks++
+          queryContext.resolutionScope.contains(element)
+        },
+        queryContext.containers,
+      )
+
+    val result = KaBindingGraph(index, countedContext, file.metroIdeState().options).seal()
+    val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+    val parameters = diagnostics.map { it.stack.first().pointer?.element as? KtParameter }
+
+    assertEquals(consumerCount, diagnostics.size)
+    assertTrue(parameters.all { it?.name == "factory" })
+    assertEquals(consumerCount, parameters.distinct().size)
+    assertTrue(
+      "Expected linear source lookup, got $parameterScopeChecks parameter scope checks",
+      parameterScopeChecks <= consumerCount * 2,
+    )
   }
 
   fun testLazyAssistedFactoryProviderDependencyIsRejected() {
@@ -979,6 +1044,39 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testEachSameKeyLazyFactoryProviderParameterKeepsItsSource() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val text: String
+
+          @Provides
+          fun provideText(first: Lazy<Widget.Factory>, second: Lazy<Widget.Factory>): String = "ready"
+        }
+        """
+      )
+
+    val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+    assertEquals(2, diagnostics.size)
+    assertEquals(
+      setOf("first", "second"),
+      diagnostics.mapTo(mutableSetOf()) {
+        (it.stack.first().pointer?.element as? KtParameter)?.name
+      },
+    )
   }
 
   fun testLazyAssistedFactoryInjectedMemberIsRejected() {
@@ -1064,6 +1162,83 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+    assertEquals(
+      "factory",
+      (result.diagnostics.single().stack.first().pointer?.element as? KtProperty)?.name,
+    )
+  }
+
+  fun testEachLazyFactoryInjectedMethodParameterKeepsItsSource() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        class Target {
+          @Inject
+          fun install(first: Lazy<Widget.Factory>, second: Lazy<Widget.Factory>) = Unit
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          fun inject(target: Target)
+        }
+        """
+      )
+
+    val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+    assertEquals(2, diagnostics.size)
+    assertEquals(
+      setOf("first", "second"),
+      diagnostics.mapTo(mutableSetOf()) {
+        (it.stack.first().pointer?.element as? KtParameter)?.name
+      },
+    )
+  }
+
+  fun testInheritedGenericInjectedMethodLazyFactoryParametersKeepTheirSources() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @HasMemberInjections
+        open class MemberBase<T> {
+          @Inject
+          fun install(first: Lazy<Widget.Factory>, second: Lazy<Widget.Factory>) = Unit
+        }
+
+        class Target : MemberBase<String>()
+
+        @DependencyGraph
+        interface AppGraph {
+          fun inject(target: Target)
+        }
+        """
+      )
+
+    val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+    assertEquals(2, diagnostics.size)
+    assertEquals(
+      setOf("first", "second"),
+      diagnostics.mapTo(mutableSetOf()) {
+        (it.stack.first().pointer?.element as? KtParameter)?.name
+      },
+    )
   }
 
   fun testLazyAssistedFactoryInsideItsOwnTargetIsRejected() {
@@ -1147,6 +1322,41 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testExcludedAssistedFactoryStillRejectsQualifiedLazyInjection() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @Qualifier annotation class Chosen
+
+        interface PublicFactory {
+          fun create(id: String): Widget
+        }
+
+        @AssistedInject
+        class Widget(@Assisted val id: String)
+
+        @AssistedFactory @ContributesBinding(AppScope::class)
+        interface WidgetFactory : PublicFactory {
+          override fun create(id: String): Widget
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [WidgetFactory::class])
+        interface AppGraph {
+          @Chosen val factory: Lazy<WidgetFactory>
+
+          @Provides @Chosen
+          fun provideFactory(): WidgetFactory = error("unused")
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+    val diagnostic = result.diagnostics.single().render()
+    assertTrue(diagnostic, "Lazy<WidgetFactory>" in diagnostic)
+    assertTrue(diagnostic, "@AssistedFactory-annotated type" in diagnostic)
   }
 
   fun testBinaryLazyAssistedFactoryIsRejected() {

@@ -4,7 +4,6 @@ package dev.zacsweers.metro.idea.graph
 
 import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroClassIds
@@ -18,6 +17,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
 import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
 import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
@@ -36,6 +36,7 @@ import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingIndex.SourcePointerIdentity
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -46,7 +47,13 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.graphTypeKey
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 
 private typealias KaMutableBindingGraph =
   MutableBindingGraph<
@@ -60,6 +67,8 @@ private typealias KaMutableBindingGraph =
 
 private typealias KaDiagnosticRoutes =
   DiagnosticRoutes<KaTypeSnapshot, KaTypeKey, KaContextualTypeKey, KaBindingStack.Entry>
+
+private typealias KaSourcePointer = SmartPsiElementPointer<out PsiElement>
 
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
@@ -86,6 +95,14 @@ internal class KaBindingGraph(
   private var suspendKeys: Set<KaTypeKey> = emptySet()
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
   private var reportedLazyFactorySites: MutableSet<LazyFactorySite>? = null
+  private val lazyFactoryTypes by
+    lazy(LazyThreadSafetyMode.NONE) {
+      HashMap<KaTypeSnapshot, KaBinding.AssistedFactory?>()
+    }
+  private val lazyRequestSourcesByKey by
+    lazy(LazyThreadSafetyMode.NONE) {
+      HashMap<KaContextualTypeKey, LazyRequestSources>()
+    }
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
   private var _bindingLookup: KaBindingLookup? =
@@ -112,7 +129,6 @@ internal class KaBindingGraph(
         }
       },
       computeBindings = { contextKey, _, stack ->
-        reportLazyAssistedRequest(contextKey, stack)
         val resolved =
           bindingLookup.lookup(contextKey) { key, bindings ->
             reportDuplicateBindings(key, bindings, stack)
@@ -480,17 +496,6 @@ internal class KaBindingGraph(
     }
   }
 
-  /** Checks each reachable request before lookup can fail on its qualifier or another binding. */
-  private fun reportLazyAssistedRequest(request: KaContextualTypeKey, stack: KaBindingStack) {
-    if (!request.isWrappedInLazy || stack.entries.isEmpty()) return
-    val factory = assistedFactoryFor(request) ?: return
-    val ownerPointer = stack.entries.firstOrNull()?.pointer
-    for (sourcePointer in
-      lazyRequestSources(request, requestingBinding = null, ownerPointer = ownerPointer)) {
-      reportLazyAssistedFactory(factory, request, null, stack.copy(), sourcePointer)
-    }
-  }
-
   /** Inspect original assisted-target dependencies before their synthetic Provider wrapping. */
   private fun validateLazyAssistedDependencies(
     requestingBinding: KaBinding,
@@ -523,8 +528,7 @@ internal class KaBindingGraph(
       val factory = assistedFactoryFor(dependency) ?: continue
       val checked = checkedRequests ?: HashSet<KaContextualTypeKey>().also { checkedRequests = it }
       if (!checked.add(dependency)) continue
-      val sourcePointers =
-        lazyRequestSources(dependency, requestingBinding, requestingBinding.pointer)
+      val sourcePointers = lazyRequestSources(dependency, requestingBinding)
       for (sourcePointer in sourcePointers) {
         val diagnosticStack = stack.copy()
         diagnosticStack.push(KaBindingStack.Entry.injectedAt(dependency, requestingBinding))
@@ -539,73 +543,94 @@ internal class KaBindingGraph(
     }
   }
 
-  /** Maps a copied graph edge back to every distinct constructor, provider, or member site. */
+  /** Maps a copied graph edge back to its distinct constructor, provider, or member sites. */
   private fun lazyRequestSources(
     request: KaContextualTypeKey,
-    requestingBinding: KaBinding?,
-    ownerPointer: SmartPsiElementPointer<out PsiElement>?,
-  ): List<SmartPsiElementPointer<out PsiElement>?> {
+    requestingBinding: KaBinding,
+  ): List<KaSourcePointer> {
+    val sources = lazyRequestSourcesByKey.getOrPut(request) { buildLazyRequestSources(request) }
+    val result = LinkedHashMap<Any, KaSourcePointer>()
+
+    fun addAll(pointers: List<KaSourcePointer>?) {
+      for (pointer in pointers.orEmpty()) {
+        val identity = index.pointerIdentity(pointer) ?: pointer
+        result.putIfAbsent(identity, pointer)
+      }
+    }
+
+    val ownerIdentity = index.pointerIdentity(requestingBinding.pointer)
+    if (ownerIdentity != null) addAll(sources.byDeclaration[ownerIdentity])
     val targetClassId =
       if (requestingBinding is KaBinding.AssistedFactory) {
         requestingBinding.targetTypeKey?.type?.classId
       } else {
-        requestingBinding?.originClassId
+        requestingBinding.originClassId
       }
-    val result = mutableListOf<SmartPsiElementPointer<out PsiElement>?>()
+    if (targetClassId != null) addAll(sources.byOrigin[targetClassId])
+    for (memberOwner in requestingBinding.memberInjectionOwnerIds) {
+      addAll(sources.byMemberOwner[memberOwner])
+    }
+    if (result.isEmpty()) return listOf(requestingBinding.pointer)
+    return result.values.toList()
+  }
+
+  /**
+   * A key can have many consumers. Classify its visible source sites once, so N bindings sharing
+   * one invalid Lazy request do not each scan all N consumers. Only smart pointers and source
+   * identities survive this read; live PSI is used only while finding a site's enclosing owners.
+   */
+  private fun buildLazyRequestSources(request: KaContextualTypeKey): LazyRequestSources {
+    val declarations = mutableMapOf<SourcePointerIdentity, MutableList<KaSourcePointer>>()
+    val origins = mutableMapOf<ClassId, MutableList<KaSourcePointer>>()
+    val memberOwners = mutableMapOf<ClassId, MutableList<KaSourcePointer>>()
     for (consumer in index.consumerEntriesForKey(request.typeKey)) {
+      ProgressManager.checkCanceled()
       if (consumer.contextKey != request) continue
       if (consumer.graphId != null && consumer.graphId !in context.graphIds) continue
       val sourceElement = consumer.pointer.element ?: continue
       if (!queryContext.resolutionScope.contains(sourceElement)) continue
       val pointer = consumer.injectedMemberPointer ?: consumer.pointer
-      if (consumer.injectedMemberPointer != null && pointersMatch(consumer.pointer, ownerPointer)) {
-        result += pointer
-        continue
+
+      consumer.originClassId?.let { origins.getAndAdd(it, pointer) }
+      consumer.memberOwnerClassId?.let { memberOwners.getAndAdd(it, pointer) }
+      if (consumer.injectedMemberPointer != null) {
+        index.pointerIdentity(consumer.pointer)?.let { declarations.getAndAdd(it, pointer) }
       }
-      if (targetClassId != null && consumer.originClassId == targetClassId) {
-        result += pointer
-        continue
+
+      // Provider parameters/receivers belong to their exact callable. Constructor and generated
+      // class bindings use the enclosing class, while inherited members also use their owner ID.
+      var owner: PsiElement? = pointer.element ?: sourceElement
+      while (owner != null) {
+        val declaration =
+          when (owner) {
+            is KtPropertyAccessor -> owner.property
+            is KtNamedFunction,
+            is KtProperty,
+            is KtConstructor<*>,
+            is KtClassOrObject -> owner
+            else -> null
+          }
+        declaration?.let(index::sourceIdentity)?.let { declarations.getAndAdd(it, pointer) }
+        if (owner is KtClassOrObject) break
+        owner = owner.parent
       }
-      val memberOwner = consumer.memberOwnerClassId
-      if (
-        memberOwner != null && memberOwner in requestingBinding?.memberInjectionOwnerIds.orEmpty()
-      ) {
-        result += pointer
-        continue
-      }
-      if (pointerIsInside(pointer, ownerPointer)) result += pointer
     }
-    if (result.isEmpty()) result += ownerPointer
-    return result
+    return LazyRequestSources(declarations, origins, memberOwners)
   }
 
-  private fun pointersMatch(
-    first: SmartPsiElementPointer<out PsiElement>,
-    second: SmartPsiElementPointer<out PsiElement>?,
-  ): Boolean {
-    if (second == null || first.virtualFile != second.virtualFile) return false
-    return first.psiRange == second.psiRange
-  }
-
-  private fun pointerIsInside(
-    child: SmartPsiElementPointer<out PsiElement>,
-    parent: SmartPsiElementPointer<out PsiElement>?,
-  ): Boolean {
-    if (parent == null || child.virtualFile != parent.virtualFile) return false
-    val parentRange = parent.psiRange ?: return false
-    val childRange = child.psiRange ?: return false
-    return parentRange.startOffset <= childRange.startOffset &&
-      parentRange.endOffset >= childRange.endOffset
-  }
+  private class LazyRequestSources(
+    val byDeclaration: Map<SourcePointerIdentity, List<KaSourcePointer>>,
+    val byOrigin: Map<ClassId, List<KaSourcePointer>>,
+    val byMemberOwner: Map<ClassId, List<KaSourcePointer>>,
+  )
 
   /** Factory annotations matter even when a qualifier or explicit provider changes lookup. */
   private fun assistedFactoryFor(request: KaContextualTypeKey): KaBinding.AssistedFactory? {
-    for (candidate in index.bindingsWithType(request.typeKey)) {
-      if (candidate !is KaBinding.AssistedFactory) continue
-      val visible = index.bindingsForKey(candidate.typeKey, queryContext).any { it === candidate }
-      if (visible) return candidate
-    }
-    return null
+    val type = request.typeKey.type
+    if (lazyFactoryTypes.containsKey(type)) return lazyFactoryTypes[type]
+    val factory = index.assistedFactoryForType(request.typeKey, queryContext)
+    lazyFactoryTypes[type] = factory
+    return factory
   }
 
   /** Renders the same restriction as the compiler's assisted-factory injection-site check. */
@@ -614,16 +639,9 @@ internal class KaBindingGraph(
     request: KaContextualTypeKey,
     requestingBinding: KaBinding?,
     stack: KaBindingStack,
-    sourcePointer: SmartPsiElementPointer<out PsiElement>?,
+    sourcePointer: KaSourcePointer,
   ) {
-    val sourceRange = sourcePointer?.psiRange
-    val source =
-      LazyFactorySite(
-        sourcePointer?.virtualFile,
-        sourceRange?.startOffset,
-        sourceRange?.endOffset,
-        request,
-      )
+    val source = LazyFactorySite(index.pointerIdentity(sourcePointer) ?: sourcePointer, request)
     val reported =
       reportedLazyFactorySites
         ?: HashSet<LazyFactorySite>().also {
@@ -645,18 +663,24 @@ internal class KaBindingGraph(
               "$qualifiedFactoryName is an @AssistedFactory-annotated type."
           ),
       )
+    val diagnosticStack = stack.copy()
+    val firstEntry = diagnosticStack.entries.firstOrNull()
+    if (firstEntry == null) {
+      diagnosticStack.push(KaBindingStack.Entry(request, pointer = sourcePointer))
+    } else {
+      diagnosticStack.pop()
+      diagnosticStack.push(firstEntry.withPointer(sourcePointer))
+    }
     pendingRelated = listOfNotNull(factory, requestingBinding)
     try {
-      report(diagnostic, stack)
+      report(diagnostic, diagnosticStack)
     } finally {
       pendingRelated = emptyList()
     }
   }
 
   private data class LazyFactorySite(
-    val file: VirtualFile?,
-    val startOffset: Int?,
-    val endOffset: Int?,
+    val source: Any,
     val request: KaContextualTypeKey,
   )
 

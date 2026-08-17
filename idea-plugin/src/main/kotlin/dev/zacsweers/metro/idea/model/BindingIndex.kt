@@ -6,6 +6,7 @@ import androidx.collection.MutableScatterMap
 import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.applyExcludesAndReplaces
@@ -313,6 +314,19 @@ internal class BindingIndex(
   /** All indexed bindings for the same unqualified type, regardless of graph membership. */
   fun bindingsWithType(key: KaTypeKey): List<KaBinding> {
     return bindingsByType[key.type].orEmpty().withoutDuplicateAssistedFactories()
+  }
+
+  /** Type-level factory checks use module visibility, not a graph's binding exclusions. */
+  fun assistedFactoryForType(
+    key: KaTypeKey,
+    queryContext: GraphQueryContext,
+  ): KaBinding.AssistedFactory? {
+    for (binding in bindingsWithType(key)) {
+      if (binding is KaBinding.AssistedFactory && isVisibleFrom(binding, queryContext)) {
+        return binding
+      }
+    }
+    return null
   }
 
   /** Known assisted factories creating [key], regardless of graph membership. */
@@ -925,9 +939,16 @@ internal class BindingIndex(
     }
   }
 
-  private fun pointerIdentity(pointer: SmartPsiElementPointer<*>): SourcePointerIdentity? {
+  internal fun pointerIdentity(pointer: SmartPsiElementPointer<*>): SourcePointerIdentity? {
     val file = pointer.virtualFile ?: return null
     val range = pointer.psiRange ?: return null
+    return SourcePointerIdentity(file, range.startOffset, range.endOffset)
+  }
+
+  /** The same session-free identity for an enclosing source declaration already under a read. */
+  internal fun sourceIdentity(element: PsiElement): SourcePointerIdentity? {
+    val file = element.containingFile?.virtualFile ?: return null
+    val range = element.textRange ?: return null
     return SourcePointerIdentity(file, range.startOffset, range.endOffset)
   }
 
@@ -970,7 +991,7 @@ internal class BindingIndex(
     return result
   }
 
-  private data class SourcePointerIdentity(
+  internal data class SourcePointerIdentity(
     val file: VirtualFile,
     val startOffset: Int,
     val endOffset: Int,

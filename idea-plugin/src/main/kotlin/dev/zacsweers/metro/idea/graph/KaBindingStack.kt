@@ -108,5 +108,18 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
         trailingComment = comment,
       )
     }
+
+    /** Keeps the diagnostic route while navigating to its precise injection-site declaration. */
+    fun withPointer(pointer: SmartPsiElementPointer<out PsiElement>): Entry {
+      return Entry(
+        contextKey = contextKey,
+        usage = usage,
+        graphContext = graphContext,
+        pointer = pointer,
+        displayTypeKey = displayTypeKey,
+        isSynthetic = isSynthetic,
+        trailingComment = trailingComment,
+      )
+    }
   }
 }

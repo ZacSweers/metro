@@ -19,6 +19,7 @@ import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -706,5 +707,58 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val stackEntry = structure.children(diagnostic).single() as MetroTreeNode.StackEntry
     assertTrue(stackEntry.text, "is requested at" in stackEntry.text)
     assertNotNull(stackEntry.pointer?.element)
+  }
+
+  fun testSameKeyLazyFactoryDiagnosticsNavigateToDistinctParameters() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject
+        class Consumer(
+          val first: Lazy<Widget.Factory>,
+          val second: Lazy<Widget.Factory>,
+        )
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+    val declarations = file.declarationsIncludingNested()
+    val expectedParameters =
+      listOf(declarations.parameter("first"), declarations.parameter("second"))
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
+
+    val validation =
+      structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()
+    val diagnostics = structure.children(validation).filterIsInstance<MetroTreeNode.Diagnostic>()
+    assertEquals(
+      listOf(MetroDiagnosticId.INVALID_BINDING, MetroDiagnosticId.INVALID_BINDING),
+      diagnostics.map { it.diagnostic.id },
+    )
+    assertTrue(diagnostics.all { "Lazy<Factory>" in it.text })
+
+    val navigableParameters = diagnostics.map { diagnostic ->
+      val stackEntries = structure.children(diagnostic).filterIsInstance<MetroTreeNode.StackEntry>()
+      val sourceEntry = stackEntries.single { entry ->
+        expectedParameters.any { parameter -> entry.pointer?.element === parameter }
+      }
+      assertTrue(sourceEntry.text, "is injected at" in sourceEntry.text)
+      checkNotNull(sourceEntry.pointer?.element)
+    }
+    assertEquals(expectedParameters.toSet(), navigableParameters.toSet())
   }
 }

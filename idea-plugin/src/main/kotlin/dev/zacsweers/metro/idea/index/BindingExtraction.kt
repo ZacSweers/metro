@@ -813,7 +813,7 @@ internal fun KaSession.memberInjectSites(
             onDependencyType?.invoke(parameter.returnType)
             MemberInjectSite(
               ownerId,
-              symbol.psi as? KtElement,
+              parameter.symbol.psi as? KtElement ?: symbol.psi as? KtElement,
               dependencyKey(parameter.returnType, parameter.symbol, options),
             )
           }
@@ -884,7 +884,7 @@ private fun KaSession.collectDeclaredMemberInjectKeys(
           callable.valueParameters.mapTo(result) { parameter ->
             MemberInjectSite(
               classSymbol.classId,
-              callable.psi as? KtElement,
+              parameter.psi as? KtElement ?: callable.psi as? KtElement,
               dependencyKey(parameter, options),
             )
           }
