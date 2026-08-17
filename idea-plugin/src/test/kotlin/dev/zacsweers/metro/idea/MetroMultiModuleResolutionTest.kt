@@ -17,13 +17,16 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.ConsumerGraphContexts
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
 import org.jetbrains.kotlin.idea.serialization.updateCompilerArguments
@@ -586,6 +589,457 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       )
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  private fun addNestedSourceFactories(): KtFile {
+    return fixture.addFileToProject(
+      "library/lib/NestedFactories.kt",
+      """
+      package lib
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class Inner<T>(@Assisted val id: String, val dependency: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): Inner<T>
+        }
+      }
+
+      @AssistedInject
+      class Outer<T>(@Assisted val id: String, val inner: Inner.Factory<T>) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): Outer<T>
+        }
+      }
+      """
+        .trimIndent(),
+    ) as KtFile
+  }
+
+  private fun assertNestedSourceFactoryChain(
+    result: KaGraphValidationResult.Completed,
+    factoryFile: KtFile,
+  ) {
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factoryTypes = mutableSetOf<String>()
+    result.bindings.forEach { key, binding ->
+      val isSourceFactory =
+        binding is KaBinding.AssistedFactory &&
+          binding.pointer.virtualFile == factoryFile.virtualFile
+      if (isSourceFactory) {
+        factoryTypes += key.renderedType
+      }
+    }
+    assertEquals(
+      setOf(
+        "lib.Outer.Factory<libtest.LibClientWithDeps>",
+        "lib.Inner.Factory<libtest.LibClientWithDeps>",
+      ),
+      factoryTypes,
+    )
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+    assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+  }
+
+  fun testNestedUpstreamSourceFactoriesUseDownstreamBinaryDependencies() {
+    val factoryFile = addNestedSourceFactories()
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/NestedFactoryGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import lib.Outer
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val factory: Outer.Factory<LibClientWithDeps>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    // Neither source factory's declaration module has the binary fixture on its classpath.
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val graph =
+        checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
+      val context = index.contextsFor(graph).single()
+      assertEquals(appFile.virtualFile, graph.declarationId.file)
+      assertEquals(
+        KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null),
+        checkNotNull(index.queryContext(context)).graphModule,
+      )
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, context)
+          .requireCompleted()
+      assertEquals(graph.declarationId, result.graph.declarationId)
+      assertNestedSourceFactoryChain(result, factoryFile)
+    }
+  }
+
+  fun testIncludedNestedSourceFactoriesUseBothSameFqnGraphModules() {
+    val factoryFile = addNestedSourceFactories()
+    fixture.addFileToProject(
+      "library/lib/NestedFactoryContainer.kt",
+      """
+      package lib
+
+      import dev.zacsweers.metro.BindingContainer
+      import dev.zacsweers.metro.Provides
+
+      @BindingContainer
+      abstract class GenericContainer<T> {
+        @Provides fun text(factory: Outer.Factory<T>): String = factory.toString()
+      }
+      """
+        .trimIndent(),
+    )
+    fun addGraph(path: String): KtFile {
+      return fixture.addFileToProject(
+        path,
+        """
+        package shared
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import dev.zacsweers.metro.Includes
+        import lib.GenericContainer
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class)
+        interface SharedGraph {
+          val text: String
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes container: GenericContainer<LibClientWithDeps>): SharedGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    }
+    val appFile = addGraph("app/shared/NestedIncludedGraph.kt")
+    val bridgeFile = addGraph("bridge/shared/NestedIncludedGraph.kt")
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val bridgeModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(bridgeFile))
+
+    appModule.withMetroLibFixtureLibrary {
+      bridgeModule.withMetroLibFixtureLibrary {
+        PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+        IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+        val index = fixture.project.service<MetroResolutionService>().index(appFile)
+        val includedConsumer =
+          index.consumers.single {
+            it.includedContainerKey?.renderedType ==
+              "lib.GenericContainer<libtest.LibClientWithDeps>" &&
+              it.key.renderedType == "lib.Outer.Factory<libtest.LibClientWithDeps>"
+          }
+        val owners =
+          checkNotNull(
+            ConsumerGraphContexts(index.graphs).includedContainerPointers(includedConsumer)
+          )
+        assertEquals(
+          setOf(appModule, bridgeModule),
+          owners.mapTo(mutableSetOf()) { pointer ->
+            ModuleUtilCore.findModuleForPsiElement(checkNotNull(pointer.element))
+          },
+        )
+
+        val validation = fixture.project.service<MetroGraphValidationService>()
+        val graphIds = mutableSetOf<GraphDeclarationId>()
+        for (file in listOf(appFile, bridgeFile)) {
+          val graph =
+            checkNotNull(
+              index.graphEntryAt(file.declarationsIncludingNested().klass("SharedGraph"))
+            )
+          graphIds += graph.declarationId
+          assertEquals(file.virtualFile, graph.declarationId.file)
+          val context = index.contextsFor(graph).single()
+          assertEquals(
+            KaModuleProvider.getModule(fixture.project, file, useSiteModule = null),
+            checkNotNull(index.queryContext(context)).graphModule,
+          )
+          val result = validation.validate(file, context).requireCompleted()
+          assertEquals(graph.declarationId, result.graph.declarationId)
+          assertNestedSourceFactoryChain(result, factoryFile)
+        }
+        assertEquals(2, graphIds.size)
+      }
+    }
+  }
+
+  fun testBinaryGenericFactoryContinuesThroughNestedSourceFactories() {
+    val factoryFile = addNestedSourceFactories()
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/BinaryToSourceFactoryGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.AppScope
+        import dev.zacsweers.metro.DependencyGraph
+        import lib.Outer
+        import libtest.LibClientWithDeps
+        import libtest.LibGenericAssistedExample
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val factory: LibGenericAssistedExample.Factory<Outer.Factory<LibClientWithDeps>>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val graph =
+        checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
+      val context = index.contextsFor(graph).single()
+      assertEquals(appFile.virtualFile, graph.declarationId.file)
+      assertEquals(
+        KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null),
+        checkNotNull(index.queryContext(context)).graphModule,
+      )
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, context)
+          .requireCompleted()
+      assertEquals(graph.declarationId, result.graph.declarationId)
+      assertTrue(
+        result.bindings.any { key, binding ->
+          binding is KaBinding.AssistedFactory &&
+            key.renderedType ==
+              "libtest.LibGenericAssistedExample.Factory<lib.Outer.Factory<libtest.LibClientWithDeps>>"
+        }
+      )
+      assertNestedSourceFactoryChain(result, factoryFile)
+    }
+  }
+
+  fun testBinarySourceFactoryRoundTripIgnoresIsolatedSameFqnSourceFactory() {
+    val shadowFile =
+      fixture.addFileToProject(
+        "bridge/libtest/LibGenericAssistedExample.kt",
+        """
+        package libtest
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class LibGenericAssistedExample<T>(@Assisted val inputT: T, val graphT: T) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(inputT: T): LibGenericAssistedExample<T>
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/FactoryRoundTripGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import libtest.LibClientWithDeps
+        import libtest.LibGenericAssistedExample
+
+        @AssistedInject
+        class Outer<T>(
+          @Assisted val id: String,
+          val dependency: LibGenericAssistedExample.Factory<T>,
+        ) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Outer<T>
+          }
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val factory: LibGenericAssistedExample.Factory<Outer.Factory<LibClientWithDeps>>
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val shadowModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(shadowFile))
+    assertFalse(appModule == shadowModule)
+
+    // The app sees the binary factory, not the isolated same-FQN source declaration. Outer is
+    // discovered through the binary root, so its dependency must return to binary resolution.
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val sourceFactoryType = "app.Outer.Factory<libtest.LibClientWithDeps>"
+      assertTrue(index.consumers.none { it.key.renderedType == sourceFactoryType })
+      assertTrue(
+        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().any {
+          it.originClassId?.asFqNameString() == "libtest.LibGenericAssistedExample.Factory" &&
+            it.pointer.virtualFile == shadowFile.virtualFile
+        }
+      )
+
+      val graph =
+        checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
+      val context = index.contextsFor(graph).single()
+      assertEquals(appFile.virtualFile, graph.declarationId.file)
+      assertEquals(
+        KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null),
+        checkNotNull(index.queryContext(context)).graphModule,
+      )
+      val result =
+        fixture.project
+          .service<MetroGraphValidationService>()
+          .validate(appFile, context)
+          .requireCompleted()
+      assertEquals(graph.declarationId, result.graph.declarationId)
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(
+        result.bindings.any { key, binding ->
+          key.renderedType == sourceFactoryType &&
+            binding is KaBinding.AssistedFactory &&
+            binding.pointer.virtualFile == appFile.virtualFile
+        }
+      )
+
+      val binaryFactoryTypes = mutableSetOf<String>()
+      result.bindings.forEach { key, binding ->
+        if (
+          binding is KaBinding.AssistedFactory &&
+            binding.originClassId?.asFqNameString() == "libtest.LibGenericAssistedExample.Factory"
+        ) {
+          assertNotNull(binding.pointer.virtualFile)
+          assertFalse(binding.pointer.virtualFile == shadowFile.virtualFile)
+          binaryFactoryTypes += key.renderedType
+        }
+      }
+      assertEquals(
+        setOf(
+          "libtest.LibGenericAssistedExample.Factory<$sourceFactoryType>",
+          "libtest.LibGenericAssistedExample.Factory<libtest.LibClientWithDeps>",
+        ),
+        binaryFactoryTypes,
+      )
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testSameFqnOrdinaryFactoryDoesNotAcquireAssistedFactoryBinding() {
+    fun addGraph(path: String, factoryAnnotation: String): KtFile {
+      return fixture.addFileToProject(
+        path,
+        """
+        package shared
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class Widget<T>(@Assisted val id: String, val dependency: T) {
+          $factoryAnnotation
+          fun interface Factory<T> {
+            fun create(id: String): Widget<T>
+          }
+        }
+
+        @DependencyGraph
+        interface SharedGraph {
+          val factory: Widget.Factory<Int>
+
+          @Provides fun number(): Int = 1
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    }
+    val annotatedFile = addGraph("app/shared/FactoryGraph.kt", "@AssistedFactory")
+    val ordinaryFile = addGraph("bridge/shared/FactoryGraph.kt", "")
+    val settings = MetroSettings.getInstance(fixture.project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+      val index = fixture.project.service<MetroResolutionService>().index(annotatedFile)
+      val annotatedGraph =
+        checkNotNull(
+          index.graphEntryAt(annotatedFile.declarationsIncludingNested().klass("SharedGraph"))
+        )
+      val ordinaryGraph =
+        checkNotNull(
+          index.graphEntryAt(ordinaryFile.declarationsIncludingNested().klass("SharedGraph"))
+        )
+      assertEquals(annotatedFile.virtualFile, annotatedGraph.declarationId.file)
+      assertEquals(ordinaryFile.virtualFile, ordinaryGraph.declarationId.file)
+      assertFalse(annotatedGraph.declarationId == ordinaryGraph.declarationId)
+
+      val concreteFactories =
+        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().filter {
+          it.typeKey.renderedType == "shared.Widget.Factory<kotlin.Int>"
+        }
+      assertTrue(concreteFactories.isNotEmpty())
+      assertTrue(concreteFactories.all { it.pointer.virtualFile == annotatedFile.virtualFile })
+      assertTrue(
+        index.bindings.filterIsInstance<KaBinding.AssistedFactory>().none {
+          it.pointer.virtualFile == ordinaryFile.virtualFile
+        }
+      )
+
+      val ordinaryContext = index.contextsFor(ordinaryGraph).single()
+      assertEquals(
+        KaModuleProvider.getModule(fixture.project, ordinaryFile, useSiteModule = null),
+        checkNotNull(index.queryContext(ordinaryContext)).graphModule,
+      )
+      val ordinaryConsumer =
+        checkNotNull(
+          index.consumerEntryAt(ordinaryFile.declarationsIncludingNested().property("factory"))
+        )
+      val ordinaryResolution = index.resolveConsumer(ordinaryConsumer)
+      assertEquals(setOf(ordinaryContext), ordinaryResolution.perContext.keys)
+      assertTrue(ordinaryResolution.candidateBindings.isEmpty())
+
+      val validation = fixture.project.service<MetroGraphValidationService>()
+      val annotatedResult =
+        validation
+          .validate(annotatedFile, index.contextsFor(annotatedGraph).single())
+          .requireCompleted()
+      assertTrue(
+        annotatedResult.diagnostics.joinToString { it.render() },
+        annotatedResult.diagnostics.isEmpty(),
+      )
+      val ordinaryResult = validation.validate(ordinaryFile, ordinaryContext).requireCompleted()
+      assertEquals(
+        listOf(MetroDiagnosticId.MISSING_BINDING),
+        ordinaryResult.diagnostics.map { it.id },
+      )
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
     }
   }
 

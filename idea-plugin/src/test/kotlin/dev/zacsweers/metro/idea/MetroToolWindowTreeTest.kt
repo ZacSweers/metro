@@ -325,6 +325,23 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     )
   }
 
+  fun testIncompleteValidationIsPresentedAsAnAnalysisLimit() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    val reason = "test.Node.Factory reached the source specialization depth limit"
+    val result = KaGraphValidationResult.Incomplete(graphNode.context, reason)
+    val validation = MetroTreeNode.Validation(graphNode, result, stale = false)
+
+    assertEquals("analysis incomplete: $reason", validation.grayText)
+    assertSame(AllIcons.General.Warning, validation.icon)
+    assertEquals(
+      listOf("Validation incomplete: $reason"),
+      structure.children(validation).map { it.text },
+    )
+  }
+
   fun testDumbModeProducesNoChildren() {
     configure()
     val structure = structure()

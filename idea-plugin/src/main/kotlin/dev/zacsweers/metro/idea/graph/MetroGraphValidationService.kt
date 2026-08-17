@@ -133,32 +133,53 @@ internal class MetroGraphValidationService(
     // through its own declaration module so per-module options and library views apply.
     val reservations = mutableListOf<ReservedParentKey>()
     var childFailed = false
+    var incompleteChild: KaGraphValidationResult.Incomplete? = null
     for (extensionContext in index.extensionContextsOf(context)) {
       val childInput = validationInputOrNull(input.declarationElement, extensionContext) ?: continue
       val childResult = validate(childInput)
-      if (childResult is KaGraphValidationResult.Completed) {
-        for ((reservedKey, binding) in childResult.parentReservations) {
-          reservations += ReservedParentKey(reservedKey, childResult.context.graph.pointer, binding)
+      when (childResult) {
+        is KaGraphValidationResult.Completed -> {
+          for ((reservedKey, binding) in childResult.parentReservations) {
+            reservations +=
+              ReservedParentKey(reservedKey, childResult.context.graph.pointer, binding)
+          }
         }
-      } else {
-        childFailed = true
+        is KaGraphValidationResult.Incomplete -> {
+          if (incompleteChild == null) incompleteChild = childResult
+        }
+        is KaGraphValidationResult.InternalError -> childFailed = true
       }
     }
 
     val graphName = context.graph.classId?.asFqNameString() ?: context.graph.name ?: "<unknown>"
+    val incompleteExtension = incompleteChild
     val result =
-      runGraphValidation(context, graphName) {
-        val options = moduleOptions(input.declarationElement)
-        val queryContext =
-          checkNotNull(index.queryContext(context)) { "Graph declaration disappeared: $graphName" }
-        KaBindingGraph(index, queryContext, options, reservations) { parentContext ->
-            parentGraphLookup(input.declarationElement, parentContext)
-          }
-          .seal()
+      if (incompleteExtension != null) {
+        val childName =
+          incompleteExtension.graph.classId?.asFqNameString()
+            ?: incompleteExtension.graph.name
+            ?: "<unknown>"
+        KaGraphValidationResult.Incomplete(
+          context,
+          "Extension graph $childName is incomplete: ${incompleteExtension.reason}",
+        )
+      } else {
+        runGraphValidation(context, graphName) {
+          val options = moduleOptions(input.declarationElement)
+          val queryContext =
+            checkNotNull(index.queryContext(context)) {
+              "Graph declaration disappeared: $graphName"
+            }
+          KaBindingGraph(index, queryContext, options, reservations) { parentContext ->
+              parentGraphLookup(input.declarationElement, parentContext)
+            }
+            .seal()
+        }
       }
-    // Internal errors stay uncached so a transient plugin failure is retried on the next run. A
+    // Expected analysis limits are stable for this immutable index and should not rerun on every
+    // gutter refresh. Internal errors stay uncached so transient plugin failures can retry. A
     // parent sealed without a crashed child's reservations must also retry once the child does.
-    if (key != null && result is KaGraphValidationResult.Completed && !childFailed) {
+    if (key != null && result !is KaGraphValidationResult.InternalError && !childFailed) {
       results[key] = CachedEntry(result, index)
     }
     return result
@@ -361,6 +382,8 @@ internal fun runGraphValidation(
     throw e
   } catch (e: CancellationException) {
     throw e
+  } catch (e: IncompleteGraphAnalysis) {
+    KaGraphValidationResult.Incomplete(context, e.reason)
   } catch (e: Exception) {
     onInternalError(e)
     KaGraphValidationResult.InternalError(context, e)

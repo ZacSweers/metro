@@ -144,6 +144,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
           } else {
             AllIcons.General.Error
           }
+        is KaGraphValidationResult.Incomplete -> AllIcons.General.Warning
         is KaGraphValidationResult.InternalError -> AllIcons.General.Error
       }
     // AsyncTreeModel retains equal nodes, so a new result must replace its old diagnostic rows.
@@ -287,6 +288,7 @@ private fun validationSummary(result: KaGraphValidationResult): String {
         1 -> "1 problem"
         else -> "$count problems"
       }
+    is KaGraphValidationResult.Incomplete -> "analysis incomplete: ${result.reason}"
     is KaGraphValidationResult.InternalError -> "internal Metro plugin error"
   }
 }
@@ -556,13 +558,18 @@ internal class MetroTreeStructure(
   }
 
   private fun validationChildren(node: MetroTreeNode.Validation): List<MetroTreeNode> {
-    val result = node.result
-    if (result is KaGraphValidationResult.InternalError) {
-      return listOf(
-        MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
-      )
-    }
-    result as KaGraphValidationResult.Completed
+    val result =
+      when (val outcome = node.result) {
+        is KaGraphValidationResult.Incomplete -> {
+          return listOf(MetroTreeNode.Summary(node, "Validation incomplete: ${outcome.reason}"))
+        }
+        is KaGraphValidationResult.InternalError -> {
+          return listOf(
+            MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
+          )
+        }
+        is KaGraphValidationResult.Completed -> outcome
+      }
 
     val children = mutableListOf<MetroTreeNode>()
     val topology = result.topology

@@ -780,43 +780,20 @@ internal class FileShardBuilder(
     val factoryKey = typeKey(factoryType, qualifierAnnotation(classSymbol, options))
     if (!processedAssistedFactoryTypes.add(AssistedFactoryIdentity(declaration, factoryKey))) return
 
-    val factoryFunction = assistedFactoryFunction(factoryType)
-    val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
-    samFunction?.psi?.containingFile?.let(cacheDependencies::add)
-    val targetType = factoryFunction?.returnType?.fullyExpandedType as? KaClassType
-    val targetTypeKey = targetType?.let { typeKey(it, qualifier = null) }
-    val createdClassSymbol = targetType?.symbol as? KaNamedClassSymbol
-    createdClassSymbol?.psi?.containingFile?.let(cacheDependencies::add)
-    val createdName = createdClassSymbol?.classId?.shortClassName?.asString()
     // The factory constructs its target directly, so its target dependencies use the actual type
     // arguments requested by the graph instead of the target class's unspecialized default type.
-    // Discover factory-typed dependencies with those same concrete arguments. The identity was
-    // recorded above, so mutually dependent factories cannot recurse indefinitely.
-    val processDependencyType: (KaType) -> Unit = { dependencyType ->
-      ProgressManager.checkCanceled()
-      processRequestedAssistedFactory(dependencyType)
-    }
-    val targetConstructorDependencies =
-      targetType
-        ?.let { injectConstructorDependencyKeys(it, options, processDependencyType) }
-        .orEmpty()
-    val targetMemberDependencies =
-      targetType?.let { memberInjectDependencyKeys(it, options, processDependencyType) }.orEmpty()
-    bindings +=
-      KaBinding.AssistedFactory(
-        ptr(declaration),
+    // Keep only this direct request in the shard. A shared post-merge worklist follows factory
+    // dependencies once, with the requesting graph's module and a generic-growth guard.
+    val binding =
+      assistedFactoryBinding(
+        classSymbol,
+        factoryType,
+        options,
+        pointerManager,
         factoryKey,
-        scopeAnnotation(classSymbol, options),
-        createdName,
-        targetTypeKey,
-        originClassId = declaration.getClassId(),
-        targetConstructorDependencies = targetConstructorDependencies,
-        targetMemberDependencies = targetMemberDependencies,
-        memberInjectionOwnerIds =
-          createdClassSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
-        factoryFunctionName = samFunction?.name?.asString(),
-        factoryFunctionIsSuspend = samFunction?.isSuspend == true,
-      )
+        onDeclarationFile = cacheDependencies::add,
+      ) ?: return
+    bindings += binding
   }
 
   private data class AssistedFactoryIdentity(

@@ -53,11 +53,14 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -447,10 +450,12 @@ class MetroResolutionService(
         ?.let {
           return it.index
         }
-      val source = aggregateSource(next)
+      val rawSource = aggregateSource(next)
+      val summary = next.librarySummary.getOrCreate(project, rawSource)
+      val source = rawSource.withAddedFactories(summary.sourceFactories.addedBindings)
       val library =
         if (key.resolveFromLibraries) {
-          libraryShardFor(key.fingerprint, inputs.roots, next, source)
+          libraryShardFor(key.fingerprint, inputs.roots, source, summary)
         } else {
           LibraryShard.EMPTY
         }
@@ -462,6 +467,9 @@ class MetroResolutionService(
           contributions = source.contributions + library.contributions,
           assistedSites = source.assistedSites,
           bindingContainers = source.bindingContainers,
+          incompleteAssistedFactories =
+            if (key.resolveFromLibraries) library.incompleteFactories
+            else summary.sourceFactories.incompleteFactories,
         )
       // Only cache when nothing invalidated the pass semantically. A plain re-drain of new dirty
       // files under the same generation still describes this exact source snapshot.
@@ -608,10 +616,9 @@ class MetroResolutionService(
   private fun libraryShardFor(
     fingerprint: IndexOptionsFingerprint,
     rootsGeneration: Long,
-    snapshot: SourceSnapshot,
     source: SourceAggregate,
+    summary: SourceLibrarySummary,
   ): LibraryShard {
-    val summary = snapshot.librarySummary.getOrCreate(project, source)
     val key = LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs)
     libraryShards[key]?.let {
       return it
@@ -619,21 +626,24 @@ class MetroResolutionService(
 
     val bindings = source.bindings.toMutableList()
     val contributions = source.contributions.toMutableList()
-    LibraryIndexPostProcessor(
-        project,
-        fingerprint.options,
-        bindings,
-        source.consumers,
-        source.graphs,
-        contributions,
-        summary.factoryUseSites,
-        summary.consumerGraphContexts,
-      )
-      .postProcess()
+    val incompleteFactories =
+      LibraryIndexPostProcessor(
+          project,
+          fingerprint.options,
+          bindings,
+          source.consumers,
+          source.graphs,
+          contributions,
+          summary.factoryUseSites,
+          summary.consumerGraphContexts,
+          summary.sourceFactories,
+        )
+        .postProcess()
     val shard =
       LibraryShard(
         bindings.drop(source.bindings.size),
         contributions.drop(source.contributions.size),
+        incompleteFactories,
       )
     libraryShards[key] = shard
     return shard
@@ -1373,6 +1383,9 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         graph.declarationId,
         graph.scopeKeys,
         graph.includedBindingContainers,
+        graph.isExtension,
+        graph.selfReferences,
+        graph.extensionCreations,
         graph.pointer.element != null,
       )
     },
@@ -1384,11 +1397,13 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
       )
     },
     consumers.map(::consumerLibrarySignature),
+    bindings.mapNotNull { it.writtenFactoryBudgetKey() },
     bindings.mapNotNull(::bindingLibrarySignature),
     factoryInputs.map { input ->
       FactoryInputLibrarySignature(
         input.id,
         input.consumers.map(::consumerLibrarySignature),
+        input.bindings.mapNotNull { it.writtenFactoryBudgetKey() },
         input.bindings.mapNotNull(::bindingLibrarySignature),
       )
     },
@@ -1410,12 +1425,14 @@ private fun consumerLibrarySignature(consumer: ConsumerEntry): ConsumerLibrarySi
 
 private fun bindingLibrarySignature(binding: KaBinding): BindingLibrarySignature? {
   val isAssistedFactory = binding is KaBinding.AssistedFactory
-  val isGeneratedContribution = binding is KaBinding.Provided && binding.isClassContribution
+  val isGeneratedContribution =
+    binding is KaBinding.Provided && binding.isClassContribution ||
+      binding is KaBinding.Alias && binding.isClassContribution
   val graphInput = binding as? KaBinding.BoundInstance
   val isFactoryInput =
     graphInput != null && (graphInput.isGraphInput || graphInput.isBindingContainerInput)
   if (!isAssistedFactory && !isGeneratedContribution && !isFactoryInput) return null
-  if (!isFactoryInput && binding.dependencies.isEmpty()) return null
+  if (!isFactoryInput && !isAssistedFactory && binding.dependencies.isEmpty()) return null
   return BindingLibrarySignature(
     binding.typeKey,
     binding.originClassId,
@@ -1429,6 +1446,27 @@ private fun bindingLibrarySignature(binding: KaBinding): BindingLibrarySignature
     graphInput?.additionalOwnerGraphIds.orEmpty(),
     graphInput?.isGraphInput == true,
     graphInput?.isBindingContainerInput == true,
+    (binding as? KaBinding.AssistedFactory)?.let(::assistedFactoryDefinitionSignature),
+  )
+}
+
+/** Defaults and raw wrappers are metadata here, although contextual-key equality omits them. */
+private fun assistedFactoryDefinitionSignature(
+  binding: KaBinding.AssistedFactory
+): AssistedFactoryDefinitionSignature {
+  return AssistedFactoryDefinitionSignature(
+    binding.typeKey,
+    binding.originClassId,
+    binding.pointer.virtualFile,
+    binding.scope,
+    binding.targetTypeKey,
+    (binding.targetConstructorDependencies + binding.targetMemberDependencies).map {
+      FactoryDependencySignature(it, it.hasDefault, it.rawType)
+    },
+    binding.targetConstructorDependencies.size,
+    binding.memberInjectionOwnerIds,
+    binding.factoryFunctionName,
+    binding.factoryFunctionIsSuspend,
   )
 }
 
@@ -1436,6 +1474,7 @@ private data class SourceLibraryShardSignature(
   val graphs: List<GraphLibrarySignature>,
   val contributions: List<ContributionLibrarySignature>,
   val consumers: List<ConsumerLibrarySignature>,
+  val writtenBindingKeys: List<KaTypeKey>,
   val bindings: List<BindingLibrarySignature>,
   val factoryInputs: List<FactoryInputLibrarySignature>,
 )
@@ -1444,6 +1483,9 @@ private data class GraphLibrarySignature(
   val declarationId: GraphDeclarationId,
   val scopes: Set<ClassId>,
   val includedContainers: Set<KaTypeKey>,
+  val isExtension: Boolean,
+  val selfReferences: Set<GraphReference>,
+  val extensionCreations: Set<GraphReference>,
   val pointerIsValid: Boolean,
 )
 
@@ -1477,11 +1519,32 @@ private data class BindingLibrarySignature(
   val additionalOwnerGraphIds: Set<GraphDeclarationId>,
   val isGraphInput: Boolean,
   val isBindingContainerInput: Boolean,
+  val factoryDefinition: AssistedFactoryDefinitionSignature?,
+)
+
+private data class FactoryDependencySignature(
+  val key: KaContextualTypeKey,
+  val hasDefault: Boolean,
+  val rawType: KaTypeSnapshot?,
+)
+
+private data class AssistedFactoryDefinitionSignature(
+  val key: KaTypeKey,
+  val originClassId: ClassId?,
+  val file: VirtualFile?,
+  val scope: KaAnnotationSnapshot?,
+  val targetKey: KaTypeKey?,
+  val dependencies: List<FactoryDependencySignature>,
+  val constructorDependencyCount: Int,
+  val memberOwnerIds: Set<ClassId>,
+  val functionName: String?,
+  val functionIsSuspend: Boolean,
 )
 
 private data class FactoryInputLibrarySignature(
   val id: FactoryInputEntry.Id,
   val consumers: List<ConsumerLibrarySignature>,
+  val writtenBindingKeys: List<KaTypeKey>,
   val bindings: List<BindingLibrarySignature>,
 )
 
@@ -1541,16 +1604,24 @@ private class SourceLibrarySummaryReference {
         return it
       }
       val consumerGraphContexts = ConsumerGraphContexts(source.graphs)
-      val factoryUseSites =
-        sourceAssistedFactoryUseSites(
-          project,
-          source.bindings,
-          source.consumers,
-          source.graphs,
+      val sourceFactories =
+        SourceAssistedFactoryPostProcessor(
+            project,
+            source.bindings,
+            source.consumers,
+            consumerGraphContexts,
+          )
+          .resolveInitial()
+      val completeSource = source.withAddedFactories(sourceFactories.addedBindings)
+      val inputs = completeSource.libraryInputs(project, sourceFactories, consumerGraphContexts)
+      val result =
+        SourceLibrarySummary(
+          inputs,
+          sourceFactories.factoryUseSites,
           consumerGraphContexts,
+          sourceFactories,
         )
-      val inputs = source.libraryInputs(project, factoryUseSites, consumerGraphContexts)
-      val result = SourceLibrarySummary(inputs, factoryUseSites, consumerGraphContexts)
+      ProgressManager.checkCanceled()
       summary = result
       return result
     }
@@ -1561,6 +1632,7 @@ private data class SourceLibrarySummary(
   val inputs: LibraryInputs,
   val factoryUseSites: SourceAssistedFactoryUseSites,
   val consumerGraphContexts: ConsumerGraphContexts,
+  val sourceFactories: SourceFactoryResolution,
 )
 
 private data class SourceAggregate(
@@ -1571,11 +1643,17 @@ private data class SourceAggregate(
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
 ) {
+  fun withAddedFactories(factories: List<KaBinding.AssistedFactory>): SourceAggregate {
+    if (factories.isEmpty()) return this
+    return copy(bindings = bindings + factories)
+  }
+
   fun libraryInputs(
     project: Project,
-    sourceFactoryUseSites: SourceAssistedFactoryUseSites,
+    sourceFactories: SourceFactoryResolution,
     consumerGraphContexts: ConsumerGraphContexts,
   ): LibraryInputs {
+    val sourceFactoryUseSites = sourceFactories.factoryUseSites
     val scopeIds = linkedSetOf<ClassId>()
     val participatingModules = linkedSetOf<KaModule>()
     val injectRequests = linkedSetOf<LibraryInjectInput>()
@@ -1607,7 +1685,7 @@ private data class SourceAggregate(
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       val classId = consumer.typeClassId
-      val containerOwners = consumerGraphContexts.includedContainerPointers(consumer)
+      val containerOwners = consumerGraphContexts.owningGraphPointers(consumer)
       if (containerOwners == null) {
         val module = addModule(consumerGraphContexts.pointer(consumer).element) ?: continue
         if (classId == null || consumer.multibindingId != null) continue
@@ -1624,7 +1702,8 @@ private data class SourceAggregate(
       ProgressManager.checkCanceled()
       val hasAdditionalLibrarySeeds =
         binding is KaBinding.AssistedFactory ||
-          binding is KaBinding.Provided && binding.isClassContribution
+          binding is KaBinding.Provided && binding.isClassContribution ||
+          binding is KaBinding.Alias && binding.isClassContribution
       if (!hasAdditionalLibrarySeeds || binding.dependencies.isEmpty()) continue
       if (binding is KaBinding.AssistedFactory) {
         val requestingUseSites = sourceFactoryUseSites[binding]
@@ -1651,7 +1730,21 @@ private data class SourceAggregate(
         injectRequests += LibraryInjectInput(module, key, classId)
       }
     }
-    return LibraryInputs(scopeIds, participatingModules, injectRequests)
+    val definitions =
+      linkedMapOf<SourceAssistedFactoryIdentity, AssistedFactoryDefinitionSignature>()
+    for (binding in bindings) {
+      if (binding !is KaBinding.AssistedFactory) continue
+      val identity = binding.sourceFactoryIdentity() ?: continue
+      definitions.putIfAbsent(identity, assistedFactoryDefinitionSignature(binding))
+    }
+    val budget = sourceFactories.budget
+    return LibraryInputs(
+      scopeIds,
+      participatingModules,
+      injectRequests,
+      definitions.values.toList(),
+      FactoryBudgetCacheInput(budget.writtenDepth, budget.writtenNodes, budget.writtenFactoryKeys),
+    )
   }
 }
 
@@ -1665,6 +1758,14 @@ private data class LibraryInputs(
   val scopeIds: Set<ClassId>,
   val participatingModules: Set<KaModule>,
   val requests: Set<LibraryInjectInput>,
+  val sourceFactoryDefinitions: List<AssistedFactoryDefinitionSignature>,
+  val factoryBudget: FactoryBudgetCacheInput,
+)
+
+private data class FactoryBudgetCacheInput(
+  val writtenDepth: Int,
+  val writtenNodes: Int,
+  val writtenFactoryKeys: Set<KaTypeKey>,
 )
 
 private data class LibraryInjectInput(
@@ -1676,6 +1777,7 @@ private data class LibraryInjectInput(
 private data class LibraryShard(
   val bindings: List<KaBinding>,
   val contributions: List<ContributionEntry>,
+  val incompleteFactories: Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> = emptyMap(),
 ) {
   companion object {
     val EMPTY = LibraryShard(emptyList(), emptyList())

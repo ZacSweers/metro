@@ -9,6 +9,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.runGraphValidation
@@ -36,13 +37,33 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     source: String,
     graphName: String = "AppGraph",
   ): KaGraphValidationResult.Completed {
+    return validateResult(source, graphName).requireCompleted()
+  }
+
+  private fun validateResult(
+    source: String,
+    graphName: String = "AppGraph",
+  ): KaGraphValidationResult {
     val file = myFixture.configureMetroFile(source)
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single { it.name == graphName }
     return project
       .service<MetroGraphValidationService>()
       .validate(file, index.contextsFor(graph).single())
-      .requireCompleted()
+  }
+
+  private fun validateWithoutLibraryResolution(
+    source: String,
+    graphName: String = "AppGraph",
+  ): KaGraphValidationResult.Completed {
+    val settings = MetroSettings.getInstance(project).state
+    val previous = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    return try {
+      validate(source, graphName)
+    } finally {
+      settings.resolveFromLibraries = previous
+    }
   }
 
   fun testUnexpectedFailureReturnsInternalError() {
@@ -66,6 +87,29 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertSame(context, result.context)
     assertSame(failure, result.cause)
     assertSame(failure, reported)
+  }
+
+  fun testExpectedAnalysisLimitReturnsIncompleteWithoutLoggingAnInternalError() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val reason = "source assisted-factory analysis reached its type-depth limit"
+    var reported: Throwable? = null
+
+    val result =
+      runGraphValidation(
+        context = context,
+        graphName = "test.AppGraph",
+        onInternalError = { reported = it },
+      ) {
+        throw IncompleteGraphAnalysis(reason)
+      }
+
+    assertTrue(result is KaGraphValidationResult.Incomplete)
+    result as KaGraphValidationResult.Incomplete
+    assertSame(context, result.context)
+    assertEquals(reason, result.reason)
+    assertNull(reported)
   }
 
   fun testCancellationEscapesInternalErrorBoundary() {
@@ -2240,6 +2284,72 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.bindings.any { key, _ -> key.renderedType == "test.WidgetFactory" })
   }
 
+  fun testContributedInheritedFactoryAliasDiscoversNestedSourceFactoryWithoutLibraries() {
+    val settings = MetroSettings.getInstance(project).state
+    val previous = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          @AssistedInject
+          class Inner<T>(@Assisted val id: String, val value: T) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(id: String): Inner<T>
+            }
+          }
+
+          @AssistedInject
+          class Outer<T>(@Assisted val id: String, val inner: Inner.Factory<T>)
+
+          interface PublicFactory<T> {
+            fun create(id: String): Outer<T>
+          }
+
+          @AssistedFactory @ContributesBinding(AppScope::class)
+          interface ContributedFactory : PublicFactory<Int>
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: PublicFactory<Int>
+
+            @Provides fun provideInt(): Int = 1
+          }
+          """
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      // The concrete factory is reached through the contribution's Alias binding, not a source
+      // consumer that directly requests ContributedFactory or Inner.Factory<Int>.
+      assertTrue(index.consumers.none { it.key.renderedType == "test.ContributedFactory" })
+      assertTrue(index.consumers.none { it.key.renderedType == "test.Inner.Factory<kotlin.Int>" })
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val result =
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, index.contextsFor(graph).single())
+          .requireCompleted()
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(
+        result.bindings.any { key, binding ->
+          key.renderedType == "test.PublicFactory<kotlin.Int>" && binding is KaBinding.Alias
+        }
+      )
+      val factoryTypes =
+        result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
+          it.typeKey.renderedType
+        }
+      assertEquals(
+        setOf("test.ContributedFactory", "test.Inner.Factory<kotlin.Int>"),
+        factoryTypes.toSet(),
+      )
+      assertTrue(result.bindings.any { key, _ -> key.renderedType == "kotlin.Int" })
+    } finally {
+      settings.resolveFromLibraries = previous
+    }
+  }
+
   fun testCompanionObjectProvidesBelongToTheirContainer() {
     val result =
       validate(
@@ -2604,9 +2714,300 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
   }
 
-  fun testNestedGenericAssistedFactoriesUseConcreteDependenciesTransitively() {
+  fun testUnusedExpandingGenericAssistedFactoryDoesNotPreventValidation() {
+    module.addKotlinStdlibLibrary()
     val result =
       validate(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<List<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val text: String
+
+          @Provides fun provideText(): String = "ready"
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(result.bindings.asMap().values.none { it is KaBinding.AssistedFactory })
+  }
+
+  fun testExpandingGenericAssistedFactoryReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateResult(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<List<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+        }
+        """
+      )
+
+    assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+    result as KaGraphValidationResult.Incomplete
+    assertTrue(result.reason.isNotBlank())
+  }
+
+  fun testExponentiallyGrowingAssistedFactoryReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateResult(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<Pair<T, T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+        }
+        """
+      )
+
+    assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+    result as KaGraphValidationResult.Incomplete
+    assertTrue(result.reason.isNotBlank())
+  }
+
+  fun testAlternatingSourceAndBinaryFactoryExpansionReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validateResult(
+          """
+          import libtest.LibGenericAssistedExample
+
+          @AssistedInject
+          class Node<T>(
+            @Assisted val id: String,
+            val next: LibGenericAssistedExample.Factory<Node.Factory<List<T>>>,
+          ) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(id: String): Node<T>
+            }
+          }
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: Node.Factory<Int>
+          }
+          """
+        )
+
+      assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+      result as KaGraphValidationResult.Incomplete
+      assertTrue(result.reason.isNotBlank())
+    }
+  }
+
+  fun testExplicitFactoryProviderTerminatesGenericExpansion() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<List<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+
+          @Provides
+          fun terminalFactory(): Node.Factory<List<List<List<Int>>>> = error("unused")
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factories = result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>()
+    assertEquals(
+      setOf(
+        "test.Node.Factory<kotlin.Int>",
+        "test.Node.Factory<kotlin.collections.List<kotlin.Int>>",
+        "test.Node.Factory<kotlin.collections.List<kotlin.collections.List<kotlin.Int>>>",
+      ),
+      factories.mapTo(mutableSetOf()) { it.typeKey.renderedType },
+    )
+    val terminalType =
+      "test.Node.Factory<kotlin.collections.List<kotlin.collections.List<kotlin.collections.List<kotlin.Int>>>>"
+    assertTrue(
+      result.bindings.any { key, binding ->
+        key.renderedType == terminalType && binding is KaBinding.Provided
+      }
+    )
+  }
+
+  fun testDefaultedExpandingFactoryDependencyStillReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateResult(
+        """
+        @AssistedInject
+        class Node<T>(
+          @Assisted val id: String,
+          val next: Factory<List<T>> = error("unused"),
+        ) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+        }
+        """
+      )
+
+    // A default only permits an absent binding. The implicit factory exists, so a truncated
+    // expansion cannot be treated as absence or successful validation.
+    assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+    result as KaGraphValidationResult.Incomplete
+    assertTrue(result.reason.isNotBlank())
+  }
+
+  fun testIncompleteExtensionPreventsSuccessfulParentValidationAndIsCached() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<List<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val factory: Node.Factory<Int>
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val parentContext = index.contextsFor(parent).single()
+    val childContext = index.contextsFor(child).single()
+    val service = project.service<MetroGraphValidationService>()
+
+    val parentResult = service.validate(file, parentContext)
+    assertTrue(
+      parentResult.javaClass.simpleName,
+      parentResult is KaGraphValidationResult.Incomplete,
+    )
+    parentResult as KaGraphValidationResult.Incomplete
+    assertTrue(parentResult.reason, "ChildGraph" in parentResult.reason)
+
+    val cachedChild = checkNotNull(service.cachedResult(file, childContext))
+    val childResult = cachedChild.result
+    assertTrue(childResult.javaClass.simpleName, childResult is KaGraphValidationResult.Incomplete)
+    assertFalse(cachedChild.stale)
+    assertSame(childResult, service.validate(file, childContext))
+    assertSame(parentResult, service.validate(file, parentContext))
+    assertSame(parentResult, checkNotNull(service.cachedResult(file, parentContext)).result)
+  }
+
+  fun testGenericAssistedFactoryWithConstantTypeResetCompletes() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Factory<String>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factoryTypes =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
+        it.typeKey.renderedType
+      }
+    assertEquals(
+      setOf("test.Node.Factory<kotlin.Int>", "test.Node.Factory<kotlin.String>"),
+      factoryTypes.toSet(),
+    )
+  }
+
+  fun testGenericAssistedFactoryWithPermutedTypeParametersCompletes() {
+    val result =
+      validate(
+        """
+        @AssistedInject
+        class Node<A, B>(@Assisted val id: String, val next: Factory<B, A>) {
+          @AssistedFactory
+          fun interface Factory<A, B> {
+            fun create(id: String): Node<A, B>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int, String>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factoryTypes =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
+        it.typeKey.renderedType
+      }
+    assertEquals(
+      setOf(
+        "test.Node.Factory<kotlin.Int, kotlin.String>",
+        "test.Node.Factory<kotlin.String, kotlin.Int>",
+      ),
+      factoryTypes.toSet(),
+    )
+  }
+
+  fun testNestedGenericAssistedFactoriesUseConcreteDependenciesTransitively() {
+    val result =
+      validateWithoutLibraryResolution(
         """
         @Qualifier annotation class Chosen
 
@@ -2660,7 +3061,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testMutuallyDependentGenericAssistedFactoriesDoNotRecurseIndefinitely() {
     val result =
-      validate(
+      validateWithoutLibraryResolution(
         """
         @AssistedInject
         class Left<T>(@Assisted val id: String, val right: Right.Factory<T>) {
@@ -2689,6 +3090,65 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertEquals(
       2,
       result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().size,
+    )
+  }
+
+  fun testIncludedGenericContainerFactoryConsumersResolveWithoutLibraries() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+        interface ReceiverFactory
+        interface AliasFactory
+        class ParameterResult
+
+        @AssistedInject
+        class Widget<T>(@Assisted val id: String, val value: T) {
+          @AssistedFactory
+          fun interface Factory<T> : ReceiverFactory, AliasFactory {
+            fun create(id: String): Widget<T>
+          }
+        }
+
+        @BindingContainer
+        interface FactoryBindings<P, R, A> {
+          @Provides
+          fun parameter(factory: Widget.Factory<P>): ParameterResult = ParameterResult()
+
+          @Binds val Widget.Factory<R>.receiver: ReceiverFactory
+
+          @Binds fun alias(factory: Widget.Factory<A>): AliasFactory
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val parameter: ParameterResult
+          val receiver: ReceiverFactory
+          val alias: AliasFactory
+
+          @Provides fun provideInt(): Int = 1
+          @Provides fun provideString(): String = "ready"
+          @Provides fun provideBoolean(): Boolean = true
+
+          @DependencyGraph.Factory
+          interface Factory {
+            fun create(@Includes bindings: FactoryBindings<Int, String, Boolean>): AppGraph
+          }
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val factoryTypes =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.AssistedFactory>().map {
+        it.typeKey.renderedType
+      }
+    assertEquals(
+      setOf(
+        "test.Widget.Factory<kotlin.Int>",
+        "test.Widget.Factory<kotlin.String>",
+        "test.Widget.Factory<kotlin.Boolean>",
+      ),
+      factoryTypes.toSet(),
     )
   }
 

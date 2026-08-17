@@ -31,6 +31,9 @@ internal class BindingIndex(
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite> = emptyList(),
   val bindingContainers: List<BindingContainerEntry> = emptyList(),
+  private val incompleteAssistedFactories:
+    Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> =
+    emptyMap(),
 ) {
   private val containersById: ScatterMap<ClassId, List<BindingContainerEntry>> by lazy {
     bindingContainers.groupToScatter { it.classId }
@@ -315,6 +318,17 @@ internal class BindingIndex(
   /** Known assisted factories creating [key], regardless of graph membership. */
   fun assistedFactoriesForTarget(key: KaTypeKey): List<KaBinding.AssistedFactory> {
     return assistedFactoriesByTarget[key].orEmpty().withoutDuplicateAssistedFactories()
+  }
+
+  /** Why this exact factory's dependency expansion stopped in the graph's compilation module. */
+  fun incompleteAssistedFactoryReason(
+    binding: KaBinding.AssistedFactory,
+    queryContext: GraphQueryContext,
+  ): String? {
+    if (incompleteAssistedFactories.isEmpty()) return null
+    val boundaries = incompleteAssistedFactories[queryContext.graphModule] ?: return null
+    val file = binding.pointer.virtualFile ?: return null
+    return boundaries[SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, file)]
   }
 
   /** Indexed source sites for [key], used when a graph diagnostic needs its real declaration. */

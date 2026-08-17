@@ -146,6 +146,13 @@ internal data class GraphDeclarationId(
   val file: VirtualFile?,
 )
 
+/** One concrete assisted-factory declaration, including its exact source or binary file. */
+internal data class SourceAssistedFactoryIdentity(
+  val key: KaTypeKey,
+  val originClassId: ClassId?,
+  val virtualFile: VirtualFile,
+)
+
 /** A resolved graph or nested factory class, qualified by its source or binary declaration file. */
 internal data class GraphReference(
   val classId: ClassId,

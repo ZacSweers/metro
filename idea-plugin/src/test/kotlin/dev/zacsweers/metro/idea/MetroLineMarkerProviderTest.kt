@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import kotlin.test.assertTrue
@@ -288,6 +289,48 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         .mapNotNull { it.tooltipText }
         .single()
     assertTrue(tooltip, "last run: 1 problem" in tooltip)
+  }
+
+  fun testIncompleteValidationDoesNotShowASuccessfulGraphBadge() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject
+        class Node<T>(@Assisted val id: String, val next: Node.Factory<List<T>>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): Node<T>
+          }
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Node.Factory<Int>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val result = validationService.validate(file, context)
+    assertTrue(result is KaGraphValidationResult.Incomplete)
+    result as KaGraphValidationResult.Incomplete
+    assertSame(result, validationService.validate(file, context))
+
+    DaemonCodeAnalyzer.getInstance(project).restart()
+    myFixture.doHighlighting()
+    val gutters = myFixture.findAllGutters()
+    assertTrue(gutters.none { it.icon === MetroIcons.GRAPH_VALIDATED })
+    val tooltip =
+      gutters
+        .filter { it.icon === MetroIcons.GRAPH_PROBLEMS }
+        .mapNotNull { it.tooltipText }
+        .single()
+    assertTrue(tooltip, "last run: analysis incomplete" in tooltip)
+    assertTrue(tooltip, result.reason in tooltip)
+    assertTrue(tooltip, "no problems found" !in tooltip)
+    assertTrue(tooltip, "internal Metro plugin error" !in tooltip)
   }
 
   fun testMultiParentExtensionBadgeRequiresEveryContextToPass() {

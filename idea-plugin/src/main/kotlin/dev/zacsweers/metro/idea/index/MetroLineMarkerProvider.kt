@@ -422,13 +422,17 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, context)
     }
     val internalErrorCount = cached.count { it.result is KaGraphValidationResult.InternalError }
+    val incompleteResults = cached.mapNotNull { it.result as? KaGraphValidationResult.Incomplete }
     val problemCount = cached.sumOf {
       (it.result as? KaGraphValidationResult.Completed)?.diagnostics?.size ?: 0
     }
-    val allContextsValidated = cached.size == contexts.size
+    val allContextsAttempted = cached.size == contexts.size
+    val allContextsValidated =
+      allContextsAttempted && cached.all { it.result is KaGraphValidationResult.Completed }
     val icon =
       when {
         internalErrorCount > 0 -> MetroIcons.GRAPH_PROBLEMS
+        incompleteResults.isNotEmpty() -> MetroIcons.GRAPH_PROBLEMS
         problemCount > 0 -> MetroIcons.GRAPH_PROBLEMS
         allContextsValidated -> MetroIcons.GRAPH_VALIDATED
         else -> MetroIcons.GRAPH
@@ -437,24 +441,24 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       append("Validate Metro graph")
       if (cached.isNotEmpty()) {
         append(" · last run: ")
+        val summaries = mutableListOf<String>()
         if (internalErrorCount > 0) {
-          append(internalErrorCount)
-          append(
-            if (internalErrorCount == 1) {
-              " internal Metro plugin error"
-            } else {
-              " internal Metro plugin errors"
-            }
-          )
-          if (problemCount > 0) append(" · ")
+          val noun =
+            if (internalErrorCount == 1) "internal Metro plugin error"
+            else "internal Metro plugin errors"
+          summaries += "$internalErrorCount $noun"
+        }
+        if (incompleteResults.isNotEmpty()) {
+          val reasons = incompleteResults.map { it.reason }.distinct().joinToString("; ")
+          summaries += "analysis incomplete: $reasons"
         }
         if (problemCount > 0) {
-          append(problemCount)
-          append(if (problemCount == 1) " problem" else " problems")
-        } else if (internalErrorCount == 0) {
-          append("no problems found")
+          val noun = if (problemCount == 1) "problem" else "problems"
+          summaries += "$problemCount $noun"
         }
-        if (!allContextsValidated) {
+        if (summaries.isEmpty()) summaries += "no problems found"
+        append(summaries.joinToString(" · "))
+        if (!allContextsAttempted) {
           append(" in ")
           append(cached.size)
           append(" of ")

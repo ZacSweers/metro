@@ -29,7 +29,15 @@ internal sealed interface KaGraphValidationResult {
     val parentReservations: Map<KaTypeKey, KaBinding> = emptyMap(),
   ) : KaGraphValidationResult
 
+  /** The IDE reached an analysis limit and cannot claim that the graph is fully validated. */
+  class Incomplete(override val context: GraphContext, val reason: String) : KaGraphValidationResult
+
   /** Validation stopped because the IDE plugin itself failed unexpectedly. */
   class InternalError(override val context: GraphContext, val cause: Throwable) :
     KaGraphValidationResult
+}
+
+/** Expected control flow when a selected implicit binding crosses an IDE analysis boundary. */
+internal class IncompleteGraphAnalysis(val reason: String) : RuntimeException(reason) {
+  override fun fillInStackTrace(): Throwable = this
 }

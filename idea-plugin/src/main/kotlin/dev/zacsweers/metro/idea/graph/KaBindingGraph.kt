@@ -118,6 +118,12 @@ internal class KaBindingGraph(
             reportDuplicateBindings(key, bindings, stack)
           }
         for (binding in resolved) {
+          // Explicit providers can terminate a growing factory chain. Only stop after the normal
+          // graph lookup actually chooses the implicit factory whose expansion was bounded.
+          if (binding is KaBinding.AssistedFactory) {
+            val incompleteReason = index.incompleteAssistedFactoryReason(binding, queryContext)
+            if (incompleteReason != null) throw IncompleteGraphAnalysis(incompleteReason)
+          }
           validateLazyAssistedDependencies(binding, stack)
         }
         resolved

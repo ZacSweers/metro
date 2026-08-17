@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.psi.PsiFile
+import com.intellij.psi.SmartPointerManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
@@ -11,6 +13,7 @@ import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
@@ -663,6 +666,45 @@ internal fun KaSession.injectConstructorDependencyKeys(
     .orEmpty()
     .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
     .map { dependencyKey(it, options) }
+}
+
+/**
+ * Builds one assisted-factory binding without following its factory-typed dependencies. The factory
+ * constructs its target directly, so dependencies use the concrete requested type arguments rather
+ * than the target class's unspecialized default type.
+ */
+internal fun KaSession.assistedFactoryBinding(
+  classSymbol: KaNamedClassSymbol,
+  factoryType: KaClassType,
+  options: MetroOptions,
+  pointerManager: SmartPointerManager,
+  factoryKey: KaTypeKey = typeKey(factoryType, qualifierAnnotation(classSymbol, options)),
+  onDependencyType: ((KaType) -> Unit)? = null,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
+): KaBinding.AssistedFactory? {
+  val declaration = classSymbol.psi ?: return null
+  declaration.containingFile?.let { onDeclarationFile?.invoke(it) }
+  val factoryFunction = assistedFactoryFunction(factoryType)
+  val samFunction = factoryFunction?.symbol as? KaNamedFunctionSymbol
+  samFunction?.psi?.containingFile?.let { onDeclarationFile?.invoke(it) }
+  val targetType = factoryFunction?.returnType?.fullyExpandedType as? KaClassType
+  val targetSymbol = targetType?.symbol as? KaNamedClassSymbol
+  targetSymbol?.psi?.containingFile?.let { onDeclarationFile?.invoke(it) }
+  return KaBinding.AssistedFactory(
+    pointerManager.createSmartPsiElementPointer(declaration),
+    factoryKey,
+    scopeAnnotation(classSymbol, options),
+    targetSymbol?.classId?.shortClassName?.asString(),
+    targetType?.let { typeKey(it, qualifier = null) },
+    originClassId = classSymbol.classId,
+    targetConstructorDependencies =
+      targetType?.let { injectConstructorDependencyKeys(it, options, onDependencyType) }.orEmpty(),
+    targetMemberDependencies =
+      targetType?.let { memberInjectDependencyKeys(it, options, onDependencyType) }.orEmpty(),
+    memberInjectionOwnerIds = targetSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
+    factoryFunctionName = samFunction?.name?.asString(),
+    factoryFunctionIsSuspend = samFunction?.isSuspend == true,
+  )
 }
 
 /** Resolves constructor dependencies with the concrete arguments of an assisted factory target. */

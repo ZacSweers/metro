@@ -80,6 +80,21 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
   )
 }
 
+/** Rebuilds a concrete request inside its current, short-lived analysis session. */
+internal fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? {
+  val classId = snapshot.classId ?: return null
+  val typeArguments = ArrayList<KaClassType>(snapshot.typeArguments.size)
+  for (typeArgument in snapshot.typeArguments) {
+    val restoredArgument = restoreClassType(typeArgument) ?: return null
+    typeArguments += restoredArgument
+  }
+  return buildClassType(classId) {
+    isMarkedNullable = snapshot.renderedType.endsWith('?')
+    for (typeArgument in typeArguments) argument(typeArgument)
+  }
+    as? KaClassType
+}
+
 /** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
 internal fun KaSession.contextualTypeKey(
   type: KaType,

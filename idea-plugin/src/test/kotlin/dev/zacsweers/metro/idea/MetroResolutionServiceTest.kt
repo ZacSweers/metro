@@ -17,6 +17,7 @@ import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -1578,6 +1579,249 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testSourceFactoryChainsKeepOnlyLinearShardBindings() {
+    val factoryCount = 16
+    repeat(factoryCount) { number ->
+      val nextParameter =
+        if (number + 1 < factoryCount) ", val next: Chain${number + 1}.Factory" else ""
+      myFixture.addFileToProject(
+        "test/Chain$number.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class Chain$number(@Assisted val id: String$nextParameter) {
+          @AssistedFactory
+          fun interface Factory {
+            fun create(id: String): Chain$number
+          }
+        }
+        """
+          .trimIndent(),
+      )
+    }
+    val graphFile =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val factory: Chain0.Factory
+        }
+        """,
+        fileName = "FactoryChainGraph.kt",
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val index = project.service<MetroResolutionService>().index(graphFile)
+      val factories = index.bindings.filterIsInstance<KaBinding.AssistedFactory>()
+
+      assertEquals(factoryCount, factories.map { it.typeKey }.distinct().size)
+      // A shard can contain its own factory and its directly requested neighbor. It must not
+      // retain a second copy of the entire remaining chain.
+      assertTrue(
+        "Expected at most ${factoryCount * 2} factory bindings, got ${factories.size}",
+        factories.size <= factoryCount * 2,
+      )
+      val context = index.contextsFor(index.graphs.single()).single()
+      val queryContext = checkNotNull(index.queryContext(context))
+      assertEquals(
+        factoryCount,
+        index.bindingsInContext(queryContext).filterIsInstance<KaBinding.AssistedFactory>().size,
+      )
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
+  }
+
+  fun testNestedSourceFactoryEditsRefreshTheirBinaryDependencyOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val innerFile =
+        myFixture.addFileToProject(
+          "test/CacheInner.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.*
+          import libtest.LibRetargetedDependencyA
+          import libtest.LibRetargetedDependencyB
+
+          @AssistedInject
+          class CacheInner<T>(
+            @Assisted val input: T,
+            val dependency: LibRetargetedDependencyA,
+          ) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(input: T): CacheInner<T>
+            }
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      myFixture.addFileToProject(
+        "test/CacheOuter.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.*
+
+        @AssistedInject
+        class CacheOuter<T>(@Assisted val id: String, val inner: CacheInner.Factory<T>) {
+          @AssistedFactory
+          fun interface Factory<T> {
+            fun create(id: String): CacheOuter<T>
+          }
+        }
+        """
+          .trimIndent(),
+      )
+      val graphFile =
+        myFixture.configureMetroFile(
+          """
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val factory: CacheOuter.Factory<Int>
+          }
+          """,
+          fileName = "NestedFactoryCacheGraph.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(graphFile)
+      val innerKey = "test.CacheInner.Factory<kotlin.Int>"
+      val initialInner =
+        initial.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == innerKey
+        }
+      val initialDependency =
+        initial.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      assertEquals(
+        listOf("libtest.LibRetargetedDependencyA"),
+        initialInner.targetConstructorDependencies.map { it.typeKey.renderedType },
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(innerFile))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val unchanged = service.index(graphFile)
+      assertNotSame(initial, unchanged)
+      assertSame(
+        initialInner,
+        unchanged.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == innerKey
+        },
+      )
+      assertSame(
+        initialDependency,
+        unchanged.bindings.single {
+          it.typeKey.renderedType == "libtest.LibRetargetedDependencyA"
+        },
+      )
+
+      val oldDependency = "dependency: LibRetargetedDependencyA"
+      val dependencyOffset = document.text.indexOf(oldDependency)
+      assertTrue(dependencyOffset >= 0)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(
+          dependencyOffset,
+          dependencyOffset + oldDependency.length,
+          "dependency: LibRetargetedDependencyB",
+        )
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(graphFile)
+      val updatedInner =
+        updated.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == innerKey
+        }
+      assertNotSame(initialInner, updatedInner)
+      assertEquals(
+        listOf("libtest.LibRetargetedDependencyB"),
+        updatedInner.targetConstructorDependencies.map { it.typeKey.renderedType },
+      )
+      assertFalse(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertTrue(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
+    }
+  }
+
+  fun testBinaryToSourceFactoryCacheTracksDefaultedDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val factoryFile =
+        myFixture.addFileToProject(
+          "test/DefaultedFactory.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.*
+
+          class Missing
+
+          @AssistedInject
+          class DefaultedExample<T>(
+            @Assisted val input: T,
+            val dependency: Missing = Missing(),
+          ) {
+            @AssistedFactory
+            fun interface Factory<T> {
+              fun create(input: T): DefaultedExample<T>
+            }
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val graphFile =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibGenericAssistedExample
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: LibGenericAssistedExample.Factory<DefaultedExample.Factory<Int>>
+          }
+          """,
+          fileName = "BinaryToSourceFactoryGraph.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(graphFile)
+      val factoryKey = "test.DefaultedExample.Factory<kotlin.Int>"
+      val initialFactory =
+        initial.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == factoryKey
+        }
+      assertTrue(initialFactory.targetConstructorDependencies.single().hasDefault)
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(factoryFile))
+      val defaultValue = " = Missing()"
+      val defaultOffset = document.text.indexOf(defaultValue)
+      assertTrue(defaultOffset >= 0)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.deleteString(defaultOffset, defaultOffset + defaultValue.length)
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(graphFile)
+      val updatedFactory =
+        updated.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
+          it.typeKey.renderedType == factoryKey
+        }
+      assertNotSame(initialFactory, updatedFactory)
+      assertFalse(updatedFactory.targetConstructorDependencies.single().hasDefault)
+    }
+  }
+
   fun testRepeatedSourceGenericFactoryRequestsShareTheirLibraryUseSites() {
     module.withMetroLibFixtureLibrary {
       myFixture.addFileToProject(
@@ -1634,8 +1878,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         specializedFactories.size > 1,
       )
 
-      val useSites =
+      val useSites = allowAnalysisOnEdt {
         sourceAssistedFactoryUseSites(project, index.bindings, index.consumers, index.graphs)
+      }
       val sharedUseSites = checkNotNull(useSites[specializedFactories.first()])
       assertEquals(1, sharedUseSites.size)
       for (factory in specializedFactories) {
