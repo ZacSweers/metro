@@ -14,6 +14,7 @@ import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
+import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import kotlinx.coroutines.CancellationException
@@ -2309,6 +2310,146 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         updated.graphComposition(updatedQuery).accessors.map { it.key.renderedType },
       )
     }
+  }
+
+  fun testWrittenDefaultAccessorEditsRefreshBinaryOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRetargetedDependencyA
+          import libtest.LibRetargetedDependencyB
+
+          interface LibraryAccessors<T> {
+            val dependency: T
+          }
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph : LibraryAccessors<LibRetargetedDependencyB> {
+            val stable: LibRetargetedDependencyA
+            // inherited dependency
+          }
+          """,
+          fileName = "WrittenDefaultAccessorGraph.kt",
+        )
+      assertDefaultAccessorEditsRefreshBinaryOverlay(file, file)
+    }
+  }
+
+  fun testContributedDefaultAccessorEditsRefreshBinaryOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val accessors =
+        myFixture.addFileToProject(
+          "test/DefaultAccessors.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.AppScope
+          import dev.zacsweers.metro.ContributesTo
+          import libtest.LibRetargetedDependencyB
+
+          interface LibraryAccessors<T> {
+            val dependency: T
+          }
+
+          @ContributesTo(AppScope::class)
+          interface DefaultAccessors : LibraryAccessors<LibRetargetedDependencyB> {
+            // inherited dependency
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRetargetedDependencyA
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val stable: LibRetargetedDependencyA
+          }
+          """,
+          fileName = "ContributedDefaultAccessorGraph.kt",
+        )
+      assertDefaultAccessorEditsRefreshBinaryOverlay(file, accessors)
+    }
+  }
+
+  private fun assertDefaultAccessorEditsRefreshBinaryOverlay(
+    graphFile: KtFile,
+    implementationOwner: KtFile,
+  ) {
+    val service = project.service<MetroResolutionService>()
+    val document =
+      checkNotNull(PsiDocumentManager.getInstance(project).getDocument(implementationOwner))
+    val inheritedMember = "// inherited dependency"
+    val concreteMember =
+      "override val dependency: LibRetargetedDependencyB get() = error(\"fixture\")"
+    val stableType = "libtest.LibRetargetedDependencyA"
+    val inheritedType = "libtest.LibRetargetedDependencyB"
+
+    fun roots(index: BindingIndex): List<String> {
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      return index.accessorsFor(query).map { it.key.renderedType }.sorted()
+    }
+
+    fun replaceMember(before: String, after: String) {
+      val offset = document.text.indexOf(before)
+      check(offset >= 0)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(offset, offset + before.length, after)
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    fun addWhitespace() {
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    val initial = service.index(graphFile)
+    assertEquals(listOf(stableType, inheritedType), roots(initial))
+    val initialDependency = initial.bindings.single { it.typeKey.renderedType == inheritedType }
+    assertTrue(initial.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+    assertTrue(initial.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
+
+    addWhitespace()
+    val whitespaceOnly = service.index(graphFile)
+    assertEquals(listOf(stableType, inheritedType), roots(whitespaceOnly))
+    assertSame(
+      initialDependency,
+      whitespaceOnly.bindings.single { it.typeKey.renderedType == inheritedType },
+    )
+
+    // The abstract declaration and its type stay unchanged. Only its concrete override changes
+    // whether the graph requests the library type, so the override metadata must invalidate the
+    // shared source summary as well as the graph's accessor list.
+    replaceMember(inheritedMember, concreteMember)
+    val concrete = service.index(graphFile)
+    assertEquals(listOf(stableType), roots(concrete))
+    assertFalse(concrete.bindings.any { it.typeKey.renderedType == inheritedType })
+    // The fixture's AppScope-contributed service still requests this shared dependency chain.
+    assertTrue(concrete.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+    assertTrue(concrete.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
+    val concreteStable = concrete.bindings.single { it.typeKey.renderedType == stableType }
+
+    addWhitespace()
+    val concreteWhitespace = service.index(graphFile)
+    assertEquals(listOf(stableType), roots(concreteWhitespace))
+    assertSame(
+      concreteStable,
+      concreteWhitespace.bindings.single { it.typeKey.renderedType == stableType },
+    )
+
+    replaceMember(concreteMember, inheritedMember)
+    val restored = service.index(graphFile)
+    assertEquals(listOf(stableType, inheritedType), roots(restored))
+    assertTrue(restored.bindings.any { it.typeKey.renderedType == inheritedType })
+    assertTrue(restored.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+    assertTrue(restored.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
   }
 
   fun testLibraryGeneratedContributionAliasesPreserveAnvilRanks() {

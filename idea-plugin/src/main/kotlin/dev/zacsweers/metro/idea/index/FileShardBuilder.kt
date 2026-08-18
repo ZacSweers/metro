@@ -20,7 +20,10 @@ import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphCallableReference
+import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -413,6 +416,7 @@ internal class FileShardBuilder(
     val bindingTemplates: MutableList<GraphInterfaceBinding>? = null,
     /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
     val factoryContext: KaClassType? = null,
+    val defaultImplementations: MutableList<GraphDefaultImplementation> = mutableListOf(),
   )
 
   /** Extract once; the merged index assigns owners and selects survivors for each graph path. */
@@ -453,6 +457,7 @@ internal class FileShardBuilder(
       extensionCreations,
       extensionFactories,
       injectedMemberOwnerIds,
+      defaultImplementations = target.defaultImplementations,
     )
   }
 
@@ -517,6 +522,7 @@ internal class FileShardBuilder(
             if (member !is KtNamedFunction && member !is KtProperty) continue
             val symbol = member.symbol as? KaCallableSymbol ?: continue
             val view = callableBindingView(symbol)
+            recordGraphDefaultImplementation(view, member, memberTarget)
             indexGraphCallable(view, member, memberTarget)
           }
           else -> {}
@@ -573,6 +579,7 @@ internal class FileShardBuilder(
           supertypeKeys = supertypeKeys,
           supertypeDeclarations = supertypeDeclarations,
           extensionFactories = extensionFactories,
+          defaultImplementations = memberTarget.defaultImplementations,
         )
     }
   }
@@ -599,6 +606,7 @@ internal class FileShardBuilder(
       callable.psi?.containingFile?.let(cacheDependencies::add)
       recordAnnotationDependencies(callable, callable.psi)
       val psi = callable.psi as? KtElement ?: continue
+      recordGraphDefaultImplementation(view, psi, target)
       if (callable.hasAnyAnnotation(bindingCallableIds)) {
         if (target.bindingTemplates != null || isLibrary || hasSpecializedTypes(view)) {
           (callable.psi as? KtDeclaration)?.let { declaration ->
@@ -611,6 +619,57 @@ internal class FileShardBuilder(
       }
       indexGraphCallable(view, psi, target)
     }
+  }
+
+  /**
+   * Keep the real override relation even though a concrete member is not itself a graph request.
+   * The contributing interface may be excluded later, so its implementation cannot suppress the
+   * abstract declaration until the graph's path-specific contribution selection is known.
+   */
+  private fun KaSession.recordGraphDefaultImplementation(
+    view: CallableBindingView,
+    psi: KtElement,
+    target: GraphMemberTarget,
+  ) {
+    val callable = view.symbol
+    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
+    if (view.receiver != null || callable.modality == KaSymbolModality.ABSTRACT) return
+
+    val overriddenDeclarations = mutableListOf<GraphCallableReference>()
+    val seenDeclarations = HashSet<KtElement>()
+    for (overridden in callable.allOverriddenSymbols) {
+      val original = overridden.fakeOverrideOriginal
+      val declaration = original.psi as? KtElement ?: continue
+      if (!seenDeclarations.add(declaration)) continue
+      declaration.containingFile?.let(cacheDependencies::add)
+      recordAnnotationDependencies(original, declaration)
+      overriddenDeclarations += graphCallableReference(callableBindingView(original), declaration)
+    }
+    // Most concrete providers override nothing. They cannot satisfy another abstract declaration
+    // and need no extra surface metadata or composition work.
+    if (overriddenDeclarations.isEmpty()) return
+
+    target.defaultImplementations += GraphDefaultImplementation(
+      declaration = graphCallableReference(view, psi),
+      overriddenDeclarations = overriddenDeclarations,
+      isOptional = callable.isOptionalConsumer(options),
+    )
+  }
+
+  private fun KaSession.graphCallableReference(
+    view: CallableBindingView,
+    psi: KtElement,
+  ): GraphCallableReference {
+    val callable = view.symbol
+    val signature = GraphCallableSignature(
+      callableId = callable.callableId,
+      receiverType = view.receiver?.let { typeSnapshot(it.returnType) },
+      parameterTypes = view.valueParameters.map { typeSnapshot(it.returnType) },
+      returnType = typeSnapshot(view.returnType),
+      isProperty = callable is KaPropertySymbol,
+      isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
+    )
+    return GraphCallableReference(ptr(psi), signature)
   }
 
   /** The same callable classification is used for written and contributed graph supertypes. */

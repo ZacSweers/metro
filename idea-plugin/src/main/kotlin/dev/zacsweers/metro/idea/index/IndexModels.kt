@@ -8,6 +8,7 @@ import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
 import dev.zacsweers.metro.idea.model.GraphReference
@@ -124,6 +125,7 @@ internal class GraphInterfaceSurface(
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<GraphExtensionFactoryAccessor>,
   val injectedMemberOwnerIds: Set<ClassId>,
+  val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
 ) {
   fun forGraph(graph: KaGraphDeclaration): GraphInterfaceContribution {
     val graphBindings = bindings.map { binding ->
@@ -144,6 +146,7 @@ internal class GraphInterfaceSurface(
       bindings = graphBindings,
       consumers = consumers.map { it.withGraphOwner(graph.declarationId, contribution) },
       injectedMemberOwnerIds = injectedMemberOwnerIds,
+      defaultImplementations = defaultImplementations,
     )
   }
 }

@@ -279,6 +279,224 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(index.extensionsOf(checkNotNull(index.queryContext(excludedContext))).isEmpty())
   }
 
+  fun testSelectedContributedDefaultOverridesSuppressOnlyTheirAbstractDeclarations() {
+    val apiFile =
+      fixture.addFileToProject(
+        "library/defaults/api/Accessors.kt",
+        """
+        package defaults.api
+
+        import dev.zacsweers.metro.*
+
+        interface Value
+        class ConcreteValue : Value
+        @Inject class Needed
+
+        @ContributesTo(AppScope::class)
+        interface PublicAccessors {
+          val value: Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val implementationFile =
+      fixture.addFileToProject(
+        "bridge/defaults/impl/DefaultBindings.kt",
+        """
+        package defaults.impl
+
+        import dev.zacsweers.metro.*
+        import defaults.api.*
+
+        @ContributesTo(AppScope::class)
+        interface DefaultBindings : PublicAccessors {
+          val needed: Needed
+          override val value: ConcreteValue get() = ConcreteValue()
+        }
+
+        @ContributesTo(AppScope::class, replaces = [DefaultBindings::class])
+        interface RemoveDefaults
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/defaults/app/Graphs.kt",
+        """
+        package defaults.app
+
+        import dev.zacsweers.metro.*
+        import defaults.api.*
+        import defaults.impl.*
+
+        @DependencyGraph(AppScope::class, excludes = [RemoveDefaults::class])
+        interface AppGraph
+
+        @DependencyGraph(
+          AppScope::class,
+          excludes = [DefaultBindings::class, RemoveDefaults::class],
+        )
+        interface ExcludedGraph
+
+        @DependencyGraph(AppScope::class)
+        interface ReplacedGraph
+
+        @DependencyGraph(AppScope::class, excludes = [RemoveDefaults::class])
+        interface UnrelatedGraph {
+          val unrelated: Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    ModuleRootModificationUtil.addDependency(
+      appModule,
+      checkNotNull(ModuleUtilCore.findModuleForPsiElement(implementationFile)),
+    )
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    fun context(name: String) = index.contextsFor(index.graphs.single { it.name == name }).single()
+    fun accessors(name: String) =
+      index.accessorsFor(checkNotNull(index.queryContext(context(name))))
+
+    assertEquals(
+      listOf("needed"),
+      accessors("AppGraph").map { (it.pointer.element as? KtNamedDeclaration)?.name },
+    )
+    val completed = validation.validate(appFile, context("AppGraph")).requireCompleted()
+    assertTrue(completed.diagnostics.joinToString { it.render() }, completed.diagnostics.isEmpty())
+    assertTrue(completed.bindings.any { key, _ -> key.renderedType == "defaults.api.Needed" })
+    assertFalse(completed.bindings.any { key, _ -> key.renderedType == "defaults.api.Value" })
+
+    val abstractValue = apiFile.declarationsIncludingNested().property("value")
+    for (graphName in listOf("ExcludedGraph", "ReplacedGraph")) {
+      val accessor = accessors(graphName).single()
+      assertSame(abstractValue, accessor.pointer.element)
+      val result = validation.validate(appFile, context(graphName)).requireCompleted()
+      assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), result.diagnostics.map { it.id })
+    }
+
+    val unrelatedAccessors = accessors("UnrelatedGraph")
+    assertEquals(
+      setOf("needed", "unrelated"),
+      unrelatedAccessors.mapTo(mutableSetOf()) {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    val unrelated = validation.validate(appFile, context("UnrelatedGraph")).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), unrelated.diagnostics.map { it.id })
+    assertTrue(unrelated.diagnostics.single().render().contains("unrelated"))
+  }
+
+  fun testWrittenDefaultOverridesAndOptionalRootsRemainDistinct() {
+    fixture.addFileToProject(
+      "library/defaultroots/api/Accessors.kt",
+      """
+      package defaultroots.api
+
+      import dev.zacsweers.metro.*
+
+      interface Value
+      class ConcreteValue : Value
+      @Inject class Needed
+      abstract class OptionalScope private constructor()
+
+      interface WrittenBase<T> {
+        val writtenValue: T
+      }
+
+      @ContributesTo(OptionalScope::class)
+      interface OptionalAccessors {
+        val optionalValue: Value?
+      }
+      """
+        .trimIndent(),
+    )
+    val implementationFile =
+      fixture.addFileToProject(
+        "bridge/defaultroots/impl/OptionalDefaults.kt",
+        """
+        package defaultroots.impl
+
+        import dev.zacsweers.metro.*
+        import defaultroots.api.*
+
+        @ContributesTo(OptionalScope::class)
+        interface OptionalDefaults : OptionalAccessors {
+          @OptionalBinding
+          override val optionalValue: Value? get() = null
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/defaultroots/app/Graphs.kt",
+        """
+        package defaultroots.app
+
+        import dev.zacsweers.metro.*
+        import defaultroots.api.*
+
+        interface WrittenDefaults : WrittenBase<Value> {
+          val needed: Needed
+          override val writtenValue: ConcreteValue get() = ConcreteValue()
+        }
+
+        @DependencyGraph
+        interface WrittenGraph : WrittenDefaults
+
+        @DependencyGraph(OptionalScope::class)
+        interface OptionalGraph
+
+        @DependencyGraph(OptionalScope::class)
+        interface RequiredGraph {
+          val requiredValue: Value?
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    ModuleRootModificationUtil.addDependency(
+      appModule,
+      checkNotNull(ModuleUtilCore.findModuleForPsiElement(implementationFile)),
+    )
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    fun context(name: String) = index.contextsFor(index.graphs.single { it.name == name }).single()
+    fun accessors(name: String) =
+      index.accessorsFor(checkNotNull(index.queryContext(context(name))))
+
+    assertEquals(
+      listOf("needed"),
+      accessors("WrittenGraph").map { (it.pointer.element as? KtNamedDeclaration)?.name },
+    )
+    val written = validation.validate(appFile, context("WrittenGraph")).requireCompleted()
+    assertTrue(written.diagnostics.joinToString { it.render() }, written.diagnostics.isEmpty())
+
+    val optionalAccessor = accessors("OptionalGraph").single()
+    assertTrue(optionalAccessor.isOptional)
+    assertSame(
+      implementationFile.declarationsIncludingNested().property("optionalValue"),
+      optionalAccessor.pointer.element,
+    )
+    val optional = validation.validate(appFile, context("OptionalGraph")).requireCompleted()
+    assertTrue(optional.diagnostics.joinToString { it.render() }, optional.diagnostics.isEmpty())
+
+    val requiredAccessors = accessors("RequiredGraph")
+    assertEquals(2, requiredAccessors.size)
+    assertEquals(1, requiredAccessors.count { it.isOptional })
+    val required = validation.validate(appFile, context("RequiredGraph")).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), required.diagnostics.map { it.id })
+    assertTrue(required.diagnostics.single().render().contains("requiredValue"))
+  }
+
   fun testContributedChildInterfaceUsesItsParentPathAndModule() {
     val apiFile =
       fixture.addFileToProject(

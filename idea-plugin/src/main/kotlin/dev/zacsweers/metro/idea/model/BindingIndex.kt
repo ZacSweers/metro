@@ -537,6 +537,27 @@ internal class BindingIndex(
       val bindingIdentities = hashSetOf<Any>()
       val accessors = mutableListOf<ConsumerEntry>()
       val accessorIdentities = hashSetOf<Any>()
+      var implementedDeclarations: MutableSet<SourcePointerIdentity>? = null
+
+      fun addDefaultImplementations(implementations: List<GraphDefaultImplementation>) {
+        if (implementations.isEmpty()) return
+        val identities =
+          implementedDeclarations ?: HashSet<SourcePointerIdentity>().also {
+            implementedDeclarations = it
+          }
+        for (implementation in implementations) {
+          ProgressManager.checkCanceled()
+          val declaration = implementation.declaration.pointer
+          if (!isVisibleFrom(declaration, null, module, resolutionScope)) continue
+          // A fake override can still point at the concrete declaration itself. Its optional
+          // request, if any, is retained by isImplementedGraphRequest below.
+          pointerIdentity(declaration)?.let(identities::add)
+          for (overridden in implementation.overriddenDeclarations) {
+            pointerIdentity(overridden.pointer)?.let(identities::add)
+          }
+        }
+      }
+
       fun addAccessor(consumer: ConsumerEntry) {
         if (consumer.graphRequestKind == null) return
         val source = pointerIdentity(consumer.pointer)
@@ -556,6 +577,7 @@ internal class BindingIndex(
       for (consumer in accessorsByGraph[graph.declarationId].orEmpty()) {
         if (consumer.graphContribution == null) addAccessor(consumer)
       }
+      addDefaultImplementations(graph.defaultImplementations)
       for (candidate in graph.contributedInterfaces) {
         ProgressManager.checkCanceled()
         val reference = candidate.contribution.declarationId ?: continue
@@ -570,6 +592,7 @@ internal class BindingIndex(
         creations += candidate.extensionCreations
         factories += candidate.extensionFactories
         memberOwners += candidate.injectedMemberOwnerIds
+        addDefaultImplementations(candidate.defaultImplementations)
         for (binding in candidate.bindings) {
           if (hasWrittenBinding(binding, graph)) continue
           val source = pointerIdentity(binding.pointer)
@@ -585,6 +608,10 @@ internal class BindingIndex(
         }
         candidate.consumers.forEach(::addAccessor)
       }
+      val implementedRequests = implementedDeclarations.orEmpty()
+      if (implementedRequests.isNotEmpty()) {
+        accessors.removeAll { isImplementedGraphRequest(it, implementedRequests) }
+      }
       SelectedGraphComposition(
         GraphComposition(
           typeKeys,
@@ -597,6 +624,7 @@ internal class BindingIndex(
         ),
         contributionIds,
         selectedBindings,
+        implementedRequests,
       )
     }
   }
@@ -1013,7 +1041,12 @@ internal class BindingIndex(
     }
 
     val graphId = consumer.graphId
-    if (graphId != null) return graphId in context.graphIds
+    if (graphId != null) {
+      if (graphId !in context.graphIds) return false
+      if (consumer.graphRequestKind == null || consumer.isOptional) return true
+      val selected = selectedGraphComposition(queryContext, graphId) ?: return false
+      return !isImplementedGraphRequest(consumer, selected.implementedRequests)
+    }
 
     val memberOwnerClassId = consumer.memberOwnerClassId
     if (memberOwnerClassId != null) {
@@ -1175,6 +1208,17 @@ internal class BindingIndex(
     val ownerId = consumer.graphId ?: return false
     val selected = selectedGraphComposition(queryContext, ownerId) ?: return false
     return contribution in selected.contributionIds
+  }
+
+  /** Uses the same precomputed selection for graph roots and source/library dependency seeding. */
+  private fun isImplementedGraphRequest(
+    consumer: ConsumerEntry,
+    implementedRequests: Set<SourcePointerIdentity>,
+  ): Boolean {
+    if (consumer.graphRequestKind == null || consumer.isOptional) return false
+    if (implementedRequests.isEmpty()) return false
+    val source = pointerIdentity(consumer.pointer) ?: return false
+    return source in implementedRequests
   }
 
   private fun isGraphMemberContainer(
@@ -1403,6 +1447,7 @@ internal class BindingIndex(
     val composition: GraphComposition,
     val contributionIds: Set<GraphReference>,
     val bindings: Set<KaBinding>,
+    val implementedRequests: Set<SourcePointerIdentity>,
   )
 
   private data class GraphAccessorIdentity(

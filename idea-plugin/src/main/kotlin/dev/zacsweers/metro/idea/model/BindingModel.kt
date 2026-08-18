@@ -7,6 +7,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
@@ -140,6 +141,8 @@ internal class KaGraphDeclaration(
   val extensionFactories: List<GraphExtensionFactoryAccessor> = emptyList(),
   /** Scope-matched candidates; visibility and removal are selected for each concrete graph path. */
   val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
+  /** Concrete members from the written graph hierarchy that satisfy inherited abstract requests. */
+  val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
 ) {
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
   val selfReferences: Set<GraphReference> =
@@ -172,6 +175,7 @@ internal class KaGraphDeclaration(
       supertypeDeclarations = supertypeDeclarations,
       extensionFactories = extensionFactories,
       contributedInterfaces = interfaces,
+      defaultImplementations = defaultImplementations,
     )
   }
 }
@@ -219,6 +223,29 @@ internal data class GraphReference(
   val file: VirtualFile?,
 )
 
+/** Session-free callable shape used to invalidate source/library overlays after member edits. */
+internal data class GraphCallableSignature(
+  val callableId: CallableId?,
+  val receiverType: KaTypeSnapshot?,
+  val parameterTypes: List<KaTypeSnapshot>,
+  val returnType: KaTypeSnapshot,
+  val isProperty: Boolean,
+  val isSuspend: Boolean,
+)
+
+/** An exact callable declaration; override matching uses its pointer, not its name or return type. */
+internal class GraphCallableReference(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val signature: GraphCallableSignature,
+)
+
+/** A concrete graph member and the real declarations that it overrides. */
+internal class GraphDefaultImplementation(
+  val declaration: GraphCallableReference,
+  val overriddenDeclarations: List<GraphCallableReference>,
+  val isOptional: Boolean,
+)
+
 /** A real graph accessor whose result is an extension factory. */
 internal class GraphExtensionFactoryAccessor(
   val pointer: SmartPsiElementPointer<out KtElement>,
@@ -237,6 +264,7 @@ internal class GraphInterfaceContribution(
   val bindings: List<KaBinding>,
   val consumers: List<ConsumerEntry>,
   val injectedMemberOwnerIds: Set<ClassId>,
+  val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
 )
 
 /** The effective interface surface of one graph in a concrete parent path and root module. */

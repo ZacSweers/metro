@@ -52,7 +52,10 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphCallableReference
+import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -1430,6 +1433,7 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         graph.supertypeDeclarations,
         graph.extensionCreations,
         graph.extensionFactories.map(::extensionFactoryLibrarySignature),
+        graph.defaultImplementations.map(::defaultImplementationLibrarySignature),
         graph.injectedMemberOwnerIds,
         graph.daggerAnvilInteropEnabled,
         graph.pointer.element != null,
@@ -1497,6 +1501,26 @@ private fun extensionFactoryLibrarySignature(
   )
 }
 
+private fun callableLibrarySignature(
+  callable: GraphCallableReference
+): GraphCallableLibrarySignature {
+  return GraphCallableLibrarySignature(
+    callable.signature,
+    callable.pointer.virtualFile,
+    callable.pointer.element != null,
+  )
+}
+
+private fun defaultImplementationLibrarySignature(
+  implementation: GraphDefaultImplementation
+): GraphDefaultImplementationLibrarySignature {
+  return GraphDefaultImplementationLibrarySignature(
+    callableLibrarySignature(implementation.declaration),
+    implementation.overriddenDeclarations.map(::callableLibrarySignature),
+    implementation.isOptional,
+  )
+}
+
 private fun graphInterfaceLibrarySignature(
   surface: GraphInterfaceSurface
 ): GraphInterfaceLibrarySignature {
@@ -1534,6 +1558,7 @@ private fun graphInterfaceLibrarySignature(
     surface.consumers.map(::consumerLibrarySignature),
     surface.extensionCreations,
     surface.extensionFactories.map(::extensionFactoryLibrarySignature),
+    surface.defaultImplementations.map(::defaultImplementationLibrarySignature),
     surface.injectedMemberOwnerIds,
   )
 }
@@ -1608,6 +1633,7 @@ private data class GraphLibrarySignature(
   val supertypeDeclarations: Set<GraphReference>,
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
+  val defaultImplementations: List<GraphDefaultImplementationLibrarySignature>,
   val injectedMemberOwnerIds: Set<ClassId>,
   val daggerAnvilInteropEnabled: Boolean,
   val pointerIsValid: Boolean,
@@ -1649,6 +1675,18 @@ private data class ExtensionFactoryLibrarySignature(
   val pointerIsValid: Boolean,
 )
 
+private data class GraphCallableLibrarySignature(
+  val signature: GraphCallableSignature,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
+)
+
+private data class GraphDefaultImplementationLibrarySignature(
+  val declaration: GraphCallableLibrarySignature,
+  val overriddenDeclarations: List<GraphCallableLibrarySignature>,
+  val isOptional: Boolean,
+)
+
 private data class GraphInterfaceLibrarySignature(
   val contribution: ContributionLibrarySignature,
   val supertypeKeys: Set<KaTypeKey>,
@@ -1657,6 +1695,7 @@ private data class GraphInterfaceLibrarySignature(
   val consumers: List<ConsumerLibrarySignature>,
   val extensionCreations: Set<GraphReference>,
   val extensionFactories: List<ExtensionFactoryLibrarySignature>,
+  val defaultImplementations: List<GraphDefaultImplementationLibrarySignature>,
   val injectedMemberOwnerIds: Set<ClassId>,
 )
 
