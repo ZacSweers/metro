@@ -5,10 +5,12 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.annotationsIn
+import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
 import dev.zacsweers.metro.compiler.ir.usesContributionProviderPath
@@ -17,6 +19,7 @@ import dev.zacsweers.metro.compiler.scopeHintFunctionName
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.nestedClasses
@@ -41,7 +44,36 @@ internal class ContributionHintIrTransformer(
   fun visitFunction(declaration: IrSimpleFunction) {
     if (declaration.origin == Origins.ContributionHint) {
       declaration.apply { body = stubExpressionBody() }
+      writeContributionProviderContainer(declaration)
     }
+  }
+
+  private fun writeContributionProviderContainer(hint: IrSimpleFunction) {
+    if (!options.generateClassesInIr) return
+
+    val contributingClass = hint.regularParameters.single().type.classOrFail.owner
+    if (!contributingClass.usesContributionProviderPath(options, metroSymbols.classIds)) return
+
+    // FIR cannot name an IR-only container in the hint's parameter. Record the producer's exact
+    // ID on that hint instead. Only binding scopes get containers; a pure @ContributesTo scope does
+    // not, even when another annotation on this class uses contribution providers.
+    val scope =
+      contributingClass
+        .annotationsIn(metroSymbols.classIds.contributesBindingLikeAnnotationsWithContainers)
+        .mapNotNull { it.scopeOrNull() }
+        .distinct()
+        .singleOrNull { it.scopeHintFunctionName() == hint.name } ?: return
+    val containerClassId =
+      MetroContributions.containerObjectClassId(
+        contributingClass.classIdOrFail,
+        scope,
+        options.maxGeneratedClassNameLength,
+      )
+    metadataDeclarationRegistrarCompat.addCustomMetadataExtension(
+      hint,
+      PLUGIN_ID,
+      containerClassId.asString().encodeToByteArray(),
+    )
   }
 
   fun visitClass(declaration: IrClass) {
@@ -86,8 +118,13 @@ internal class ContributionHintIrTransformer(
   }
 
   private fun IrClass.contributionProviderContainer(scope: ClassId): IrClass? {
-    val holderClassId = MetroContributions.holderClassId(classIdOrFail)
-    val containerClassId = MetroContributions.containerObjectClassId(classIdOrFail, scope)
+    val containerClassId =
+      MetroContributions.containerObjectClassId(
+        classIdOrFail,
+        scope,
+        options.maxGeneratedClassNameLength,
+      )
+    val holderClassId = containerClassId.outerClassId ?: return null
     val holder =
       file.declarations.filterIsInstance<IrClass>().firstOrNull {
         it.classIdOrFail == holderClassId

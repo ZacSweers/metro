@@ -9,7 +9,7 @@ import androidx.collection.mutableScatterSetOf
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.compiler.api.fir.MetroContributions
+import dev.zacsweers.metro.compiler.PLUGIN_ID
 import dev.zacsweers.metro.compiler.api.ir.MetroIrContributionExtension
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classOrFail
 import org.jetbrains.kotlin.ir.types.classOrNull
@@ -315,15 +316,6 @@ internal class IrContributionData(
         trace("Look up external contributions for $scope") {
           val contributingClasses =
             findVisibleContributionClassesForScopeInHints(scope, callingDeclaration)
-          val contributionProviderSourceClassIds = buildSet {
-            contributingClasses.mapTo(this) { it.classIdOrFail }
-            addAll(
-              findNonFriendInternalContributionProviderSourceClassIds(
-                scope,
-                callingDeclaration,
-              )
-            )
-          }
           val finalSet = mutableScatterSetOf<IrClass>()
           // nativeContributions
           getScopedContributions(contributingClasses, scope, bindingContainersOnly = true).forEach {
@@ -342,16 +334,12 @@ internal class IrContributionData(
           }
           // Non-friend internal source hints remain excluded from normal contributions. Their
           // validated public contribution-provider containers can still be consumed downstream.
-          contributionProviderSourceClassIds.forEach { contributingClassId ->
+          val hintFunctions =
+            context(metroContext) { callingDeclaration.lookupFunctions(scopeHintFor(scope)) }
+          for (hintFunction in hintFunctions) {
             val container =
-              lookupContributionProviderContainer(
-                contributingClassId,
-                scope,
-                callingDeclaration,
-              ) ?: return@forEach
-            if (!container.isContributionProviderContainerFor(contributingClassId, scope)) {
-              return@forEach
-            }
+              lookupContributionProviderContainer(hintFunction.owner, scope, callingDeclaration)
+                ?: continue
             if (metroDeclarations.findBindingContainer(container) != null) {
               finalSet.add(container)
             }
@@ -369,35 +357,29 @@ internal class IrContributionData(
       .asSet()
   }
 
-  private fun findNonFriendInternalContributionProviderSourceClassIds(
-    scope: Scope,
-    callingDeclaration: IrDeclaration,
-  ): Set<ClassId> {
-    val functionsInPackage =
-      context(metroContext) { callingDeclaration.lookupFunctions(scopeHintFor(scope)) }
-    return functionsInPackage
-      .filter { hintFunctionSymbol ->
-        val hintFunction = hintFunctionSymbol.owner
-        hintFunction.visibility == DescriptorVisibilities.INTERNAL &&
-          !hintFunction.isVisibleAsInternalTo(callingDeclaration)
-      }
-      .mapToSet { hintFunctionSymbol ->
-        hintFunctionSymbol.owner.regularParameters.single().type.classOrFail.owner.classIdOrFail
-      }
-  }
-
   private fun lookupContributionProviderContainer(
-    contributingClassId: ClassId,
+    hint: IrSimpleFunction,
     scope: Scope,
     callingDeclaration: IrDeclaration,
   ): IrClass? {
-    val containerClassId = MetroContributions.containerObjectClassId(contributingClassId, scope)
-    return context(metroContext) { callingDeclaration.lookupClass(containerClassId)?.owner }
+    return context(metroContext) {
+      val bytes =
+        metroContext.metadataDeclarationRegistrarCompat.getCustomMetadataExtension(hint, PLUGIN_ID)
+          ?: return null
+      val contributingClass = hint.regularParameters.single().type.classOrFail.owner
+      trackClassLookup(callingDeclaration, contributingClass)
+      val containerClassId = ClassId.fromString(bytes.decodeToString())
+      val container = callingDeclaration.lookupClass(containerClassId)?.owner ?: return null
+      if (!container.isContributionProviderContainerFor(contributingClass.classIdOrFail, scope)) {
+        return null
+      }
+      container
+    }
   }
 
   /**
-   * Confirms that a class found at the deterministic container ID is the public
-   * contribution-provider container generated for [contributingClassId] in [scope].
+   * Confirms that a class found at the recorded container ID is the public contribution-provider
+   * container generated for [contributingClassId] in [scope].
    *
    * FIR hints use the source class when its container is generated in IR, so downstream lookup must
    * verify the container's visibility, scope, and `@Origin` data before accepting it.

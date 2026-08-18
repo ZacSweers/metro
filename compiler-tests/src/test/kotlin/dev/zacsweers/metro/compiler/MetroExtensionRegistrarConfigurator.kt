@@ -262,6 +262,9 @@ class MetroExtensionRegistrarConfigurator(
       if (MetroDirectives.ENABLE_SUSPEND_PROVIDERS in module.directives) {
         enableSuspendProviders = true
       }
+      module.directives[MetroDirectives.MAX_GENERATED_CLASS_NAME_LENGTH].lastOrNull()?.let {
+        maxGeneratedClassNameLength = it
+      }
     }
 
     if (!options.enabled) return
