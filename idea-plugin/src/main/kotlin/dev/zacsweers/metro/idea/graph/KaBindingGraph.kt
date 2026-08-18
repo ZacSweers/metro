@@ -42,7 +42,6 @@ import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
-import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -90,7 +89,7 @@ internal class KaBindingGraph(
   private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
-  private val graphConsumers = index.accessorsFor(graph)
+  private val graphConsumers = index.accessorsFor(queryContext)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
   private var suspendKeys: Set<KaTypeKey> = emptySet()
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
@@ -161,9 +160,8 @@ internal class KaBindingGraph(
   }
 
   fun seal(): KaGraphValidationResult.Completed {
-    val setupStack = KaBindingStack(graph)
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
-    val extensions = index.extensionsOf(graph)
+    val extensions = index.extensionsOf(queryContext)
     if (extensions.isNotEmpty()) {
       // Extension children depend on this graph's instance and reserve its key in the compiler's
       // parent seal. Keep it explicitly so the instance joins the sorted root set and the
@@ -178,9 +176,9 @@ internal class KaBindingGraph(
           )
       }
     }
-    for (extension in extensions) {
-      val binding = graphExtensionBinding(extension) ?: continue
-      realGraph.tryPut(binding, setupStack)
+    for (binding in bindingLookup.directExtensionBindings()) {
+      // Resolve the kept key through the normal lookup, where an explicit binding or an existing
+      // graph-supertype alias wins over synthesizing a child instance.
       keeps[binding.contextualTypeKey] =
         KaBindingStack.Entry(
           contextKey = binding.contextualTypeKey,
@@ -738,13 +736,6 @@ internal class KaBindingGraph(
     return MissingBindingHints(notes = notes, similarBindings = similar)
   }
 
-  private fun graphExtensionBinding(extension: KaGraphDeclaration): KaBinding.GraphExtension? {
-    val extensionKey = graphTypeKey(extension) ?: return null
-    val ownerKey = graphTypeKey(graph) ?: return null
-    return KaBinding.GraphExtension(extension.pointer, extensionKey, ownerKey)
-  }
-
-  private fun graphTypeKey(graph: KaGraphDeclaration): KaTypeKey? = graph.graphTypeKey()
 }
 
 /** A key an extension child delegates to its parent seal, anchored at the child declaration. */

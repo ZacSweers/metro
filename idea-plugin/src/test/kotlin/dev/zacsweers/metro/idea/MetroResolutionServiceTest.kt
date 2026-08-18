@@ -2006,6 +2006,87 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testContributedInterfaceAccessorEditsRefreshBinaryOverlay() {
+    module.withMetroLibFixtureLibrary {
+      val accessors =
+        myFixture.addFileToProject(
+          "test/LibraryAccessors.kt",
+          """
+          package test
+
+          import dev.zacsweers.metro.ContributesTo
+          import libtest.LibRetargetedDependencyA
+          import libtest.LibRetargetedDependencyB
+
+          object AccessorScope
+
+          @ContributesTo(AccessorScope::class)
+          interface LibraryAccessors {
+            val dependency: LibRetargetedDependencyA
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val file =
+        myFixture.configureMetroFile(
+          """
+          @DependencyGraph(AccessorScope::class)
+          interface AppGraph
+          """,
+          fileName = "ContributedAccessorGraph.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(file)
+      val initialGraph = initial.graphs.single { it.name == "AppGraph" }
+      val initialQuery =
+        checkNotNull(initial.queryContext(initial.contextsFor(initialGraph).single()))
+      assertEquals(
+        listOf("libtest.LibRetargetedDependencyA"),
+        initial.graphComposition(initialQuery).accessors.map { it.key.renderedType },
+      )
+      val initialDependency =
+        initial.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" })
+      assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(accessors))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val whitespaceOnly = service.index(file)
+      assertSame(
+        initialDependency,
+        whitespaceOnly.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
+      )
+
+      val oldType = "dependency: LibRetargetedDependencyA"
+      val typeOffset = document.text.indexOf(oldType)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(
+          typeOffset,
+          typeOffset + oldType.length,
+          "dependency: LibRetargetedDependencyB",
+        )
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(file)
+      assertNotSame(initial, updated)
+      assertFalse(updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" })
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" })
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
+      val updatedGraph = updated.graphs.single { it.name == "AppGraph" }
+      val updatedQuery =
+        checkNotNull(updated.queryContext(updated.contextsFor(updatedGraph).single()))
+      assertEquals(
+        listOf("libtest.LibRetargetedDependencyB"),
+        updated.graphComposition(updatedQuery).accessors.map { it.key.renderedType },
+      )
+    }
+  }
+
   fun testLibraryGeneratedContributionAliasesPreserveAnvilRanks() {
     project.setMetroOptions(
       "custom-contributes-binding" to "libtest/LibRankedBinding",
@@ -3076,12 +3157,19 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       index.contextsFor(index.graphEntryAt(declarations.klass("OtherParentGraph"))!!).single()
     assertEquals(1, otherParent.chain.size)
 
-    // Extension (and extension factory) accessors are creation points, not consumers
+    // Direct child-graph creation is not a consumer. A separate factory is a real accessor root.
     declarations
       .filterIsInstance<KtProperty>()
       .filter { it.name == "childGraph" }
       .forEach { assertNull(index.consumerEntryAt(it)) }
-    assertNull(index.consumerEntryAt(declarations.property("childFactory")))
+    val factoryAccessor = checkNotNull(index.consumerEntryAt(declarations.property("childFactory")))
+    assertEquals(
+      dev.zacsweers.metro.idea.model.ConsumerEntry.GraphRequestKind.ACCESSOR,
+      factoryAccessor.graphRequestKind,
+    )
+    assertEquals("test.ChildGraph.Factory", factoryAccessor.key.renderedType)
+    assertNull(factoryAccessor.key.qualifier)
+    assertEquals(parent.graph.declarationId, factoryAccessor.graphId)
 
     // The child aggregates only its own scope; parent-scope contributions are inherited
     val childQueryContexts = childContexts.map { index.queryContext(it)!! }

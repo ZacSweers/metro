@@ -3,16 +3,21 @@
 package dev.zacsweers.metro.idea.index
 
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
+import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtElement
 
 /** Key plus display metadata for a consuming site. */
 internal class ConsumedSite(
@@ -103,6 +108,46 @@ internal class FactoryInputEntry(
   }
 }
 
+/** A callable's existing extraction data, ready to receive a concrete graph owner after merging. */
+internal class GraphInterfaceBinding(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val data: BindingData,
+)
+
+/** One plain contributed interface and its reusable, session-free member surface. */
+internal class GraphInterfaceSurface(
+  val contribution: ContributionEntry,
+  val supertypeKeys: Set<KaTypeKey>,
+  val supertypeDeclarations: Set<GraphReference>,
+  val bindings: List<GraphInterfaceBinding>,
+  val consumers: List<ConsumerEntry>,
+  val extensionCreations: Set<GraphReference>,
+  val extensionFactories: List<GraphExtensionFactoryAccessor>,
+  val injectedMemberOwnerIds: Set<ClassId>,
+) {
+  fun forGraph(graph: KaGraphDeclaration): GraphInterfaceContribution {
+    val graphBindings = bindings.map { binding ->
+      binding.data.toKaBinding(
+        pointer = binding.pointer,
+        containerId = graph.classId,
+        ownerGraphId = graph.declarationId,
+        originClassId = contribution.classId,
+        contributionScopes = contribution.scopeKeys,
+      )
+    }
+    return GraphInterfaceContribution(
+      contribution = contribution,
+      supertypeKeys = supertypeKeys,
+      supertypeDeclarations = supertypeDeclarations,
+      extensionCreations = extensionCreations,
+      extensionFactories = extensionFactories,
+      bindings = graphBindings,
+      consumers = consumers.map { it.withGraphOwner(graph.declarationId, contribution) },
+      injectedMemberOwnerIds = injectedMemberOwnerIds,
+    )
+  }
+}
+
 /** The Metro declarations extracted from a single file, cached against that file's PSI. */
 internal class FileShard(
   val bindings: List<KaBinding>,
@@ -114,6 +159,7 @@ internal class FileShard(
   val factoryInputs: List<FactoryInputEntry>,
   /** Referenced declaration files whose changes require this shard to be rebuilt. */
   val dependencyFiles: Set<VirtualFile>,
+  val graphInterfaces: List<GraphInterfaceSurface> = emptyList(),
 ) {
   companion object {
     val EMPTY =

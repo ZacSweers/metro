@@ -334,18 +334,19 @@ internal sealed interface KaBinding :
       get() = "graph instance"
   }
 
-  /** A child graph created by an accessor on [ownerKey]. Seal-time node. */
+  /** A child graph or its separate factory created by an accessor on [ownerKey]. Seal-time node. */
   class GraphExtension(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
     typeKey: KaTypeKey,
     val ownerKey: KaTypeKey,
+    val isFactory: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
     override val dependencies: List<KaContextualTypeKey> = listOf(ownerKey.canonicalContextKey())
 
     override val label: String
-      get() = "graph extension"
+      get() = if (isFactory) "graph extension factory" else "graph extension"
   }
 
   /** A `@BindsOptionalOf` (Dagger interop) binding exposing `Optional<T>`. */

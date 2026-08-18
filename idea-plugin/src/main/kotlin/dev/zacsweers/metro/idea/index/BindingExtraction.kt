@@ -13,6 +13,7 @@ import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
@@ -89,6 +90,17 @@ internal fun nonAccessorCallableAnnotations(options: MetroOptions): Set<ClassId>
     addAll(options.providesAnnotations)
     addAll(options.multibindsAnnotations)
   }
+}
+
+/** Only ordinary contributed interfaces become generated graph supertypes. */
+internal fun KaNamedClassSymbol.contributionKind(options: MetroOptions): ContributionEntry.Kind {
+  if (hasAnyAnnotation(options.bindingContainerAnnotations)) {
+    return ContributionEntry.Kind.BINDING_CONTAINER
+  }
+  if (classKind == KaClassKind.INTERFACE && hasAnyAnnotation(options.contributesToAnnotations)) {
+    return ContributionEntry.Kind.GRAPH_INTERFACE
+  }
+  return ContributionEntry.Kind.OTHER
 }
 
 /**

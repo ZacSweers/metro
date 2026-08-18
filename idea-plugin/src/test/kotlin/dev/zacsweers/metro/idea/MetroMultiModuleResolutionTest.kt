@@ -92,6 +92,278 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     }
   }
 
+  fun testContributedInterfacesProvideInheritedRootsAcrossModules() {
+    val apiFile =
+      fixture.addFileToProject(
+        "library/repro/api/GraphApi.kt",
+        """
+        package repro.api
+
+        import dev.zacsweers.metro.*
+
+        interface BaseUserGraph
+        interface BaseLoginGraph
+        interface BaseAccountUserGraph
+
+        interface BaseAppGraph {
+          val baseUserGraph: BaseUserGraph
+          val baseLoginGraph: BaseLoginGraph?
+          val baseAccountUserGraph: BaseAccountUserGraph?
+        }
+
+        abstract class ViewModelScope private constructor()
+        abstract class LoginScope private constructor()
+        abstract class LoginViewModelScope private constructor()
+
+        interface ViewModelGraph {
+          val value: String
+
+          interface Factory {
+            fun create(value: String): ViewModelGraph
+          }
+        }
+
+        interface ViewModelGraphFactoryProvider {
+          val viewModelGraphFactory: ViewModelGraph.Factory
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface ApiOnlyGraph : BaseAppGraph, ViewModelGraphFactoryProvider
+        """
+          .trimIndent(),
+      ) as KtFile
+    val implementationFile =
+      fixture.addFileToProject(
+        "bridge/repro/impl/AppModule.kt",
+        """
+        package repro.impl
+
+        import dev.zacsweers.metro.*
+        import repro.api.*
+
+        @ContributesTo(AppScope::class)
+        interface AppModule {
+          @Provides
+          fun provideBaseUserGraph(): BaseUserGraph = object : BaseUserGraph {}
+
+          @Provides
+          fun provideBaseLoginGraph(user: BaseUserGraph): BaseLoginGraph? = null
+
+          @Provides
+          fun provideBaseAccountUserGraph(user: BaseUserGraph): BaseAccountUserGraph? = null
+        }
+
+        @GraphExtension(ViewModelScope::class)
+        interface AppViewModelGraph : ViewModelGraph {
+          @ContributesTo(AppScope::class)
+          @GraphExtension.Factory
+          interface Factory : ViewModelGraph.Factory {
+            override fun create(@Provides value: String): AppViewModelGraph
+          }
+        }
+
+        @GraphExtension(LoginViewModelScope::class)
+        interface LoginViewModelGraph : ViewModelGraph {
+          @ContributesTo(LoginScope::class)
+          @GraphExtension.Factory
+          interface Factory : ViewModelGraph.Factory {
+            override fun create(@Provides value: String): LoginViewModelGraph
+          }
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/repro/app/AppGraph.kt",
+        """
+        package repro.app
+
+        import dev.zacsweers.metro.*
+        import repro.api.BaseAppGraph
+        import repro.api.ViewModelGraphFactoryProvider
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph : BaseAppGraph, ViewModelGraphFactoryProvider
+
+        @DependencyGraph(
+          AppScope::class,
+          excludes = [repro.impl.AppModule::class, repro.impl.AppViewModelGraph.Factory::class],
+        )
+        interface ExcludedAppGraph : BaseAppGraph, ViewModelGraphFactoryProvider
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val implementationModule =
+      checkNotNull(ModuleUtilCore.findModuleForPsiElement(implementationFile))
+    ModuleRootModificationUtil.addDependency(appModule, implementationModule)
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    val graph =
+      checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
+    val context = index.contextsFor(graph).single()
+    val queryContext = checkNotNull(index.queryContext(context))
+    assertEquals(
+      KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null),
+      queryContext.graphModule,
+    )
+    assertEquals(appFile.virtualFile, graph.declarationId.file)
+
+    val expectedRoots =
+      setOf(
+        "repro.api.BaseUserGraph",
+        "repro.api.BaseLoginGraph?",
+        "repro.api.BaseAccountUserGraph?",
+        "repro.api.ViewModelGraph.Factory",
+      )
+    assertEquals(expectedRoots, index.accessorsFor(graph).mapTo(mutableSetOf()) { it.key.renderedType })
+    val result = validation.validate(appFile, context).requireCompleted()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val resolved = result.bindings.asMap().entries.associate { it.key.renderedType to it.value }
+    assertTrue(resolved.keys.toString(), resolved.keys.containsAll(expectedRoots))
+    val expectedProviders =
+      mapOf(
+        "repro.api.BaseUserGraph" to "provideBaseUserGraph",
+        "repro.api.BaseLoginGraph?" to "provideBaseLoginGraph",
+        "repro.api.BaseAccountUserGraph?" to "provideBaseAccountUserGraph",
+      )
+    for ((key, name) in expectedProviders) {
+      val binding = resolved.getValue(key)
+      assertTrue(binding.toString(), binding is KaBinding.Provided)
+      assertEquals(implementationFile.virtualFile, binding.pointer.virtualFile)
+      assertEquals(name, (binding.pointer.element as? KtNamedDeclaration)?.name)
+    }
+    assertEquals(listOf("AppViewModelGraph"), index.extensionsOf(queryContext).map { it.name })
+    val childContext = index.extensionContextsOf(context).single()
+    assertEquals("AppViewModelGraph", childContext.graph.name)
+    assertEquals(listOf(childContext.graph, graph), childContext.chain)
+    val childResult = validation.validate(implementationFile, childContext).requireCompleted()
+    assertTrue(
+      childResult.diagnostics.joinToString { it.render() },
+      childResult.diagnostics.isEmpty(),
+    )
+    assertTrue(
+      childResult.bindings.any { key, binding ->
+        key.renderedType == "kotlin.String" && binding is KaBinding.BoundInstance
+      }
+    )
+
+    // The API module cannot see the implementation module. Project-wide source discovery must
+    // not make either its providers or its contributed factory visible to this separate graph.
+    val apiGraph =
+      checkNotNull(index.graphEntryAt(apiFile.declarationsIncludingNested().klass("ApiOnlyGraph")))
+    val apiContext = index.contextsFor(apiGraph).single()
+    val apiResult = validation.validate(apiFile, apiContext).requireCompleted()
+    assertEquals(4, apiResult.diagnostics.size)
+    assertTrue(
+      apiResult.diagnostics.joinToString { it.render() },
+      apiResult.diagnostics.all { it.id == MetroDiagnosticId.MISSING_BINDING },
+    )
+    assertTrue(index.extensionsOf(checkNotNull(index.queryContext(apiContext))).isEmpty())
+
+    val excludedGraph =
+      checkNotNull(
+        index.graphEntryAt(appFile.declarationsIncludingNested().klass("ExcludedAppGraph"))
+      )
+    val excludedContext = index.contextsFor(excludedGraph).single()
+    val excludedResult = validation.validate(appFile, excludedContext).requireCompleted()
+    assertEquals(4, excludedResult.diagnostics.size)
+    assertTrue(
+      excludedResult.diagnostics.joinToString { it.render() },
+      excludedResult.diagnostics.all { it.id == MetroDiagnosticId.MISSING_BINDING },
+    )
+    assertTrue(index.extensionsOf(checkNotNull(index.queryContext(excludedContext))).isEmpty())
+  }
+
+  fun testContributedChildInterfaceUsesItsParentPathAndModule() {
+    val apiFile =
+      fixture.addFileToProject(
+        "library/pathrepro/GraphApi.kt",
+        """
+        package pathrepro
+
+        import dev.zacsweers.metro.*
+
+        interface ChildScope
+        interface Value
+
+        @GraphExtension(ChildScope::class)
+        interface SharedChild {
+          val value: Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val implementationFile =
+      fixture.addFileToProject(
+        "bridge/pathrepro/ChildBindings.kt",
+        """
+        package pathrepro
+
+        import dev.zacsweers.metro.*
+
+        @ContributesTo(ChildScope::class)
+        interface ChildBindings {
+          @Provides fun provideValue(): Value = object : Value {}
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/pathrepro/Parents.kt",
+        """
+        package pathrepro
+
+        import dev.zacsweers.metro.*
+
+        @DependencyGraph(AppScope::class)
+        interface AllowedParent {
+          val child: SharedChild
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [ChildBindings::class])
+        interface ExcludedParent {
+          val child: SharedChild
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    ModuleRootModificationUtil.addDependency(
+      appModule,
+      checkNotNull(ModuleUtilCore.findModuleForPsiElement(implementationFile)),
+    )
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val child =
+      checkNotNull(index.graphEntryAt(apiFile.declarationsIncludingNested().klass("SharedChild")))
+    val childContexts = index.contextsFor(child).associateBy { it.rootGraph.name }
+    assertEquals(setOf("AllowedParent", "ExcludedParent"), childContexts.keys)
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    val allowedContext = childContexts.getValue("AllowedParent")
+    assertEquals(
+      KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null),
+      checkNotNull(index.queryContext(allowedContext)).graphModule,
+    )
+    val allowed = validation.validate(apiFile, allowedContext).requireCompleted()
+    assertTrue(allowed.diagnostics.joinToString { it.render() }, allowed.diagnostics.isEmpty())
+    val valueBinding =
+      allowed.bindings.asMap().values.single { it.typeKey.renderedType == "pathrepro.Value" }
+    assertEquals(implementationFile.virtualFile, valueBinding.pointer.virtualFile)
+    assertEquals("provideValue", (valueBinding.pointer.element as? KtNamedDeclaration)?.name)
+
+    val excluded =
+      validation.validate(apiFile, childContexts.getValue("ExcludedParent")).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), excluded.diagnostics.map { it.id })
+  }
+
   fun testConsumerResolutionUsesEachGraphModuleAsTheUseSite() {
     val libraryFile =
       fixture.addFileToProject(

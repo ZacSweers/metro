@@ -21,6 +21,7 @@ import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -30,6 +31,7 @@ import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import java.util.Collections
 import java.util.IdentityHashMap
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -172,24 +174,32 @@ internal class LibraryIndexPostProcessor(
       val contributionAnchor = originPsi ?: ktClass
 
       val contributedClassId = originClassId ?: ktClass.getClassId()
+      val classReplaces =
+        classSymbol.annotations
+          .filter { it.classId in options.allContributesAnnotations }
+          .flatMapToSet { classListArgument(it, "replaces") }
+      val originSymbol =
+        if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
+        else classSymbol
+      val contributionReplaces =
+        originSymbol
+          ?.annotations
+          ?.filter { it.classId in options.allContributesAnnotations }
+          ?.flatMapToSet { classListArgument(it, "replaces") }
+          .orEmpty() + classReplaces
       contributions +=
         ContributionEntry(
           pointerManager.createSmartPsiElementPointer(contributionAnchor),
           setOf(scopeId),
           contributedClassId,
           hintAvailability,
+          kind = (originSymbol ?: classSymbol).contributionKind(options),
+          replaces = contributionReplaces,
         )
-      val classReplaces =
-        classSymbol.annotations
-          .filter { it.classId in options.allContributesAnnotations }
-          .flatMapToSet { classListArgument(it, "replaces") }
       val classBindings = ktClass.bindingData(this, options)
       val originBindings =
         if (originPsi != null && originPsi != ktClass) originPsi.bindingData(this, options)
         else emptyList()
-      val originSymbol =
-        if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
-        else classSymbol
       val fallbackContributionRank =
         originSymbol
           ?.annotations
@@ -577,7 +587,16 @@ internal fun sourceAssistedFactoryUseSites(
 
 /** Inherited callables resolve from their exact owning graph, not the upstream declaration file. */
 @OptIn(KaPlatformInterface::class)
-internal class ConsumerGraphContexts(private val graphs: List<KaGraphDeclaration>) {
+internal class ConsumerGraphContexts(private val index: BindingIndex) {
+  constructor(graphs: List<KaGraphDeclaration>) :
+    this(BindingIndex(emptyList(), emptyList(), graphs, emptyList()))
+
+  private val graphs = index.graphs
+  private val queryContextsByGraphId =
+    ConcurrentHashMap<GraphDeclarationId, List<GraphQueryContext>>()
+  private val graphsById: Map<GraphDeclarationId, KaGraphDeclaration> by lazy {
+    graphs.associateBy { it.declarationId }
+  }
   private val rootPointersByGraphId:
     Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>> by lazy {
     if (graphs.none { it.isExtension }) {
@@ -585,7 +604,6 @@ internal class ConsumerGraphContexts(private val graphs: List<KaGraphDeclaration
     } else {
       // Graph paths already encode exact same-FQN parent identities. Reuse that implementation
       // rather than maintaining a second ancestry walk for source/classpath resolution.
-      val index = BindingIndex(emptyList(), emptyList(), graphs, emptyList())
       buildMap {
         for (graph in graphs) {
           if (!graph.isExtension) continue
@@ -638,7 +656,27 @@ internal class ConsumerGraphContexts(private val graphs: List<KaGraphDeclaration
   /** Null is the allocation-free ordinary single-owner path used by [pointer]. */
   fun owningGraphPointers(consumer: ConsumerEntry): List<SmartPsiElementPointer<out KtElement>>? {
     val graphId = consumer.graphId
-    if (graphId != null) return rootPointersByGraphId[graphId]
+    if (graphId != null) {
+      val graph = graphsById[graphId] ?: return emptyList()
+      val contexts = queryContextsByGraphId.computeIfAbsent(graphId) {
+        index.contextsFor(graph).mapNotNull(index::queryContext)
+      }
+      if (contexts.size == 1) {
+        val context = contexts.single()
+        if (!index.isConsumerInContext(consumer, context)) return emptyList()
+        // Keep the normal one-graph owner path allocation-free after checking actual membership.
+        if (context.graphContext.rootGraph.declarationId == graphId) return null
+        return listOf(context.graphContext.rootGraph.pointer)
+      }
+      val owners = mutableListOf<SmartPsiElementPointer<out KtElement>>()
+      val modules = mutableSetOf<KaModule>()
+      for (context in contexts) {
+        ProgressManager.checkCanceled()
+        if (!index.isConsumerInContext(consumer, context)) continue
+        if (modules.add(context.graphModule)) owners += context.graphContext.rootGraph.pointer
+      }
+      return owners
+    }
     return includedContainerPointers(consumer)
   }
 }

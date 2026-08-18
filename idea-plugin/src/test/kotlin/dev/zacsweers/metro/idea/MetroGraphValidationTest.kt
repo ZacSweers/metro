@@ -1542,6 +1542,132 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.ChildThing" })
   }
 
+  fun testSeparateGraphExtensionFactoryIsInjectableInProvider() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+        interface ChildScope
+
+        class Consumer(val factory: ChildGraph.Factory)
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(): ChildGraph
+          }
+        }
+
+        interface FactoryAccessors {
+          val childFactory: ChildGraph.Factory
+        }
+
+        @DependencyGraph
+        interface AppGraph : FactoryAccessors {
+          val consumer: Consumer
+
+          @Provides
+          fun provideConsumer(factory: ChildGraph.Factory): Consumer = Consumer(factory)
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val consumer =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "test.Consumer" }
+    assertTrue(consumer is KaBinding.Provided)
+    assertTrue(consumer.dependencies.any { it.typeKey.renderedType == "test.ChildGraph.Factory" })
+
+    val factory =
+      result.bindings.asMap().values.single {
+        it.typeKey.renderedType == "test.ChildGraph.Factory"
+      }
+    assertTrue(factory is KaBinding.GraphExtension && factory.isFactory)
+    assertNull(factory.scope)
+    assertEquals(listOf("test.AppGraph"), factory.dependencies.map { it.typeKey.renderedType })
+  }
+
+  fun testContributedGraphExtensionFactoryAliasKeepsParentOwnershipAndExplicitPrecedence() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface ChildScope
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph : ManualBindings {
+          val int: Int
+
+          @ContributesTo(AppScope::class)
+          @GraphExtension.Factory
+          interface Factory {
+            fun createChild(): ChildGraph
+          }
+        }
+
+        interface ManualBindings : FactoryProvider
+
+        @ContributesTo(AppScope::class)
+        interface FactoryProvider {
+          val childFactory: ChildGraph.Factory
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Provides fun provideInt(): Int = 3
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface OverrideGraph {
+          @Provides fun provideInt(): Int = 4
+
+          @Provides
+          fun explicitFactory(): ChildGraph.Factory = error("unused")
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val parentContext = index.contextsFor(parent).single()
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val childContext =
+      index.contextsFor(child).single { it.chain.drop(1) == parentContext.chain }
+    val validationService = project.service<MetroGraphValidationService>()
+    val parentResult = validationService.validate(file, parentContext).requireCompleted()
+    val childResult = validationService.validate(file, childContext).requireCompleted()
+
+    for (result in listOf(parentResult, childResult)) {
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val factory =
+        result.bindings.asMap().values.single {
+          it.typeKey.renderedType == "test.ChildGraph.Factory"
+        }
+      assertTrue(factory is KaBinding.Alias)
+      assertEquals(listOf("test.AppGraph"), factory.dependencies.map { it.typeKey.renderedType })
+      assertTrue(
+        result.bindings.any { key, binding ->
+          key.renderedType == "test.AppGraph" && binding is KaBinding.GraphInstance
+        }
+      )
+    }
+
+    val overrideGraph = index.graphs.single { it.name == "OverrideGraph" }
+    val overrideResult =
+      validationService.validate(file, index.contextsFor(overrideGraph).single()).requireCompleted()
+    assertTrue(
+      overrideResult.diagnostics.joinToString { it.render() },
+      overrideResult.diagnostics.isEmpty(),
+    )
+    val explicitFactory =
+      overrideResult.bindings.asMap().values.single {
+        it.typeKey.renderedType == "test.ChildGraph.Factory"
+      }
+    assertTrue(explicitFactory is KaBinding.Provided)
+    assertSame(
+      file.declarationsIncludingNested().function("explicitFactory"),
+      explicitFactory.pointer.element,
+    )
+  }
+
   fun testParentScopedSetContributionIsOwnedByParent() {
     assertParentScopedContributionIsOwnedByParent(
       accessor = "val values: Set<String>",

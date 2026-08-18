@@ -21,6 +21,7 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -36,6 +37,7 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -75,6 +77,7 @@ internal class FileShardBuilder(
   private val assistedSites = mutableListOf<AssistedSite>()
   private val bindingContainerEntries = mutableListOf<BindingContainerEntry>()
   private val factoryInputs = mutableListOf<FactoryInputEntry>()
+  private val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
   private val pointerManager = SmartPointerManager.getInstance(project)
 
   private val processedBindingCallables = HashSet<KtDeclaration>()
@@ -156,6 +159,7 @@ internal class FileShardBuilder(
       bindingContainerEntries,
       factoryInputs,
       cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
+      graphInterfaces,
     )
   }
 
@@ -370,16 +374,86 @@ internal class FileShardBuilder(
     analyze(ktClass) {
       val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
       val scopeKeys = classSymbol.scopeKeys(options.allContributesAnnotations) ?: return@analyze
-      contributions +=
-        ContributionEntry(
-          pointerManager.createSmartPsiElementPointer(ktClass),
-          scopeKeys,
-          ktClass.getClassId(),
-        )
+      recordAnnotationDependencies(classSymbol, ktClass)
+      val kind = classSymbol.contributionKind(options)
+      val replaces = classSymbol.annotations
+        .filter { it.classId in options.allContributesAnnotations }
+        .flatMapToSet { classListArgument(it, "replaces") }
+      val factoryType = classSymbol.defaultType as? KaClassType
+      val childType =
+        if (classSymbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
+          factoryType?.let { graphExtensionFactoryTarget(it) }
+        } else {
+          null
+        }
+      val contribution = ContributionEntry(
+        pointerManager.createSmartPsiElementPointer(ktClass),
+        scopeKeys,
+        ktClass.getClassId(),
+        kind = kind,
+        replaces = replaces,
+        graphExtension = childType?.graphReference(),
+      )
+      contributions += contribution
+      if (kind == ContributionEntry.Kind.GRAPH_INTERFACE && factoryType != null) {
+        graphInterfaces += graphInterfaceSurface(contribution, factoryType)
+      }
     }
     // Binding-like contributions also originate bindings (and constructor consumers when
     // contributesAsInject treats them as injected).
     processInjectClass(ktClass)
+  }
+
+  private class GraphMemberTarget(
+    val graphId: GraphDeclarationId?,
+    val consumers: MutableList<ConsumerEntry>,
+    val extensionCreations: MutableSet<GraphReference>,
+    val extensionFactories: MutableList<GraphExtensionFactoryAccessor>,
+    val injectedMemberOwnerIds: MutableSet<ClassId>,
+    val bindingTemplates: MutableList<GraphInterfaceBinding>? = null,
+    /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
+    val factoryContext: KaClassType? = null,
+  )
+
+  /** Extract once; the merged index assigns owners and selects survivors for each graph path. */
+  private fun KaSession.graphInterfaceSurface(
+    contribution: ContributionEntry,
+    classType: KaClassType,
+  ): GraphInterfaceSurface {
+    val typeKeys = linkedSetOf<KaTypeKey>()
+    val declarations = linkedSetOf<GraphReference>()
+    val memberBindings = mutableListOf<GraphInterfaceBinding>()
+    val memberConsumers = mutableListOf<ConsumerEntry>()
+    val extensionCreations = linkedSetOf<GraphReference>()
+    val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
+    val injectedMemberOwnerIds = linkedSetOf<ClassId>()
+    val target = GraphMemberTarget(
+      null,
+      memberConsumers,
+      extensionCreations,
+      extensionFactories,
+      injectedMemberOwnerIds,
+      memberBindings,
+      factoryContext = classType,
+    )
+    for (type in sequenceOf(classType) + classType.allSupertypes) {
+      if (type.isAnyType) continue
+      val superType = type as? KaClassType ?: continue
+      if (!typeKeys.add(typeKey(superType, null))) continue
+      declarations += superType.graphReference()
+      superType.symbol.psi?.containingFile?.let(cacheDependencies::add)
+      indexSupertypeMembers(superType, target)
+    }
+    return GraphInterfaceSurface(
+      contribution,
+      typeKeys,
+      declarations,
+      memberBindings,
+      memberConsumers,
+      extensionCreations,
+      extensionFactories,
+      injectedMemberOwnerIds,
+    )
   }
 
   private fun processGraph(declaration: KtDeclaration) {
@@ -406,7 +480,16 @@ internal class FileShardBuilder(
       val includedBindingContainers = mutableSetOf<KaTypeKey>()
       val includedDependencies = mutableSetOf<KaTypeKey>()
       val extensionCreations = mutableSetOf<GraphReference>()
+      val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
       val injectedMemberOwnerIds = mutableSetOf<ClassId>()
+      val memberTarget = GraphMemberTarget(
+        graphId,
+        consumers,
+        extensionCreations,
+        extensionFactories,
+        injectedMemberOwnerIds,
+        factoryContext = classSymbol.defaultType as? KaClassType,
+      )
 
       for (member in ktClass.declarations) {
         when (member) {
@@ -431,56 +514,10 @@ internal class FileShardBuilder(
             }
           }
           is KtCallableDeclaration -> {
-            // Members with parameters are injector candidates, not accessors.
-            if (member is KtNamedFunction && member.valueParameters.isNotEmpty()) {
-              processGraphInjector(member, graphId, injectedMemberOwnerIds)
-              continue
-            }
             if (member !is KtNamedFunction && member !is KtProperty) continue
-            if (member.receiverTypeReference != null) continue
             val symbol = member.symbol as? KaCallableSymbol ?: continue
-            recordAnnotationDependencies(symbol, member)
-            // @OptionalBinding accessors carry a default body, so they're concrete but still
-            // consume.
-            val isOptionalAccessor = symbol.isOptionalConsumer(options)
-            if (symbol.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
-            // A graph's abstract @Multibinds member is both its collection declaration and the
-            // accessor exposing that collection. Other binding callables are not accessors.
-            val isMultibindingAccessor = symbol.hasAnyAnnotation(options.multibindsAnnotations)
-            if (
-              !isMultibindingAccessor &&
-                symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
-            ) {
-              continue
-            }
-            if (symbol.returnType.isUnitType) continue
-            // Accessors of a @GraphExtension (or its factory) are creation points of the child
-            // graph, not dependencies on a binding; they only anchor the extension's parent chain.
-            val returnClassType = symbol.returnType.fullyExpandedType as? KaClassType
-            val returnClassSymbol = returnClassType?.symbol
-            if (
-              returnClassSymbol != null &&
-                returnClassSymbol.hasAnyAnnotation(
-                  options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
-                )
-            ) {
-              extensionCreations += returnClassType.graphReference()
-              continue
-            }
-            val site = consumedSite(symbol, options)
-            processRequestedAssistedFactory(symbol.returnType)
-            consumers +=
-              ConsumerEntry(
-                ptr(member),
-                site.contextKey,
-                site.isAbstractType,
-                site.multibindingId,
-                site.typeClassId,
-                graphId = graphId,
-                graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
-                isSuspend = (symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
-                isOptional = isOptionalAccessor,
-              )
+            val view = callableBindingView(symbol)
+            indexGraphCallable(view, member, memberTarget)
           }
           else -> {}
         }
@@ -489,14 +526,24 @@ internal class FileShardBuilder(
       // Supertype members merge into the graph, mirroring the compiler. Their accessors become
       // this graph's consumers and their class ids gate their providers' membership.
       val supertypeIds = mutableSetOf<ClassId>()
-      for (superType in classSymbol.defaultType.allSupertypes) {
+      val supertypeKeys = linkedSetOf<KaTypeKey>()
+      val supertypeDeclarations = linkedSetOf<GraphReference>()
+      // FIR may already expose generated contribution supertypes. Only source-written parents
+      // belong to this unconditional surface; implicit contributions are selected after merging.
+      val writtenSupertypes = ktClass.superTypeListEntries.asSequence().flatMap { entry ->
+        val type = entry.typeReference?.type?.fullyExpandedType as? KaClassType
+        if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
+      }
+      for (superType in writtenSupertypes) {
         if (superType.isAnyType) continue
         val classType = superType as? KaClassType ?: continue
         val superClass = classType.symbol as? KaNamedClassSymbol ?: continue
         val superClassId = superClass.classId ?: continue
-        if (!supertypeIds.add(superClassId)) continue
+        if (!supertypeKeys.add(typeKey(classType, null))) continue
+        supertypeIds += superClassId
+        supertypeDeclarations += classType.graphReference()
         superClass.psi?.containingFile?.let(cacheDependencies::add)
-        indexSupertypeMembers(classType, graphId, extensionCreations, injectedMemberOwnerIds)
+        indexSupertypeMembers(classType, memberTarget)
       }
 
       // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
@@ -523,6 +570,9 @@ internal class FileShardBuilder(
           extensionCreations = extensionCreations,
           runtimeCoroutinesAvailable = findClass(MetroClassIds.suspendDoubleCheck) != null,
           scopingAnnotations = scopingAnnotations,
+          supertypeKeys = supertypeKeys,
+          supertypeDeclarations = supertypeDeclarations,
+          extensionFactories = extensionFactories,
         )
     }
   }
@@ -530,9 +580,7 @@ internal class FileShardBuilder(
   /** Indexes a graph supertype's accessors and injectors as members of the merging graph. */
   private fun KaSession.indexSupertypeMembers(
     superType: KaClassType,
-    graphId: GraphDeclarationId,
-    extensionCreations: MutableSet<GraphReference>,
-    injectedMemberOwnerIds: MutableSet<ClassId>,
+    target: GraphMemberTarget,
   ) {
     val superClass = superType.symbol as? KaNamedClassSymbol ?: return
     val scope = superType.scope ?: return
@@ -550,61 +598,132 @@ internal class FileShardBuilder(
       if (callable.callableId?.classId != superClass.classId) continue
       callable.psi?.containingFile?.let(cacheDependencies::add)
       recordAnnotationDependencies(callable, callable.psi)
+      val psi = callable.psi as? KtElement ?: continue
       if (callable.hasAnyAnnotation(bindingCallableIds)) {
-        if (isLibrary || hasSpecializedTypes(view)) {
+        if (target.bindingTemplates != null || isLibrary || hasSpecializedTypes(view)) {
           (callable.psi as? KtDeclaration)?.let { declaration ->
-            processInheritedBindingCallable(declaration, view, graphId)
+            processInheritedBindingCallable(declaration, view, target)
           }
         }
         if (!callable.hasAnyAnnotation(options.multibindsAnnotations)) {
           continue
         }
       }
-      if (callable is KaNamedFunctionSymbol && view.valueParameters.isNotEmpty()) {
-        (callable.psi as? KtNamedFunction)?.let {
-          processGraphInjector(it, graphId, injectedMemberOwnerIds, view)
-        }
-        continue
-      }
-      if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) continue
-      if (view.receiver != null) continue
-      val isOptionalAccessor = callable.isOptionalConsumer(options)
-      if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) continue
-      val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
-      if (
-        !isMultibindingAccessor &&
-          callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
-      ) {
-        continue
-      }
-      if (view.returnType.isUnitType) continue
-      val returnClassType = view.returnType.fullyExpandedType as? KaClassType
-      val returnClassSymbol = returnClassType?.symbol
-      if (
-        returnClassSymbol != null &&
-          returnClassSymbol.hasAnyAnnotation(
-            options.graphExtensionAnnotations + options.graphExtensionFactoryAnnotations
-          )
-      ) {
-        extensionCreations += returnClassType.graphReference()
-        continue
-      }
-      val psi = callable.psi as? KtElement ?: continue
-      val site = consumedSite(view.returnType, callable, options)
-      processRequestedAssistedFactory(view.returnType)
-      consumers +=
-        ConsumerEntry(
-          ptr(psi),
-          site.contextKey,
-          site.isAbstractType,
-          site.multibindingId,
-          site.typeClassId,
-          graphId = graphId,
-          graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
-          isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
-          isOptional = isOptionalAccessor,
-        )
+      indexGraphCallable(view, psi, target)
     }
+  }
+
+  /** The same callable classification is used for written and contributed graph supertypes. */
+  private fun KaSession.indexGraphCallable(
+    view: CallableBindingView,
+    psi: KtElement,
+    target: GraphMemberTarget,
+  ) {
+    val callable = view.symbol
+    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
+    if (view.receiver != null) return
+    recordAnnotationDependencies(callable, psi)
+    val isOptionalAccessor = callable.isOptionalConsumer(options)
+    if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
+    val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
+    if (!isMultibindingAccessor && callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) return
+
+    // A contributed factory's create(parameters) is a child creation, not a member injector.
+    val returnType = view.returnType.fullyExpandedType as? KaClassType
+    val returnClass = returnType?.symbol
+    if (returnType != null && returnClass != null) {
+      if (returnClass.hasAnyAnnotation(options.graphExtensionAnnotations)) {
+        returnClass.psi?.containingFile?.let(cacheDependencies::add)
+        val factoryOwner = graphExtensionFactoryOwner(view, target.factoryContext)
+        target.extensionCreations += factoryOwner ?: returnType.graphReference()
+        return
+      }
+      if (returnClass.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
+        val extensionType = graphExtensionFactoryTarget(returnType) ?: return
+        target.extensionCreations += returnType.graphReference()
+        target.extensionFactories += GraphExtensionFactoryAccessor(
+          ptr(psi),
+          typeKey(returnType, qualifierAnnotation(callable, options)),
+          typeKey(extensionType, null),
+          extensionType.graphReference(),
+        )
+        addGraphAccessor(view, psi, target, isOptionalAccessor)
+        return
+      }
+    }
+    if (callable is KaNamedFunctionSymbol && view.valueParameters.isNotEmpty()) {
+      (psi as? KtNamedFunction)?.let {
+        processGraphInjector(it, target.graphId, target.injectedMemberOwnerIds, view, target.consumers)
+      }
+      return
+    }
+    if (view.returnType.isUnitType) return
+    addGraphAccessor(view, psi, target, isOptionalAccessor)
+  }
+
+  private fun KaSession.addGraphAccessor(
+    view: CallableBindingView,
+    psi: KtElement,
+    target: GraphMemberTarget,
+    isOptional: Boolean,
+  ) {
+    val site = consumedSite(view.returnType, view.symbol, options)
+    processRequestedAssistedFactory(view.returnType)
+    target.consumers += ConsumerEntry(
+      ptr(psi),
+      site.contextKey,
+      site.isAbstractType,
+      site.multibindingId,
+      site.typeClassId,
+      graphId = target.graphId,
+      graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
+      isSuspend = (view.symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
+      isOptional = isOptional,
+    )
+  }
+
+  private fun KaSession.graphExtensionFactoryTarget(factoryType: KaClassType): KaClassType? {
+    factoryType.symbol.psi?.containingFile?.let(cacheDependencies::add)
+    val function = assistedFactoryFunction(factoryType) ?: return null
+    function.symbol.psi?.containingFile?.let(cacheDependencies::add)
+    val extensionType = function.returnType.fullyExpandedType as? KaClassType ?: return null
+    if (!extensionType.symbol.hasAnyAnnotation(options.graphExtensionAnnotations)) return null
+    extensionType.symbol.psi?.containingFile?.let(cacheDependencies::add)
+    return extensionType
+  }
+
+  /** Recognizes the factory SAM even when a graph declares its covariant override itself. */
+  private fun KaSession.graphExtensionFactoryOwner(
+    view: CallableBindingView,
+    factoryContext: KaClassType?,
+  ): GraphReference? {
+    val function = view.symbol as? KaNamedFunctionSymbol ?: return null
+    val roots = mutableListOf<KaClassType>()
+    if (factoryContext != null) roots += factoryContext
+    val ownerId = function.callableId?.classId
+    val owner = ownerId?.let { findClass(it) as? KaNamedClassSymbol }
+    val ownerType = owner?.defaultType as? KaClassType
+    if (ownerType != null) roots += ownerType
+    val seen = hashSetOf<KaTypeKey>()
+    for (root in roots) {
+      for (type in sequenceOf(root) + root.allSupertypes) {
+        val factoryType = type as? KaClassType ?: continue
+        if (!seen.add(typeKey(factoryType, null))) continue
+        if (!factoryType.symbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) continue
+        val sam = assistedFactoryFunction(factoryType) ?: continue
+        val samFunction = sam.symbol as? KaNamedFunctionSymbol ?: continue
+        if (samFunction.name != function.name) continue
+        if (sam.valueParameters.size != view.valueParameters.size) continue
+        val sameParameters = sam.valueParameters.indices.all { index ->
+          typeKey(sam.valueParameters[index].returnType, null) ==
+            typeKey(view.valueParameters[index].returnType, null)
+        }
+        if (!sameParameters) continue
+        factoryType.symbol.psi?.containingFile?.let(cacheDependencies::add)
+        return factoryType.graphReference()
+      }
+    }
+    return null
   }
 
   private fun KaClassType.graphReference(): GraphReference {
@@ -615,28 +734,36 @@ internal class FileShardBuilder(
   private fun KaSession.processInheritedBindingCallable(
     declaration: KtDeclaration,
     callable: CallableBindingView,
-    graphId: GraphDeclarationId,
+    target: GraphMemberTarget,
   ) {
     recordAnnotationDependencies(callable.symbol, declaration)
+    val graphId = target.graphId
     // The same generic base can be inherited with different arguments by unrelated graphs.
     // Owning each specialized declaration by the concrete graph prevents those bindings leaking
     // into another graph that merely shares the base class id.
     val containerId =
-      graphId.classId
+      graphId?.classId
         ?: (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
     var addedBinding = false
     for (data in callable.bindingData(this, options)) {
+      val templates = target.bindingTemplates
+      if (templates != null) {
+        templates += GraphInterfaceBinding(ptr(declaration), data)
+        addedBinding = true
+        continue
+      }
+      val ownerGraphId = checkNotNull(graphId)
       val identity =
         InheritedBindingIdentity(
           declaration,
-          graphId,
+          ownerGraphId,
           data.key,
           data.multibindingId,
           data.mapKeyValue,
         )
       if (!processedInheritedBindingCallables.add(identity)) continue
       bindings +=
-        data.toKaBinding(ptr(declaration), containerId = containerId, ownerGraphId = graphId)
+        data.toKaBinding(ptr(declaration), containerId = containerId, ownerGraphId = ownerGraphId)
       addedBinding = true
     }
     if (!addedBinding) return
@@ -648,6 +775,7 @@ internal class FileShardBuilder(
         parameter.returnType,
         containerId = containerId,
         graphId = graphId,
+        targetConsumers = target.consumers,
       )
     }
     val receiver = callable.receiver
@@ -659,6 +787,7 @@ internal class FileShardBuilder(
         receiver.returnType,
         containerId = containerId,
         graphId = graphId,
+        targetConsumers = target.consumers,
       )
     }
   }
@@ -697,9 +826,10 @@ internal class FileShardBuilder(
    */
   private fun KaSession.processGraphInjector(
     member: KtNamedFunction,
-    graphId: GraphDeclarationId,
+    graphId: GraphDeclarationId?,
     injectedMemberOwnerIds: MutableSet<ClassId>,
     callable: CallableBindingView? = null,
+    targetConsumers: MutableList<ConsumerEntry> = consumers,
   ) {
     if (member.valueParameters.size != 1) return
     val symbol = member.symbol as? KaNamedFunctionSymbol ?: return
@@ -722,7 +852,7 @@ internal class FileShardBuilder(
         processRequestedAssistedFactory(dependencyType)
       }) {
       val contextKey = site.key
-      consumers +=
+      targetConsumers +=
         ConsumerEntry(
           ptr(member),
           contextKey,
@@ -982,11 +1112,12 @@ internal class FileShardBuilder(
     containerId: ClassId? = null,
     memberOwnerClassId: ClassId? = null,
     graphId: GraphDeclarationId? = null,
+    targetConsumers: MutableList<ConsumerEntry> = consumers,
   ) {
     recordAnnotationDependencies(symbol, element)
     processRequestedAssistedFactory(type)
     val site = consumedSite(type, symbol, options)
-    consumers +=
+    targetConsumers +=
       ConsumerEntry(
         ptr(element),
         site.contextKey,

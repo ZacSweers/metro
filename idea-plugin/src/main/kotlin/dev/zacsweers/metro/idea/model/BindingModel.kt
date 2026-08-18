@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.model
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.graph.MergeContribution
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -47,9 +48,33 @@ internal class ConsumerEntry(
    * not an error.
    */
   val isOptional: Boolean = false,
+  /** Exact implicit interface contribution that must survive in the owning graph path. */
+  val graphContribution: GraphReference? = null,
 ) {
   val key: KaTypeKey
     get() = contextKey.typeKey
+
+  /** Reuses one extracted contributed member for an exact candidate graph owner. */
+  fun withGraphOwner(graphId: GraphDeclarationId, contribution: ContributionEntry): ConsumerEntry {
+    return ConsumerEntry(
+      pointer = pointer,
+      contextKey = contextKey,
+      isAbstractType = isAbstractType,
+      multibindingId = multibindingId,
+      typeClassId = typeClassId,
+      originClassId = originClassId ?: contribution.classId,
+      contributionScopes = contribution.scopeKeys,
+      containerId = graphId.classId ?: containerId,
+      includedContainerKey = includedContainerKey,
+      graphId = graphId,
+      memberOwnerClassId = memberOwnerClassId,
+      injectedMemberPointer = injectedMemberPointer,
+      graphRequestKind = graphRequestKind,
+      isSuspend = isSuspend,
+      isOptional = isOptional,
+      graphContribution = contribution.declarationId,
+    )
+  }
 
   enum class GraphRequestKind {
     ACCESSOR,
@@ -107,6 +132,14 @@ internal class KaGraphDeclaration(
    * only members of graphs whose declared scopes include theirs.
    */
   val scopingAnnotations: Set<KaAnnotationSnapshot> = emptySet(),
+  /** Full written supertype keys, preserving concrete generic arguments. */
+  val supertypeKeys: Set<KaTypeKey> = emptySet(),
+  /** Exact declarations backing [supertypeKeys]. Contributed interfaces are kept separately. */
+  val supertypeDeclarations: Set<GraphReference> = emptySet(),
+  /** Written accessors that return an extension factory rather than the child graph itself. */
+  val extensionFactories: List<GraphExtensionFactoryAccessor> = emptyList(),
+  /** Scope-matched candidates; visibility and removal are selected for each concrete graph path. */
+  val contributedInterfaces: List<GraphInterfaceContribution> = emptyList(),
 ) {
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
   val selfReferences: Set<GraphReference> =
@@ -114,6 +147,33 @@ internal class KaGraphDeclaration(
 
   val name: String?
     get() = classId?.shortClassName?.asString()
+
+  fun withContributedInterfaces(
+    interfaces: List<GraphInterfaceContribution>
+  ): KaGraphDeclaration {
+    if (interfaces.isEmpty()) return this
+    return KaGraphDeclaration(
+      pointer = pointer,
+      scopeKeys = scopeKeys,
+      classId = classId,
+      excludes = excludes,
+      bindingContainers = bindingContainers,
+      includedBindingContainers = includedBindingContainers,
+      includedDependencies = includedDependencies,
+      isExtension = isExtension,
+      selfIds = selfIds,
+      supertypeIds = supertypeIds,
+      injectedMemberOwnerIds = injectedMemberOwnerIds,
+      daggerAnvilInteropEnabled = daggerAnvilInteropEnabled,
+      extensionCreations = extensionCreations,
+      runtimeCoroutinesAvailable = runtimeCoroutinesAvailable,
+      scopingAnnotations = scopingAnnotations,
+      supertypeKeys = supertypeKeys,
+      supertypeDeclarations = supertypeDeclarations,
+      extensionFactories = extensionFactories,
+      contributedInterfaces = interfaces,
+    )
+  }
 }
 
 /** The graph's own type as a key, used for graph instance and parent dependency nodes. */
@@ -157,6 +217,37 @@ internal data class SourceAssistedFactoryIdentity(
 internal data class GraphReference(
   val classId: ClassId,
   val file: VirtualFile?,
+)
+
+/** A real graph accessor whose result is an extension factory. */
+internal class GraphExtensionFactoryAccessor(
+  val pointer: SmartPsiElementPointer<out KtElement>,
+  val factoryKey: KaTypeKey,
+  val extensionKey: KaTypeKey,
+  val extension: GraphReference,
+)
+
+/** One extracted interface surface, materialized for an exact candidate owning graph. */
+internal class GraphInterfaceContribution(
+  val contribution: ContributionEntry,
+  val supertypeKeys: Set<KaTypeKey>,
+  val supertypeDeclarations: Set<GraphReference>,
+  val extensionCreations: Set<GraphReference>,
+  val extensionFactories: List<GraphExtensionFactoryAccessor>,
+  val bindings: List<KaBinding>,
+  val consumers: List<ConsumerEntry>,
+  val injectedMemberOwnerIds: Set<ClassId>,
+)
+
+/** The effective interface surface of one graph in a concrete parent path and root module. */
+internal class GraphComposition(
+  val supertypeKeys: Set<KaTypeKey>,
+  val supertypeDeclarations: Set<GraphReference>,
+  val extensionCreations: Set<GraphReference>,
+  val extensionFactories: List<GraphExtensionFactoryAccessor>,
+  val contributions: List<ContributionEntry>,
+  val accessors: List<ConsumerEntry>,
+  val injectedMemberOwnerIds: Set<ClassId>,
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */
@@ -236,4 +327,20 @@ internal class ContributionEntry(
   val scopeKeys: Set<ClassId>,
   val classId: ClassId? = null,
   val hintAvailability: HintAvailability? = null,
-)
+  val kind: Kind = Kind.OTHER,
+  override val replaces: Set<ClassId> = emptySet(),
+  /** Excluding this child graph also excludes its contributed nested factory. */
+  val graphExtension: GraphReference? = null,
+) : MergeContribution {
+  override val mergeId: ClassId?
+    get() = classId
+
+  val declarationId: GraphReference?
+    get() = classId?.let { GraphReference(it, pointer.virtualFile) }
+
+  enum class Kind {
+    OTHER,
+    BINDING_CONTAINER,
+    GRAPH_INTERFACE,
+  }
+}

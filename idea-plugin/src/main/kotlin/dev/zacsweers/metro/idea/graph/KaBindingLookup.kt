@@ -6,9 +6,11 @@ import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphComposition
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -51,6 +53,12 @@ internal class KaBindingLookup(
    */
   private val syntheticElements = HashMap<KaTypeKey, KaBinding>()
 
+  /** Graph-supertype aliases and extension factories for this exact parent path. */
+  private var syntheticGraphBindings: Map<KaTypeKey, KaBinding>? = null
+
+  /** Direct child accessors kept by this graph's seal, excluding factory creators. */
+  private var directGraphExtensionBindings: List<KaBinding.GraphExtension>? = null
+
   /** Parent-scoped bindings remapped to graph dependency nodes, one per key. */
   private val parentDependencies = HashMap<KaTypeKey, KaBinding>()
 
@@ -64,6 +72,9 @@ internal class KaBindingLookup(
       buildSet {
         addAll(child.selfIds)
         addAll(child.supertypeIds)
+        for (supertype in index.graphComposition(queryContext).supertypeDeclarations) {
+          add(supertype.classId)
+        }
         addAll(index.graphOwnContainers(child, queryContext))
       }
     }
@@ -84,6 +95,8 @@ internal class KaBindingLookup(
   /** Releases lookup state once the graph is populated and validated. */
   fun clear() {
     syntheticElements.clear()
+    syntheticGraphBindings = null
+    directGraphExtensionBindings = null
     parentDependencies.clear()
     reservedForParent.clear()
     parentSuspendLookup?.clear()
@@ -147,6 +160,12 @@ internal class KaBindingLookup(
         onDuplicate(typeKey, explicit)
       }
       return setOf(delegateToParentIfScoped(explicit.first()))
+    }
+
+    // The compiler inserts graph-supertype aliases and extension factories only after explicit
+    // bindings. Keep them on the same tier here so an authored provider or @Binds can override one.
+    graphBindings()[typeKey]?.let {
+      return setOf(it)
     }
 
     val multibindingId = contextKey.multibindingId(options)
@@ -312,9 +331,98 @@ internal class KaBindingLookup(
 
   private fun graphInstance(typeKey: KaTypeKey): KaBinding.GraphInstance? {
     if (typeKey.qualifier != null) return null
-    val classId = typeKey.type.classId ?: return null
-    val graph = queryContext.graphContext.chain.firstOrNull { it.classId == classId } ?: return null
+    val graph =
+      queryContext.graphContext.chain.firstOrNull { it.graphTypeKey() == typeKey } ?: return null
     return KaBinding.GraphInstance(graph.pointer, typeKey)
+  }
+
+  /**
+   * Direct child creations are kept even when no ordinary accessor requests their keys. The exact
+   * child reference distinguishes them from accessors returning a factory and from factory SAMs.
+   */
+  fun directExtensionBindings(): List<KaBinding.GraphExtension> {
+    directGraphExtensionBindings?.let {
+      return it
+    }
+    val ownerKey = graph.graphTypeKey()
+    if (ownerKey == null) {
+      directGraphExtensionBindings = emptyList()
+      return emptyList()
+    }
+
+    val composition = index.graphComposition(queryContext)
+    val activeGraphIds = queryContext.graphContext.graphIds
+    val bindings = mutableListOf<KaBinding.GraphExtension>()
+    for (extension in index.extensionsOf(queryContext)) {
+      ProgressManager.checkCanceled()
+      if (extension.declarationId in activeGraphIds) continue
+      val classId = extension.classId ?: continue
+      val reference = GraphReference(classId, extension.pointer.virtualFile)
+      if (reference !in composition.extensionCreations) continue
+      val extensionKey = extension.graphTypeKey() ?: continue
+      bindings += KaBinding.GraphExtension(extension.pointer, extensionKey, ownerKey)
+    }
+    directGraphExtensionBindings = bindings
+    return bindings
+  }
+
+  private fun graphBindings(): Map<KaTypeKey, KaBinding> {
+    syntheticGraphBindings?.let {
+      return it
+    }
+
+    val chain = queryContext.graphContext.chain
+    val compositions = LinkedHashMap<KaGraphDeclaration, GraphComposition>(chain.size)
+    val bindings = LinkedHashMap<KaTypeKey, KaBinding>()
+    for (owner in chain) {
+      ProgressManager.checkCanceled()
+      val ownerKey = owner.graphTypeKey() ?: continue
+      val composition = index.graphComposition(queryContext, owner)
+      compositions[owner] = composition
+      val consumedKey = ownerKey.canonicalContextKey()
+      for (supertypeKey in composition.supertypeKeys) {
+        if (supertypeKey == ownerKey) continue
+        bindings.putIfAbsent(
+          supertypeKey,
+          KaBinding.Alias(
+            pointer = owner.pointer,
+            typeKey = supertypeKey,
+            consumedKey = consumedKey,
+            containerId = owner.classId,
+            ownerGraphId = owner.declarationId,
+          ),
+        )
+      }
+    }
+
+    // Resolve aliases for every ancestor before creating separate factories. In particular, a
+    // child's inherited factory accessor must still return a parent that implements that factory.
+    for ((owner, composition) in compositions) {
+      ProgressManager.checkCanceled()
+      val ownerKey = owner.graphTypeKey() ?: continue
+      val implementedClasses =
+        composition.supertypeKeys.mapNotNullTo(HashSet()) { it.type.classId }
+      for (accessor in composition.extensionFactories) {
+        val factoryClassId = accessor.factoryKey.type.classId
+        if (factoryClassId != null && factoryClassId in implementedClasses) continue
+        bindings.putIfAbsent(
+          accessor.factoryKey,
+          KaBinding.GraphExtension(
+            pointer = accessor.pointer,
+            typeKey = accessor.factoryKey,
+            ownerKey = ownerKey,
+            isFactory = true,
+          ),
+        )
+      }
+    }
+
+    for (binding in directExtensionBindings()) {
+      bindings.putIfAbsent(binding.typeKey, binding)
+    }
+
+    syntheticGraphBindings = bindings
+    return bindings
   }
 
   /**

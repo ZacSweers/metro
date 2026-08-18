@@ -53,6 +53,7 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -563,6 +564,7 @@ class MetroResolutionService(
     val contributions = mutableListOf<ContributionEntry>()
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
+    val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
     val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
     var factoryInputBindings: CanonicalFactoryInputBindings? = null
     for (virtualFile in snapshot.shardOrder) {
@@ -591,6 +593,7 @@ class MetroResolutionService(
       contributions += shard.contributions
       assistedSites += shard.assistedSites
       bindingContainers += shard.bindingContainers
+      graphInterfaces += shard.graphInterfaces
       for (input in shard.factoryInputs) factoryInputs.putIfAbsent(input.id, input)
     }
     factoryInputBindings?.finish()
@@ -603,6 +606,7 @@ class MetroResolutionService(
       }
       consumers += input.consumers
     }
+    attachGraphInterfaces(graphInterfaces, graphs, bindings, consumers)
     return SourceAggregate(
       bindings,
       consumers,
@@ -611,6 +615,39 @@ class MetroResolutionService(
       assistedSites,
       bindingContainers,
     )
+  }
+
+  /** Materialize each scope-matched candidate once; BindingIndex owns path-specific selection. */
+  private fun attachGraphInterfaces(
+    surfaces: List<GraphInterfaceSurface>,
+    graphs: MutableList<KaGraphDeclaration>,
+    bindings: MutableList<KaBinding>,
+    consumers: MutableList<ConsumerEntry>,
+  ) {
+    if (surfaces.isEmpty()) return
+    val surfacesByScope = linkedMapOf<ClassId, MutableList<GraphInterfaceSurface>>()
+    for (surface in surfaces) {
+      ProgressManager.checkCanceled()
+      for (scope in surface.contribution.scopeKeys) {
+        surfacesByScope.getOrPut(scope) { mutableListOf() } += surface
+      }
+    }
+    for (graphIndex in graphs.indices) {
+      ProgressManager.checkCanceled()
+      val graph = graphs[graphIndex]
+      val candidates = linkedSetOf<GraphInterfaceSurface>()
+      for (scope in graph.scopeKeys) candidates += surfacesByScope[scope].orEmpty()
+      if (candidates.isEmpty()) continue
+      val interfaces = candidates.map { surface ->
+        ProgressManager.checkCanceled()
+        surface.forGraph(graph)
+      }
+      graphs[graphIndex] = graph.withContributedInterfaces(interfaces)
+      for (contribution in interfaces) {
+        bindings += contribution.bindings
+        consumers += contribution.consumers
+      }
+    }
   }
 
   private fun libraryShardFor(
@@ -1382,20 +1419,23 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
       GraphLibrarySignature(
         graph.declarationId,
         graph.scopeKeys,
+        graph.scopingAnnotations,
+        graph.excludes,
+        graph.bindingContainers,
         graph.includedBindingContainers,
+        graph.includedDependencies,
         graph.isExtension,
         graph.selfReferences,
+        graph.supertypeKeys,
+        graph.supertypeDeclarations,
         graph.extensionCreations,
+        graph.extensionFactories.map(::extensionFactoryLibrarySignature),
+        graph.injectedMemberOwnerIds,
+        graph.daggerAnvilInteropEnabled,
         graph.pointer.element != null,
       )
     },
-    contributions.map { contribution ->
-      ContributionLibrarySignature(
-        contribution.scopeKeys,
-        contribution.pointer.virtualFile,
-        contribution.pointer.element != null,
-      )
-    },
+    contributions.map(::contributionLibrarySignature),
     consumers.map(::consumerLibrarySignature),
     bindings.mapNotNull { it.writtenFactoryBudgetKey() },
     bindings.mapNotNull(::bindingLibrarySignature),
@@ -1407,19 +1447,94 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         input.bindings.mapNotNull(::bindingLibrarySignature),
       )
     },
+    graphInterfaces.map(::graphInterfaceLibrarySignature),
+  )
+}
+
+private fun contributionLibrarySignature(
+  contribution: ContributionEntry
+): ContributionLibrarySignature {
+  return ContributionLibrarySignature(
+    contribution.scopeKeys,
+    contribution.classId,
+    contribution.kind,
+    contribution.replaces,
+    contribution.graphExtension,
+    contribution.pointer.virtualFile,
+    contribution.pointer.element != null,
   )
 }
 
 private fun consumerLibrarySignature(consumer: ConsumerEntry): ConsumerLibrarySignature {
   return ConsumerLibrarySignature(
-    consumer.contextKey,
+    contextKeyLibrarySignature(consumer.contextKey),
     consumer.typeClassId,
     consumer.multibindingId,
     consumer.graphId,
     consumer.includedContainerKey,
     consumer.pointer.virtualFile,
     consumer.pointer.element != null,
+    consumer.originClassId,
+    consumer.containerId,
     consumer.contributionScopes,
+    consumer.graphContribution,
+    consumer.memberOwnerClassId,
+    consumer.graphRequestKind,
+    consumer.isSuspend,
+    consumer.isOptional,
+  )
+}
+
+private fun extensionFactoryLibrarySignature(
+  factory: GraphExtensionFactoryAccessor
+): ExtensionFactoryLibrarySignature {
+  return ExtensionFactoryLibrarySignature(
+    factory.factoryKey,
+    factory.extensionKey,
+    factory.extension,
+    factory.pointer.virtualFile,
+    factory.pointer.element != null,
+  )
+}
+
+private fun graphInterfaceLibrarySignature(
+  surface: GraphInterfaceSurface
+): GraphInterfaceLibrarySignature {
+  return GraphInterfaceLibrarySignature(
+    contributionLibrarySignature(surface.contribution),
+    surface.supertypeKeys,
+    surface.supertypeDeclarations,
+    surface.bindings.map { binding ->
+      val data = binding.data
+      GraphInterfaceBindingLibrarySignature(
+        data.key,
+        data.kind,
+        data.scope,
+        data.implementationName,
+        data.consumedKey?.let(::contextKeyLibrarySignature),
+        data.multibindingId,
+        data.originClassId,
+        data.replaces,
+        data.contributionScopes,
+        data.contributionRank,
+        data.dependencies.map(::contextKeyLibrarySignature),
+        data.constructorDependencies.map(::contextKeyLibrarySignature),
+        data.memberDependencies.map(::contextKeyLibrarySignature),
+        data.memberInjectionOwnerIds,
+        data.isSuspend,
+        data.isAssisted,
+        data.mapKeyValue,
+        data.isClassContribution,
+        data.allowEmpty,
+        data.isGraphPrivate,
+        binding.pointer.virtualFile,
+        binding.pointer.element != null,
+      )
+    },
+    surface.consumers.map(::consumerLibrarySignature),
+    surface.extensionCreations,
+    surface.extensionFactories.map(::extensionFactoryLibrarySignature),
+    surface.injectedMemberOwnerIds,
   )
 }
 
@@ -1460,9 +1575,8 @@ private fun assistedFactoryDefinitionSignature(
     binding.pointer.virtualFile,
     binding.scope,
     binding.targetTypeKey,
-    (binding.targetConstructorDependencies + binding.targetMemberDependencies).map {
-      FactoryDependencySignature(it, it.hasDefault, it.rawType)
-    },
+    (binding.targetConstructorDependencies + binding.targetMemberDependencies)
+      .map(::contextKeyLibrarySignature),
     binding.targetConstructorDependencies.size,
     binding.memberInjectionOwnerIds,
     binding.factoryFunctionName,
@@ -1477,33 +1591,98 @@ private data class SourceLibraryShardSignature(
   val writtenBindingKeys: List<KaTypeKey>,
   val bindings: List<BindingLibrarySignature>,
   val factoryInputs: List<FactoryInputLibrarySignature>,
+  val graphInterfaces: List<GraphInterfaceLibrarySignature>,
 )
 
 private data class GraphLibrarySignature(
   val declarationId: GraphDeclarationId,
   val scopes: Set<ClassId>,
+  val scopingAnnotations: Set<KaAnnotationSnapshot>,
+  val excludes: Set<ClassId>,
+  val bindingContainers: Set<ClassId>,
   val includedContainers: Set<KaTypeKey>,
+  val includedDependencies: Set<KaTypeKey>,
   val isExtension: Boolean,
   val selfReferences: Set<GraphReference>,
+  val supertypeKeys: Set<KaTypeKey>,
+  val supertypeDeclarations: Set<GraphReference>,
   val extensionCreations: Set<GraphReference>,
+  val extensionFactories: List<ExtensionFactoryLibrarySignature>,
+  val injectedMemberOwnerIds: Set<ClassId>,
+  val daggerAnvilInteropEnabled: Boolean,
   val pointerIsValid: Boolean,
 )
 
 private data class ContributionLibrarySignature(
   val scopes: Set<ClassId>,
+  val classId: ClassId?,
+  val kind: ContributionEntry.Kind,
+  val replaces: Set<ClassId>,
+  val graphExtension: GraphReference?,
   val file: VirtualFile?,
   val pointerIsValid: Boolean,
 )
 
 private data class ConsumerLibrarySignature(
-  val key: KaContextualTypeKey,
+  val key: ContextKeyLibrarySignature,
   val classId: ClassId?,
   val multibindingId: String?,
   val graphId: GraphDeclarationId?,
   val includedContainerKey: KaTypeKey?,
   val file: VirtualFile?,
   val pointerIsValid: Boolean,
+  val originClassId: ClassId?,
+  val containerId: ClassId?,
   val contributionScopes: Set<ClassId>,
+  val graphContribution: GraphReference?,
+  val memberOwnerClassId: ClassId?,
+  val graphRequestKind: ConsumerEntry.GraphRequestKind?,
+  val isSuspend: Boolean,
+  val isOptional: Boolean,
+)
+
+private data class ExtensionFactoryLibrarySignature(
+  val factoryKey: KaTypeKey,
+  val extensionKey: KaTypeKey,
+  val extension: GraphReference,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
+)
+
+private data class GraphInterfaceLibrarySignature(
+  val contribution: ContributionLibrarySignature,
+  val supertypeKeys: Set<KaTypeKey>,
+  val supertypeDeclarations: Set<GraphReference>,
+  val bindings: List<GraphInterfaceBindingLibrarySignature>,
+  val consumers: List<ConsumerLibrarySignature>,
+  val extensionCreations: Set<GraphReference>,
+  val extensionFactories: List<ExtensionFactoryLibrarySignature>,
+  val injectedMemberOwnerIds: Set<ClassId>,
+)
+
+private data class GraphInterfaceBindingLibrarySignature(
+  val key: KaTypeKey,
+  val kind: BindingData.Kind,
+  val scope: KaAnnotationSnapshot?,
+  val implementationName: String?,
+  val consumedKey: ContextKeyLibrarySignature?,
+  val multibindingId: String?,
+  val originClassId: ClassId?,
+  val replaces: Set<ClassId>,
+  val contributionScopes: Set<ClassId>,
+  val contributionRank: Long,
+  val dependencies: List<ContextKeyLibrarySignature>,
+  val constructorDependencies: List<ContextKeyLibrarySignature>,
+  val memberDependencies: List<ContextKeyLibrarySignature>,
+  val memberOwnerIds: Set<ClassId>,
+  val isSuspend: Boolean,
+  val isAssisted: Boolean,
+  val mapKeyValue: String?,
+  val isClassContribution: Boolean,
+  val allowEmpty: Boolean,
+  val isGraphPrivate: Boolean,
+  val file: VirtualFile?,
+  val pointerIsValid: Boolean,
 )
 
 private data class BindingLibrarySignature(
@@ -1522,7 +1701,10 @@ private data class BindingLibrarySignature(
   val factoryDefinition: AssistedFactoryDefinitionSignature?,
 )
 
-private data class FactoryDependencySignature(
+private fun contextKeyLibrarySignature(key: KaContextualTypeKey): ContextKeyLibrarySignature =
+  ContextKeyLibrarySignature(key, key.hasDefault, key.rawType)
+
+private data class ContextKeyLibrarySignature(
   val key: KaContextualTypeKey,
   val hasDefault: Boolean,
   val rawType: KaTypeSnapshot?,
@@ -1534,7 +1716,7 @@ private data class AssistedFactoryDefinitionSignature(
   val file: VirtualFile?,
   val scope: KaAnnotationSnapshot?,
   val targetKey: KaTypeKey?,
-  val dependencies: List<FactoryDependencySignature>,
+  val dependencies: List<ContextKeyLibrarySignature>,
   val constructorDependencyCount: Int,
   val memberOwnerIds: Set<ClassId>,
   val functionName: String?,
@@ -1603,7 +1785,16 @@ private class SourceLibrarySummaryReference {
       summary?.let {
         return it
       }
-      val consumerGraphContexts = ConsumerGraphContexts(source.graphs)
+      val sourceIndex =
+        BindingIndex(
+          source.bindings,
+          source.consumers,
+          source.graphs,
+          source.contributions,
+          source.assistedSites,
+          source.bindingContainers,
+        )
+      val consumerGraphContexts = ConsumerGraphContexts(sourceIndex)
       val sourceFactories =
         SourceAssistedFactoryPostProcessor(
             project,
