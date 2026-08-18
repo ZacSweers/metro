@@ -132,6 +132,15 @@ public class MetroCompilerPluginRegistrar : CompilerPluginRegistrar() {
       return
     }
 
+    if (options.maxGeneratedClassNameLength < MIN_GENERATED_CLASS_NAME_LENGTH) {
+      messageCollector.report(
+        CompilerMessageSeverity.ERROR,
+        "max-generated-class-name-length must be at least $MIN_GENERATED_CLASS_NAME_LENGTH but was " +
+          options.maxGeneratedClassNameLength,
+      )
+      return
+    }
+
     // When the parallel pool isn't engaged, drop memoize() down to LazyThreadSafetyMode.NONE
     memoizeThreadSafetyMode =
       if (options.parallelThreads > 0) {
