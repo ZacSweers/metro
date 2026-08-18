@@ -35,6 +35,13 @@ public const val DEFAULT_STATEMENTS_PER_INIT_FUN: Int = 25
 // https://github.com/google/dagger/blob/master/dagger-compiler/main/java/dagger/internal/codegen/compileroption/CompilerOptions.java#L142
 public const val DEFAULT_KEYS_PER_GRAPH_SHARD: Int = 2000
 
+// Preserve the existing filename budget: 255 bytes minus 14 for ".kapt_metadata" (the longest
+// extension) and 8 for "Provider" (the longest suffix that Dagger might add).
+public const val DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH: Int = 233
+
+// Leave room for the stable hash and the fixed suffixes of nested generated classes.
+public const val MIN_GENERATED_CLASS_NAME_LENGTH: Int = 96
+
 private fun FqName.classId(simpleName: String): ClassId {
   return ClassId(this, Name.identifier(simpleName))
 }
@@ -1060,6 +1067,20 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       allowMultipleOccurrences = false,
       valueMapper = { it },
     )
+  ),
+  MAX_GENERATED_CLASS_NAME_LENGTH(
+    RawMetroOption(
+      name = "max-generated-class-name-length",
+      defaultValue = DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH,
+      valueDescription = "<bytes>",
+      description =
+        "Maximum UTF-8 byte length of JVM binary class basenames for contribution-provider " +
+          "holders and containers, and generated @Provides factories and their companions. Default is " +
+          "$DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH. Must be >= $MIN_GENERATED_CLASS_NAME_LENGTH.",
+      required = false,
+      allowMultipleOccurrences = false,
+      valueMapper = String::toInt,
+    )
   );
 
   public companion object {
@@ -1258,6 +1279,8 @@ public class MetroOptions(
     MetroOption.MEMBER_NAMING_STRATEGY.raw.defaultValue.expectAs<String>().let {
       MemberNamingStrategy.valueOf(it.uppercase(Locale.US))
     },
+  public val maxGeneratedClassNameLength: Int =
+    MetroOption.MAX_GENERATED_CLASS_NAME_LENGTH.raw.defaultValue.expectAs(),
 ) {
   @Transient
   public val providerTypes: Set<ClassId> = buildSet {
@@ -1557,6 +1580,7 @@ public class MetroOptions(
     public var generateStaticAnnotations: Boolean = base.generateStaticAnnotations
     public var enableRuntimeTracing: Boolean = base.enableRuntimeTracing
     public var memberNamingStrategy: MemberNamingStrategy = base.memberNamingStrategy
+    public var maxGeneratedClassNameLength: Int = base.maxGeneratedClassNameLength
 
     public fun debug(debug: Boolean): Builder = apply {
       this.debug = debug
@@ -1924,6 +1948,8 @@ public class MetroOptions(
             MemberNamingStrategy.valueOf(value.expectAs<String>().uppercase(Locale.US))
         MetroOption.CUSTOM_CONTRIBUTES_INTO_SET ->
           customContributesIntoSetAnnotations.addAll(value.expectAs<Set<ClassId>>())
+        MetroOption.MAX_GENERATED_CLASS_NAME_LENGTH ->
+          maxGeneratedClassNameLength = value.expectAs()
       }
     }
 
@@ -2013,6 +2039,7 @@ public class MetroOptions(
         generateStaticAnnotations = generateStaticAnnotations,
         enableRuntimeTracing = enableRuntimeTracing,
         memberNamingStrategy = memberNamingStrategy,
+        maxGeneratedClassNameLength = maxGeneratedClassNameLength,
       )
     }
 
