@@ -1668,6 +1668,98 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     )
   }
 
+  fun testParentAndChildCollectionRootsReuseScopedContributedElements() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Route
+
+        @SingleIn(AppScope::class)
+        @ContributesIntoSet(AppScope::class)
+        class FirstRoute : Route
+
+        @SingleIn(AppScope::class)
+        @ContributesIntoSet(AppScope::class)
+        class SecondRoute : Route
+
+        @ContributesTo(AppScope::class)
+        interface RouteBindings {
+          @Multibinds(allowEmpty = true) fun routes(): Set<Route>
+        }
+
+        @GraphExtension
+        interface ChildGraph {
+          val routes: Set<Route>
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val parent = index.graphs.single { it.name == "AppGraph" }
+    val results =
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+    val childResult = results.first().requireCompleted()
+    val parentResult = results.last().requireCompleted()
+
+    assertEquals(2, results.size)
+    assertTrue(childResult.diagnostics.joinToString { it.render() }, childResult.diagnostics.isEmpty())
+    assertTrue(parentResult.diagnostics.joinToString { it.render() }, parentResult.diagnostics.isEmpty())
+    val parentElements = parentResult.bindings.asMap().filterKeys {
+      it.qualifier?.classId == MetroClassIds.multibindingElement
+    }
+    assertEquals(2, parentElements.size)
+    assertTrue(parentElements.values.all { it is KaBinding.Alias })
+    assertEquals(
+      setOf("test.FirstRoute", "test.SecondRoute"),
+      parentElements.values.map { it.originClassId?.asFqNameString() }.toSet(),
+    )
+    assertEquals(parentElements.keys, childResult.parentReservations.keys)
+    val parentCollection = parentResult.bindings.asMap().values.single {
+      it.typeKey.renderedType == "kotlin.collections.Set<test.Route>"
+    } as KaBinding.Multibinding
+    assertEquals(parentElements.keys, parentCollection.sourceBindings.toSet())
+    for (key in parentElements.keys) {
+      val childElement = childResult.bindings[key] as KaBinding.GraphDependency
+      assertTrue(childElement.isParentScoped)
+      assertEquals("test.AppGraph", childElement.ownerKey.renderedType)
+    }
+  }
+
+  fun testSharedMapCollectionViewsReuseSyntheticElements() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validate(
+        """
+        class Value
+
+        @DependencyGraph
+        interface AppGraph {
+          val values: Map<String, Value>
+          val providers: Map<String, Provider<Value>>
+
+          @Provides @IntoMap @StringKey("only") fun value(): Value = Value()
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val elements = result.bindings.asMap().filterKeys {
+      it.qualifier?.classId == MetroClassIds.multibindingElement
+    }
+    assertEquals(1, elements.size)
+    assertTrue(elements.values.single() is KaBinding.Provided)
+    val collections = result.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>()
+    assertEquals(2, collections.size)
+    for (collection in collections) {
+      assertEquals(elements.keys, collection.sourceBindings.toSet())
+    }
+  }
+
   fun testParentScopedSetContributionIsOwnedByParent() {
     assertParentScopedContributionIsOwnedByParent(
       accessor = "val values: Set<String>",

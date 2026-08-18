@@ -426,9 +426,10 @@ internal class KaBindingLookup(
   }
 
   /**
-   * Builds the multibinding plus one element binding per contribution. Each element is the
-   * contribution re-keyed under a synthetic qualifier, matching the compiler's
-   * `@MultibindingElement` key swap.
+   * Builds the multibinding and registers one element binding per contribution. Each element is
+   * the contribution re-keyed under a synthetic qualifier, matching the compiler's
+   * `@MultibindingElement` key swap. The graph resolves those elements through the multibinding's
+   * dependencies rather than inserting them again alongside each collection view.
    */
   private fun synthesizeMultibinding(
     contextKey: KaContextualTypeKey,
@@ -436,7 +437,7 @@ internal class KaBindingLookup(
     contributions: List<KaBinding>,
     declarations: List<KaBinding.Multibinding>,
   ): Set<KaBinding> {
-    val sourceElements = contributions.mapIndexed { i, contribution ->
+    val elementKeys = contributions.mapIndexed { i, contribution ->
       val elementId = "${contribution.originClassId?.asFqNameString() ?: "element"}#$i"
       val qualifier =
         KaAnnotationSnapshot(
@@ -446,15 +447,13 @@ internal class KaBindingLookup(
             Name.identifier("elementId") to KaAnnotationValueSnapshot.Literal(elementId),
           ),
         )
-      contribution.withElementKey(contribution.typeKey.copy(qualifier = qualifier))
-    }
-    // Multibindings can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
-    // wins so both multibindings reference the same element nodes.
-    val elements = ArrayList<KaBinding>(sourceElements.size)
-    for (element in sourceElements) {
-      val resolvedElement = delegateToParentIfScoped(element)
-      syntheticElements.putIfAbsent(element.typeKey, resolvedElement)
-      elements += resolvedElement
+      val elementKey = contribution.typeKey.copy(qualifier = qualifier)
+      // Multibindings can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
+      // wins so both views, and any child reservation, reference the same element node.
+      val element = syntheticElements.getOrPut(elementKey) {
+        delegateToParentIfScoped(contribution.withElementKey(elementKey))
+      }
+      element.typeKey
     }
 
     val anchor = declarations.firstOrNull() ?: contributions.firstOrNull()
@@ -464,10 +463,10 @@ internal class KaBindingLookup(
         typeKey = contextKey.typeKey,
         contextualTypeKey = contextKey,
         allowEmpty = declarations.any { it.allowEmpty },
-        sourceBindings = elements.map { it.typeKey },
+        sourceBindings = elementKeys,
         isGraphPrivate = declarations.any { it.isGraphPrivate },
       )
-    return setOf(multibinding) + elements
+    return setOf(multibinding)
   }
 
   private companion object {
