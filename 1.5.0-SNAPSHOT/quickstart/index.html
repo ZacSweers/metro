@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2227,8 +2227,8 @@
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <p>Metro is primarily applied via its companion Gradle plugin.</p>
 <div class="highlight"><pre><span></span><code><span class="n">plugins</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">&quot;multiplatform&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
-<span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="s">&quot;1.4.2&quot;</span>
+<span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">"multiplatform"</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
+<span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">"dev.zacsweers.metro"</span><span class="p">)</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="s">"1.4.2"</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>…and that&rsquo;s it! This will add Metro&rsquo;s runtime dependencies and do all the necessary compiler plugin wiring.</p>
@@ -2306,7 +2306,7 @@
 <span class="kd">object</span><span class="w"> </span><span class="nc">NetworkBindings</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCache</span><span class="p">(</span><span class="n">application</span><span class="p">:</span><span class="w"> </span><span class="n">Application</span><span class="p">):</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span>
-<span class="w">    </span><span class="n">Cache</span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">cacheDir</span><span class="p">.</span><span class="na">resolve</span><span class="p">(</span><span class="s">&quot;http_cache&quot;</span><span class="p">),</span><span class="w"> </span><span class="m">50L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1024</span><span class="p">)</span>
+<span class="w">    </span><span class="n">Cache</span><span class="p">(</span><span class="n">application</span><span class="p">.</span><span class="na">cacheDir</span><span class="p">.</span><span class="na">resolve</span><span class="p">(</span><span class="s">"http_cache"</span><span class="p">),</span><span class="w"> </span><span class="m">50L</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">1024</span><span class="p">)</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideOkHttpClient</span><span class="p">(</span><span class="n">cache</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="p">):</span><span class="w"> </span><span class="n">OkHttpClient</span><span class="w"> </span><span class="o">=</span>

@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2072,38 +2072,38 @@
 <p>If applying in other build systems, apply it however that build system conventionally applies Kotlin compiler plugins.</p>
 <h3 id="gradle">Gradle<a class="headerlink" href="#gradle" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">plugins</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">&quot;multiplatform&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
-<span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="n">kotlin</span><span class="p">(</span><span class="s">"multiplatform"</span><span class="p">)</span><span class="w"> </span><span class="c1">// or jvm, android, etc</span>
+<span class="w">  </span><span class="n">id</span><span class="p">(</span><span class="s">"dev.zacsweers.metro"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>…and that’s it! This will add metro’s runtime dependencies and do all the necessary compiler plugin wiring.</p>
 <h3 id="bazel"><a href="https://github.com/bazelbuild/rules_kotlin?tab=readme-ov-file#kotlin-compiler-plugins">Bazel</a><a class="headerlink" href="#bazel" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">load</span><span class="p">(</span><span class="s2">&quot;@rules_kotlin//kotlin:core.bzl&quot;</span><span class="p">,</span> <span class="s2">&quot;kt_compiler_plugin&quot;</span><span class="p">)</span>
-<span class="n">load</span><span class="p">(</span><span class="s2">&quot;@rules_kotlin//kotlin:jvm.bzl&quot;</span><span class="p">,</span> <span class="s2">&quot;kt_jvm_library&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">load</span><span class="p">(</span><span class="s2">"@rules_kotlin//kotlin:core.bzl"</span><span class="p">,</span> <span class="s2">"kt_compiler_plugin"</span><span class="p">)</span>
+<span class="n">load</span><span class="p">(</span><span class="s2">"@rules_kotlin//kotlin:jvm.bzl"</span><span class="p">,</span> <span class="s2">"kt_jvm_library"</span><span class="p">)</span>
 
 <span class="n">kt_compiler_plugin</span><span class="p">(</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;metro_plugin&quot;</span><span class="p">,</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"metro_plugin"</span><span class="p">,</span>
     <span class="n">compile_phase</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="nb">id</span> <span class="o">=</span> <span class="s2">&quot;dev.zacsweers.metro.compiler&quot;</span><span class="p">,</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="s2">"dev.zacsweers.metro.compiler"</span><span class="p">,</span>
     <span class="n">options</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;debug&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span><span class="p">,</span>
+        <span class="s2">"enabled"</span><span class="p">:</span> <span class="s2">"true"</span><span class="p">,</span>
+        <span class="s2">"debug"</span><span class="p">:</span> <span class="s2">"false"</span><span class="p">,</span>
         <span class="c1"># ...</span>
     <span class="p">},</span>
     <span class="n">deps</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">&quot;@maven//:dev_zacsweers_metro_compiler&quot;</span><span class="p">,</span>
+        <span class="s2">"@maven//:dev_zacsweers_metro_compiler"</span><span class="p">,</span>
     <span class="p">],</span>
 <span class="p">)</span>
 
 <span class="n">kt_jvm_library</span><span class="p">(</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"sample"</span><span class="p">,</span>
     <span class="c1"># The SampleGraph class is annotated with @DependencyGraph</span>
-    <span class="n">srcs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;SampleGraph.kt&quot;</span><span class="p">],</span>
+    <span class="n">srcs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"SampleGraph.kt"</span><span class="p">],</span>
     <span class="n">plugins</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">&quot;:metro_plugin&quot;</span><span class="p">,</span>
+        <span class="s2">":metro_plugin"</span><span class="p">,</span>
     <span class="p">],</span>
     <span class="n">deps</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">&quot;@maven//:dev_zacsweers_metro_runtime_jvm&quot;</span><span class="p">,</span>
+        <span class="s2">"@maven//:dev_zacsweers_metro_runtime_jvm"</span><span class="p">,</span>
     <span class="p">],</span>
 <span class="p">)</span>
 </code></pre></div>
@@ -2120,7 +2120,7 @@
 <span class="w">          </span><span class="c1"># ...</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Version Catalog</span>
-<span class="n">metro-compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;dev.zacsweers.metro:compiler&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;metro&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="n">metro-compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">module</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"dev.zacsweers.metro:compiler"</span><span class="p">,</span><span class="w"> </span><span class="n">version</span><span class="p">.</span><span class="n">ref</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"metro"</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
 <h2 id="ide-support">IDE Support<a class="headerlink" href="#ide-support" title="Permanent link">&para;</a></h2>
 <p>The K2 Kotlin IntelliJ plugin supports running third party FIR plugins in the IDE, but this feature is hidden behind a flag. Some Metro features can take advantage of this, namely diagnostic reporting directly in the IDE and some opt-in features to see generated declarations. </p>

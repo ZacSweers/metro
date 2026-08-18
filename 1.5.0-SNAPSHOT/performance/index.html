@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2795,14 +2795,14 @@
 <h3 id="merged-supertype-chunk-size"><code>merged-supertype-chunk-size</code><a class="headerlink" href="#merged-supertype-chunk-size" title="Permanent link">&para;</a></h3>
 <p>The <code>merged-supertype-chunk-size</code> Metro compiler option groups merged contribution supertypes into synthetic intermediate interfaces of at most N contributions each. This is useful for graphs whose merged supertype list would otherwise exceed the JVM&rsquo;s 65535-byte class signature limit, which the JVM emits whenever at least one supertype is generic.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">&quot;merged-supertype-chunk-size&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">"merged-supertype-chunk-size"</span><span class="p">,</span><span class="w"> </span><span class="s">"200"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Default <code>0</code> disables chunking. Each chunk holds up to N contributions plus their promoted parent interfaces, so the chunk count tracks the contribution count rather than the raw supertype count. Most useful paired with <code>@MergeContributionsInIr</code> for the largest graphs.</p>
 <h3 id="shortening-generated-member-names">Shortening generated member names<a class="headerlink" href="#shortening-generated-member-names" title="Permanent link">&para;</a></h3>
 <p>For very large graphs, the descriptive declaration names Metro generates on can contribute a measurable amount of bytecode/string-table size. The <code>member-naming-strategy</code> compiler option swaps them for a smaller vocabulary.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">&quot;member-naming-strategy&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TYPED&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="n">compilerOptions</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">"member-naming-strategy"</span><span class="p">,</span><span class="w"> </span><span class="s">"TYPED"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Three values are accepted:</p>
@@ -2825,7 +2825,7 @@
 <h3 id="compiler-tracing">Compiler tracing<a class="headerlink" href="#compiler-tracing" title="Permanent link">&para;</a></h3>
 <p>If you want to investigate the performance of Metro&rsquo;s compiler pipeline, you can enable tracing in the Gradle DSL.</p>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">traceDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">&quot;metro/trace&quot;</span><span class="p">))</span>
+<span class="w">  </span><span class="n">traceDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">"metro/trace"</span><span class="p">))</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>This will output one or more Perfetto trace files after the compilation that you can then load into <a href="https://ui.perfetto.dev">https://ui.perfetto.dev</a>.</p>
@@ -2878,11 +2878,11 @@
 <span class="p">}</span>
 </code></pre></div>
 <p><code>AbstractTraceDriver.Factory</code> lets AndroidX&rsquo;s profiler tooling discover the same driver that Metro uses. <code>Tracer.setGlobalTracer(...)</code> also makes the tracer available to other libraries using AndroidX&rsquo;s global tracer discovery. Also, disable the default <code>TraceDriver</code> initialization hook (<code>androidx.tracing.profiler.ConnectedProfilerTracingInitializer</code>) so it does not eagerly set <code>Tracer.setGlobalTracer(...)</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Use MyApplications&#39;s TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. --&gt;</span>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Use MyApplications's TraceDriver so sample traces and profiler broadcasts share one sink and is always enabled. --&gt;</span>
 <span class="nt">&lt;meta-data</span>
-<span class="w">    </span><span class="na">android:name=</span><span class="s">&quot;androidx.tracing.profiler.ConnectedProfilerTracingInitializer&quot;</span>
-<span class="w">    </span><span class="na">android:value=</span><span class="s">&quot;androidx.startup&quot;</span>
-<span class="w">    </span><span class="na">tools:node=</span><span class="s">&quot;remove&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="na">android:name=</span><span class="s">"androidx.tracing.profiler.ConnectedProfilerTracingInitializer"</span>
+<span class="w">    </span><span class="na">android:value=</span><span class="s">"androidx.startup"</span>
+<span class="w">    </span><span class="na">tools:node=</span><span class="s">"remove"</span><span class="w"> </span><span class="nt">/&gt;</span>
 </code></pre></div>
 <p>With AndroidX Tracing 2.0.0-alpha09 and newer, <code>TraceSink</code> defers file setup. Graph creation no longer needs to be delayed with <code>lazy</code> just to avoid early trace output initialization.</p>
 <div class="admonition tip">
@@ -2890,7 +2890,7 @@
 <p>Metro traces the generated binding boundary. If a binding does meaningful work inside that boundary and you want more granular events, inject or depend on <code>Tracer</code> like any other binding and use AndroidX Tracing directly from that code.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span>
 <span class="kd">fun</span><span class="w"> </span><span class="nf">provideDatabase</span><span class="p">(</span><span class="n">driver</span><span class="p">:</span><span class="w"> </span><span class="n">SqlDriver</span><span class="p">,</span><span class="w"> </span><span class="n">tracer</span><span class="p">:</span><span class="w"> </span><span class="n">Tracer</span><span class="p">):</span><span class="w"> </span><span class="n">AppDatabase</span><span class="w"> </span><span class="o">=</span>
-<span class="w">  </span><span class="n">tracer</span><span class="p">.</span><span class="na">trace</span><span class="p">(</span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;app.database&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Open database&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">tracer</span><span class="p">.</span><span class="na">trace</span><span class="p">(</span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"app.database"</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Open database"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">AppDatabase</span><span class="p">(</span><span class="n">driver</span><span class="p">)</span>
 <span class="w">  </span><span class="p">}</span>
 </code></pre></div>

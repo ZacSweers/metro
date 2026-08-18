@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2763,7 +2763,7 @@
 <p>You should <em>not</em> leave this enabled by default as it can be quite verbose and potentially expensive. This property also does not participate in task inputs, so you may need to recompile with <code>--rerun</code> to force recompilation after adding this flag.</p>
 </div>
 <div class="highlight"><pre><span></span><code><span class="n">metro</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">reportsDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">&quot;reports/metro&quot;</span><span class="p">))</span>
+<span class="w">  </span><span class="n">reportsDestination</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">layout</span><span class="p">.</span><span class="na">buildDirectory</span><span class="p">.</span><span class="na">dir</span><span class="p">(</span><span class="s">"reports/metro"</span><span class="p">))</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>This enables the compiler to export graph metadata during compilation.</p>
@@ -3257,8 +3257,8 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 </ul>
 <p><strong>In the analysis JSON:</strong><br />
 <div class="highlight"><pre><span></span><code><span class="kd">val</span><span class="w"> </span><span class="nv">pathsToRoot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">graph</span><span class="p">.</span><span class="na">pathsToRoot</span>
-<span class="kd">val</span><span class="w"> </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pathsToRoot</span><span class="p">.</span><span class="na">paths</span><span class="o">[</span><span class="s">&quot;com.example.MyService&quot;</span><span class="o">]</span>
-<span class="c1">// Returns: [&quot;MyService&quot;, &quot;MyRepository&quot;, &quot;AppGraph&quot;] (from binding to root)</span>
+<span class="kd">val</span><span class="w"> </span><span class="nv">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pathsToRoot</span><span class="p">.</span><span class="na">paths</span><span class="o">[</span><span class="s">"com.example.MyService"</span><span class="o">]</span>
+<span class="c1">// Returns: ["MyService", "MyRepository", "AppGraph"] (from binding to root)</span>
 </code></pre></div></p>
 <h3 id="root-and-leaf-analysis">Root and Leaf Analysis<a class="headerlink" href="#root-and-leaf-analysis" title="Permanent link">&para;</a></h3>
 <p><strong>What it measures:</strong></p>
@@ -3334,24 +3334,24 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 <p>The raw graph metadata from <code>generateMetroGraphMetadata</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Parse raw graph metadata</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">metadata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">AggregatedGraphMetadata</span><span class="o">&gt;</span><span class="p">(</span>
-<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">&quot;build/reports/metro/graphMetadata.json&quot;</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
+<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/graphMetadata.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>
 
 <span class="c1">// Analyze bindings</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">scopedCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">metadata</span><span class="p">.</span><span class="na">graphs</span><span class="p">.</span><span class="na">sumOf</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">graph</span><span class="w"> </span><span class="o">-&gt;</span>
 <span class="w">    </span><span class="n">graph</span><span class="p">.</span><span class="na">bindings</span><span class="p">.</span><span class="na">count</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nb">it</span><span class="p">.</span><span class="na">isScoped</span><span class="w"> </span><span class="p">}</span>
 <span class="p">}</span>
-<span class="n">println</span><span class="p">(</span><span class="s">&quot;Total scoped bindings: </span><span class="si">$</span><span class="n">scopedCount</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="n">println</span><span class="p">(</span><span class="s">"Total scoped bindings: </span><span class="si">$</span><span class="n">scopedCount</span><span class="s">"</span><span class="p">)</span>
 
 <span class="c1">// Check entry points</span>
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">graph</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">metadata</span><span class="p">.</span><span class="na">graphs</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;Graph: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">graph</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">"Graph: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">graph</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
 <span class="w">    </span><span class="n">graph</span><span class="p">.</span><span class="na">roots</span><span class="o">?.</span><span class="na">let</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">roots</span><span class="w"> </span><span class="o">-&gt;</span>
-<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Accessors: </span><span class="si">${</span><span class="n">roots</span><span class="p">.</span><span class="na">accessors</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
-<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Injectors: </span><span class="si">${</span><span class="n">roots</span><span class="p">.</span><span class="na">injectors</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">"  Accessors: </span><span class="si">${</span><span class="n">roots</span><span class="p">.</span><span class="na">accessors</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">"  Injectors: </span><span class="si">${</span><span class="n">roots</span><span class="p">.</span><span class="na">injectors</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="n">graph</span><span class="p">.</span><span class="na">extensions</span><span class="o">?.</span><span class="na">let</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ext</span><span class="w"> </span><span class="o">-&gt;</span>
-<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Extension factories: </span><span class="si">${</span><span class="n">ext</span><span class="p">.</span><span class="na">factoriesImplemented</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">"  Extension factories: </span><span class="si">${</span><span class="n">ext</span><span class="p">.</span><span class="na">factoriesImplemented</span><span class="p">.</span><span class="na">size</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -3377,19 +3377,19 @@ open<span class="w"> </span>app/build/reports/metro/html/index.html
 <p>The analysis report from <code>analyzeMetroGraph</code> is organized by graph, with all analysis data grouped together:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Parse analysis report</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Json</span><span class="p">.</span><span class="na">decodeFromString</span><span class="o">&lt;</span><span class="n">FullAnalysisReport</span><span class="o">&gt;</span><span class="p">(</span>
-<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">&quot;build/reports/metro/analysis.json&quot;</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
+<span class="w">    </span><span class="n">file</span><span class="p">(</span><span class="s">"build/reports/metro/analysis.json"</span><span class="p">).</span><span class="na">readText</span><span class="p">()</span>
 <span class="p">)</span>
 
 <span class="c1">// Each graph has all its analysis co-located</span>
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">graph</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">report</span><span class="p">.</span><span class="na">graphs</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;Graph: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">graphName</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Bindings: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">statistics</span><span class="p">.</span><span class="na">totalBindings</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Scoped: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">statistics</span><span class="p">.</span><span class="na">scopedBindings</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  Longest path: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">longestPath</span><span class="p">.</span><span class="na">longestPathLength</span><span class="si">}</span><span class="s">&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">"Graph: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">graphName</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">"  Bindings: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">statistics</span><span class="p">.</span><span class="na">totalBindings</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">"  Scoped: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">statistics</span><span class="p">.</span><span class="na">scopedBindings</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="s">"  Longest path: </span><span class="si">${</span><span class="n">graph</span><span class="p">.</span><span class="na">longestPath</span><span class="p">.</span><span class="na">longestPathLength</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1">// High fan-in bindings</span>
 <span class="w">    </span><span class="n">graph</span><span class="p">.</span><span class="na">fanAnalysis</span><span class="p">.</span><span class="na">highFanIn</span><span class="p">.</span><span class="na">take</span><span class="p">(</span><span class="m">3</span><span class="p">).</span><span class="na">forEach</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">binding</span><span class="w"> </span><span class="o">-&gt;</span>
-<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">&quot;  High fan-in: </span><span class="si">${</span><span class="n">binding</span><span class="p">.</span><span class="na">key</span><span class="si">}</span><span class="s"> (</span><span class="si">${</span><span class="n">binding</span><span class="p">.</span><span class="na">fanIn</span><span class="si">}</span><span class="s"> dependents)&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="n">println</span><span class="p">(</span><span class="s">"  High fan-in: </span><span class="si">${</span><span class="n">binding</span><span class="p">.</span><span class="na">key</span><span class="si">}</span><span class="s"> (</span><span class="si">${</span><span class="n">binding</span><span class="p">.</span><span class="na">fanIn</span><span class="si">}</span><span class="s"> dependents)"</span><span class="p">)</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>

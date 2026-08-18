@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -8690,16 +8690,16 @@ Similar multibindings:
 <div class="highlight"><pre><span></span><code><span class="c1">// Before: Using type matching or custom identifiers</span>
 <span class="nd">@AssistedInject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">Taco</span><span class="p">(</span>
-<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
-<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;type&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">"name"</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">  </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">"type"</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
 <span class="w">  </span><span class="nd">@Assisted</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="p">,</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">tortilla</span><span class="p">:</span><span class="w"> </span><span class="n">Tortilla</span>
 <span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@AssistedFactory</span>
 <span class="w">  </span><span class="kd">interface</span><span class="w"> </span><span class="nc">Factory</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span>
-<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;name&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
-<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">&quot;type&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">"name"</span><span class="p">)</span><span class="w"> </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
+<span class="w">      </span><span class="nd">@Assisted</span><span class="p">(</span><span class="s">"type"</span><span class="p">)</span><span class="w"> </span><span class="n">type</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">,</span>
 <span class="w">      </span><span class="nd">@Assisted</span><span class="w"> </span><span class="n">spiciness</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
 <span class="w">    </span><span class="p">):</span><span class="w"> </span><span class="n">TacoFactory</span>
 <span class="w">  </span><span class="p">}</span>
@@ -8743,7 +8743,7 @@ Similar multibindings:
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">stringProvider</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="kt">String</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="p">}</span>
 
 <span class="kd">fun</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
@@ -8886,7 +8886,7 @@ Similar multibindings:
         [ExampleGraph] ExampleGraph.mapSize
 
 (Hint)
-A directly-provided &#39;Map&lt;String, String&gt;&#39; binding exists, but direct Map bindings cannot satisfy &#39;Map&lt;String, Provider&lt;String&gt;&gt;&#39; requests.
+A directly-provided 'Map&lt;String, String&gt;' binding exists, but direct Map bindings cannot satisfy 'Map&lt;String, Provider&lt;String&gt;&gt;' requests.
 
     IncompatibleMapValueType.kt:15:16
         @Provides map: kotlin.collections.Map&lt;kotlin.String, kotlin.String&gt;
@@ -8947,7 +8947,7 @@ Provider/Lazy-wrapped map values (e.g., Map&lt;K, Provider&lt;V&gt;&gt;) only wo
 <li><strong>[FIR/IR]</strong> Add aliases for a bunch of &ldquo;known&rdquo; mappings for Kotlin IDE plugin versions to Kotlin versions. This is still best-effort but should hopefully be more robust, especially in situations like Android Studio canaries (which do not report real Kotlin versions). Please star this issue: <a href="https://issuetracker.google.com/issues/474940910">https://issuetracker.google.com/issues/474940910</a></li>
 <li><strong>[FIR]</strong>: One downside of the above is that it revealed that Android Studio Otter 3 is effectively running on Kotlin 2.2.0, which is just a bit too far back to still support. However, now that Studio is switching to monthly releases it should track upstream IJ changes much quicker and Studio Panda is in RC1 now.<ul>
 <li>Previously, an incompatible version could cause the IDE file analysis to hang or error out if IDE support was enabled. Now, Metro&rsquo;s IDE support will gracefully degrade on incompatible IDE versions. This includes Android Studio Otter and IntelliJ <code>2025.2.x</code> as of this version. Android Studio Panda and IntelliJ 2025.3 are tested and working though!<br />
-    <div class="highlight"><pre><span></span><code>2026-02-08 01:14:27,225 [  56672]   INFO - STDERR - [METRO] Skipping enabling Metro extensions in IDE. Detected Kotlin version &#39;2.2.255-dev-255&#39; is not supported for IDE use (CLI_ONLY).
+    <div class="highlight"><pre><span></span><code>2026-02-08 01:14:27,225 [  56672]   INFO - STDERR - [METRO] Skipping enabling Metro extensions in IDE. Detected Kotlin version '2.2.255-dev-255' is not supported for IDE use (CLI_ONLY).
 </code></pre></div></li>
 </ul>
 </li>
@@ -9430,10 +9430,10 @@ This is a known bug in the Kotlin compiler, follow https://github.com/ZacSweers/
         [AppGraph] AppGraph.base
 
 (Hint)
-&#39;FooImpl&#39; doesn&#39;t appear to be visible to this compilation. This can happen when a binding references a type from an &#39;implementation&#39; dependency that isn&#39;t exposed to the consuming graph&#39;s module.
+'FooImpl' doesn't appear to be visible to this compilation. This can happen when a binding references a type from an 'implementation' dependency that isn't exposed to the consuming graph's module.
 Possible fixes:
-- Mark the module containing &#39;FooImpl&#39; as an &#39;api&#39; dependency in the module that defines &#39;Bindings&#39; (which is requesting it).
-- Add the module containing &#39;FooImpl&#39; as an explicit dependency to the module that defines &#39;AppGraph&#39;.
+- Mark the module containing 'FooImpl' as an 'api' dependency in the module that defines 'Bindings' (which is requesting it).
+- Add the module containing 'FooImpl' as an explicit dependency to the module that defines 'AppGraph'.
 </code></pre></div></p>
 </li>
 <li>
@@ -9460,7 +9460,7 @@ Possible fixes:
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;real&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"real"</span>
 <span class="p">}</span>
 
 <span class="kd">class</span><span class="w"> </span><span class="nc">AppTest</span><span class="w"> </span><span class="p">{</span>
@@ -9468,12 +9468,12 @@ Possible fixes:
 
 <span class="w">  </span><span class="nd">@Test</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">test</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">assertEquals</span><span class="p">(</span><span class="s">&quot;fake&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">testGraph</span><span class="p">.</span><span class="na">message</span><span class="p">)</span>
+<span class="w">    </span><span class="n">assertEquals</span><span class="p">(</span><span class="s">"fake"</span><span class="p">,</span><span class="w"> </span><span class="n">testGraph</span><span class="p">.</span><span class="na">message</span><span class="p">)</span>
 <span class="w">  </span><span class="p">}</span>
 
 <span class="w">  </span><span class="nd">@BindingContainer</span>
 <span class="w">  </span><span class="kd">object</span><span class="w"> </span><span class="nc">FakeBindings</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;fake&quot;</span>
+<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"fake"</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -9491,8 +9491,8 @@ Possible fixes:
 <ul>
 <li><strong>Behavior change</strong>: Remove <code>assistedInjectMigrationSeverity</code> DSL. You must now move fully to using <code>@AssistedInject</code> annotations for assisted types.</li>
 <li><strong>New</strong>: Allow exposing assisted-injected classes on a graph with qualifier annotations via <code>@Provides</code> declarations. This means you could, for example, write a provider like so:<br />
-    <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;qualified&quot;</span><span class="p">)</span>
-<span class="kd">fun</span><span class="w"> </span><span class="nf">provideTaco</span><span class="p">(</span><span class="n">factory</span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span><span class="p">.</span><span class="na">Factory</span><span class="p">):</span><span class="w"> </span><span class="n">Taco</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">&quot;spicy&quot;</span><span class="p">)</span>
+    <div class="highlight"><pre><span></span><code><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@Named</span><span class="p">(</span><span class="s">"qualified"</span><span class="p">)</span>
+<span class="kd">fun</span><span class="w"> </span><span class="nf">provideTaco</span><span class="p">(</span><span class="n">factory</span><span class="p">:</span><span class="w"> </span><span class="n">Taco</span><span class="p">.</span><span class="na">Factory</span><span class="p">):</span><span class="w"> </span><span class="n">Taco</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">"spicy"</span><span class="p">)</span>
 </code></pre></div></li>
 <li><strong>New</strong>: Add diagnostic disallowing qualifier annotations directly on <code>@AssistedInject</code>-annotated classes.</li>
 <li><strong>New</strong>: Add <code>wasmWasi</code> targets to Metro&rsquo;s runtime.</li>
@@ -9527,7 +9527,7 @@ Possible fixes:
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@OptionalDependency</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
-<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Absent!&quot;</span>
+<span class="w">    </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Absent!"</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>There are a couple of optional configuration for Metro&rsquo;s optional dependency support that can be configured via the <code>optionalDependencyBehavior</code> Gradle DSL:</p>

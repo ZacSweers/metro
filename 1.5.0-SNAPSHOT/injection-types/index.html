@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2270,7 +2270,7 @@
 <span class="w">  </span><span class="c1">// Property injection</span>
 <span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">lateinit</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">db</span><span class="p">:</span><span class="w"> </span><span class="n">UserDatabase</span>
 
-<span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">notifications</span><span class="p">:</span><span class="w"> </span><span class="n">Notifications? </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">var</span><span class="w"> </span><span class="nv">notifications</span><span class="p">:</span><span class="w"> </span><span class="n">Notifications?</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
 
 <span class="w">  </span><span class="c1">// Function injection</span>
 <span class="w">  </span><span class="nd">@Inject</span><span class="w"> </span><span class="kd">private</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">injectUser</span><span class="p">(</span><span class="n">user</span><span class="p">:</span><span class="w"> </span><span class="n">User</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -2364,7 +2364,7 @@
 
 <span class="c1">// Usage</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createGraphFactory</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="p">.</span><span class="na">Factory</span><span class="o">&gt;</span><span class="p">()</span>
-<span class="w">  </span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 <span class="w">  </span><span class="p">.</span><span class="na">app</span>
 
 <span class="c1">// Run the app</span>
@@ -2389,7 +2389,7 @@
 <span class="w">  </span><span class="p">.</span><span class="na">app</span>
 
 <span class="c1">// Run the app</span>
-<span class="n">app</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="n">app</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 </code></pre></div>
 <p>This is particularly useful for Compose, and <code>@Composable</code> functions will be copied over accordingly.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
@@ -2412,7 +2412,7 @@
 
 <span class="c1">// Call it in composition</span>
 <span class="n">setContent</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">App</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="n">App</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Similarly, if the injected function is a <code>suspend</code> function, the <code>suspend</code> keyword will be ported to the generated <code>invoke()</code> function too.</p>

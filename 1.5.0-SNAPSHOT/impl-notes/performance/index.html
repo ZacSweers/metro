@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2535,7 +2535,7 @@ Stored order:           A -&gt; B, C
 <span class="w">      </span><span class="kd">override</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">invoke</span><span class="p">():</span><span class="w"> </span><span class="n">T</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="m">0</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">First</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">T</span>
 <span class="w">        </span><span class="m">1</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Second</span><span class="p">(</span><span class="n">graph</span><span class="p">.</span><span class="na">firstProvider</span><span class="p">())</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">T</span>
-<span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Unexpected SwitchingProvider id: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">id</span><span class="p">)</span>
+<span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">error</span><span class="p">(</span><span class="s">"Unexpected SwitchingProvider id: "</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">id</span><span class="p">)</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>

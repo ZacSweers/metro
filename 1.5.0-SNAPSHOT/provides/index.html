@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -1968,7 +1968,7 @@
 <li>What if your override’s implementation needs different dependencies?</li>
 </ul>
 <p>To the testing end, it is recommended to instead leverage the <code>DependencyGraph.excludes</code> + <code>ContributesTo.replaces</code> APIs in merging.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// Don&#39;t do this pattern!</span>
+<div class="highlight"><pre><span></span><code><span class="c1">// Don't do this pattern!</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">NetworkProviders</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
@@ -1984,9 +1984,9 @@
 <p>Providers can alternatively be implemented in <code>companion object</code>s for staticization.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nc">MessageGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
-<span class="w">  </span><span class="kd">companion</span><span class="w"> </span><span class="kd">object</span><span class="w"> </span><span class="err">{</span>
+<span class="w">  </span><span class="kd">companion</span><span class="w"> </span><span class="kd">object</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nd">@Provides</span>
-<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">    </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>

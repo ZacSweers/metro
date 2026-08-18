@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2726,7 +2726,7 @@
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="p">}</span>
 </code></pre></div>
 <p><em>Note the <code>@Provides</code> function must define an explicit return type.</em></p>
@@ -2768,7 +2768,7 @@
 <span class="w">  </span><span class="nd">@DependencyGraph</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="nc">MessageGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 
-<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -2796,7 +2796,7 @@
 <p>Graph factories can be created with the <code>createGraphFactory()</code> intrinsic.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">val</span><span class="w"> </span><span class="nv">messageGraph</span><span class="w"> </span><span class="o">=</span>
 <span class="w">  </span><span class="n">createGraphFactory</span><span class="o">&lt;</span><span class="n">AppGraph</span><span class="p">.</span><span class="na">Factory</span><span class="o">&gt;</span><span class="p">()</span>
-<span class="w">    </span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">create</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="scoping">Scoping<a class="headerlink" href="#scoping" title="Permanent link">&para;</a></h2>
 <p><em>See <a href="../scopes/">Scopes</a> for more details on scopes!</em></p>
@@ -2933,19 +2933,19 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nd">@Inject</span>
-<span class="kd">class</span><span class="w"> </span><span class="nc">AppWorker</span><span class="p">(</span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;app&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">scope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">AppWorker</span><span class="p">(</span><span class="nd">@Named</span><span class="p">(</span><span class="s">"app"</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">scope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">)</span>
 
 <span class="nd">@Inject</span>
-<span class="kd">class</span><span class="w"> </span><span class="nc">LoggedInWorker</span><span class="p">(</span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;logged-in&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">scope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">LoggedInWorker</span><span class="p">(</span><span class="nd">@Named</span><span class="p">(</span><span class="s">"logged-in"</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">scope</span><span class="p">:</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">)</span>
 
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">appWorker</span><span class="p">:</span><span class="w"> </span><span class="n">AppWorker</span>
 
-<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;app&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">"app"</span><span class="p">)</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">&quot;app&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">"app"</span><span class="p">)</span>
 
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInGraph</span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInGraph</span>
 <span class="p">}</span>
@@ -2954,10 +2954,10 @@
 <span class="kd">interface</span><span class="w"> </span><span class="nc">LoggedInGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInWorker</span><span class="p">:</span><span class="w"> </span><span class="n">LoggedInWorker</span>
 
-<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;logged-in&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">"logged-in"</span><span class="p">)</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">LoggedInScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">&quot;logged-in&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">"logged-in"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2975,7 +2975,7 @@
 <span class="w">  </span><span class="nd">@GraphPrivate</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">&quot;app&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">"app"</span><span class="p">)</span>
 
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">loggedInGraph</span><span class="p">():</span><span class="w"> </span><span class="n">LoggedInGraph</span>
 <span class="p">}</span>
@@ -2987,7 +2987,7 @@
 <span class="w">  </span><span class="nd">@GraphPrivate</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">LoggedInScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">&quot;logged-in&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideCoroutineScope</span><span class="p">():</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CoroutineScope</span><span class="p">(</span><span class="s">"logged-in"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -3014,7 +3014,7 @@
 <span class="w">  </span><span class="nd">@GraphPrivate</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@IntoSet</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHelpAction</span><span class="p">():</span><span class="w"> </span><span class="n">MenuAction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MenuAction</span><span class="p">(</span><span class="s">&quot;Help&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHelpAction</span><span class="p">():</span><span class="w"> </span><span class="n">MenuAction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MenuAction</span><span class="p">(</span><span class="s">"Help"</span><span class="p">)</span>
 
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">loggedInGraph</span><span class="p">():</span><span class="w"> </span><span class="n">LoggedInGraph</span>
 <span class="p">}</span>
@@ -3030,14 +3030,14 @@
 <span class="w">  </span><span class="nd">@GraphPrivate</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@IntoSet</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideSignOutAction</span><span class="p">():</span><span class="w"> </span><span class="n">MenuAction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MenuAction</span><span class="p">(</span><span class="s">&quot;Sign out&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideSignOutAction</span><span class="p">():</span><span class="w"> </span><span class="n">MenuAction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MenuAction</span><span class="p">(</span><span class="s">"Sign out"</span><span class="p">)</span>
 <span class="p">}</span>
 
 <span class="kd">fun</span><span class="w"> </span><span class="nf">example</span><span class="p">(</span><span class="n">appGraph</span><span class="p">:</span><span class="w"> </span><span class="n">AppGraph</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="c1">// appActions contains only &quot;Help&quot;</span>
+<span class="w">  </span><span class="c1">// appActions contains only "Help"</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">appActions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">appGraph</span><span class="p">.</span><span class="na">appMenu</span><span class="p">.</span><span class="na">actions</span>
 
-<span class="w">  </span><span class="c1">// loggedInActions contains only &quot;Sign out&quot;</span>
+<span class="w">  </span><span class="c1">// loggedInActions contains only "Sign out"</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">loggedInActions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">appGraph</span><span class="p">.</span><span class="na">loggedInGraph</span><span class="p">().</span><span class="na">accountMenu</span><span class="p">.</span><span class="na">actions</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -3046,7 +3046,7 @@
 <p>A non-private <code>@Binds</code> declaration <em>may</em> depend on a <code>@GraphPrivate</code> binding. In this case, the result type is visible to child graphs even though the source type is not. The child accesses the aliased type as a parent-resolved dependency rather than re-resolving the alias.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@GraphPrivate</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;hello&quot;</span>
+<span class="w">  </span><span class="nd">@GraphPrivate</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"hello"</span>
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">bindCharSequence</span><span class="p">(</span><span class="n">value</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="n">CharSequence</span>
 
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">createChild</span><span class="p">():</span><span class="w"> </span><span class="n">ChildGraph</span>
@@ -3248,7 +3248,7 @@
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;real&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"real"</span>
 <span class="p">}</span>
 
 <span class="kd">class</span><span class="w"> </span><span class="nc">AppTest</span><span class="w"> </span><span class="p">{</span>
@@ -3256,12 +3256,12 @@
 
 <span class="w">  </span><span class="nd">@Test</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">test</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">assertEquals</span><span class="p">(</span><span class="s">&quot;fake&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">testGraph</span><span class="p">.</span><span class="na">message</span><span class="p">)</span>
+<span class="w">    </span><span class="n">assertEquals</span><span class="p">(</span><span class="s">"fake"</span><span class="p">,</span><span class="w"> </span><span class="n">testGraph</span><span class="p">.</span><span class="na">message</span><span class="p">)</span>
 <span class="w">  </span><span class="p">}</span>
 
 <span class="w">  </span><span class="nd">@BindingContainer</span>
 <span class="w">  </span><span class="kd">object</span><span class="w"> </span><span class="nc">FakeBindings</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;fake&quot;</span>
+<span class="w">    </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"fake"</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -3315,7 +3315,7 @@
 <p>By default, Metro removes bindings that are not reachable from any accessor or member injector function. This reduces the size of generated code and avoids unnecessary initialization work.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span><span class="w">  </span><span class="c1">// This is a root - it&#39;s reachable</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">httpClient</span><span class="p">:</span><span class="w"> </span><span class="n">HttpClient</span><span class="w">  </span><span class="c1">// This is a root - it's reachable</span>
 
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">inject</span><span class="p">(</span><span class="n">memberInjectedClass</span><span class="p">:</span><span class="w"> </span><span class="n">MemberInjectedClass</span><span class="p">)</span><span class="w"> </span><span class="c1">// This is also a root</span>
 
@@ -3443,7 +3443,7 @@
 <div class="highlight"><pre><span></span><code><span class="c1">// The graph</span>
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideString</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@SingleIn</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideInt</span><span class="p">(</span><span class="n">string</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span><span class="p">):</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">string</span><span class="p">.</span><span class="na">length</span>
 
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">stringLength</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>

@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2228,7 +2228,7 @@
 
 <span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="c1">// Not a suspend accessor. Repository construction doesn&#39;t suspend.</span>
+<span class="w">  </span><span class="c1">// Not a suspend accessor. Repository construction doesn't suspend.</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">repository</span><span class="p">:</span><span class="w"> </span><span class="n">Repository</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
@@ -2319,10 +2319,10 @@
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">handlers</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">suspend</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Handler</span><span class="o">&gt;</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@IntoMap</span><span class="w"> </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;login&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@IntoMap</span><span class="w"> </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">"login"</span><span class="p">)</span>
 <span class="w">  </span><span class="kd">suspend</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideLoginHandler</span><span class="p">():</span><span class="w"> </span><span class="n">Handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createLoginHandler</span><span class="p">()</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@IntoMap</span><span class="w"> </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;logout&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="nd">@IntoMap</span><span class="w"> </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">"logout"</span><span class="p">)</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideLogoutHandler</span><span class="p">():</span><span class="w"> </span><span class="n">Handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LogoutHandler</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -2366,7 +2366,7 @@
 <span class="kd">val</span><span class="w"> </span><span class="nv">provider</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendProvider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">suspendProvider</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">fetchToken</span><span class="p">()</span><span class="w"> </span><span class="p">}</span>
 
 <span class="c1">// Wrap an existing value</span>
-<span class="kd">val</span><span class="w"> </span><span class="nv">fixed</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendProvider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">suspendProviderOf</span><span class="p">(</span><span class="s">&quot;token&quot;</span><span class="p">)</span>
+<span class="kd">val</span><span class="w"> </span><span class="nv">fixed</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendProvider</span><span class="o">&lt;</span><span class="kt">String</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">suspendProviderOf</span><span class="p">(</span><span class="s">"token"</span><span class="p">)</span>
 <span class="kd">val</span><span class="w"> </span><span class="nv">fixedConfig</span><span class="p">:</span><span class="w"> </span><span class="n">SuspendLazy</span><span class="o">&lt;</span><span class="n">Config</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">suspendLazyOf</span><span class="p">(</span><span class="n">Config</span><span class="p">())</span>
 
 <span class="c1">// Transform lazily</span>

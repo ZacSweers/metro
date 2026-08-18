@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -1975,7 +1975,7 @@
 <p>Depend on this artifact</p>
 <p><a href="https://central.sonatype.com/artifact/dev.zacsweers.metro/metrox-android"><img alt="Maven Central" src="https://img.shields.io/maven-central/v/dev.zacsweers.metro/metrox-android.svg" /></a><br />
 <div class="highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="n">implementation</span><span class="p">(</span><span class="s">&quot;dev.zacsweers.metro:metrox-android:x.y.z&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="n">implementation</span><span class="p">(</span><span class="s">"dev.zacsweers.metro:metrox-android:x.y.z"</span><span class="p">)</span>
 <span class="p">}</span>
 </code></pre></div><br />
 2. Make your <code>AppGraph</code> (or equivalent) implement <code>MetroAppComponentProviders</code>.<br />
@@ -2009,15 +2009,15 @@
 <p>Note that the built-in <code>MetroAppComponentFactory</code> uses the base <code>Activity</code>, <code>Service</code>, etc types. If you want to use your own bases (<code>ComponentActivity</code>, etc), you&rsquo;ll need to create your own <code>AppComponentFactory</code> + relevant multibindings typed to the key you need.</p>
 <h2 id="advanced">Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
 <p>If you have your own custom <code>AppComponentFactory</code>, you will need to exclude the MetroX implementation in your <code>AndroidManifest.xml</code> via <code>tools:replace</code> attribute.</p>
-<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
 <span class="nt">&lt;manifest</span>
-<span class="w">  </span><span class="na">xmlns:android=</span><span class="s">&quot;http://schemas.android.com/apk/res/android&quot;</span>
-<span class="w">  </span><span class="na">xmlns:tools=</span><span class="s">&quot;http://schemas.android.com/tools&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="na">xmlns:android=</span><span class="s">"http://schemas.android.com/apk/res/android"</span>
+<span class="w">  </span><span class="na">xmlns:tools=</span><span class="s">"http://schemas.android.com/tools"</span><span class="nt">&gt;</span>
 
 <span class="w">  </span><span class="nt">&lt;application</span>
 <span class="w">    </span><span class="err">...</span>
-<span class="w">    </span><span class="na">android:appComponentFactory=</span><span class="s">&quot;your.custom.AppComponentFactory&quot;</span>
-<span class="w">    </span><span class="na">tools:replace=</span><span class="s">&quot;android:appComponentFactory&quot;</span>
+<span class="w">    </span><span class="na">android:appComponentFactory=</span><span class="s">"your.custom.AppComponentFactory"</span>
+<span class="w">    </span><span class="na">tools:replace=</span><span class="s">"android:appComponentFactory"</span>
 <span class="w">  </span><span class="nt">&gt;</span>
 <span class="w">  </span><span class="nt">&lt;/application&gt;</span>
 <span class="nt">&lt;/manifest&gt;</span>

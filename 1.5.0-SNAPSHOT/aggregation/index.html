@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2222,13 +2222,13 @@
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
 <p>For simple cases where there is a single supertype, that type is implicitly used as the bound type. If your bound type is qualified, for the implicit case you can put the qualifier on the class.</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;cache&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
 <p>For classes with multiple supertypes or advanced cases where you want to bind an ancestor type, you can explicitly define this via <code>binding</code> parameter.</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;cache&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span>
 <span class="nd">@ContributesBinding</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
 <span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
@@ -2244,7 +2244,7 @@
 <p>Qualifier annotations can also be specified on the <code>binding</code> type parameter and will take precedence over any qualifiers on the class itself.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
-<span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;cache&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="nd">@Named</span><span class="p">(</span><span class="s">"cache"</span><span class="p">)</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
 <span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="p">,</span><span class="w"> </span><span class="n">AnotherType</span>
@@ -2282,16 +2282,16 @@
 </code></pre></div>
 <p>Same rules around qualifiers and <code>binding()</code> apply in this scenario</p>
 <p>To contribute into a Map multibinding, the map key annotation must be specified on the class or <code>binding</code> type argument.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// Will be contributed into a Map multibinding with @StringKey(&quot;Networking&quot;)</span>
+<div class="highlight"><pre><span></span><code><span class="c1">// Will be contributed into a Map multibinding with @StringKey("Networking")</span>
 <span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;Networking&quot;</span><span class="p">)</span>
+<span class="nd">@StringKey</span><span class="p">(</span><span class="s">"Networking"</span><span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 
 <span class="c1">// Or if using binding</span>
 <span class="nd">@ContributesIntoMap</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
-<span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;Networking&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">"Networking"</span><span class="p">)</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>
 <span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
@@ -2300,7 +2300,7 @@
 <p>You can use <code>@IntoMap</code>/<code>@IntoSet</code> to provide into the same container:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Method 1: applying @ContributesIntoMap to bind directly from the implementation class</span>
 <span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
-<span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;remote&quot;</span><span class="p">)</span>
+<span class="nd">@StringKey</span><span class="p">(</span><span class="s">"remote"</span><span class="p">)</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">RemoteCache</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 
@@ -2312,22 +2312,22 @@
 <span class="kd">object</span><span class="w"> </span><span class="nc">CacheBindingContainer</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="nd">@IntoMap</span>
-<span class="w">  </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">&quot;local&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@StringKey</span><span class="p">(</span><span class="s">"local"</span><span class="p">)</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">cache</span><span class="p">():</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LocalCache</span><span class="p">(...)</span>
 <span class="p">}</span>
 
 <span class="c1">// Accessing the resultant map, containing both implementations:</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CompositeCache</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">caches</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">local</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">&quot;local&quot;</span><span class="o">]</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">remote</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">&quot;remote&quot;</span><span class="o">]</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">local</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">"local"</span><span class="o">]</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">remote</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">"remote"</span><span class="o">]</span>
 <span class="p">}</span>
 
 <span class="c1">// Alternatively, use a function in the map value type to instantiate the implementations on-demand</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CompositeCacheAlternate</span><span class="p">(</span><span class="kd">private</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">caches</span><span class="p">:</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="kt">String</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">local</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">&quot;local&quot;</span><span class="o">]</span><span class="p">()</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">remote</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">&quot;remote&quot;</span><span class="o">]</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">local</span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">"local"</span><span class="o">]</span><span class="p">()</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">remote</span><span class="p">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Cache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caches</span><span class="o">[</span><span class="s">"remote"</span><span class="o">]</span>
 
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">someTimeLater</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">remote</span><span class="p">().</span><span class="na">doSomethingWithCache</span><span class="p">()</span>

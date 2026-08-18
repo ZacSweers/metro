@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.55">
+      <meta name="generator" content="zensical-0.0.56">
     
     
       
@@ -2051,13 +2051,13 @@
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">int</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
-<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;named&quot;</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">namedInt</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
+<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">"named"</span><span class="p">)</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">namedInt</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideInt</span><span class="p">():</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">3</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
-<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">&quot;named&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Named</span><span class="p">(</span><span class="s">"named"</span><span class="p">)</span>
 <span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideNamedInt</span><span class="p">():</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -2081,7 +2081,7 @@
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">MessageImpl</span><span class="p">.</span><span class="na">bind</span><span class="p">:</span><span class="w"> </span><span class="n">Message</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideText</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideText</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="p">}</span>
 
 <span class="nd">@Inject</span>
@@ -2110,7 +2110,7 @@
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">bindMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span>
 
 <span class="w">  </span><span class="nd">@Provides</span>
-<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideText</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Hello, world!&quot;</span>
+<span class="w">  </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideText</span><span class="p">():</span><span class="w"> </span><span class="kt">String</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Hello, world!"</span>
 <span class="p">}</span>
 
 <span class="nd">@Inject</span>
@@ -2124,7 +2124,7 @@
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">bindMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span>
 
 <span class="w">  </span><span class="c1">// Error: duplicate binding for MessageImpl.</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MessageImpl</span><span class="p">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">():</span><span class="w"> </span><span class="n">MessageImpl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MessageImpl</span><span class="p">(</span><span class="s">"Hello, world!"</span><span class="p">)</span>
 <span class="p">}</span>
 
 <span class="nd">@Inject</span>
@@ -2196,7 +2196,7 @@
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">message</span><span class="p">:</span><span class="w"> </span><span class="kt">String</span>
 
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">(</span><span class="n">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="m">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Count: </span><span class="si">$</span><span class="n">count</span><span class="s">&quot;</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideMessage</span><span class="p">(</span><span class="n">count</span><span class="p">:</span><span class="w"> </span><span class="kt">Int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="m">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"Count: </span><span class="si">$</span><span class="n">count</span><span class="s">"</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>To expose accessors for optional bindings, use <code>@OptionalBinding</code> on the accessor. Note that the accessor <em>must</em> declare a default body that Metro will use if the binding is absent.</p>
@@ -2234,7 +2234,7 @@
 <div class="highlight"><pre><span></span><code><span class="c1">// in src/main</span>
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">ExampleUseCase</span><span class="p">(</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository? </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository?</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">)</span>
 
 <span class="kd">interface</span><span class="w"> </span><span class="nc">OptionalRepository</span>
@@ -2243,7 +2243,7 @@
 <span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">OptionalRepositoryProvider</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nd">@OptionalDependency</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository? </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">optionalRepository</span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository?</span><span class="w"> </span><span class="k">get</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div></p>
 <p>then in the optionally included module:<br />
@@ -2252,7 +2252,7 @@
 <span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span><span class="w"> </span><span class="c1">// Standard binding</span>
 <span class="c1">// Add a nullable binding so it can satisfy the nullable injection</span>
 <span class="c1">// in the consuming project when present on the classpath</span>
-<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">OptionalRepository?&gt;</span><span class="p">())</span>
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">OptionalRepository?</span><span class="o">&gt;</span><span class="p">())</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">OptionalRepositoryImpl</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">OptionalRepository</span>
 </code></pre></div></p>
 <details class="note">
