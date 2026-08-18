@@ -86,6 +86,7 @@ import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.proto.DependencyGraphProto
 import dev.zacsweers.metro.compiler.proto.ProviderFactoryProto
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
+import dev.zacsweers.metro.compiler.providerFactoryClassId
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.DaggerSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -686,6 +687,7 @@ internal class BindingContainerTransformer(
         backingField = null,
         annotations = annotations,
         isSuspend = function.isSuspend,
+        maxGeneratedClassNameLength = options.maxGeneratedClassNameLength,
       )
     }
   }
@@ -740,6 +742,7 @@ internal class BindingContainerTransformer(
         annotations = annotations,
         // Properties cannot be suspend in Kotlin
         isSuspend = false,
+        maxGeneratedClassNameLength = options.maxGeneratedClassNameLength,
       )
     }
   }
@@ -878,6 +881,7 @@ internal class BindingContainerTransformer(
     val annotations: MetroAnnotations<IrAnnotation>,
     /** True if the source provider is a `suspend fun`. Properties are never suspend. */
     val isSuspend: Boolean,
+    private val maxGeneratedClassNameLength: Int,
   ) {
     val isInObject: Boolean
       get() = parent.owner.isObject
@@ -889,15 +893,8 @@ internal class BindingContainerTransformer(
         parent.owner
       }
 
-    private val simpleName by lazy {
-      buildString {
-        append(name.capitalizeUS())
-        append(Symbols.Names.MetroFactory.asString())
-      }
-    }
-
     val generatedClassId by lazy {
-      parent.owner.classIdOrFail.createNestedClassId(Name.identifier(simpleName))
+      providerFactoryClassId(parent.owner.classIdOrFail, name, maxGeneratedClassNameLength)
     }
 
     private val cachedToString by lazy {

@@ -1,0 +1,243 @@
+// FILE: ContributionProviders_BoundedNames.kt
+
+abstract class AccountUserScope {
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DefaultConfig {
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@ContributesBinding(scope = AccountUserScope::class, binding = binding<ObserveMapUserLocationStyleUseCase>())
+@ContributesBinding(scope = AccountUserScope::class, binding = binding<AlternateUseCase>())
+@SingleIn(scope = AccountUserScope::class)
+@Inject
+internal class ObserveMapUserLocationStyleUseCaseImpl : AlternateUseCase, ObserveMapUserLocationStyleUseCase {
+  val config: DefaultConfig
+    field = config
+    get
+
+  constructor(config: DefaultConfig = defaultConfig()) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+interface AlternateUseCase {
+}
+
+interface ObserveMapUserLocationStyleUseCase {
+}
+
+fun defaultConfig(): DefaultConfig {
+  return DefaultConfig()
+}
+
+// FILE: ObserveMapUserLocationStyleUseCaseImplContributions.kt
+
+@HiddenFromObjC
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+abstract class ObserveMapUserLocationStyleUseCaseImplContributions {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroContribution(scope = AccountUserScope::class)
+  @Origin(value = ObserveMapUserLocationStyleUseCaseImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @IROnlyFactories
+  @ContributesTo(scope = AccountUserScope::class)
+  object ToAccountUserScope {
+    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384")
+    class ProvideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384MetroFactory : Factory<AlternateUseCase> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Provider<Any?>): ProvideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384MetroFactory {
+          return ProvideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384MetroFactory(instance = instance)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): AlternateUseCase {
+          return ToAccountUserScope.provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384(instance = instance)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): AlternateUseCase {
+        return error(message = "Never called")
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): AlternateUseCase {
+        return ProvideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384MetroFactory/* companion */.provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384(instance = <this>.#instance.invoke())
+      }
+
+    }
+
+    @CallableMetadata(callableName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb")
+    class ProvideObserveMapUserLocationStyleUseCaseImplAsObse_q03fbMetroFactory : Factory<ObserveMapUserLocationStyleUseCase> {
+      private /* final field */ val instance: Provider<Any?> = instance
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Provider<Any?>): ProvideObserveMapUserLocationStyleUseCaseImplAsObse_q03fbMetroFactory {
+          return ProvideObserveMapUserLocationStyleUseCaseImplAsObse_q03fbMetroFactory(instance = instance)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): ObserveMapUserLocationStyleUseCase {
+          return ToAccountUserScope.provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb(instance = instance)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(instance: Provider<Any?>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): ObserveMapUserLocationStyleUseCase {
+        return error(message = "Never called")
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): ObserveMapUserLocationStyleUseCase {
+        return ProvideObserveMapUserLocationStyleUseCaseImplAsObse_q03fbMetroFactory/* companion */.provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb(instance = <this>.#instance.invoke())
+      }
+
+    }
+
+    @CallableMetadata(callableName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557", propertyName = "", startOffset = -1, endOffset = -1, newInstanceName = "provideScopedInstanceObserveMapUserLocationStyleUse_a3557")
+    class ProvideScopedInstanceObserveMapUserLocationStyleUse_a3557MetroFactory : Factory<Any?> {
+      private /* final field */ val config: Provider<DefaultConfig> = config
+      companion object Companion {
+        constructor() /* primary */ {
+          super/*Any*/()
+          /* <init>() */
+
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun create(config: Provider<DefaultConfig> = provider<DefaultConfig>(provider = local fun <anonymous>(): DefaultConfig {
+          return defaultConfig()
+        }
+)): ProvideScopedInstanceObserveMapUserLocationStyleUse_a3557MetroFactory {
+          return ProvideScopedInstanceObserveMapUserLocationStyleUse_a3557MetroFactory(config = config)
+        }
+
+        @HiddenFromObjC
+        @JvmStatic
+        @JsStatic
+        fun provideScopedInstanceObserveMapUserLocationStyleUse_a3557(config: DefaultConfig = defaultConfig()): Any? {
+          return ToAccountUserScope.provideScopedInstanceObserveMapUserLocationStyleUse_a3557(config = config)
+        }
+
+      }
+
+      @HiddenFromObjC
+      private constructor(config: Provider<DefaultConfig>) /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @SingleIn(scope = AccountUserScope::class)
+      @Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl")
+      @ComptimeOnly
+      @HiddenFromObjC
+      fun declarationMirror(config: DefaultConfig = error(message = "Never called")): Any? {
+        return error(message = "Never called")
+      }
+
+      @HiddenFromObjC
+      override operator fun invoke(): Any? {
+        return ProvideScopedInstanceObserveMapUserLocationStyleUse_a3557MetroFactory/* companion */.provideScopedInstanceObserveMapUserLocationStyleUse_a3557(config = <this>.#config.invoke())
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @Provides
+    fun provideObserveMapUserLocationStyleUseCaseImplAsAlte_ad384(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): AlternateUseCase {
+      return instance /*as AlternateUseCase */
+    }
+
+    @Provides
+    fun provideObserveMapUserLocationStyleUseCaseImplAsObse_q03fb(@Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl") instance: Any?): ObserveMapUserLocationStyleUseCase {
+      return instance /*as ObserveMapUserLocationStyleUseCase */
+    }
+
+    @Provides
+    @SingleIn(scope = AccountUserScope::class)
+    @Named(name = "metro_scoped_ObserveMapUserLocationStyleUseCaseImpl")
+    fun provideScopedInstanceObserveMapUserLocationStyleUse_a3557(config: DefaultConfig = defaultConfig()): Any? {
+      return ObserveMapUserLocationStyleUseCaseImpl(config = config)
+    }
+
+  }
+
+  private constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+// FILE: observeMapUserLocationStyleUseCaseImplContributionsToAccountUserScopeAccountUserScope.kt
+package metro.hints
+
+@Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+fun AccountUserScope(contributed: ObserveMapUserLocationStyleUseCaseImplContributions.ToAccountUserScope) {
+  return error(message = "Never called")
+}
+

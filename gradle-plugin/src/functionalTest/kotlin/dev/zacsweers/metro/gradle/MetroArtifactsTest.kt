@@ -9,6 +9,8 @@ import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
+import dev.zacsweers.metro.compiler.MIN_GENERATED_CLASS_NAME_LENGTH
 import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -57,6 +59,47 @@ class MetroArtifactsTest {
     assertThat(content).contains("  compilation: main")
     assertThat(content).contains("    enabled = true")
     assertThat(content).contains("    reports-destination = ")
+  }
+
+  @Test
+  fun `raw generated class name limit below the minimum reports a compiler error`() {
+    val testJavaHome = File(System.getProperty("java.home")).invariantSeparatorsPath
+    val invalidLimit = MIN_GENERATED_CLASS_NAME_LENGTH - 1
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.java.home=$testJavaHome"),
+        ) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            metro {
+              compilerOptions { put("max-generated-class-name-length", "$invalidLimit") }
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val result = buildAndFail(fixture.gradleProject.rootDir, "compileKotlin")
+    assertThat(result.output)
+      .contains(
+        "max-generated-class-name-length must be at least " +
+          "$MIN_GENERATED_CLASS_NAME_LENGTH but was $invalidLimit"
+      )
   }
 
   @Test
@@ -401,7 +444,8 @@ class MetroArtifactsTest {
                 "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
                 "enableRuntimeTracing": false,
-                "memberNamingStrategy": "DESCRIPTIVE"
+                "memberNamingStrategy": "DESCRIPTIVE",
+                "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
               },
               "stats": {
                 "providerFactories": 1,
