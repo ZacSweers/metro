@@ -126,6 +126,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
             selectedGraphNode()?.context?.let(::validateContext)
           }
         },
+        CopyGraphDebugInfoAction(project) { selectedGraphNode()?.context },
       )
     val toolbar =
       ActionManager.getInstance().createActionToolbar("MetroToolWindow", actionGroup, true)

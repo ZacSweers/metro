@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -113,6 +114,29 @@ internal class MetroGraphValidationService(
    */
   fun validate(element: PsiElement, context: GraphContext): KaGraphValidationResult {
     return validate(validationInput(element, context))
+  }
+
+  /**
+   * Inspects the same module-aware lookup used by a graph seal without retaining or caching it.
+   * Returns null if the requested graph path disappeared. Must be called under a read action.
+   */
+  fun <T> debugLookup(
+    element: PsiElement,
+    context: GraphContext,
+    block: (BindingIndex, GraphQueryContext, MetroOptions, KaBindingLookup) -> T,
+  ): T? {
+    val input = validationInputOrNull(element, context) ?: return null
+    val queryContext = input.index.queryContext(input.context) ?: return null
+    val options = moduleOptions(input.declarationElement)
+    val lookup =
+      KaBindingLookup(input.index, queryContext, options) { parentContext ->
+        parentGraphLookup(input.declarationElement, parentContext)
+      }
+    return try {
+      block(input.index, queryContext, options, lookup)
+    } finally {
+      lookup.clear()
+    }
   }
 
   private fun validate(input: ValidationInput): KaGraphValidationResult {
