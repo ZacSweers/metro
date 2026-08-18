@@ -2,18 +2,56 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
+import dev.zacsweers.metro.compiler.symbols.Symbols
+import okio.utf8Size
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-private const val MAX_FILE_NAME_LENGTH =
-  255
-    .minus(14) // ".kapt_metadata" is the longest extension
-    .minus(8) // "Provider" is the longest suffix that Dagger might add
-
 // Soft cap for [safeNestedSimpleName]: 255 minus headroom for `$FactoryImpl`, a chained
 // `$Impl_xxxxx`, `.class`, and a small buffer.
 internal const val NESTED_CLASS_BINARY_NAME_LIMIT = 220
+
+/** Includes the binary-name separator before Kotlin's generated companion object. */
+internal const val GENERATED_COMPANION_NAME_BYTES = 10
+
+/** The JVM class-file basename, without its package path or file extension. */
+internal fun ClassId.binaryClassName(): String =
+  relativeClassName.pathSegments().joinToString("$") { it.asString() }
+
+/** Both FIR and IR must compute exactly the same provider-factory class ID. */
+internal fun providerFactoryClassId(
+  parentClassId: ClassId,
+  callableName: Name,
+  maxBytes: Int,
+): ClassId {
+  val suffix = Symbols.StringNames.METRO_FACTORY
+  val preferredName = callableName.asString().capitalizeUS() + suffix
+  return parentClassId
+    .createNestedClassId(Name.identifier(preferredName))
+    .truncate(
+      maxLength = maxBytes,
+      reservedNestedBytes = GENERATED_COMPANION_NAME_BYTES,
+      hashSource = "provider-factory:${parentClassId.asString()}#${callableName.asString()}",
+      requiredSuffix = suffix,
+    )
+}
+
+/** Takes complete Unicode code points without allocating an encoded copy for every prefix. */
+private fun String.takeUtf8Prefix(maxBytes: Int): String {
+  var end = 0
+  var bytes = 0
+  while (end < length) {
+    val codePoint = Character.codePointAt(this, end)
+    val nextEnd = end + Character.charCount(codePoint)
+    // Okio also accounts for the replacement of an unpaired surrogate.
+    val nextBytes = utf8Size(end, nextEnd).toInt()
+    if (nextBytes > maxBytes - bytes) break
+    bytes += nextBytes
+    end = nextEnd
+  }
+  return substring(0, end)
+}
 
 /**
  * Joins the simple names of a class with the given [separator] and [suffix].
@@ -55,7 +93,9 @@ private fun ClassId.joinSimpleNamesPrivate(
 
 private fun ClassId.checkFileLength(): ClassId = apply {
   val len = relativeClassName.pathSegments().sumOf { it.identifier.length + 1 }.minus(1)
-  require(len <= MAX_FILE_NAME_LENGTH) { "Class name is too long: $len  --  ${asString()}" }
+  require(len <= DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH) {
+    "Class name is too long: $len  --  ${asString()}"
+  }
 }
 
 /**
@@ -113,11 +153,8 @@ public fun ClassId.joinSimpleNamesAndTruncate(
  *   even after truncating.
  */
 public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0): ClassId {
-
   val maxLength =
-    MAX_FILE_NAME_LENGTH
-      // hash suffix with separator: `_a0b2c3d4`
-      .minus(HASH_SUFFIX_LENGTH + separator.length)
+    DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
       // a nested type that will be appended to this canonical name
       // with a '$' separator, like `$ParentComponent`
       .minus(innerClassLength + 1)
@@ -128,11 +165,63 @@ public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0):
   val className =
     relativeClassName
       .asString()
-      .take(maxLength)
       // The hash is appended after truncating so that it's always present.
-      .plus("$separator$hashSuffix")
+      .truncateName(
+        maxBytes = maxLength,
+        separator = separator,
+        hashSource = this,
+        forceHash = true,
+      )
 
   return ClassId(packageFqName, Name.identifier(className)).checkFileLength()
+}
+
+/** Truncates a generated class against its complete UTF-8 binary name and future nested names. */
+internal fun ClassId.truncate(
+  maxLength: Int,
+  reservedNestedBytes: Int = 0,
+  hashSource: Any = this,
+  requiredSuffix: String = "",
+  forceHash: Boolean = false,
+): ClassId {
+  val parent = outerClassId
+  val parentBytes =
+    if (parent == null) {
+      0
+    } else {
+      parent.binaryClassName().utf8Size().toInt() + 1
+    }
+  val availableBytes = maxLength - parentBytes - reservedNestedBytes
+  val originalName = shortClassName.asString()
+  val truncatedName =
+    originalName.truncateName(
+      maxBytes = availableBytes,
+      hashSource = hashSource,
+      requiredSuffix = requiredSuffix,
+      forceHash = forceHash,
+    )
+  if (truncatedName == originalName) return this
+
+  val name = Name.identifier(truncatedName)
+  return parent?.createNestedClassId(name) ?: ClassId(packageFqName, name)
+}
+
+private fun String.truncateName(
+  maxBytes: Int,
+  hashSource: Any,
+  separator: String = "_",
+  requiredSuffix: String = "",
+  forceHash: Boolean = false,
+): String {
+  require(endsWith(requiredSuffix)) { "Generated name '$this' must end with '$requiredSuffix'" }
+  if (!forceHash && utf8Size() <= maxBytes) return this
+
+  // Keep the existing compact deterministic hash so the descriptive name receives the remaining
+  // space, including when its enclosing class was written by the user.
+  // Reserve the hash suffix with its separator before taking the descriptive prefix.
+  val suffix = "$separator${hashSource.hashSuffix}$requiredSuffix"
+  val prefixBudget = (maxBytes - suffix.utf8Size().toInt()).coerceAtLeast(0)
+  return removeSuffix(requiredSuffix).takeUtf8Prefix(prefixBudget) + suffix
 }
 
 public fun ClassId.generatedClass(suffix: String): ClassId {
