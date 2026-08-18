@@ -1148,5 +1148,9 @@ internal class FileShardBuilder(
       val declarationFile = annotationClass.psi?.containingFile ?: continue
       if (declarationFile !== useSiteFile) cacheDependencies += declarationFile
     }
+    if (annotated is KaPropertySymbol) {
+      val getter = annotated.getter
+      if (getter != null) recordAnnotationDependencies(getter, useSite)
+    }
   }
 }

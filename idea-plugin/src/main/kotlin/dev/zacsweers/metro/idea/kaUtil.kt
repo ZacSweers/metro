@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotation
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
+import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
 import org.jetbrains.kotlin.name.CallableId
@@ -225,11 +226,19 @@ internal fun KaSession.findAllMetaAnnotated(
   }
 }
 
-/** Finds the first qualifier annotation (an annotation meta-annotated with `@Qualifier`). */
+/**
+ * Finds the first qualifier annotation (an annotation meta-annotated with `@Qualifier`). A
+ * property's own qualifier takes precedence over a getter use-site qualifier.
+ */
 internal fun KaSession.qualifierAnnotation(
   annotated: KaAnnotated,
   options: MetroOptions,
-): KaAnnotationSnapshot? = findMetaAnnotated(annotated, options.qualifierAnnotations)
+): KaAnnotationSnapshot? {
+  val qualifier = findMetaAnnotated(annotated, options.qualifierAnnotations)
+  if (qualifier != null) return qualifier
+  val getter = (annotated as? KaPropertySymbol)?.getter ?: return null
+  return findMetaAnnotated(getter, options.qualifierAnnotations)
+}
 
 /** Finds the first scope annotation (an annotation meta-annotated with `@Scope`). */
 internal fun KaSession.scopeAnnotation(

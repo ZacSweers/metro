@@ -10,6 +10,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
@@ -948,6 +949,229 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val bindings = index.bindingsFor(cdnParam)
     assertEquals(1, bindings.size)
     assertEquals("provideCdnUrl", (bindings.single().pointer.element as? KtNamedDeclaration)?.name)
+  }
+
+  fun testGetterQualifiersDisambiguateSourceGraphAccessorsAndProviders() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          @get:Named("getter") val getterQualified: String
+          @Named("property") val propertyQualified: String
+          val unqualified: String
+
+          @Provides @get:Named("getter") val getterProvider: String get() = "getter"
+          @Provides @Named("property") val propertyProvider: String get() = "property"
+          @Provides val unqualifiedProvider: String get() = "plain"
+        }
+        """
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val index = project.service<MetroResolutionService>().index(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      val expected =
+        mapOf(
+          "getterQualified" to ("@Named(name = \"getter\") String" to "getterProvider"),
+          "propertyQualified" to ("@Named(name = \"property\") String" to "propertyProvider"),
+          "unqualified" to ("String" to "unqualifiedProvider"),
+        )
+      for ((name, expectation) in expected) {
+        val accessor =
+          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+        assertEquals(expectation.first, accessor.key.render(short = true))
+        val bindings = index.bindingsFor(accessor, query)
+        assertEquals(
+          listOf(expectation.second),
+          bindings.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+        )
+        assertEquals(listOf(accessor.key), bindings.map { it.typeKey })
+      }
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
+  }
+
+  fun testInheritedGetterQualifiersPreserveConcreteGraphKeys() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Accessors<T> {
+          @get:Named("inherited") val inherited: T
+        }
+
+        interface Providers<T> {
+          @Provides @get:Named("inherited") val inheritedProvider: T get() = error("fixture")
+          @Provides val unqualifiedProvider: T get() = error("fixture")
+        }
+
+        @DependencyGraph
+        interface AppGraph : Accessors<String>, Providers<String> {
+          val unqualified: String
+        }
+        """
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val index = project.service<MetroResolutionService>().index(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      val expected =
+        mapOf(
+          "inherited" to ("@Named(name = \"inherited\") String" to "inheritedProvider"),
+          "unqualified" to ("String" to "unqualifiedProvider"),
+        )
+      for ((name, expectation) in expected) {
+        val accessor =
+          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+        assertEquals(graph.declarationId, accessor.graphId)
+        assertEquals(expectation.first, accessor.key.render(short = true))
+        val bindings = index.bindingsFor(accessor, query)
+        assertEquals(
+          listOf(expectation.second),
+          bindings.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+        )
+        assertEquals(listOf(accessor.key), bindings.map { it.typeKey })
+      }
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
+  }
+
+  fun testContributedGetterQualifiersPreserveExactGraphLookup() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        object GetterScope
+
+        @ContributesTo(GetterScope::class)
+        interface GetterMembers {
+          @get:Named("contributed") val contributed: String
+          @Provides @get:Named("contributed") val contributedProvider: String get() = "qualified"
+          @Provides val unqualifiedProvider: String get() = "plain"
+        }
+
+        @DependencyGraph(GetterScope::class)
+        interface AppGraph {
+          val unqualified: String
+        }
+        """
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val index = project.service<MetroResolutionService>().index(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      val expected =
+        mapOf(
+          "contributed" to ("@Named(name = \"contributed\") String" to "contributedProvider"),
+          "unqualified" to ("String" to "unqualifiedProvider"),
+        )
+      for ((name, expectation) in expected) {
+        val accessor =
+          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+        assertEquals(graph.declarationId, accessor.graphId)
+        assertEquals(expectation.first, accessor.key.render(short = true))
+        val bindings = index.bindingsFor(accessor, query)
+        assertEquals(
+          listOf(expectation.second),
+          bindings.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+        )
+        assertEquals(listOf(accessor.key), bindings.map { it.typeKey })
+      }
+      val result =
+        project.service<MetroGraphValidationService>().validate(file, query.graphContext).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
+  }
+
+  fun testGetterQualifierDefaultChangesRefreshDependentGraphKeys() {
+    val qualifier =
+      myFixture.addFileToProject(
+        "test/Endpoint.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Qualifier
+
+        @Qualifier
+        @Target(AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.FUNCTION)
+        annotation class Endpoint(val name: String = "main")
+        """
+          .trimIndent(),
+      )
+    myFixture.addFileToProject(
+      "test/EndpointProviders.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.BindingContainer
+      import dev.zacsweers.metro.Provides
+
+      @BindingContainer
+      object EndpointProviders {
+        @Provides @Endpoint("main") fun provideMain(): String = "main"
+        @Provides @Endpoint("other") fun provideOther(): String = "other"
+      }
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph(bindingContainers = [EndpointProviders::class])
+        interface AppGraph {
+          @get:Endpoint val endpoint: String
+        }
+        """,
+        fileName = "GetterQualifierGraph.kt",
+      )
+    val settings = MetroSettings.getInstance(project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+    settings.resolveFromLibraries = false
+    try {
+      val service = project.service<MetroResolutionService>()
+      val initial = service.index(file)
+      val accessor = file.declarationsIncludingNested().property("endpoint")
+      val initialConsumer = checkNotNull(initial.consumerEntryAt(accessor))
+      assertEquals("@Endpoint(name = \"main\") String", initialConsumer.key.render(short = true))
+      assertEquals(
+        listOf("provideMain"),
+        initial.resolveConsumer(initialConsumer).uniformBindings.orEmpty().map {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        },
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(qualifier))
+      val defaultOffset = document.text.indexOf("\"main\"")
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.replaceString(defaultOffset, defaultOffset + "\"main\"".length, "\"other\"")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      val updated = service.index(file)
+      val updatedConsumer = checkNotNull(updated.consumerEntryAt(accessor))
+      assertNotSame(initial, updated)
+      assertEquals("@Endpoint(name = \"other\") String", updatedConsumer.key.render(short = true))
+      assertEquals(
+        listOf("provideOther"),
+        updated.resolveConsumer(updatedConsumer).uniformBindings.orEmpty().map {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        },
+      )
+    } finally {
+      settings.resolveFromLibraries = previousResolveFromLibraries
+    }
   }
 
   fun testConcreteInjectedClassConsumersAcrossInjectionShapes() {
