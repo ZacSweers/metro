@@ -24,6 +24,7 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
 
   fun show(progress: IndexBuildProgress) {
     messageLabel.text = progress.message
+    progressBar.isVisible = true
     val total = progress.total
     if (total != null && total > 0) {
       progressBar.isIndeterminate = false
@@ -38,7 +39,15 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
 
   fun showWaitingForIdeIndexing() {
     messageLabel.text = "Waiting for IDE indexing to finish"
+    progressBar.isVisible = true
     progressBar.isIndeterminate = true
+    isVisible = true
+  }
+
+  fun showNotLoaded() {
+    messageLabel.text = "Metro graphs have not been loaded"
+    progressBar.isVisible = false
+    progressBar.isIndeterminate = false
     isVisible = true
   }
 

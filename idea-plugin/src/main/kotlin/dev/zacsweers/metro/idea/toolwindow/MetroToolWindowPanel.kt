@@ -69,11 +69,16 @@ internal class MetroToolWindowPanel(private val project: Project) :
       isRootVisible = false
       showsRootHandles = true
     }
+  internal val loadOrRefreshAction =
+    LoadOrRefreshGraphsAction(resolutionService) {
+      updateIndexBuildStatus()
+      treeModel.invalidateAsync()
+    }
 
   init {
     TreeSpeedSearch.installOn(tree)
 
-    // A window opened while indexes are unavailable must populate once smart mode returns.
+    // An activated window waiting on IDE indexes must retry once smart mode returns.
     project.messageBus
       .connect(this)
       .subscribe(
@@ -90,6 +95,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
         },
       )
     resolutionService.addIndexListener(this) {
+      updateIndexBuildStatus()
       treeModel.invalidateAsync()
       pendingValidation?.let { (classId, file) ->
         // Invalidation and other modules publish through this same listener. Keep the request
@@ -127,11 +133,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
     val actionGroup =
       DefaultActionGroup(
         // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
-        object : AnAction("Refresh", "Reload graphs and bindings", AllIcons.Actions.Refresh) {
-          override fun actionPerformed(e: AnActionEvent) {
-            treeModel.invalidateAsync()
-          }
-        },
+        loadOrRefreshAction,
         object :
           AnAction("Validate", "Validate the selected graph", MetroIcons.GRAPH_VALIDATED),
           DumbAware {
@@ -166,7 +168,12 @@ internal class MetroToolWindowPanel(private val project: Project) :
     if (DumbService.isDumb(project)) {
       indexBuildStatus.showWaitingForIdeIndexing()
     } else {
-      indexBuildProgress?.let(indexBuildStatus::show) ?: indexBuildStatus.clear()
+      val progress = indexBuildProgress
+      when {
+        progress != null -> indexBuildStatus.show(progress)
+        !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
+        else -> indexBuildStatus.clear()
+      }
     }
   }
 
@@ -306,5 +313,24 @@ internal class MetroToolWindowPanel(private val project: Project) :
     disposed = true
     pendingValidation = null
     indexBuildStatus.clear()
+  }
+}
+
+internal class LoadOrRefreshGraphsAction(
+  private val resolutionService: MetroResolutionService,
+  private val refresh: () -> Unit,
+) : AnAction("Load", "Load graphs and bindings", AllIcons.Actions.Refresh) {
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+  override fun update(e: AnActionEvent) {
+    val isActivated = resolutionService.isGraphBrowserActivated
+    e.presentation.text = if (isActivated) "Refresh" else "Load"
+    e.presentation.description =
+      if (isActivated) "Refresh graphs and bindings" else "Load graphs and bindings"
+  }
+
+  override fun actionPerformed(e: AnActionEvent) {
+    resolutionService.activateGraphBrowser()
+    refresh()
   }
 }

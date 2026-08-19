@@ -290,7 +290,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(2, attempts)
   }
 
-  fun testToolWindowIndexRequestsBuildInBackgroundAndReportProgress() {
+  fun testToolWindowIndexWaitsForActivationThenBuildsInBackgroundAndReportsProgress() {
     configure()
     val service = project.service<MetroResolutionService>()
     val progress = mutableListOf<IndexBuildProgress?>()
@@ -305,6 +305,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       }
     }
 
+    assertFalse(service.isGraphBrowserActivated)
+    assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+    assertTrue(progress.none { it != null })
+
+    service.activateGraphBrowser()
+    assertTrue(service.isGraphBrowserActivated)
     assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
     PlatformTestUtil.waitForFuture(completed, 30_000)
 
@@ -315,6 +321,16 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(IndexBuildPhase.COMBINING_DECLARATIONS in phases)
     assertTrue(IndexBuildPhase.BUILDING_GRAPH_INDEX in phases)
     assertNull(progress.last())
+  }
+
+  fun testToolWindowUsesAnIndexAlreadyBuiltByEditorFeatures() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    val warmIndex = service.index(module)
+
+    assertFalse(service.isGraphBrowserActivated)
+    assertSame(warmIndex, service.indexForToolWindow(module))
+    assertTrue(service.isGraphBrowserActivated)
   }
 
   fun testIndexBuildProgressReporterThrottlesIntermediateCounts() {

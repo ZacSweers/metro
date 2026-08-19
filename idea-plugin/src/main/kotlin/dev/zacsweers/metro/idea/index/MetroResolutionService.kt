@@ -135,6 +135,7 @@ class MetroResolutionService(
   private val invalidationPending = AtomicBoolean()
   /** The first source state in a batch of roots, facet, or compiler-settings callbacks. */
   private val pendingProjectInputs = AtomicReference<PendingProjectInputs?>(null)
+  private val graphBrowserActivated = AtomicBoolean()
   private val disposed = AtomicBoolean()
 
   /**
@@ -280,15 +281,40 @@ class MetroResolutionService(
    */
   internal fun index(module: Module): BindingIndex {
     val application = ApplicationManager.getApplication()
-    val scheduleInBackground = application.isDispatchThread && !application.isUnitTestMode
-    return index(module, scheduleInBackground)
+    val requestMode =
+      if (application.isDispatchThread && !application.isUnitTestMode) {
+        IndexRequestMode.BACKGROUND
+      } else {
+        IndexRequestMode.SYNCHRONOUS
+      }
+    return index(module, requestMode)
   }
 
-  /** Returns a cached index to the graph browser or schedules its serialized background build. */
-  internal fun indexForToolWindow(module: Module): BindingIndex =
-    index(module, scheduleInBackground = true)
+  /** Returns a cached graph-browser index, building in the background only after first use. */
+  internal fun indexForToolWindow(module: Module): BindingIndex {
+    val requestMode =
+      if (graphBrowserActivated.get()) {
+        IndexRequestMode.BACKGROUND
+      } else {
+        IndexRequestMode.CACHE_ONLY
+      }
+    val index = index(module, requestMode)
+    if (index !== BindingIndex.EMPTY && graphBrowserActivated.compareAndSet(false, true)) {
+      // currentIndexes() may have skipped earlier modules while the browser was inactive. Ask the
+      // tree to make one active pass so those modules can schedule their own snapshots.
+      scheduleInvalidationNotification()
+    }
+    return index
+  }
 
-  private fun index(module: Module, scheduleInBackground: Boolean): BindingIndex {
+  internal val isGraphBrowserActivated: Boolean
+    get() = graphBrowserActivated.get()
+
+  internal fun activateGraphBrowser() {
+    graphBrowserActivated.set(true)
+  }
+
+  private fun index(module: Module, requestMode: IndexRequestMode): BindingIndex {
     val moduleState = project.service<MetroIdeProjectService>().state(module)
     if (!moduleState.isEnabled) return BindingIndex.EMPTY
 
@@ -306,17 +332,20 @@ class MetroResolutionService(
         }
     }
 
-    if (scheduleInBackground) {
-      scheduleBuild(module, key)
-      return BindingIndex.EMPTY
-    }
-
-    return if (ApplicationManager.getApplication().isDispatchThread) {
-      // BasePlatformTestCase performs existing marker/index assertions synchronously on the EDT.
-      // Production callers take the background path above and never reach this exception.
-      allowAnalysisOnEdt { buildCurrentIndex(module, key) }
-    } else {
-      buildCurrentIndex(module, key)
+    return when (requestMode) {
+      IndexRequestMode.CACHE_ONLY -> BindingIndex.EMPTY
+      IndexRequestMode.BACKGROUND -> {
+        scheduleBuild(module, key)
+        BindingIndex.EMPTY
+      }
+      IndexRequestMode.SYNCHRONOUS ->
+        if (ApplicationManager.getApplication().isDispatchThread) {
+          // BasePlatformTestCase performs existing marker/index assertions synchronously on the
+          // EDT. Production callers take the background path and never reach this exception.
+          allowAnalysisOnEdt { buildCurrentIndex(module, key) }
+        } else {
+          buildCurrentIndex(module, key)
+        }
     }
   }
 
@@ -1241,6 +1270,7 @@ class MetroResolutionService(
     pendingProjectInputs.set(null)
     buildSignal.close()
     pendingBuilds.clear()
+    graphBrowserActivated.set(false)
     listeners.clear()
     indexBuildProgressListeners.clear()
     indexBuildProgress.set(null)
@@ -1254,6 +1284,12 @@ class MetroResolutionService(
     const val MAX_CACHED_INDEXES = 8
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
   }
+}
+
+private enum class IndexRequestMode {
+  CACHE_ONLY,
+  BACKGROUND,
+  SYNCHRONOUS,
 }
 
 /** Keeps one factory instance per source parameter while retaining every exact graph owner. */

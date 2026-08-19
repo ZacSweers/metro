@@ -30,6 +30,7 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
+import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
@@ -380,8 +381,48 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertTrue(panel.progressBar.isIndeterminate)
     assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
 
+    panel.showNotLoaded()
+    assertTrue(panel.isVisible)
+    assertFalse(panel.progressBar.isVisible)
+    assertEquals("Metro graphs have not been loaded", panel.messageLabel.text)
+
     panel.clear()
     assertFalse(panel.isVisible)
+  }
+
+  fun testGraphBrowserActionLoadsOnceThenRefreshes() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    var refreshes = 0
+    val action = LoadOrRefreshGraphsAction(service) { refreshes++ }
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    action.update(event)
+    assertEquals("Load", event.presentation.text)
+    assertEquals("Load graphs and bindings", event.presentation.description)
+    assertFalse(service.isGraphBrowserActivated)
+
+    action.actionPerformed(event)
+    action.update(event)
+    assertEquals(1, refreshes)
+    assertTrue(service.isGraphBrowserActivated)
+    assertEquals("Refresh", event.presentation.text)
+    assertEquals("Refresh graphs and bindings", event.presentation.description)
+  }
+
+  fun testToolWindowWaitsForInitialGraphLoad() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      val status = toolWindowStatus(panel)
+      assertFalse(service.isGraphBrowserActivated)
+      assertTrue(status.isVisible)
+      assertEquals("Metro graphs have not been loaded", status.messageLabel.text)
+    } finally {
+      Disposer.dispose(panel)
+    }
   }
 
   fun testToolWindowPanelRecoversAfterDumbMode() {
