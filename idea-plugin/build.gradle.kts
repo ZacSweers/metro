@@ -163,6 +163,14 @@ buildConfig {
   }
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
   buildConfigField("String", "VERSION", providers.provider { "\"$version\"" })
+  buildConfigField(
+    "String",
+    "BUGSNAG_KEY",
+    propertyResolver
+      .optionalStringProvider("MetroIntellijBugsnagKey")
+      .map { "\"$it\"" }
+      .orElse("\"\""),
+  )
   buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
 }
 
@@ -193,6 +201,7 @@ dependencies {
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
   shaded("dev.zacsweers.metro:metro-common")
   testImplementation(libs.junit)
