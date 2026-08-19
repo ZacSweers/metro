@@ -105,6 +105,11 @@ internal class MetroToolWindowPanel(private val project: Project) :
       }
     )
 
+    val overflowGroup =
+      DefaultActionGroup("More", true).apply {
+        templatePresentation.icon = AllIcons.Actions.More
+        add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
+      }
     val actionGroup =
       DefaultActionGroup(
         // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
@@ -126,7 +131,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
             selectedGraphNode()?.context?.let(::validateContext)
           }
         },
-        ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context },
+        overflowGroup,
       )
     val toolbar =
       ActionManager.getInstance().createActionToolbar("MetroToolWindow", actionGroup, true)
