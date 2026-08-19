@@ -13,6 +13,96 @@ import org.junit.Test
 class BindingGraphTest : TraceScope by TraceScope.noop() {
 
   @Test
+  fun `required graph root replaces an optional root for the same key`() {
+    val typeKey = StringTypeKey("Missing")
+    val optional = StringContextualTypeKey.create(typeKey, hasDefault = true)
+    val required = StringContextualTypeKey.create(typeKey)
+    val optionalEntry = StringBindingStack.Entry(optional, usage = "optional")
+    val requiredEntry = StringBindingStack.Entry(required, usage = "required")
+    val roots = linkedMapOf<StringContextualTypeKey, StringBindingStack.Entry>()
+
+    roots.putGraphRoot(optional, optionalEntry)
+    roots.putGraphRoot(required, requiredEntry)
+
+    assertThat(roots.keys.single()).isSameInstanceAs(required)
+    assertThat(roots.values.single()).isSameInstanceAs(requiredEntry)
+  }
+
+  @Test
+  fun `optional graph root does not replace a required root for the same key`() {
+    val typeKey = StringTypeKey("Missing")
+    val required = StringContextualTypeKey.create(typeKey)
+    val optional = StringContextualTypeKey.create(typeKey, hasDefault = true)
+    val requiredEntry = StringBindingStack.Entry(required, usage = "required")
+    val optionalEntry = StringBindingStack.Entry(optional, usage = "optional")
+    val roots = linkedMapOf<StringContextualTypeKey, StringBindingStack.Entry>()
+
+    roots.putGraphRoot(required, requiredEntry)
+    roots.putGraphRoot(optional, optionalEntry)
+
+    assertThat(roots.keys.single()).isSameInstanceAs(required)
+    assertThat(roots.values.single()).isSameInstanceAs(requiredEntry)
+  }
+
+  @Test
+  fun `graph roots with matching optionality keep the latest source`() {
+    val typeKey = StringTypeKey("Missing")
+    val first = StringContextualTypeKey.create(typeKey)
+    val second = StringContextualTypeKey.create(typeKey)
+    val firstEntry = StringBindingStack.Entry(first, usage = "first")
+    val secondEntry = StringBindingStack.Entry(second, usage = "second")
+    val roots = linkedMapOf<StringContextualTypeKey, StringBindingStack.Entry>()
+
+    roots.putGraphRoot(first, firstEntry)
+    roots.putGraphRoot(second, secondEntry)
+
+    assertThat(roots.keys.single()).isSameInstanceAs(first)
+    assertThat(roots.values.single()).isSameInstanceAs(secondEntry)
+  }
+
+  @Test
+  fun `distinct graph roots keep their own sources`() {
+    val first = StringContextualTypeKey.create(StringTypeKey("First"))
+    val second = StringContextualTypeKey.create(StringTypeKey("Second"))
+    val firstEntry = StringBindingStack.Entry(first)
+    val secondEntry = StringBindingStack.Entry(second)
+    val roots = linkedMapOf<StringContextualTypeKey, StringBindingStack.Entry>()
+
+    roots.putGraphRoot(first, firstEntry)
+    roots.putGraphRoot(second, secondEntry)
+
+    assertThat(roots).containsExactly(first, firstEntry, second, secondEntry).inOrder()
+  }
+
+  @Test
+  fun `new graph roots use one map write without a lookup`() {
+    val key = StringContextualTypeKey.create(StringTypeKey("Root"))
+    val entry = StringBindingStack.Entry(key)
+    var writes = 0
+    var reads = 0
+    val roots =
+      object : LinkedHashMap<StringContextualTypeKey, StringBindingStack.Entry>() {
+        override fun put(
+          key: StringContextualTypeKey,
+          value: StringBindingStack.Entry,
+        ): StringBindingStack.Entry? {
+          writes++
+          return super.put(key, value)
+        }
+
+        override fun get(key: StringContextualTypeKey): StringBindingStack.Entry? {
+          reads++
+          return super.get(key)
+        }
+      }
+
+    roots.putGraphRoot(key, entry)
+
+    assertThat(writes).isEqualTo(1)
+    assertThat(reads).isEqualTo(0)
+  }
+
+  @Test
   fun put() {
     val key = "key".typeKey
     val (graph) = buildGraph { binding("key") }

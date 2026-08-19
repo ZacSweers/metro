@@ -33,6 +33,7 @@ import dev.zacsweers.metro.compiler.graph.MissingBindingHints
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
+import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
@@ -325,12 +326,12 @@ internal class IrBindingGraph(
 
   fun addAccessor(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     recordRuntimeCoroutinesUse(key)
-    accessors[key] = entry
+    accessors.putGraphRoot(key, entry)
   }
 
   fun addInjector(key: IrContextualTypeKey, entry: IrBindingStack.Entry) {
     recordRuntimeCoroutinesUse(key)
-    injectors[key] = entry
+    injectors.putGraphRoot(key, entry)
   }
 
   fun addBinding(key: IrTypeKey, binding: IrBinding, bindingStack: IrBindingStack) {

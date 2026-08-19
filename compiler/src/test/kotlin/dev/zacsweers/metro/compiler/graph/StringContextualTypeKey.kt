@@ -9,7 +9,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 internal class StringContextualTypeKey
 private constructor(
   override val typeKey: StringTypeKey,
-  override val hasDefault: Boolean = false,
+  @Poko.Skip override val hasDefault: Boolean = false,
   @Poko.Skip override val rawType: String? = null,
   @Poko.Skip override val wrappedType: WrappedType<String>,
 ) : BaseContextualTypeKey<String, StringTypeKey, StringContextualTypeKey> {
