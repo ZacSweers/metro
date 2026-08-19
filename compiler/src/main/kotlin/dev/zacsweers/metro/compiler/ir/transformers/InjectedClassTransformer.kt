@@ -512,7 +512,10 @@ internal class InjectedClassTransformer(
       )
       .apply {
         if (isAssistedInject) {
-          addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
+          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+            this,
+            buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor),
+          )
         }
         addMetadataVisibleHiddenCompanionObject()
       }
