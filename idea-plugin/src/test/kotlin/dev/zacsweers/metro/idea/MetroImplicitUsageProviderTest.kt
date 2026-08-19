@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
@@ -44,6 +45,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
+    assertTrue(declarations.obj("ContributedObjectService").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("ConstructorAssistedInjectedService")
@@ -326,6 +328,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       @ContributesBinding(AppScope::class) class ContributedBindingService : Service
       @ContributesIntoSet(AppScope::class) class ContributedSetService : Service
       @ContributesIntoMap(AppScope::class) class ContributedMapService : Service
+      @ContributesBinding(AppScope::class) object ContributedObjectService : Service
       @OptIn(ExperimentalMetroApi::class)
       @ExposeImplBinding
       @ContributesBinding(AppScope::class)
@@ -427,6 +430,10 @@ private fun List<KtDeclaration>.property(name: String): KtProperty {
 
 private fun List<KtDeclaration>.klass(name: String): KtClass {
   return filterIsInstance<KtClass>().single { it.name == name }
+}
+
+private fun List<KtDeclaration>.obj(name: String): KtObjectDeclaration {
+  return filterIsInstance<KtObjectDeclaration>().single { it.name == name }
 }
 
 private fun List<KtDeclaration>.parameter(name: String): KtParameter {

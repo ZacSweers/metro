@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -55,7 +54,8 @@ internal fun PsiElement.isMetroImplicitUsage(): Boolean {
 
   val declaration = ownerDeclaration() ?: return false
   return when (declaration) {
-    is KtClass -> declaration.hasGeneratedInjectionEntryPoint(options, annotationClassIds)
+    // Contributed objects are instance bindings even though they have no injectable constructor.
+    is KtClassOrObject -> declaration.hasGeneratedInjectionEntryPoint(options, annotationClassIds)
     is KtConstructor<*> ->
       declaration.hasAnyMetroAnnotation(annotationClassIds.constructorInjectionAnnotations)
     is KtNamedFunction -> declaration.hasAnyMetroAnnotation(annotationClassIds.functionAnnotations)
@@ -85,7 +85,7 @@ private fun PsiElement.ownerDeclaration(): KtDeclaration? {
   }
 }
 
-private fun KtClass.hasGeneratedInjectionEntryPoint(
+private fun KtClassOrObject.hasGeneratedInjectionEntryPoint(
   options: MetroOptions,
   annotationClassIds: MetroIdeAnnotationClassIds,
 ): Boolean {
@@ -95,12 +95,14 @@ private fun KtClass.hasGeneratedInjectionEntryPoint(
   return hasInjectAnnotatedConstructor(annotationClassIds.constructorInjectionAnnotations)
 }
 
-private fun KtClass.hasInjectAnnotatedConstructor(constructorAnnotations: Set<ClassId>): Boolean {
+private fun KtClassOrObject.hasInjectAnnotatedConstructor(
+  constructorAnnotations: Set<ClassId>
+): Boolean {
   return primaryConstructor.hasAnyMetroAnnotation(constructorAnnotations) ||
     secondaryConstructors.any { it.hasAnyMetroAnnotation(constructorAnnotations) }
 }
 
-private fun KtClass.hasContributionProviderGeneratedUsage(
+private fun KtClassOrObject.hasContributionProviderGeneratedUsage(
   options: MetroOptions,
   annotationClassIds: MetroIdeAnnotationClassIds,
 ): Boolean {
