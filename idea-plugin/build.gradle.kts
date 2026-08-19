@@ -88,11 +88,12 @@ val releaseGitSha =
 val gitSha = isReleaseOrPublishingBuild.flatMap { isReleaseBuild ->
   if (isReleaseBuild) {
     // A release build without a resolvable sha should fail loudly, not publish untagged.
-    releaseGitSha.orElse(
-      providers.provider {
-        error("Could not read the git commit sha for a release/publishing build")
+    providers.provider {
+      val sha = releaseGitSha.orNull
+      checkNotNull(sha) {
+        "Could not read the git commit sha for a release/publishing build"
       }
-    )
+    }
   } else {
     providers.provider { "" }
   }
