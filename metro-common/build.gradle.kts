@@ -30,5 +30,6 @@ dependencies {
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
 
+  implementation(libs.okio)
   implementation(libs.kotlinx.serialization.json)
 }

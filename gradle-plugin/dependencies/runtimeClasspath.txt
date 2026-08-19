@@ -1,3 +1,5 @@
+com.squareup.okio:okio-jvm:3.18.1
+com.squareup.okio:okio:3.18.1
 org.jetbrains.kotlin:kotlin-stdlib:2.3.20
 org.jetbrains.kotlinx:kotlinx-serialization-bom:1.11.0
 org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.11.0

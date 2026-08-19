@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler
 
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import okio.utf8Size
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -10,32 +9,11 @@ import org.jetbrains.kotlin.name.Name
 
 // Soft cap for [safeNestedSimpleName]: 255 minus headroom for `$FactoryImpl`, a chained
 // `$Impl_xxxxx`, `.class`, and a small buffer.
-internal const val NESTED_CLASS_BINARY_NAME_LIMIT = 220
-
-/** Includes the binary-name separator before Kotlin's generated companion object. */
-internal const val GENERATED_COMPANION_NAME_BYTES = 10
+public const val NESTED_CLASS_BINARY_NAME_LIMIT: Int = 220
 
 /** The JVM class-file basename, without its package path or file extension. */
-internal fun ClassId.binaryClassName(): String =
+public fun ClassId.binaryClassName(): String =
   relativeClassName.pathSegments().joinToString("$") { it.asString() }
-
-/** Both FIR and IR must compute exactly the same provider-factory class ID. */
-internal fun providerFactoryClassId(
-  parentClassId: ClassId,
-  callableName: Name,
-  maxBytes: Int,
-): ClassId {
-  val suffix = Symbols.StringNames.METRO_FACTORY
-  val preferredName = callableName.asString().capitalizeUS() + suffix
-  return parentClassId
-    .createNestedClassId(Name.identifier(preferredName))
-    .truncate(
-      maxLength = maxBytes,
-      reservedNestedBytes = GENERATED_COMPANION_NAME_BYTES,
-      hashSource = "provider-factory:${parentClassId.asString()}#${callableName.asString()}",
-      requiredSuffix = suffix,
-    )
-}
 
 /** Takes complete Unicode code points without allocating an encoded copy for every prefix. */
 private fun String.takeUtf8Prefix(maxBytes: Int): String {
@@ -177,7 +155,7 @@ public fun ClassId.truncate(separator: String = "_", innerClassLength: Int = 0):
 }
 
 /** Truncates a generated class against its complete UTF-8 binary name and future nested names. */
-internal fun ClassId.truncate(
+public fun ClassId.truncate(
   maxLength: Int,
   reservedNestedBytes: Int = 0,
   hashSource: Any = this,
@@ -234,11 +212,11 @@ public fun ClassId.generatedClass(suffix: String): ClassId {
  * short, stable fallback `Impl_${hashSource.hashSuffix}`.
  *
  * The basename of a nested class's `.class` file joins all relative class name segments with `$`,
- * so chained nested generation (e.g. deep `@GraphExtension` impls and their factory impls) can
+ * so chained nested generation, like deep `@GraphExtension` impls and their factory impls, can
  * exceed the 255-byte per-segment limit on most filesystems. The fallback name is deterministic
  * across compilations via [hashSource]. See https://github.com/ZacSweers/metro/issues/2268.
  */
-internal fun ClassId.safeNestedSimpleName(candidate: String, hashSource: Any): String {
+public fun ClassId.safeNestedSimpleName(candidate: String, hashSource: Any): String {
   // `.`-separated and `$`-separated names have the same length.
   val parentBinaryLength = relativeClassName.asString().length
   val projected = parentBinaryLength + 1 + candidate.length
