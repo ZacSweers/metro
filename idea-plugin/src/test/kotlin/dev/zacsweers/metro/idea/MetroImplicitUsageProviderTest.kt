@@ -197,6 +197,19 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.property("memberInject").isMetroImplicitUsage())
   }
 
+  fun testDoesNotMarkMetroDeclarationsWhenSuppressionSettingIsDisabled() {
+    val settings = MetroSettings.getInstance(project).state
+    settings.suppressUnusedWarnings = false
+    try {
+      val declarations = kotlinFileDeclarations()
+
+      assertFalse(declarations.function("bindService").isMetroImplicitUsage())
+      assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+    } finally {
+      settings.suppressUnusedWarnings = true
+    }
+  }
+
   fun testDoesNotMarkMetroDeclarationsAsImplicitlyUsedWhenMetroIsDisabled() {
     setMetroEnabled(false)
 
@@ -220,6 +233,16 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     setMetroEnabled(false)
 
     assertFalse(suppressor.isSuppressedFor(bindService, "unused"))
+  }
+
+  fun testUnusedDeclarationSuppressorIgnoresOtherUnusedInspections() {
+    val declarations = kotlinFileDeclarations()
+    val suppressor = MetroUnusedDeclarationInspectionSuppressor()
+    val bindService = declarations.function("bindService")
+
+    assertTrue(suppressor.isSuppressedFor(bindService, "UnusedSymbol"))
+    assertFalse(suppressor.isSuppressedFor(bindService, "UnusedImport"))
+    assertFalse(suppressor.isSuppressedFor(bindService, "UnusedParameter"))
   }
 
   fun testUnusedDeclarationHighlightingRespectsMetroImplicitUsage() {
