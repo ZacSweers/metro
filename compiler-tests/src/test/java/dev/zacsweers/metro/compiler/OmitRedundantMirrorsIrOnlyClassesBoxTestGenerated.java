@@ -2394,6 +2394,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("NoAssistedArgsInAssistedInjectAcrossModules.kt")
+      public void testNoAssistedArgsInAssistedInjectAcrossModules() {
+        run("NoAssistedArgsInAssistedInjectAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("PreserveNullabilityForGenericsLayering.kt")
       public void testPreserveNullabilityForGenericsLayering() {
         run("PreserveNullabilityForGenericsLayering.kt");

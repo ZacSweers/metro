@@ -2084,6 +2084,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("NoAssistedArgsInAssistedInjectAcrossModules.kt")
+      public void testNoAssistedArgsInAssistedInjectAcrossModules() {
+        run("NoAssistedArgsInAssistedInjectAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("PreserveNullabilityForGenericsLayering.kt")
       public void testPreserveNullabilityForGenericsLayering() {
         run("PreserveNullabilityForGenericsLayering.kt");
