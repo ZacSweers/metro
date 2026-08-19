@@ -92,7 +92,8 @@
     "diagnosticsRenderMode": "PLAIN",
     "generateStaticAnnotations": true,
     "enableRuntimeTracing": false,
-    "memberNamingStrategy": "DESCRIPTIVE"
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
   },
   "stats": {
     "providerFactories": 2,
