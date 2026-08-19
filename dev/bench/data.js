@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787168022811,
+  "lastUpdate": 1787169222824,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -21448,6 +21448,62 @@ window.BENCHMARK_DATA = {
             "value": 0.22920965238508556,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -0.14%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "63e1db73~1",
+          "message": "[before] Fix AssistedInject runtime crash on Kotlin 2.4.20-",
+          "timestamp": "2026-08-19T14:42:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/63e1db73a7921d2d154c932513afcc18413f0303"
+        },
+        "date": 1787169222824,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21596943331953505,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "63e1db73a7921d2d154c932513afcc18413f0303",
+          "message": "[after] Fix AssistedInject runtime crash on Kotlin 2.4.20-",
+          "timestamp": "2026-08-19T14:42:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/63e1db73a7921d2d154c932513afcc18413f0303"
+        },
+        "date": 1787169222825,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.20941686904480455,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -3.03%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

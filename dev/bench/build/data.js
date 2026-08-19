@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787168023031,
+  "lastUpdate": 1787169223175,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21448,6 +21448,62 @@ window.BENCHMARK_DATA = {
             "value": 16700.986,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.27%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "63e1db73~1",
+          "message": "[before] Fix AssistedInject runtime crash on Kotlin 2.4.20-",
+          "timestamp": "2026-08-19T14:42:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/63e1db73a7921d2d154c932513afcc18413f0303"
+        },
+        "date": 1787169223175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14591.583999999999,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "63e1db73a7921d2d154c932513afcc18413f0303",
+          "message": "[after] Fix AssistedInject runtime crash on Kotlin 2.4.20-",
+          "timestamp": "2026-08-19T14:42:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/63e1db73a7921d2d154c932513afcc18413f0303"
+        },
+        "date": 1787169223176,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14224.804,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.51%"
           }
         ]
       }
