@@ -1,3 +1,4 @@
+// MIN_COMPILER_VERSION: 2.4.20-dev-6138
 // GENERATE_CLASSES_IN_IR: true
 // MODULE: lib
 @AssistedInject
