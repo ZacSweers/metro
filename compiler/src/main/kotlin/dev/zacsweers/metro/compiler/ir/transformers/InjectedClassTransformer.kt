@@ -512,7 +512,12 @@ internal class InjectedClassTransformer(
       )
       .apply {
         if (isAssistedInject) {
-          addAnnotationCompat(buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor))
+          val assistedMarker = buildAnnotation(symbol, metroSymbols.assistedMarkerConstructor)
+          addAnnotationCompat(assistedMarker)
+          metadataDeclarationRegistrarCompat.addMetadataVisibleAnnotationsToElement(
+            this,
+            assistedMarker,
+          )
         }
         addMetadataVisibleHiddenCompanionObject()
       }
