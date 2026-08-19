@@ -3100,6 +3100,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("ClassMapKeyWrappedInterop.kt")
+      public void testClassMapKeyWrappedInterop() {
+        run("ClassMapKeyWrappedInterop.kt");
+      }
+
+      @Test
       @TestMetadata("KClassMapKeyInterop.kt")
       public void testKClassMapKeyInterop() {
         run("KClassMapKeyInterop.kt");
