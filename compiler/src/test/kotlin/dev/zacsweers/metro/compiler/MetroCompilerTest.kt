@@ -413,6 +413,8 @@ abstract class MetroCompilerTest {
             MEMBER_NAMING_STRATEGY -> {
               processor.option(entry.raw.cliOption, this@toPluginOptions.memberNamingStrategy)
             }
+            MAX_GENERATED_CLASS_NAME_LENGTH ->
+              processor.option(entry.raw.cliOption, maxGeneratedClassNameLength)
           }
         yield(option)
       }

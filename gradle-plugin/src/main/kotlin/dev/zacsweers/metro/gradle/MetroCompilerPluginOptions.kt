@@ -57,12 +57,15 @@ internal fun Project.metroCompilerPluginOptions(
         ),
       )
     )
-    add(
-      metroOption(
-        MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR,
-        extension.generateContributionHintsInFir,
+    val generateContributionHintsInFir = extension.generateContributionHintsInFir.orNull
+    if (generateContributionHintsInFir != null) {
+      add(
+        MetroCompilerPluginOption(
+          MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.name,
+          generateContributionHintsInFir.toString(),
+        )
       )
-    )
+    }
     add(metroOption("generate-classes-in-ir", extension.generateClassesInIr))
     add(
       metroOption(

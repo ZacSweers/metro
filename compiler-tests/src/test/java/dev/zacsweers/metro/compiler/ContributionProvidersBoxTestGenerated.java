@@ -388,6 +388,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("generatedClassNameLimit.kt")
+      public void testGeneratedClassNameLimit() {
+        run("generatedClassNameLimit.kt");
+      }
+
+      @Test
       @TestMetadata("implTypeNotDirectlyAccessible.kt")
       public void testImplTypeNotDirectlyAccessible() {
         run("implTypeNotDirectlyAccessible.kt");

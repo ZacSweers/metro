@@ -11,12 +11,22 @@ Changelog
 
 ### Fixes
 
+- **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
+- **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
+
+1.4.2
+-----
+
+_2026-08-13_
+
+### Fixes
+
+- **[FIR]** Consolidate contribution hint configuration logic to make it less Gradle-specific.
 - **[FIR/IR]** Resolve typealiases in `KClass` annotation arguments.
 - **[FIR/IR]** Apply contribution exclusions and replacements across `@Origin` chains.
 - **[IR]** Fix Kotlin/JS compilation failures caused by colliding generated provider field names for inherited member injections.
-- **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR/interop]** Fix a compiler crash when Dagger interop is enabled and deeply nested classes have long names.
-- **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
+- **[IC]** Regenerate parent graph implementations when graph extension members change during incremental compilation.
 
 ### Changes
 
@@ -24,17 +34,14 @@ Changelog
 - Test Kotlin `2.4.20-RC`.
 - Remove the `watchosArm32` target, which Kotlin no longer supports.
 - Update androidx.tracing to `2.0.0` stable. Note that Metro's runtime tracing support is still experimental to incubate a little longer.
+- Test Android Studio Quail 3 stable.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@erawhctim](https://github.com/erawhctim)
 - [@eygraber](https://github.com/eygraber)
-
-### Contributors
-
-Special thanks to the following contributors for contributing to this release!
-
 - [@grandstaish](https://github.com/grandstaish)
 
 1.4.1

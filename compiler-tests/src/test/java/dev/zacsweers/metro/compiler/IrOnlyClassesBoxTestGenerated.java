@@ -388,6 +388,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("generatedClassNameLimit.kt")
+      public void testGeneratedClassNameLimit() {
+        run("generatedClassNameLimit.kt");
+      }
+
+      @Test
       @TestMetadata("implTypeNotDirectlyAccessible.kt")
       public void testImplTypeNotDirectlyAccessible() {
         run("implTypeNotDirectlyAccessible.kt");

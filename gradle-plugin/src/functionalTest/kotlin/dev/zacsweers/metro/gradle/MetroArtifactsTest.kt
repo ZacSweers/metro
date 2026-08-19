@@ -9,6 +9,8 @@ import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.autonomousapps.kit.GradleProject
 import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
+import dev.zacsweers.metro.compiler.DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
+import dev.zacsweers.metro.compiler.MIN_GENERATED_CLASS_NAME_LENGTH
 import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
@@ -60,10 +62,50 @@ class MetroArtifactsTest {
   }
 
   @Test
-  fun `generateClassesInIr does not change FIR hint default`() {
+  fun `raw generated class name limit below the minimum reports a compiler error`() {
+    val testJavaHome = File(System.getProperty("java.home")).invariantSeparatorsPath
+    val invalidLimit = MIN_GENERATED_CLASS_NAME_LENGTH - 1
+    val fixture =
+      object :
+        MetroProject(
+          multiplatform = false,
+          additionalGradleProperties = listOf("org.gradle.java.home=$testJavaHome"),
+        ) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            metro {
+              compilerOptions { put("max-generated-class-name-length", "$invalidLimit") }
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val result = buildAndFail(fixture.gradleProject.rootDir, "compileKotlin")
+    assertThat(result.output)
+      .contains(
+        "max-generated-class-name-length must be at least " +
+          "$MIN_GENERATED_CLASS_NAME_LENGTH but was $invalidLimit"
+      )
+  }
+
+  @Test
+  fun `Gradle omits FIR hint option by default when generateClassesInIr is overridden`() {
     val compilerVersion = getTestCompilerToolingVersion()
     val generateClassesInIr = compilerVersion < KotlinToolingVersion("2.4.20-dev-6138")
-    val generateContributionHintsInFir = compilerVersion.supportsTopLevelFirGen()
     val fixture =
       object :
         MetroProject(
@@ -95,8 +137,53 @@ class MetroArtifactsTest {
         .single { it.name == "main.txt" }
         .readText()
     assertThat(content).contains("    generate-classes-in-ir = $generateClassesInIr")
-    assertThat(content)
-      .contains("    generate-contribution-hints-in-fir = $generateContributionHintsInFir")
+    assertThat(content).doesNotContain("    generate-contribution-hints-in-fir =")
+  }
+
+  @Test
+  fun `Gradle emits explicit FIR hint option`() {
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun StringBuilder.onBuildScript() {
+          appendLine(
+            """
+            @OptIn(
+              dev.zacsweers.metro.gradle.DelicateMetroGradleApi::class,
+              dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi::class,
+            )
+            metro {
+              generateContributionHintsInFir.set(false)
+            }
+            """
+              .trimIndent()
+          )
+        }
+
+        override fun sources() =
+          listOf(
+            source(
+              """
+              @DependencyGraph
+              interface AppGraph
+              """,
+              "AppGraph",
+            )
+          )
+      }
+
+    val project = fixture.gradleProject
+
+    build(project.rootDir, "metroEnv")
+
+    val content =
+      project.rootDir
+        .toPath()
+        .resolve("build/reports/metro/env")
+        .toFile()
+        .walk()
+        .single { it.name == "main.txt" }
+        .readText()
+    assertThat(content).contains("    generate-contribution-hints-in-fir = false")
   }
 
   @Test
@@ -357,7 +444,8 @@ class MetroArtifactsTest {
                 "diagnosticsRenderMode": "PLAIN",
                 "generateStaticAnnotations": true,
                 "enableRuntimeTracing": false,
-                "memberNamingStrategy": "DESCRIPTIVE"
+                "memberNamingStrategy": "DESCRIPTIVE",
+                "maxGeneratedClassNameLength": $DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
               },
               "stats": {
                 "providerFactories": 1,

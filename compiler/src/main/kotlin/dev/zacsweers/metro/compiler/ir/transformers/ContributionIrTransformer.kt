@@ -8,6 +8,10 @@ import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.api.fir.MetroContributions
 import dev.zacsweers.metro.compiler.asName
+import dev.zacsweers.metro.compiler.contributionProviderAnnotationIdentity
+import dev.zacsweers.metro.compiler.contributionProviderFunctionName
+import dev.zacsweers.metro.compiler.contributionProviderTypeIdentity
+import dev.zacsweers.metro.compiler.contributionSimpleName
 import dev.zacsweers.metro.compiler.fir.generators.isContributionProviderWrapper
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContributionData
@@ -305,7 +309,13 @@ internal class ContributionIrTransformer(
 
   /** Creates the IR-only equivalent of FIR's generated contribution-provider holder/container. */
   private fun IrClass.getOrCreateContributionProviderContainer(scope: ClassId): IrClass {
-    val holderClassId = MetroContributions.holderClassId(classIdOrFail)
+    val containerClassId =
+      MetroContributions.containerObjectClassId(
+        classIdOrFail,
+        scope,
+        options.maxGeneratedClassNameLength,
+      )
+    val holderClassId = checkNotNull(containerClassId.outerClassId)
     val sourceFile = file
     val holder =
       sourceFile.declarations.filterIsInstance<IrClass>().firstOrNull {
@@ -327,7 +337,6 @@ internal class ContributionIrTransformer(
             metadataDeclarationRegistrarCompat.registerClassAsMetadataVisible(this)
           }
 
-    val containerClassId = MetroContributions.containerObjectClassId(classIdOrFail, scope)
     holder.nestedClasses
       .firstOrNull {
         it.origin == Origins.MetroContributionClassDeclaration && it.classId == containerClassId
@@ -455,6 +464,10 @@ internal class ContributionIrTransformer(
     // Mirrors ContributionsFirGenerator's provider functions for classes that no longer get FIR
     // generated contribution-provider containers in IR-only mode.
     val useSyntheticScopedProvider = originClass.scopeAnnotations().any() && contributions.size > 1
+    val scopeClassId =
+      container.findAnnotations(Symbols.ClassIds.metroContribution).single().requireScope()
+    val scopedFunctionName =
+      syntheticScopedFunctionName(originClass, container.classIdOrFail, scopeClassId)
     val syntheticQualifierName =
       if (useSyntheticScopedProvider) {
         syntheticScopedQualifierName(originClass.classIdOrFail)
@@ -481,13 +494,10 @@ internal class ContributionIrTransformer(
       }
     }
 
-    if (
-      useSyntheticScopedProvider &&
-        container.functions.none { it.name == syntheticScopedFunctionName(originClass) }
-    ) {
+    if (useSyntheticScopedProvider && container.functions.none { it.name == scopedFunctionName }) {
       container
         .addFunction {
-          name = syntheticScopedFunctionName(originClass)
+          name = scopedFunctionName
           returnType = irBuiltIns.anyNType
           modality = Modality.FINAL
           origin = Origins.MetroContributionCallableDeclaration
@@ -508,15 +518,46 @@ internal class ContributionIrTransformer(
           ?: reportCompilerBug(
             "Could not resolve bound type for ${originClass.classIdOrFail}. This should have been caught in FIR."
           )
+      val legacyName =
+        nameAllocator.newName(
+          contribution.callableName.replace("bind", "provide") +
+            originClass.classIdOrFail.contributionSimpleName()
+        )
+      val qualifier = explicitBindingType?.qualifier ?: bindingTypeKey.qualifier
+      val mapKey =
+        explicitBindingType?.originalType?.mapKeyAnnotation() ?: originClass.mapKeyAnnotation()
+      val implicitMapKeyClass =
+        if (mapKey != null && isImplicitClassKeySentinel(mapKey.ir)) {
+          originClass.classIdOrFail
+        } else {
+          null
+        }
       val name =
-        nameAllocator
-          .newName(
-            contribution.callableName.replace("bind", "provide") +
-              originClass.classIdOrFail
-                .joinSimpleNames(separator = "", camelCase = true)
-                .shortClassName
-          )
-          .asName()
+        contributionProviderFunctionName(
+          parentClassId = container.classIdOrFail,
+          legacyName = legacyName,
+          contributingClassId = originClass.classIdOrFail,
+          scopeClassId = scopeClassId,
+          kind =
+            when (contribution) {
+              is Contribution.ContributesBinding -> "binding"
+              is Contribution.ContributesIntoSetBinding -> "set"
+              is Contribution.ContributesIntoMapBinding -> "map"
+            },
+          boundClassId = bindingTypeKey.originalType.rawType().classIdOrFail,
+          nullable = bindingTypeKey.originalType.isMarkedNullable(),
+          boundTypeIdentity = { bindingTypeKey.originalType.contributionProviderTypeIdentity() },
+          qualifierIdentity =
+            qualifier?.let { annotation ->
+              { annotation.contributionProviderAnnotationIdentity() }
+            },
+          mapKeyIdentity =
+            mapKey?.let { annotation ->
+              { annotation.contributionProviderAnnotationIdentity(implicitMapKeyClass) }
+            },
+          maxBytes = options.maxGeneratedClassNameLength,
+        )
+      if (name.asString() != legacyName) nameAllocator.reserveName(name)
 
       container
         .addFunction {
@@ -555,9 +596,6 @@ internal class ContributionIrTransformer(
               addAnnotationCompat(buildIntoSetAnnotation())
             is Contribution.ContributesIntoMapBinding -> {
               addAnnotationCompat(buildIntoMapAnnotation())
-              val mapKey =
-                explicitBindingType?.originalType?.mapKeyAnnotation()
-                  ?: originClass.mapKeyAnnotation()
               mapKey?.let { mk ->
                 val copied = mk.ir.deepCopyWithSymbols()
                 if (isImplicitClassKeySentinel(copied)) {
@@ -573,7 +611,6 @@ internal class ContributionIrTransformer(
               addAnnotationCompat(it.ir.deepCopyWithSymbols())
             }
           }
-          val qualifier = explicitBindingType?.qualifier ?: bindingTypeKey.qualifier
           qualifier?.let { addAnnotationCompat(it.ir.deepCopyWithSymbols()) }
         }
     }
@@ -614,14 +651,25 @@ internal class ContributionIrTransformer(
   private fun syntheticScopedQualifierName(contributingClassId: ClassId): String =
     "$SCOPED_PROVIDER_PREFIX${contributingClassId.asString()}"
 
-  private fun syntheticScopedFunctionName(contributingClass: IrClass): Name {
-    val baseName =
-      contributingClass.classIdOrFail
-        .joinSimpleNames(separator = "", camelCase = true)
-        .shortClassName
-        .asString()
-    return "provideScopedInstance$baseName".asName()
-  }
+  private fun syntheticScopedFunctionName(
+    contributingClass: IrClass,
+    containerClassId: ClassId,
+    scopeClassId: ClassId,
+  ): Name =
+    contributionProviderFunctionName(
+      parentClassId = containerClassId,
+      legacyName =
+        "provideScopedInstance${contributingClass.classIdOrFail.contributionSimpleName()}",
+      contributingClassId = contributingClass.classIdOrFail,
+      scopeClassId = scopeClassId,
+      kind = "scoped",
+      boundClassId = null,
+      nullable = false,
+      boundTypeIdentity = { null },
+      qualifierIdentity = null,
+      mapKeyIdentity = null,
+      maxBytes = options.maxGeneratedClassNameLength,
+    )
 
   private fun IrFunction.buildNamedAnnotation(name: String): IrConstructorCall {
     val namedClassId = ClassId.topLevel(FqName("${Symbols.FqNames.metroRuntimePackage}.Named"))

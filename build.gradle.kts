@@ -1,6 +1,7 @@
 // Copyright (C) 2024 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
 import kotlinx.validation.ExperimentalBCVApi
+import org.gradle.process.ProcessExecutionException
 
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
@@ -20,19 +21,30 @@ plugins {
 
 // Autoconfigure git to use project-specific config (hooks)
 if (file(".git").exists()) {
-  val expectedIncludePath = "../config/git/.gitconfig"
-  val includePath =
-    providers
-      .exec { commandLine("git", "config", "--local", "--default", "", "--get", "include.path") }
-      .standardOutput
-      .asText
-      .map { it.trim() }
-      .getOrElse("")
-  if (includePath != expectedIncludePath) {
-    providers
-      .exec { commandLine("git", "config", "--local", "include.path", expectedIncludePath) }
-      .result
-      .get()
+  val gitAvailable =
+    try {
+      providers.exec { commandLine("git", "--version") }.result.get()
+      true
+    } catch (_: ProcessExecutionException) {
+      false
+    }
+  if (gitAvailable) {
+    val expectedIncludePath = "../config/git/.gitconfig"
+    val includePath =
+      providers
+        .exec {
+          commandLine("git", "config", "--local", "--default", "", "--get", "include.path")
+        }
+        .standardOutput
+        .asText
+        .map { it.trim() }
+        .getOrElse("")
+    if (includePath != expectedIncludePath) {
+      providers
+        .exec { commandLine("git", "config", "--local", "include.path", expectedIncludePath) }
+        .result
+        .get()
+    }
   }
 }
 

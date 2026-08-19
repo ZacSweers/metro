@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.fir.generators
 
-import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -17,8 +16,8 @@ import dev.zacsweers.metro.compiler.fir.predicates
 import dev.zacsweers.metro.compiler.fir.replaceAnnotationsSafe
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.memoize
+import dev.zacsweers.metro.compiler.providerFactoryClassId
 import dev.zacsweers.metro.compiler.reportCompilerBug
-import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.isObject
 import org.jetbrains.kotlin.fir.FirSession
@@ -124,14 +123,15 @@ internal class ProvidesFactoryFirGenerator(session: FirSession, compatContext: C
         .mapNotNullToSet { providesCallable ->
           val providerCallable =
             providesCallable.asProviderCallable(classSymbol) ?: return@mapNotNullToSet null
-          val simpleName = buildString {
-            append(providerCallable.name.capitalizeUS())
-            append(Symbols.Names.MetroFactory.asString())
-          }
-            .asName()
+          val classId =
+            providerFactoryClassId(
+              classSymbol.classId,
+              providerCallable.name,
+              session.metroFirBuiltIns.options.maxGeneratedClassNameLength,
+            )
+          val simpleName = classId.shortClassName
           simpleName.also {
-            providerFactoryClassIdsToCallables[
-              classSymbol.classId.createNestedClassId(simpleName)] = providerCallable
+            providerFactoryClassIdsToCallables[classId] = providerCallable
           }
         }
     }

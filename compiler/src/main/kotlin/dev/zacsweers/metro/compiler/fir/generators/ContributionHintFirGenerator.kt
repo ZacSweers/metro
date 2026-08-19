@@ -136,6 +136,7 @@ internal class ContributionHintFirGenerator(
               MetroContributions.containerObjectClassId(
                 contributingClass.classId,
                 contributionScope,
+                session.metroFirBuiltIns.options.maxGeneratedClassNameLength,
               )
             val containerSymbol =
               session.symbolProvider.getClassLikeSymbolByClassId(containerClassId)

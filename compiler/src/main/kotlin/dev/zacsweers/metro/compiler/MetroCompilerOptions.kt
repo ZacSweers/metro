@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler
 
 import dev.zacsweers.metro.compiler.compat.KotlinToolingVersion
+import dev.zacsweers.metro.compiler.internal.isTopLevelFirGenerationSupported
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -36,12 +37,27 @@ internal fun <T : Any> RawMetroOption<T>.put(
   configuration.put(key, valueMapper(value))
 }
 
-internal fun MetroOptions.Companion.load(configuration: CompilerConfiguration): MetroOptions =
-  buildOptions {
-    for (entry in MetroOption.entries) {
-      configuration.get(entry.raw.key)?.let { applyOptionValue(entry, it) }
-    }
+internal fun CompilerConfiguration.metroOptionValue(option: MetroOption): Any =
+  get(option.raw.key) ?: option.raw.defaultValue
+
+internal fun MetroOptions.Companion.load(
+  configuration: CompilerConfiguration,
+  kotlinCompilerVersion: KotlinToolingVersion?,
+  isIde: Boolean,
+): MetroOptions = buildOptions {
+  for (entry in MetroOption.entries) {
+    configuration[entry.raw.key]?.let { applyOptionValue(entry, it) }
   }
+
+  val firHintOptionIsConfigured =
+    configuration[MetroOption.GENERATE_CONTRIBUTION_HINTS_IN_FIR.raw.key] != null
+  val firHintsAreRequiredByDefault =
+    generateContributionHints &&
+      (isIde || kotlinCompilerVersion?.let(::kotlinVersionSupportsTopLevelFirGen) == true)
+  if (!firHintOptionIsConfigured && firHintsAreRequiredByDefault) {
+    generateContributionHintsInFir = true
+  }
+}
 
 internal fun MetroOptions.validate(
   compilerVersion: KotlinToolingVersion,
@@ -128,16 +144,10 @@ private val MIN_KOTLIN_2_4_DEV_JS_IC = KotlinToolingVersion("2.4.0-dev-8064")
  */
 private val MIN_KOTLIN_2_4_JS_IC = KotlinToolingVersion("2.4.0-Beta2")
 
-// Keep these in sync with KotlinVersions.supportsTopLevelFirGen in the Gradle plugin.
-private val MIN_KOTLIN_TOP_LEVEL_FIR_GEN = KotlinToolingVersion("2.3.20-Beta1")
-
-private val MIN_KOTLIN_DEV_TOP_LEVEL_FIR_GEN = KotlinToolingVersion("2.3.20-dev-6204")
-
 internal fun kotlinVersionSupportsTopLevelFirGen(version: KotlinToolingVersion): Boolean {
-  return if (version.maturity == KotlinToolingVersion.Maturity.DEV) {
-    version >= MIN_KOTLIN_DEV_TOP_LEVEL_FIR_GEN
-  } else {
-    version >= MIN_KOTLIN_TOP_LEVEL_FIR_GEN
+  val isDevVersion = version.maturity == KotlinToolingVersion.Maturity.DEV
+  return isTopLevelFirGenerationSupported(isDevVersion) { minimumVersion ->
+    version >= KotlinToolingVersion(minimumVersion)
   }
 }
 

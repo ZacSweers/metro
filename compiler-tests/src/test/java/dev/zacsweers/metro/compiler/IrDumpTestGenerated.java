@@ -81,6 +81,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
     }
 
     @Test
+    @TestMetadata("ContributionProviders_BoundedNames.kt")
+    public void testContributionProviders_BoundedNames() {
+      run("ContributionProviders_BoundedNames.kt");
+    }
+
+    @Test
     @TestMetadata("ContributionProviders_ScopedMultipleBindings.kt")
     public void testContributionProviders_ScopedMultipleBindings() {
       run("ContributionProviders_ScopedMultipleBindings.kt");

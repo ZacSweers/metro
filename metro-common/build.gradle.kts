@@ -40,6 +40,7 @@ dependencies {
   compileOnly(libs.androidx.collection)
   compileOnly(libs.androidx.tracing)
 
+  implementation(libs.okio)
   implementation(libs.kotlinx.serialization.json)
 
   testImplementation(libs.kotlin.compiler)

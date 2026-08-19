@@ -47,9 +47,6 @@ Like Anvil, Metro supports contributing types via aggregation with annotations l
 
 Metro is multiplatform and supports most major Kotlin multiplatform targets.
 
-!!! warning
-    Multi-module multiplatform targets cannot contribute dependencies (i.e. with `@Contributes*` annotations) from native targets until https://youtrack.jetbrains.com/issue/KT-75865.
-
 ## IDE Integration
 
 Most errors are reported in FIR, which should (eventually) be visible in the K2 IDE plugin as well.

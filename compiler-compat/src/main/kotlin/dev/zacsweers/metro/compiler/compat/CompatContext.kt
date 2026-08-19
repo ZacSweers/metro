@@ -242,6 +242,14 @@ public interface CompatContext {
     }
   }
 
+  /** Creates a compiler configuration with the default services required by this compiler. */
+  @CompatApi(
+    since = "2.4.0",
+    reason = CompatApi.Reason.ABI_CHANGE,
+    message = "CompilerConfiguration.create() replaced direct construction",
+  )
+  public fun createCompilerConfigurationCompat(): CompilerConfiguration
+
   /**
    * Creates a top-level function with [callableId] and specified [returnType].
    *

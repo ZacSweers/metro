@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pluginManagement {
   includeBuild("../build-logic")
+  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
   repositories {
+    if (kotlinRepoUrl != null) {
+      maven(kotlinRepoUrl)
+    }
     mavenCentral()
     google()
     gradlePluginPortal()
@@ -20,8 +24,20 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-  versionCatalogs { maybeCreate("libs").apply { from(files("../gradle/libs.versions.toml")) } }
+  val kotlinRepoUrl = providers.gradleProperty("kotlin_repo_url").orNull
+  val kotlinVersion = providers.gradleProperty("kotlin_version").orNull
+  versionCatalogs {
+    maybeCreate("libs").apply {
+      from(files("../gradle/libs.versions.toml"))
+      if (kotlinVersion != null) {
+        version("kotlin", kotlinVersion)
+      }
+    }
+  }
   repositories {
+    if (kotlinRepoUrl != null) {
+      maven(kotlinRepoUrl)
+    }
     mavenCentral()
     google()
     mavenLocal()

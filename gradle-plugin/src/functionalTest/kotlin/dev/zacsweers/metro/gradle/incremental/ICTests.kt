@@ -3327,6 +3327,220 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
   }
 
   @Test
+  fun `adding a member to a graph extension invalidates the parent graph on JVM`() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() = listOf(main, appGraph)
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              @Provides fun message(): String = "hello"
+
+              val childGraphFactory: ChildGraph.Factory
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "AppGraph",
+          )
+
+        private val main =
+          source(
+            """
+            @GraphExtension
+            interface ChildGraph {
+              @GraphExtension.Factory
+              interface Factory {
+                fun create(): ChildGraph
+              }
+            }
+
+            fun main(): Boolean {
+              createGraph<AppGraph>().childGraphFactory.create()
+              return true
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val compileTask = ":compileKotlin"
+
+    fun modifyMainSource(content: String) {
+      val newSource = source(content, fileNameWithoutExtension = "Main", sourceSet = "main")
+      project.rootDir.resolve("src/main/kotlin/test/Main.kt").writeText(newSource.source)
+    }
+
+    val firstBuildResult = project.compileKotlin(compileTask)
+    assertThat(firstBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Boolean>(target = null)).isTrue()
+
+    modifyMainSource(
+      """
+      @GraphExtension
+      interface ChildGraph {
+        val message: String
+
+        @GraphExtension.Factory
+        interface Factory {
+          fun create(): ChildGraph
+        }
+      }
+
+      fun main(): Boolean =
+        createGraph<AppGraph>().childGraphFactory.create().message == "hello"
+      """
+        .trimIndent()
+    )
+
+    val secondBuildResult = project.compileKotlin(compileTask)
+    assertThat(secondBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(project.invokeMain<Boolean>(target = null)).isTrue()
+  }
+
+  /**
+   * Regression test for https://github.com/ZacSweers/metro/issues/2660 using AGP's built-in Kotlin
+   * compilation path.
+   *
+   * Adding a member to a `@GraphExtension` must invalidate the parent graph file.
+   */
+  @Test
+  fun `adding a member to a graph extension invalidates the parent graph`() {
+    assumeTrue(target == KmpTarget.JVM)
+
+    val fixture =
+      object : MetroProject(multiplatform = false) {
+        override fun sources() = listOf(main, appGraph)
+
+        override fun buildGradleProject(): GradleProject {
+          val projectSources = sources()
+          return newGradleProjectBuilder(DslKind.KOTLIN)
+            .withRootProject {
+              sources = projectSources
+              withBuildScript {
+                plugins(
+                  Plugin("com.android.application", System.getProperty("metro.agpVersion")),
+                  // AGP 9 supplies Kotlin itself and rejects `org.jetbrains.kotlin.android`, but
+                  // Metro's compiler plugin is only contributed to the compilation when some KGP
+                  // plugin is applied. Parcelize is the smallest one that does that.
+                  Plugin("org.jetbrains.kotlin.plugin.parcelize", getTestCompilerVersion()),
+                  GradlePlugins.metro,
+                )
+                withKotlin(
+                  """
+                  android {
+                    namespace = "test"
+                    compileSdk = 36
+                  }
+
+                  ${buildMetroBlock()}
+                  """
+                    .trimIndent()
+                )
+              }
+              withMetroSettings()
+
+              val androidHome = System.getProperty("metro.androidHome")
+              assumeTrue(androidHome != null)
+              val sdkDir = File(androidHome).invariantSeparatorsPath
+              withFile("local.properties", "sdk.dir=$sdkDir")
+            }
+            .write()
+        }
+
+        private val appGraph =
+          source(
+            """
+            @DependencyGraph
+            interface AppGraph {
+              @Provides fun message(): String = "hello"
+
+              val childGraphFactory: ChildGraph.Factory
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "AppGraph",
+          )
+
+        private val main =
+          source(
+            """
+            @GraphExtension
+            interface ChildGraph {
+              @GraphExtension.Factory
+              interface Factory {
+                fun create(): ChildGraph
+              }
+            }
+
+            fun main(): Boolean {
+              createGraph<AppGraph>().childGraphFactory.create()
+              return true
+            }
+            """
+              .trimIndent(),
+            fileNameWithoutExtension = "Main",
+          )
+      }
+
+    val project = fixture.gradleProject
+    val compileTask = ":compileDebugKotlin"
+
+    fun invokeAndroidMain(): Boolean {
+      val classesDir =
+        project.rootDir.resolve(
+          "build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
+        )
+      return URLClassLoader(arrayOf(classesDir.toURI().toURL()), this::class.java.classLoader)
+        .use { classLoader ->
+          classLoader
+            .loadClass("test.MainKt")
+            .declaredMethods
+            .first { it.name == "main" }
+            .invoke(null) as Boolean
+        }
+    }
+
+    fun modifyMainSource(content: String) {
+      val newSource = source(content, fileNameWithoutExtension = "Main", sourceSet = "main")
+      project.rootDir.resolve("src/main/kotlin/test/Main.kt").writeText(newSource.source)
+    }
+
+    val firstBuildResult = project.compileKotlin(compileTask)
+    assertThat(firstBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(invokeAndroidMain()).isTrue()
+
+    // Add a graph extension member, which should invalidate the parent graph.
+    modifyMainSource(
+      """
+      @GraphExtension
+      interface ChildGraph {
+        val message: String
+
+        @GraphExtension.Factory
+        interface Factory {
+          fun create(): ChildGraph
+        }
+      }
+
+      fun main(): Boolean =
+        createGraph<AppGraph>().childGraphFactory.create().message == "hello"
+      """
+        .trimIndent()
+    )
+
+    val secondBuildResult = project.compileKotlin(compileTask)
+    assertThat(secondBuildResult.task(compileTask)?.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    assertThat(invokeAndroidMain()).isTrue()
+  }
+
+  @Test
   fun mapKeyArgumentChangeDetectedWhenOmittingRedundantMirrors() {
     assumeTrue(getTestCompilerToolingVersion() >= KotlinToolingVersion("2.4.0"))
 

@@ -101,6 +101,9 @@ constructor(
   /**
    * Generates contribution hints in FIR. Requires [generateContributionHints] to be true.
    *
+   * When unset, the compiler plugin enables this on supported Kotlin versions. Explicit values are
+   * forwarded as overrides.
+   *
    * This is independent of [generateClassesInIr]. It must remain enabled with contribution hints on
    * Kotlin `2.3.20-Beta1` and newer.
    *
@@ -116,18 +119,7 @@ constructor(
   @DelicateMetroGradleApi(
     "FIR contribution hint generation is experimental and does not work yet in all cases. See the kdoc."
   )
-  public val generateContributionHintsInFir: Property<Boolean> =
-    objects
-      .booleanProperty()
-      .convention(
-        compilerVersion.map {
-          // Kotlin 2.3.20-Beta1, FIR hint generation is fully supported on all platforms.
-          // JS is further gated on incremental compilation being disabled in MetroGradleSubplugin.
-          // https://youtrack.jetbrains.com/issue/KT-82395
-          // https://youtrack.jetbrains.com/issue/KT-82989
-          KotlinVersions.supportsTopLevelFirGen(it)
-        }
-      )
+  public val generateContributionHintsInFir: Property<Boolean> = objects.booleanProperty()
 
   /**
    * Generates metadata-visible hidden class implementations in IR when supported by the Kotlin

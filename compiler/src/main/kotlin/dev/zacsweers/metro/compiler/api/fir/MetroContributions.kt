@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.api.fir
 
+import dev.zacsweers.metro.compiler.GENERATED_COMPANION_NAME_BYTES
+import dev.zacsweers.metro.compiler.HASH_SUFFIX_LENGTH
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.decapitalizeUS
-import dev.zacsweers.metro.compiler.joinSimpleNames
 import dev.zacsweers.metro.compiler.joinSimpleNamesAndTruncate
 import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.truncate
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -21,6 +22,17 @@ import org.jetbrains.kotlin.name.Name
 public object MetroContributions {
 
   private const val CONTRIBUTIONS_SUFFIX = "Contributions"
+
+  // Leave room for a stable shortened provider factory and its companion. A holder also needs
+  // one scope container. Reserving these before naming their parents bounds the entire binary
+  // basename without depending on annotation-resolution or declaration-generation order.
+  private val containerReservedBytes =
+    1 +
+      "P_".length +
+      HASH_SUFFIX_LENGTH +
+      Symbols.StringNames.METRO_FACTORY.length +
+      GENERATED_COMPANION_NAME_BYTES
+  private val holderReservedBytes = 1 + "To_".length + HASH_SUFFIX_LENGTH + containerReservedBytes
 
   /**
    * Computes the [ClassId] of the `MetroContribution` nested class that Metro will generate for a
@@ -96,15 +108,19 @@ public object MetroContributions {
    * Computes the [ClassId] of the contribution provider holder class for a given contributing
    * class. The holder is a top-level abstract class named `<ClassName>Contributions`.
    */
-  internal fun holderClassId(contributingClassId: ClassId): ClassId {
-    val holderName =
-      Name.identifier(
-        contributingClassId
-          .joinSimpleNames(separator = "", camelCase = false)
-          .shortClassName
-          .asString() + CONTRIBUTIONS_SUFFIX
+  internal fun holderClassId(contributingClassId: ClassId, maxBytes: Int): ClassId {
+    val originalName =
+      contributingClassId.relativeClassName.pathSegments().joinToString("") { it.asString() }
+    return ClassId(
+        contributingClassId.packageFqName,
+        Name.identifier(originalName + CONTRIBUTIONS_SUFFIX),
       )
-    return ClassId(contributingClassId.packageFqName, holderName)
+      .truncate(
+        maxLength = maxBytes,
+        reservedNestedBytes = holderReservedBytes,
+        hashSource = "contribution-holder:${contributingClassId.asString()}",
+        requiredSuffix = CONTRIBUTIONS_SUFFIX,
+      )
   }
 
   /**
@@ -114,13 +130,17 @@ public object MetroContributions {
   internal fun containerObjectClassId(
     contributingClassId: ClassId,
     scopeClassId: ClassId,
+    maxBytes: Int,
   ): ClassId {
-    val holder = holderClassId(contributingClassId)
+    val holder = holderClassId(contributingClassId, maxBytes)
     val scopeShortName = scopeClassId.shortClassName.asString()
-    return ClassId(
-      holder.packageFqName,
-      FqName("${holder.shortClassName.asString()}.To$scopeShortName"),
-      isLocal = false,
-    )
+    return holder
+      .createNestedClassId(Name.identifier("To$scopeShortName"))
+      .truncate(
+        maxLength = maxBytes,
+        reservedNestedBytes = containerReservedBytes,
+        hashSource =
+          "contribution-container:${contributingClassId.asString()}:${scopeClassId.asString()}",
+      )
   }
 }
