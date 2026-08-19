@@ -12,11 +12,11 @@ import dev.zacsweers.metro.compiler.diagnostics.render.RenderContext
  * 2. Trace deduplication: repeated binding-trace tails are printed once, then referenced by later
  *    diagnostics in the same batch.
  */
-internal object DiagnosticBatch {
+public object DiagnosticBatch {
 
-  internal data class Prepared(val diagnostic: MetroDiagnostic, val renderContext: RenderContext)
+  public data class Prepared(val diagnostic: MetroDiagnostic, val renderContext: RenderContext)
 
-  fun prepare(diagnostics: List<MetroDiagnostic>): List<Prepared> {
+  public fun prepare(diagnostics: List<MetroDiagnostic>): List<Prepared> {
     val deduped = dedupTraces(diagnostics)
     return deduped.map { Prepared(it, disambiguationContextFor(it)) }
   }

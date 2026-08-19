@@ -5,7 +5,7 @@ package dev.zacsweers.metro.compiler.diagnostics.render
 import dev.zacsweers.metro.compiler.diagnostics.Style
 
 /** A contiguous piece of laid-out text with a single style. */
-internal data class Run(val text: String, val style: Style = Style.NONE)
+public data class Run(val text: String, val style: Style = Style.NONE)
 
 /**
  * Accumulates rendered output with word-wrapping to a fixed column budget.
@@ -13,11 +13,11 @@ internal data class Run(val text: String, val style: Style = Style.NONE)
  * Width is calculated before styling so ANSI escape codes never affect layout. Tokens are never
  * split; long identifiers overflow rather than being truncated.
  */
-internal class LineWriter(private val styler: Styler, private val width: Int) {
+public class LineWriter(private val styler: Styler, private val width: Int) {
   private val sb = StringBuilder()
   private var lastLineBlank = true
 
-  fun blankLine() {
+  public fun blankLine() {
     if (!lastLineBlank) {
       sb.append('\n')
       lastLineBlank = true
@@ -28,7 +28,7 @@ internal class LineWriter(private val styler: Styler, private val width: Int) {
    * Emits [runs] as one logical line, word-wrapped at spaces. Continuation lines are indented by
    * [hangingIndent].
    */
-  fun line(runs: List<Run>, indent: Int, hangingIndent: Int = indent) {
+  public fun line(runs: List<Run>, indent: Int, hangingIndent: Int = indent) {
     lineSegments(tokenize(runs), indent, hangingIndent)
   }
 
@@ -36,7 +36,7 @@ internal class LineWriter(private val styler: Styler, private val width: Int) {
    * Emits atomic [segments] as one logical line. Wrapping may occur between segments, but never
    * inside one.
    */
-  fun lineSegments(segments: List<List<Run>>, indent: Int, hangingIndent: Int = indent) {
+  public fun lineSegments(segments: List<List<Run>>, indent: Int, hangingIndent: Int = indent) {
     if (segments.isEmpty()) return
     var lineRuns = mutableListOf<Run>()
     var lineWidth = indent
@@ -65,12 +65,12 @@ internal class LineWriter(private val styler: Styler, private val width: Int) {
   }
 
   /** Emits [text] verbatim on its own line. No wrapping; the whole line uses [style]. */
-  fun raw(text: String, indent: Int, style: Style = Style.NONE) {
+  public fun raw(text: String, indent: Int, style: Style = Style.NONE) {
     emitLine(indent, listOf(Run(text, style)))
   }
 
   /** Emits [runs] verbatim on one line. Used for column-exact source frames. */
-  fun rawRuns(runs: List<Run>, indent: Int) {
+  public fun rawRuns(runs: List<Run>, indent: Int) {
     emitLine(indent, runs)
   }
 
@@ -113,5 +113,5 @@ internal class LineWriter(private val styler: Styler, private val width: Int) {
     return tokens
   }
 
-  fun build(): String = sb.toString().trimEnd('\n')
+  public fun build(): String = sb.toString().trimEnd('\n')
 }

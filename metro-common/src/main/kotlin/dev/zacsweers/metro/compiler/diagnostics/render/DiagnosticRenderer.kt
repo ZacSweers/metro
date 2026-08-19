@@ -19,9 +19,9 @@ import dev.zacsweers.metro.compiler.diagnostics.textOf
  * [fullyQualifiedTypeNames] contains fqNames whose simple names are ambiguous within this
  * diagnostic, so they must render fully qualified.
  */
-internal class RenderContext(val fullyQualifiedTypeNames: Set<String> = emptySet()) {
-  companion object {
-    val EMPTY = RenderContext()
+public class RenderContext(public val fullyQualifiedTypeNames: Set<String> = emptySet()) {
+  public companion object {
+    public val EMPTY: RenderContext = RenderContext()
   }
 }
 
@@ -31,7 +31,7 @@ internal class RenderContext(val fullyQualifiedTypeNames: Set<String> = emptySet
  * All console modes share the same layout. [profile] chooses glyphs, styling, source snippets, and
  * the column budget.
  */
-internal class DiagnosticRenderer(
+public class DiagnosticRenderer(
   private val profile: RenderProfile,
   /** Source text lookup for frame rendering; only consulted when the profile enables snippets. */
   private val sourceLines: (String) -> List<String>? = { null },
@@ -40,7 +40,10 @@ internal class DiagnosticRenderer(
   private val glyphs: GlyphSet
     get() = profile.glyphs
 
-  fun render(diagnostic: MetroDiagnostic, context: RenderContext = RenderContext.EMPTY): String {
+  public fun render(
+    diagnostic: MetroDiagnostic,
+    context: RenderContext = RenderContext.EMPTY,
+  ): String {
     val writer = LineWriter(profile.styler, profile.width)
 
     val severityStyle =
@@ -653,7 +656,7 @@ internal class DiagnosticRenderer(
   /** Cycle node names render emphasized unless the span already carries a style. */
   private fun emphasize(style: Style): Style = if (style == Style.NONE) Style.EMPHASIS else style
 
-  companion object {
+  public companion object {
     private const val SECTION_INDENT = 2
     private const val CONTENT_INDENT = 6
     private const val NESTED_INDENT = 8
@@ -708,7 +711,7 @@ private fun MetroSeverity.toStyle(): Style =
   }
 
 /** Resolves styled [Text] to layout [Run]s, deciding simple vs fully-qualified type renders. */
-internal fun Text.resolve(context: RenderContext): List<Run> = spans.map { span ->
+public fun Text.resolve(context: RenderContext): List<Run> = spans.map { span ->
   when (span) {
     is Text.Span.Plain -> Run(span.text, span.style)
     is Text.Span.Code -> Run("`${span.text}`")

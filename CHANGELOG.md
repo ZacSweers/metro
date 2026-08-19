@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+
 ### Fixes
 
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
