@@ -19,6 +19,12 @@ poko {
   firIdeMode.set(PokoFirIdeMode.NONE)
 }
 
+kotlin {
+  compilerOptions {
+    freeCompilerArgs.add("-Xreturn-value-checker=full")
+  }
+}
+
 project.afterEvaluate {
   configurations.named("implementation") {
     dependencies.removeIf { it is ExternalDependency && it.group == "dev.drewhamilton.poko" }
