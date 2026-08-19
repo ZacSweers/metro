@@ -850,7 +850,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
       canonicalProvider
     }
 
-  if (!contextKey.wrappedType.requiresProviderCapture()) {
+  if (!contextKey.wrappedType.requiresProviderCapture(contextKey.rawType)) {
     return materializeWrappedType(
       contextKey = contextKey,
       wrappedType = contextKey.wrappedType,
@@ -882,7 +882,24 @@ private fun IrBuilderWithScope.materializeWrappedType(
   usesSuspendProvider: Boolean,
 ): IrExpression {
   val symbols = context.metroSymbols
-  val currentKey = contextKey.withWrappedType(wrappedType)
+  val classMapKeyInteropType = wrappedType.classMapKeyInteropType(rawType)
+  val requiresClassMapKeyConversion = classMapKeyInteropType != null
+  val currentWrappedType =
+    if (classMapKeyInteropType != null) {
+      val mapWrappedType = wrappedType.scalarLeaf() as WrappedType.Map<IrType>
+      val declaredMapKeyType = classMapKeyInteropType.arguments[0].typeOrFail
+      val declaredCanonicalMapType =
+        context.irBuiltIns.mapClass.typeWith(
+          declaredMapKeyType,
+          mapWrappedType.valueType.canonicalType(),
+        )
+
+      // Framework adapters need the declared map key without changing the canonical binding key.
+      wrappedType.withCanonicalType(declaredCanonicalMapType)
+    } else {
+      wrappedType
+    }
+  val currentKey = contextKey.withWrappedType(currentWrappedType, rawType)
   val leafType = wrappedType.scalarLeaf().toIrType()
   val canonicalProviderType =
     if (usesSuspendProvider) {
@@ -913,6 +930,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
     }
     is WrappedType.Provider -> {
       val innerType = wrappedType.immediateInnerType()!!
+      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
       if (wrappedType.isExactProviderOfKotlinLazy()) {
         val valueType = (innerType as WrappedType.Lazy).innerType.canonicalType()
         val metroProviderOfLazy =
@@ -924,7 +942,7 @@ private fun IrBuilderWithScope.materializeWrappedType(
             typeHint = valueType.wrapInLazy(symbols).wrapInProvider(symbols.metroProvider),
           )
         with(symbols.providerTypeConverter) { metroProviderOfLazy.convertTo(currentKey) }
-      } else if (innerType.isScalarLeaf()) {
+      } else if (canReuseScalarProvider) {
         check(!usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -932,8 +950,9 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroProviderReturning(innerIrType) {
+          metroProviderReturning(innerResultType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -947,7 +966,8 @@ private fun IrBuilderWithScope.materializeWrappedType(
     }
     is WrappedType.Lazy -> {
       val innerType = wrappedType.immediateInnerType()!!
-      if (innerType.isScalarLeaf()) {
+      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
+      if (canReuseScalarProvider) {
         check(!usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -955,8 +975,9 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroProviderReturning(innerIrType) {
+          metroProviderReturning(innerResultType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -970,7 +991,8 @@ private fun IrBuilderWithScope.materializeWrappedType(
     }
     is WrappedType.SuspendProvider -> {
       val innerType = wrappedType.immediateInnerType()!!
-      if (innerType.isScalarLeaf()) {
+      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
+      if (canReuseScalarProvider) {
         check(usesSuspendProvider)
         with(symbols.providerTypeConverter) {
           provider().convertTo(currentKey, providerType = canonicalProviderType)
@@ -978,8 +1000,9 @@ private fun IrBuilderWithScope.materializeWrappedType(
       } else {
         val innerIrType = innerType.toIrType()
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
+        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
         val metroProvider =
-          metroSuspendProviderReturning(innerIrType) {
+          metroSuspendProviderReturning(innerResultType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -994,12 +1017,14 @@ private fun IrBuilderWithScope.materializeWrappedType(
     is WrappedType.SuspendLazy -> {
       val innerType = wrappedType.immediateInnerType()!!
       val innerIrType = innerType.toIrType()
-      if (innerType.isScalarLeaf()) {
+      val canReuseScalarProvider = innerType.isScalarLeaf() && !requiresClassMapKeyConversion
+      if (canReuseScalarProvider) {
         check(usesSuspendProvider)
         provider().suspendDoubleCheckLazy(symbols, innerIrType)
       } else {
         val innerRawType = rawType.wrapperValueTypeOrNull() ?: innerIrType
-        metroSuspendProviderReturning(innerIrType) {
+        val innerResultType = if (requiresClassMapKeyConversion) innerRawType else innerIrType
+        metroSuspendProviderReturning(innerResultType) {
             materializeWrappedType(
               contextKey,
               innerType,
@@ -1008,20 +1033,26 @@ private fun IrBuilderWithScope.materializeWrappedType(
               usesSuspendProvider,
             )
           }
-          .suspendDoubleCheckLazy(symbols, innerIrType)
+          .suspendDoubleCheckLazy(symbols, innerResultType)
       }
     }
   }
 }
 
-private fun WrappedType<IrType>.requiresProviderCapture(): Boolean {
+context(context: IrMetroContext)
+private fun WrappedType<IrType>.requiresProviderCapture(rawType: IrType?): Boolean {
+  val requiresClassMapKeyConversion = classMapKeyInteropType(rawType) != null
   return when (this) {
     is WrappedType.Canonical,
     is WrappedType.Map -> false
-    is WrappedType.Provider -> !isExactProviderOfKotlinLazy() && !innerType.isScalarLeaf()
-    is WrappedType.Lazy -> !innerType.isScalarLeaf()
-    is WrappedType.SuspendProvider -> !innerType.isScalarLeaf()
-    is WrappedType.SuspendLazy -> !innerType.isScalarLeaf()
+    is WrappedType.Provider -> {
+      val usesProviderOfLazyOptimization = isExactProviderOfKotlinLazy()
+      val requiresMaterializedValue = !innerType.isScalarLeaf() || requiresClassMapKeyConversion
+      !usesProviderOfLazyOptimization && requiresMaterializedValue
+    }
+    is WrappedType.Lazy -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
+    is WrappedType.SuspendProvider -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
+    is WrappedType.SuspendLazy -> !innerType.isScalarLeaf() || requiresClassMapKeyConversion
   }
 }
 
@@ -1092,6 +1123,26 @@ private fun WrappedType.Provider<IrType>.isExactProviderOfKotlinLazy(): Boolean 
 private fun IrType?.wrapperValueTypeOrNull(): IrType? {
   val simpleType = this as? IrSimpleType ?: return null
   return simpleType.arguments.singleOrNull()?.typeOrNull
+}
+
+context(context: IrMetroContext)
+private fun WrappedType<IrType>.classMapKeyInteropType(rawType: IrType?): IrSimpleType? {
+  if (!context.options.enableKClassToClassInterop) return null
+
+  var currentWrappedType = this
+  var currentRawType = rawType
+  while (currentWrappedType !is WrappedType.Map) {
+    currentWrappedType = currentWrappedType.immediateInnerType() ?: return null
+    currentRawType = currentRawType.wrapperValueTypeOrNull() ?: return null
+  }
+
+  val declaredMapType = currentRawType as? IrSimpleType ?: return null
+  if (declaredMapType.rawTypeOrNull()?.classId != StandardClassIds.Map) return null
+
+  val declaredKeyType = declaredMapType.arguments.firstOrNull()?.typeOrNull ?: return null
+  if (declaredKeyType.rawTypeOrNull()?.classId != Symbols.ClassIds.JavaLangClass) return null
+
+  return declaredMapType
 }
 
 /**

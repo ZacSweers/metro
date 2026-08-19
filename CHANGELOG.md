@@ -4,6 +4,16 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@grandstaish](https://github.com/grandstaish)
+
 1.4.2
 -----
 
