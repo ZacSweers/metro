@@ -17,6 +17,9 @@ import com.intellij.ui.dsl.builder.panel
 class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
   var suppressUnusedWarnings by property(true)
+
+  /** Suppresses IntelliJ's false-positive kapt configuration warning in Metro-enabled modules. */
+  var suppressKaptConfigurationWarning by property(true)
 }
 
 /** Project-level Metro IDE settings, stored in `.idea/metro.xml` so teams can check them in. */
@@ -39,6 +42,11 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           "Treats providers, injected classes, and contributions as used even when their only " +
             "usages are in generated code"
         )
+    }
+    row {
+      checkBox("Suppress false-positive kapt configuration warnings")
+        .bindSelected(state::suppressKaptConfigurationWarning)
+        .comment("Metro does not require kapt; applies only to modules with Metro enabled")
     }
   }
 

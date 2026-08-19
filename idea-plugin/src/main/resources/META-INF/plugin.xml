@@ -33,5 +33,9 @@ Metro IDE support for Kotlin dependency injection projects.
         language="JAVA"
         implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
         order="first"/>
+    <lang.inspectionSuppressor
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.MetroKaptCompilerPluginInspectionSuppressor"
+        order="first"/>
   </extensions>
 </idea-plugin>
