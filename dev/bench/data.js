@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786671069661,
+  "lastUpdate": 1787168022811,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -21392,6 +21392,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21016862832109556,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -2.49%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "35b7df70~1",
+          "message": "[before] Fix FIR annotation cache race (#2680)",
+          "timestamp": "2026-08-19T18:34:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/35b7df706e70e4afb194ee6393354ad0770c9875"
+        },
+        "date": 1787168022811,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.2295364409740898,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "35b7df706e70e4afb194ee6393354ad0770c9875",
+          "message": "[after] Fix FIR annotation cache race (#2680)",
+          "timestamp": "2026-08-19T18:34:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/35b7df706e70e4afb194ee6393354ad0770c9875"
+        },
+        "date": 1787168022812,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.22920965238508556,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.14%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

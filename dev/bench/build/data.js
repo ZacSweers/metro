@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786671069914,
+  "lastUpdate": 1787168023031,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21392,6 +21392,62 @@ window.BENCHMARK_DATA = {
             "value": 17308.9,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.72%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "35b7df70~1",
+          "message": "[before] Fix FIR annotation cache race (#2680)",
+          "timestamp": "2026-08-19T18:34:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/35b7df706e70e4afb194ee6393354ad0770c9875"
+        },
+        "date": 1787168023031,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16655.3,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "35b7df706e70e4afb194ee6393354ad0770c9875",
+          "message": "[after] Fix FIR annotation cache race (#2680)",
+          "timestamp": "2026-08-19T18:34:00Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/35b7df706e70e4afb194ee6393354ad0770c9875"
+        },
+        "date": 1787168023032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 16700.986,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.27%"
           }
         ]
       }
