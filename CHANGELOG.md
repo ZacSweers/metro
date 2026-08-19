@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
+
 1.4.2
 -----
 
