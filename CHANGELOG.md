@@ -4,6 +4,10 @@ Changelog
 **Unreleased**
 --------------
 
+### Fixes
+
+- **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
+
 1.4.2
 -----
 
