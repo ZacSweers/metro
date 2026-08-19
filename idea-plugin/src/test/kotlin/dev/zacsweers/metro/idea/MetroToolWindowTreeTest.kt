@@ -24,14 +24,15 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
-import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.GraphContext
-import dev.zacsweers.metro.idea.toolwindow.CopyGraphDebugInfoAction
+import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -435,7 +436,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertTrue(event.presentation.isEnabledAndVisible)
   }
 
-  fun testGraphDebugReportIsDeterministicRedactedAndUsesRealSelection() {
+  fun testGraphDebugReportIsDeterministicOmitsPrivateValuesAndUsesRealSelection() {
     module.addKotlinStdlibLibrary()
     val outputRoot = Files.createTempDirectory("metro-debug-private")
     val reports = Files.createDirectory(outputRoot.resolve("reports-secret"))
@@ -526,7 +527,10 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertTrue(chosen, "  kind=Provided" in chosen)
       assertTrue(chosen, " preferred" in chosen)
       val absent = raw.single { it !in inContext }
-      assertTrue(debugBindingRecord(report, absent), " unwired" in debugBindingRecord(report, absent))
+      assertTrue(
+        debugBindingRecord(report, absent),
+        " unwired" in debugBindingRecord(report, absent),
+      )
 
       val mapRequest = debugRequest(report, "Map<kotlin.String")
       val selectedMap = debugBindingReferences(mapRequest, "selected")
@@ -548,8 +552,29 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           .findAll(report)
           .map { it.groupValues[1] }
           .toSet()
-      assertEquals("Distinct qualifiers must stay distinguishable without their values", 2, qualifierIds.size)
+      assertEquals(
+        "Distinct qualifiers must stay distinguishable without their values",
+        2,
+        qualifierIds.size,
+      )
       assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+    } finally {
+      FileUtil.delete(outputRoot.toFile())
+    }
+  }
+
+  fun testGraphDebugReportIsWrittenToUniqueFiles() {
+    val outputRoot = Files.createTempDirectory("metro-debug-reports")
+    try {
+      val first = writeGraphDebugReport(outputRoot, "first report")
+      val second = writeGraphDebugReport(outputRoot, "second report")
+
+      assertEquals(outputRoot, first.parent)
+      assertTrue(first.fileName.toString().startsWith("metro-graph-debug-"))
+      assertTrue(first.fileName.toString().endsWith(".txt"))
+      assertFalse(first == second)
+      assertEquals("first report", Files.readString(first))
+      assertEquals("second report", Files.readString(second))
     } finally {
       FileUtil.delete(outputRoot.toFile())
     }
@@ -583,13 +608,18 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val child = index.graphs.single { it.name == "ChildGraph" }
     val contexts = index.contextsFor(child).associateBy { it.rootGraph.name }
     val exporter = project.service<MetroGraphDebugExporter>()
-    for ((parent, provider) in listOf("LeftParent" to "leftService", "RightParent" to "rightService")) {
+    for ((parent, provider) in
+      listOf("LeftParent" to "leftService", "RightParent" to "rightService")) {
       val report = checkNotNull(exporter.report(contexts.getValue(parent)))
       val path = report.lineSequence().single { it.startsWith("path (selected graph first)=") }
       assertTrue(path, "test.ChildGraph" in path)
       assertTrue(path, "test.$parent" in path)
-      val selected = debugBindingReferences(debugRequest(report, "test.Service"), "selected").single()
-      assertTrue(debugBindingRecord(report, selected), " $provider" in debugBindingRecord(report, selected))
+      val selected =
+        debugBindingReferences(debugRequest(report, "test.Service"), "selected").single()
+      assertTrue(
+        debugBindingRecord(report, selected),
+        " $provider" in debugBindingRecord(report, selected),
+      )
     }
   }
 
@@ -618,9 +648,13 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val index = project.service<MetroResolutionService>().index(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     val report =
-      checkNotNull(project.service<MetroGraphDebugExporter>().report(index.contextsFor(graph).single()))
-    val writtenSupertypes = report.lineSequence().single { it.startsWith("  writtenSupertypeKeys=") }
-    val selectedSupertypes = report.lineSequence().single { it.startsWith("  selectedSupertypeKeys=") }
+      checkNotNull(
+        project.service<MetroGraphDebugExporter>().report(index.contextsFor(graph).single())
+      )
+    val writtenSupertypes =
+      report.lineSequence().single { it.startsWith("  writtenSupertypeKeys=") }
+    val selectedSupertypes =
+      report.lineSequence().single { it.startsWith("  selectedSupertypeKeys=") }
     assertFalse(writtenSupertypes, "test.FactoryContract" in writtenSupertypes)
     assertTrue(selectedSupertypes, "test.FactoryContract" in selectedSupertypes)
 
@@ -672,12 +706,12 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertSame(result, checkNotNull(validation.cachedResult(file, context)).result)
   }
 
-  fun testCopyGraphDebugInfoActionRequiresAnExactGraphSelection() {
+  fun testExportGraphDebugInfoActionRequiresAnExactGraphSelection() {
     val file = configure()
     val index = project.service<MetroResolutionService>().index(file)
     val context = index.contextsFor(index.graphs.single()).single()
     var selected: GraphContext? = null
-    val action = CopyGraphDebugInfoAction(project) { selected }
+    val action = ExportGraphDebugInfoAction(project) { selected }
     val event =
       AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
 
@@ -686,11 +720,13 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     selected = context
     action.update(event)
     assertTrue(event.presentation.isEnabled)
-    assertEquals("Copy Graph Debug Info", event.presentation.text)
+    assertEquals("Export Graph Debug Info", event.presentation.text)
   }
 
   private fun debugRequest(report: String, type: String): String {
-    return report.substringAfter("[Graph requests]\n").substringBefore("\n[Candidate bindings]")
+    return report
+      .substringAfter("[Graph requests]\n")
+      .substringBefore("\n[Candidate bindings]")
       .split(Regex("(?m)^request [0-9]+:\\n"))
       .single { "  key=$type [type#" in it }
   }
@@ -701,7 +737,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
   }
 
   private fun debugBindingRecord(report: String, reference: String): String {
-    return report.substringAfter("[Candidate bindings]\n")
+    return report
+      .substringAfter("[Candidate bindings]\n")
       .substringAfter("$reference:\n")
       .split(Regex("(?m)^binding#[0-9]+:"), limit = 2)
       .first()

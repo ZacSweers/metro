@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.toolwindow
 
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -11,15 +10,15 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import dev.zacsweers.metro.idea.model.GraphContext
 
-/** Copies only the exact graph path selected in the Metro tree. */
-internal class CopyGraphDebugInfoAction(
+/** Exports only the exact graph path selected in the Metro tree. */
+internal class ExportGraphDebugInfoAction(
   private val project: Project,
   private val selectedContext: () -> GraphContext?,
 ) :
   AnAction(
-    "Copy Graph Debug Info",
-    "Copy a local, redacted report for the selected graph",
-    AllIcons.Actions.Copy,
+    "Export Graph Debug Info",
+    "Write a local report without source bodies, absolute paths, or annotation literal values",
+    null,
   ),
   DumbAware {
 
@@ -31,6 +30,6 @@ internal class CopyGraphDebugInfoAction(
 
   override fun actionPerformed(e: AnActionEvent) {
     val context = selectedContext() ?: return
-    project.service<MetroGraphDebugExporter>().copy(context)
+    project.service<MetroGraphDebugExporter>().export(context)
   }
 }

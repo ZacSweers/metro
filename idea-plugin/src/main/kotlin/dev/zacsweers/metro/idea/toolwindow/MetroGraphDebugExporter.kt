@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.toolwindow
 
+import com.intellij.ide.actions.RevealFileAction
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -42,7 +43,9 @@ import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
-import java.awt.datatransfer.StringSelection
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.IdentityHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -70,23 +73,29 @@ import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.name.ClassId
 
-/** Builds a redacted report on demand and copies it locally; it never uploads the report. */
+/** Builds a privacy-filtered report on demand and writes it to the IDE log directory. */
 @Service(Service.Level.PROJECT)
 internal class MetroGraphDebugExporter(
   private val project: Project,
   private val scope: CoroutineScope,
 ) {
-  private var copyJob: Job? = null
+  private var exportJob: Job? = null
 
-  /** Called from the tool-window action on the EDT. A newer request supersedes an older copy. */
-  fun copy(context: GraphContext) {
-    copyJob?.cancel()
-    copyJob = scope.launch {
+  /** Called from the tool-window action on the EDT. A newer request supersedes an older export. */
+  fun export(context: GraphContext) {
+    exportJob?.cancel()
+    exportJob = scope.launch {
       var failureType: String? = null
-      val report =
+      val output =
         try {
-          withBackgroundProgress(project, "Collecting Metro graph debug info") {
-            retryCancelledIndexBuild { smartReadAction(project) { report(context) } }
+          val report =
+            withBackgroundProgress(project, "Collecting Metro graph debug info") {
+              retryCancelledIndexBuild { smartReadAction(project) { report(context) } }
+            }
+          report?.let {
+            withContext(Dispatchers.IO) {
+              writeGraphDebugReport(PathManager.getLogDir(), it)
+            }
           }
         } catch (failure: Throwable) {
           // The report can contain private project identifiers. Do not attach it, or an arbitrary
@@ -97,7 +106,7 @@ internal class MetroGraphDebugExporter(
       withContext(Dispatchers.EDT) {
         if (project.isDisposed) return@withContext
         val message =
-          if (report == null) {
+          if (output == null) {
             val failure = failureType
             if (failure == null) {
               "Metro graph debug info is unavailable; refresh the graph"
@@ -106,10 +115,10 @@ internal class MetroGraphDebugExporter(
             }
           } else {
             try {
-              CopyPasteManager.getInstance().setContents(StringSelection(report))
-              "Metro graph debug info copied to clipboard"
+              RevealFileAction.openFile(output.toFile())
+              "Metro graph debug info exported"
             } catch (failure: Throwable) {
-              "Metro graph debug info failed (${safeFailureType(failure)})"
+              "Metro graph debug info was exported but could not be shown (${safeFailureType(failure)})"
             }
           }
         StatusBar.Info.set(message, project)
@@ -140,7 +149,15 @@ internal class MetroGraphDebugExporter(
   }
 }
 
-/** One local report. Nothing here reads declaration bodies or renders arbitrary annotation values. */
+internal fun writeGraphDebugReport(directory: Path, report: String): Path {
+  Files.createDirectories(directory)
+  val output = Files.createTempFile(directory, "metro-graph-debug-", ".txt")
+  return Files.writeString(output, report, StandardCharsets.UTF_8)
+}
+
+/**
+ * One local report. Nothing here reads declaration bodies or renders arbitrary annotation values.
+ */
 private class GraphDebugReport(
   private val project: Project,
   private val index: BindingIndex,
@@ -174,8 +191,10 @@ private class GraphDebugReport(
     field("formatVersion", 1)
     field("plugin.version", VERSION)
     field("plugin.gitSha", GIT_SHA.ifEmpty { "<development build>" })
-    line("Local report only; source bodies, absolute paths, and annotation literal values are omitted.")
-    line("Type and annotation IDs preserve exact identity when the display is redacted.")
+    line(
+      "Local report only; source bodies, absolute paths, and annotation literal values are omitted."
+    )
+    line("Type and annotation IDs preserve exact identity when literal values are omitted.")
 
     section("Metro options")
     line(safeOptions(options))
@@ -193,7 +212,10 @@ private class GraphDebugReport(
     val context = queryContext.graphContext
     section("Graph context")
     field("compilationModule", module(queryContext.graphModule))
-    field("path (selected graph first)", context.chain.joinToString(" <- ") { graphId(it.declarationId) })
+    field(
+      "path (selected graph first)",
+      context.chain.joinToString(" <- ") { graphId(it.declarationId) },
+    )
     field("scopes", classIds(context.scopes))
     field("scopingAnnotations", annotations(context.scopingAnnotations))
     field("excludes", classIds(context.excludes))
@@ -218,21 +240,30 @@ private class GraphDebugReport(
       )
     for (contribution in ownContributions.sortedWith(contributionOrder)) {
       ProgressManager.checkCanceled()
-      line("  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}")
+      line(
+        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}"
+      )
     }
     field("inherited", inheritedContributions.size)
     for (contribution in inheritedContributions.sortedWith(contributionOrder)) {
       ProgressManager.checkCanceled()
-      line("  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}")
+      line(
+        "  ${classId(contribution.classId)} scopes=${classIds(contribution.scopeKeys)} at ${location(contribution.pointer)}"
+      )
     }
 
     val requests =
-      index.accessorsFor(queryContext).sortedWith(
-        compareBy({ pointerSortKey(it.pointer) }, { it.contextKey.render(short = false) })
-      )
+      index
+        .accessorsFor(queryContext)
+        .sortedWith(
+          compareBy({ pointerSortKey(it.pointer) }, { it.contextKey.render(short = false) })
+        )
     section("Index counts")
     field("bindings", index.bindings.size)
-    field("bindingKinds", index.bindings.groupingBy { it.javaClass.simpleName }.eachCount().toSortedMap())
+    field(
+      "bindingKinds",
+      index.bindings.groupingBy { it.javaClass.simpleName }.eachCount().toSortedMap(),
+    )
     field("bindingsInContext", index.bindingsInContext(queryContext).size)
     field("consumers", index.consumers.size)
     field("graphs", index.graphs.size)
@@ -243,7 +274,9 @@ private class GraphDebugReport(
 
     section("Graph requests")
     line("rawSameType uses BindingIndex.bindingsWithType (all qualifiers).")
-    line("inContext uses BindingIndex.bindingsForKey (including incompatible scopes for diagnostics).")
+    line(
+      "inContext uses BindingIndex.bindingsForKey (including incompatible scopes for diagnostics)."
+    )
     line("selected and duplicates come from the graph's initialized validation lookup.")
     for ((number, request) in requests.withIndex()) {
       ProgressManager.checkCanceled()
@@ -262,7 +295,10 @@ private class GraphDebugReport(
       field("  rawSameType", bindingReferences(raw))
       field("  inContext", bindingReferences(inContext))
       field("  selected", bindingReferences(selected.bindings))
-      field("  duplicates", selected.duplicates.joinToString(prefix = "[", postfix = "]") { bindingReferences(it) })
+      field(
+        "  duplicates",
+        selected.duplicates.joinToString(prefix = "[", postfix = "]") { bindingReferences(it) },
+      )
     }
 
     section("Candidate bindings")
@@ -288,7 +324,10 @@ private class GraphDebugReport(
     when (val result = cached.result) {
       is KaGraphValidationResult.Completed -> {
         field("state", "completed")
-        field("diagnostics", result.diagnostics.groupingBy { "${it.severity}:${it.id}" }.eachCount().toSortedMap())
+        field(
+          "diagnostics",
+          result.diagnostics.groupingBy { "${it.severity}:${it.id}" }.eachCount().toSortedMap(),
+        )
         field("bindings", result.bindings.size)
         field("topologyAvailable", result.topology != null)
         field("reachableKeys", result.topology?.reachableKeys?.size ?: 0)
@@ -356,9 +395,21 @@ private class GraphDebugReport(
     field("  isGraphPrivate", binding.isGraphPrivate)
     field("  isSuspend", binding.isSuspend)
     field("  memberInjectionOwners", classIds(binding.memberInjectionOwnerIds))
-    field("  multibinding", binding.multibindingId?.let { "multibinding#${multibindingIds.getOrPut(it) { multibindingIds.size + 1 }}" } ?: "none")
-    field("  mapKey", binding.mapKeyValue?.let { "mapKey#${mapKeyIds.getOrPut(it) { mapKeyIds.size + 1 }}" } ?: "none")
-    field("  dependencies", binding.dependencies.joinToString(prefix = "[", postfix = "]", transform = ::contextKey))
+    field(
+      "  multibinding",
+      binding.multibindingId?.let {
+        "multibinding#${multibindingIds.getOrPut(it) { multibindingIds.size + 1 }}"
+      } ?: "none",
+    )
+    field(
+      "  mapKey",
+      binding.mapKeyValue?.let { "mapKey#${mapKeyIds.getOrPut(it) { mapKeyIds.size + 1 }}" }
+        ?: "none",
+    )
+    field(
+      "  dependencies",
+      binding.dependencies.joinToString(prefix = "[", postfix = "]", transform = ::contextKey),
+    )
     when (binding) {
       is KaBinding.ConstructorInjected -> field("  isAssisted", binding.isAssisted)
       is KaBinding.Provided -> field("  isClassContribution", binding.isClassContribution)
@@ -368,10 +419,11 @@ private class GraphDebugReport(
       }
       is KaBinding.Multibinding -> {
         field("  allowEmpty", binding.allowEmpty)
-        val elements = binding.sourceBindings.flatMap { sourceKey ->
-          ProgressManager.checkCanceled()
-          selectCandidates(sourceKey.canonicalContextKey()).bindings
-        }
+        val elements =
+          binding.sourceBindings.flatMap { sourceKey ->
+            ProgressManager.checkCanceled()
+            selectCandidates(sourceKey.canonicalContextKey()).bindings
+          }
         field("  sourceBindings", bindingReferences(elements))
       }
       is KaBinding.BoundInstance -> {
@@ -381,9 +433,13 @@ private class GraphDebugReport(
           binding.additionalOwnerGraphIds.sortedWith(
             compareBy({ it.classId?.asFqNameString().orEmpty() }, { it.file?.path.orEmpty() })
           )
-        field("  additionalOwnerGraphs", ownerGraphs.joinToString(prefix = "[", postfix = "]", transform = ::graphId))
+        field(
+          "  additionalOwnerGraphs",
+          ownerGraphs.joinToString(prefix = "[", postfix = "]", transform = ::graphId),
+        )
       }
-      is KaBinding.AssistedFactory -> field("  targetKey", binding.targetTypeKey?.let(::key) ?: "none")
+      is KaBinding.AssistedFactory ->
+        field("  targetKey", binding.targetTypeKey?.let(::key) ?: "none")
       is KaBinding.GraphDependency -> {
         field("  ownerKey", key(binding.ownerKey))
         field("  isParentScoped", binding.isParentScoped)
@@ -406,35 +462,40 @@ private class GraphDebugReport(
   }
 
   private fun bindingReferences(bindings: Collection<KaBinding>): String {
-    return bindings.sortedBy(::bindingSortKey).joinToString(prefix = "[", postfix = "]") { binding ->
-      val number = bindingIds[binding] ?: (bindingRecords.size + 1).also {
-        bindingIds[binding] = it
-        bindingRecords += binding
-      }
+    return bindings.sortedBy(::bindingSortKey).joinToString(prefix = "[", postfix = "]") { binding
+      ->
+      val number =
+        bindingIds[binding]
+          ?: (bindingRecords.size + 1).also {
+            bindingIds[binding] = it
+            bindingRecords += binding
+          }
       "binding#$number"
     }
   }
 
   /** Sort with exact internal identities; only the separately redacted rendering is exported. */
-  private fun bindingSortKey(binding: KaBinding): String = bindingSortKeys.getOrPut(binding) {
-    listOf(
-      binding.typeKey.render(short = false),
-      binding.javaClass.simpleName,
-      pointerSortKey(binding.pointer),
-      binding.ownerGraphId?.classId?.asFqNameString().orEmpty(),
-      binding.ownerGraphId?.file?.path.orEmpty(),
-      binding.includedContainerKey?.render(short = false).orEmpty(),
-      binding.originClassId?.asFqNameString().orEmpty(),
-      binding.scope?.render(short = false).orEmpty(),
-      binding.contributionScopes.map { it.asFqNameString() }.sorted().joinToString(),
-      binding.contributionRank.toString(),
-      binding.multibindingId.orEmpty(),
-      binding.mapKeyValue.orEmpty(),
-      binding.dependencies.joinToString { "${it.render(short = false)}:${it.hasDefault}" },
-      binding.isGraphPrivate.toString(),
-      binding.isSuspend.toString(),
-    ).joinToString("\u0000")
-  }
+  private fun bindingSortKey(binding: KaBinding): String =
+    bindingSortKeys.getOrPut(binding) {
+      listOf(
+          binding.typeKey.render(short = false),
+          binding.javaClass.simpleName,
+          pointerSortKey(binding.pointer),
+          binding.ownerGraphId?.classId?.asFqNameString().orEmpty(),
+          binding.ownerGraphId?.file?.path.orEmpty(),
+          binding.includedContainerKey?.render(short = false).orEmpty(),
+          binding.originClassId?.asFqNameString().orEmpty(),
+          binding.scope?.render(short = false).orEmpty(),
+          binding.contributionScopes.map { it.asFqNameString() }.sorted().joinToString(),
+          binding.contributionRank.toString(),
+          binding.multibindingId.orEmpty(),
+          binding.mapKeyValue.orEmpty(),
+          binding.dependencies.joinToString { "${it.render(short = false)}:${it.hasDefault}" },
+          binding.isGraphPrivate.toString(),
+          binding.isSuspend.toString(),
+        )
+        .joinToString("\u0000")
+    }
 
   private fun pointerSortKey(pointer: SmartPsiElementPointer<out PsiElement>): String {
     return "${pointer.virtualFile?.path.orEmpty()}\u0000${pointer.element?.textRange?.startOffset ?: -1}"
@@ -452,14 +513,18 @@ private class GraphDebugReport(
   }
 
   private fun keys(keys: Collection<KaTypeKey>): String =
-    keys.sortedBy { it.render(short = false) }.joinToString(prefix = "[", postfix = "]", transform = ::key)
+    keys
+      .sortedBy { it.render(short = false) }
+      .joinToString(prefix = "[", postfix = "]", transform = ::key)
 
   private fun type(snapshot: KaTypeSnapshot): String {
     val id = typeIds.getOrPut(snapshot) { typeIds.size + 1 }
     return "${structuralType(snapshot)} [type#$id]"
   }
 
-  /** A renderer's type-use annotations/error text may contain literals, so do not copy that text. */
+  /**
+   * A renderer's type-use annotations/error text may contain literals, so do not copy that text.
+   */
   private fun structuralType(snapshot: KaTypeSnapshot): String = buildString {
     val className = snapshot.classId?.let(::classId)
     if (className != null) {
@@ -477,26 +542,33 @@ private class GraphDebugReport(
   }
 
   private fun annotations(values: Collection<KaAnnotationSnapshot>): String =
-    values.sortedBy { it.render(short = false) }.joinToString(prefix = "[", postfix = "]", transform = ::annotation)
+    values
+      .sortedBy { it.render(short = false) }
+      .joinToString(prefix = "[", postfix = "]", transform = ::annotation)
 
   private fun annotation(value: KaAnnotationSnapshot): String {
     val id = annotationIds.getOrPut(value) { annotationIds.size + 1 }
-    val arguments = value.arguments.joinToString(prefix = "(", postfix = ")") { (name, argument) ->
-      "${singleLine(name.asString())}=${annotationValue(argument)}"
-    }
+    val arguments =
+      value.arguments.joinToString(prefix = "(", postfix = ")") { (name, argument) ->
+        "${singleLine(name.asString())}=${annotationValue(argument)}"
+      }
     return "@${classId(value.classId)}$arguments [annotation#$id]"
   }
 
-  private fun annotationValue(value: KaAnnotationValueSnapshot): String = when (value) {
-    is KaAnnotationValueSnapshot.Literal -> "<redacted>"
-    is KaAnnotationValueSnapshot.KClassRef -> "${classId(value.classId)}::class"
-    is KaAnnotationValueSnapshot.EnumEntry -> value.callableId?.asSingleFqName()?.asString()?.let(::singleLine) ?: "<unresolved enum>"
-    is KaAnnotationValueSnapshot.Array -> value.values.joinToString(prefix = "[", postfix = "]", transform = ::annotationValue)
-    is KaAnnotationValueSnapshot.Nested -> annotation(value.annotation)
-    KaAnnotationValueSnapshot.Unsupported -> "<unsupported>"
-  }
+  private fun annotationValue(value: KaAnnotationValueSnapshot): String =
+    when (value) {
+      is KaAnnotationValueSnapshot.Literal -> "<redacted>"
+      is KaAnnotationValueSnapshot.KClassRef -> "${classId(value.classId)}::class"
+      is KaAnnotationValueSnapshot.EnumEntry ->
+        value.callableId?.asSingleFqName()?.asString()?.let(::singleLine) ?: "<unresolved enum>"
+      is KaAnnotationValueSnapshot.Array ->
+        value.values.joinToString(prefix = "[", postfix = "]", transform = ::annotationValue)
+      is KaAnnotationValueSnapshot.Nested -> annotation(value.annotation)
+      KaAnnotationValueSnapshot.Unsupported -> "<unsupported>"
+    }
 
-  private fun classId(classId: ClassId?): String = classId?.asFqNameString()?.let(::singleLine) ?: "none"
+  private fun classId(classId: ClassId?): String =
+    classId?.asFqNameString()?.let(::singleLine) ?: "none"
 
   private fun classIds(classIds: Collection<ClassId>): String =
     classIds.map(::classId).sorted().joinToString(prefix = "[", postfix = "]")
@@ -508,9 +580,7 @@ private class GraphDebugReport(
 
   private fun graphReferences(references: Collection<GraphReference>): String {
     val sorted =
-      references.sortedWith(
-        compareBy({ it.classId.asFqNameString() }, { it.file?.path.orEmpty() })
-      )
+      references.sortedWith(compareBy({ it.classId.asFqNameString() }, { it.file?.path.orEmpty() }))
     return sorted.joinToString(prefix = "[", postfix = "]", transform = ::graphReference)
   }
 
@@ -528,9 +598,13 @@ private class GraphDebugReport(
     val element = pointer.element
     val file = file(pointer.virtualFile)
     val document = element?.containingFile?.viewProvider?.document
-    val line = if (element != null && document != null) document.getLineNumber(element.textOffset) + 1 else null
+    val line =
+      if (element != null && document != null) document.getLineNumber(element.textOffset) + 1
+      else null
     val name = (element as? PsiNamedElement)?.name?.let(::singleLine)
-    val module = element?.let { module(KaModuleProvider.getModule(project, it, useSiteModule = null)) }
+    val module = element?.let {
+      module(KaModuleProvider.getModule(project, it, useSiteModule = null))
+    }
     return listOfNotNull(module, file + (line?.let { ":$it" } ?: ""), name).joinToString(" ")
   }
 
@@ -539,7 +613,9 @@ private class GraphDebugReport(
     val id = fileIds.getOrPut(file) { fileIds.size + 1 }
     val basePath = project.basePath?.trimEnd('/')?.takeIf { it.isNotEmpty() }
     val projectRelative =
-      if (basePath != null && file.path.startsWith("$basePath/")) file.path.removePrefix("$basePath/") else null
+      if (basePath != null && file.path.startsWith("$basePath/"))
+        file.path.removePrefix("$basePath/")
+      else null
     val contentRoot = ProjectFileIndex.getInstance(project).getContentRootForFile(file)
     val contentRelative = contentRoot?.let { VfsUtilCore.getRelativePath(file, it, '/') }
     val path = projectRelative ?: contentRelative ?: "<external>/${file.name}"
@@ -548,12 +624,13 @@ private class GraphDebugReport(
 
   private fun module(module: KaModule): String {
     val id = moduleIds.getOrPut(module) { moduleIds.size + 1 }
-    val name = when (module) {
-      is KaSourceModule -> module.name
-      is KaLibraryModule -> module.libraryName
-      is KaLibrarySourceModule -> module.libraryName
-      else -> module.javaClass.simpleName
-    }
+    val name =
+      when (module) {
+        is KaSourceModule -> module.name
+        is KaLibraryModule -> module.libraryName
+        is KaLibrarySourceModule -> module.libraryName
+        else -> module.javaClass.simpleName
+      }
     // Module descriptions and library names are platform-defined and can be filesystem paths.
     val safeName = if ('/' in name || '\\' in name) "<redacted name>" else singleLine(name)
     return "module#$id:$safeName"
@@ -594,43 +671,51 @@ private val debugOptionsJson = Json {
 private val safeCompilerVersion =
   Regex("[0-9]{1,3}\\.[0-9]{1,3}(?:\\.[0-9]{1,5})?(?:-(?:RC|Beta|M)[0-9]*|-dev-[0-9]+|-SNAPSHOT)?")
 
-/** Keep future free-text/path options private too, without maintaining a second Metro option list. */
+/**
+ * Keep future free-text/path options private too, without maintaining a second Metro option list.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 private fun safeOptions(options: MetroOptions): String {
   val serializer = MetroOptions.serializer()
   val descriptor = serializer.descriptor
   val encoded = debugOptionsJson.encodeToJsonElement(serializer, options).jsonObject
-  val values = encoded.mapValues { (name, value) ->
-    val optionDescriptor = descriptor.getElementDescriptor(descriptor.getElementIndex(name))
-    when {
-      value == JsonNull -> value
-      name == "compilerVersion" && options.compilerVersion?.matches(safeCompilerVersion) == true -> value
-      isSafeOptionValue(optionDescriptor) -> sortOptionValue(value)
-      else -> JsonPrimitive("<redacted>")
-    }
-  }.toMutableMap()
+  val values =
+    encoded
+      .mapValues { (name, value) ->
+        val optionDescriptor = descriptor.getElementDescriptor(descriptor.getElementIndex(name))
+        when {
+          value == JsonNull -> value
+          name == "compilerVersion" &&
+            options.compilerVersion?.matches(safeCompilerVersion) == true -> value
+          isSafeOptionValue(optionDescriptor) -> sortOptionValue(value)
+          else -> JsonPrimitive("<redacted>")
+        }
+      }
+      .toMutableMap()
   values["reportsEnabled"] = JsonPrimitive(options.reportsEnabled)
   values["traceEnabled"] = JsonPrimitive(options.traceEnabled)
   return debugOptionsJson.encodeToString(JsonElement.serializer(), JsonObject(values.toSortedMap()))
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-private fun isSafeOptionValue(descriptor: SerialDescriptor): Boolean = when (descriptor.kind) {
-  PrimitiveKind.BOOLEAN,
-  PrimitiveKind.BYTE,
-  PrimitiveKind.SHORT,
-  PrimitiveKind.INT,
-  PrimitiveKind.LONG,
-  PrimitiveKind.FLOAT,
-  PrimitiveKind.DOUBLE,
-  SerialKind.ENUM -> true
-  PrimitiveKind.STRING -> descriptor.serialName == "ClassId"
-  StructureKind.LIST -> isSafeOptionValue(descriptor.getElementDescriptor(0))
-  else -> false
-}
+private fun isSafeOptionValue(descriptor: SerialDescriptor): Boolean =
+  when (descriptor.kind) {
+    PrimitiveKind.BOOLEAN,
+    PrimitiveKind.BYTE,
+    PrimitiveKind.SHORT,
+    PrimitiveKind.INT,
+    PrimitiveKind.LONG,
+    PrimitiveKind.FLOAT,
+    PrimitiveKind.DOUBLE,
+    SerialKind.ENUM -> true
+    PrimitiveKind.STRING -> descriptor.serialName == "ClassId"
+    StructureKind.LIST -> isSafeOptionValue(descriptor.getElementDescriptor(0))
+    else -> false
+  }
 
-private fun sortOptionValue(value: JsonElement): JsonElement = when (value) {
-  is JsonObject -> JsonObject(value.toSortedMap().mapValues { sortOptionValue(it.value) })
-  is JsonArray -> JsonArray(value.map(::sortOptionValue).sortedBy { it.toString() })
-  else -> value
-}
+private fun sortOptionValue(value: JsonElement): JsonElement =
+  when (value) {
+    is JsonObject -> JsonObject(value.toSortedMap().mapValues { sortOptionValue(it.value) })
+    is JsonArray -> JsonArray(value.map(::sortOptionValue).sortedBy { it.toString() })
+    else -> value
+  }
