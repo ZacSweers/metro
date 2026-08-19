@@ -295,7 +295,7 @@ internal class IrBindingGraph(
         }
       },
       errorReporter = this,
-      missingBindingHints = ::missingBindingHints,
+      missingBindingDiagnosticDetails = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
     )
 

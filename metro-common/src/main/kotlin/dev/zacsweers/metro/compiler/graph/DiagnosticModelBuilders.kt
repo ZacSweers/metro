@@ -14,25 +14,25 @@ import org.jetbrains.kotlin.name.FqName
  * These helpers stay in the graph package so generic graph validation and IR-specific reporting use
  * the same type-key, trace, and chain rendering inputs.
  */
-internal fun BaseTypeKey<*, *, *>.toTypeSpan(): Text.Span.Type =
+public fun BaseTypeKey<*, *, *>.toTypeSpan(): Text.Span.Type =
   Text.Span.Type(
     fqName = render(short = false),
     simpleRender = render(short = true),
     fqRender = render(short = false),
   )
 
-internal fun BaseTypeKey<*, *, *>.toText(): Text = Text(listOf(toTypeSpan()))
+public fun BaseTypeKey<*, *, *>.toText(): Text = Text(listOf(toTypeSpan()))
 
-internal fun BaseContextualTypeKey<*, *, *>.toTypeSpan(): Text.Span.Type =
+public fun BaseContextualTypeKey<*, *, *>.toTypeSpan(): Text.Span.Type =
   Text.Span.Type(
     fqName = render(short = false),
     simpleRender = render(short = true),
     fqRender = render(short = false),
   )
 
-internal fun BaseContextualTypeKey<*, *, *>.toText(): Text = Text(listOf(toTypeSpan()))
+public fun BaseContextualTypeKey<*, *, *>.toText(): Text = Text(listOf(toTypeSpan()))
 
-internal fun BaseBindingStack.BaseEntry<*, *, *>.toTraceEntry(): TraceEntry =
+public fun BaseBindingStack.BaseEntry<*, *, *>.toTraceEntry(): TraceEntry =
   TraceEntry(
     key = displayTypeKey.toText(),
     usage = usage,
@@ -40,7 +40,7 @@ internal fun BaseBindingStack.BaseEntry<*, *, *>.toTraceEntry(): TraceEntry =
   )
 
 /** Converts a non-root binding stack to a trace section, or null when there is nothing to show. */
-internal fun BaseBindingStack<*, *, *, *, *>.toTraceSection(): DiagnosticSection.BindingTrace? {
+public fun BaseBindingStack<*, *, *, *, *>.toTraceSection(): DiagnosticSection.BindingTrace? {
   if (graphFqName == FqName.ROOT || entries.isEmpty()) return null
   return DiagnosticSection.BindingTrace(
     graphName = graphFqName.asString(),
@@ -55,7 +55,7 @@ internal fun BaseBindingStack<*, *, *, *, *>.toTraceSection(): DiagnosticSection
  * detailed trace section still carries the full binding context. Returns null when the stack is too
  * shallow for the summary to add useful signal.
  */
-internal fun BaseBindingStack<*, *, *, *, *>.toChainSection(): DiagnosticSection.Chain? {
+public fun BaseBindingStack<*, *, *, *, *>.toChainSection(): DiagnosticSection.Chain? {
   if (entries.size < 2) return null
   // entries[0] is innermost, usually the missing type. Render the chain from the graph outward.
   val outermostFirst = entries.asReversed()

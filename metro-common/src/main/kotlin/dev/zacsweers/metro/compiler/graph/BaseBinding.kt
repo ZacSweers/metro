@@ -8,31 +8,31 @@ import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.Text
 
-internal interface BaseBinding<
+public interface BaseBinding<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, *>,
 > {
-  val contextualTypeKey: ContextualTypeKey
-  val typeKey: TypeKey
+  public val contextualTypeKey: ContextualTypeKey
+  public val typeKey: TypeKey
     get() = contextualTypeKey.typeKey
 
-  val dependencies: List<ContextualTypeKey>
+  public val dependencies: List<ContextualTypeKey>
 
   /**
    * If true, indicates this binding is an alias for another binding. Mostly just for diagnostics.
    */
-  val isAlias: Boolean
+  public val isAlias: Boolean
     get() = false
 
   /**
    * If true, indicates this binding is purely informational and should not be stored in the graph
    * itself.
    */
-  val isTransient: Boolean
+  public val isTransient: Boolean
     get() = false
 
-  val diagnosticNotes: List<Note>
+  public val diagnosticNotes: List<Note>
     get() = emptyList()
 
   /**
@@ -40,19 +40,22 @@ internal interface BaseBinding<
    * or bindings that don't participate in object construction such as object classes or members
    * injectors.
    */
-  val isImplicitlyDeferrable: Boolean
+  public val isImplicitlyDeferrable: Boolean
     get() = contextualTypeKey.isDeferrable
 
-  fun renderLocationDiagnostic(
+  public fun renderLocationDiagnostic(
     short: Boolean = false,
     shortLocation: Boolean = short || MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
     underlineTypeKey: Boolean = true,
   ): LocationDiagnostic
 
-  fun renderDescriptionDiagnostic(short: Boolean = false, underlineTypeKey: Boolean = false): String
+  public fun renderDescriptionDiagnostic(
+    short: Boolean = false,
+    underlineTypeKey: Boolean = false,
+  ): String
 }
 
-internal data class LocationDiagnostic(
+public data class LocationDiagnostic(
   val location: String,
   val description: String?,
   /** Resolved source span when available; enables source-frame rendering in rich console mode. */
@@ -62,7 +65,7 @@ internal data class LocationDiagnostic(
   /** Supporting context discovered while resolving the source declaration. */
   val notes: List<Note> = emptyList(),
 ) {
-  fun toLocatedItem(
+  public fun toLocatedItem(
     code: String? = description,
     preferSourceSnippet: Boolean = false,
     includeLeadingAnnotations: Boolean = true,
@@ -76,7 +79,7 @@ internal data class LocationDiagnostic(
       span = span,
     )
 
-  companion object {
-    const val NO_SOURCE_LOCATION: String = "No source location available"
+  public companion object {
+    public const val NO_SOURCE_LOCATION: String = "No source location available"
   }
 }

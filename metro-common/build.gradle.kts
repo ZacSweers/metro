@@ -41,4 +41,12 @@ dependencies {
 
   implementation(libs.okio)
   implementation(libs.kotlinx.serialization.json)
+
+  testImplementation(libs.kotlin.compiler)
+  testImplementation(libs.androidx.collection)
+  testImplementation(libs.androidx.tracing)
+  testImplementation(libs.poko.annotations)
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlin.test)
+  testImplementation(libs.truth)
 }

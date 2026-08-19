@@ -15,7 +15,7 @@ import androidx.collection.MutableIntSet
  * @param keysPerGraphShard Maximum keys per shard, though a single cycle may exceed this limit.
  * @return Groups in dependency order.
  */
-internal fun <T> GraphTopology<T>.partitionBySCCs(keysPerGraphShard: Int): List<List<T>> {
+public fun <T> GraphTopology<T>.partitionBySCCs(keysPerGraphShard: Int): List<List<T>> {
   // 1. Identify valid keys and pre-group multi-node components.
   // We do this upfront to avoid repeated expensive filtering inside the main loop.
   val validKeys = sortedKeys.filter { it in adjacency.forward }

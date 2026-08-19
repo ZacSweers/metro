@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
-internal interface BaseContextualTypeKey<
+public interface BaseContextualTypeKey<
   Type : Any,
   TypeKey : BaseTypeKey<Type, *, *>,
   ImplType : BaseContextualTypeKey<Type, TypeKey, ImplType>,
 > {
-  val typeKey: TypeKey
-  val wrappedType: WrappedType<Type>
-  val hasDefault: Boolean
-  val rawType: Type?
-  val isDeferrable: Boolean
+  public val typeKey: TypeKey
+  public val wrappedType: WrappedType<Type>
+  public val hasDefault: Boolean
+  public val rawType: Type?
+  public val isDeferrable: Boolean
     get() = wrappedType.isDeferrable()
 
   /**
@@ -19,50 +19,50 @@ internal interface BaseContextualTypeKey<
    * care only about the non-suspend wrappers should check [isWrappedInProvider] and
    * [isWrappedInLazy] explicitly.
    */
-  val isWrapped: Boolean
+  public val isWrapped: Boolean
     get() =
       isWrappedInProvider || isWrappedInLazy || isWrappedInSuspendProvider || isWrappedInSuspendLazy
 
-  val requiresProviderInstance: Boolean
+  public val requiresProviderInstance: Boolean
     get() = isWrapped
 
-  val isWrappedInProvider: Boolean
+  public val isWrappedInProvider: Boolean
     get() = wrappedType is WrappedType.Provider
 
-  val isWrappedInSuspendProvider: Boolean
+  public val isWrappedInSuspendProvider: Boolean
     get() = wrappedType is WrappedType.SuspendProvider
 
-  val isWrappedInSuspendLazy: Boolean
+  public val isWrappedInSuspendLazy: Boolean
     get() = wrappedType is WrappedType.SuspendLazy
 
-  val isWrappedInLazy: Boolean
+  public val isWrappedInLazy: Boolean
     get() = wrappedType is WrappedType.Lazy
 
-  val isLazyWrappedInProvider: Boolean
+  public val isLazyWrappedInProvider: Boolean
     get() =
       wrappedType is WrappedType.Provider &&
         (wrappedType as WrappedType.Provider<Type>).innerType is WrappedType.Lazy
 
-  val isMapProvider: Boolean
+  public val isMapProvider: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Provider
 
-  val isMapLazy: Boolean
+  public val isMapLazy: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.Lazy
 
-  val isMapSuspendProvider: Boolean
+  public val isMapSuspendProvider: Boolean
     get() = wrappedType.findMapValueType() is WrappedType.SuspendProvider
 
   /** Whether the wrapper nearest the bound value can evaluate a suspend binding. */
-  val isSuspendCapableBoundary: Boolean
+  public val isSuspendCapableBoundary: Boolean
     get() = wrappedType.usesSuspendProvider() == true || isMapSuspendProvider
 
-  val isMapProviderLazy: Boolean
+  public val isMapProviderLazy: Boolean
     get() {
       val valueType = wrappedType.findMapValueType()
       return valueType is WrappedType.Provider && valueType.innerType is WrappedType.Lazy
     }
 
-  fun render(
+  public fun render(
     short: Boolean,
     includeQualifier: Boolean = true,
     useRelativeClassNames: Boolean = false,
