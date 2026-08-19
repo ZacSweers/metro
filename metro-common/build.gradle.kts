@@ -21,7 +21,8 @@ poko {
 
 kotlin {
   compilerOptions {
-    freeCompilerArgs.add("-Xreturn-value-checker=full")
+    freeCompilerArgs.addAll("-Xreturn-value-checker=full", "-Xcontext-parameters")
+    optIn.add("kotlin.contracts.ExperimentalContracts")
   }
 }
 
@@ -35,6 +36,8 @@ dependencies {
   compileOnly(libs.kotlin.compiler)
   compileOnly(libs.kotlin.stdlib)
   compileOnly(libs.poko.annotations)
+  compileOnly(libs.androidx.collection)
+  compileOnly(libs.androidx.tracing)
 
   implementation(libs.okio)
   implementation(libs.kotlinx.serialization.json)

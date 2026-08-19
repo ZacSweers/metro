@@ -106,6 +106,7 @@ dependencies {
   diagnosticsDocsRuntime(libs.kotlin.stdlib)
   diagnosticsDocsRuntime(libs.kotlin.compiler)
   diagnosticsDocsRuntime(project(":metro-common"))
+  diagnosticsDocsRuntime(libs.androidx.collection)
 }
 
 val generateDiagnosticsDocs =
