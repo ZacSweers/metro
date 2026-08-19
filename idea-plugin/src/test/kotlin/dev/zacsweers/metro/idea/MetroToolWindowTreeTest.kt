@@ -49,6 +49,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    project.service<MetroResolutionService>().resetGraphBrowserActivation()
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
     project.service<MetroGraphValidationService>().clearResults()

@@ -37,6 +37,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    project.service<MetroResolutionService>().resetGraphBrowserActivation()
   }
 
   fun testDoesNotBuildAnIndexWhenMetroIsNotConfigured() {
@@ -124,6 +125,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     service.addIndexListener(testRootDisposable) { notifications++ }
 
     module.withMetroLibFixtureLibrary {
+      // Root changes reconcile project inputs before a second deferred callback notifies listeners.
+      UIUtil.dispatchAllInvocationEvents()
       UIUtil.dispatchAllInvocationEvents()
 
       assertTrue("Changing library roots should refresh an open Metro window", notifications > 0)

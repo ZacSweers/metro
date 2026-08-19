@@ -77,6 +77,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
@@ -312,6 +313,11 @@ class MetroResolutionService(
 
   internal fun activateGraphBrowser() {
     graphBrowserActivated.set(true)
+  }
+
+  @TestOnly
+  internal fun resetGraphBrowserActivation() {
+    graphBrowserActivated.set(false)
   }
 
   private fun index(module: Module, requestMode: IndexRequestMode): BindingIndex {
