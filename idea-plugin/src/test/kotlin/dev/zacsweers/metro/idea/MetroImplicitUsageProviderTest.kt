@@ -11,7 +11,6 @@ import java.io.File
 import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -51,6 +50,14 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
         .primaryConstructor!!
         .isMetroImplicitUsage()
     )
+  }
+
+  fun testDoesNotMarkMetroDeclarationsWhenPluginIsNotConfigured() {
+    project.clearMetroOptions()
+    val declarations = kotlinFileDeclarations()
+
+    assertFalse(declarations.function("provideService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
   }
 
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
@@ -370,13 +377,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   private fun setMetroOptions(vararg options: Pair<String, String>) {
-    KotlinCommonCompilerArgumentsHolder.getInstance(project).update {
-      pluginOptions =
-        options
-          .map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }
-          .toTypedArray()
-          .takeUnless { it.isEmpty() }
-    }
+    project.setMetroOptions(*options)
   }
 }
 

@@ -48,8 +48,8 @@ class MetroImplicitUsageProvider : ImplicitUsageProvider {
 
 internal fun PsiElement.isMetroImplicitUsage(): Boolean {
   val state = metroIdeState()
+  if (!state.isEnabled) return false
   val options = state.options
-  if (!options.enabled) return false
   val annotationClassIds = state.annotationClassIds
 
   val declaration = ownerDeclaration() ?: return false
