@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787169223175,
+  "lastUpdate": 1787169563587,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -21504,6 +21504,62 @@ window.BENCHMARK_DATA = {
             "value": 14224.804,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.51%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "426533d1~1",
+          "message": "[before] enableKClassToClassMapKeyInterop skipped for Provi",
+          "timestamp": "2026-08-19T14:42:55-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/426533d11032041b679e03acbcb6dd3815a4e938"
+        },
+        "date": 1787169563587,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19142.419,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "426533d11032041b679e03acbcb6dd3815a4e938",
+          "message": "[after] enableKClassToClassMapKeyInterop skipped for Provi",
+          "timestamp": "2026-08-19T14:42:55-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/426533d11032041b679e03acbcb6dd3815a4e938"
+        },
+        "date": 1787169563588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19624.438000000002,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.52%"
           }
         ]
       }

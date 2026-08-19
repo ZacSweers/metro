@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787169222824,
+  "lastUpdate": 1787169563440,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -21504,6 +21504,62 @@ window.BENCHMARK_DATA = {
             "value": 0.20941686904480455,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -3.03%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "426533d1~1",
+          "message": "[before] enableKClassToClassMapKeyInterop skipped for Provi",
+          "timestamp": "2026-08-19T14:42:55-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/426533d11032041b679e03acbcb6dd3815a4e938"
+        },
+        "date": 1787169563440,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21261132781622516,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Bradley Campbell",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "426533d11032041b679e03acbcb6dd3815a4e938",
+          "message": "[after] enableKClassToClassMapKeyInterop skipped for Provi",
+          "timestamp": "2026-08-19T14:42:55-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/426533d11032041b679e03acbcb6dd3815a4e938"
+        },
+        "date": 1787169563441,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.21793061538738828,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +2.50%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
