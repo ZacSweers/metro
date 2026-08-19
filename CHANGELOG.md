@@ -6,6 +6,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
 
 ### Contributors
