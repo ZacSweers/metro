@@ -40,7 +40,6 @@ import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -379,9 +378,10 @@ internal class FileShardBuilder(
       val scopeKeys = classSymbol.scopeKeys(options.allContributesAnnotations) ?: return@analyze
       recordAnnotationDependencies(classSymbol, ktClass)
       val kind = classSymbol.contributionKind(options)
-      val replaces = classSymbol.annotations
-        .filter { it.classId in options.allContributesAnnotations }
-        .flatMapToSet { classListArgument(it, "replaces") }
+      val replaces =
+        classSymbol.annotations
+          .filter { it.classId in options.allContributesAnnotations }
+          .flatMapToSet { classListArgument(it, "replaces") }
       val factoryType = classSymbol.defaultType as? KaClassType
       val childType =
         if (classSymbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
@@ -389,14 +389,15 @@ internal class FileShardBuilder(
         } else {
           null
         }
-      val contribution = ContributionEntry(
-        pointerManager.createSmartPsiElementPointer(ktClass),
-        scopeKeys,
-        ktClass.getClassId(),
-        kind = kind,
-        replaces = replaces,
-        graphExtension = childType?.graphReference(),
-      )
+      val contribution =
+        ContributionEntry(
+          pointerManager.createSmartPsiElementPointer(ktClass),
+          scopeKeys,
+          ktClass.getClassId(),
+          kind = kind,
+          replaces = replaces,
+          graphExtension = childType?.graphReference(),
+        )
       contributions += contribution
       if (kind == ContributionEntry.Kind.GRAPH_INTERFACE && factoryType != null) {
         graphInterfaces += graphInterfaceSurface(contribution, factoryType)
@@ -431,15 +432,16 @@ internal class FileShardBuilder(
     val extensionCreations = linkedSetOf<GraphReference>()
     val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
     val injectedMemberOwnerIds = linkedSetOf<ClassId>()
-    val target = GraphMemberTarget(
-      null,
-      memberConsumers,
-      extensionCreations,
-      extensionFactories,
-      injectedMemberOwnerIds,
-      memberBindings,
-      factoryContext = classType,
-    )
+    val target =
+      GraphMemberTarget(
+        null,
+        memberConsumers,
+        extensionCreations,
+        extensionFactories,
+        injectedMemberOwnerIds,
+        memberBindings,
+        factoryContext = classType,
+      )
     for (type in sequenceOf(classType) + classType.allSupertypes) {
       if (type.isAnyType) continue
       val superType = type as? KaClassType ?: continue
@@ -487,14 +489,15 @@ internal class FileShardBuilder(
       val extensionCreations = mutableSetOf<GraphReference>()
       val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
       val injectedMemberOwnerIds = mutableSetOf<ClassId>()
-      val memberTarget = GraphMemberTarget(
-        graphId,
-        consumers,
-        extensionCreations,
-        extensionFactories,
-        injectedMemberOwnerIds,
-        factoryContext = classSymbol.defaultType as? KaClassType,
-      )
+      val memberTarget =
+        GraphMemberTarget(
+          graphId,
+          consumers,
+          extensionCreations,
+          extensionFactories,
+          injectedMemberOwnerIds,
+          factoryContext = classSymbol.defaultType as? KaClassType,
+        )
 
       for (member in ktClass.declarations) {
         when (member) {
@@ -536,10 +539,11 @@ internal class FileShardBuilder(
       val supertypeDeclarations = linkedSetOf<GraphReference>()
       // FIR may already expose generated contribution supertypes. Only source-written parents
       // belong to this unconditional surface; implicit contributions are selected after merging.
-      val writtenSupertypes = ktClass.superTypeListEntries.asSequence().flatMap { entry ->
-        val type = entry.typeReference?.type?.fullyExpandedType as? KaClassType
-        if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
-      }
+      val writtenSupertypes =
+        ktClass.superTypeListEntries.asSequence().flatMap { entry ->
+          val type = entry.typeReference?.type?.fullyExpandedType as? KaClassType
+          if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
+        }
       for (superType in writtenSupertypes) {
         if (superType.isAnyType) continue
         val classType = superType as? KaClassType ?: continue
@@ -649,11 +653,12 @@ internal class FileShardBuilder(
     // and need no extra surface metadata or composition work.
     if (overriddenDeclarations.isEmpty()) return
 
-    target.defaultImplementations += GraphDefaultImplementation(
-      declaration = graphCallableReference(view, psi),
-      overriddenDeclarations = overriddenDeclarations,
-      isOptional = callable.isOptionalConsumer(options),
-    )
+    target.defaultImplementations +=
+      GraphDefaultImplementation(
+        declaration = graphCallableReference(view, psi),
+        overriddenDeclarations = overriddenDeclarations,
+        isOptional = callable.isOptionalConsumer(options),
+      )
   }
 
   private fun KaSession.graphCallableReference(
@@ -661,14 +666,15 @@ internal class FileShardBuilder(
     psi: KtElement,
   ): GraphCallableReference {
     val callable = view.symbol
-    val signature = GraphCallableSignature(
-      callableId = callable.callableId,
-      receiverType = view.receiver?.let { typeSnapshot(it.returnType) },
-      parameterTypes = view.valueParameters.map { typeSnapshot(it.returnType) },
-      returnType = typeSnapshot(view.returnType),
-      isProperty = callable is KaPropertySymbol,
-      isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
-    )
+    val signature =
+      GraphCallableSignature(
+        callableId = callable.callableId,
+        receiverType = view.receiver?.let { typeSnapshot(it.returnType) },
+        parameterTypes = view.valueParameters.map { typeSnapshot(it.returnType) },
+        returnType = typeSnapshot(view.returnType),
+        isProperty = callable is KaPropertySymbol,
+        isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
+      )
     return GraphCallableReference(ptr(psi), signature)
   }
 
@@ -685,7 +691,10 @@ internal class FileShardBuilder(
     val isOptionalAccessor = callable.isOptionalConsumer(options)
     if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
     val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
-    if (!isMultibindingAccessor && callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) return
+    if (
+      !isMultibindingAccessor && callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
+    )
+      return
 
     // A contributed factory's create(parameters) is a child creation, not a member injector.
     val returnType = view.returnType.fullyExpandedType as? KaClassType
@@ -700,19 +709,26 @@ internal class FileShardBuilder(
       if (returnClass.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
         val extensionType = graphExtensionFactoryTarget(returnType) ?: return
         target.extensionCreations += returnType.graphReference()
-        target.extensionFactories += GraphExtensionFactoryAccessor(
-          ptr(psi),
-          typeKey(returnType, qualifierAnnotation(callable, options)),
-          typeKey(extensionType, null),
-          extensionType.graphReference(),
-        )
+        target.extensionFactories +=
+          GraphExtensionFactoryAccessor(
+            ptr(psi),
+            typeKey(returnType, qualifierAnnotation(callable, options)),
+            typeKey(extensionType, null),
+            extensionType.graphReference(),
+          )
         addGraphAccessor(view, psi, target, isOptionalAccessor)
         return
       }
     }
     if (callable is KaNamedFunctionSymbol && view.valueParameters.isNotEmpty()) {
       (psi as? KtNamedFunction)?.let {
-        processGraphInjector(it, target.graphId, target.injectedMemberOwnerIds, view, target.consumers)
+        processGraphInjector(
+          it,
+          target.graphId,
+          target.injectedMemberOwnerIds,
+          view,
+          target.consumers,
+        )
       }
       return
     }
@@ -728,17 +744,18 @@ internal class FileShardBuilder(
   ) {
     val site = consumedSite(view.returnType, view.symbol, options)
     processRequestedAssistedFactory(view.returnType)
-    target.consumers += ConsumerEntry(
-      ptr(psi),
-      site.contextKey,
-      site.isAbstractType,
-      site.multibindingId,
-      site.typeClassId,
-      graphId = target.graphId,
-      graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
-      isSuspend = (view.symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
-      isOptional = isOptional,
-    )
+    target.consumers +=
+      ConsumerEntry(
+        ptr(psi),
+        site.contextKey,
+        site.isAbstractType,
+        site.multibindingId,
+        site.typeClassId,
+        graphId = target.graphId,
+        graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
+        isSuspend = (view.symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
+        isOptional = isOptional,
+      )
   }
 
   private fun KaSession.graphExtensionFactoryTarget(factoryType: KaClassType): KaClassType? {
@@ -773,10 +790,11 @@ internal class FileShardBuilder(
         val samFunction = sam.symbol as? KaNamedFunctionSymbol ?: continue
         if (samFunction.name != function.name) continue
         if (sam.valueParameters.size != view.valueParameters.size) continue
-        val sameParameters = sam.valueParameters.indices.all { index ->
-          typeKey(sam.valueParameters[index].returnType, null) ==
-            typeKey(view.valueParameters[index].returnType, null)
-        }
+        val sameParameters =
+          sam.valueParameters.indices.all { index ->
+            typeKey(sam.valueParameters[index].returnType, null) ==
+              typeKey(view.valueParameters[index].returnType, null)
+          }
         if (!sameParameters) continue
         factoryType.symbol.psi?.containingFile?.let(cacheDependencies::add)
         return factoryType.graphReference()

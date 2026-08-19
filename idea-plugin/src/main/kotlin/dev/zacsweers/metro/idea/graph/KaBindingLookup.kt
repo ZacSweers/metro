@@ -400,8 +400,7 @@ internal class KaBindingLookup(
     for ((owner, composition) in compositions) {
       ProgressManager.checkCanceled()
       val ownerKey = owner.graphTypeKey() ?: continue
-      val implementedClasses =
-        composition.supertypeKeys.mapNotNullTo(HashSet()) { it.type.classId }
+      val implementedClasses = composition.supertypeKeys.mapNotNullTo(HashSet()) { it.type.classId }
       for (accessor in composition.extensionFactories) {
         val factoryClassId = accessor.factoryKey.type.classId
         if (factoryClassId != null && factoryClassId in implementedClasses) continue
@@ -426,8 +425,8 @@ internal class KaBindingLookup(
   }
 
   /**
-   * Builds the multibinding and registers one element binding per contribution. Each element is
-   * the contribution re-keyed under a synthetic qualifier, matching the compiler's
+   * Builds the multibinding and registers one element binding per contribution. Each element is the
+   * contribution re-keyed under a synthetic qualifier, matching the compiler's
    * `@MultibindingElement` key swap. The graph resolves those elements through the multibinding's
    * dependencies rather than inserting them again alongside each collection view.
    */
@@ -450,9 +449,10 @@ internal class KaBindingLookup(
       val elementKey = contribution.typeKey.copy(qualifier = qualifier)
       // Multibindings can share contributions, like Map<K, V> and Map<K, Provider<V>>. First write
       // wins so both views, and any child reservation, reference the same element node.
-      val element = syntheticElements.getOrPut(elementKey) {
-        delegateToParentIfScoped(contribution.withElementKey(elementKey))
-      }
+      val element =
+        syntheticElements.getOrPut(elementKey) {
+          delegateToParentIfScoped(contribution.withElementKey(elementKey))
+        }
       element.typeKey
     }
 

@@ -1629,8 +1629,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val parent = index.graphs.single { it.name == "AppGraph" }
     val parentContext = index.contextsFor(parent).single()
     val child = index.graphs.single { it.name == "ChildGraph" }
-    val childContext =
-      index.contextsFor(child).single { it.chain.drop(1) == parentContext.chain }
+    val childContext = index.contextsFor(child).single { it.chain.drop(1) == parentContext.chain }
     val validationService = project.service<MetroGraphValidationService>()
     val parentResult = validationService.validate(file, parentContext).requireCompleted()
     val childResult = validationService.validate(file, childContext).requireCompleted()
@@ -1707,11 +1706,18 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val parentResult = results.last().requireCompleted()
 
     assertEquals(2, results.size)
-    assertTrue(childResult.diagnostics.joinToString { it.render() }, childResult.diagnostics.isEmpty())
-    assertTrue(parentResult.diagnostics.joinToString { it.render() }, parentResult.diagnostics.isEmpty())
-    val parentElements = parentResult.bindings.asMap().filterKeys {
-      it.qualifier?.classId == MetroClassIds.multibindingElement
-    }
+    assertTrue(
+      childResult.diagnostics.joinToString { it.render() },
+      childResult.diagnostics.isEmpty(),
+    )
+    assertTrue(
+      parentResult.diagnostics.joinToString { it.render() },
+      parentResult.diagnostics.isEmpty(),
+    )
+    val parentElements =
+      parentResult.bindings.asMap().filterKeys {
+        it.qualifier?.classId == MetroClassIds.multibindingElement
+      }
     assertEquals(2, parentElements.size)
     assertTrue(parentElements.values.all { it is KaBinding.Alias })
     assertEquals(
@@ -1719,9 +1725,10 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       parentElements.values.map { it.originClassId?.asFqNameString() }.toSet(),
     )
     assertEquals(parentElements.keys, childResult.parentReservations.keys)
-    val parentCollection = parentResult.bindings.asMap().values.single {
-      it.typeKey.renderedType == "kotlin.collections.Set<test.Route>"
-    } as KaBinding.Multibinding
+    val parentCollection =
+      parentResult.bindings.asMap().values.single {
+        it.typeKey.renderedType == "kotlin.collections.Set<test.Route>"
+      } as KaBinding.Multibinding
     assertEquals(parentElements.keys, parentCollection.sourceBindings.toSet())
     for (key in parentElements.keys) {
       val childElement = childResult.bindings[key] as KaBinding.GraphDependency
@@ -1748,9 +1755,10 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
-    val elements = result.bindings.asMap().filterKeys {
-      it.qualifier?.classId == MetroClassIds.multibindingElement
-    }
+    val elements =
+      result.bindings.asMap().filterKeys {
+        it.qualifier?.classId == MetroClassIds.multibindingElement
+      }
     assertEquals(1, elements.size)
     assertTrue(elements.values.single() is KaBinding.Provided)
     val collections = result.bindings.asMap().values.filterIsInstance<KaBinding.Multibinding>()

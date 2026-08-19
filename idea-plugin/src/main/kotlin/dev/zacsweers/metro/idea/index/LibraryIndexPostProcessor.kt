@@ -588,8 +588,9 @@ internal fun sourceAssistedFactoryUseSites(
 /** Inherited callables resolve from their exact owning graph, not the upstream declaration file. */
 @OptIn(KaPlatformInterface::class)
 internal class ConsumerGraphContexts(private val index: BindingIndex) {
-  constructor(graphs: List<KaGraphDeclaration>) :
-    this(BindingIndex(emptyList(), emptyList(), graphs, emptyList()))
+  constructor(
+    graphs: List<KaGraphDeclaration>
+  ) : this(BindingIndex(emptyList(), emptyList(), graphs, emptyList()))
 
   private val graphs = index.graphs
   private val queryContextsByGraphId =
@@ -658,9 +659,10 @@ internal class ConsumerGraphContexts(private val index: BindingIndex) {
     val graphId = consumer.graphId
     if (graphId != null) {
       val graph = graphsById[graphId] ?: return emptyList()
-      val contexts = queryContextsByGraphId.computeIfAbsent(graphId) {
-        index.contextsFor(graph).mapNotNull(index::queryContext)
-      }
+      val contexts =
+        queryContextsByGraphId.computeIfAbsent(graphId) {
+          index.contextsFor(graph).mapNotNull(index::queryContext)
+        }
       if (contexts.size == 1) {
         val context = contexts.single()
         if (!index.isConsumerInContext(consumer, context)) return emptyList()

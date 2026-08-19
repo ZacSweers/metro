@@ -220,7 +220,10 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         "repro.api.BaseAccountUserGraph?",
         "repro.api.ViewModelGraph.Factory",
       )
-    assertEquals(expectedRoots, index.accessorsFor(graph).mapTo(mutableSetOf()) { it.key.renderedType })
+    assertEquals(
+      expectedRoots,
+      index.accessorsFor(graph).mapTo(mutableSetOf()) { it.key.renderedType },
+    )
     val result = validation.validate(appFile, context).requireCompleted()
     assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     val resolved = result.bindings.asMap().entries.associate { it.key.renderedType to it.value }

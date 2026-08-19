@@ -151,9 +151,7 @@ internal class KaGraphDeclaration(
   val name: String?
     get() = classId?.shortClassName?.asString()
 
-  fun withContributedInterfaces(
-    interfaces: List<GraphInterfaceContribution>
-  ): KaGraphDeclaration {
+  fun withContributedInterfaces(interfaces: List<GraphInterfaceContribution>): KaGraphDeclaration {
     if (interfaces.isEmpty()) return this
     return KaGraphDeclaration(
       pointer = pointer,
@@ -233,7 +231,9 @@ internal data class GraphCallableSignature(
   val isSuspend: Boolean,
 )
 
-/** An exact callable declaration; override matching uses its pointer, not its name or return type. */
+/**
+ * An exact callable declaration; override matching uses its pointer, not its name or return type.
+ */
 internal class GraphCallableReference(
   val pointer: SmartPsiElementPointer<out KtElement>,
   val signature: GraphCallableSignature,

@@ -735,7 +735,6 @@ internal class KaBindingGraph(
 
     return MissingBindingHints(notes = notes, similarBindings = similar)
   }
-
 }
 
 /** A key an extension child delegates to its parent seal, anchored at the child declaration. */
