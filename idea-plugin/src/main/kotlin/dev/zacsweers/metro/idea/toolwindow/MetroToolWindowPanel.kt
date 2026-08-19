@@ -31,6 +31,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -53,7 +54,11 @@ internal class MetroToolWindowPanel(private val project: Project) :
   // The tree structure computes children on a background invoker, so it reads a snapshot of the
   // search text instead of touching the Swing component off the EDT.
   @Volatile private var searchText: String = ""
-  private val treeStructure = MetroTreeStructure(project) { searchText }
+  private val resolutionService = project.service<MetroResolutionService>()
+  private val indexBuildStatus = IndexBuildStatusPanel()
+  private var indexBuildProgress: IndexBuildProgress? = null
+  private val treeStructure =
+    MetroTreeStructure(project, resolutionService::indexForToolWindow) { searchText }
 
   /** A validate request whose graph was not indexed yet, retried when a fresh index lands. */
   private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
@@ -74,12 +79,17 @@ internal class MetroToolWindowPanel(private val project: Project) :
       .subscribe(
         DumbService.DUMB_MODE,
         object : DumbService.DumbModeListener {
+          override fun enteredDumbMode() {
+            updateIndexBuildStatus()
+          }
+
           override fun exitDumbMode() {
+            updateIndexBuildStatus()
             treeModel.invalidateAsync()
           }
         },
       )
-    project.service<MetroResolutionService>().addIndexListener(this) {
+    resolutionService.addIndexListener(this) {
       treeModel.invalidateAsync()
       pendingValidation?.let { (classId, file) ->
         // Invalidation and other modules publish through this same listener. Keep the request
@@ -89,6 +99,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
           validateGraph(graph)
         }
       }
+    }
+    resolutionService.addIndexBuildProgressListener(this) { progress ->
+      indexBuildProgress = progress
+      updateIndexBuildStatus()
     }
 
     object : DoubleClickListener() {
@@ -141,7 +155,19 @@ internal class MetroToolWindowPanel(private val project: Project) :
     header.add(toolbar.component, BorderLayout.WEST)
     header.add(searchField, BorderLayout.CENTER)
     setToolbar(header)
-    setContent(JBScrollPane(tree))
+    val content = JPanel(BorderLayout())
+    content.add(indexBuildStatus, BorderLayout.NORTH)
+    content.add(JBScrollPane(tree), BorderLayout.CENTER)
+    setContent(content)
+  }
+
+  private fun updateIndexBuildStatus() {
+    if (disposed || project.isDisposed) return
+    if (DumbService.isDumb(project)) {
+      indexBuildStatus.showWaitingForIdeIndexing()
+    } else {
+      indexBuildProgress?.let(indexBuildStatus::show) ?: indexBuildStatus.clear()
+    }
   }
 
   /** Expands to [classId]'s graph node, selects it, and runs validation. */
@@ -279,5 +305,6 @@ internal class MetroToolWindowPanel(private val project: Project) :
   override fun dispose() {
     disposed = true
     pendingValidation = null
+    indexBuildStatus.clear()
   }
 }

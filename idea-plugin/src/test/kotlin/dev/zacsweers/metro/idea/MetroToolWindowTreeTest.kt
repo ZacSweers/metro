@@ -23,10 +23,13 @@ import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.IndexBuildPhase
+import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
+import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
@@ -359,17 +362,44 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     }
   }
 
+  fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
+    val panel = IndexBuildStatusPanel()
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10))
+    assertTrue(panel.isVisible)
+    assertEquals("Analyzing Metro declarations (4 of 10 files)", panel.messageLabel.text)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals(4, panel.progressBar.value)
+    assertEquals(10, panel.progressBar.maximum)
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Reading dependency metadata", panel.messageLabel.text)
+
+    panel.showWaitingForIdeIndexing()
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
+
+    panel.clear()
+    assertFalse(panel.isVisible)
+  }
+
   fun testToolWindowPanelRecoversAfterDumbMode() {
-    configure()
+    val file = configure()
+    project.service<MetroResolutionService>().index(file)
     var panel: MetroToolWindowPanel? = null
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       panel = MetroToolWindowPanel(project)
       assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+      val status = toolWindowStatus(checkNotNull(panel))
+      assertTrue(status.isVisible)
+      assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
     }
 
     val tree = toolWindowTree(checkNotNull(panel))
     PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
     assertTrue("The Metro tree should populate when smart mode resumes", tree.rowCount > 0)
+    assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
     com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
   }
 
@@ -747,6 +777,13 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
   private fun toolWindowTree(panel: MetroToolWindowPanel): Tree {
     return com.intellij.util.ui.UIUtil.findComponentOfType(panel, Tree::class.java)
       ?: error("Metro tool window has no tree")
+  }
+
+  private fun toolWindowStatus(panel: MetroToolWindowPanel): IndexBuildStatusPanel {
+    return com.intellij.util.ui.UIUtil.findComponentOfType(
+      panel,
+      IndexBuildStatusPanel::class.java,
+    ) ?: error("Metro tool window has no index build status")
   }
 
   fun testRefreshedNodesReplaceStaleOnes() {

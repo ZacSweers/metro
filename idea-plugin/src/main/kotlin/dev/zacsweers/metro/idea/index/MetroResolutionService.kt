@@ -127,6 +127,9 @@ class MetroResolutionService(
     )
 
   private val listeners = Collections.newSetFromMap(ConcurrentHashMap<() -> Unit, Boolean>())
+  private val indexBuildProgressListeners =
+    Collections.newSetFromMap(ConcurrentHashMap<(IndexBuildProgress?) -> Unit, Boolean>())
+  private val indexBuildProgress = AtomicReference<IndexBuildProgress?>(null)
   /** Pre-change shared declarations, so broad PSI events do not invalidate unrelated edits. */
   private val sharedDeclarationFingerprints = ConcurrentHashMap<VirtualFile, String>()
   private val invalidationPending = AtomicBoolean()
@@ -222,36 +225,43 @@ class MetroResolutionService(
     scope.launch { buildWorker() }
   }
 
-  /** Drains EDT-requested background builds one at a time on the service scope. */
+  /** Drains UI-requested background builds one at a time on the service scope. */
   private suspend fun buildWorker() {
-    for (unused in buildSignal) {
-      while (true) {
-        val (key, module) = pendingBuilds.entries.firstOrNull() ?: break
-        pendingBuilds.remove(key, module)
-        val built =
-          try {
-            retryCancelledIndexBuild {
-              smartReadAction(project) { buildCurrentIndex(module, key) }
+    try {
+      for (unused in buildSignal) {
+        while (true) {
+          val (key, module) = pendingBuilds.entries.firstOrNull() ?: break
+          pendingBuilds.remove(key, module)
+          val progress = IndexBuildProgressReporter(::publishIndexBuildProgress)
+          progress.phase(IndexBuildPhase.QUEUED)
+          val built =
+            try {
+              retryCancelledIndexBuild {
+                smartReadAction(project) { buildCurrentIndex(module, key, progress) }
+              }
+            } catch (exception: CancellationException) {
+              throw exception
+            } catch (failure: Throwable) {
+              // The worker must survive analysis failures or every future EDT-scheduled build
+              // would silently stop. Requesters reschedule on their next query.
+              logger<MetroResolutionService>()
+                .warn("Metro index build failed for ${module.name}", failure)
+              continue
             }
-          } catch (exception: CancellationException) {
-            throw exception
-          } catch (failure: Throwable) {
-            // The worker must survive analysis failures or every future EDT-scheduled build
-            // would silently stop. Requesters reschedule on their next query.
-            logger<MetroResolutionService>()
-              .warn("Metro index build failed for ${module.name}", failure)
+          if (built === BindingIndex.EMPTY) {
             continue
           }
-        if (built === BindingIndex.EMPTY) {
-          continue
-        }
-        withContext(Dispatchers.EDT) {
-          val current = snapshots[key]
-          if (!project.isDisposed && current?.index === built) {
-            notifyListeners(restartDaemon = true)
+          withContext(Dispatchers.EDT) {
+            val current = snapshots[key]
+            if (!project.isDisposed && current?.index === built) {
+              notifyListeners(restartDaemon = true)
+            }
           }
         }
+        publishIndexBuildProgress(null)
       }
+    } finally {
+      publishIndexBuildProgress(null)
     }
   }
 
@@ -269,6 +279,16 @@ class MetroResolutionService(
    * Background highlighting and the platform's synchronous unit-test fixtures build immediately.
    */
   internal fun index(module: Module): BindingIndex {
+    val application = ApplicationManager.getApplication()
+    val scheduleInBackground = application.isDispatchThread && !application.isUnitTestMode
+    return index(module, scheduleInBackground)
+  }
+
+  /** Returns a cached index to the graph browser or schedules its serialized background build. */
+  internal fun indexForToolWindow(module: Module): BindingIndex =
+    index(module, scheduleInBackground = true)
+
+  private fun index(module: Module, scheduleInBackground: Boolean): BindingIndex {
     val moduleState = project.service<MetroIdeProjectService>().state(module)
     if (!moduleState.isEnabled) return BindingIndex.EMPTY
 
@@ -286,13 +306,12 @@ class MetroResolutionService(
         }
     }
 
-    val application = ApplicationManager.getApplication()
-    if (application.isDispatchThread && !application.isUnitTestMode) {
+    if (scheduleInBackground) {
       scheduleBuild(module, key)
       return BindingIndex.EMPTY
     }
 
-    return if (application.isDispatchThread) {
+    return if (ApplicationManager.getApplication().isDispatchThread) {
       // BasePlatformTestCase performs existing marker/index assertions synchronously on the EDT.
       // Production callers take the background path above and never reach this exception.
       allowAnalysisOnEdt { buildCurrentIndex(module, key) }
@@ -305,6 +324,16 @@ class MetroResolutionService(
   internal fun addIndexListener(parentDisposable: Disposable, listener: () -> Unit) {
     listeners += listener
     Disposer.register(parentDisposable) { listeners -= listener }
+  }
+
+  /** Reports serialized tool-window index builds on the EDT. */
+  internal fun addIndexBuildProgressListener(
+    parentDisposable: Disposable,
+    listener: (IndexBuildProgress?) -> Unit,
+  ) {
+    indexBuildProgressListeners += listener
+    Disposer.register(parentDisposable) { indexBuildProgressListeners -= listener }
+    notifyIndexBuildProgressListener(listener, indexBuildProgress.get())
   }
 
   /**
@@ -381,7 +410,11 @@ class MetroResolutionService(
   }
 
   private fun scheduleBuild(module: Module, key: SnapshotKey) {
-    pendingBuilds.putIfAbsent(key, module)
+    if (pendingBuilds.putIfAbsent(key, module) != null) return
+    val queued = IndexBuildProgress(IndexBuildPhase.QUEUED)
+    if (indexBuildProgress.compareAndSet(null, queued)) {
+      notifyIndexBuildProgress(queued)
+    }
     buildSignal.trySend(Unit)
   }
 
@@ -394,7 +427,11 @@ class MetroResolutionService(
    *    fails the publish and the loop re-drains. Unchanged shards replay from their per-file cached
    *    values, so retries are cheap.
    */
-  private fun buildCurrentIndex(module: Module, key: SnapshotKey): BindingIndex {
+  private fun buildCurrentIndex(
+    module: Module,
+    key: SnapshotKey,
+    progress: IndexBuildProgressReporter? = null,
+  ): BindingIndex {
     if (DumbService.isDumb(project)) return BindingIndex.EMPTY
     val moduleState = project.service<MetroIdeProjectService>().state(module)
     if (!moduleState.isEnabled) return BindingIndex.EMPTY
@@ -433,9 +470,9 @@ class MetroResolutionService(
       val coldSweep = prev == null || prev.inputs.roots != inputs.roots || fingerprintChanged
       val next =
         if (coldSweep) {
-          coldSweep(moduleState.options, inputs, start)
+          coldSweep(moduleState.options, inputs, start, progress)
         } else {
-          incremental(prev!!, inputs, start)
+          incremental(prev!!, inputs, start, progress)
         }
 
       // Publish the snapshot before draining the ledger. A builder that observes the drained
@@ -454,15 +491,19 @@ class MetroResolutionService(
         ?.let {
           return it.index
         }
-      val rawSource = aggregateSource(next)
+      progress?.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
+      val rawSource = aggregateSource(next, progress)
+      progress?.phase(IndexBuildPhase.RESOLVING_ASSISTED_FACTORIES)
       val summary = next.librarySummary.getOrCreate(project, rawSource)
       val source = rawSource.withAddedFactories(summary.sourceFactories.addedBindings)
       val library =
         if (key.resolveFromLibraries) {
+          progress?.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
           libraryShardFor(key.fingerprint, inputs.roots, source, summary)
         } else {
           LibraryShard.EMPTY
         }
+      progress?.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val index =
         BindingIndex(
           bindings = source.bindings + library.bindings,
@@ -489,24 +530,40 @@ class MetroResolutionService(
     options: MetroOptions,
     inputs: IndexInputs,
     start: Invalidations,
+    progress: IndexBuildProgressReporter?,
   ): SourceSnapshot {
+    progress?.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
     val annotationIds = projectSweepAnnotationIds(options)
     val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
     val transaction = SourceSnapshotTransaction()
-    for (file in candidateFiles(annotationIds, shortNames)) {
+    val candidates = candidateFiles(annotationIds, shortNames)
+    val total = candidates.size + start.requested.size
+    var completed = 0
+    progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+    for (file in candidates) {
       ProgressManager.checkCanceled()
-      val virtualFile = file.virtualFile ?: continue
-      transaction.applyShard(virtualFile, shardFor(file))
+      try {
+        val virtualFile = file.virtualFile ?: continue
+        transaction.applyShard(virtualFile, shardFor(file))
+      } finally {
+        completed++
+        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+      }
     }
     // Stub loading can surface requested files before their annotations reach the stub index.
     for (virtualFile in start.requested) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
-        continue
-      }
-      val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
-      if (containsRelevantAnnotation(file, shortNames)) {
-        transaction.applyShard(virtualFile, shardFor(file))
+      try {
+        if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
+          continue
+        }
+        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
+        if (containsRelevantAnnotation(file, shortNames)) {
+          transaction.applyShard(virtualFile, shardFor(file))
+        }
+      } finally {
+        completed++
+        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
       }
     }
     return transaction.snapshot(inputs, moduleFingerprints(), shortNames)
@@ -516,6 +573,7 @@ class MetroResolutionService(
     prev: SourceSnapshot,
     inputs: IndexInputs,
     start: Invalidations,
+    progress: IndexBuildProgressReporter?,
   ): SourceSnapshot {
     val dirty =
       if (start.forceAll) {
@@ -531,36 +589,52 @@ class MetroResolutionService(
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
     val transaction = SourceSnapshotTransaction(prev)
+    val total = dirty.size + start.requested.size
+    var completed = 0
+    progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
     for (virtualFile in dirty) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid) {
-        transaction.removeShard(virtualFile)
-        continue
+      try {
+        if (!virtualFile.isValid) {
+          transaction.removeShard(virtualFile)
+          continue
+        }
+        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
+        if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
+          transaction.removeShard(virtualFile)
+          continue
+        }
+        val forced = start.forceAll || virtualFile in start.forced
+        transaction.applyShard(virtualFile, shardFor(file, forced))
+      } finally {
+        completed++
+        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
       }
-      val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-      if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
-        transaction.removeShard(virtualFile)
-        continue
-      }
-      val forced = start.forceAll || virtualFile in start.forced
-      transaction.applyShard(virtualFile, shardFor(file, forced))
     }
     // Requested files were enqueued before their stubs or directory events settled. Draining
     // them here keeps them from lingering in the ledger until a cold sweep.
     for (virtualFile in start.requested) {
       ProgressManager.checkCanceled()
-      if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
-        continue
-      }
-      val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
-      if (containsRelevantAnnotation(file, prev.shortNames)) {
-        transaction.applyShard(virtualFile, shardFor(file))
+      try {
+        if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
+          continue
+        }
+        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
+        if (containsRelevantAnnotation(file, prev.shortNames)) {
+          transaction.applyShard(virtualFile, shardFor(file))
+        }
+      } finally {
+        completed++
+        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
       }
     }
     return transaction.snapshot(inputs, prev.moduleFingerprints, prev.shortNames)
   }
 
-  private fun aggregateSource(snapshot: SourceSnapshot): SourceAggregate {
+  private fun aggregateSource(
+    snapshot: SourceSnapshot,
+    progress: IndexBuildProgressReporter?,
+  ): SourceAggregate {
     val bindings = mutableListOf<KaBinding>()
     val consumers = mutableListOf<ConsumerEntry>()
     val graphs = mutableListOf<KaGraphDeclaration>()
@@ -570,34 +644,49 @@ class MetroResolutionService(
     val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
     val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
     var factoryInputBindings: CanonicalFactoryInputBindings? = null
+    var completed = 0
+    progress?.counted(
+      IndexBuildPhase.COMBINING_DECLARATIONS,
+      completed,
+      snapshot.shardOrder.size,
+    )
     for (virtualFile in snapshot.shardOrder) {
       ProgressManager.checkCanceled()
-      val shard = snapshot.shards[virtualFile] ?: continue
-      if (shard.factoryInputs.isEmpty()) {
-        bindings += shard.bindings
-      } else {
-        for (binding in shard.bindings) {
-          val isOwnedFactoryInput =
-            binding is KaBinding.BoundInstance &&
-              binding.ownerGraphId != null &&
-              (binding.isGraphInput || binding.isBindingContainerInput)
-          if (!isOwnedFactoryInput) {
-            bindings += binding
-            continue
+      try {
+        val shard = snapshot.shards[virtualFile] ?: continue
+        if (shard.factoryInputs.isEmpty()) {
+          bindings += shard.bindings
+        } else {
+          for (binding in shard.bindings) {
+            val isOwnedFactoryInput =
+              binding is KaBinding.BoundInstance &&
+                binding.ownerGraphId != null &&
+                (binding.isGraphInput || binding.isBindingContainerInput)
+            if (!isOwnedFactoryInput) {
+              bindings += binding
+              continue
+            }
+            val instances =
+              factoryInputBindings
+                ?: CanonicalFactoryInputBindings(bindings).also { factoryInputBindings = it }
+            instances.add(binding)
           }
-          val instances =
-            factoryInputBindings
-              ?: CanonicalFactoryInputBindings(bindings).also { factoryInputBindings = it }
-          instances.add(binding)
         }
+        consumers += shard.consumers
+        graphs += shard.graphs
+        contributions += shard.contributions
+        assistedSites += shard.assistedSites
+        bindingContainers += shard.bindingContainers
+        graphInterfaces += shard.graphInterfaces
+        for (input in shard.factoryInputs) factoryInputs.putIfAbsent(input.id, input)
+      } finally {
+        completed++
+        progress?.counted(
+          IndexBuildPhase.COMBINING_DECLARATIONS,
+          completed,
+          snapshot.shardOrder.size,
+        )
       }
-      consumers += shard.consumers
-      graphs += shard.graphs
-      contributions += shard.contributions
-      assistedSites += shard.assistedSites
-      bindingContainers += shard.bindingContainers
-      graphInterfaces += shard.graphInterfaces
-      for (input in shard.factoryInputs) factoryInputs.putIfAbsent(input.id, input)
     }
     factoryInputBindings?.finish()
     for (input in factoryInputs.values) {
@@ -1106,6 +1195,37 @@ class MetroResolutionService(
     for (listener in listeners.toList()) listener()
   }
 
+  private fun publishIndexBuildProgress(progress: IndexBuildProgress?) {
+    indexBuildProgress.set(progress)
+    notifyIndexBuildProgress(progress)
+  }
+
+  private fun notifyIndexBuildProgress(progress: IndexBuildProgress?) {
+    for (listener in indexBuildProgressListeners.toList()) {
+      notifyIndexBuildProgressListener(listener, progress)
+    }
+  }
+
+  private fun notifyIndexBuildProgressListener(
+    listener: (IndexBuildProgress?) -> Unit,
+    progress: IndexBuildProgress?,
+  ) {
+    val application = ApplicationManager.getApplication()
+    if (!application.isDispatchThread) {
+      application.invokeLater {
+        if (progress == null && indexBuildProgress.get() != null) return@invokeLater
+        if (!disposed.get() && !project.isDisposed && listener in indexBuildProgressListeners) {
+          listener(progress)
+        }
+      }
+      return
+    }
+    if (progress == null && indexBuildProgress.get() != null) return
+    if (!disposed.get() && !project.isDisposed && listener in indexBuildProgressListeners) {
+      listener(progress)
+    }
+  }
+
   /** Coalesces write-action events so an open graph window requests a fresh background snapshot. */
   private fun scheduleInvalidationNotification() {
     if (listeners.isEmpty()) return
@@ -1122,6 +1242,8 @@ class MetroResolutionService(
     buildSignal.close()
     pendingBuilds.clear()
     listeners.clear()
+    indexBuildProgressListeners.clear()
+    indexBuildProgress.set(null)
     sharedDeclarationFingerprints.clear()
     snapshots.clear()
     libraryShards.clear()
@@ -1600,8 +1722,9 @@ private fun assistedFactoryDefinitionSignature(
     binding.pointer.virtualFile,
     binding.scope,
     binding.targetTypeKey,
-    (binding.targetConstructorDependencies + binding.targetMemberDependencies)
-      .map(::contextKeyLibrarySignature),
+    (binding.targetConstructorDependencies + binding.targetMemberDependencies).map(
+      ::contextKeyLibrarySignature
+    ),
     binding.targetConstructorDependencies.size,
     binding.memberInjectionOwnerIds,
     binding.factoryFunctionName,

@@ -7,16 +7,21 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.IndexBuildPhase
+import dev.zacsweers.metro.idea.index.IndexBuildProgress
+import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
@@ -283,6 +288,56 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     assertEquals("ready", result)
     assertEquals(2, attempts)
+  }
+
+  fun testToolWindowIndexRequestsBuildInBackgroundAndReportProgress() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    val progress = mutableListOf<IndexBuildProgress?>()
+    val completed = CompletableFuture<Unit>()
+    var started = false
+    service.addIndexBuildProgressListener(testRootDisposable) { update ->
+      progress += update
+      if (update != null) {
+        started = true
+      } else if (started) {
+        completed.complete(Unit)
+      }
+    }
+
+    assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+    PlatformTestUtil.waitForFuture(completed, 30_000)
+
+    assertNotSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+    val phases = progress.mapNotNull { it?.phase }.toSet()
+    assertTrue(IndexBuildPhase.DISCOVERING_SOURCE_FILES in phases)
+    assertTrue(IndexBuildPhase.ANALYZING_DECLARATIONS in phases)
+    assertTrue(IndexBuildPhase.COMBINING_DECLARATIONS in phases)
+    assertTrue(IndexBuildPhase.BUILDING_GRAPH_INDEX in phases)
+    assertNull(progress.last())
+  }
+
+  fun testIndexBuildProgressReporterThrottlesIntermediateCounts() {
+    var now = 0L
+    val progress = mutableListOf<IndexBuildProgress>()
+    val reporter =
+      IndexBuildProgressReporter(
+        publish = progress::add,
+        updateIntervalNanos = 250,
+        nanoTime = { now },
+      )
+
+    reporter.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
+    reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, 0, 10)
+    reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, 1, 10)
+    now = 250
+    reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, 2, 10)
+    reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, 10, 10)
+
+    assertEquals(
+      listOf(null, 0, 2, 10),
+      progress.map { it.completed },
+    )
   }
 
   fun testCoroutineCancellationStillStopsIndexBuildRetries() {
@@ -983,7 +1038,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         )
       for ((name, expectation) in expected) {
         val accessor =
-          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+          index.accessorsFor(query).single {
+            (it.pointer.element as? KtNamedDeclaration)?.name == name
+          }
         assertEquals(expectation.first, accessor.key.render(short = true))
         val bindings = index.bindingsFor(accessor, query)
         assertEquals(
@@ -1030,7 +1087,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         )
       for ((name, expectation) in expected) {
         val accessor =
-          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+          index.accessorsFor(query).single {
+            (it.pointer.element as? KtNamedDeclaration)?.name == name
+          }
         assertEquals(graph.declarationId, accessor.graphId)
         assertEquals(expectation.first, accessor.key.render(short = true))
         val bindings = index.bindingsFor(accessor, query)
@@ -1078,7 +1137,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         )
       for ((name, expectation) in expected) {
         val accessor =
-          index.accessorsFor(query).single { (it.pointer.element as? KtNamedDeclaration)?.name == name }
+          index.accessorsFor(query).single {
+            (it.pointer.element as? KtNamedDeclaration)?.name == name
+          }
         assertEquals(graph.declarationId, accessor.graphId)
         assertEquals(expectation.first, accessor.key.render(short = true))
         val bindings = index.bindingsFor(accessor, query)
@@ -1089,7 +1150,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         assertEquals(listOf(accessor.key), bindings.map { it.typeKey })
       }
       val result =
-        project.service<MetroGraphValidationService>().validate(file, query.graphContext).requireCompleted()
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, query.graphContext)
+          .requireCompleted()
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     } finally {
       settings.resolveFromLibraries = previousResolveFromLibraries
@@ -2271,7 +2335,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       )
       val initialDependency =
         initial.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
-      assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" })
+      assertFalse(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
       assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
 
       val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(accessors))
@@ -2282,7 +2348,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val whitespaceOnly = service.index(file)
       assertSame(
         initialDependency,
-        whitespaceOnly.bindings.single { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" },
+        whitespaceOnly.bindings.single {
+          it.typeKey.renderedType == "libtest.LibRetargetedDependencyA"
+        },
       )
 
       val oldType = "dependency: LibRetargetedDependencyA"
@@ -2298,8 +2366,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val updated = service.index(file)
       assertNotSame(initial, updated)
-      assertFalse(updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" })
-      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" })
+      assertFalse(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyA" }
+      )
+      assertTrue(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibRetargetedDependencyB" }
+      )
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibHttpClient" })
       val updatedGraph = updated.graphs.single { it.name == "AppGraph" }

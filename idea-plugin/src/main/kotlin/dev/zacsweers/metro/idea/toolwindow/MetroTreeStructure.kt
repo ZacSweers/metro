@@ -8,6 +8,7 @@ import com.intellij.ide.util.treeView.AbstractTreeStructure
 import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.ide.util.treeView.PresentableNodeDescriptor
 import com.intellij.openapi.components.service
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -299,6 +300,9 @@ private fun validationSummary(result: KaGraphValidationResult): String {
  */
 internal class MetroTreeStructure(
   private val project: Project,
+  private val indexProvider: (Module) -> BindingIndex = { module ->
+    project.service<MetroResolutionService>().index(module)
+  },
   private val filterText: () -> String,
 ) : AbstractTreeStructure() {
 
@@ -359,10 +363,9 @@ internal class MetroTreeStructure(
    * options reuse one instance even when their report or trace destinations differ.
    */
   private fun currentIndexes(): List<BindingIndex> {
-    val resolutionService = project.service<MetroResolutionService>()
     val indexes = mutableListOf<BindingIndex>()
     for (module in ModuleManager.getInstance(project).modules) {
-      val index = resolutionService.index(module)
+      val index = indexProvider(module)
       if (index !== BindingIndex.EMPTY && indexes.none { it === index }) {
         indexes += index
       }
