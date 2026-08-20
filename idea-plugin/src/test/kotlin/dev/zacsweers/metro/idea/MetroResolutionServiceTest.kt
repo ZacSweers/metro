@@ -122,12 +122,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     service.index(file)
     var notifications = 0
-    service.addIndexListener(testRootDisposable) { notifications++ }
+    val notified = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      notifications++
+      notified.complete(Unit)
+    }
 
     module.withMetroLibFixtureLibrary {
-      // Root changes reconcile project inputs before a second deferred callback notifies listeners.
-      UIUtil.dispatchAllInvocationEvents()
-      UIUtil.dispatchAllInvocationEvents()
+      // Root changes reconcile project inputs before a deferred callback notifies listeners.
+      PlatformTestUtil.waitForFuture(notified, 30_000)
 
       assertTrue("Changing library roots should refresh an open Metro window", notifications > 0)
     }
@@ -137,11 +140,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     project.clearMetroOptions()
     val service = project.service<MetroResolutionService>()
     var notifications = 0
-    service.addIndexListener(testRootDisposable) { notifications++ }
+    val notified = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      notifications++
+      notified.complete(Unit)
+    }
 
     module.withMetroLibFixtureLibrary {
       project.setMetroOptions()
-      UIUtil.dispatchAllInvocationEvents()
+      PlatformTestUtil.waitForFuture(notified, 30_000)
 
       assertTrue("An open window should notice Metro becoming available", notifications > 0)
     }
