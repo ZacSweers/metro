@@ -191,6 +191,19 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
   resolutionStrategy.useGlobalDependencySubstitutionRules = false
 }
 
+// A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
+// used by tests covering resolution from binary dependencies.
+val libFixture =
+  sourceSets.register("libFixture") {
+    kotlin.srcDir("src/test/data/libFixtures/kotlin")
+  }
+
+val libFixtureJar =
+  tasks.register<Jar>("libFixtureJar") {
+    archiveClassifier.set("lib-fixture")
+    from(libFixture.map { it.output })
+  }
+
 val shaded: Configuration by configurations.creating
 
 // androidx.tracing pulls a plain kotlinx-coroutines that must not shadow the IDE's patched
@@ -222,6 +235,10 @@ dependencies {
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  add(
+    libFixture.get().compileOnlyConfigurationName,
+    "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
+  )
   implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
   compileOnly(libs.androidx.collection)
@@ -290,5 +307,17 @@ tasks.withType<VerifyPluginTask>().configureEach {
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)
+  dependsOn(libFixtureJar)
+  inputs
+    .files(libFixtureJar)
+    .withPropertyName("metroLibFixtureJar")
+    .withPathSensitivity(PathSensitivity.NONE)
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider {
+      listOf(
+        "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}"
+      )
+    }
+  )
 }
