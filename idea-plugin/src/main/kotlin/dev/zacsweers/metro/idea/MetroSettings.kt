@@ -13,6 +13,7 @@ import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 
 class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
@@ -20,6 +21,9 @@ class MetroSettingsState : BaseState() {
 
   /** Suppresses IntelliJ's false-positive kapt configuration warning in Metro-enabled modules. */
   var suppressKaptConfigurationWarning by property(true)
+
+  /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
+  var resolveFromLibraries by property(true)
 }
 
 /** Project-level Metro IDE settings, stored in `.idea/metro.xml` so teams can check them in. */
@@ -48,10 +52,17 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         .bindSelected(state::suppressKaptConfigurationWarning)
         .comment("Metro does not require kapt; applies only to modules with Metro enabled")
     }
+    row {
+      checkBox("Resolve bindings from compiled dependencies")
+        .bindSelected(state::resolveFromLibraries)
+        .comment("Includes bindings contributed by compiled project dependencies")
+    }
   }
 
   override fun apply() {
     super.apply()
+    // Refresh cached indexes when binary dependency resolution changes.
+    project.service<MetroResolutionService>().settingsChanged()
     // Re-run highlighting so the gates take effect without further edits
     DaemonCodeAnalyzer.getInstance(project).restart()
   }
