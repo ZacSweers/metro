@@ -145,10 +145,22 @@ val publishingChannels =
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
 
+kotlin {
+  compilerOptions {
+    optIn.addAll(
+      // Analysis API type rendering used by MetroResolutionService
+      "org.jetbrains.kotlin.analysis.api.KaExperimentalApi",
+      // Platform extension points can run on the EDT, where analysis must be explicitly allowed.
+      "org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt",
+    )
+  }
+}
+
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
 repositories {
   mavenCentral()
+  google()
   intellijPlatform { defaultRepositories() }
 }
 
@@ -181,6 +193,15 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
 
 val shaded: Configuration by configurations.creating
 
+// androidx.tracing pulls a plain kotlinx-coroutines that must not shadow the IDE's patched
+// coroutines in the plugin jar or test runtime.
+val coroutinesExclude =
+  mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
+
+shaded.exclude(coroutinesExclude)
+
+configurations.named("testImplementation") { exclude(coroutinesExclude) }
+
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
 // To use a locally installed IDE (e.g. Android Studio) instead of the default target:
 // ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
@@ -203,10 +224,16 @@ dependencies {
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
   implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
+  compileOnly(libs.androidx.collection)
+  compileOnly(libs.androidx.tracing)
   shaded("dev.zacsweers.metro:metro-common")
+  shaded(libs.androidx.collection)
+  shaded(libs.androidx.tracing)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation("dev.zacsweers.metro:metro-common")
+  testImplementation(libs.androidx.collection)
+  testImplementation(libs.androidx.tracing)
 }
 
 tasks.jar {

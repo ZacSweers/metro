@@ -1303,6 +1303,17 @@ public class MetroOptions(
 
   @Transient public val lazyTypes: Set<ClassId> = MetroClassIds.lazy.withCustom(customLazyTypes)
 
+  /** Suspend-provider shapes recognized while modeling signatures, including when disabled. */
+  @Transient
+  public val suspendProviderModelingTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
+  @Transient public val suspendLazyTypes: Set<ClassId> = setOf(MetroClassIds.suspendLazy)
+
   @Transient
   public val dependencyGraphAnnotations: Set<ClassId> =
     MetroClassIds.dependencyGraph.withCustom(customGraphAnnotations)
