@@ -3,12 +3,16 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.utils.classId
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.name.ClassId
@@ -131,8 +135,22 @@ private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Bool
       else -> null
     }
 
-  if (annotationClassId in classIds) return true
+  if (annotationClassId != null) return annotationClassId in classIds
 
   val uastClassId = toUElement(UAnnotation::class.java)?.resolve()?.classId
-  return uastClassId in classIds
+  if (uastClassId != null) return uastClassId in classIds
+
+  // PSI/UAST reference resolution can fail for library annotations outside JVM contexts (like
+  // klib-backed annotations in KMP common source sets); the Analysis API is authoritative.
+  val typeReference = typeReference ?: return false
+  val application = ApplicationManager.getApplication()
+  if (application.isDispatchThread && !application.isUnitTestMode) return false
+
+  val resolve = {
+    analyze(typeReference) {
+      val classId = (typeReference.type.fullyExpandedType as? KaClassType)?.classId
+      classId != null && classId in classIds
+    }
+  }
+  return if (application.isDispatchThread) allowAnalysisOnEdt(resolve) else resolve()
 }

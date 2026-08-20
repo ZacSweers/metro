@@ -184,6 +184,56 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("DaggerAssistedInjectedService").isMetroImplicitUsage())
   }
 
+  fun testMarksCircuitInjectDeclarationsAsImplicitlyUsedWhenEnabled() {
+    setMetroOptions("enable-circuit-codegen" to "true")
+
+    val declarations = circuitFileDeclarations()
+
+    assertTrue(declarations.function("circuitPresenter").isMetroImplicitUsage())
+    assertTrue(declarations.klass("CircuitUiClass").isMetroImplicitUsage())
+  }
+
+  fun testDoesNotMarkCircuitInjectDeclarationsAsImplicitlyUsedWithoutOption() {
+    val declarations = circuitFileDeclarations()
+
+    assertFalse(declarations.function("circuitPresenter").isMetroImplicitUsage())
+    assertFalse(declarations.klass("CircuitUiClass").isMetroImplicitUsage())
+  }
+
+  private fun circuitFileDeclarations(): List<KtDeclaration> {
+    myFixture.addFileToProject(
+      "circuit/CircuitInject.kt",
+      """
+      package com.slack.circuit.codegen.annotations
+
+      import kotlin.reflect.KClass
+
+      annotation class CircuitInject(val screen: KClass<*>, val scope: KClass<*>)
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureByText(
+        "CircuitTest.kt",
+        """
+        package test
+
+        import com.slack.circuit.codegen.annotations.CircuitInject
+
+        object AppScope
+        object HomeScreen
+
+        @CircuitInject(HomeScreen::class, AppScope::class)
+        fun circuitPresenter(): Int = 0
+
+        @CircuitInject(HomeScreen::class, AppScope::class)
+        class CircuitUiClass
+        """
+          .trimIndent(),
+      ) as KtFile
+    return file.declarationsIncludingNested()
+  }
+
   fun testDoesNotMarkUnsupportedDeclarationsAsImplicitlyUsed() {
     val declarations = kotlinFileDeclarations()
 
@@ -265,6 +315,50 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     }
     assertTrue("unusedFunction should still be reported as unused:\n$warningText") {
       warningDescriptions.contains("""Function "unusedFunction" is never used""")
+    }
+  }
+
+  fun testUnusedDeclarationHighlightingRespectsSecondaryInjectConstructors() {
+    myFixture.enableInspections(UnusedSymbolInspection())
+    myFixture.configureByText(
+      "Ctors.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.Inject
+
+      class Repository(val name: String) {
+        @Inject
+        constructor(count: Int) : this(count.toString())
+      }
+
+      fun useRepository(): Repository = Repository("direct")
+      """
+        .trimIndent(),
+    )
+
+    val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
+    val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
+    assertFalse("Secondary @Inject constructor should not be reported as unused:\n$warningText") {
+      warnings.any { it.description.orEmpty().contains("onstructor") }
+    }
+  }
+
+  fun testUnusedDeclarationHighlightingRespectsCircuitInjectWhenEnabled() {
+    setMetroOptions("enable-circuit-codegen" to "true")
+    myFixture.enableInspections(UnusedSymbolInspection())
+    val declarations = circuitFileDeclarations()
+    myFixture.configureFromExistingVirtualFile(declarations.first().containingFile.virtualFile)
+
+    val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
+    val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
+    val descriptions = warnings.map { it.description }.toSet()
+
+    assertFalse("circuitPresenter should not be reported as unused:\n$warningText") {
+      descriptions.contains("""Function "circuitPresenter" is never used""")
+    }
+    assertFalse("CircuitUiClass should not be reported as unused:\n$warningText") {
+      descriptions.contains("""Class "CircuitUiClass" is never used""")
     }
   }
 
