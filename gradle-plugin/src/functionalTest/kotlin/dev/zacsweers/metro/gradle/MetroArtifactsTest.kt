@@ -846,7 +846,7 @@ class MetroArtifactsTest {
                       android {
                         namespace = "com.example.test"
                         minSdk = 36
-                        compileSdk = 36
+                        compileSdk = ${System.getProperty("metro.androidCompileSdk")}
                       }
                     }
 

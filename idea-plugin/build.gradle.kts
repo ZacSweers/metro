@@ -43,16 +43,124 @@ val propertyResolver =
 
 val metroBootstrapVersion = propertyResolver.requiredStringProvider("METRO_BOOTSTRAP_VERSION").get()
 
+val explicitReleaseBuild =
+  providers
+    .gradleProperty("metroIdeaReleaseBuild")
+    .map { it.toBooleanStrictOrNull() == true }
+    .orElse(false)
+
+// Gradle accepts camel-hump task abbreviations like `pubPl`, so match them the same way.
+fun matchesTaskAbbreviation(requested: String, taskName: String): Boolean {
+  if (requested.isEmpty()) {
+    return false
+  }
+  val pattern = buildString {
+    for (ch in requested) {
+      if (ch.isUpperCase()) {
+        append("[a-z0-9]*")
+      }
+      append(Regex.escape(ch.toString()))
+    }
+    append("[a-zA-Z0-9]*")
+  }
+  return Regex(pattern).matches(taskName)
+}
+
+val publishingTaskRequested = providers.provider {
+  gradle.startParameter.taskNames
+    .map { it.substringAfterLast(':') }
+    .any { requested ->
+      matchesTaskAbbreviation(requested, "publishPlugin") ||
+        matchesTaskAbbreviation(requested, "signPlugin")
+    }
+}
+
+val isReleaseOrPublishingBuild =
+  explicitReleaseBuild.zip(publishingTaskRequested) { explicitRelease, publishRequested ->
+    explicitRelease || publishRequested
+  }
+
+val releaseGitSha =
+  providers.of(GitCommitValueSource::class.java) {
+    parameters.projectDirectory.set(layout.projectDirectory.dir(".."))
+  }
+
+val gitSha = isReleaseOrPublishingBuild.flatMap { isReleaseBuild ->
+  if (isReleaseBuild) {
+    // A release build without a resolvable sha should fail loudly, not publish untagged.
+    providers.provider {
+      val sha = releaseGitSha.orNull
+      checkNotNull(sha) {
+        "Could not read the git commit sha for a release/publishing build"
+      }
+    }
+  } else {
+    providers.provider { "" }
+  }
+}
+
 group = propertyResolver.requiredStringProvider("GROUP").get()
 
-version = propertyResolver.requiredStringProvider("VERSION_NAME").get()
+val versionProvider = propertyResolver.requiredStringProvider("VERSION_NAME")
+
+version = versionProvider.get()
+
+val isSnapshotVersion = versionProvider.map { it.contains("SNAPSHOT") }
+
+// Computed once so every query of the version provider observes the same timestamp.
+val snapshotTimestamp by lazy { System.currentTimeMillis() }
+
+val pluginVersion =
+  isReleaseOrPublishingBuild.zip(versionProvider) { releaseOrPublishing, versionName ->
+    if (releaseOrPublishing && versionName.contains("SNAPSHOT")) {
+      "$versionName-$snapshotTimestamp"
+    } else {
+      versionName
+    }
+  }
+
+val defaultPublishingChannels = isSnapshotVersion.map { snapshotVersion ->
+  if (snapshotVersion) {
+    listOf("EAP")
+  } else {
+    listOf("Stable")
+  }
+}
+
+val configuredPublishingChannels =
+  propertyResolver.optionalStringProvider("intellijPlatformPublishingChannels").map { channels ->
+    channels.split(',').map(String::trim).filter(String::isNotEmpty)
+  }
+
+val publishingChannels =
+  configuredPublishingChannels
+    .flatMap { channels ->
+      if (channels.isEmpty()) {
+        defaultPublishingChannels
+      } else {
+        providers.provider { channels }
+      }
+    }
+    .orElse(defaultPublishingChannels)
 
 metroProject { jvmTarget.set(libs.versions.ideaJvmTarget) }
+
+kotlin {
+  compilerOptions {
+    optIn.addAll(
+      // Analysis API type rendering used by MetroResolutionService
+      "org.jetbrains.kotlin.analysis.api.KaExperimentalApi",
+      // Platform extension points can run on the EDT, where analysis must be explicitly allowed.
+      "org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt",
+    )
+  }
+}
 
 java { toolchain { languageVersion.set(libs.versions.ideaJvmTarget.map(JavaLanguageVersion::of)) } }
 
 repositories {
   mavenCentral()
+  google()
   intellijPlatform { defaultRepositories() }
 }
 
@@ -66,6 +174,16 @@ buildConfig {
     }
   }
   buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
+  buildConfigField("String", "VERSION", providers.provider { "\"$version\"" })
+  buildConfigField(
+    "String",
+    "BUGSNAG_KEY",
+    propertyResolver
+      .optionalStringProvider("MetroIntellijBugsnagKey")
+      .map { "\"$it\"" }
+      .orElse("\"\""),
+  )
+  buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
 }
 
 val metroRuntimeClasspath: Configuration by configurations.creating {
@@ -73,21 +191,74 @@ val metroRuntimeClasspath: Configuration by configurations.creating {
   resolutionStrategy.useGlobalDependencySubstitutionRules = false
 }
 
+val kotlinStdlibClasspath: Configuration by configurations.creating {
+  isTransitive = false
+}
+
+val compilerTestData = layout.projectDirectory.dir("../compiler-tests/src/test/data")
+val compilerParityTestData = compilerTestData.dir("diagnostic/ideaParity")
+
+// A compiled "library" with Metro-annotated classes + handwritten contribution hint functions,
+// used by tests covering resolution from binary dependencies.
+val libFixture =
+  sourceSets.register("libFixture") {
+    kotlin.srcDir("src/test/data/libFixtures/kotlin")
+  }
+
+val libFixtureJar =
+  tasks.register<Jar>("libFixtureJar") {
+    archiveClassifier.set("lib-fixture")
+    from(libFixture.map { it.output })
+  }
+
 val shaded: Configuration by configurations.creating
+
+// androidx.tracing pulls a plain kotlinx-coroutines that must not shadow the IDE's patched
+// coroutines in the plugin jar or test runtime.
+val coroutinesExclude =
+  mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
+
+shaded.exclude(coroutinesExclude)
+
+configurations.named("testImplementation") { exclude(coroutinesExclude) }
+
+// Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
+// To use a locally installed IDE (e.g. Android Studio) instead of the default target:
+// ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
+val runLocalIde by
+  intellijPlatformTesting.runIde.registering {
+    providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
+      localPath.set(file(it))
+    }
+  }
 
 dependencies {
   intellijPlatform {
     intellijIdeaUltimate("2026.1.3")
     bundledPlugin("org.jetbrains.kotlin")
     testFramework(TestFrameworkType.Platform)
+    pluginVerifier()
+    zipSigner()
   }
 
   metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  kotlinStdlibClasspath(libs.kotlin.stdlib)
+  add(
+    libFixture.get().compileOnlyConfigurationName,
+    "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
+  )
+  implementation(libs.bugsnag) { exclude(group = "org.slf4j") }
   compileOnly("dev.zacsweers.metro:metro-common")
+  compileOnly(libs.androidx.collection)
+  compileOnly(libs.androidx.tracing)
   shaded("dev.zacsweers.metro:metro-common")
+  shaded(libs.androidx.collection)
+  shaded(libs.androidx.tracing)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation("dev.zacsweers.metro:metro-common")
+  testImplementation(libs.androidx.collection)
+  testImplementation(libs.androidx.tracing)
 }
 
 tasks.jar {
@@ -100,7 +271,7 @@ intellijPlatform {
   pluginConfiguration {
     id.set("dev.zacsweers.metro.idea")
     name.set("Metro")
-    version.set(providers.provider { project.version.toString() })
+    version.set(pluginVersion)
     description.set("Additional IDE support and features for projects using Metro.")
 
     ideaVersion {
@@ -118,6 +289,15 @@ intellijPlatform {
 
   publishing {
     token.set(propertyResolver.optionalStringProvider("intellijPlatformPublishingToken"))
+
+    channels.set(publishingChannels)
+
+    // Boolean for whether to mark this release as hidden
+    hidden.set(
+      propertyResolver
+        .optionalStringProvider("intellijPlatformPublishingHidden")
+        .map(String::toBoolean)
+    )
   }
 
   pluginVerification {
@@ -135,5 +315,31 @@ tasks.withType<VerifyPluginTask>().configureEach {
 
 tasks.test {
   dependsOn(metroRuntimeClasspath)
+  dependsOn(kotlinStdlibClasspath)
+  dependsOn(libFixtureJar)
+  inputs.dir(compilerParityTestData).withPathSensitivity(PathSensitivity.RELATIVE)
+  // The argument provider below has no annotated properties, so these must be declared as
+  // inputs explicitly or fixture/classpath changes leave test runs UP-TO-DATE with stale jars.
+  inputs
+    .files(libFixtureJar)
+    .withPropertyName("metroLibFixtureJar")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs
+    .files(metroRuntimeClasspath)
+    .withPropertyName("metroRuntimeTestClasspath")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs
+    .files(kotlinStdlibClasspath)
+    .withPropertyName("kotlinStdlibTestClasspath")
+    .withPathSensitivity(PathSensitivity.NONE)
   systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider {
+      listOf(
+        "-DkotlinStdlib.classpath=${kotlinStdlibClasspath.asPath}",
+        "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
+        "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
+      )
+    }
+  )
 }

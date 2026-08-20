@@ -7,12 +7,18 @@ package dev.zacsweers.metro.gradle
 import com.autonomousapps.kit.GradleBuilder.build
 import com.autonomousapps.kit.GradleBuilder.buildAndFail
 import com.google.common.truth.Truth.assertThat
+import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
 
 class VersionCompatibilityTest {
   @Test
   fun `supported kotlin version shows no warning`() {
+    assumeTrue(
+      "Community builds intentionally test Kotlin versions outside Metro's known set",
+      getTestCompilerRepositoryUrl() == null,
+    )
+
     val fixture =
       object : MetroProject(multiplatform = false) {
         override fun sources() = listOf(appGraph)

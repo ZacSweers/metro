@@ -2394,6 +2394,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("NoAssistedArgsInAssistedInjectAcrossModules.kt")
+      public void testNoAssistedArgsInAssistedInjectAcrossModules() {
+        run("NoAssistedArgsInAssistedInjectAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("PreserveNullabilityForGenericsLayering.kt")
       public void testPreserveNullabilityForGenericsLayering() {
         run("PreserveNullabilityForGenericsLayering.kt");
@@ -3097,6 +3103,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
       @TestMetadata("ClassMapKeyProviderInterop.kt")
       public void testClassMapKeyProviderInterop() {
         run("ClassMapKeyProviderInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ClassMapKeyWrappedInterop.kt")
+      public void testClassMapKeyWrappedInterop() {
+        run("ClassMapKeyWrappedInterop.kt");
       }
 
       @Test

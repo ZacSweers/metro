@@ -1,0 +1,9 @@
+/IncompatibleScope.kt:19:11: error: [Metro/IncompatiblyScopedBindings] parity.failures.scope.AppGraph (unscoped) may not reference
+    scoped bindings
+
+  trace (in parity.failures.scope.AppGraph):
+      ScopedValue (scoped to '@SingleIn(BindingScope::class)')
+      ScopedValue is requested at parity.failures.scope.AppGraph.value
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings
+

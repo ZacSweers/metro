@@ -2273,7 +2273,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
                       android {
                         namespace = "com.example.test"
                         minSdk = 36
-                        compileSdk = 36
+                        compileSdk = ${System.getProperty("metro.androidCompileSdk")}
                       }
                     }
 
@@ -3436,7 +3436,7 @@ class ICTests(target: KmpTarget) : BaseIncrementalCompilationTest(target) {
                   """
                   android {
                     namespace = "test"
-                    compileSdk = 36
+                    compileSdk = ${System.getProperty("metro.androidCompileSdk")}
                   }
 
                   ${buildMetroBlock()}

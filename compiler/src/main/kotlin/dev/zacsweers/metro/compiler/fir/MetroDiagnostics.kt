@@ -136,9 +136,6 @@ import org.jetbrains.kotlin.diagnostics.warningWithoutSource
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtElement
 
-internal const val SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE =
-  "Suspend provider support is disabled. Enable the `enable-suspend-providers` compiler option or set `metro.enableSuspendProviders` to true."
-
 internal object MetroDiagnostics : KtDiagnosticsContainer() {
 
   // Common

@@ -5,20 +5,19 @@ package dev.zacsweers.metro.compiler.ir
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
-
-internal const val MISSING_RUNTIME_COROUTINES_MESSAGE =
-  "Add `dev.zacsweers.metro:runtime-coroutines` to the compile and runtime classpath."
 
 internal fun IrMetroContext.reportMissingRuntimeCoroutines(
   declaration: IrDeclaration,
   subject: String,
 ) {
   val message =
-    "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}] $subject requests a `SuspendLazy` " +
-      "value, which needs the optional runtime-coroutines artifact. " +
-      MISSING_RUNTIME_COROUTINES_MESSAGE
+    "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}] " +
+      SuspendDiagnosticMessages.suspendLazyRuntimeTrigger(subject) +
+      " " +
+      SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX
   reportCompat(declaration, MetroDiagnostics.MISSING_RUNTIME_COROUTINES, message)
 }
 

@@ -1,0 +1,8 @@
+/RequiredAccessorWinsOptionalAccessor.kt:10:7: error: [Metro/MissingBinding] No binding found for HttpClient
+
+  trace (in AppGraph):
+      HttpClient is requested at AppGraph.requiredHttpClient
+
+  help: ensure HttpClient has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to AppGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

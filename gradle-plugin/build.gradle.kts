@@ -194,8 +194,9 @@ tasks.withType<Test>().configureEach {
     systemProperty("dev.zacsweers.metro.gradle.test.kotlin-repo-url", it)
   }
   systemProperty("metro.agpVersion", libs.versions.agp.get())
+  systemProperty("metro.androidCompileSdk", libs.versions.android.compileSdk.get())
   systemProperty("metro.circuitVersion", libs.versions.circuit.get())
-  systemProperty("metro.androidHome", androidHomeOrNull()?.absolutePath)
+  androidHomeOrNull()?.let { systemProperty("metro.androidHome", it.absolutePath) }
   functionalTestKmpTarget?.let { systemProperty("metro.functionalTestKmpTarget", it) }
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 }

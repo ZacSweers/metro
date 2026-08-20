@@ -4,6 +4,25 @@ Changelog
 **Unreleased**
 --------------
 
+### Enhancements
+
+- **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
+- **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+
+### Fixes
+
+- **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
+- **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
+- **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
+- **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
+- **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
+
+### Contributors
+
+Special thanks to the following contributors for contributing to this release!
+
+- [@grandstaish](https://github.com/grandstaish)
+
 1.4.2
 -----
 

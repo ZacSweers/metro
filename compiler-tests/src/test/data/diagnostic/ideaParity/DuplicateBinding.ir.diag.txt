@@ -1,0 +1,14 @@
+/DuplicateBinding.kt:12:11: error: [Metro/DuplicateBinding] Multiple bindings found for String
+
+      DuplicateBinding.kt:15:13
+        @Provides fun first(): String
+                               ~~~~~~
+
+      DuplicateBinding.kt:17:13
+        @Provides fun second(): String
+                                ~~~~~~
+
+  help: remove or disambiguate the duplicate bindings (e.g. with distinct qualifiers), or use
+        @IntoSet/@IntoMap if you intended a multibinding
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatebinding
+

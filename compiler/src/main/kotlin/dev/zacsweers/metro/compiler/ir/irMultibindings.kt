@@ -4,6 +4,8 @@ package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
 import dev.zacsweers.metro.compiler.expectAsOrNull
+import dev.zacsweers.metro.compiler.graph.computeMultibindingId
+import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import java.util.Objects
@@ -93,22 +95,8 @@ internal val IrOverridableDeclaration<*>.multibindingElementId: String
     return Objects.hash(parent.kotlinFqName, name, isSuspend, params).toString()
   }
 
-/**
- * The ID of the binding this goes into. This is the qualifier + type render.
- *
- * For Set multibindings, this is the element typekey.
- *
- * For Map multibindings, they make a composite ID with [createMapBindingId].
- *
- * Examples:
- * - `okhttp3.Interceptor`
- * - `@NetworkInterceptor okhttp3.Interceptor`
- */
-internal fun IrTypeKey.computeMultibindingId(): String =
-  render(short = false, includeQualifier = true)
-
 internal fun createMapBindingId(mapKey: IrType, elementTypeKey: IrTypeKey): String {
-  return "${mapKey.render(short = false)}_${elementTypeKey.computeMultibindingId()}"
+  return createMapBindingId(mapKey.render(short = false), elementTypeKey)
 }
 
 context(context: IrMetroContext)

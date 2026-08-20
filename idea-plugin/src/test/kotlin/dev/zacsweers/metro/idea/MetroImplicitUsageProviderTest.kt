@@ -5,21 +5,14 @@ package dev.zacsweers.metro.idea
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.io.File
 import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 
 class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
 
@@ -45,12 +38,21 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
+    assertTrue(declarations.obj("ContributedObjectService").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("ConstructorAssistedInjectedService")
         .primaryConstructor!!
         .isMetroImplicitUsage()
     )
+  }
+
+  fun testDoesNotMarkMetroDeclarationsWhenPluginIsNotConfigured() {
+    project.clearMetroOptions()
+    val declarations = kotlinFileDeclarations()
+
+    assertFalse(declarations.function("provideService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
   }
 
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
@@ -190,6 +192,19 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.property("memberInject").isMetroImplicitUsage())
   }
 
+  fun testDoesNotMarkMetroDeclarationsWhenSuppressionSettingIsDisabled() {
+    val settings = MetroSettings.getInstance(project).state
+    settings.suppressUnusedWarnings = false
+    try {
+      val declarations = kotlinFileDeclarations()
+
+      assertFalse(declarations.function("bindService").isMetroImplicitUsage())
+      assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+    } finally {
+      settings.suppressUnusedWarnings = true
+    }
+  }
+
   fun testDoesNotMarkMetroDeclarationsAsImplicitlyUsedWhenMetroIsDisabled() {
     setMetroEnabled(false)
 
@@ -213,6 +228,16 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     setMetroEnabled(false)
 
     assertFalse(suppressor.isSuppressedFor(bindService, "unused"))
+  }
+
+  fun testUnusedDeclarationSuppressorIgnoresOtherUnusedInspections() {
+    val declarations = kotlinFileDeclarations()
+    val suppressor = MetroUnusedDeclarationInspectionSuppressor()
+    val bindService = declarations.function("bindService")
+
+    assertTrue(suppressor.isSuppressedFor(bindService, "UnusedSymbol"))
+    assertFalse(suppressor.isSuppressedFor(bindService, "UnusedImport"))
+    assertFalse(suppressor.isSuppressedFor(bindService, "UnusedParameter"))
   }
 
   fun testUnusedDeclarationHighlightingRespectsMetroImplicitUsage() {
@@ -296,6 +321,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       @ContributesBinding(AppScope::class) class ContributedBindingService : Service
       @ContributesIntoSet(AppScope::class) class ContributedSetService : Service
       @ContributesIntoMap(AppScope::class) class ContributedMapService : Service
+      @ContributesBinding(AppScope::class) object ContributedObjectService : Service
       @OptIn(ExperimentalMetroApi::class)
       @ExposeImplBinding
       @ContributesBinding(AppScope::class)
@@ -370,43 +396,6 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   private fun setMetroOptions(vararg options: Pair<String, String>) {
-    KotlinCommonCompilerArgumentsHolder.getInstance(project).update {
-      pluginOptions =
-        options
-          .map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }
-          .toTypedArray()
-          .takeUnless { it.isEmpty() }
-    }
-  }
-}
-
-private fun KtFile.declarationsIncludingNested(): List<KtDeclaration> {
-  val declarations = mutableListOf<KtDeclaration>()
-  accept(
-    object : KtTreeVisitorVoid() {
-      override fun visitDeclaration(dcl: KtDeclaration) {
-        declarations += dcl
-        super.visitDeclaration(dcl)
-      }
-    }
-  )
-  return declarations
-}
-
-private fun List<KtDeclaration>.function(name: String): KtNamedFunction {
-  return filterIsInstance<KtNamedFunction>().single { it.name == name }
-}
-
-private fun List<KtDeclaration>.property(name: String): KtProperty {
-  return filterIsInstance<KtProperty>().single { it.name == name }
-}
-
-private fun List<KtDeclaration>.klass(name: String): KtClass {
-  return filterIsInstance<KtClass>().single { it.name == name }
-}
-
-private fun List<KtDeclaration>.parameter(name: String): KtParameter {
-  return PsiTreeUtil.findChildrenOfType(first().containingFile, KtParameter::class.java).single {
-    it.name == name
+    project.setMetroOptions(*options)
   }
 }

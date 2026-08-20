@@ -1,0 +1,21 @@
+/SuspendFailure.kt:20:3: error: [Metro/SuspendBindingWrappedInProvider] Cannot depend on suspend binding 'Database' via Provider. Use `suspend () -> Database` instead.
+
+Trace:
+    Database is injected at
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.ProviderRepository(…, database) // ❌ needs suspend support
+    Database is provided at
+        [parity.suspend.failure.AppGraph] suspend parity.suspend.failure.AppGraph.provideDatabase(…)
+
+/SuspendFailure.kt:25:7: error: [Metro/SuspendBindingFromNonSuspendAccessor] Repository bindings must be a suspend function or suspend () -> Repository because it depends on suspend bindings and requires a suspend context.
+
+Trace:
+    Repository is requested at
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.AppGraph.repository // ❌ needs suspend support
+    Database is injected at
+        [parity.suspend.failure.AppGraph] parity.suspend.failure.Repository(…, database) // ❌ needs suspend support
+    Database is provided at
+        [parity.suspend.failure.AppGraph] suspend parity.suspend.failure.AppGraph.provideDatabase(…)
+
+Either:
+  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or
+  - Make the return type `suspend () -> Repository`.

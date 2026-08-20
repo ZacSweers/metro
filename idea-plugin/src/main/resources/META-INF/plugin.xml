@@ -19,7 +19,26 @@ Metro IDE support for Kotlin dependency injection projects.
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
+    <projectConfigurable
+        parentId="tools"
+        id="dev.zacsweers.metro.idea.settings"
+        displayName="Metro"
+        instance="dev.zacsweers.metro.idea.MetroSettingsConfigurable"/>
     <implicitUsageProvider implementation="dev.zacsweers.metro.idea.MetroImplicitUsageProvider"/>
+    <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
+    <codeInsight.daemonBoundCodeVisionProvider
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionProvider"/>
+    <config.codeVisionGroupSettingProvider
+        implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionGroupSettingProvider"/>
+    <codeInsight.declarativeInlayProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider"
+        isEnabledByDefault="true"
+        group="OTHER_GROUP"
+        providerId="metro.injected.implementation"
+        bundle="messages.MetroBundle"
+        nameKey="metro.inlay.injected.implementation.name"
+        descriptionKey="metro.inlay.injected.implementation.description"/>
     <lang.inspectionSuppressor
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
@@ -27,6 +46,10 @@ Metro IDE support for Kotlin dependency injection projects.
     <lang.inspectionSuppressor
         language="JAVA"
         implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
+        order="first"/>
+    <lang.inspectionSuppressor
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.MetroKaptCompilerPluginInspectionSuppressor"
         order="first"/>
   </extensions>
 </idea-plugin>

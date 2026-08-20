@@ -14,7 +14,9 @@ The core `runtime` artifact defines `SuspendProvider` and `SuspendLazy`. It also
 
 Whether a binding requires a suspend context is determined separately for each graph. A binding requires one when its provider is a `suspend fun`, or when one of its eager dependencies requires one. Provider and lazy requests stop propagation because the consumer receives a handle instead of the value. Graph validation separately rejects a wrapper stack when the wrapper closest to the underlying value is synchronous. The same class can therefore require suspension in one graph but not another.
 
-`SuspendBindingAnalysis` starts with directly suspend bindings and follows reverse dependency edges to mark their eager consumers. It caches resolved bindings and their edges. A child graph may query a parent before that parent has finished collecting bindings, so missing lookups are retried after the graph changes. Final validation stores the completed result for code generation.
+`SuspendBindingAnalysis` starts with directly suspend bindings and follows reverse dependency edges to mark their eager consumers. It caches resolved bindings and their edges, including one stable witness path from every transitively suspend key to a direct suspend source. A child graph may query a parent before that parent has finished collecting bindings, so missing lookups are retried after the graph changes. Final validation stores the completed result for code generation.
+
+`SuspendBindingValidator` in `metro-common` owns graph-level suspend policy: accessor boundaries, multibindings, synchronous wrappers, member injection, assisted factories, feature gating, and `runtime-coroutines` requirements. Compiler IR and the IDEA plugin provide normalized declaration metadata, then use the same structured issues and witness paths to choose native source locations and render diagnostics.
 
 Metro parses enabled provider and lazy wrappers recursively at any depth in a scalar wrapper stack. When `enableFunctionProviders` is also enabled, this includes `() -> T` and `suspend () -> T`.
 

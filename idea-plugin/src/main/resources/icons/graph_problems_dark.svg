@@ -1,0 +1,13 @@
+<!--
+  ~ Copyright (C) 2026 Zac Sweers
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <g transform="scale(0.78)">
+    <path d="M2 8 H6.5 C8.5 8 8.5 4.5 10.5 4.5 H12.5 M6.5 8 C8.5 8 8.5 11.5 10.5 11.5 H12.5" stroke="#9FC3DA" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <circle cx="13" cy="4.5" r="1.9" fill="#5DCAA5"/>
+    <circle cx="13" cy="11.5" r="1.9" fill="#85B7EB"/>
+    <circle cx="3" cy="8" r="1.9" fill="#9FC3DA"/>
+  </g>
+  <path d="M10.2 10.2 L14.6 14.6 M14.6 10.2 L10.2 14.6" stroke="#E8746F" stroke-width="2" stroke-linecap="round"/>
+</svg>
