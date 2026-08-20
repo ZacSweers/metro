@@ -186,14 +186,22 @@ buildConfig {
   buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
 }
 
-val metroRuntimeClasspath: Configuration by configurations.creating {
-  isTransitive = false
-  resolutionStrategy.useGlobalDependencySubstitutionRules = false
-}
+val metroRuntime = configurations.dependencyScope("metroRuntime")
 
-val kotlinStdlibClasspath: Configuration by configurations.creating {
-  isTransitive = false
-}
+val metroRuntimeClasspath =
+  configurations.resolvable("metroRuntimeClasspath") {
+    extendsFrom(metroRuntime)
+    isTransitive = false
+    resolutionStrategy.useGlobalDependencySubstitutionRules = false
+  }
+
+val kotlinStdlib = configurations.dependencyScope("kotlinStdlib")
+
+val kotlinStdlibClasspath =
+  configurations.resolvable("kotlinStdlibClasspath") {
+    extendsFrom(kotlinStdlib)
+    isTransitive = false
+  }
 
 val compilerTestData = layout.projectDirectory.dir("../compiler-tests/src/test/data")
 val compilerParityTestData = compilerTestData.dir("diagnostic/ideaParity")
@@ -211,26 +219,29 @@ val libFixtureJar =
     from(libFixture.map { it.output })
   }
 
-val shaded: Configuration by configurations.creating
+val shaded = configurations.dependencyScope("shaded")
 
 // androidx.tracing pulls a plain kotlinx-coroutines that must not shadow the IDE's patched
 // coroutines in the plugin jar or test runtime.
 val coroutinesExclude =
   mapOf("group" to "org.jetbrains.kotlinx", "module" to "kotlinx-coroutines-core")
 
-shaded.exclude(coroutinesExclude)
+val shadedClasspath =
+  configurations.resolvable("shadedClasspath") {
+    extendsFrom(shaded)
+    exclude(coroutinesExclude)
+  }
 
 configurations.named("testImplementation") { exclude(coroutinesExclude) }
 
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
 // To use a locally installed IDE (e.g. Android Studio) instead of the default target:
 // ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
-val runLocalIde by
-  intellijPlatformTesting.runIde.registering {
-    providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
-      localPath.set(file(it))
-    }
+intellijPlatformTesting.runIde.register("runLocalIde") {
+  providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {
+    localPath.set(file(it))
   }
+}
 
 dependencies {
   intellijPlatform {
@@ -241,8 +252,8 @@ dependencies {
     zipSigner()
   }
 
-  metroRuntimeClasspath("dev.zacsweers.metro:runtime:$metroBootstrapVersion")
-  kotlinStdlibClasspath(libs.kotlin.stdlib)
+  add(metroRuntime.name, "dev.zacsweers.metro:runtime:$metroBootstrapVersion")
+  add(kotlinStdlib.name, libs.kotlin.stdlib)
   add(
     libFixture.get().compileOnlyConfigurationName,
     "dev.zacsweers.metro:runtime:$metroBootstrapVersion",
@@ -251,9 +262,9 @@ dependencies {
   compileOnly("dev.zacsweers.metro:metro-common")
   compileOnly(libs.androidx.collection)
   compileOnly(libs.androidx.tracing)
-  shaded("dev.zacsweers.metro:metro-common")
-  shaded(libs.androidx.collection)
-  shaded(libs.androidx.tracing)
+  add(shaded.name, "dev.zacsweers.metro:metro-common")
+  add(shaded.name, libs.androidx.collection)
+  add(shaded.name, libs.androidx.tracing)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation("dev.zacsweers.metro:metro-common")
@@ -263,7 +274,7 @@ dependencies {
 
 tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-  from(shaded.elements.map { files -> files.map { zipTree(it.asFile) } })
+  from(shadedClasspath.flatMap { it.elements }.map { files -> files.map { zipTree(it.asFile) } })
   exclude("META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.SF")
 }
 
@@ -335,8 +346,8 @@ tasks.test {
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
-        "-DmetroRuntime.classpath=${metroRuntimeClasspath.asPath}",
-        "-DkotlinStdlib.classpath=${kotlinStdlibClasspath.asPath}",
+        "-DmetroRuntime.classpath=${metroRuntimeClasspath.get().asPath}",
+        "-DkotlinStdlib.classpath=${kotlinStdlibClasspath.get().asPath}",
         "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
         "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
       )
