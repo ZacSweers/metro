@@ -6,6 +6,8 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
+import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
 import java.io.File
 import java.nio.file.Path
 import kotlin.test.assertFalse

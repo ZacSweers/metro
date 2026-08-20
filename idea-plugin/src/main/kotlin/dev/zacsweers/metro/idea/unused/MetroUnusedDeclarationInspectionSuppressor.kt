@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea
+package dev.zacsweers.metro.idea.unused
 
 import com.intellij.codeInspection.InspectionSuppressor
 import com.intellij.codeInspection.SuppressQuickFix
