@@ -1,0 +1,843 @@
+// Copyright (C) 2026 Zac Sweers
+// SPDX-License-Identifier: Apache-2.0
+package dev.zacsweers.metro.idea
+
+import com.intellij.icons.AllIcons
+import com.intellij.ide.util.treeView.NodeDescriptor
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
+import com.intellij.openapi.util.Disposer
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.tree.AsyncTreeModel
+import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.IndexBuildPhase
+import dev.zacsweers.metro.idea.index.IndexBuildProgress
+import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
+import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
+import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
+import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.psi.KtFile
+
+/** Walks [MetroTreeStructure] directly, without Swing, and asserts the produced rows. */
+class MetroToolWindowTreeTest : BasePlatformTestCase() {
+
+  override fun setUp() {
+    super.setUp()
+    project.setMetroOptions()
+    module.addMetroRuntimeLibrary()
+    project.service<MetroResolutionService>().resetGraphBrowserActivation()
+    // Results are retained across index invalidation by design, so they survive across tests
+    // sharing this project. Start each test clean.
+    project.service<MetroGraphValidationService>().clearResults()
+  }
+
+  private var filter: String = ""
+
+  private fun configure(): KtFile {
+    return myFixture.configureMetroFile(
+      """
+      interface Service
+      interface Analytics
+
+      @Inject @SingleIn(AppScope::class) class ServiceImpl : Service
+
+      interface ServiceBindings {
+        @Binds fun bindService(impl: ServiceImpl): Service
+      }
+
+      @Inject @ContributesIntoSet(AppScope::class) class DebugAnalytics : Analytics
+      @Inject @ContributesIntoSet(AppScope::class) class ProdAnalytics : Analytics
+
+      interface UrlProviders {
+        @Provides fun provideUrl(): String = "url"
+
+        @Provides fun provideUnusedFlag(): Boolean = true
+      }
+
+      @Inject class Consumer(val service: Service, val analytics: Set<Analytics>, val url: String)
+
+      @DependencyGraph(
+        AppScope::class,
+        bindingContainers = [ServiceBindings::class, UrlProviders::class],
+      )
+      interface AppGraph {
+        val consumer: Consumer
+      }
+      """
+    )
+  }
+
+  private fun structure(): MetroTreeStructure = MetroTreeStructure(project) { filter }
+
+  private fun MetroTreeStructure.children(node: MetroTreeNode): List<MetroTreeNode> =
+    computeChildren(node)
+
+  fun testGraphAndCategoryRows() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+
+    val graphs = structure.children(root)
+    assertEquals(listOf("AppGraph"), graphs.map { it.text })
+
+    val categories = structure.children(graphs.single())
+    assertEquals(listOf("Scoped", "Unscoped", "Multibindings"), categories.map { it.text })
+
+    val scoped = categories[0] as MetroTreeNode.Category
+    assertEquals(listOf("ServiceImpl"), structure.children(scoped).map { it.text })
+
+    // Contributed classes also provide their own types, so they appear here too
+    val unscoped = categories[1] as MetroTreeNode.Category
+    val unscopedRows = structure.children(unscoped)
+    assertEquals(
+      listOf(
+        "Boolean",
+        "Consumer",
+        "DebugAnalytics",
+        "ProdAnalytics",
+        "Service -> ServiceImpl",
+        "String",
+      ),
+      unscopedRows.map { it.text },
+    )
+    // Rows carry grayed locations for context
+    assertTrue(unscopedRows.all { it.grayText?.startsWith("Test.kt:") == true })
+
+    val multibindings = categories[2] as MetroTreeNode.Category
+    val multibinding = structure.children(multibindings).single() as MetroTreeNode.Multibinding
+    assertEquals("test.Analytics", multibinding.text)
+    // The multibinding row names the key, so contributions show just their sources
+    assertEquals(
+      listOf("DebugAnalytics", "ProdAnalytics"),
+      structure.children(multibinding).map { it.text },
+    )
+  }
+
+  fun testGenericInheritedProvidersDoNotShowRawTypeParameters() {
+    myFixture.configureMetroFile(
+      """
+      interface GenericBase<T> {
+        val value: T
+
+        @Provides fun provideValue(): T = error("unused")
+      }
+
+      @DependencyGraph
+      interface StringGraph : GenericBase<String>
+
+      @DependencyGraph
+      interface IntGraph : GenericBase<Int>
+      """
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphs = structure.children(root).associateBy { it.text }
+    for ((graphName, expectedType) in listOf("StringGraph" to "String", "IntGraph" to "Int")) {
+      val graph = checkNotNull(graphs[graphName])
+      val unscoped =
+        structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+          it.text == "Unscoped"
+        }
+      assertEquals(listOf(expectedType), structure.children(unscoped).map { it.text })
+      assertEquals("1", unscoped.grayText)
+    }
+  }
+
+  fun testRepeatedSourceFactoryRequestsAppearOnceInTheTree() {
+    myFixture.addFileToProject(
+      "test/SharedFactory.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      @AssistedInject
+      class Widget<T>(@Assisted val id: String, val value: T) {
+        @AssistedFactory
+        fun interface Factory<T> {
+          fun create(id: String): Widget<T>
+        }
+      }
+      """
+        .trimIndent(),
+    )
+    repeat(4) { number ->
+      myFixture.addFileToProject(
+        "test/Consumer$number.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        @Inject class Consumer$number(val factory: Widget.Factory<Int>)
+        """
+          .trimIndent(),
+      )
+    }
+    myFixture.configureMetroFile(
+      """
+      @DependencyGraph
+      interface AppGraph {
+        val factory: Widget.Factory<Int>
+        val consumer: Consumer0
+
+        @Provides fun provideInt(): Int = 1
+      }
+      """,
+      fileName = "FactoryGraph.kt",
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val unscoped =
+      structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    val factoryRows =
+      structure.children(unscoped).filterIsInstance<MetroTreeNode.BindingRow>().filter {
+        it.binding is KaBinding.AssistedFactory &&
+          it.binding.typeKey.renderedType == "test.Widget.Factory<kotlin.Int>"
+      }
+
+    assertEquals(1, factoryRows.size)
+    assertEquals(unscoped.bindings.size.toString(), unscoped.grayText)
+  }
+
+  fun testFilterNarrowsRows() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+
+    filter = "String"
+    val categories = structure.children(graph)
+    assertEquals(listOf("Unscoped"), categories.map { it.text })
+    assertEquals(
+      listOf("String"),
+      structure.children(categories.single()).map { it.text },
+    )
+  }
+
+  fun testValidationNodeAppearsAfterValidating() {
+    val file = configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+
+    // No validation node before a run
+    assertTrue(structure.children(graphNode).none { it is MetroTreeNode.Validation })
+
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
+
+    val validation =
+      structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()
+    val children = structure.children(validation)
+    val summary = children.first() as MetroTreeNode.Summary
+    assertTrue(summary.text, summary.text.endsWith(" bindings"))
+    assertTrue(children.none { it is MetroTreeNode.Diagnostic })
+
+    // With usage known, authored bindings nothing requested get their own category
+    val unusedCategory =
+      structure.children(graphNode).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unused"
+      }
+    assertEquals(listOf("Boolean"), structure.children(unusedCategory).map { it.text })
+  }
+
+  fun testValidationNodeIdentityIncludesResultAndStaleState() {
+    val file = configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single() as MetroTreeNode.Graph
+    val result = project.service<MetroGraphValidationService>().validate(file, graph.context)
+
+    val current = MetroTreeNode.Validation(graph, result, stale = false)
+    val currentAgain = MetroTreeNode.Validation(graph, result, stale = false)
+    val stale = MetroTreeNode.Validation(graph, result, stale = true)
+    val failed =
+      MetroTreeNode.Validation(
+        graph,
+        KaGraphValidationResult.InternalError(graph.context, IllegalStateException()),
+        stale = false,
+      )
+
+    assertEquals(current, currentAgain)
+    assertFalse(current == stale)
+    assertFalse(current == failed)
+  }
+
+  fun testGraphBrowsingAndValidationRemainAvailableWhenEditorNavigationIsDisabled() {
+    val settings = MetroSettings.getInstance(project).state
+    settings.enableBindingResolution = false
+    try {
+      val file = configure()
+      val structure = structure()
+      val root = structure.rootElement as MetroTreeNode
+      val graph = structure.children(root).single() as MetroTreeNode.Graph
+
+      assertEquals("AppGraph", graph.text)
+      project.service<MetroGraphValidationService>().validate(file, graph.context)
+      assertTrue(structure.children(graph).any { it is MetroTreeNode.Validation })
+    } finally {
+      settings.enableBindingResolution = true
+    }
+  }
+
+  fun testSummaryIdentityIncludesDisplayedText() {
+    val parent = MetroTreeNode.Root()
+
+    assertEquals(
+      MetroTreeNode.Summary(parent, "3 bindings"),
+      MetroTreeNode.Summary(parent, "3 bindings"),
+    )
+    assertFalse(
+      MetroTreeNode.Summary(parent, "3 bindings") == MetroTreeNode.Summary(parent, "4 bindings")
+    )
+  }
+
+  fun testInternalValidationErrorIsPresentedAsAPluginFailure() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    val result = KaGraphValidationResult.InternalError(graphNode.context, IllegalStateException())
+    val validation = MetroTreeNode.Validation(graphNode, result, stale = false)
+
+    assertEquals("internal Metro plugin error", validation.grayText)
+    assertSame(AllIcons.General.Error, validation.icon)
+    assertEquals(
+      listOf("Validation failed due to an internal Metro plugin error"),
+      structure.children(validation).map { it.text },
+    )
+  }
+
+  fun testIncompleteValidationIsPresentedAsAnAnalysisLimit() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    val reason = "test.Node.Factory reached the source specialization depth limit"
+    val result = KaGraphValidationResult.Incomplete(graphNode.context, reason)
+    val validation = MetroTreeNode.Validation(graphNode, result, stale = false)
+
+    assertEquals("analysis incomplete: $reason", validation.grayText)
+    assertSame(AllIcons.General.Warning, validation.icon)
+    assertEquals(
+      listOf("Validation incomplete: $reason"),
+      structure.children(validation).map { it.text },
+    )
+  }
+
+  fun testDumbModeProducesNoChildren() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    assertTrue(structure.children(root).isNotEmpty())
+    DumbModeTestUtils.runInDumbModeSynchronously(project) {
+      assertTrue(structure.children(root).isEmpty())
+    }
+  }
+
+  fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
+    val panel = IndexBuildStatusPanel()
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10))
+    assertTrue(panel.isVisible)
+    assertEquals("Analyzing Metro declarations (4 of 10 files)", panel.messageLabel.text)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals(4, panel.progressBar.value)
+    assertEquals(10, panel.progressBar.maximum)
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Reading dependency metadata", panel.messageLabel.text)
+
+    panel.showWaitingForIdeIndexing()
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
+
+    panel.showNotLoaded()
+    assertTrue(panel.isVisible)
+    assertFalse(panel.progressBar.isVisible)
+    assertEquals("Metro graphs have not been loaded", panel.messageLabel.text)
+
+    panel.clear()
+    assertFalse(panel.isVisible)
+  }
+
+  fun testGraphBrowserActionLoadsOnceThenRefreshes() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    var refreshes = 0
+    val action = LoadOrRefreshGraphsAction(service) { refreshes++ }
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    action.update(event)
+    assertEquals("Load", event.presentation.text)
+    assertEquals("Load graphs and bindings", event.presentation.description)
+    assertFalse(service.isGraphBrowserActivated)
+
+    action.actionPerformed(event)
+    action.update(event)
+    assertEquals(1, refreshes)
+    assertTrue(service.isGraphBrowserActivated)
+    assertEquals("Refresh", event.presentation.text)
+    assertEquals("Refresh graphs and bindings", event.presentation.description)
+  }
+
+  fun testToolWindowWaitsForInitialGraphLoad() {
+    configure()
+    val service = project.service<MetroResolutionService>()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      val status = toolWindowStatus(panel)
+      assertFalse(service.isGraphBrowserActivated)
+      assertTrue(status.isVisible)
+      assertEquals("Metro graphs have not been loaded", status.messageLabel.text)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testToolWindowPanelRecoversAfterDumbMode() {
+    val file = configure()
+    project.service<MetroResolutionService>().index(file)
+    var panel: MetroToolWindowPanel? = null
+    DumbModeTestUtils.runInDumbModeSynchronously(project) {
+      panel = MetroToolWindowPanel(project)
+      assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+      val status = toolWindowStatus(checkNotNull(panel))
+      assertTrue(status.isVisible)
+      assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
+    }
+
+    val tree = toolWindowTree(checkNotNull(panel))
+    PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+    assertTrue("The Metro tree should populate when smart mode resumes", tree.rowCount > 0)
+    assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
+    com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
+  }
+
+  fun testDisposedToolWindowPanelIgnoresValidationRequests() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val panel = MetroToolWindowPanel(project)
+    Disposer.dispose(panel)
+
+    panel.selectAndValidate(checkNotNull(graph.classId), file.virtualFile)
+
+    assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+  }
+
+  fun testMissingRequestedGraphDoesNotValidateTheSelectedGraph() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      val tree = toolWindowTree(panel)
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      tree.setSelectionRow(0)
+
+      panel.selectAndValidate(ClassId.topLevel(FqName("test.MissingGraph")), file.virtualFile)
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+
+      assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testValidateGraphActionRecognizesAnImportedAnnotationAlias() {
+    val file =
+      myFixture.configureByText(
+        "AliasedGraph.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.DependencyGraph as MetroGraph
+
+        @MetroGraph
+        interface <caret>AppGraph
+        """
+          .trimIndent(),
+      )
+    val action = ValidateMetroGraphAction()
+    val dataContext = DataContext { dataId ->
+      when {
+        CommonDataKeys.PROJECT.`is`(dataId) -> project
+        CommonDataKeys.EDITOR.`is`(dataId) -> myFixture.editor
+        CommonDataKeys.PSI_FILE.`is`(dataId) -> file
+        else -> null
+      }
+    }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext)
+
+    action.update(event)
+
+    assertTrue(event.presentation.isEnabledAndVisible)
+  }
+
+  private fun toolWindowTree(panel: MetroToolWindowPanel): Tree {
+    return com.intellij.util.ui.UIUtil.findComponentOfType(panel, Tree::class.java)
+      ?: error("Metro tool window has no tree")
+  }
+
+  private fun toolWindowStatus(panel: MetroToolWindowPanel): IndexBuildStatusPanel {
+    return com.intellij.util.ui.UIUtil.findComponentOfType(
+      panel,
+      IndexBuildStatusPanel::class.java,
+    ) ?: error("Metro tool window has no index build status")
+  }
+
+  fun testRefreshedNodesReplaceStaleOnes() {
+    configure()
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+
+    val unscopedBefore =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    // Same content computes an equal node, which is what preserves tree expansion
+    val unscopedAgain =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertEquals(unscopedBefore, unscopedAgain)
+
+    // AsyncTreeModel keeps equal nodes and re-asks them for children, so a content change must
+    // make the refreshed node unequal or the tree would serve stale rows
+    filter = "String"
+    val unscopedAfter =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertFalse(unscopedBefore == unscopedAfter)
+    assertEquals(listOf("String"), structure.children(unscopedAfter).map { it.text })
+  }
+
+  fun testRefreshedNodesReplaceBindingsWhoseKeyDidNotChange() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Api
+
+        @Inject class FirstApi : Api
+        @Inject class SecondApi : Api
+
+        interface ApiBindings {
+          @Binds fun bindApi(impl: FirstApi): Api
+        }
+
+        @DependencyGraph(bindingContainers = [ApiBindings::class])
+        interface AppGraph
+        """
+      )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val before =
+      structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertTrue("Api -> FirstApi" in structure.children(before).map { it.text })
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val implementationOffset = document.text.indexOf("impl: FirstApi") + "impl: ".length
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.replaceString(
+        implementationOffset,
+        implementationOffset + "FirstApi".length,
+        "SecondApi",
+      )
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val after = structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
+    assertFalse(before == after)
+    val rows = structure.children(after).map { it.text }
+    assertTrue(rows.toString(), "Api -> SecondApi" in rows)
+    assertFalse(rows.toString(), "Api -> FirstApi" in rows)
+  }
+
+  fun testUnusedUnionsExtensionUsage() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Api
+
+        @Inject class ChildThing(val api: Api)
+
+        @GraphExtension
+        interface ChildGraph {
+          val childThing: ChildThing
+        }
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+
+          @Provides fun provideApi(): Api = object : Api {}
+          @Provides fun provideUnused(): Int = 3
+        }
+        """
+      )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val appNode =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().single {
+        it.text == "AppGraph"
+      }
+    val service = project.service<MetroGraphValidationService>()
+    service.validateWithExtensions(file, appNode.graph)
+
+    // Api is consumed only by the child extension, so only the truly dead Int shows as unused
+    val unused =
+      structure.children(appNode).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unused"
+      }
+    assertEquals(listOf("Int"), structure.children(unused).map { it.text })
+  }
+
+  fun testMultiParentExtensionsHaveSeparateContextRows() {
+    myFixture.configureMetroFile(
+      """
+      interface LeftOnly
+      interface RightOnly
+
+      @GraphExtension
+      interface ChildGraph
+
+      @DependencyGraph
+      interface LeftParent {
+        val child: ChildGraph
+
+        @Provides fun provideLeft(): LeftOnly = object : LeftOnly {}
+      }
+
+      @DependencyGraph
+      interface RightParent {
+        val child: ChildGraph
+
+        @Provides fun provideRight(): RightOnly = object : RightOnly {}
+      }
+      """
+    )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val childRows =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().filter {
+        it.text == "ChildGraph"
+      }
+    assertEquals(2, childRows.size)
+
+    val rowsByParent = childRows.associateBy { it.context.chain[1].name }
+    val left = rowsByParent.getValue("LeftParent")
+    val right = rowsByParent.getValue("RightParent")
+    assertTrue(left.grayText.orEmpty(), "via LeftParent" in left.grayText.orEmpty())
+    assertTrue(right.grayText.orEmpty(), "via RightParent" in right.grayText.orEmpty())
+
+    fun bindingRows(graph: MetroTreeNode.Graph): List<String> {
+      val category = structure.children(graph).single() as MetroTreeNode.Category
+      return structure.children(category).map { it.text }
+    }
+
+    assertEquals(listOf("LeftOnly"), bindingRows(left))
+    assertEquals(listOf("RightOnly"), bindingRows(right))
+  }
+
+  fun testSameNamedQualifiersRenderAbbreviatedPackages() {
+    myFixture.addFileToProject(
+      "alpha/Tag.kt",
+      "package alpha\n\nimport dev.zacsweers.metro.Qualifier\n\n@Qualifier annotation class Tag",
+    )
+    myFixture.addFileToProject(
+      "beta/Tag.kt",
+      "package beta\n\nimport dev.zacsweers.metro.Qualifier\n\n@Qualifier annotation class Tag",
+    )
+    myFixture.configureMetroFile(
+      """
+      interface TagProviders {
+        @Provides @alpha.Tag fun alphaUrl(): String = "a"
+
+        @Provides @beta.Tag fun betaUrl(): String = "b"
+      }
+
+      @DependencyGraph(bindingContainers = [TagProviders::class])
+      interface AppGraph
+      """
+    )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graph = structure.children(root).single()
+    val unscoped =
+      structure.children(graph).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    assertEquals(
+      listOf("@a.Tag String", "@b.Tag String"),
+      structure.children(unscoped).map { it.text },
+    )
+  }
+
+  fun testFilterRefreshThroughPlatformTreeModel() {
+    configure()
+    val treeStructure = structure()
+    val treeModel = StructureTreeModel(treeStructure, testRootDisposable)
+    val tree = Tree(AsyncTreeModel(treeModel, testRootDisposable))
+    tree.isRootVisible = false
+
+    fun visibleTexts(): List<String> {
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      return (0 until tree.rowCount).mapNotNull { row ->
+        (TreeUtil.getLastUserObject(NodeDescriptor::class.java, tree.getPathForRow(row))?.element
+            as? MetroTreeNode)
+          ?.text
+      }
+    }
+
+    assertTrue(visibleTexts().toString(), "Boolean" in visibleTexts())
+
+    // The expanded tree must pick up the narrowed rows, not serve stale children
+    filter = "String"
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    val after = visibleTexts()
+    assertTrue(after.toString(), "String" in after)
+    assertTrue(after.toString(), "Boolean" !in after)
+  }
+
+  fun testValidationRefreshThroughPlatformTreeModel() {
+    val file = configure()
+    val treeStructure = structure()
+    val treeModel = StructureTreeModel(treeStructure, testRootDisposable)
+    val tree = Tree(AsyncTreeModel(treeModel, testRootDisposable))
+    tree.isRootVisible = false
+
+    fun visibleTexts(): List<String> {
+      PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+      return (0 until tree.rowCount).mapNotNull { row ->
+        (TreeUtil.getLastUserObject(NodeDescriptor::class.java, tree.getPathForRow(row))?.element
+            as? MetroTreeNode)
+          ?.text
+      }
+    }
+
+    val root = treeStructure.rootElement as MetroTreeNode
+    val graph = treeStructure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, graph.context)
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    assertTrue(visibleTexts().toString(), "Validation" in visibleTexts())
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val memberOffset = document.text.indexOf("val consumer: Consumer")
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(memberOffset, "val missing: Long\n        ")
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val currentGraph = treeStructure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, currentGraph.context)
+    PlatformTestUtil.waitForFuture(treeModel.invalidateAsync(), 30_000)
+    val texts = visibleTexts()
+    assertTrue(texts.toString(), texts.any { it.startsWith("[Metro/MissingBinding]") })
+  }
+
+  fun testDiagnosticRowsWithNavigableStacks() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+
+        @DependencyGraph
+        interface AppGraph {
+          val missing: MissingThing
+        }
+        """
+      )
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
+
+    val validation =
+      structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()
+    val diagnostic =
+      structure.children(validation).filterIsInstance<MetroTreeNode.Diagnostic>().single()
+    assertTrue(diagnostic.text, diagnostic.text.startsWith("[Metro/MissingBinding]"))
+
+    val stackEntry = structure.children(diagnostic).single() as MetroTreeNode.StackEntry
+    assertTrue(stackEntry.text, "is requested at" in stackEntry.text)
+    assertNotNull(stackEntry.pointer?.element)
+  }
+
+  fun testSameKeyLazyFactoryDiagnosticsNavigateToDistinctParameters() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject
+        class Widget(@Assisted val id: String) {
+          @AssistedFactory
+          interface Factory {
+            fun create(id: String): Widget
+          }
+        }
+
+        @Inject
+        class Consumer(
+          val first: Lazy<Widget.Factory>,
+          val second: Lazy<Widget.Factory>,
+        )
+
+        @DependencyGraph
+        interface AppGraph {
+          val consumer: Consumer
+        }
+        """
+      )
+    val declarations = file.declarationsIncludingNested()
+    val expectedParameters =
+      listOf(declarations.parameter("first"), declarations.parameter("second"))
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphNode = structure.children(root).single() as MetroTreeNode.Graph
+    project.service<MetroGraphValidationService>().validate(file, graphNode.context)
+
+    val validation =
+      structure.children(graphNode).filterIsInstance<MetroTreeNode.Validation>().single()
+    val diagnostics = structure.children(validation).filterIsInstance<MetroTreeNode.Diagnostic>()
+    assertEquals(
+      listOf(MetroDiagnosticId.INVALID_BINDING, MetroDiagnosticId.INVALID_BINDING),
+      diagnostics.map { it.diagnostic.id },
+    )
+    assertTrue(diagnostics.all { "Lazy<Factory>" in it.text })
+
+    val navigableParameters = diagnostics.map { diagnostic ->
+      val stackEntries = structure.children(diagnostic).filterIsInstance<MetroTreeNode.StackEntry>()
+      val sourceEntry = stackEntries.single { entry ->
+        expectedParameters.any { parameter -> entry.pointer?.element === parameter }
+      }
+      assertTrue(sourceEntry.text, "is injected at" in sourceEntry.text)
+      checkNotNull(sourceEntry.pointer?.element)
+    }
+    assertEquals(expectedParameters.toSet(), navigableParameters.toSet())
+  }
+}
