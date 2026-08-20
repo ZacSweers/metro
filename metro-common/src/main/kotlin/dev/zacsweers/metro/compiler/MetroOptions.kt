@@ -1312,7 +1312,30 @@ public class MetroOptions(
     }
   }
 
+  /**
+   * Suspend-provider shapes used after option validation. The explicit Metro type remains
+   * addressable while disabled so consumers can report its use.
+   */
+  @Transient
+  public val suspendProviderTypes: Set<ClassId> = buildSet {
+    add(MetroClassIds.suspendProvider)
+    if (enableFunctionProviders && enableSuspendProviders) {
+      add(MetroClassIds.suspendFunction0)
+    }
+  }
+
   @Transient public val suspendLazyTypes: Set<ClassId> = setOf(MetroClassIds.suspendLazy)
+
+  /** Zero-argument function types enabled as provider spellings. */
+  @Transient
+  public val function0Types: Set<ClassId> = buildSet {
+    if (enableFunctionProviders) {
+      add(MetroClassIds.function0)
+      if (enableSuspendProviders) {
+        add(MetroClassIds.suspendFunction0)
+      }
+    }
+  }
 
   @Transient
   public val dependencyGraphAnnotations: Set<ClassId> =
