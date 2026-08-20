@@ -149,7 +149,3 @@ private fun parseMetroOptions(optionStrings: List<String>): MetroOptions {
       }
     }
 }
-
-private fun <T> Set<T>.emptyUnless(condition: Boolean): Set<T> {
-  return if (condition) this else emptySet()
-}
