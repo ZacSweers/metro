@@ -8,8 +8,15 @@ import dev.drewhamilton.poko.Poko
 internal class StringBinding(
   override val contextualTypeKey: StringContextualTypeKey,
   override val dependencies: List<StringContextualTypeKey> = emptyList(),
+  val kind: WorkloadBindingKind = WorkloadBindingKind.PROVIDED,
   val scope: String? = null,
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
+
+  override val isAlias: Boolean
+    get() = kind == WorkloadBindingKind.ALIAS
+
+  override val isImplicitlyDeferrable: Boolean
+    get() = kind == WorkloadBindingKind.INSTANCE || contextualTypeKey.isDeferrable
 
   override fun renderLocationDiagnostic(
     short: Boolean,
