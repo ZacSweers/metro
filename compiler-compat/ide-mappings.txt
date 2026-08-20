@@ -69,6 +69,8 @@
 # IntelliJ IDEA 2026.2.1 (rc)
 # IntelliJ IDEA 2026.2.1 (stable)
 2.4.20-ij262-34=2.4.20-dev-6725
+# IntelliJ IDEA 2026.2.2 (eap)
+2.4.20-ij262-52=2.4.20-dev-6725
 # Android Studio Quail 1 | 2026.1.1 Canary 1 (canary)
 # Android Studio Quail 1 | 2026.1.1 Canary 2 (canary)
 # Android Studio Quail 1 | 2026.1.1 Canary 3 (canary)
