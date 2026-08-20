@@ -7,7 +7,6 @@ import dev.zacsweers.metro.compiler.api.fir.MetroContributionExtension
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOriginClassIdChain
-import dev.zacsweers.metro.compiler.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.FirTypeKey
@@ -31,6 +30,7 @@ import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.graph.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
 import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.mapNotNullToSet
