@@ -1,0 +1,15 @@
+/SuspendCycle.kt:18:11: error: [Metro/DependencyCycle] Found a dependency cycle while processing parity.suspend.cycle.AppGraph
+
+  cycle:
+      +-> B -> A --+
+      +------------+
+
+  trace (in parity.suspend.cycle.AppGraph):
+      B is injected at parity.suspend.cycle.A(…, b)
+      A is injected at suspend parity.suspend.cycle.AppGraph.provideB(…, a)
+      B is injected at parity.suspend.cycle.A(…, b)
+      ...
+
+  help: this cycle requires suspend initialization. Defer one edge with `suspend () -> B` or
+        `SuspendLazy<B>`. Only do this if you know what you're doing though!
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#dependencycycle

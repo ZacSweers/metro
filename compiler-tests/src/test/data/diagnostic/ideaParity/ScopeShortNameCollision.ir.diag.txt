@@ -1,0 +1,10 @@
+/ScopeShortNameCollision.kt:26:11: error: [Metro/IncompatiblyScopedBindings] parity.failures.scopecollision.AppGraph (scopes
+    '@dev.zacsweers.metro.SingleIn(parity.failures.scopecollision.Second.Scope::class)') may not
+    reference bindings from different scopes
+
+  trace (in parity.failures.scopecollision.AppGraph):
+      ScopedValue (scoped to
+          '@dev.zacsweers.metro.SingleIn(parity.failures.scopecollision.First.Scope::class)')
+      ScopedValue is requested at parity.failures.scopecollision.AppGraph.value
+
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#incompatiblyscopedbindings

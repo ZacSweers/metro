@@ -23,6 +23,7 @@ class MetroTestConfigurator(testServices: TestServices) : MetaTestConfigurator(t
   override fun shouldSkipTest(): Boolean {
     val directives = testServices.moduleStructure.allDirectives
     if (MetroDirectives.METRO_IGNORE in directives) return true
+    if (MetroDirectives.METRO_JVM_ONLY in directives && !testServices.isJvmBackend()) return true
 
     val testClassName = testServices.testInfo.className.substringAfterLast('.').substringBefore('$')
     if (

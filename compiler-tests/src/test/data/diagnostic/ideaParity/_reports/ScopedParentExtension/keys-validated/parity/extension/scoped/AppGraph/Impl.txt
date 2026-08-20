@@ -1,0 +1,4 @@
+parity.extension.scoped.AppGraph
+parity.extension.scoped.Config
+parity.extension.scoped.Cache
+parity.extension.scoped.ChildGraph
