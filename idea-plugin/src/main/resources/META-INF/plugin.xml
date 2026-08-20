@@ -30,6 +30,15 @@ Metro IDE support for Kotlin dependency injection projects.
         implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionProvider"/>
     <config.codeVisionGroupSettingProvider
         implementation="dev.zacsweers.metro.idea.index.MetroCodeVisionGroupSettingProvider"/>
+    <codeInsight.declarativeInlayProvider
+        language="kotlin"
+        implementationClass="dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider"
+        isEnabledByDefault="true"
+        group="OTHER_GROUP"
+        providerId="metro.injected.implementation"
+        bundle="messages.MetroBundle"
+        nameKey="metro.inlay.injected.implementation.name"
+        descriptionKey="metro.inlay.injected.implementation.description"/>
     <lang.inspectionSuppressor
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.MetroUnusedDeclarationInspectionSuppressor"
