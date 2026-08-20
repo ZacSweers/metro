@@ -332,10 +332,10 @@ tasks.test {
     .files(kotlinStdlibClasspath)
     .withPropertyName("kotlinStdlibTestClasspath")
     .withPathSensitivity(PathSensitivity.NONE)
-  systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
+        "-DmetroRuntime.classpath=${metroRuntimeClasspath.asPath}",
         "-DkotlinStdlib.classpath=${kotlinStdlibClasspath.asPath}",
         "-DmetroLibFixture.classpath=${libFixtureJar.get().archiveFile.get().asFile.absolutePath}",
         "-DmetroCompilerTestData.path=${compilerTestData.asFile.absolutePath}",
