@@ -114,7 +114,7 @@ anvil-annotations = { module = "dev.zacsweers.anvil:annotations", version.ref = 
 anvil-annotations-optional = { module = "dev.zacsweers.anvil:annotations-optional", version.ref = "anvil" }
 anvil-kspCompiler = { module = "dev.zacsweers.anvil:compiler", version.ref = "anvil" }
 
-bugsnag = "com.bugsnag:bugsnag:4.0.0"
+bugsnag = "com.bugsnag:bugsnag:4.0.1"
 
 clikt = "com.github.ajalt.clikt:clikt:5.1.0"
 
