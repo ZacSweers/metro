@@ -3,7 +3,7 @@
 package dev.zacsweers.metro.compiler.graph
 
 import dev.drewhamilton.poko.Poko
-import dev.zacsweers.metro.compiler.symbols.Symbols
+import dev.zacsweers.metro.compiler.MetroClassIds
 
 @Poko
 internal class StringContextualTypeKey
@@ -43,7 +43,7 @@ private constructor(
     ): StringContextualTypeKey {
       val wrappedType = parseWrappedType(typeKey.type)
       return StringContextualTypeKey(
-        typeKey = StringTypeKey(wrappedType.canonicalType()),
+        typeKey = typeKey.copy(type = wrappedType.canonicalType()),
         wrappedType = wrappedType,
         hasDefault = hasDefault,
         rawType = rawType,
@@ -52,14 +52,19 @@ private constructor(
 
     private fun parseWrappedType(type: String): WrappedType<String> {
       return when {
+        type.startsWith("suspend () ->") -> {
+          val inner = type.removePrefix("suspend () -> ")
+          WrappedType.SuspendProvider(parseWrappedType(inner), MetroClassIds.suspendProvider)
+        }
+
         type.startsWith("() ->") -> {
           val inner = type.removePrefix("() -> ")
-          WrappedType.Provider(parseWrappedType(inner), Symbols.ClassIds.metroProvider)
+          WrappedType.Provider(parseWrappedType(inner), MetroClassIds.provider)
         }
 
         type.startsWith("Lazy<") -> {
           val inner = type.removeSurrounding("Lazy<", ">")
-          WrappedType.Lazy(parseWrappedType(inner), Symbols.ClassIds.Lazy)
+          WrappedType.Lazy(parseWrappedType(inner), MetroClassIds.lazy)
         }
 
         type.startsWith("Map<") -> {

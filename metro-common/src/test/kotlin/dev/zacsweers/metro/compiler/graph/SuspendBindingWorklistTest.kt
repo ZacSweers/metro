@@ -1,16 +1,13 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir.graph
+package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
-import dev.zacsweers.metro.compiler.graph.BaseBinding
-import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
-import dev.zacsweers.metro.compiler.graph.StringContextualTypeKey
-import dev.zacsweers.metro.compiler.graph.StringTypeKey
 import kotlin.random.Random
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
-class SuspendBindingAnalysisTest {
+class SuspendBindingWorklistTest {
 
   @Test
   fun `same root is updated after a missing dependency is added`() {
@@ -144,6 +141,184 @@ class SuspendBindingAnalysisTest {
   }
 
   @Test
+  fun `path analysis returns a stable snapshot`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("Consumer", "Source"))
+    val initial = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    fixture.put(binding("Source", isSuspend = true))
+    assertThat(fixture.analysis.isSuspend(key("Consumer"))).isTrue()
+
+    assertThat(initial.suspendKeys).isEmpty()
+    assertThat(initial.pathFrom(key("Consumer")) { it.typeKey }).isNull()
+  }
+
+  @Test
+  fun `nonempty path snapshots stay stable after incremental additions`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("First", "FirstSource"), binding("FirstSource", isSuspend = true))
+    val initial = fixture.analysis.analyzeWithPaths(keys("First"))
+
+    fixture.put(binding("Second", "SecondSource"), binding("SecondSource", isSuspend = true))
+    assertThat(fixture.analysis.analyze(keys("First", "Second")))
+      .containsExactlyElementsIn(keys("First", "FirstSource", "Second", "SecondSource"))
+
+    assertThat(initial.suspendKeys).containsExactlyElementsIn(keys("First", "FirstSource"))
+    assertThat(initial.pathFrom(key("Second")) { it.typeKey }).isNull()
+    assertThat(initial.pathFrom(key("First")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("FirstSource"))
+  }
+
+  @Test
+  fun `older snapshots keep their witness when a preferred source appears later`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("Consumer", "Preferred", "Existing"), binding("Existing", isSuspend = true))
+    val initial = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    fixture.put(binding("Preferred", isSuspend = true))
+    val updated = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+
+    assertThat(initial.pathFrom(key("Consumer")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("Existing"))
+    assertThat(updated.pathFrom(key("Consumer")) { it.typeKey }!!.sourceKey)
+      .isEqualTo(key("Preferred"))
+  }
+
+  @Test
+  fun `multiple witnesses reuse one provenance index`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("First", "Middle"),
+      binding("Second", "Middle"),
+      binding("Middle", "Source"),
+      binding("Source", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("First", "Second"))
+
+    assertThat(result.pathFrom(key("First")) { it.typeKey }!!.sourceKey).isEqualTo(key("Source"))
+    val checksAfterFirstWitness = fixture.suspendCheckCount
+    assertThat(result.pathFrom(key("Second")) { it.typeKey }!!.sourceKey).isEqualTo(key("Source"))
+
+    // The second witness checks its own start and final source without indexing the graph again.
+    assertThat(fixture.suspendCheckCount - checksAfterFirstWitness).isEqualTo(2)
+  }
+
+  @Test
+  fun `witness indexing observes cancellation`() {
+    var canceled = false
+    val fixture = AnalysisFixture(checkCanceled = { if (canceled) error("canceled") })
+    fixture.put(binding("Consumer", "Source"), binding("Source", isSuspend = true))
+    val result = fixture.analysis.analyzeWithPaths(keys("Consumer"))
+    canceled = true
+
+    val failure =
+      assertFailsWith<IllegalStateException> {
+        result.pathFrom(key("Consumer")) { it.typeKey }
+      }
+
+    assertThat(failure).hasMessageThat().isEqualTo("canceled")
+  }
+
+  @Test
+  fun `cycle walks pick the adjacent suspend witness over the cycle edge`() {
+    val fixture = AnalysisFixture()
+    fixture.put(binding("A", "B"), binding("B", "A", "Source"), binding("Source", isSuspend = true))
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+    assertThat(result.suspendKeys).containsExactlyElementsIn(keys("A", "B", "Source"))
+
+    // B's first dependency leads back into the cycle, but Source is directly suspend and wins.
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("Source"))
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("B")).inOrder()
+  }
+
+  @Test
+  fun `cycle branches cannot hide a suspend witness on another branch`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("A", "B", "C"),
+      binding("B", "A"),
+      binding("C", "D"),
+      binding("D", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("D"))
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("C")).inOrder()
+  }
+
+  @Test
+  fun `suspend witness uses the shortest available dependency path`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("A", "Long", "Short"),
+      binding("Long", "Middle"),
+      binding("Middle", "FarSource"),
+      binding("Short", "NearSource"),
+      binding("FarSource", isSuspend = true),
+      binding("NearSource", isSuspend = true),
+    )
+    val result = fixture.analysis.analyzeWithPaths(keys("A"))
+
+    val path = checkNotNull(result.pathFrom(key("A")) { it.typeKey })
+
+    assertThat(path.sourceIsSuspend).isTrue()
+    assertThat(path.sourceKey).isEqualTo(key("NearSource"))
+    assertThat(path.edges.map { it.consumerKey }).containsExactly(key("A"), key("Short")).inOrder()
+  }
+
+  @Test
+  fun `equal direct witnesses follow declaration order regardless of source order`() {
+    for (sourceOrder in listOf(listOf("First", "Second"), listOf("Second", "First"))) {
+      val fixture = AnalysisFixture()
+      for (source in sourceOrder) {
+        fixture.put(binding(source, isSuspend = true))
+      }
+      fixture.put(binding("Consumer", "First", "Second"))
+
+      val result = fixture.analysis.analyzeWithPaths(sourceOrder.map(::key) + key("Consumer"))
+      val path = checkNotNull(result.pathFrom(key("Consumer")) { it.typeKey })
+
+      assertThat(path.sourceKey).isEqualTo(key("First"))
+      assertThat(path.edges.single().dependency.typeKey).isEqualTo(key("First"))
+    }
+  }
+
+  @Test
+  fun `equal nested witnesses preserve each root declaration order through cycles`() {
+    val fixture = AnalysisFixture()
+    fixture.put(
+      binding("SecondSource", isSuspend = true),
+      binding("FirstSource", isSuspend = true),
+      binding("Cycle", "First"),
+      binding("Second", "SecondSource"),
+      binding("First", "Cycle", "FirstSource"),
+      binding("FirstRoot", "First", "Second"),
+      binding("SecondRoot", "Second", "First"),
+    )
+    val result =
+      fixture.analysis.analyzeWithPaths(
+        keys("SecondSource", "FirstSource", "SecondRoot", "FirstRoot")
+      )
+
+    val firstPath = checkNotNull(result.pathFrom(key("FirstRoot")) { it.typeKey })
+    assertThat(firstPath.sourceKey).isEqualTo(key("FirstSource"))
+    assertThat(firstPath.edges.map { it.consumerKey })
+      .containsExactly(key("FirstRoot"), key("First"))
+      .inOrder()
+
+    val secondPath = checkNotNull(result.pathFrom(key("SecondRoot")) { it.typeKey })
+    assertThat(secondPath.sourceKey).isEqualTo(key("SecondSource"))
+    assertThat(secondPath.edges.map { it.consumerKey })
+      .containsExactly(key("SecondRoot"), key("Second"))
+      .inOrder()
+  }
+
+  @Test
   fun `skipped bindings do not traverse their dependencies`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("Factory", "Source", skipDependencies = true))
@@ -191,10 +366,18 @@ class SuspendBindingAnalysisTest {
 private typealias TestAnalysis =
   SuspendBindingWorklist<String, StringTypeKey, StringContextualTypeKey, TestBinding>
 
-private class AnalysisFixture {
+private class AnalysisFixture(private val checkCanceled: () -> Unit = {}) {
   private val bindings = mutableMapOf<StringTypeKey, TestBinding>()
   private val lookupCounts = mutableMapOf<StringTypeKey, Int>()
   private var generation = 0
+  var suspendCheckCount = 0
+    private set
+
+  private val rules =
+    SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, TestBinding>(
+      findBinding = bindings::get,
+      bindingCanPassThrough = { binding, _ -> binding.passesThrough },
+    )
 
   val analysis: TestAnalysis =
     SuspendBindingWorklist(
@@ -202,10 +385,14 @@ private class AnalysisFixture {
         lookupCounts[key] = lookupCounts.getOrDefault(key, 0) + 1
         bindings[key]
       },
-      bindingIsSuspend = { it.isSuspend },
+      bindingIsSuspend = {
+        suspendCheckCount++
+        it.isSuspend
+      },
       skipDependencyTraversal = { it.skipDependencies },
-      canPassThrough = { binding, _ -> binding.passesThrough },
+      rules = rules,
       currentGraphGeneration = { generation },
+      checkCanceled = checkCanceled,
     )
 
   fun put(vararg newBindings: TestBinding) {

@@ -8,6 +8,7 @@ import dev.drewhamilton.poko.Poko
 internal class StringBinding(
   override val contextualTypeKey: StringContextualTypeKey,
   override val dependencies: List<StringContextualTypeKey> = emptyList(),
+  val scope: String? = null,
 ) : BaseBinding<String, StringTypeKey, StringContextualTypeKey> {
 
   override fun renderLocationDiagnostic(
