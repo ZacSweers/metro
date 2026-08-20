@@ -159,11 +159,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     service.index(file)
     var notifications = 0
-    service.addIndexListener(testRootDisposable) { notifications++ }
+    val notified = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      notifications++
+      notified.complete(Unit)
+    }
     val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
 
     project.setMetroOptions("generate-contribution-providers" to "true")
-    UIUtil.dispatchAllInvocationEvents()
+    PlatformTestUtil.waitForFuture(notified, 30_000)
 
     assertEquals(
       initialRoots,
@@ -176,11 +180,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     project.clearMetroOptions()
     val service = project.service<MetroResolutionService>()
     var notifications = 0
-    service.addIndexListener(testRootDisposable) { notifications++ }
+    val notified = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      notifications++
+      notified.complete(Unit)
+    }
     val initialRoots = ProjectRootModificationTracker.getInstance(project).modificationCount
 
     project.setMetroOptions()
-    UIUtil.dispatchAllInvocationEvents()
+    PlatformTestUtil.waitForFuture(notified, 30_000)
 
     assertEquals(
       initialRoots,
