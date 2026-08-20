@@ -11,6 +11,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
@@ -25,13 +26,18 @@ import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
+import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
+import java.nio.file.Files
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
@@ -500,6 +506,314 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     action.update(event)
 
     assertTrue(event.presentation.isEnabledAndVisible)
+  }
+
+  fun testGraphDebugReportIsDeterministicOmitsPrivateValuesAndUsesRealSelection() {
+    module.addKotlinStdlibLibrary()
+    val outputRoot = Files.createTempDirectory("metro-debug-private")
+    val reports = Files.createDirectory(outputRoot.resolve("reports-secret"))
+    val sentinel = Files.writeString(reports.resolve("keep.txt"), "keep this report")
+    val trace = outputRoot.resolve("trace-secret")
+    try {
+      project.setMetroOptions(
+        "reports-destination" to reports.toString(),
+        "trace-destination" to trace.toString(),
+        "compiler-version" to "2.3.20",
+        "compiler-version-aliases" to "private-version-from=private-version-to",
+      )
+      val file =
+        myFixture.configureMetroFile(
+          """
+          @Qualifier annotation class SecretTag(val value: String)
+          @Target(AnnotationTarget.TYPE) annotation class TypeSecret(val value: String)
+
+          @Inject class Service
+          interface MapService
+
+          @BindingContainer
+          interface UnwiredProviders {
+            @Provides fun unwired(): Service = Service()
+          }
+
+          @DependencyGraph
+          interface AppGraph {
+            val service: Service
+            @SecretTag("qualifier-secret") val secret: String
+            val typed: @TypeSecret("type-use-secret") Long
+            val services: Map<String, MapService>
+
+            @Provides fun preferred(): Service = Service()
+            @Provides @SecretTag("qualifier-secret")
+            fun secretValue(): String = "provider-body-secret"
+            @Provides @SecretTag("other-qualifier-secret")
+            fun otherSecretValue(): String = "other-provider-body-secret"
+            @Provides fun typedValue(): @TypeSecret("type-use-secret") Long = 1L
+            @Provides @IntoMap @StringKey("map-key-secret")
+            fun mapService(): MapService = object : MapService {}
+          }
+          """
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val context = index.contextsFor(graph).single()
+      val exporter = project.service<MetroGraphDebugExporter>()
+      val report = checkNotNull(exporter.report(context))
+
+      assertEquals(report, exporter.report(context))
+      assertTrue(report, "formatVersion=1" in report)
+      assertTrue(report, "plugin.version=$VERSION" in report)
+      assertTrue(report, "plugin.gitSha=" in report)
+      assertTrue(report, "\"compilerVersion\": \"2.3.20\"" in report)
+      assertTrue(report, "\"compilerVersionAliases\": \"<redacted>\"" in report)
+      assertTrue(report, "\"reportsEnabled\": true" in report)
+      assertTrue(report, "\"traceEnabled\": true" in report)
+      val privateValues =
+        listOfNotNull(
+          reports.toString(),
+          trace.toString(),
+          file.virtualFile.path.takeIf { path -> path.count { it == '/' } > 1 },
+          System.getProperty("user.home")?.takeIf { it.isNotEmpty() },
+          "private-version-from",
+          "private-version-to",
+          "qualifier-secret",
+          "type-use-secret",
+          "provider-body-secret",
+          "map-key-secret",
+        )
+      for (privateValue in privateValues) {
+        assertFalse("Report leaked $privateValue", privateValue in report)
+      }
+      assertEquals("keep this report", Files.readString(sentinel))
+      assertFalse("Reading options must not initialize traceDir", Files.exists(trace))
+
+      val serviceRequest = debugRequest(report, "test.Service")
+      val raw = debugBindingReferences(serviceRequest, "rawSameType")
+      val inContext = debugBindingReferences(serviceRequest, "inContext")
+      val selected = debugBindingReferences(serviceRequest, "selected")
+      assertEquals(3, raw.size)
+      assertEquals(2, inContext.size)
+      assertEquals(1, selected.size)
+      assertTrue(raw.containsAll(inContext))
+      assertTrue(inContext.containsAll(selected))
+      val chosen = debugBindingRecord(report, selected.single())
+      assertTrue(chosen, "  kind=Provided" in chosen)
+      assertTrue(chosen, " preferred" in chosen)
+      val absent = raw.single { it !in inContext }
+      assertTrue(
+        debugBindingRecord(report, absent),
+        " unwired" in debugBindingRecord(report, absent),
+      )
+
+      val mapRequest = debugRequest(report, "Map<kotlin.String")
+      val selectedMap = debugBindingReferences(mapRequest, "selected")
+      assertEquals("Only the aggregate collection satisfies the map request", 1, selectedMap.size)
+      val collection = debugBindingRecord(report, selectedMap.single())
+      assertTrue(collection, "  kind=Multibinding" in collection)
+      val elements = debugBindingReferences(collection, "sourceBindings")
+      assertEquals(1, elements.size)
+      assertFalse(elements.single() in selectedMap)
+      val mapElement = debugBindingRecord(report, elements.single())
+      assertTrue(mapElement, "  kind=Provided" in mapElement)
+      assertTrue(mapElement, "  indexed=false" in mapElement)
+      assertTrue(mapElement, " mapService" in mapElement)
+      assertTrue(mapElement, "@dev.zacsweers.metro.internal.MultibindingElement(" in mapElement)
+      assertTrue(mapElement, "  mapKey=mapKey#" in mapElement)
+
+      val qualifierIds =
+        Regex("@test\\.SecretTag\\(value=<redacted>\\) \\[annotation#([0-9]+)]")
+          .findAll(report)
+          .map { it.groupValues[1] }
+          .toSet()
+      assertEquals(
+        "Distinct qualifiers must stay distinguishable without their values",
+        2,
+        qualifierIds.size,
+      )
+      assertNull(project.service<MetroGraphValidationService>().cachedResult(file, context))
+    } finally {
+      FileUtil.delete(outputRoot.toFile())
+    }
+  }
+
+  fun testGraphDebugReportIsWrittenToUniqueFiles() {
+    val outputRoot = Files.createTempDirectory("metro-debug-reports")
+    try {
+      val first = writeGraphDebugReport(outputRoot, "first report")
+      val second = writeGraphDebugReport(outputRoot, "second report")
+
+      assertEquals(outputRoot, first.parent)
+      assertTrue(first.fileName.toString().startsWith("metro-graph-debug-"))
+      assertTrue(first.fileName.toString().endsWith(".txt"))
+      assertFalse(first == second)
+      assertEquals("first report", Files.readString(first))
+      assertEquals("second report", Files.readString(second))
+    } finally {
+      FileUtil.delete(outputRoot.toFile())
+    }
+  }
+
+  fun testGraphDebugReportRetainsTheSelectedExtensionPath() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @GraphExtension
+        interface ChildGraph {
+          val service: Service
+        }
+
+        @DependencyGraph
+        interface LeftParent {
+          val child: ChildGraph
+          @Provides fun leftService(): Service = object : Service {}
+        }
+
+        @DependencyGraph
+        interface RightParent {
+          val child: ChildGraph
+          @Provides fun rightService(): Service = object : Service {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child).associateBy { it.rootGraph.name }
+    val exporter = project.service<MetroGraphDebugExporter>()
+    for ((parent, provider) in
+      listOf("LeftParent" to "leftService", "RightParent" to "rightService")) {
+      val report = checkNotNull(exporter.report(contexts.getValue(parent)))
+      val path = report.lineSequence().single { it.startsWith("path (selected graph first)=") }
+      assertTrue(path, "test.ChildGraph" in path)
+      assertTrue(path, "test.$parent" in path)
+      val selected =
+        debugBindingReferences(debugRequest(report, "test.Service"), "selected").single()
+      assertTrue(
+        debugBindingRecord(report, selected),
+        " $provider" in debugBindingRecord(report, selected),
+      )
+    }
+  }
+
+  fun testGraphDebugReportUsesInitializedSyntheticGraphBindings() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @ContributesTo(AppScope::class)
+        interface FactoryContract
+
+        @GraphExtension
+        interface ChildGraph {
+          @GraphExtension.Factory
+          interface Factory {
+            fun create(): ChildGraph
+          }
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val contract: FactoryContract
+          val childFactory: ChildGraph.Factory
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val report =
+      checkNotNull(
+        project.service<MetroGraphDebugExporter>().report(index.contextsFor(graph).single())
+      )
+    val writtenSupertypes =
+      report.lineSequence().single { it.startsWith("  writtenSupertypeKeys=") }
+    val selectedSupertypes =
+      report.lineSequence().single { it.startsWith("  selectedSupertypeKeys=") }
+    assertFalse(writtenSupertypes, "test.FactoryContract" in writtenSupertypes)
+    assertTrue(selectedSupertypes, "test.FactoryContract" in selectedSupertypes)
+
+    val aliasId =
+      debugBindingReferences(debugRequest(report, "test.FactoryContract"), "selected").single()
+    val alias = debugBindingRecord(report, aliasId)
+    assertTrue(alias, "  kind=Alias" in alias)
+    assertTrue(alias, "  consumedKey=test.AppGraph [type#" in alias)
+
+    val factoryId =
+      debugBindingReferences(debugRequest(report, "test.ChildGraph.Factory"), "selected").single()
+    val factory = debugBindingRecord(report, factoryId)
+    assertTrue(factory, "  kind=GraphExtension" in factory)
+    assertTrue(factory, "  isFactory=true" in factory)
+    assertTrue(factory, "  ownerKey=test.AppGraph [type#" in factory)
+  }
+
+  fun testGraphDebugReportShowsCurrentAndStaleValidationWithoutResealing() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Service
+        @DependencyGraph interface AppGraph { val service: Service }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val exporter = project.service<MetroGraphDebugExporter>()
+    val validation = project.service<MetroGraphValidationService>()
+    val unvalidated = checkNotNull(exporter.report(context))
+    assertTrue(unvalidated, "state=never validated" in unvalidated)
+
+    val result = validation.validate(file, context)
+    val current = checkNotNull(exporter.report(context))
+    assertTrue(current, "freshness=current" in current)
+    assertTrue(current, "state=completed" in current)
+
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    val insertion = document.text.indexOf("val service: Service")
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(insertion, "val missing: Long; ")
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val stale = checkNotNull(exporter.report(context))
+    assertTrue(stale, "freshness=stale" in stale)
+    assertTrue(stale, "state=completed" in stale)
+    assertTrue(stale, "graphRequests=2" in stale)
+    assertSame(result, checkNotNull(validation.cachedResult(file, context)).result)
+  }
+
+  fun testExportGraphDebugInfoActionRequiresAnExactGraphSelection() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    var selected: GraphContext? = null
+    val action = ExportGraphDebugInfoAction(project) { selected }
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    action.update(event)
+    assertFalse(event.presentation.isEnabled)
+    selected = context
+    action.update(event)
+    assertTrue(event.presentation.isEnabled)
+    assertEquals("Export Graph Debug Info", event.presentation.text)
+  }
+
+  private fun debugRequest(report: String, type: String): String {
+    return report
+      .substringAfter("[Graph requests]\n")
+      .substringBefore("\n[Candidate bindings]")
+      .split(Regex("(?m)^request [0-9]+:\\n"))
+      .single { "  key=$type [type#" in it }
+  }
+
+  private fun debugBindingReferences(request: String, name: String): List<String> {
+    val line = request.lineSequence().single { it.startsWith("  $name=") }
+    return Regex("binding#[0-9]+").findAll(line).map { it.value }.toList()
+  }
+
+  private fun debugBindingRecord(report: String, reference: String): String {
+    return report
+      .substringAfter("[Candidate bindings]\n")
+      .substringAfter("$reference:\n")
+      .split(Regex("(?m)^binding#[0-9]+:"), limit = 2)
+      .first()
   }
 
   private fun toolWindowTree(panel: MetroToolWindowPanel): Tree {
