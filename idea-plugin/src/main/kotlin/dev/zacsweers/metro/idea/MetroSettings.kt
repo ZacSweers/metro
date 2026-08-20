@@ -22,6 +22,9 @@ class MetroSettingsState : BaseState() {
   /** Suppresses IntelliJ's false-positive kapt configuration warning in Metro-enabled modules. */
   var suppressKaptConfigurationWarning by property(true)
 
+  /** Shows binding navigation in the editor without disabling graph browsing or validation. */
+  var enableBindingResolution by property(true)
+
   /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
   var resolveFromLibraries by property(true)
 }
@@ -51,6 +54,10 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
       checkBox("Suppress false-positive kapt configuration warnings")
         .bindSelected(state::suppressKaptConfigurationWarning)
         .comment("Metro does not require kapt; applies only to modules with Metro enabled")
+    }
+    row {
+      checkBox("Show binding navigation (gutter icons, code vision, inlay hints)")
+        .bindSelected(state::enableBindingResolution)
     }
     row {
       checkBox("Resolve bindings from compiled dependencies")

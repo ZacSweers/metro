@@ -836,6 +836,21 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertFalse(service.index(file).bindings.any { it.typeKey.renderedType == "test.Temporary" })
   }
 
+  fun testEditorDecorationSettingsDoNotInvalidateTheIndex() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.index(file)
+    val settings = MetroSettings.getInstance(project).state
+    settings.enableBindingResolution = false
+    try {
+      service.settingsChanged()
+
+      assertSame(initial, service.index(file))
+    } finally {
+      settings.enableBindingResolution = true
+    }
+  }
+
   private fun configure(): KtFile {
     return myFixture.configureByText(
       "Test.kt",
