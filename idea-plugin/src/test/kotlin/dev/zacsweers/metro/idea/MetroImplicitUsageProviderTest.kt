@@ -3,13 +3,9 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.roots.ModuleRootModificationUtil
-import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
 import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
-import java.io.File
-import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
@@ -21,7 +17,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   override fun setUp() {
     super.setUp()
     setMetroEnabled(null)
-    addMetroRuntimeLibrary()
+    module.addMetroRuntimeLibrary()
   }
 
   fun testMarksMetroDeclarationsAsImplicitlyUsed() {
@@ -58,7 +54,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
-    setMetroOptions(
+    project.setMetroOptions(
       "custom-binds" to "test/CustomBinds",
       "custom-contributes-binding" to "test/CustomContributesBinding",
       "custom-contributes-into-set" to "test/CustomContributesIntoCollection",
@@ -109,7 +105,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   fun testMarksContributionProviderDeclarationsAsImplicitlyUsedWhenConfigured() {
-    setMetroOptions(
+    project.setMetroOptions(
       "contributes-as-inject" to "false",
       "generate-contribution-providers" to "true",
     )
@@ -123,7 +119,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   fun testMarksDaggerInteropDeclarationsAsImplicitlyUsedWhenConfigured() {
-    setMetroOptions("interop-include-dagger-annotations" to "true")
+    project.setMetroOptions("interop-include-dagger-annotations" to "true")
     myFixture.addFileToProject(
       "dagger/Annotations.kt",
       """
@@ -187,7 +183,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   fun testMarksCircuitInjectDeclarationsAsImplicitlyUsedWhenEnabled() {
-    setMetroOptions("enable-circuit-codegen" to "true")
+    project.setMetroOptions("enable-circuit-codegen" to "true")
 
     val declarations = circuitFileDeclarations()
 
@@ -347,7 +343,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
   }
 
   fun testUnusedDeclarationHighlightingRespectsCircuitInjectWhenEnabled() {
-    setMetroOptions("enable-circuit-codegen" to "true")
+    project.setMetroOptions("enable-circuit-codegen" to "true")
     myFixture.enableInspections(UnusedSymbolInspection())
     val declarations = circuitFileDeclarations()
     myFixture.configureFromExistingVirtualFile(declarations.first().containingFile.virtualFile)
@@ -463,35 +459,11 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     ) as KtFile
   }
 
-  private fun addMetroRuntimeLibrary() {
-    val runtimeJar = metroRuntimeJar()
-    ModuleRootModificationUtil.addModuleLibrary(
-      module,
-      "metro-runtime",
-      listOf(VfsUtil.getUrlForLibraryRoot(runtimeJar.toFile())),
-      emptyList(),
-    )
-  }
-
-  private fun metroRuntimeJar(): Path {
-    return System.getProperty("metroRuntime.classpath")
-      ?.split(File.pathSeparator)
-      ?.map { Path.of(it) }
-      ?.single {
-        val fileName = it.fileName.toString()
-        fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
-      } ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
-  }
-
   private fun setMetroEnabled(enabled: Boolean?) {
     if (enabled == null) {
-      setMetroOptions()
+      project.setMetroOptions()
     } else {
-      setMetroOptions("enabled" to enabled.toString())
+      project.setMetroOptions("enabled" to enabled.toString())
     }
-  }
-
-  private fun setMetroOptions(vararg options: Pair<String, String>) {
-    project.setMetroOptions(*options)
   }
 }
