@@ -5,9 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import androidx.collection.ScatterMap
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.Origins
-import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticBatch
-import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
 import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
@@ -21,27 +19,34 @@ import dev.zacsweers.metro.compiler.diagnostics.factory
 import dev.zacsweers.metro.compiler.diagnostics.invalidAssistedBindingDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.compiler.exitProcessing
-import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
-import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.getValue
+import dev.zacsweers.metro.compiler.graph.AssistedBindingKind
+import dev.zacsweers.metro.compiler.graph.BindingGraphValidator
+import dev.zacsweers.metro.compiler.graph.DiagnosticRoutes
 import dev.zacsweers.metro.compiler.graph.ErrorReporter
 import dev.zacsweers.metro.compiler.graph.GraphAdjacency
+import dev.zacsweers.metro.compiler.graph.GraphValidationIssue
 import dev.zacsweers.metro.compiler.graph.MissingBindingHints
+import dev.zacsweers.metro.compiler.graph.MultibindingKind
 import dev.zacsweers.metro.compiler.graph.MutableBindingGraph
-import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
+import dev.zacsweers.metro.compiler.graph.disambiguateIncompatibleScopes
+import dev.zacsweers.metro.compiler.graph.duplicateMapKeysDiagnostic
+import dev.zacsweers.metro.compiler.graph.emptyMultibindingDiagnostic
+import dev.zacsweers.metro.compiler.graph.incompatibleScopeDiagnostic
 import dev.zacsweers.metro.compiler.graph.partitionBySCCs
 import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
+import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
-import dev.zacsweers.metro.compiler.ir.MISSING_RUNTIME_COROUTINES_MESSAGE
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
@@ -53,7 +58,6 @@ import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.padForConsole
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
@@ -74,10 +78,6 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
-import org.jetbrains.kotlin.ir.declarations.IrFunction
-import org.jetbrains.kotlin.ir.declarations.IrProperty
-import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.declarations.IrValueParameter
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
@@ -98,6 +98,19 @@ import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
+
+private typealias IrMutableBindingGraph =
+  MutableBindingGraph<
+    IrType,
+    IrTypeKey,
+    IrContextualTypeKey,
+    IrBinding,
+    IrBindingStack.Entry,
+    IrBindingStack,
+  >
+
+private typealias IrDiagnosticRoutes =
+  DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>
 
 internal data class ChildGraphScopeInfo(
   val reachableKeys: Set<IrTypeKey>,
@@ -125,6 +138,9 @@ internal class IrBindingGraph(
   /** Whether reachable codegen needs APIs from the optional runtime-coroutines artifact. */
   private var requiresRuntimeCoroutines = false
 
+  /** Empty multibindings are identified during sealing and reported after topology is available. */
+  private val pendingEmptyMultibindings = mutableListOf<IrBinding.Multibinding>()
+
   /** Incremented whenever [realGraph] gains a binding before it is sealed. */
   private var graphGeneration = 0
 
@@ -140,6 +156,12 @@ internal class IrBindingGraph(
   /** Returns true if the binding for [typeKey] transitively requires a suspend context. */
   internal fun isTransitivelySuspend(typeKey: IrTypeKey): Boolean =
     typeKey in transitivelySuspendKeys
+
+  internal fun dependencyRequiresSuspend(contextKey: IrContextualTypeKey): Boolean {
+    if (!isTransitivelySuspend(contextKey.typeKey) || contextKey.isDeferrable) return false
+    val binding = realGraph.bindings[contextKey.typeKey] as? IrBinding.GraphDependency
+    return binding?.canPassThrough(contextKey) != true
+  }
 
   private fun recordRuntimeCoroutinesUse(contextKey: IrContextualTypeKey) {
     if (
@@ -281,7 +303,7 @@ internal class IrBindingGraph(
       _bindingLookup ?: reportCompilerBug("Tried to access bindingLookup after it's been cleared!")
 
   private val realGraph =
-    MutableBindingGraph<_, _, _, IrBinding, _, _>(
+    IrMutableBindingGraph(
       newBindingStack = newBindingStack,
       newBindingStackEntry = { contextKey, callingBinding, roots ->
         if (callingBinding == null) {
@@ -500,7 +522,7 @@ internal class IrBindingGraph(
       deferredTypes.joinToString(separator = "\n")
     }
 
-    trace("check empty multibindings") { checkEmptyMultibindings(onError) }
+    trace("report empty multibindings") { reportEmptyMultibindings(onError) }
     trace("check for absent bindings") {
       check(!realGraph.bindings.any { _, v -> v is IrBinding.Absent }) {
         "Found absent bindings in the binding graph: ${dumpGraph("Absent bindings", short = true)}"
@@ -676,8 +698,10 @@ internal class IrBindingGraph(
     realGraph.reportDuplicateBindings(key, bindings, bindingStack)
   }
 
-  private fun checkEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
-    val multibindings = buildList {
+  private fun reportEmptyMultibindings(onError: (List<GraphError>) -> Unit) {
+    if (pendingEmptyMultibindings.isEmpty()) return
+
+    val graphMultibindings = buildList {
       realGraph.bindings.forEachValue { binding ->
         if (binding is IrBinding.Multibinding) {
           add(binding)
@@ -686,51 +710,35 @@ internal class IrBindingGraph(
     }
     // Get all registered multibindings for similarity checking
     val allMultibindings by memoize {
-      (multibindings + bindingLookup.getAvailableMultibindings().values).distinctBy { it.typeKey }
+      (graphMultibindings + bindingLookup.getAvailableMultibindings().values).distinctBy {
+        it.typeKey
+      }
     }
     val errors = mutableListOf<GraphError>()
-    for (multibinding in multibindings) {
-      if (!multibinding.allowEmpty && multibinding.sourceBindings.isEmpty()) {
-        val notes = buildList {
-          add(
-            Note.help(
-              "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
-            )
-          )
-          similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
+    for (multibinding in pendingEmptyMultibindings) {
+      val extraNotes = buildList {
+        similarMultibindingsNote(multibinding, allMultibindings)?.let(::add)
 
-          val elementType =
-            if (multibinding.isMap) {
-              multibinding.typeKey.requireMapValueType()
-            } else {
-              multibinding.typeKey.requireSetElementType()
-            }
-          functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
-        }
-        val diagnostic =
-          MetroDiagnostic(
-            id = MetroDiagnosticId.EMPTY_MULTIBINDING,
-            severity = MetroSeverity.ERROR,
-            title =
-              buildText {
-                append("Multibinding ")
-                append(multibinding.typeKey.toText())
-                append(" was unexpectedly empty")
-              },
-            notes = notes,
-          )
-        val declarationToReport =
-          if (multibinding.declaration?.isFakeOverride == true) {
-            multibinding.declaration!!
-              .overriddenSymbolsSequence()
-              .firstOrNull { !it.owner.isFakeOverride }
-              ?.owner
+        val elementType =
+          if (multibinding.isMap) {
+            multibinding.typeKey.requireMapValueType()
           } else {
-            multibinding.declaration
+            multibinding.typeKey.requireSetElementType()
           }
-        errors +=
-          GraphError(declarationToReport, render(diagnostic), MetroDiagnostics.EMPTY_MULTIBINDING)
+        functionProviderMigrationHint(elementType)?.let { add(Note.help(it)) }
       }
+      val diagnostic = emptyMultibindingDiagnostic(multibinding.typeKey, extraNotes)
+      val declarationToReport =
+        if (multibinding.declaration?.isFakeOverride == true) {
+          multibinding.declaration!!
+            .overriddenSymbolsSequence()
+            .firstOrNull { !it.owner.isFakeOverride }
+            ?.owner
+        } else {
+          multibinding.declaration
+        }
+      errors +=
+        GraphError(declarationToReport, render(diagnostic), MetroDiagnostics.EMPTY_MULTIBINDING)
     }
     if (errors.isNotEmpty()) {
       onError(errors)
@@ -1086,30 +1094,6 @@ internal class IrBindingGraph(
     }
   }
 
-  /**
-   * We always want to report the original declaration for overridable nodes, as fake overrides
-   * won't necessarily have source that is reportable.
-   */
-  @Suppress("UNCHECKED_CAST")
-  private fun <T : IrDeclaration> T.originalDeclarationIfOverride(): T {
-    return when (this) {
-      is IrValueParameter -> {
-        val index = indexInParameters
-        // Need to check if the parent is a fakeOverride function or property setter
-        val parent = parent.expectAs<IrFunction>()
-        val originalParent = parent.originalDeclarationIfOverride()
-        originalParent.parameters[index] as T
-      }
-      is IrSimpleFunction if isFakeOverride -> {
-        overriddenSymbolsSequence().last().owner as T
-      }
-      is IrProperty if isFakeOverride -> {
-        overriddenSymbolsSequence().last().owner as T
-      }
-      else -> this
-    }
-  }
-
   private fun validateBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
@@ -1118,10 +1102,45 @@ internal class IrBindingGraph(
   ) {
     val rootsByTypeKey = roots.mapKeys { it.key.typeKey }
     val diagnosticRoutes = DiagnosticRoutes(roots, adjacency.forward)
+    val structuralValidator =
+      BindingGraphValidator(
+        bindings = bindings,
+        graphScopes = node.scopes,
+        scopeOf = { it.scope },
+        assistedKindOf = { binding ->
+          when {
+            binding is IrBinding.ConstructorInjected && binding.isAssisted ->
+              AssistedBindingKind.TARGET
+            binding is IrBinding.AssistedFactory -> AssistedBindingKind.FACTORY
+            else -> null
+          }
+        },
+        multibindingKindOf = { binding ->
+          val multibinding = binding as? IrBinding.Multibinding
+          if (multibinding == null) {
+            null
+          } else if (multibinding.isMap) {
+            MultibindingKind.MAP
+          } else {
+            MultibindingKind.SET
+          }
+        },
+        multibindingAllowsEmpty = { (it as IrBinding.Multibinding).allowEmpty },
+        multibindingSourceKeys = { (it as IrBinding.Multibinding).sourceBindings },
+        isMapContribution = { it is IrBinding.BindingWithAnnotations },
+        mapKeyOf = { (it as IrBinding.BindingWithAnnotations).annotations.mapKey },
+        rootKeys = rootsByTypeKey.keys,
+        reverseAdjacency = adjacency.reverse,
+      )
+    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>) -> Unit =
+      { issue ->
+        reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
+      }
+    val suspendProvidersEnabled = metroContext.options.enableSuspendProviders
     var hasDirectSuspendBinding = false
     var hasDisabledSuspendProviderUse = false
     bindings.forEachValue { binding ->
-      if (metroContext.options.enableSuspendProviders) {
+      if (suspendProvidersEnabled) {
         if (binding.isSuspend) {
           hasDirectSuspendBinding = true
         }
@@ -1131,13 +1150,12 @@ internal class IrBindingGraph(
         val hasSyntheticInjectedFunctionDependencies =
           binding is IrBinding.ConstructorInjected && binding.type.injectedFunctionOrNull() != null
         val bindingUsesSuspendWrapper =
-          binding.containsSuspendWrapperUse() || binding.contextualTypeKey.containsSuspendWrapper()
+          binding.containsSuspendWrapperUse() ||
+            binding.contextualTypeKey.wrappedType.containsSuspendWrapper()
         val dependencyUsesSuspendWrapper =
           !hasSyntheticInjectedFunctionDependencies &&
-            binding.dependencies.any { it.containsSuspendWrapper() }
-        val usesSuspendProvider =
-          binding.isSuspend || bindingUsesSuspendWrapper || dependencyUsesSuspendWrapper
-        if (usesSuspendProvider) {
+            binding.dependencies.any { it.wrappedType.containsSuspendWrapper() }
+        if (binding.isSuspend || bindingUsesSuspendWrapper || dependencyUsesSuspendWrapper) {
           hasDisabledSuspendProviderUse = true
         }
       }
@@ -1145,7 +1163,7 @@ internal class IrBindingGraph(
       // per-binding SuspendLazy scan (injectedFunctionUsesSuspendLazy does symbol lookups).
       if (
         !requiresRuntimeCoroutines &&
-          metroContext.options.enableSuspendProviders &&
+          suspendProvidersEnabled &&
           binding.typeKey in adjacency.forward
       ) {
         val hasSuspendLazyDependency =
@@ -1158,20 +1176,53 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      checkScope(binding, stack, diagnosticRoutes)
-      validateMultibindings(binding, bindings, diagnosticRoutes)
-      validateAssistedInjection(binding, bindings, rootsByTypeKey, adjacency.reverse)
+      structuralValidator.validate(binding, reportIssue)
     }
-    if (!metroContext.options.enableSuspendProviders) {
+    if (!suspendProvidersEnabled) {
       for ((contextKey, metroFunction) in node.accessors) {
-        val isSuspendAccessor = metroFunction.ir.isSuspend
-        if (!isSuspendAccessor && !contextKey.containsSuspendWrapper()) continue
-        hasDisabledSuspendProviderUse = true
+        if (metroFunction.ir.isSuspend || contextKey.wrappedType.containsSuspendWrapper()) {
+          hasDisabledSuspendProviderUse = true
+        }
       }
       if (hasDisabledSuspendProviderUse) reportSuspendProvidersNotEnabled()
+      return
     }
-    if (metroContext.options.enableSuspendProviders && hasDirectSuspendBinding) {
+    if (hasDirectSuspendBinding) {
       validateSuspendBindings(bindings, roots, adjacency)
+    }
+  }
+
+  private fun reportStructuralIssue(
+    issue: GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
+    stack: IrBindingStack,
+    diagnosticRoutes: IrDiagnosticRoutes,
+    roots: Map<IrTypeKey, IrBindingStack.Entry>,
+  ) {
+    when (issue) {
+      is GraphValidationIssue.IncompatibleScope ->
+        reportIncompatibleScope(issue.binding, issue.bindingScope, stack, diagnosticRoutes)
+      is GraphValidationIssue.EmptyMultibinding ->
+        pendingEmptyMultibindings +=
+          checkNotNull(issue.binding as? IrBinding.Multibinding) {
+            "Only multibindings can produce empty multibinding issues"
+          }
+      is GraphValidationIssue.DuplicateMapKey ->
+        reportDuplicateMapKey(
+          checkNotNull(issue.multibinding as? IrBinding.Multibinding) {
+            "Only multibindings can produce duplicate map key issues"
+          },
+          issue.mapKey,
+          issue.contributions,
+          diagnosticRoutes,
+        )
+      is GraphValidationIssue.InvalidAssistedInjection ->
+        reportInvalidAssistedInjection(
+          checkNotNull(issue.binding as? IrBinding.ConstructorInjected) {
+            "Only assisted constructor bindings can produce invalid assisted injection issues"
+          },
+          issue.requestingBinding,
+          roots,
+        )
     }
   }
 
@@ -1181,34 +1232,9 @@ internal class IrBindingGraph(
     // rather than a source-less upstream parameter.
     reportError(
       node.sourceGraph,
-      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] $SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE",
+      "[${MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.fullId}] ${SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED}",
       MetroDiagnosticId.SUSPEND_PROVIDERS_NOT_ENABLED.factory,
     )
-  }
-
-  /** Checks source parameter metadata that may have been compiled with a different option value. */
-  private fun IrBinding.containsSuspendWrapperUse(): Boolean {
-    if (this is IrBinding.ConstructorInjected) {
-      val injectedFunction = type.injectedFunctionOrNull()?.owner
-      if (injectedFunction != null) {
-        return injectedFunction.parameters().nonDispatchParameters.any {
-          !it.isAssisted && it.contextualTypeKey.containsSuspendWrapper()
-        }
-      }
-    }
-    val sourceParameters =
-      if (this is IrBinding.AssistedFactory) {
-        targetBinding.parameters.allParameters
-      } else {
-        parameters.allParameters
-      }
-    return sourceParameters.any {
-      !it.isAssisted && it.contextualTypeKey.containsSuspendWrapper()
-    }
-  }
-
-  private fun IrContextualTypeKey.containsSuspendWrapper(): Boolean {
-    return wrappedType.containsSuspendWrapper()
   }
 
   /**
@@ -1222,478 +1248,30 @@ internal class IrBindingGraph(
     roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
     adjacency: GraphAdjacency<IrTypeKey>,
   ) {
-    // Step 1: Compute the set of type keys that transitively require a suspend context.
-    val allKeys = mutableSetOf<IrTypeKey>()
-    bindings.forEachKey(allKeys::add)
-    val suspendSet = SuspendBindingAnalysis(bindings::get).analyze(allKeys)
-
-    // If no suspend bindings, nothing to validate
-    if (suspendSet.isEmpty()) {
-      transitivelySuspendKeys = emptySet()
-      return
-    }
-
-    transitivelySuspendKeys = suspendSet
-
-    // Step 2: Multibinding aggregates over suspend elements. Aggregation code (buildSet/buildMap
-    // getters, Map*Factory invokes) is non-suspend and can't await element initialization, so the
-    // supported consumption of a suspend multibinding is a deferred-value map form:
-    // `Map<K, suspend () -> V>` or `Map<K, SuspendProvider<V>>`. Provider-valued set forms are
-    // unsupported, as they are for ordinary Provider bindings.
-    val suspendMultibindingKeys = mutableSetOf<IrTypeKey>()
-    bindings.forEachValue { binding ->
-      if (
-        binding.typeKey in adjacency.forward && binding.isScoped() && binding.typeKey in suspendSet
-      ) {
-        requiresRuntimeCoroutines = true
-      }
-      if (binding !is IrBinding.Multibinding) return@forEachValue
-      if (binding.typeKey !in suspendSet) return@forEachValue
-      suspendMultibindingKeys += binding.typeKey
-
-      val firstSuspendElement =
-        binding.dependencies.firstOrNull { it.typeKey in suspendSet } ?: return@forEachValue
-
-      fun reportUnsupportedConsumption(
-        element: IrDeclarationWithName,
-        head: IrBindingStack.Entry,
-      ) {
-        val typeRender = binding.typeKey.render(short = true)
-        val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendElement.typeKey, head)
-        val message = buildString {
-          appendLine(
-            if (binding.isSet) {
-              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly."
-            } else {
-              val (keyType, valueType) =
-                binding.typeKey.type.requireSimpleType().arguments.map {
-                  it.typeOrFail.render(short = true)
-                }
-              "[${MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.fullId}] $typeRender aggregates suspend bindings and must be consumed as `Map<$keyType, suspend () -> $valueType>` so each value is initialized only when its provider is invoked."
-            }
-          )
-          appendLine()
-          appendLine("Trace:")
-          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-        }
-        reportError(
-          element.originalDeclarationIfOverride(),
-          message,
-          MetroDiagnosticId.MULTIBINDING_OVER_SUSPEND_BINDINGS.factory,
+    val validation =
+      IrSuspendBindingValidator(
+          metroContext = metroContext,
+          node = node,
+          bindings = bindings,
+          roots = roots,
+          adjacency = adjacency,
+          runtimeCoroutinesAlreadyRequired = requiresRuntimeCoroutines,
+          report = { candidates, message, factory -> reportError(candidates, message, factory) },
         )
-      }
-
-      // Roots consuming this multibinding
-      for ((contextKey, _) in roots) {
-        if (contextKey.typeKey != binding.typeKey) continue
-        if (!binding.isSet && contextKey.isMapSuspendProvider) continue
-        val accessor =
-          node.accessors.find { it.contextKey == contextKey }
-            ?: node.accessors.find { it.contextKey.typeKey == contextKey.typeKey }
-            ?: continue
-        val head =
-          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
-            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-        reportUnsupportedConsumption(
-          accessor.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>(),
-          head,
-        )
-      }
-
-      // Dependency edges consuming this multibinding
-      bindings.forEachValue inner@{ consumer ->
-        if (consumer is IrBinding.AssistedFactory) return@inner
-        for (dep in consumer.dependencies) {
-          if (dep.typeKey != binding.typeKey) continue
-          if (!binding.isSet && dep.isMapSuspendProvider) continue
-          val parameterDeclaration =
-            consumer.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
-          val element = parameterDeclaration ?: consumer.reportableDeclaration ?: continue
-          val head =
-            bindingStackEntryForDependency(consumer, dep, dep.typeKey)
-              .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-          reportUnsupportedConsumption(element, head)
-        }
-      }
-    }
-
-    // Step 3: Validate accessors. Iterate the accessors themselves (not the deduped roots map)
-    // so multiple accessors sharing a contextual key are each validated.
-    for (accessor in node.accessors) {
-      val contextKey = accessor.contextKey
-      if (contextKey.typeKey !in suspendSet) continue
-      val accessorIsSuspend = accessor.metroFunction.ir.isSuspend
-
-      // Suspend multibindings are reported by step 2 with a more specific message
-      if (contextKey.typeKey in suspendMultibindingKeys) continue
-
-      // An included graph can expose the exact wrapper value synchronously. Returning that value
-      // does not require flattening its wrapper stack to the canonical binding.
-      if (contextKey.isValidSuspendBoundary(bindings)) continue
-
-      // Resolve to the property (if it's a getter) so the diagnostic lands on the
-      // property declaration, then walk fake overrides back to the original interface
-      // declaration since the accessor IR is typically the implementation graph's override.
-      val accessorDeclaration =
-        accessor.metroFunction.ir.propertyIfAccessorCompat.expectAs<IrDeclarationWithName>()
-
-      val typeRender = contextKey.typeKey.render(short = true)
-      val deferredFormRender = suspendFunctionRender(typeRender)
-
-      // A synchronous wrapper nearest the bound value cannot await a suspend binding, regardless
-      // of what outer wrappers surround it or whether the accessor itself is suspend.
-      val blockingWrapper = contextKey.lowestSynchronousWrapperName()
-      if (blockingWrapper != null) {
-        val head =
-          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
-            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
-        val replacement =
-          if (blockingWrapper == "Provider") {
-            "`$deferredFormRender`"
-          } else {
-            "`SuspendLazy<$typeRender>`"
-          }
-        val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
-        val message = buildString {
-          appendLine(
-            "[${diagnosticId.fullId}] Cannot access suspend binding '$typeRender' ${contextKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
-          )
-          appendLine()
-          appendLine("Trace:")
-          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-        }
-        reportError(
-          accessorDeclaration.originalDeclarationIfOverride(),
-          message,
-          diagnosticId.factory,
-        )
-        continue
-      }
-
-      if (!accessorIsSuspend && !contextKey.isSuspendCapableBoundary) {
-        val head =
-          IrBindingStack.Entry.requestedAt(contextKey, accessor.metroFunction.ir)
-            .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-        val trace = buildSuspendTrace(bindings, suspendSet, contextKey.typeKey, head)
-        val message = buildString {
-          appendLine(
-            "[${MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.fullId}] $typeRender bindings must be a suspend function or $deferredFormRender because it depends on suspend bindings and requires a suspend context."
-          )
-          appendLine()
-          appendLine("Trace:")
-          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-          appendLine()
-          appendLine("Either:")
-          appendLine(
-            "  - Mark this accessor as `suspend fun` so it can await suspend dependencies, or"
-          )
-          append("  - Make the return type `$deferredFormRender`.")
-        }
-        reportError(
-          accessorDeclaration.originalDeclarationIfOverride(),
-          message,
-          MetroDiagnosticId.SUSPEND_BINDING_FROM_NON_SUSPEND_ACCESSOR.factory,
-        )
-      }
-    }
-
-    // Step 4: Suspend member injection is unsupported. MembersInjector.injectMembers and injector
-    // functions cannot await suspend bindings, and graph-local suspend factories do not run
-    // ordinary member injection after construction.
-    bindings.forEachValue { binding ->
-      if (binding.typeKey !in suspendSet) return@forEachValue
-      val (firstSuspendDep, subject) =
-        when (binding) {
-          is IrBinding.MembersInjected -> {
-            val dep =
-              binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
-              } ?: return@forEachValue
-            dep to "'${binding.targetClassId.asFqNameString()}' member injection"
-          }
-          is IrBinding.ConstructorInjected if binding.injectedMembers.isNotEmpty() -> {
-            // A member-injecting class must not be suspend at all. Suspend construction routes
-            // through nested suspend factories, which do not perform member injection. The
-            // Suspend initialization may be required by a member or constructor dependency.
-            val anySuspendDep =
-              binding.dependencies.firstOrNull { dep ->
-                dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
-              } ?: return@forEachValue
-            // The MembersInjected binding reports suspend member dependencies directly. Only the
-            // constructor-specific case remains here: construction requires suspension, so its
-            // otherwise synchronous member injection would be skipped.
-            val memberBinding = bindings[anySuspendDep.typeKey] as? IrBinding.MembersInjected
-            if (memberBinding != null) return@forEachValue
-            anySuspendDep to "'${binding.type.kotlinFqName}' has @Inject members and"
-          }
-          else -> return@forEachValue
-        }
-      val depRender = firstSuspendDep.typeKey.render(short = true)
-      val head =
-        bindingStackEntryForDependency(binding, firstSuspendDep, firstSuspendDep.typeKey)
-          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-      val trace = buildSuspendTrace(bindings, suspendSet, firstSuspendDep.typeKey, head)
-      val message = buildString {
-        appendLine(
-          "[${MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING.fullId}] $subject depends on suspend binding '$depRender', but member injection cannot combine with suspend bindings. Defer the dependency as `${suspendFunctionRender(depRender)}` (or `SuspendLazy<$depRender>`) instead."
-        )
-        appendLine()
-        appendLine("Trace:")
-        appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-      }
-      val reportCandidates =
-        when (binding) {
-          is IrBinding.MembersInjected ->
-            sequenceOf(
-              binding.parameterFor(firstSuspendDep.typeKey)?.ir?.originalDeclarationIfOverride(),
-              node.sourceGraph,
-            )
-          is IrBinding.ConstructorInjected ->
-            binding.injectedMembers
-              .asSequence()
-              .mapNotNull { bindings[it.typeKey] as? IrBinding.MembersInjected }
-              .flatMap { it.parameters.nonDispatchParameters.asSequence() }
-              .filter { it.isMember }
-              .mapNotNull { it.ir?.originalDeclarationIfOverride() }
-              .plus(node.sourceGraph)
-          else -> return@forEachValue
-        }
-      reportError(
-        reportCandidates,
-        message,
-        MetroDiagnosticId.MEMBER_INJECTION_OVER_SUSPEND_BINDING.factory,
-      )
-    }
-
-    // Step 5: Validate wrapper stacks whose innermost wrapper is Provider or Lazy over a suspend
-    // binding.
-    bindings.forEachValue { binding ->
-      // Assisted factories' dependencies are synthetically Provider-wrapped for cycle detection;
-      // their suspend handling is validated in step 6 below.
-      if (binding is IrBinding.AssistedFactory) return@forEachValue
-      for (dep in binding.dependencies) {
-        if (dep.typeKey !in suspendSet) continue
-        // Suspend multibindings are reported by step 2 with a more specific message
-        if (dep.typeKey in suspendMultibindingKeys) continue
-        if (dep.isValidSuspendBoundary(bindings)) continue
-
-        // Prefer landing on the specific parameter that wraps the suspend binding rather
-        // than the enclosing function/property declaration.
-        val parameterDeclaration =
-          binding.parameters.allParameters.firstOrNull { it.contextualTypeKey == dep }?.ir
-            ?: binding.parameters.allParameters.find { it.typeKey == dep.typeKey }?.ir
-
-        val blockingWrapper = dep.lowestSynchronousWrapperName()
-        if (blockingWrapper != null) {
-          val depRender = dep.typeKey.render(short = true)
-          val replacement =
-            if (blockingWrapper == "Provider") {
-              "`${suspendFunctionRender(depRender)}`"
-            } else {
-              "`SuspendLazy<$depRender>`"
-            }
-          val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
-          val message = buildString {
-            appendLine(
-              "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${dep.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
-            )
-            appendLine()
-            appendLine("Trace:")
-            val head =
-              bindingStackEntryForDependency(binding, dep, dep.typeKey)
-                .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-            val trace = buildSuspendTrace(bindings, suspendSet, dep.typeKey, head)
-            appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-          }
-          val element = parameterDeclaration ?: binding.reportableDeclaration ?: continue
-          reportError(element.originalDeclarationIfOverride(), message, diagnosticId.factory)
-        }
-      }
-    }
-
-    // Step 6: An assisted factory whose target consumes suspend bindings (unwrapped) must declare
-    // its SAM as `suspend` so the generated impl can await them. Provider/Lazy-wrapped suspend
-    // deps on the target are also validated here because the target binding is not in the graph
-    // and step 4 never sees it.
-    bindings.forEachValue { binding ->
-      if (binding !is IrBinding.AssistedFactory) return@forEachValue
-      val target = binding.targetBinding
-      for (param in target.parameters.nonDispatchParameters) {
-        if (param.isAssisted) continue
-        val ctxKey = param.contextualTypeKey
-        if (ctxKey.typeKey !in suspendSet) continue
-        if (ctxKey.isValidSuspendBoundary(bindings)) continue
-        val blockingWrapper = ctxKey.lowestSynchronousWrapperName() ?: continue
-        val depRender = ctxKey.typeKey.render(short = true)
-        val replacement =
-          if (blockingWrapper == "Provider") {
-            "`${suspendFunctionRender(depRender)}`"
-          } else {
-            "`SuspendLazy<$depRender>`"
-          }
-        val element = param.ir ?: target.reportableDeclaration
-        val diagnosticId = MetroDiagnosticId.suspendBindingWrappedIn(blockingWrapper)
-        val message = buildString {
-          appendLine(
-            "[${diagnosticId.fullId}] Cannot depend on suspend binding '$depRender' ${ctxKey.blockingWrapperPhrase(blockingWrapper)}. Use $replacement instead."
-          )
-          appendLine()
-          appendLine("Trace:")
-          val head =
-            bindingStackEntryForDependency(target, ctxKey, ctxKey.typeKey)
-              .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-          val trace = buildSuspendTrace(bindings, suspendSet, ctxKey.typeKey, head)
-          appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-        }
-        reportError(
-          element.originalDeclarationIfOverride(),
-          message,
-          diagnosticId.factory,
-        )
-      }
-
-      if (binding.function.isSuspend) return@forEachValue
-      val blockingDep =
-        target.parameters.nonDispatchParameters.firstOrNull { param ->
-          !param.isAssisted &&
-            param.contextualTypeKey.propagatesSuspend(
-              { it in suspendSet },
-              { key -> bindings[key] },
-            )
-        } ?: return@forEachValue
-      val head =
-        bindingStackEntryForDependency(target, blockingDep.contextualTypeKey, blockingDep.typeKey)
-          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-      val trace = buildSuspendTrace(bindings, suspendSet, blockingDep.typeKey, head)
-      val message = buildString {
-        appendLine(
-          "[${MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED.fullId}] '${binding.type.kotlinFqName}' creates '${target.type.kotlinFqName}', which depends on suspend bindings. Declare '${binding.function.name}' as a suspend function so it can await them."
-        )
-        appendLine()
-        appendLine("Trace:")
-        appendBindingStackEntries(node.sourceGraph.kotlinFqName, trace)
-      }
-      reportError(
-        binding.function.originalDeclarationIfOverride(),
-        message,
-        MetroDiagnosticId.ASSISTED_FACTORY_SUSPEND_REQUIRED.factory,
-      )
-    }
-  }
-
-  /**
-   * Renders the recommended deferred-suspend wrapper for a type. Prefers `suspend () -> T` when
-   * function-providers are enabled (the default and idiomatic form), falls back to
-   * `SuspendProvider<T>` otherwise.
-   */
-  private fun suspendFunctionRender(typeRender: String): String {
-    return if (metroContext.options.enableFunctionProviders) {
-      "suspend () -> $typeRender"
-    } else {
-      "SuspendProvider<$typeRender>"
-    }
-  }
-
-  /**
-   * Builds a list of [IrBindingStack.Entry] tracing dep edges from [start] to a directly-suspend
-   * source binding. Each step uses [bindingStackEntryForDependency] (which produces an `injectedAt`
-   * entry) and the trace ends with a `providedAt` entry naming the suspend function. The
-   * caller-supplied [head] is placed at the top of the trace. Each non-suspend step is annotated
-   * with [NEEDS_SUSPEND_SUPPORT] so the user can see exactly which declarations stand in the way.
-   */
-  private fun buildSuspendTrace(
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
-    suspendSet: Set<IrTypeKey>,
-    start: IrTypeKey,
-    head: IrBindingStack.Entry,
-  ): List<IrBindingStack.Entry> {
-    val result = mutableListOf(head)
-    val visited = mutableSetOf<IrTypeKey>()
-    var currentKey: IrTypeKey? = start
-    while (currentKey != null && visited.add(currentKey)) {
-      val current = bindings[currentKey] ?: break
-      if (current.isSuspend) {
-        // For a suspend source, emit a `providedAt` entry naming the function and stop. No
-        // annotation: the function is already suspend, it isn't blocking the chain.
-        val fn = (current as? IrBinding.Provided)?.providerFactory?.function
-        if (fn != null) {
-          result += IrBindingStack.Entry.providedAt(current.contextualTypeKey, fn)
-        }
-        break
-      }
-      val nextDep =
-        current.dependencies.firstOrNull { dep ->
-          dep.typeKey in suspendSet && !dep.stopsSuspendPropagation { key -> bindings[key] }
-        } ?: break
-      result +=
-        bindingStackEntryForDependency(current, nextDep, nextDep.typeKey)
-          .withAnnotation(NEEDS_SUSPEND_SUPPORT)
-      currentKey = nextDep.typeKey
-    }
-    return result
-  }
-
-  private companion object {
-    private const val NEEDS_SUSPEND_SUPPORT = "❌ needs suspend support"
-  }
-
-  /** Returns the synchronous wrapper nearest the bound value, if there is one. */
-  private fun IrContextualTypeKey.lowestSynchronousWrapperName(): String? {
-    if (wrappedType.usesSuspendProvider() != false) return null
-    return when (wrappedType.innermostWrapper()) {
-      is WrappedType.Provider -> "Provider"
-      is WrappedType.Lazy -> "Lazy"
-      else -> reportCompilerBug("Expected an innermost synchronous wrapper for $this")
-    }
-  }
-
-  private fun IrContextualTypeKey.blockingWrapperPhrase(wrapper: String): String {
-    val hasOuterWrapper =
-      when (val type = wrappedType) {
-        is WrappedType.Canonical,
-        is WrappedType.Map -> false
-        is WrappedType.Provider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendProvider ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.Lazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-        is WrappedType.SuspendLazy ->
-          type.innerType !is WrappedType.Canonical && type.innerType !is WrappedType.Map
-      }
-    return if (hasOuterWrapper) {
-      "because the wrapper nearest it is $wrapper"
-    } else {
-      "via $wrapper"
-    }
-  }
-
-  private fun IrContextualTypeKey.isValidSuspendBoundary(
-    bindings: ScatterMap<IrTypeKey, IrBinding>
-  ): Boolean {
-    if (isSuspendCapableBoundary) return true
-    return (bindings[typeKey] as? IrBinding.GraphDependency)?.canPassThrough(this) == true
-  }
-
-  private fun IrBinding.injectedFunctionUsesSuspendLazy(): Boolean {
-    val injectedClass = (this as? IrBinding.ConstructorInjected)?.type ?: return false
-    val injectedFunction = injectedClass.injectedFunctionOrNull()?.owner ?: return false
-    return injectedFunction.parameters().nonDispatchParameters.any {
-      !it.isAssisted && it.contextualTypeKey.wrappedType.containsSuspendLazy()
-    }
+        .validate()
+    transitivelySuspendKeys = validation.suspendKeys
+    requiresRuntimeCoroutines = validation.requiresRuntimeCoroutines
   }
 
   private fun validateRuntimeCoroutinesAvailability() {
-    if (!requiresRuntimeCoroutines) return
-    if (coroutinesRuntimeAvailability.isAvailable) return
+    if (!requiresRuntimeCoroutines || coroutinesRuntimeAvailability.isAvailable) return
     val tag = "[${MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.fullId}]"
     val trigger = describeRuntimeCoroutinesTrigger()
     val message =
       if (trigger == null) {
-        "$tag $MISSING_RUNTIME_COROUTINES_MESSAGE"
+        "$tag ${SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX}"
       } else {
-        "$tag $trigger $MISSING_RUNTIME_COROUTINES_MESSAGE"
+        "$tag $trigger ${SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX}"
       }
     reportError(node.sourceGraph, message, MetroDiagnosticId.MISSING_RUNTIME_COROUTINES.factory)
   }
@@ -1726,11 +1304,11 @@ internal class IrBindingGraph(
     }
     if (scopedSuspendKeys.isNotEmpty()) {
       val key = scopedSuspendKeys.map { it.render(short = true) }.sorted().first()
-      return "The scoped suspend binding `$key` caches its awaited value, which needs the optional runtime-coroutines artifact."
+      return SuspendDiagnosticMessages.scopedSuspendRuntimeTrigger(key)
     }
     if (suspendLazyKeys.isNotEmpty()) {
       val key = suspendLazyKeys.map { it.render(short = true) }.sorted().first()
-      return "`$key` requests a `SuspendLazy` value, which needs the optional runtime-coroutines artifact."
+      return SuspendDiagnosticMessages.suspendLazyRuntimeTrigger("`$key`")
     }
     return null
   }
@@ -1753,48 +1331,30 @@ internal class IrBindingGraph(
     metroContext.reportCompat(candidates, factory, message.trimEnd())
   }
 
-  // Check scoping compatibility
-  private fun checkScope(
+  // Check scoping compatibility.
+  private fun reportIncompatibleScope(
     binding: IrBinding,
+    bindingScope: IrAnnotation,
     stack: IrBindingStack,
-    diagnosticRoutes: DiagnosticRoutes,
+    diagnosticRoutes: IrDiagnosticRoutes,
   ) {
-    val bindingScope = binding.scope ?: return
-    // Our binding doesn't have a scope... so we don't care about scopes
-    // Our binding does have a scope... and it's compatible with our node yay
-    if (bindingScope in node.scopes) return
+    // Binding and graph scopes can share a toString, so disambiguate colliding renders.
+    val renders =
+      disambiguateIncompatibleScopes(
+        bindingScope = bindingScope,
+        graphScopes = node.scopes,
+        shortRender = { "$it" },
+        fullRender = { it.render(short = false) },
+      )
 
-    // Error if there are mismatched scopes
-
-    // Does bindingScope have the same toString? Annoying! Let's disambiguate
-    val bindingScopeStr =
-      "$bindingScope".takeIf { it !in node.scopes.map { "$it" } }
-        ?: bindingScope.render(short = false)
-
-    val nodeScopesStrs =
-      node.scopes.map { "$it".takeIf { it != "$bindingScope" } ?: it.render(short = false) }
-
-    val isUnscoped = node.scopes.isEmpty()
     val declarationToReport = node.sourceGraph.sourceGraphIfMetroGraph
     val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes, stack)
     stack.push(
       IrBindingStack.Entry.simpleTypeRef(
         binding.contextualTypeKey,
-        usage = "(scoped to '$bindingScopeStr')",
+        usage = "(scoped to '${renders.bindingScope}')",
       )
     )
-    val title = buildText {
-      append(node.sourceGraph.kotlinFqName.asString(), Style.EMPHASIS)
-      if (isUnscoped) {
-        // Unscoped graph but scoped binding
-        append(" (unscoped) may not reference scoped bindings")
-      } else {
-        // Scope mismatch
-        append(
-          " (scopes ${nodeScopesStrs.joinToString { "'$it'" }}) may not reference bindings from different scopes"
-        )
-      }
-    }
 
     val notes = buildList {
       if (node.sourceGraph.origin == Origins.GeneratedGraphExtension) {
@@ -1816,11 +1376,10 @@ internal class IrBindingGraph(
     }
 
     val diagnostic =
-      MetroDiagnostic(
-        id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
-        severity = MetroSeverity.ERROR,
-        title = title,
-        sections = listOfNotNull(stack.toTraceSection()),
+      incompatibleScopeDiagnostic(
+        graphName = node.sourceGraph.kotlinFqName.asString(),
+        renders = renders,
+        trace = stack.toTraceSection(),
         notes = notes,
       )
     collectDiagnostic(diagnostic, declarationToReport)
@@ -1828,7 +1387,7 @@ internal class IrBindingGraph(
 
   private fun buildStackToRoot(
     typeKey: IrTypeKey,
-    diagnosticRoutes: DiagnosticRoutes,
+    diagnosticRoutes: IrDiagnosticRoutes,
     stack: IrBindingStack = newBindingStack(),
   ): IrBindingStack {
     val backTrace =
@@ -1843,116 +1402,78 @@ internal class IrBindingGraph(
     return stack
   }
 
-  private fun validateMultibindings(
-    binding: IrBinding,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
-    diagnosticRoutes: DiagnosticRoutes,
+  private fun reportDuplicateMapKey(
+    binding: IrBinding.Multibinding,
+    mapKey: IrAnnotation?,
+    contributions: List<IrBinding>,
+    diagnosticRoutes: IrDiagnosticRoutes,
   ) {
-    if (binding !is IrBinding.Multibinding) return
-    if (!binding.isMap) return
-    val keysWithDupes =
-      binding.sourceBindings
-        .mapNotNull { bindings[it] }
-        .filterIsInstance<IrBinding.BindingWithAnnotations>()
-        .groupBy { it.annotations.mapKey }
-        .filterValues { it.size > 1 }
-
-    for ((mapKey, dupes) in keysWithDupes) {
-      if (mapKey == null) {
-        reportCompilerBug("Map key should not be null for map multibindings")
-      }
-
-      val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
-
-      val locationDiagnostics = dupes.map { dupe ->
-        dupe.renderLocationDiagnostic(
-          shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-          underlineTypeKey = false,
-        )
-      }
-      val locationItems = locationDiagnostics.map { it.toLocatedItem() }
-
-      val diagnostic =
-        MetroDiagnostic(
-          id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
-          severity = MetroSeverity.ERROR,
-          title =
-            buildText {
-              append(DiagnosticHeadlines.DUPLICATE_MAP_KEYS_PREFIX)
-              append(binding.typeKey.toText())
-            },
-          sections =
-            buildList {
-              add(
-                DiagnosticSection.Locations(
-                  header =
-                    textOf(
-                      "The following bindings contribute the same map key '${mapKey.render(short = false)}'"
-                    ),
-                  items = locationItems,
-                )
-              )
-              stack.toTraceSection()?.let(::add)
-            },
-          notes = locationDiagnostics.flatMap { it.notes }.distinct(),
-        )
-      report(diagnostic, stack)
+    if (mapKey == null) {
+      reportCompilerBug("Map key should not be null for map multibindings")
     }
+
+    val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
+
+    val locationDiagnostics = contributions.map { contribution ->
+      contribution.renderLocationDiagnostic(
+        shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+        underlineTypeKey = false,
+      )
+    }
+    val locationItems = locationDiagnostics.map { it.toLocatedItem() }
+
+    val diagnostic =
+      duplicateMapKeysDiagnostic(
+        typeKey = binding.typeKey,
+        mapKeyRender = mapKey.render(short = false),
+        locations = locationItems,
+        trace = stack.toTraceSection(),
+        extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+      )
+    report(diagnostic, stack)
   }
 
   // TODO can this check move to FIR injection sites?
-  private fun validateAssistedInjection(
-    binding: IrBinding,
-    bindings: ScatterMap<IrTypeKey, IrBinding>,
+  private fun reportInvalidAssistedInjection(
+    binding: IrBinding.ConstructorInjected,
+    requestingBinding: IrBinding?,
     roots: Map<IrTypeKey, IrBindingStack.Entry>,
-    reverseAdjacency: Map<IrTypeKey, Set<IrTypeKey>>,
   ) {
-    if (binding !is IrBinding.ConstructorInjected || !binding.isAssisted) return
+    val declaration =
+      requestingBinding
+        ?.parameters
+        ?.allParameters
+        ?.find { it.typeKey == binding.typeKey }
+        ?.ir
+        ?.takeIf {
+          val location = it.locationOrNull() ?: return@takeIf false
+          location.line != 0 || location.column != 0
+        } ?: requestingBinding?.reportableDeclaration ?: roots[binding.typeKey]?.declaration
 
-    fun reportInvalidBinding(declaration: IrDeclarationWithName?) {
-      // Look up the assisted factory as a hint
-      val assistedFactory =
-        bindings
-          .asMap()
-          .values
-          .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
-          ?.typeKey
-          // Check in the class itself for @AssistedFactory
-          ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
-            rawType.nestedClasses
-              .firstOrNull { nestedClass ->
-                nestedClass.isAnnotatedWithAny(
-                  metroContext.metroSymbols.classIds.assistedFactoryAnnotations
-                )
-              }
-              ?.let { IrTypeKey(it.defaultType) }
-          }
-      val diagnostic =
-        invalidAssistedBindingDiagnostic(
-          assistedType = binding.typeKey.toText(),
-          injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
-          assistedFactory = assistedFactory?.toText(),
-        )
-      collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
-    }
-
-    reverseAdjacency[binding.typeKey]?.let { dependents ->
-      for (dependentKey in dependents) {
-        val dependentBinding = bindings[dependentKey] ?: continue
-        if (dependentBinding !is IrBinding.AssistedFactory) {
-          reportInvalidBinding(
-            dependentBinding.parameters.allParameters
-              .find { it.typeKey == binding.typeKey }
-              ?.ir
-              ?.takeIf {
-                val location = it.locationOrNull() ?: return@takeIf false
-                location.line != 0 || location.column != 0
-              } ?: dependentBinding.reportableDeclaration
-          )
+    // Look up the assisted factory as a hint.
+    val assistedFactory =
+      realGraph.bindings
+        .asMap()
+        .values
+        .find { it is IrBinding.AssistedFactory && it.targetBinding.typeKey == binding.typeKey }
+        ?.typeKey
+        // Check in the class itself for @AssistedFactory
+        ?: binding.typeKey.type.rawTypeOrNull()?.let { rawType ->
+          rawType.nestedClasses
+            .firstOrNull { nestedClass ->
+              nestedClass.isAnnotatedWithAny(
+                metroContext.metroSymbols.classIds.assistedFactoryAnnotations
+              )
+            }
+            ?.let { IrTypeKey(it.defaultType) }
         }
-      }
-    }
-    roots[binding.typeKey]?.let { reportInvalidBinding(it.declaration) }
+    val diagnostic =
+      invalidAssistedBindingDiagnostic(
+        assistedType = binding.typeKey.toText(),
+        injectionSite = textOf("${declaration?.fqNameWhenAvailable}", Style.EMPHASIS),
+        assistedFactory = assistedFactory?.toText(),
+      )
+    collectDiagnostic(diagnostic, declaration ?: node.sourceGraph)
   }
 
   private fun Appendable.appendBinding(binding: IrBinding, short: Boolean, isNested: Boolean) {

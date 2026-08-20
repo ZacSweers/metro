@@ -6,7 +6,6 @@ import dev.zacsweers.metro.compiler.ClassIds
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.MetroFirAnnotation
-import dev.zacsweers.metro.compiler.fir.SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE
 import dev.zacsweers.metro.compiler.fir.additionalScopesArgument
 import dev.zacsweers.metro.compiler.fir.allAnnotations
 import dev.zacsweers.metro.compiler.fir.allScopeClassIds
@@ -30,6 +29,7 @@ import dev.zacsweers.metro.compiler.fir.toSymbolCompat
 import dev.zacsweers.metro.compiler.fir.validateApiDeclaration
 import dev.zacsweers.metro.compiler.fir.validateBindingRef
 import dev.zacsweers.metro.compiler.fir.validateInjectionSiteType
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.tracing.trace
@@ -258,7 +258,7 @@ internal object DependencyGraphChecker : FirClassChecker(MppCheckerKind.Common) 
           reporter.reportOn(
             if (isInherited) declaration.source else callable.source,
             MetroDiagnostics.SUSPEND_PROVIDERS_NOT_ENABLED,
-            SUSPEND_PROVIDERS_NOT_ENABLED_MESSAGE,
+            SuspendDiagnosticMessages.SUSPEND_PROVIDERS_NOT_ENABLED,
           )
           continue
         }

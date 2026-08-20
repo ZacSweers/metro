@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.fir.annotationsIn
 import dev.zacsweers.metro.compiler.fir.isExtensionGenerated
+import dev.zacsweers.metro.compiler.graph.SuspendDiagnosticMessages
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.ifNotEmpty
 import dev.zacsweers.metro.compiler.ir.parameters.Parameter
@@ -800,7 +801,7 @@ internal fun IrBuilderWithScope.typeAsProviderArgument(
     // Source transformers report the missing optional artifact on their original declaration.
     // Keep generating well-formed, unreachable IR so graph validation can collect its remaining
     // diagnostics and stop before code generation.
-    return stubExpression(MISSING_RUNTIME_COROUTINES_MESSAGE)
+    return stubExpression(SuspendDiagnosticMessages.MISSING_RUNTIME_COROUTINES_FIX)
   }
 
   val bindingType = bindingCode.type

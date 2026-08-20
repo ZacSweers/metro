@@ -1,25 +1,27 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.compiler.ir.graph
+package dev.zacsweers.metro.compiler.graph
 
 import dev.zacsweers.metro.compiler.calculateInitialCapacity
-import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
-import dev.zacsweers.metro.compiler.ir.IrTypeKey
 
 /** Indexes shortest routes from graph roots to bindings for diagnostic traces. */
-internal class DiagnosticRoutes(
-  private val roots: Map<IrContextualTypeKey, IrBindingStack.Entry>,
-  private val adjacency: Map<IrTypeKey, Set<IrTypeKey>>,
+public class DiagnosticRoutes<
+  Type : Any,
+  TypeKey : BaseTypeKey<Type, *, TypeKey>,
+  ContextualTypeKey : BaseContextualTypeKey<Type, TypeKey, ContextualTypeKey>,
+  Entry : BaseBindingStack.BaseEntry<Type, TypeKey, ContextualTypeKey>,
+>(
+  private val roots: Map<ContextualTypeKey, Entry>,
+  private val adjacency: Map<TypeKey, Set<TypeKey>>,
 ) {
-  private var parents: Map<IrTypeKey, IrTypeKey>? = null
-  private var rootEntries: Map<IrTypeKey, IrBindingStack.Entry>? = null
+  private var parents: Map<TypeKey, TypeKey>? = null
+  private var rootEntries: Map<TypeKey, Entry>? = null
 
   /** Returns stack entries from a root to [key], preserving the original root request. */
-  fun routeToRoot(
-    key: IrTypeKey,
-    createDependencyEntry:
-      (callingKey: IrTypeKey, dependencyKey: IrTypeKey) -> IrBindingStack.Entry,
-  ): List<IrBindingStack.Entry> {
+  public fun routeToRoot(
+    key: TypeKey,
+    createDependencyEntry: (callingKey: TypeKey, dependencyKey: TypeKey) -> Entry,
+  ): List<Entry> {
     // No need to walk through the graph without roots.
     if (roots.isEmpty()) return emptyList()
 
@@ -31,7 +33,7 @@ internal class DiagnosticRoutes(
     if (key !in indexedParents) return emptyList()
 
     // Walk backwards from this binding until its root is reached.
-    val path = ArrayList<IrTypeKey>()
+    val path = ArrayList<TypeKey>()
     var current = key
     var parent = indexedParents.getValue(current)
     while (parent != current) {
@@ -43,7 +45,7 @@ internal class DiagnosticRoutes(
 
     // Add entries root-first so pushing them preserves the existing binding stack order.
     val rootIndex = path.lastIndex
-    val result = ArrayList<IrBindingStack.Entry>(path.size)
+    val result = ArrayList<Entry>(path.size)
     result.add(checkNotNull(rootEntries).getValue(path[rootIndex]))
     for (index in rootIndex - 1 downTo 0) {
       result.add(createDependencyEntry(path[index + 1], path[index]))
@@ -53,10 +55,9 @@ internal class DiagnosticRoutes(
 
   /** Builds deterministic shortest paths from every graph root without recursion. */
   private fun buildIndex() {
-    val indexedParents = HashMap<IrTypeKey, IrTypeKey>(calculateInitialCapacity(adjacency.size))
-    val indexedRoots =
-      HashMap<IrTypeKey, IrBindingStack.Entry>(calculateInitialCapacity(roots.size))
-    val queue = ArrayDeque<IrTypeKey>(roots.size)
+    val indexedParents = HashMap<TypeKey, TypeKey>(calculateInitialCapacity(adjacency.size))
+    val indexedRoots = HashMap<TypeKey, Entry>(calculateInitialCapacity(roots.size))
+    val queue = ArrayDeque<TypeKey>(roots.size)
 
     // A stable sort preserves the first contextual request when roots share a type key.
     for ((contextKey, entry) in roots.entries.sortedBy { it.key.typeKey }) {

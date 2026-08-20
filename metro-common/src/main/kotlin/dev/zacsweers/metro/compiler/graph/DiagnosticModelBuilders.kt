@@ -2,9 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticHeadlines
 import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.LocatedItem
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.Style
 import dev.zacsweers.metro.compiler.diagnostics.Text
 import dev.zacsweers.metro.compiler.diagnostics.TraceEntry
+import dev.zacsweers.metro.compiler.diagnostics.buildText
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import org.jetbrains.kotlin.name.FqName
 
@@ -71,4 +79,115 @@ public fun BaseBindingStack<*, *, *, *, *>.toChainSection(): DiagnosticSection.C
     }
   }
   return if (items.size < 2) null else DiagnosticSection.Chain(items)
+}
+
+/** The diagnostic for a multibinding with no contributions that does not allow empty. */
+public fun emptyMultibindingDiagnostic(
+  typeKey: BaseTypeKey<*, *, *>,
+  extraNotes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.EMPTY_MULTIBINDING,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append("Multibinding ")
+        append(typeKey.toText())
+        append(" was unexpectedly empty")
+      },
+    notes =
+      buildList {
+        add(
+          Note.help(
+            "annotate its declaration with `@Multibinds(allowEmpty = true)` if it can legitimately be empty"
+          )
+        )
+        addAll(extraNotes)
+      },
+  )
+}
+
+/** Scope renders for an incompatible-scope diagnostic, disambiguated where short names collide. */
+public class IncompatibleScopeRenders(
+  public val bindingScope: String,
+  public val graphScopes: List<String>,
+)
+
+/**
+ * Renders the binding scope and graph scopes with short names, upgrading to full renders whenever a
+ * binding scope and a graph scope would otherwise print identically.
+ */
+public fun <S : Any> disambiguateIncompatibleScopes(
+  bindingScope: S,
+  graphScopes: Collection<S>,
+  shortRender: (S) -> String,
+  fullRender: (S) -> String,
+): IncompatibleScopeRenders {
+  val bindingShort = shortRender(bindingScope)
+  val graphShorts = graphScopes.map(shortRender)
+  val bindingRender = if (bindingShort in graphShorts) fullRender(bindingScope) else bindingShort
+  val graphRenders = graphScopes.mapIndexed { index, scope ->
+    if (graphShorts[index] == bindingShort) {
+      fullRender(scope)
+    } else {
+      graphShorts[index]
+    }
+  }
+  return IncompatibleScopeRenders(bindingRender, graphRenders)
+}
+
+/** The diagnostic for a scoped binding referenced by a graph without a matching scope. */
+public fun incompatibleScopeDiagnostic(
+  graphName: String,
+  renders: IncompatibleScopeRenders,
+  trace: DiagnosticSection.BindingTrace?,
+  notes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.INCOMPATIBLY_SCOPED_BINDINGS,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append(graphName, Style.EMPHASIS)
+        if (renders.graphScopes.isEmpty()) {
+          append(" (unscoped) may not reference scoped bindings")
+        } else {
+          append(
+            " (scopes ${renders.graphScopes.joinToString { "'$it'" }}) may not reference bindings from different scopes"
+          )
+        }
+      },
+    sections = listOfNotNull(trace),
+    notes = notes,
+  )
+}
+
+/** The diagnostic for map multibinding contributions that share the same map key. */
+public fun duplicateMapKeysDiagnostic(
+  typeKey: BaseTypeKey<*, *, *>,
+  mapKeyRender: String,
+  locations: List<LocatedItem>,
+  trace: DiagnosticSection.BindingTrace? = null,
+  extraNotes: List<Note> = emptyList(),
+): MetroDiagnostic {
+  return MetroDiagnostic(
+    id = MetroDiagnosticId.DUPLICATE_MAP_KEYS,
+    severity = MetroSeverity.ERROR,
+    title =
+      buildText {
+        append(DiagnosticHeadlines.DUPLICATE_MAP_KEYS_PREFIX)
+        append(typeKey.toText())
+      },
+    sections =
+      buildList {
+        add(
+          DiagnosticSection.Locations(
+            header = textOf("The following bindings contribute the same map key '$mapKeyRender'"),
+            items = locations,
+          )
+        )
+        trace?.let(::add)
+      },
+    notes = extraNotes,
+  )
 }
