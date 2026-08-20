@@ -1,0 +1,2362 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A multiplatform dependency injection framework for Kotlin">
+      
+      
+        <meta name="author" content="Zac Sweers">
+      
+      
+        <link rel="canonical" href="https://zacsweers.github.io/metro/1.5.0-SNAPSHOT/impl-notes/idea-plugin/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../site-assets/img/favicon.ico">
+      <meta name="generator" content="zensical-0.0.56">
+    
+    
+      
+        <title>IntelliJ Plugin - Metro</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CFira+Code:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#intellij-plugin" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Metro" class="md-header__button md-logo" aria-label="Metro" data-md-component="logo">
+      
+  <img src="../../site-assets/img/metro-icon.svg" alt="Metro">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Metro
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IntelliJ Plugin
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="green"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="green"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ZacSweers/metro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metro
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../quickstart/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dependency-graphs/" class="md-tabs__link">
+          
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../metrox-android/" class="md-tabs__link">
+          
+  
+  MetroX
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../performance/" class="md-tabs__link">
+          
+  
+  Guides & Samples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../compatibility/" class="md-tabs__link">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../contributing/" class="md-tabs__link">
+          
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  Change Log
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../sponsoring/" class="md-tabs__link">
+        
+  
+  Sponsoring
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../api/index.html" class="md-tabs__link">
+        
+  
+  API ↗
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Metro" class="md-nav__button md-logo" aria-label="Metro" data-md-component="logo">
+      
+  <img src="../../site-assets/img/metro-icon.svg" alt="Metro">
+
+    </a>
+    Metro
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ZacSweers/metro" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Metro
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting Started
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Getting Started
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quick Start
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Features
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../differences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Differences
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Docs
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Docs
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dependency-graphs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Dependency Graphs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../provides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Provides
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../injection-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Injection Types
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scopes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Scopes
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metro-intrinsics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Metro Intrinsics
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coroutines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Coroutines Support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bindings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Bindings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../aggregation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Aggregation (aka "Anvil")
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multiplatform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Multiplatform
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation-and-error-reporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Validation & Error Reporting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Diagnostics Reference
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../interop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Interop
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generating-metro-code/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Generating Custom Metro Code
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../circuit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Circuit
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  MetroX
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  MetroX
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrox-android/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Android
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrox-viewmodel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ViewModel
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrox-viewmodel-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ViewModel Compose
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Guides & Samples
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Guides & Samples
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Performance
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../debugging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Debugging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graph-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Graph Analysis
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adoption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adoption Strategies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../samples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Samples
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Compatibility
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../stability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stability
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  FAQ
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../designdoc.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Design Doc
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Contributing
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CoC
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/ZacSweers/metro/discussions" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Discussions ↗
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Change Log
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sponsoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Sponsoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API ↗
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Goal
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Layers
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options-and-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Options and settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#index" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Index
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#editor-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Editor features
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tool window
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-vs-reachability" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership vs reachability
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key contracts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#build-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Build wiring
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Testing
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/ZacSweers/metro/edit/main/docs/impl-notes/idea-plugin.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/ZacSweers/metro/raw/main/docs/impl-notes/idea-plugin.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="intellij-plugin">IntelliJ Plugin<a class="headerlink" href="#intellij-plugin" title="Permanent link">&para;</a></h1>
+<h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
+<p>Give Metro users compiler-grade insight in the editor without running the compiler:</p>
+<ul>
+<li>Gutter markers, code vision, and inlays that connect bindings to consumers.</li>
+<li>A Metro tool window that lists each graph&rsquo;s members by category.</li>
+<li>On-demand graph validation with compiler-aligned diagnostics.</li>
+<li>Unused-declaration suppression for declarations only Metro-generated code calls.</li>
+</ul>
+<p>The compiler and plugin reuse graph population, sorting, cycle detection, diagnostic models, and graph-level suspend binding validation from <code>metro-common</code>. IR and Analysis API adapters only extract frontend-specific metadata, select source anchors, and render shared witness paths. Differential tests compare IDEA results to checked-in compiler reports. The plugin never reads those reports in production because they do not exist when compilation fails, which is precisely when validation matters.</p>
+<p>Sharing must not slow down the compiler. Compiler contribution merging and FIR bound-type checks<br />
+keep their existing in-place paths where a generic IDE-friendly representation would allocate or<br />
+scan more than the original compiler implementation.</p>
+<p>Graph roots retain the compiler&rsquo;s single map-write fast path. Suspend validation stays out of<br />
+ordinary compilations and only builds diagnostic paths after suspend behavior actually needs them.</p>
+<p>Anvil contribution ranking uses the same inline selection helper in FIR, IR, and the IDE. Moving<br />
+that small helper does not change compiler contribution scans, feature gates, or allocations.</p>
+<p>The plugin is K2-only and reads Metro compiler plugin options from the IDE&rsquo;s Kotlin compiler<br />
+facet configuration, so custom annotations and interop options behave like they do in builds.</p>
+<p>The shared graph algorithms also have a standalone JMH stress benchmark:</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>:metro-common:jmh<span class="w"> </span>--quiet
+</code></pre></div>
+<p>It exercises graph sealing, root insertion, suspend propagation, and the shared IDE contribution<br />
+merge path with 100, 1,000, and 10,000 bindings. Compiler contribution processing retains its<br />
+separate in-place path. The benchmark reuses the shared graph tests&rsquo; lightweight string models,<br />
+so it needs neither a running IDE nor a generated application project.<br />
+Add <code>-Pmetro.jmh.profileGc</code> to include allocation and garbage-collection measurements.</p>
+<p><code>metro-common/src/test/.../graph/GraphWorkload.kt</code> also generates a reproducible mixed workload<br />
+from a fixed seed, so unit tests and future graph tooling can reuse the same fixture. It includes<br />
+long dependency chains, shared high-fan-in services, wide set/map aggregates, qualified keys,<br />
+multiple roots, legal provider/lazy cycles, constructor bindings discovered on demand, and<br />
+unreachable bindings. Separate JMH cases compare complete graph sealing, unused-binding pruning,<br />
+and lazy population; another measures suspend propagation through the same mixed shape. Binding<br />
+kind and scope labels are fixture metadata: the shared graph core does not perform compiler or<br />
+IDE scope membership checks.</p>
+<h2 id="layers">Layers<a class="headerlink" href="#layers" title="Permanent link">&para;</a></h2>
+<p>Data flows in one direction:</p>
+<div class="highlight"><pre><span></span><code>module options
+      |
+      v
+index (per-file shards)
+      |
+      v
+BindingIndex (membership queries)
+      |
+      +--&gt; editor features (markers, vision, inlays)
+      |
+      '--&gt; validation (graph seal)
+                 |
+                 v
+            tool window
+</code></pre></div>
+<h3 id="options-and-settings">Options and settings<a class="headerlink" href="#options-and-settings" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>MetroIdeProjectService</code> / <code>metroIdeState()</code>: per-module <code>MetroOptions</code> parsed from the Kotlin<br />
+  facet&rsquo;s compiler plugin args, plus an options fingerprint for cache keying. A module is active<br />
+  only when Metro compiler plugin options are present and the plugin is enabled. Kotlin modules<br />
+  without Metro stay inactive even though the compiler option itself defaults to enabled.<br />
+  Contribution-provider mode follows the compiler: contributed implementation bindings stay<br />
+  hidden unless <code>@ExposeImplBinding</code> or another compiler exemption keeps them available.</li>
+<li><code>MetroSettings</code>: project-level toggles for editor navigation, library resolution, and inlays.<br />
+  Hiding editor navigation does not disable graph browsing or validation. Library resolution<br />
+  applies to both editor features and graph tools.</li>
+</ul>
+<h3 id="index">Index<a class="headerlink" href="#index" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>index/MetroResolutionService.kt</code>: owns the project-wide <code>BindingIndex</code>. Snapshots use semantic<br />
+  compiler options, so module-specific report and trace paths do not create duplicate indexes.<br />
+  The first build finds candidate files through annotation stub indexes and targeted indexed<br />
+  import searches for annotation aliases. Later edits update changed files and dependent shards,<br />
+  including inherited declarations and qualifier, scope, or map-key annotation defaults, without<br />
+  copying unrelated shard or dependency state. Changes to otherwise untracked type aliases or<br />
+  constants, including directory moves, refresh existing shards. Edits to unrelated declarations<br />
+  in the same file remain incremental. Project roots, Kotlin compiler settings, and facet changes<br />
+  coalesce into one semantic check per event batch while direct queries still see current options.<br />
+  Directory changes enroll new files as a batch. Compiled-library results have a separate cache<br />
+  keyed by classpath, graph scopes, requested types, binding-derived dependencies, and their<br />
+  actual use-site modules. Equivalent per-file library inputs reuse the same session-free source<br />
+  summary, so unrelated edits do not repeat factory visibility checks. Inherited graph requests<br />
+  use their exact owning graph declaration and module instead of the upstream declaration file.<br />
+  Production UI-thread requests schedule a cancellable smart-mode build instead of running<br />
+  Analysis API work on the UI thread. Canceled background builds are retried rather than treated<br />
+  as plugin failures.</li>
+<li><code>index/FileShardBuilder.kt</code>: builds one file&rsquo;s shard. Files are found through<br />
+<code>KotlinAnnotationsIndex</code> by annotation short names or import aliases, then resolved with the<br />
+  Analysis API inside <code>analyze {}</code> blocks. Handles graphs (including supertype members and<br />
+  providers specialized to the graph&rsquo;s concrete type arguments and declaration identity), binding<br />
+  callables (companion members attribute to the enclosing container), graph <code>@Multibinds</code><br />
+  accessors, inject classes, top-level function injection, contributions, assisted factories, and<br />
+  binding containers.</li>
+<li><code>index/BindingExtraction.kt</code>: symbol-to-model extraction shared by source and library paths.<br />
+  Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.<br />
+  Generated contribution providers depend only on constructor parameters, matching the actual<br />
+  compiler-generated provider; an exposed injectable implementation retains its injected members.</li>
+<li><code>index/LibraryIndexPostProcessor.kt</code>: cross-file pass for compiled dependencies. Resolves<br />
+  binary inject classes and assisted factories on demand, specializing factory methods and target<br />
+  dependencies to their requested generic arguments. This includes transitive dependencies of<br />
+  generated contribution providers and discoveries from generated hint functions, the same way<br />
+  the compiler does. Generated aliases inherit their origin&rsquo;s Anvil contribution rank. Public<br />
+  hints only need classpath visibility; nonpublic hints still use Kotlin&rsquo;s friend-module rules.</li>
+</ul>
+<h3 id="model">Model<a class="headerlink" href="#model" title="Permanent link">&para;</a></h3>
+<p>Everything the index stores is session-free. Nothing may retain a <code>KaSession</code>, <code>KaType</code>, or<br />
+<code>KaSymbol</code>. Types become <code>KaTypeSnapshot</code> (interned render strings plus <code>ClassId</code> and recursive<br />
+type arguments), annotations become <code>KaAnnotationSnapshot</code> (constructor-ordered resolved<br />
+arguments, including declared defaults), and declarations are held as <code>SmartPsiElementPointer</code>s.</p>
+<ul>
+<li><code>model/BindingModel.kt</code>: <code>KaGraphDeclaration</code>, <code>ConsumerEntry</code>, and friends.</li>
+<li><code>model/KaBinding.kt</code>: the binding model. Mirrors the compiler&rsquo;s <code>IrBinding</code> + sealed subtypes.</li>
+<li><code>model/KaContextualTypeKey.kt</code> / <code>model/KaTypeSnapshot.kt</code>: key model. Key equality is<br />
+  string-render equality, so both sides of any match must canonicalize the same way.</li>
+<li><code>model/BindingIndex.kt</code>: the query surface. Global lookups (<code>bindingsByKey</code>, by-file buckets in<br />
+  ScatterMaps) plus per-graph membership. <code>contextsFor(graph)</code> merges the extension parent chain<br />
+  into a <code>GraphContext</code> (scopes, containers, includes, excludes, supertype ids).</li>
+<li>Membership filtering applies graph/module visibility, scope matching, declaration-specific<br />
+    containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.<br />
+    Exclusions happen before replacements, and rank runs last within each graph&rsquo;s own scopes.<br />
+    Replacing or outranking a contribution never removes its separate injectable concrete type.<br />
+    Graph-private bindings, including optional bindings, stay in their owning graph, and assisted<br />
+    targets are not presented as ordinary injectable bindings.</li>
+</ul>
+<h3 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h3>
+<p>The compiler&rsquo;s core graph logic lives in <code>metro-common</code> (<code>dev.zacsweers.metro.compiler.graph.MutableBindingGraph</code>, diagnostics, and suspend propagation and validation). The plugin adapts to it with classes named after their IR counterparts. Frontend-specific declaration extraction, source anchors, and stack rendering remain in the two adapters and are covered by compiler/IDE parity fixtures.</p>
+<table>
+<thead>
+<tr>
+<th>IDE (<code>idea/graph/</code>)</th>
+<th>Compiler (<code>ir/graph/</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KaBindingGraph</code></td>
+<td><code>IrBindingGraph</code></td>
+</tr>
+<tr>
+<td><code>KaBindingLookup</code></td>
+<td><code>BindingLookup</code></td>
+</tr>
+<tr>
+<td><code>KaBindingStack</code></td>
+<td><code>IrBindingStack</code></td>
+</tr>
+<tr>
+<td><code>KaBinding</code></td>
+<td><code>IrBinding</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>graph/KaBindingGraph.kt</code>: one instance per seal. Feeds roots (accessors and injector keys)<br />
+  into <code>MutableBindingGraph.seal</code>, which produces missing bindings, duplicates, and cycle<br />
+  classification. Shared structural validation checks duplicate map keys, empty multibindings,<br />
+  scopes, and assisted targets without allocating compiler-side metadata wrappers for each<br />
+  binding. Lookup state is cleared after sealing.</li>
+<li><code>graph/KaBindingLookup.kt</code>: pull-based binding resolution. Only keys reachable from roots are<br />
+  ever looked up, which is what keeps validation proportional to the graph rather than the<br />
+  project. Multibindings synthesize per-element keys with a synthetic <code>@MultibindingElement</code><br />
+  qualifier, matching the compiler&rsquo;s key swap. Parent-owned scoped bindings, including<br />
+  multibinding contributions from included binding containers, resolve through the owning graph<br />
+  and its module options.</li>
+<li><code>graph/MetroGraphValidationService.kt</code>: the entry point. Coroutine-based<br />
+  (service <code>CoroutineScope</code>, <code>smartReadAction</code>, background progress, per-graph coalescing).<br />
+  Results are retained per graph (keyed by <code>ClassId</code> plus file, since same-FQN graphs can exist<br />
+  across modules) in a bounded cache and survive index invalidation flagged as stale rather than<br />
+  vanishing.<br />
+<code>validateWithExtensions</code> seals extensions before their parents, mirroring the compiler&rsquo;s<br />
+  traversal.</li>
+<li><code>graph/KaSuspendBindingValidator.kt</code>: converts Analysis API bindings and graph requests to shared<br />
+  suspend-validation inputs, then turns shared issues and witness paths into navigable IDEA<br />
+  diagnostics. Witness provenance is built only when a diagnostic needs it and reused across<br />
+  requests. The adapter contains no suspend validation policy. Suspend parity fixtures cover valid<br />
+  transitive/deferred paths and representative failures.</li>
+</ul>
+<p>Validation is strictly on demand. Nothing seals during index builds or highlighting passes.</p>
+<h3 id="editor-features">Editor features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>index/MetroLineMarkerProvider.kt</code>: binding, consumer, injector, graph contributions, and<br />
+  validate markers. Targets are captured as smart pointers during the background pass so clicks<br />
+  never resolve on the EDT. The validate marker badges the last validation outcome and runs<br />
+  validation through the tool window.</li>
+<li><code>index/MetroCodeVisionProvider.kt</code>: consumer and contribution counts. Zero counts are omitted.</li>
+<li><code>index/MetroInjectedImplementationInlayProvider.kt</code>: resolved-implementation and<br />
+  multibinding-count inlays, plus <code>assisted</code> hints for implicitly assisted parameters.</li>
+<li><code>MetroImplicitUsageProvider.kt</code> and <code>MetroUnusedDeclarationInspectionSuppressor.kt</code>: implicit<br />
+  usage and inspection suppression driven by the same options.</li>
+</ul>
+<h3 id="tool-window">Tool window<a class="headerlink" href="#tool-window" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>toolwindow/MetroTreeStructure.kt</code>: an <code>AbstractTreeStructure</code> over plain value nodes. Children<br />
+  compute on demand (a graph&rsquo;s bindings are only queried when expanded), display data is<br />
+  precomputed under the model&rsquo;s read action so rendering never touches PSI, and node identity is<br />
+  content-aware because <code>AsyncTreeModel</code> reuses equal nodes and would otherwise serve stale<br />
+  children. Categories: Scoped, Unscoped, Multibindings (grouped by aggregate id), Contributed,<br />
+  and Unused (authored bindings nothing requested, unioned with cached extension seals). Returns<br />
+  no children in dumb mode.</li>
+<li><code>toolwindow/MetroToolWindowPanel.kt</code>: <code>StructureTreeModel</code> + <code>AsyncTreeModel</code>, search filter,<br />
+  explicit Load/refresh controls, and post-validation selection of the result node. The panel loads<br />
+  graphs only after requested; <code>toolwindow/IndexBuildStatusPanel.kt</code> reports background progress<br />
+  and waits for IDE indexing. The tree refreshes when source or project configuration changes,<br />
+  background indexing finishes, or the IDE leaves dumb mode. A validation requested before its<br />
+  graph is indexed remains pending until that exact graph becomes available. Closing the panel<br />
+  prevents outstanding callbacks from touching its tree.</li>
+<li><code>toolwindow/ValidateMetroGraphAction.kt</code>: editor action plus the shared<br />
+<code>openAndValidate(project, classId, file)</code> entry the gutter uses.</li>
+<li><code>toolwindow/MetroGraphDebugExporter.kt</code> and <code>toolwindow/ExportGraphDebugInfoAction.kt</code>: export<br />
+  only the selected graph&rsquo;s exact parent path from the overflow menu. Reports are built in a<br />
+  background smart read action, reuse cached validation without resealing, and are written locally<br />
+  to the IDE log directory. Source bodies, absolute paths, and annotation literal values are<br />
+  redacted; no report is uploaded, although project and type identifiers remain sensitive.</li>
+</ul>
+<h2 id="membership-vs-reachability">Membership vs reachability<a class="headerlink" href="#membership-vs-reachability" title="Permanent link">&para;</a></h2>
+<p>Two distinct questions, easy to conflate:</p>
+<ul>
+<li>Membership (<code>bindingsInContext</code>): what a graph <em>can</em> see. Static, includes every implicit<br />
+<code>@Inject</code> class in the project. Drives the tool window categories and marker resolution.</li>
+<li>Reachability (a seal&rsquo;s <code>topology</code>): what the graph&rsquo;s roots actually pulled. Includes synthetic<br />
+  nodes (graph instances, aggregates, per-element keys) and excludes unrequested members.</li>
+</ul>
+<p>The two never sum to each other. UI copy should not imply they do.</p>
+<h2 id="key-contracts">Key contracts<a class="headerlink" href="#key-contracts" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Graph identity is the resolved class plus its declaration file. Extension creation points and<br />
+  factory inputs retain that declaration identity so unrelated modules can declare the same FQNs<br />
+  without acquiring each other&rsquo;s parent chains or synthesized inputs. Binding containers follow<br />
+  the same rule and are selected through the owning graph&rsquo;s module resolution scope.</li>
+<li>Injected members belong only to graphs that construct their owner or explicitly inject it.<br />
+  Owner identity is separate from contribution origin and follows marked member-injection<br />
+  ancestors through graph extensions.</li>
+<li>Multibinding ids: map ids are <code>&lt;mapKeyAnnotationParamType&gt;_&lt;canonicalValueKey&gt;</code>. The key type<br />
+  is the map key annotation&rsquo;s parameter type verbatim. Values canonicalize through provider<br />
+  wrappers (<code>Provider&lt;V&gt;</code>, <code>Lazy&lt;V&gt;</code>, <code>() -&gt; V</code> all join <code>V</code>&rsquo;s aggregate). Both the contribution<br />
+  and accessor sides must use the same canonicalization or they silently never join.</li>
+<li><code>@HasMemberInjections</code> gates supertype traversal for member injection. Metro requires the<br />
+  annotation, unlike Dagger.</li>
+<li>Graph supertypes merge their members into the graph through instantiated callable signatures,<br />
+  so inherited generic accessors and providers keep their concrete type arguments. Source and<br />
+  library supertype declarations are tracked as shard dependencies. A specialized inherited<br />
+  provider replaces its raw declaration only in the graph that owns that specialization.</li>
+<li>Generic assisted factories use their concrete requested type for inherited factory methods and<br />
+  assisted-target dependencies. Source declarations and compiled libraries follow the same rule.</li>
+<li>Equal-length suspend diagnostic paths follow the dependency&rsquo;s declaration order without<br />
+  rebuilding the shared witness search for each diagnostic.</li>
+<li>Diagnostics use the compiler&rsquo;s <code>DiagnosticRenderer</code> and plain profile. Shared diagnostic builders live in <code>metro-common</code>; differential fixtures compare frontend-specific diagnostics by ID and normalized one-line title.</li>
+</ul>
+<h2 id="build-wiring">Build wiring<a class="headerlink" href="#build-wiring" title="Permanent link">&para;</a></h2>
+<p>The plugin is a composite build that substitutes <code>dev.zacsweers.metro:metro-common</code> and shades it<br />
+along with androidx.collection and androidx.tracing (both <code>compileOnly</code> in metro-common). The<br />
+kotlinx-coroutines transitively pulled by androidx.tracing is excluded at the configuration<br />
+level: the IDE ships a patched coroutines build, and shadowing it breaks at runtime with<br />
+confusing <code>NoSuchMethodError</code>s. Never add a coroutines dependency to the plugin.</p>
+<h2 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h2>
+<p>Most tests use <code>BasePlatformTestCase</code>, with helpers in <code>ktTestUtils.kt</code>: <code>configureMetroFile</code><br />
+(default package and Metro star import), <code>setMetroOptions</code>, <code>addMetroRuntimeLibrary</code>, and<br />
+<code>withMetroLibFixtureLibrary</code> (a jar compiled from <code>src/test/data/libFixtures/</code> for binary<br />
+resolution tests). <code>MetroMultiModuleResolutionTest</code> uses a dedicated multi-module fixture instead.</p>
+<p><code>setMetroOptions()</code> always supplies <code>enabled=true</code> unless a test explicitly overrides it.<br />
+<code>clearMetroOptions()</code> represents a module where the Metro compiler plugin is not configured.</p>
+<ul>
+<li><code>MetroResolutionServiceTest</code>: index construction and editor resolution.</li>
+<li><code>MetroMultiModuleResolutionTest</code>: graph visibility, inherited bindings, and ownership across<br />
+  source modules.</li>
+<li><code>MetroIndexDependenciesTest</code>: dependency keys, contextual keys, seal-facing queries.</li>
+<li><code>MetroGraphValidationTest</code>: seal semantics per diagnostic kind, membership edge cases, caching.</li>
+<li><code>MetroSuspendGraphValidationTest</code>: suspend propagation, request boundaries, member injection, assisted factories, multibindings, and runtime requirements.</li>
+<li><code>MetroGraphValidationParityTest</code>: live IDEA validation compared with checked-in compiler graph reports, including suspend success and failure cases.</li>
+<li><code>MetroToolWindowTreeTest</code>: tree rows, filtering, refresh identity, a full<br />
+<code>StructureTreeModel</code>/<code>AsyncTreeModel</code> pass, dumb mode.</li>
+<li><code>MetroLineMarkerProviderTest</code>, <code>MetroInlayProviderTest</code>, <code>MetroImplicitUsageProviderTest</code>.</li>
+</ul>
+<p>Harness gotchas that repeat:</p>
+<ul>
+<li>Tests compute markers on the EDT. Calling <code>tooltipText</code> on non-Metro gutters triggers Kotlin&rsquo;s<br />
+  inheritor markers into prohibited EDT analysis, so always filter to Metro icons first. The<br />
+  index permits synchronous EDT analysis only in unit-test mode; production builds always run<br />
+  in background smart read actions.</li>
+<li>The daemon caches markers for unchanged files. Re-highlighting after validation requires<br />
+<code>DaemonCodeAnalyzer.restart()</code>, same as production.</li>
+<li>Validation results are retained by design, so test classes call<br />
+<code>MetroGraphValidationService.clearResults()</code> in <code>setUp</code>.</li>
+</ul>
+<p>Manual verification runs a sandbox IDE via <code>./gradlew -p idea-plugin runLocalIde</code>, optionally<br />
+against a local IDE install (see <code>idea-plugin/README.md</code>).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Zac Sweers
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ZacSweers/metro" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://github.com/sponsors/zacsweers" target="_blank" rel="noopener" title="Sponsor on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.code.copy","content.code.select","content.action.edit","content.action.view","content.tabs.link","navigation.tabs","navigation.footer","navigation.top","search.highlight","search.suggest"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e886cdf1.min.js"></script>
+      
+    
+  </body>
+</html>
