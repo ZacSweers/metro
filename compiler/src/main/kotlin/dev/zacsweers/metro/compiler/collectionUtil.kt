@@ -74,6 +74,6 @@ internal fun <T, R> List<T>.parallelMap(
       if (onPoolThread) task.fork() else forkJoinPool.submit(task)
     }
 
-  // Join all tasks — work-stealing keeps the thread active while waiting
+  // Join all tasks. Work-stealing keeps the thread active while waiting.
   return tasks.map { it.join() }
 }

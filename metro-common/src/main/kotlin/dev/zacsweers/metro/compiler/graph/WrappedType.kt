@@ -302,7 +302,7 @@ public sealed interface WrappedType<T : Any> {
       is Map -> valueType.containsSuspendWrapper()
     }
 
-  /** Returns true if the scalar wrapper chain contains an adjacent Provider<Lazy<…>> pair. */
+  /** Returns true if the scalar wrapper chain contains an adjacent Provider<Lazy<...>> pair. */
   public fun containsProviderOfLazy(): Boolean =
     when (this) {
       is Canonical,

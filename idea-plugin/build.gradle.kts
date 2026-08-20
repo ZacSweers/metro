@@ -235,7 +235,7 @@ val shadedClasspath =
 configurations.named("testImplementation") { exclude(coroutinesExclude) }
 
 // Runs a sandboxed IDE with the plugin installed from source: ./gradlew runLocalIde
-// To use a locally installed IDE (e.g. Android Studio) instead of the default target:
+// To use a locally installed IDE (e.g., Android Studio) instead of the default target:
 // ./gradlew runLocalIde "-PintellijPlatformTesting.idePath=/Applications/Android Studio.app"
 intellijPlatformTesting.runIde.register("runLocalIde") {
   providers.gradleProperty("intellijPlatformTesting.idePath").orNull?.let {

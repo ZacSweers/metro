@@ -206,10 +206,10 @@ public fun <V : Comparable<V>> metroSort(
  * ### Strategy
  *
  * 1. Walk the SCC and build:
- *     - `sccAdjacency` — edges that stay inside the SCC (cross-SCC edges can't contribute to its
+ *     - `sccAdjacency`: edges that stay inside the SCC (cross-SCC edges can't contribute to its
  *       internal cycle).
- *     - `deferrableEdgesFrom` — for each vertex, the set of its outgoing deferrable edges.
- *     - `potentialCandidates` — every vertex that has at least one outgoing deferrable edge. Only
+ *     - `deferrableEdgesFrom`: for each vertex, the set of its outgoing deferrable edges.
+ *     - `potentialCandidates`: every vertex that has at least one outgoing deferrable edge. Only
  *       these can break the cycle, since deferring a vertex with no deferrable outgoing edge is a
  *       no-op.
  * 2. If there are no candidates, the cycle has no soft edges -> return empty (caller treats this as
@@ -390,7 +390,7 @@ private fun <V : Comparable<V>> expandComponents(
  * Within an SCC we classify each edge as either **hard** (non-deferrable, or deferrable but the
  * source isn't in [deferredInScc]) or **soft** (deferrable + source is deferred). Soft edges are
  * the ones a `DelegateFactory` will paper over at runtime, so we pretend they don't exist when
- * ordering — the remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
+ * ordering. The remaining hard edges form a DAG inside the SCC, which we Kahn-sort.
  *
  * Example: `A <-> B` cycle, B -> A is deferrable, deferredInScc = {B}.
  *
@@ -537,7 +537,7 @@ public data class TarjanResult<V : Comparable<V>>(
  * ### How it works
  *
  * Tarjan does a single DFS, marking each vertex with two integers:
- * - `index[v]` — the order in which v was first visited (0, 1, 2, …).
+ * - `index[v]`: the order in which v was first visited (0, 1, 2, ...).
  * - `lowlink[v]` — the smallest `index` reachable from v's DFS subtree **without leaving the
  *   current DFS path**.
  *
@@ -545,7 +545,7 @@ public data class TarjanResult<V : Comparable<V>>(
  * ancestor of v, so everything sitting above v on the SCC stack belongs to v's component.
  *
  * Two stacks are needed:
- * - **DFS stack** — the current call path (`callStack` here, with parallel `edgeCursor` for "which
+ * - **DFS stack**: the current call path (`callStack` here, with parallel `edgeCursor` for "which
  *   outgoing edge of v are we up to"). Pops as the DFS unwinds.
  * - **SCC stack** — vertices visited but **not yet assigned to a component**, in DFS-discovery
  *   order (`dfsStack`). When an SCC root finalises, we pop everything down to and including that
@@ -781,7 +781,7 @@ public fun <V : Comparable<V>> SortedMap<V, SortedSet<V>>.computeStronglyConnect
   val rawForward = HashMap<V, HashSet<V>>(n)
   val reachableReverse = HashMap<V, MutableSet<V>>(n)
   for (id in 0 until n) {
-    // Skip vertices the DFS never visited — they're not part of the reachable subgraph.
+    // Skip vertices the DFS never visited. They're not part of the reachable subgraph.
     if (indexOfId[id] == UNVISITED) continue
     val vertex = vertexAt(id)
     val edges = adj[id]!!
