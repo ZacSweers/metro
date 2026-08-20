@@ -11,6 +11,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
@@ -1152,6 +1153,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         )
         assertEquals(listOf(accessor.key), bindings.map { it.typeKey })
       }
+      val result =
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, query.graphContext)
+          .requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     } finally {
       settings.resolveFromLibraries = previousResolveFromLibraries
     }

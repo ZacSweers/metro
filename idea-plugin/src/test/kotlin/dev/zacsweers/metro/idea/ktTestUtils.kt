@@ -8,6 +8,7 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,11 +24,25 @@ import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 
+internal fun KaGraphValidationResult.requireCompleted(): KaGraphValidationResult.Completed {
+  return this as? KaGraphValidationResult.Completed
+    ?: error("Expected completed validation, got ${javaClass.simpleName}")
+}
+
 internal fun Module.addMetroRuntimeLibrary() {
   ModuleRootModificationUtil.addModuleLibrary(
     this,
     "metro-runtime",
     listOf(VfsUtil.getUrlForLibraryRoot(metroRuntimeJar().toFile())),
+    emptyList(),
+  )
+}
+
+internal fun Module.addKotlinStdlibLibrary() {
+  ModuleRootModificationUtil.addModuleLibrary(
+    this,
+    "kotlin-stdlib",
+    listOf(VfsUtil.getUrlForLibraryRoot(kotlinStdlibJar().toFile())),
     emptyList(),
   )
 }
@@ -40,6 +55,11 @@ private fun metroRuntimeJar(): Path {
       val fileName = it.fileName.toString()
       fileName.startsWith("runtime-jvm-") && fileName.endsWith(".jar")
     } ?: error("Unable to get a valid classpath from 'metroRuntime.classpath' property")
+}
+
+private fun kotlinStdlibJar(): Path {
+  return System.getProperty("kotlinStdlib.classpath")?.let(Path::of)
+    ?: error("Unable to get a valid path from 'kotlinStdlib.classpath' property")
 }
 
 private const val LIB_FIXTURE_NAME = "metro-lib-fixture"
