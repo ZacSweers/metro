@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
@@ -47,6 +48,9 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
       addAll(options.providesAnnotations)
       addAll(options.multibindsAnnotations)
       addAll(options.injectAnnotations)
+      if (options.enableCircuitCodegen) {
+        add(CircuitClassIds.CircuitInject)
+      }
     }
   }
 
@@ -72,6 +76,10 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
         addAll(bindingContributionAnnotations)
       }
       addAll(options.assistedInjectAnnotations)
+      if (options.enableCircuitCodegen) {
+        // @CircuitInject classes are consumed through their generated circuit factory
+        add(CircuitClassIds.CircuitInject)
+      }
     }
   }
 
@@ -92,6 +100,10 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
 class MetroIdeProjectService(private val project: Project) {
   internal fun state(element: PsiElement): MetroIdeModuleState {
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return DEFAULT_METRO_IDE_STATE
+    return state(module)
+  }
+
+  internal fun state(module: Module): MetroIdeModuleState {
     return CachedValuesManager.getManager(project).getCachedValue(module) {
       val optionStrings = module.metroPluginOptionStrings()
       CachedValueProvider.Result.create(
