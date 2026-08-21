@@ -1081,11 +1081,24 @@ internal fun FirAnnotation.isKiaIntoMultibinding(session: FirSession): Boolean =
   argumentAsOrNull<FirLiteralExpression>(session, Symbols.Names.multibinding, index = 3)?.value
     as? Boolean ?: false
 
-internal fun FirAnnotation.rankValue(session: FirSession): Long {
-  // Although the parameter is defined as an Int, the value we receive here may end up being
-  // an Int or a Long so we need to handle both
-  return rankArgument(session)?.value?.let { it as? Long ?: (it as? Int)?.toLong() }
-    ?: Long.MIN_VALUE
+/**
+ * Reads first-party contribution priority, or Anvil's numeric rank when the consuming graph enables
+ * interoperability.
+ */
+internal fun FirAnnotation.priority(
+  session: FirSession,
+  enableAnvilInterop: Boolean = session.metroFirBuiltIns.options.enableDaggerAnvilInterop,
+): Int {
+  val priority =
+    argumentAsOrNull<FirLiteralExpression>(session, Symbols.Names.priority, index = 3)?.value
+      as? Int
+  if (priority != null) return priority
+
+  if (!enableAnvilInterop) {
+    return Int.MIN_VALUE
+  }
+
+  return rankArgument(session)?.value as? Int ?: Int.MIN_VALUE
 }
 
 private fun FirAnnotation.rankArgument(session: FirSession) =
