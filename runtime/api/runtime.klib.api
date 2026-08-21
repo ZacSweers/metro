@@ -72,12 +72,10 @@ open annotation class dev.zacsweers.metro/ContributesIntoMap : kotlin/Annotation
 }
 
 open annotation class dev.zacsweers.metro/ContributesIntoSet : kotlin/Annotation { // dev.zacsweers.metro/ContributesIntoSet|null[0]
-    constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ..., kotlin/Int = ...) // dev.zacsweers.metro/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>;kotlin.Int){}[0]
+    constructor <init>(kotlin.reflect/KClass<*>, dev.zacsweers.metro/binding<*> = ..., kotlin/Array<kotlin.reflect/KClass<*>> = ...) // dev.zacsweers.metro/ContributesIntoSet.<init>|<init>(kotlin.reflect.KClass<*>;dev.zacsweers.metro.binding<*>;kotlin.Array<kotlin.reflect.KClass<*>>){}[0]
 
     final val binding // dev.zacsweers.metro/ContributesIntoSet.binding|{}binding[0]
         final fun <get-binding>(): dev.zacsweers.metro/binding<*> // dev.zacsweers.metro/ContributesIntoSet.binding.<get-binding>|<get-binding>(){}[0]
-    final val priority // dev.zacsweers.metro/ContributesIntoSet.priority|{}priority[0]
-        final fun <get-priority>(): kotlin/Int // dev.zacsweers.metro/ContributesIntoSet.priority.<get-priority>|<get-priority>(){}[0]
     final val replaces // dev.zacsweers.metro/ContributesIntoSet.replaces|{}replaces[0]
         final fun <get-replaces>(): kotlin/Array<kotlin.reflect/KClass<*>> // dev.zacsweers.metro/ContributesIntoSet.replaces.<get-replaces>|<get-replaces>(){}[0]
     final val scope // dev.zacsweers.metro/ContributesIntoSet.scope|{}scope[0]

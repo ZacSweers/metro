@@ -45,7 +45,6 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMa
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesIntoSet : java/lang/annotation/Annotation {
 	public abstract fun binding ()Ldev/zacsweers/metro/binding;
-	public abstract fun priority ()I
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
