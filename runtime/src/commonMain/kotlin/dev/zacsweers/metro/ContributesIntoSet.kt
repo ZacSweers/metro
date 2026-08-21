@@ -40,6 +40,10 @@ import kotlin.reflect.KClass
  *   supertype.
  * @property replaces List of other contributing classes that this binding should replace in the
  *   scope.
+ * @property priority The priority of this binding relative to other contributions to the same
+ *   qualified set. When all contributions use the default [Int.MIN_VALUE], every contribution is
+ *   included. Otherwise, only the unique highest-priority contribution is used. Contributions tied
+ *   for the highest non-default priority are ambiguous and produce an error.
  */
 @Target(CLASS)
 @Repeatable
@@ -47,4 +51,5 @@ public annotation class ContributesIntoSet(
   val scope: KClass<*>,
   val binding: binding<*> = binding<Nothing>(),
   val replaces: Array<KClass<*>> = [],
+  val priority: Int = Int.MIN_VALUE,
 )
