@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler
 import java.util.EnumSet
 import java.util.Locale
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.test.directives.model.DirectiveApplicability
 import org.jetbrains.kotlin.test.directives.model.RegisteredDirectives
 import org.jetbrains.kotlin.test.directives.model.SimpleDirectivesContainer
 
@@ -120,6 +121,13 @@ object MetroDirectives : SimpleDirectivesContainer() {
     }
   // Dependency directives.
   val WITH_ANVIL by directive("Add Anvil as dependency and configure custom annotations.")
+  val ENABLE_ANVIL_INTEROP by
+    valueDirective(
+      "Enable or disable Anvil interoperability.",
+      applicability = DirectiveApplicability.Module,
+    ) {
+      it.toBoolean()
+    }
   val WITH_KI_ANVIL by
     directive("Add kotlin-inject-nnvil as dependency and configure custom annotations.")
   val WITH_DAGGER by directive("Add Dagger as dependency and configure custom annotations.")

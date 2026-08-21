@@ -224,6 +224,9 @@ class MetroExtensionRegistrarConfigurator(
       ) {
         includeAnvilAnnotations()
       }
+      module.directives.singleOrZeroValue(MetroDirectives.ENABLE_ANVIL_INTEROP)?.let {
+        enableDaggerAnvilInterop = it
+      }
 
       if (
         MetroDirectives.WITH_DAGGER in module.directives ||
