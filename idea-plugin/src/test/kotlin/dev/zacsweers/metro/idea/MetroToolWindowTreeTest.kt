@@ -27,6 +27,7 @@ import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
@@ -57,6 +58,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
     project.service<MetroGraphValidationService>().clearResults()
+    project.service<GraphContextPinService>().clear()
   }
 
   private var filter: String = ""
@@ -183,6 +185,77 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       listOf("FakeBindings", "String"),
       structure.children(unscoped).map { it.text },
     )
+
+    project.service<GraphContextPinService>().pin(dynamicRow.context.path)
+    val pinnedRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf(dynamicRow.context.path), pinnedRows.map { it.context.path })
+  }
+
+  fun testPinnedParentContextFocusesItsExtensionPath() {
+    myFixture.configureMetroFile(
+      """
+      @GraphExtension
+      interface ChildGraph
+
+      @DependencyGraph
+      interface LeftParent {
+        val child: ChildGraph
+      }
+
+      @DependencyGraph
+      interface RightParent {
+        val child: ChildGraph
+      }
+      """
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val allRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(4, allRows.size)
+
+    val leftParent = allRows.single { it.graph.name == "LeftParent" }.context
+    project.service<GraphContextPinService>().pin(leftParent.path)
+    val leftRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf("ChildGraph", "LeftParent"), leftRows.map { it.graph.name })
+    assertEquals(
+      "LeftParent",
+      leftRows.single { it.graph.name == "ChildGraph" }.context.rootGraph.name,
+    )
+
+    val rightParent = allRows.single { it.graph.name == "RightParent" }.context
+    project.service<GraphContextPinService>().pin(rightParent.path)
+    val rightRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf("ChildGraph", "RightParent"), rightRows.map { it.graph.name })
+    assertEquals(
+      "RightParent",
+      rightRows.single { it.graph.name == "ChildGraph" }.context.rootGraph.name,
+    )
+
+    project.service<GraphContextPinService>().clear()
+    assertEquals(4, structure.children(root).size)
+  }
+
+  fun testMissingPinnedContextFallsBackToAllGraphs() {
+    val file = configure()
+    val realIndex = project.service<MetroResolutionService>().index(file)
+    var currentIndex = realIndex
+    val pinService = project.service<GraphContextPinService>()
+    val structure =
+      MetroTreeStructure(project, indexProvider = { currentIndex }, pinService = pinService) {
+        filter
+      }
+    val root = structure.rootElement as MetroTreeNode
+    val context = realIndex.contextsFor(realIndex.graphs.single()).single()
+    pinService.pin(context.path)
+    assertEquals(
+      listOf(context.path),
+      structure.children(root).map { (it as MetroTreeNode.Graph).context.path },
+    )
+
+    currentIndex = BindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
+    assertTrue(structure.children(root).isEmpty())
+    assertNull(pinService.pinnedPath)
   }
 
   fun testGenericInheritedProvidersDoNotShowRawTypeParameters() {

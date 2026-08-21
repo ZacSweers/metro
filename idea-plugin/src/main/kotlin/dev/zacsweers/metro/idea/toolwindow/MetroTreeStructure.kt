@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.SimpleTextAttributes
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -28,6 +29,8 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.isAtOrBelow
+import dev.zacsweers.metro.idea.presentableName
 import java.util.Collections
 import java.util.IdentityHashMap
 import javax.swing.Icon
@@ -303,6 +306,7 @@ internal class MetroTreeStructure(
   private val indexProvider: (Module) -> BindingIndex = { module ->
     project.service<MetroResolutionService>().index(module)
   },
+  private val pinService: GraphContextPinService = project.service(),
   private val filterText: () -> String,
 ) : AbstractTreeStructure() {
 
@@ -373,6 +377,17 @@ internal class MetroTreeStructure(
     return indexes
   }
 
+  internal fun availableContexts(): List<GraphContext> {
+    return currentContexts(currentIndexes()).sortedBy { it.presentableName(includeFile = true) }
+  }
+
+  private fun currentContexts(indexes: List<BindingIndex>): List<GraphContext> {
+    val seen = HashSet<GraphPath>()
+    return indexes
+      .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
+      .filter { context -> seen.add(context.path) }
+  }
+
   /** [node]'s context in the current indexes, refreshed so children never use stale entries. */
   private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, GraphContext>? {
     for (index in currentIndexes()) {
@@ -384,13 +399,15 @@ internal class MetroTreeStructure(
 
   private fun graphNodes(root: MetroTreeNode.Root): List<MetroTreeNode> {
     val validationService = project.service<MetroGraphValidationService>()
-    val seen = HashSet<GraphPath>()
-    val contexts =
-      currentIndexes()
-        .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
-        .filter { context ->
-          seen.add(context.path)
-        }
+    val indexes = currentIndexes()
+    var contexts = currentContexts(indexes)
+    pinService.pinnedPath?.let { pinnedPath ->
+      if (contexts.none { it.path == pinnedPath }) {
+        if (indexes.isNotEmpty()) pinService.clearIf(pinnedPath)
+      } else {
+        contexts = contexts.filter { it.path.isAtOrBelow(pinnedPath) }
+      }
+    }
     return contexts
       .sortedWith(
         compareBy(
