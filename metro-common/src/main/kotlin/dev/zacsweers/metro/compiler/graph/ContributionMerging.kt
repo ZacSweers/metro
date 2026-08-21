@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.flatMapToSet
 import org.jetbrains.kotlin.name.ClassId
 
@@ -122,31 +123,17 @@ public fun <T : MergeContribution> applyExcludesAndReplaces(
   return afterExcludes.filter { it.mergeId == null || it.mergeId !in replaced }
 }
 
-/**
- * Returns individual contributions superseded by a higher-priority contribution for the same key.
- *
- * A null conflict key excludes a contribution from priority selection, keeping set contributions,
- * synthetic helpers, and authored multibinding callables untouched. Map contributions additionally
- * include the actual map-key value. Equally prioritized contributions remain in the graph so
- * duplicate-binding and duplicate-map-key diagnostics can report them. All-default contributions
- * skip selection.
- */
-public inline fun <BindingType, ConflictKeyType> computeLowerPriorityContributions(
+public inline fun <BindingType, ConflictKeyType : Any> computeLowerPriorityContributions(
   bindings: List<BindingType>,
-  conflictKeySelector: (BindingType) -> ConflictKeyType?,
+  conflictKeySelector: (BindingType) -> ConflictKeyType,
   prioritySelector: (BindingType) -> Int,
 ): Set<BindingType> {
   if (bindings.size < 2) return emptySet()
-
-  val defaultPriority = Int.MIN_VALUE
-  val hasExplicitPriority = bindings.any { binding ->
-    conflictKeySelector(binding) != null && prioritySelector(binding) != defaultPriority
-  }
-  if (!hasExplicitPriority) return emptySet()
+  if (bindings.none { prioritySelector(it) != Int.MIN_VALUE }) return emptySet()
 
   val highestPrioritiesByKey = HashMap<ConflictKeyType, Int>(bindings.size)
   for (binding in bindings) {
-    val conflictKey = conflictKeySelector(binding) ?: continue
+    val conflictKey = conflictKeySelector(binding)
     val priority = prioritySelector(binding)
     val highestPriority = highestPrioritiesByKey[conflictKey]
     if (highestPriority == null || priority > highestPriority) {
@@ -154,14 +141,7 @@ public inline fun <BindingType, ConflictKeyType> computeLowerPriorityContributio
     }
   }
 
-  val lowerPriorityContributions = HashSet<BindingType>()
-  for (binding in bindings) {
-    val conflictKey = conflictKeySelector(binding) ?: continue
-    val highestPriority = highestPrioritiesByKey[conflictKey] ?: continue
-    if (prioritySelector(binding) < highestPriority) {
-      lowerPriorityContributions += binding
-    }
+  return bindings.filterToSet { binding ->
+    prioritySelector(binding) < highestPrioritiesByKey.getValue(conflictKeySelector(binding))
   }
-
-  return lowerPriorityContributions
 }
