@@ -672,7 +672,7 @@ public enum class MetroOption(public val raw: RawMetroOption<*>) {
       defaultValue = false,
       valueDescription = "<true | false>",
       description =
-        "Enable Dagger Anvil interop beyond annotation aliases, currently rank support.",
+        "Enable Dagger Anvil interop beyond annotation aliases, including rank as contribution priority.",
       required = false,
       allowMultipleOccurrences = false,
     )
