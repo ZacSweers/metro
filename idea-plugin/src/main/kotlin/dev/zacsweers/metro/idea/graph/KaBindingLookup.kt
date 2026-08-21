@@ -306,7 +306,11 @@ internal class KaBindingLookup(
 
   private fun createParentSuspendAnalysis(): SuspendBindingAnalysis? {
     val chain = queryContext.graphContext.chain
-    val parentPath = GraphPath(chain.drop(1).map { it.declarationId })
+    val parentPath =
+      GraphPath(
+        chain.drop(1).map { it.declarationId },
+        queryContext.graphContext.dynamicGraph?.id,
+      )
     val parentContext = index.findContext(parentPath) ?: return null
     val resolvedParent = resolveParentGraph(parentContext)
     val parent =

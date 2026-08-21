@@ -37,6 +37,7 @@ internal class BindingIndex(
   private val incompleteAssistedFactories:
     Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> =
     emptyMap(),
+  val dynamicGraphs: List<DynamicGraphCall> = emptyList(),
 ) {
   private val containersById: ScatterMap<ClassId, List<BindingContainerEntry>> by lazy {
     bindingContainers.groupToScatter { it.classId }
@@ -113,6 +114,10 @@ internal class BindingIndex(
       }
     }
     result
+  }
+
+  private val dynamicGraphsByTarget: Map<GraphReference, List<DynamicGraphCall>> by lazy {
+    dynamicGraphs.groupBy { it.targetGraph }
   }
 
   /** Potential edges only. Their contribution must survive in the eventual parent's root module. */
@@ -743,7 +748,8 @@ internal class BindingIndex(
     graphQueryContexts[context]?.let {
       return it
     }
-    val graphElement = context.rootGraph.pointer.element ?: return null
+    val graphElement =
+      context.dynamicGraph?.pointer?.element ?: context.rootGraph.pointer.element ?: return null
     val graphModule = moduleFor(graphElement) ?: return null
     val resolutionScope = graphModule.resolutionScope()
     val containers = containersFor(context, graphModule, resolutionScope)
@@ -765,7 +771,9 @@ internal class BindingIndex(
   fun extensionContextsOf(parent: GraphContext): List<GraphContext> {
     val queryContext = queryContext(parent) ?: return emptyList()
     return extensionsOf(queryContext).flatMap { extension ->
-      contextsFor(extension).filter { child -> child.chain.drop(1) == parent.chain }
+      contextsFor(extension).filter { child ->
+        child.chain.drop(1) == parent.chain && child.dynamicGraph?.id == parent.dynamicGraph?.id
+      }
     }
   }
 
@@ -801,7 +809,17 @@ internal class BindingIndex(
   }
 
   private fun buildContexts(graph: KaGraphDeclaration): List<GraphContext> {
-    return buildChains(graph, visited = setOf(graph)).map(::buildContext)
+    return buildChains(graph, visited = setOf(graph)).flatMap { chain ->
+      buildList {
+        add(buildContext(chain, dynamicGraph = null))
+        val root = chain.last()
+        val rootReference =
+          root.classId?.let { classId -> GraphReference(classId, root.pointer.virtualFile) }
+        for (dynamicGraph in rootReference?.let(dynamicGraphsByTarget::get).orEmpty()) {
+          add(buildContext(chain, dynamicGraph))
+        }
+      }
+    }
   }
 
   private fun buildChains(
@@ -834,12 +852,18 @@ internal class BindingIndex(
     return chains.ifEmpty { listOf(listOf(graph)) }
   }
 
-  private fun buildContext(chain: List<KaGraphDeclaration>): GraphContext {
+  private fun buildContext(
+    chain: List<KaGraphDeclaration>,
+    dynamicGraph: DynamicGraphCall?,
+  ): GraphContext {
     val scopes = chain.flatMapToSet { it.scopeKeys }
     val excludes = chain.flatMapToSet { it.excludes }
     // Supertype members merge into the graph, so their classes gate membership like the graph
     val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
-    val includedBindingContainers = chain.flatMapToSet { it.includedBindingContainers }
+    val includedBindingContainers = buildSet {
+      chain.flatMapTo(this) { it.includedBindingContainers }
+      addAll(dynamicGraph?.containerKeys.orEmpty())
+    }
     val includedDependencies = chain.flatMapToSet { it.includedDependencies }
     val graphIds = chain.mapTo(mutableSetOf()) { it.declarationId }
     return GraphContext(
@@ -853,6 +877,7 @@ internal class BindingIndex(
       daggerAnvilInteropEnabled = chain.last().daggerAnvilInteropEnabled,
       graphIds = graphIds,
       graphClassIds = graphClassIds,
+      dynamicGraph = dynamicGraph,
     )
   }
 
@@ -905,6 +930,11 @@ internal class BindingIndex(
       for (containerKey in owner.includedBindingContainers) {
         containerKey.type.classId?.let(roots::add)
       }
+      if (owner.declarationId == context.rootGraph.declarationId) {
+        for (containerKey in context.dynamicGraph?.containerKeys.orEmpty()) {
+          containerKey.type.classId?.let(roots::add)
+        }
+      }
       contributionSelection(
           ownerChain,
           queryContext.graphModule,
@@ -923,7 +953,8 @@ internal class BindingIndex(
     binding: KaBinding,
     queryContext: GraphQueryContext,
   ): Boolean {
-    val graph = queryContext.graphContext.graph
+    val context = queryContext.graphContext
+    val graph = context.graph
     val ownerGraphId = binding.ownerGraphId
     if (ownerGraphId != null) {
       if (binding is KaBinding.BoundInstance) {
@@ -933,7 +964,9 @@ internal class BindingIndex(
     }
     val includedContainerKey = binding.includedContainerKey
     if (includedContainerKey != null) {
-      return includedContainerKey in graph.includedBindingContainers
+      if (includedContainerKey in graph.includedBindingContainers) return true
+      val isDynamicRoot = graph.declarationId == context.rootGraph.declarationId
+      return isDynamicRoot && includedContainerKey in context.dynamicGraph?.containerKeys.orEmpty()
     }
 
     val containerId = binding.containerId
@@ -957,9 +990,14 @@ internal class BindingIndex(
       return false
     }
 
-    val chain = queryContext.graphContext.chain
+    val context = queryContext.graphContext
+    val chain = context.chain
     for (ancestorIndex in 1 until chain.size) {
-      val ancestorPath = GraphPath(chain.drop(ancestorIndex).map { it.declarationId })
+      val ancestorPath =
+        GraphPath(
+          chain.drop(ancestorIndex).map { it.declarationId },
+          context.dynamicGraph?.id,
+        )
       val ancestorContext = findContext(ancestorPath) ?: continue
       val ancestorQueryContext = queryContext(ancestorContext) ?: continue
       for (binding in candidates) {
@@ -1151,6 +1189,7 @@ internal class BindingIndex(
     }
     if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
     val context = queryContext.graphContext
+    if (isSupersededByDynamicBinding(entry, context)) return false
     val ownerGraphId = entry.ownerGraphId
     if (ownerGraphId != null) {
       if (entry is KaBinding.BoundInstance) {
@@ -1213,6 +1252,31 @@ internal class BindingIndex(
       is KaBinding.GraphInstance,
       is KaBinding.GraphExtension -> true
     }
+  }
+
+  private fun isSupersededByDynamicBinding(
+    binding: KaBinding,
+    context: GraphContext,
+  ): Boolean {
+    val dynamicGraph = context.dynamicGraph ?: return false
+    if (binding.multibindingId != null) return false
+    val hasDynamicReplacement =
+      binding.typeKey in dynamicGraph.bindingKeys || binding.typeKey in dynamicGraph.containerKeys
+    if (!hasDynamicReplacement) return false
+
+    val includedContainerKey = binding.includedContainerKey
+    if (includedContainerKey != null && includedContainerKey in dynamicGraph.containerKeys) {
+      return false
+    }
+    if (binding is KaBinding.BoundInstance && binding.isBindingContainerInput) {
+      val source = pointerIdentity(binding.pointer)
+      val isDynamicInput =
+        dynamicGraph.containerInputs.any { input ->
+          input.typeKey == binding.typeKey && pointerIdentity(input.pointer) == source
+        }
+      if (isDynamicInput) return false
+    }
+    return true
   }
 
   private fun isContributedBindingActive(

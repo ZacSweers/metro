@@ -52,6 +52,8 @@ import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.DynamicGraphCall
+import dev.zacsweers.metro.idea.model.DynamicGraphId
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
@@ -87,6 +89,7 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
@@ -550,6 +553,7 @@ class MetroResolutionService(
           incompleteAssistedFactories =
             if (key.resolveFromLibraries) library.incompleteFactories
             else summary.sourceFactories.incompleteFactories,
+          dynamicGraphs = source.dynamicGraphs,
         )
       // Only cache when nothing invalidated the pass semantically. A plain re-drain of new dirty
       // files under the same generation still describes this exact source snapshot.
@@ -677,6 +681,7 @@ class MetroResolutionService(
     val assistedSites = mutableListOf<AssistedSite>()
     val bindingContainers = mutableListOf<BindingContainerEntry>()
     val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
+    val dynamicGraphs = linkedMapOf<DynamicGraphId, DynamicGraphCall>()
     val factoryInputs = linkedMapOf<FactoryInputEntry.Id, FactoryInputEntry>()
     var factoryInputBindings: CanonicalFactoryInputBindings? = null
     var completed = 0
@@ -713,6 +718,9 @@ class MetroResolutionService(
         assistedSites += shard.assistedSites
         bindingContainers += shard.bindingContainers
         graphInterfaces += shard.graphInterfaces
+        for (dynamicGraph in shard.dynamicGraphs) {
+          dynamicGraphs.putIfAbsent(dynamicGraph.id, dynamicGraph)
+        }
         for (input in shard.factoryInputs) factoryInputs.putIfAbsent(input.id, input)
       } finally {
         completed++
@@ -741,6 +749,7 @@ class MetroResolutionService(
       contributions,
       assistedSites,
       bindingContainers,
+      dynamicGraphs.values.toList(),
     )
   }
 
@@ -864,6 +873,19 @@ class MetroResolutionService(
         ?: annotationId.shortClassName.asString()
     }
     val searchHelper = PsiSearchHelper.getInstance(project)
+    for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
+      val callableName = callableId.callableName.asString()
+      searchHelper.processElementsWithWord(
+        { element, _ ->
+          (element.containingFile as? KtFile)?.let(files::add)
+          true
+        },
+        searchScope,
+        callableName,
+        UsageSearchContext.IN_CODE,
+        true,
+      )
+    }
     for ((searchWord, matchingIds) in idsBySearchWord) {
       ProgressManager.checkCanceled()
       val canonicalNames = matchingIds.mapToSet { it.asSingleFqName() }
@@ -900,8 +922,24 @@ class MetroResolutionService(
       } else {
         shortNames
       }
-    return PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java).any { entry ->
-      entry.shortName?.asString() in names
+    val hasRelevantAnnotation =
+      PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java).any { entry ->
+        entry.shortName?.asString() in names
+      }
+    if (hasRelevantAnnotation) return true
+
+    val dynamicGraphNames = buildSet {
+      for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
+        add(callableId.callableName.asString())
+        for (directive in file.importDirectives) {
+          if (directive.importedFqName == callableId.asSingleFqName()) {
+            directive.aliasName?.let(::add)
+          }
+        }
+      }
+    }
+    return PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java).any { call ->
+      call.calleeExpression?.text in dynamicGraphNames
     }
   }
 
@@ -1615,6 +1653,15 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
         input.bindings.mapNotNull(::bindingLibrarySignature),
       )
     },
+    dynamicGraphs.map { dynamicGraph ->
+      DynamicGraphLibrarySignature(
+        dynamicGraph.id,
+        dynamicGraph.targetGraph,
+        dynamicGraph.bindingKeys,
+        dynamicGraph.isFactory,
+        dynamicGraph.pointer.element != null,
+      )
+    },
     graphInterfaces.map(::graphInterfaceLibrarySignature),
   )
 }
@@ -1781,7 +1828,16 @@ private data class SourceLibraryShardSignature(
   val writtenBindingKeys: List<KaTypeKey>,
   val bindings: List<BindingLibrarySignature>,
   val factoryInputs: List<FactoryInputLibrarySignature>,
+  val dynamicGraphs: List<DynamicGraphLibrarySignature>,
   val graphInterfaces: List<GraphInterfaceLibrarySignature>,
+)
+
+private data class DynamicGraphLibrarySignature(
+  val id: DynamicGraphId,
+  val targetGraph: GraphReference,
+  val bindingKeys: Set<KaTypeKey>,
+  val isFactory: Boolean,
+  val pointerIsValid: Boolean,
 )
 
 private data class GraphLibrarySignature(
@@ -1997,6 +2053,7 @@ private class SourceLibrarySummaryReference {
           source.contributions,
           source.assistedSites,
           source.bindingContainers,
+          dynamicGraphs = source.dynamicGraphs,
         )
       val consumerGraphContexts = ConsumerGraphContexts(sourceIndex)
       val sourceFactories =
@@ -2037,6 +2094,7 @@ private data class SourceAggregate(
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
+  val dynamicGraphs: List<DynamicGraphCall>,
 ) {
   fun withAddedFactories(factories: List<KaBinding.AssistedFactory>): SourceAggregate {
     if (factories.isEmpty()) return this
@@ -2071,6 +2129,10 @@ private data class SourceAggregate(
       ProgressManager.checkCanceled()
       scopeIds += graph.scopeKeys
       addModule(graph.pointer.element)
+    }
+    for (dynamicGraph in dynamicGraphs) {
+      ProgressManager.checkCanceled()
+      addModule(dynamicGraph.pointer.element)
     }
     for (contribution in contributions) {
       ProgressManager.checkCanceled()

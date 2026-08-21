@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import dev.zacsweers.metro.compiler.MetroClassIds
@@ -77,10 +78,10 @@ internal fun KaClassSymbol.graphFactoryInputs(
       if (parameterClass.hasAnyAnnotation(options.bindingContainerAnnotations)) {
         if (bindingContainers.add(parameterKey)) {
           inputs +=
-            includedBindingContainer(
+            bindingContainerInput(
               parameterType,
               parameterKey,
-              parameter,
+              parameter.symbol.psi ?: parameterType.symbol.psi,
               options,
               pointerManager,
               cacheDependencies,
@@ -159,10 +160,10 @@ private fun KaSession.includedGraphDependency(
   )
 }
 
-private fun KaSession.includedBindingContainer(
+internal fun KaSession.bindingContainerInput(
   containerType: KaClassType,
   containerKey: KaTypeKey,
-  parameter: CallableParameterView,
+  inputElement: PsiElement?,
   options: MetroOptions,
   pointerManager: SmartPointerManager,
   cacheDependencies: MutableSet<PsiFile>,
@@ -170,11 +171,10 @@ private fun KaSession.includedBindingContainer(
 ): FactoryInputEntry {
   val bindings = mutableListOf<KaBinding>()
   val consumers = mutableListOf<ConsumerEntry>()
-  val ownerElement = parameter.symbol.psi ?: containerType.symbol.psi
-  if (ownerElement != null) {
+  if (inputElement != null) {
     bindings +=
       KaBinding.BoundInstance(
-        pointerManager.createSmartPsiElementPointer(ownerElement),
+        pointerManager.createSmartPsiElementPointer(inputElement),
         containerKey,
         containerId = null,
         isBindingContainerInput = true,
