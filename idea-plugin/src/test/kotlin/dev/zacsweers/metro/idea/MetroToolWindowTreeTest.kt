@@ -21,6 +21,7 @@ import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
@@ -36,6 +37,8 @@ import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
+import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import org.jetbrains.kotlin.name.ClassId
@@ -389,6 +392,64 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     panel.clear()
     assertFalse(panel.isVisible)
+  }
+
+  fun testValidationStatusPanelShowsPreparingAndCountedProgress() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val panel = ValidationStatusPanel()
+
+    panel.show(GraphValidationProgress(context.path, graphName = "AppGraph"))
+    assertTrue(panel.isVisible)
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Validating Metro graph AppGraph", panel.messageLabel.text)
+
+    panel.show(GraphValidationProgress(context.path, "ChildGraph", completed = 1, total = 3))
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals(1, panel.progressBar.value)
+    assertEquals(3, panel.progressBar.maximum)
+    assertEquals(
+      "Validating Metro graph ChildGraph (2 of 3 graphs)",
+      panel.messageLabel.text,
+    )
+
+    panel.clear()
+    assertFalse(panel.isVisible)
+  }
+
+  fun testValidateActionIsDisabledWhileTheSelectedGraphIsRunning() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    var selectedContext: GraphContext? = null
+    var validationRunning = false
+    var validatedContext: GraphContext? = null
+    val action =
+      ValidateSelectedGraphAction(
+        selectedContext = { selectedContext },
+        isValidationRunning = { validationRunning },
+        validate = { validatedContext = it },
+      )
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    action.update(event)
+    assertFalse(event.presentation.isEnabled)
+
+    selectedContext = context
+    action.update(event)
+    assertTrue(event.presentation.isEnabled)
+
+    validationRunning = true
+    action.update(event)
+    assertFalse(event.presentation.isEnabled)
+    action.actionPerformed(event)
+    assertNull(validatedContext)
+
+    validationRunning = false
+    action.actionPerformed(event)
+    assertSame(context, validatedContext)
   }
 
   fun testGraphBrowserActionLoadsOnceThenRefreshes() {

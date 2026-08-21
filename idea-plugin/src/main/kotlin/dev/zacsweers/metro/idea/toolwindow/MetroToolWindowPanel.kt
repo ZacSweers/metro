@@ -7,6 +7,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -30,6 +31,7 @@ import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.MetroIcons
+import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -37,6 +39,7 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.awt.BorderLayout
 import java.awt.event.MouseEvent
+import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
@@ -55,8 +58,12 @@ internal class MetroToolWindowPanel(private val project: Project) :
   // search text instead of touching the Swing component off the EDT.
   @Volatile private var searchText: String = ""
   private val resolutionService = project.service<MetroResolutionService>()
+  private val validationService = project.service<MetroGraphValidationService>()
   private val indexBuildStatus = IndexBuildStatusPanel()
+  private val validationStatus = ValidationStatusPanel()
   private var indexBuildProgress: IndexBuildProgress? = null
+  private var validationProgress: List<GraphValidationProgress> = emptyList()
+  private lateinit var actionToolbar: ActionToolbar
   private val treeStructure =
     MetroTreeStructure(project, resolutionService::indexForToolWindow) { searchText }
 
@@ -110,6 +117,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
       indexBuildProgress = progress
       updateIndexBuildStatus()
     }
+    validationService.addValidationProgressListener(this) { progress ->
+      validationProgress = progress
+      updateValidationStatus()
+    }
 
     object : DoubleClickListener() {
         override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected()
@@ -124,6 +135,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
         }
       }
     )
+    tree.addTreeSelectionListener { updateValidationStatus() }
 
     val overflowGroup =
       DefaultActionGroup("More", true).apply {
@@ -134,31 +146,30 @@ internal class MetroToolWindowPanel(private val project: Project) :
       DefaultActionGroup(
         // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
         loadOrRefreshAction,
-        object :
-          AnAction("Validate", "Validate the selected graph", MetroIcons.GRAPH_VALIDATED),
-          DumbAware {
-          override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
-
-          override fun update(e: AnActionEvent) {
-            e.presentation.isEnabled = selectedGraphNode() != null
-          }
-
-          override fun actionPerformed(e: AnActionEvent) {
-            selectedGraphNode()?.context?.let(::validateContext)
-          }
-        },
+        ValidateSelectedGraphAction(
+          selectedContext = { selectedGraphNode()?.context },
+          isValidationRunning = { validationService.isValidationRunning(it.path) },
+          validate = ::validateContext,
+        ),
         overflowGroup,
       )
-    val toolbar =
+    actionToolbar =
       ActionManager.getInstance().createActionToolbar("MetroToolWindow", actionGroup, true)
-    toolbar.targetComponent = tree
+    actionToolbar.targetComponent = tree
 
     val header = JPanel(BorderLayout())
-    header.add(toolbar.component, BorderLayout.WEST)
+    header.add(actionToolbar.component, BorderLayout.WEST)
     header.add(searchField, BorderLayout.CENTER)
     setToolbar(header)
     val content = JPanel(BorderLayout())
-    content.add(indexBuildStatus, BorderLayout.NORTH)
+    val statusContainer =
+      JPanel().apply {
+        isOpaque = false
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        add(indexBuildStatus)
+        add(validationStatus)
+      }
+    content.add(statusContainer, BorderLayout.NORTH)
     content.add(JBScrollPane(tree), BorderLayout.CENTER)
     setContent(content)
   }
@@ -174,6 +185,23 @@ internal class MetroToolWindowPanel(private val project: Project) :
         !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
         else -> indexBuildStatus.clear()
       }
+    }
+  }
+
+  private fun updateValidationStatus() {
+    if (disposed || project.isDisposed) return
+    val selectedPath = selectedGraphNode()?.context?.path
+    val selectedProgress = selectedPath?.let { path ->
+      validationProgress.firstOrNull { it.covers(path) }
+    }
+    val progress = selectedProgress ?: validationProgress.firstOrNull()
+    if (progress == null) {
+      validationStatus.clear()
+    } else {
+      validationStatus.show(progress)
+    }
+    if (::actionToolbar.isInitialized) {
+      actionToolbar.updateActionsImmediately()
     }
   }
 
@@ -243,14 +271,14 @@ internal class MetroToolWindowPanel(private val project: Project) :
 
   private fun validateGraph(graph: KaGraphDeclaration) {
     val element = graph.pointer.element ?: return
-    project.service<MetroGraphValidationService>().validateWithExtensionsAsync(element, graph) {
+    validationService.validateWithExtensionsAsync(element, graph) {
       validationFinished(validationVisitor(graph))
     }
   }
 
   private fun validateContext(context: GraphContext) {
     val element = context.graph.pointer.element ?: return
-    project.service<MetroGraphValidationService>().validateWithExtensionsAsync(element, context) {
+    validationService.validateWithExtensionsAsync(element, context) {
       validationFinished(validationVisitor(context))
     }
   }
@@ -313,6 +341,24 @@ internal class MetroToolWindowPanel(private val project: Project) :
     disposed = true
     pendingValidation = null
     indexBuildStatus.clear()
+    validationStatus.clear()
+  }
+}
+
+internal class ValidateSelectedGraphAction(
+  private val selectedContext: () -> GraphContext?,
+  private val isValidationRunning: (GraphContext) -> Boolean,
+  private val validate: (GraphContext) -> Unit,
+) : AnAction("Validate", "Validate the selected graph", MetroIcons.GRAPH_VALIDATED), DumbAware {
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+  override fun update(e: AnActionEvent) {
+    val context = selectedContext()
+    e.presentation.isEnabled = context != null && !isValidationRunning(context)
+  }
+
+  override fun actionPerformed(e: AnActionEvent) {
+    selectedContext()?.takeUnless(isValidationRunning)?.let(validate)
   }
 }
 
