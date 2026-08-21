@@ -1,6 +1,7 @@
 // Repro for https://github.com/ZacSweers/metro/issues/2090
 // @ContributesIntoMap with implicit class key and generateContributionProviders
-// The implicit class key should resolve to the contributing class, not Nothing::class
+// The implicit class key should resolve to the contributing class, not Nothing::class. Different
+// implicit keys must not compete by priority even when their map and bound types match.
 
 // MODULE: common
 import kotlin.reflect.KClass
@@ -14,7 +15,7 @@ abstract class ViewModel
 import kotlin.reflect.KClass
 
 @ViewModelKey
-@ContributesIntoMap(AppScope::class)
+@ContributesIntoMap(AppScope::class, priority = 100)
 @Inject
 class FooViewModel : ViewModel()
 
