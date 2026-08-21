@@ -33,11 +33,13 @@ package dev.zacsweers.metro {
   }
 
   @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesBinding {
-    ctor @KotlinOnly public ContributesBinding(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    ctor @KotlinOnly public ContributesBinding(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces, optional int priority);
     method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract int priority() default -2147483648;
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
     property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract int priority;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
   }
@@ -47,11 +49,13 @@ package dev.zacsweers.metro {
   }
 
   @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesIntoMap {
-    ctor @KotlinOnly public ContributesIntoMap(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    ctor @KotlinOnly public ContributesIntoMap(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces, optional int priority);
     method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract int priority() default -2147483648;
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
     property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract int priority;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
   }
@@ -61,11 +65,13 @@ package dev.zacsweers.metro {
   }
 
   @kotlin.annotation.Repeatable @kotlin.annotation.Target(allowedTargets=kotlin.annotation.AnnotationTarget.CLASS) public @interface ContributesIntoSet {
-    ctor @KotlinOnly public ContributesIntoSet(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces);
+    ctor @KotlinOnly public ContributesIntoSet(kotlin.reflect.KClass<? extends java.lang.Object?> scope, optional dev.zacsweers.metro.binding<? extends java.lang.Object?> binding, optional kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces, optional int priority);
     method @InaccessibleFromKotlin public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding() default dev.zacsweers.metro.binding();
+    method @InaccessibleFromKotlin public abstract int priority() default -2147483648;
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?>[] replaces();
     method @InaccessibleFromKotlin public abstract Class<? extends java.lang.Object?> scope();
     property public abstract dev.zacsweers.metro.binding<? extends java.lang.Object?> binding;
+    property public abstract int priority;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?>[] replaces;
     property public abstract kotlin.reflect.KClass<? extends java.lang.Object?> scope;
   }
