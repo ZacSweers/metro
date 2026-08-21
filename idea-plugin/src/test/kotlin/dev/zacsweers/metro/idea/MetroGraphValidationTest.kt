@@ -9,6 +9,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaBindingGraph
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -2300,8 +2301,21 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     validationService.clearResults()
     val leftParent = index.graphs.single { it.name == "LeftParent" }
-    val traversal = validationService.validateWithExtensions(file, leftParent)
+    val progress = mutableListOf<GraphValidationProgress>()
+    val traversal = validationService.validateWithExtensions(file, leftParent, progress::add)
     assertEquals(listOf("ChildGraph", "LeftParent"), traversal.map { it.graph.name })
+    assertEquals(listOf("ChildGraph", "LeftParent"), progress.map { it.graphName })
+    assertEquals(listOf(0, 1), progress.map { it.completed })
+    assertEquals(listOf(2, 2), progress.map { it.total })
+    assertEquals(
+      listOf(
+        "Validating Metro graph ChildGraph (1 of 2 graphs)",
+        "Validating Metro graph LeftParent (2 of 2 graphs)",
+      ),
+      progress.map { it.message },
+    )
+    assertTrue(progress.first().covers(leftContext.path))
+    assertFalse(progress.first().covers(rightContext.path))
     assertEquals("LeftParent", traversal.first().context.chain[1].name)
     assertNull(validationService.cachedResult(file, rightContext))
   }
