@@ -64,6 +64,27 @@ class BindingGraphValidatorTest {
   }
 
   @Test
+  fun `does not traverse set contribution keys`() {
+    val multibinding = validationBinding("Set<Value>")
+    val sourceKeys =
+      object : AbstractCollection<StringTypeKey>() {
+        override val size: Int = 2
+
+        override fun iterator(): Iterator<StringTypeKey> {
+          error("Set multibindings must not iterate contribution keys")
+        }
+      }
+    val validator =
+      validator(
+        bindings = bindingsOf(multibinding),
+        multibindingKindOf = { MultibindingKind.SET },
+        multibindingSourceKeys = { sourceKeys },
+      )
+
+    assertThat(validator.validateAll(multibinding)).isEmpty()
+  }
+
+  @Test
   fun `reports duplicate map keys with their contributions`() {
     val first = validationBinding("FirstContribution")
     val second = validationBinding("SecondContribution")

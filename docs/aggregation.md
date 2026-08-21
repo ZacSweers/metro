@@ -134,6 +134,22 @@ class CacheImpl(...) : Cache, AnotherType
 !!! tip
     Contributions may be `object` classes. In this event, Metro will automatically provide the object instance in its binding.
 
+### Contribution priority
+
+`@ContributesBinding` supports a `priority` argument for choosing between contributions to the same qualified bound type without directly referencing another implementation. The highest-priority contribution is used:
+
+```kotlin
+@ContributesBinding(AppScope::class)
+class DefaultCache : Cache
+
+@ContributesBinding(AppScope::class, priority = 10)
+class PreferredCache : Cache
+```
+
+In this example, `PreferredCache` supplies the `Cache` binding. Priorities default to `Int.MIN_VALUE`, so any explicitly specified higher value takes precedence. Contributions with equal priorities remain duplicate bindings and produce the usual error.
+
+Priority only suppresses the individual conflicting binding. Other bindings or set/map contributions from the same implementation remain available. Explicit `excludes` and `replaces` are applied first and still exclude or replace whole contributing classes.
+
 ### Implicitly-injected `@ContributesBinding` types
 
 Unlike Anvil, Metro does not require `@Inject` on `@Contributes*` annotated types. The `@Contributes*` annotation itself is sufficient to indicate that the type should be injected.
@@ -181,6 +197,26 @@ class CacheImpl(...) : Cache
 ```
 
 This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.
+
+`@ContributesIntoMap` also supports `priority` when multiple contributions target the same qualified map and the same map-key value:
+
+```kotlin
+@ContributesIntoMap(AppScope::class)
+@StringKey("remote")
+class DefaultRemoteCache : Cache
+
+@ContributesIntoMap(AppScope::class, priority = 10)
+@StringKey("remote")
+class PreferredRemoteCache : Cache
+
+@ContributesIntoMap(AppScope::class)
+@StringKey("local")
+class LocalCache : Cache
+```
+
+Here the `"remote"` entry uses `PreferredRemoteCache`, while the separate `"local"` entry remains unaffected. Equal-priority contributions to the same map key still produce the usual duplicate-key error.
+
+Set contributions are additive and do not support `priority`; use `replaces` or graph `excludes` to remove a contribution. `@ContributesTo` also does not support priority.
 
 You can use `@IntoMap`/`@IntoSet` to provide into the same container:
 
@@ -328,6 +364,8 @@ interface AppGraph {
 ```
 
 The tradeoff is that `Impl` is no longer available directly on the graph.
+
+Contribution priorities are also honored for generated providers, including contributions from `internal` implementations in upstream modules.
 
 ## Implementation notes
 

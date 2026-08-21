@@ -598,6 +598,107 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertEquals(2, result.diagnostics.single().related.size)
   }
 
+  fun testSetContributionsAreAdditive() {
+    val result =
+      validate(
+        """
+        interface Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class FirstService : Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertEquals(
+      setOf("FirstService", "SecondService"),
+      result.bindings.asMap().values.mapNotNullTo(mutableSetOf()) { binding ->
+        binding.implementationName.takeIf { binding.multibindingId != null }
+      },
+    )
+  }
+
+  fun testKeyedCustomSetContributionsRemainMapEntries() {
+    project.setMetroOptions("custom-contributes-into-set" to "test/PrioritizedMultibinding")
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMultibinding(
+          val scope: KClass<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject @StringKey("first")
+        @PrioritizedMultibinding(AppScope::class, priority = 100)
+        class FirstMapService : Service
+
+        @Inject @StringKey("second")
+        @PrioritizedMultibinding(AppScope::class, priority = 100)
+        class SecondMapService : Service
+
+        @Inject @PrioritizedMultibinding(AppScope::class)
+        class SetService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val mapped: Map<String, Service>
+          val collected: Set<Service>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testMixedOrdinaryAndSetAnnotationsStayAdditive() {
+    project.setMetroOptions("custom-contributes-binding" to "test/MixedContribution")
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        @Repeatable
+        annotation class MixedContribution(
+          val scope: KClass<*>,
+          val multibinding: Boolean = false,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject
+        @MixedContribution(AppScope::class)
+        @MixedContribution(AppScope::class, multibinding = true)
+        class SharedService : Service
+
+        @Inject @MixedContribution(AppScope::class, multibinding = true)
+        class OtherSetService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val services: Set<Service>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
   fun testDuplicateMapKeysAreReported() {
     val result =
       validate(
@@ -621,6 +722,77 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(diagnostic.render(), "same map key" in diagnostic.render())
     assertEquals(2, diagnostic.related.size)
     assertTrue(diagnostic.stack.isNotEmpty())
+  }
+
+  fun testMapPriorityPreventsDuplicateMapKeyDiagnostic() {
+    project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMapContribution(val scope: KClass<*>, val priority: Int)
+
+        interface Service
+
+        @Inject @StringKey("same")
+        @PrioritizedMapContribution(AppScope::class, priority = 10)
+        class LowerService : Service
+
+        @Inject @StringKey("same")
+        @PrioritizedMapContribution(AppScope::class, priority = 100)
+        class HigherService : Service
+
+        @Inject @StringKey("other")
+        @PrioritizedMapContribution(AppScope::class, priority = 1)
+        class OtherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Map<String, Service>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertEquals(
+      setOf("HigherService", "OtherService"),
+      result.bindings.asMap().values.mapNotNullTo(mutableSetOf()) { binding ->
+        binding.implementationName.takeIf { binding.mapKeyValue != null }
+      },
+    )
+  }
+
+  fun testEqualMapContributionPrioritiesStillReportDuplicateMapKeys() {
+    project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMapContribution(val scope: KClass<*>, val priority: Int)
+
+        interface Service
+
+        @Inject @StringKey("same")
+        @PrioritizedMapContribution(AppScope::class, priority = 100)
+        class FirstService : Service
+
+        @Inject @StringKey("same")
+        @PrioritizedMapContribution(AppScope::class, priority = 100)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Map<String, Service>
+        }
+        """
+      )
+
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_MAP_KEYS), result.diagnostics.map { it.id })
+    assertEquals(2, result.diagnostics.single().related.size)
   }
 
   fun testParentScopedMapContributionKeepsItsMapKeyWhenDelegated() {
@@ -2686,6 +2858,44 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     }
     assertTrue(serviceBinding is KaBinding.Provided)
     assertEquals("HigherService", serviceBinding?.implementationName)
+  }
+
+  fun testGeneratedContributionProvidersParticipateInPrioritiesWithoutInterop() {
+    project.setMetroOptions(
+      "generate-contribution-providers" to "true",
+      "custom-contributes-binding" to "test/PrioritizedBinding",
+    )
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedBinding(val scope: KClass<*>, val priority: Int)
+
+        interface Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 50)
+        class LowerService : Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val serviceBinding =
+      result.bindings.asMap().values.single {
+        it.typeKey.renderedType == "test.Service"
+      }
+    assertTrue(serviceBinding is KaBinding.Provided)
+    assertEquals("HigherService", serviceBinding.implementationName)
+    assertEquals(100, serviceBinding.priority)
   }
 
   fun testContributedAssistedFactoryRetainsItsTargetsNonAssistedDependencies() {

@@ -23,6 +23,7 @@ public abstract interface annotation class dev/zacsweers/metro/ClassKey : java/l
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesBinding : java/lang/annotation/Annotation {
 	public abstract fun binding ()Ldev/zacsweers/metro/binding;
+	public abstract fun priority ()I
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }
@@ -33,6 +34,7 @@ public abstract interface annotation class dev/zacsweers/metro/ContributesBindin
 
 public abstract interface annotation class dev/zacsweers/metro/ContributesIntoMap : java/lang/annotation/Annotation {
 	public abstract fun binding ()Ldev/zacsweers/metro/binding;
+	public abstract fun priority ()I
 	public abstract fun replaces ()[Ljava/lang/Class;
 	public abstract fun scope ()Ljava/lang/Class;
 }

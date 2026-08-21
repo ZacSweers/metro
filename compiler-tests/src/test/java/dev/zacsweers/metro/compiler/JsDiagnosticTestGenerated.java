@@ -93,6 +93,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("EqualContributionPriorities.kt")
+    public void testEqualContributionPriorities() {
+      run("EqualContributionPriorities.kt");
+    }
+
+    @Test
+    @TestMetadata("EqualMapContributionPriorities.kt")
+    public void testEqualMapContributionPriorities() {
+      run("EqualMapContributionPriorities.kt");
+    }
+
+    @Test
     @TestMetadata("ExposeImplBindingWithoutContributionProviders.kt")
     public void testExposeImplBindingWithoutContributionProviders() {
       run("ExposeImplBindingWithoutContributionProviders.kt");

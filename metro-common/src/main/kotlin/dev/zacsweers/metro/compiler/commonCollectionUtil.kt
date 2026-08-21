@@ -26,7 +26,7 @@ public fun <T> Iterable<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
 }
 
-public fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
+public inline fun <T> List<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
   return filterTo(mutableSetOf(), predicate)
 }
 

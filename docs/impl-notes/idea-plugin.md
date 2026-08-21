@@ -18,8 +18,8 @@ scan more than the original compiler implementation.
 Graph roots retain the compiler's single map-write fast path. Suspend validation stays out of
 ordinary compilations and only builds diagnostic paths after suspend behavior actually needs them.
 
-Anvil contribution ranking uses the same inline selection helper in FIR, IR, and the IDE. Moving
-that small helper does not change compiler contribution scans, feature gates, or allocations.
+Contribution priority selection uses the same inline helper in IR and the IDE. Anvil's
+`rank` is treated as an alternative priority argument only when its interop is enabled.
 
 The plugin is K2-only and reads Metro compiler plugin options from the IDE's Kotlin compiler
 facet configuration, so custom annotations and interop options behave like they do in builds.
@@ -105,14 +105,14 @@ BindingIndex (membership queries)
   accessors, inject classes, top-level function injection, contributions, assisted factories, and
   binding containers.
 - `index/BindingExtraction.kt`: symbol-to-model extraction shared by source and library paths.
-  Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.
+  Computes type keys, dependency keys, map key info, contribution priorities, and multibinding ids.
   Generated contribution providers depend only on constructor parameters, matching the actual
   compiler-generated provider; an exposed injectable implementation retains its injected members.
 - `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
   binary inject classes and assisted factories on demand, specializing factory methods and target
   dependencies to their requested generic arguments. This includes transitive dependencies of
   generated contribution providers and discoveries from generated hint functions, the same way
-  the compiler does. Generated aliases inherit their origin's Anvil contribution rank. Public
+  the compiler does. Generated aliases inherit their origin's contribution priority. Public
   hints only need classpath visibility; nonpublic hints still use Kotlin's friend-module rules.
 
 ### Model
@@ -130,9 +130,11 @@ arguments, including declared defaults), and declarations are held as `SmartPsiE
   ScatterMaps) plus per-graph membership. `contextsFor(graph)` merges the extension parent chain
   into a `GraphContext` (scopes, containers, includes, excludes, supertype ids).
   - Membership filtering applies graph/module visibility, scope matching, declaration-specific
-    containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.
-    Exclusions happen before replacements, and rank runs last within each graph's own scopes.
-    Replacing or outranking a contribution never removes its separate injectable concrete type.
+    containers, member-injection ownership, exclusions, explicit replacements, and contribution
+    priorities. Exclusions happen before replacements, and priority selection runs last within
+    each graph's own scopes. Higher-priority bindings replace only matching qualified bindings;
+    map contributions additionally match their map-key values. Replacing a contribution never
+    removes its separate injectable concrete type.
     Graph-private bindings, including optional bindings, stay in their owning graph, and assisted
     targets are not presented as ordinary injectable bindings.
 

@@ -38,8 +38,8 @@
 
 === "Anvil"
 
-    * There is no `rank` in Metro's `@Contributes*` annotations.
-        * Note that if Anvil interop is enabled, _its_ `rank` properties are supported in interop.
+    * `@ContributesBinding` and `@ContributesIntoMap` use `priority` instead of Anvil's `rank`.
+        * If Anvil interop is enabled, its numeric `rank` properties are treated as contribution priorities.
     * There is no `ignoreQualifier` in Metro's `@Contributes*` annotations.
         * Note that if Anvil interop is enabled, _its_ `ignoreQualifier` properties are supported in interop.
     * `@ContributesBinding` uses a `binding` API to support generic bound types. See the [aggregation docs](aggregation.md) for more info.

@@ -153,6 +153,36 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ContributionPriorityAdditionalScopes.kt")
+    public void testContributionPriorityAdditionalScopes() {
+      run("ContributionPriorityAdditionalScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionPriorityExplicitReplacement.kt")
+    public void testContributionPriorityExplicitReplacement() {
+      run("ContributionPriorityExplicitReplacement.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionPriorityGraphExtension.kt")
+    public void testContributionPriorityGraphExtension() {
+      run("ContributionPriorityGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionPriorityOrdering.kt")
+    public void testContributionPriorityOrdering() {
+      run("ContributionPriorityOrdering.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributionPriorityPreservesOtherBindings.kt")
+    public void testContributionPriorityPreservesOtherBindings() {
+      run("ContributionPriorityPreservesOtherBindings.kt");
+    }
+
+    @Test
     @TestMetadata("DefaultBinding_Basic.kt")
     public void testDefaultBinding_Basic() {
       run("DefaultBinding_Basic.kt");
@@ -237,6 +267,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("ImplicitClassKeyContributionPriorities.kt")
+    public void testImplicitClassKeyContributionPriorities() {
+      run("ImplicitClassKeyContributionPriorities.kt");
+    }
+
+    @Test
     @TestMetadata("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt")
     public void testInheritedBindingsDoNotCauseDuplicatesFromNestedContainers() {
       run("InheritedBindingsDoNotCauseDuplicatesFromNestedContainers.kt");
@@ -258,6 +294,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @TestMetadata("LargeContributionGraphSignatureLimitStressTest.kt")
     public void testLargeContributionGraphSignatureLimitStressTest() {
       run("LargeContributionGraphSignatureLimitStressTest.kt");
+    }
+
+    @Test
+    @TestMetadata("MapContributionPriority.kt")
+    public void testMapContributionPriority() {
+      run("MapContributionPriority.kt");
     }
 
     @Test
@@ -309,6 +351,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("RepeatedContributionPriorities.kt")
+    public void testRepeatedContributionPriorities() {
+      run("RepeatedContributionPriorities.kt");
+    }
+
+    @Test
     @TestMetadata("ReplacementsWithOrigin.kt")
     public void testReplacementsWithOrigin() {
       run("ReplacementsWithOrigin.kt");
@@ -338,6 +386,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       run("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");
     }
 
+    @Test
+    @TestMetadata("SetContributionGraphExtension.kt")
+    public void testSetContributionGraphExtension() {
+      run("SetContributionGraphExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("SetContributionReplacementsAndExclusions.kt")
+    public void testSetContributionReplacementsAndExclusions() {
+      run("SetContributionReplacementsAndExclusions.kt");
+    }
+
+    @Test
+    @TestMetadata("SetContributionsAreAdditive.kt")
+    public void testSetContributionsAreAdditive() {
+      run("SetContributionsAreAdditive.kt");
+    }
+
     @Nested
     @TestMetadata("compiler-tests/src/test/data/box/aggregation/contributionproviders")
     @TestDataPath("$PROJECT_ROOT")
@@ -361,6 +427,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("basic.kt")
       public void testBasic() {
         run("basic.kt");
+      }
+
+      @Test
+      @TestMetadata("bindingPriority.kt")
+      public void testBindingPriority() {
+        run("bindingPriority.kt");
+      }
+
+      @Test
+      @TestMetadata("crossModuleMapPriority.kt")
+      public void testCrossModuleMapPriority() {
+        run("crossModuleMapPriority.kt");
       }
 
       @Test
@@ -406,6 +484,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("internalBindingPriority.kt")
+      public void testInternalBindingPriority() {
+        run("internalBindingPriority.kt");
+      }
+
+      @Test
+      @TestMetadata("internalSetContributions.kt")
+      public void testInternalSetContributions() {
+        run("internalSetContributions.kt");
+      }
+
+      @Test
       @TestMetadata("intoMap.kt")
       public void testIntoMap() {
         run("intoMap.kt");
@@ -415,6 +505,18 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("intoSet.kt")
       public void testIntoSet() {
         run("intoSet.kt");
+      }
+
+      @Test
+      @TestMetadata("mixedPriorities.kt")
+      public void testMixedPriorities() {
+        run("mixedPriorities.kt");
+      }
+
+      @Test
+      @TestMetadata("mixedSetContributions.kt")
+      public void testMixedSetContributions() {
+        run("mixedSetContributions.kt");
       }
 
       @Test
@@ -546,6 +648,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("ContributionPriorityAnvilRankInterop.kt")
+      public void testContributionPriorityAnvilRankInterop() {
+        run("ContributionPriorityAnvilRankInterop.kt");
+      }
+
+      @Test
       @TestMetadata("ExcludesWithOriginInterop.kt")
       public void testExcludesWithOriginInterop() {
         run("ExcludesWithOriginInterop.kt");
@@ -567,6 +675,24 @@ public class BoxTestGenerated extends AbstractBoxTest {
       @TestMetadata("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt")
       public void testRankBasedReplacementFromClassWithMultipleBindingsInRootGraph() {
         run("RankBasedReplacementFromClassWithMultipleBindingsInRootGraph.kt");
+      }
+
+      @Test
+      @TestMetadata("RankHonoredWithInterop.kt")
+      public void testRankHonoredWithInterop() {
+        run("RankHonoredWithInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("RankIgnoredWithoutInterop.kt")
+      public void testRankIgnoredWithoutInterop() {
+        run("RankIgnoredWithoutInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("RankWithExplicitBoundTypeIgnoresQualifier.kt")
+      public void testRankWithExplicitBoundTypeIgnoresQualifier() {
+        run("RankWithExplicitBoundTypeIgnoresQualifier.kt");
       }
 
       @Test

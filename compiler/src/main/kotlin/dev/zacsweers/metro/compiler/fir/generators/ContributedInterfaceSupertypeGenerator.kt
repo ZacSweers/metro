@@ -9,10 +9,8 @@ import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
-import dev.zacsweers.metro.compiler.fir.FirTypeKey
 import dev.zacsweers.metro.compiler.fir.MetroFirTypeResolver
 import dev.zacsweers.metro.compiler.fir.annotationsIn
-import dev.zacsweers.metro.compiler.fir.argumentAsOrNull
 import dev.zacsweers.metro.compiler.fir.caching
 import dev.zacsweers.metro.compiler.fir.classIds
 import dev.zacsweers.metro.compiler.fir.isAnnotatedWithAny
@@ -20,19 +18,13 @@ import dev.zacsweers.metro.compiler.fir.isBindingContainer
 import dev.zacsweers.metro.compiler.fir.metroFirBuiltIns
 import dev.zacsweers.metro.compiler.fir.originClassId
 import dev.zacsweers.metro.compiler.fir.predicates
-import dev.zacsweers.metro.compiler.fir.qualifierAnnotation
-import dev.zacsweers.metro.compiler.fir.rankValue
-import dev.zacsweers.metro.compiler.fir.resolveDefaultBindingType
 import dev.zacsweers.metro.compiler.fir.resolvedAdditionalScopesClassIds
-import dev.zacsweers.metro.compiler.fir.resolvedBindingArgument
 import dev.zacsweers.metro.compiler.fir.resolvedExcludedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedReplacedClassIds
 import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.fir.scopeArgument
 import dev.zacsweers.metro.compiler.getAndAdd
-import dev.zacsweers.metro.compiler.graph.computeOutrankedBindings
 import dev.zacsweers.metro.compiler.hilt.HiltComponentScopeMapping
-import dev.zacsweers.metro.compiler.ir.IrRankedBindingProcessing
 import dev.zacsweers.metro.compiler.mapNotNullToSet
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
@@ -48,8 +40,6 @@ import org.jetbrains.kotlin.fir.caches.firCachesFactory
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.ResolveStateAccess
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
@@ -73,10 +63,8 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
-import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
-import org.jetbrains.kotlin.fir.types.FirUserTypeRef
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -232,7 +220,7 @@ internal class ContributedInterfaceSupertypeGenerator(
         if (generateClassesInIr) {
           // In IR-only mode MetroContribution marker classes are not generated in FIR. Keep only
           // source interfaces that directly contribute a user-visible supertype. Binding-like
-          // contributions are still tracked for replacement/rank logic, but filtered out when
+          // contributions are still tracked for replacement logic, but filtered out when
           // building supertypes.
           val contributesDirectly = originClass.directlyContributesTo(scopeClassId, typeResolver)
           if (contributesDirectly) {
@@ -666,27 +654,6 @@ internal class ContributedInterfaceSupertypeGenerator(
       }
     }
 
-    if (session.metroFirBuiltIns.options.enableDaggerAnvilInterop) {
-      session.trace({ "Process rank replacements" }, category = TraceCategories.FIR_SUPERTYPE) {
-        val unmatchedRankReplacements = mutableSetOf<ClassId>()
-        val pendingRankReplacements =
-          processRankBasedReplacements(scopes, contributions, typeResolver)
-
-        pendingRankReplacements.distinct().forEach { replacedClassId ->
-          removeContribution(replacedClassId, unmatchedRankReplacements)
-        }
-
-        if (unmatchedRankReplacements.isNotEmpty()) {
-          session.metroFirBuiltIns.writeDiagnostic(
-            "merging-unmatched-rank-replacements-fir",
-            { "${classLikeDeclaration.classId.safePathString}.txt" },
-          ) {
-            unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
-          }
-        }
-      }
-    }
-
     val declarationClassId = classLikeDeclaration.classId
     // Used to avoid promoting parents whose visibility is narrower than the graph. The generated
     // MetroContributionTo<Scope> intermediate is @Deprecated(HIDDEN) so it's invisible to
@@ -790,97 +757,6 @@ internal class ContributedInterfaceSupertypeGenerator(
         .distinctBy { it.classId }
         .sortedBy { it.classId?.asString() }
     }
-  }
-
-  /**
-   * This provides `ContributesBinding.rank` interop for users migrating from Dagger-Anvil to make
-   * the migration to Metro more feasible.
-   *
-   * @return The bindings which have been outranked and should not be included in the merged graph.
-   */
-  private fun processRankBasedReplacements(
-    allScopes: Set<ClassId>,
-    contributions: Map<ClassId, ConeKotlinType>,
-    typeResolver: TypeResolveService,
-  ): Set<ClassId> {
-    val rankedBindings =
-      contributions.values
-        .filterIsInstance<ConeClassLikeType>()
-        .mapNotNull { it.toClassSymbol(session)?.getContainingClassSymbol() }
-        .flatMap { contributingType ->
-          contributingType
-            .annotationsIn(session, session.classIds.contributesBindingAnnotationsWithContainers)
-            .mapNotNull { annotation ->
-              val scope =
-                annotation.resolvedScopeClassId(session, typeResolver) ?: return@mapNotNull null
-              if (scope !in allScopes) return@mapNotNull null
-
-              val explicitBindingMissingMetadata =
-                annotation.argumentAsOrNull<FirAnnotation>(
-                  session,
-                  Symbols.Names.binding,
-                  index = 1,
-                )
-
-              if (explicitBindingMissingMetadata != null) {
-                // This is a case where an explicit binding is specified but we receive the argument
-                // as FirAnnotationImpl without the metadata containing the type arguments so we
-                // short-circuit since we lack the info to compare it against other bindings.
-                null
-              } else {
-                val boundType =
-                  annotation.resolvedBindingArgument(session, typeResolver)?.let { explicitBinding
-                    ->
-                    if (explicitBinding is FirUserTypeRef) {
-                        typeResolver.resolveUserType(explicitBinding)
-                      } else {
-                        explicitBinding
-                      }
-                      .coneType
-                  } ?: contributingType.implicitBoundType(typeResolver) ?: return@mapNotNull null
-
-                IrRankedBindingProcessing.ContributedBinding(
-                  contributingType = contributingType,
-                  typeKey =
-                    FirTypeKey(
-                      boundType,
-                      contributingType.qualifierAnnotation(session, typeResolver),
-                    ),
-                  rank = annotation.rankValue(session),
-                )
-              }
-            }
-        }
-
-    return computeOutrankedBindings(
-      rankedBindings,
-      typeKeySelector = { it.typeKey },
-      rankSelector = { it.rank },
-      classId = { it.contributingType.classId },
-    )
-  }
-
-  @OptIn(ResolveStateAccess::class, SymbolInternals::class)
-  private fun FirClassLikeSymbol<*>.implicitBoundType(
-    typeResolver: TypeResolveService
-  ): ConeKotlinType? {
-    val supertypes =
-      if (fir.resolveState.resolvePhase == FirResolvePhase.RAW_FIR) {
-        // When processing bindings in the same module or compilation, we need to handle supertypes
-        // that have not been resolved yet
-        (this as FirClassSymbol<*>).fir.superTypeRefs.map { superTypeRef ->
-          if (superTypeRef is FirUserTypeRef) {
-              typeResolver.resolveUserType(superTypeRef)
-            } else {
-              superTypeRef
-            }
-            .coneType
-        }
-      } else {
-        (this as FirClassSymbol<*>).resolvedSuperTypes
-      }
-
-    return resolveDefaultBindingType(session) ?: supertypes.singleOrNull()
   }
 
   /**

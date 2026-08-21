@@ -43,7 +43,6 @@ import org.jetbrains.kotlin.name.ClassId
 internal class IrContributionMerger(
   metroContext: IrMetroContext,
   private val contributionData: IrContributionData,
-  boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext {
 
   // Cache for scope-based contributions (before exclusions/replacements).
@@ -58,8 +57,6 @@ internal class IrContributionMerger(
   // Cache for parent exclusions by starting class - avoids recomputing hierarchy walks.
   // Thread-safe for concurrent access during parallel graph validation.
   private val parentExcludedCache = ConcurrentHashMap<ClassId, Set<ClassId>>()
-
-  private val rankedBindingProcessing = IrRankedBindingProcessing(boundTypeResolver)
 
   private data class ScopedContributions(
     val allContributions: Map<ClassId, List<IrType>>,
@@ -416,52 +413,6 @@ internal class IrContributionMerger(
               { "${primaryScope.safePathString}.txt" },
             ) {
               unmatchedReplacements.map { it.safePathString }.sorted().joinToString("\n")
-            }
-          }
-        }
-      }
-
-      // Process rank-based replacements if Dagger-Anvil interop is enabled
-      if (options.enableDaggerAnvilInterop) {
-        trace("Process ranked replacements") {
-          val unmatchedRankReplacements = mutableSetOf<ClassId>()
-          val rankReplacements =
-            rankedBindingProcessing.processRankBasedReplacements(
-              allScopes,
-              mutableAllContributions,
-              mutableContributedBindingContainers,
-            )
-
-          for (replacedClassId in rankReplacements) {
-            val removedContribution = mutableAllContributions.remove(replacedClassId)
-            val removedContainer = mutableContributedBindingContainers.remove(replacedClassId)
-            val removedExternalSupertype = mutableExternalSupertypes.remove(replacedClassId)
-
-            // Also remove contributions that have @Origin pointing to the replaced class
-            val originContributions = originToContributions[replacedClassId]
-            originContributions?.forEach { contributionId ->
-              mutableAllContributions.remove(contributionId)
-              mutableContributedBindingContainers.remove(contributionId)
-              mutableExternalSupertypes.remove(contributionId)
-            }
-
-            val removedDirectContribution =
-              removedContribution != null ||
-                removedContainer != null ||
-                removedExternalSupertype != null
-            val removedOriginContribution = originContributions != null
-            val wasNotMatched = !removedDirectContribution && !removedOriginContribution
-            if (wasNotMatched) {
-              unmatchedRankReplacements += replacedClassId
-            }
-          }
-
-          if (unmatchedRankReplacements.isNotEmpty()) {
-            writeDiagnostic(
-              "merging-unmatched-rank-replacements-ir",
-              { "${primaryScope.safePathString}.txt" },
-            ) {
-              unmatchedRankReplacements.map { it.safePathString }.sorted().joinToString("\n")
             }
           }
         }

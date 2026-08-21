@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.compiler.graph
 
+import dev.zacsweers.metro.compiler.filterToSet
 import dev.zacsweers.metro.compiler.flatMapToSet
 import org.jetbrains.kotlin.name.ClassId
 
@@ -122,47 +123,25 @@ public fun <T : MergeContribution> applyExcludesAndReplaces(
   return afterExcludes.filter { it.mergeId == null || it.mergeId !in replaced }
 }
 
-/**
- * Computes the set of class IDs that have been "outranked" by higher-ranked bindings.
- *
- * This groups bindings by their type key, finds groups with multiple bindings, and for each group
- * keeps only the highest-ranked bindings. Returns the class IDs of all outranked bindings.
- *
- * @param BindingType the binding type
- * @param TypeKeyType the type key type (must support equality for grouping)
- * @param bindings the list of bindings to process
- * @param typeKeySelector extracts the type key from a binding (used for grouping)
- * @param rankSelector extracts the rank from a binding (higher rank wins)
- * @param classId extracts the class ID from a binding (for the result set)
- * @return the set of class IDs that were outranked
- */
-public inline fun <BindingType, TypeKeyType> computeOutrankedBindings(
+public inline fun <BindingType, ConflictKeyType : Any> computeLowerPriorityContributions(
   bindings: List<BindingType>,
-  typeKeySelector: (BindingType) -> TypeKeyType,
-  rankSelector: (BindingType) -> Long,
-  classId: (BindingType) -> ClassId,
-): Set<ClassId> {
-  if (bindings.isEmpty()) return emptySet()
+  conflictKeySelector: (BindingType) -> ConflictKeyType,
+  prioritySelector: (BindingType) -> Int,
+): Set<BindingType> {
+  if (bindings.size < 2) return emptySet()
+  if (bindings.none { prioritySelector(it) != Int.MIN_VALUE }) return emptySet()
 
-  val result = HashSet<ClassId>(bindings.size)
-
-  val bindingsByTypeKey = bindings.groupBy(typeKeySelector).filter { (_, group) -> group.size > 1 }
-
-  for ((_, bindingGroup) in bindingsByTypeKey) {
-    val bindingsByRank = bindingGroup.groupBy(rankSelector)
-
-    val maxKey =
-      bindingsByRank.keys.maxOrNull()
-        // Map was empty, nothing to do here
-        ?: continue
-
-    val topBindings = bindingsByRank.getValue(maxKey)
-
-    // These are the bindings that were outranked and should not be processed further
-    for (binding in (bindingGroup - topBindings.toSet())) {
-      result += classId(binding)
+  val highestPrioritiesByKey = HashMap<ConflictKeyType, Int>(bindings.size)
+  for (binding in bindings) {
+    val conflictKey = conflictKeySelector(binding)
+    val priority = prioritySelector(binding)
+    val highestPriority = highestPrioritiesByKey[conflictKey]
+    if (highestPriority == null || priority > highestPriority) {
+      highestPrioritiesByKey[conflictKey] = priority
     }
   }
 
-  return result
+  return bindings.filterToSet { binding ->
+    prioritySelector(binding) < highestPrioritiesByKey.getValue(conflictKeySelector(binding))
+  }
 }

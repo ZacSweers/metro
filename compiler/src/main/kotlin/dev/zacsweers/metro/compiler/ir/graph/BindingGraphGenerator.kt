@@ -5,6 +5,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
+import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -13,14 +14,21 @@ import dev.zacsweers.metro.compiler.ir.IrBoundTypeResolver
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrContributionData
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
+import dev.zacsweers.metro.compiler.ir.IrPriorityProcessing
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.MetroDeclarations
 import dev.zacsweers.metro.compiler.ir.MultibindsCallable
 import dev.zacsweers.metro.compiler.ir.ParentContextReader
+import dev.zacsweers.metro.compiler.ir.PriorityKind
 import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.batchTrackForCallingDeclaration
+import dev.zacsweers.metro.compiler.ir.findAnnotations
+import dev.zacsweers.metro.compiler.ir.getAnnotation
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
+import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
+import dev.zacsweers.metro.compiler.ir.originContextOrNull
+import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
@@ -28,10 +36,12 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.scopeOrNull
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.trackClassLookup
 import dev.zacsweers.metro.compiler.ir.trackFunctionCall
 import dev.zacsweers.metro.compiler.reportCompilerBug
+import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
@@ -40,6 +50,8 @@ import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.parentClassOrNull
+import org.jetbrains.kotlin.name.ClassId
 
 /**
  * Generates an [IrBindingGraph] for the given [node]. This only constructs the graph from available
@@ -183,24 +195,45 @@ internal class BindingGraphGenerator(
     val inheritedData = trace("Collect inherited data") { collectInheritedData(node) }
     val inheritedProviderFactories = inheritedData.providerFactories
 
+    // Collect provider candidates (flatten from lists) before registering either binding kind.
+    // Priority can compare a generated provider against an alias for the same contribution.
+    val providerFactoryCandidates = buildList {
+      node.providerFactories.values.flatten().forEach { factory ->
+        add(ProviderFactoryCandidate(factory, isLocallyDeclared = true))
+      }
+      inheritedProviderFactories.forEach { (_, factory) ->
+        add(ProviderFactoryCandidate(factory, isLocallyDeclared = false))
+      }
+    }
+      // Keep local provenance when the same declaration is also inherited.
+      .distinctBy { it.factory }
+
+    // Collect binds candidates (flatten from lists).
+    val bindsCallableCandidates = buildList {
+      node.bindsCallables.values.flatten().forEach { callable ->
+        add(BindsCallableCandidate(callable, isLocallyDeclared = true))
+      }
+      // Add inherited from extended nodes (already collected in single pass).
+      inheritedData.bindsCallables.forEach { (_, callable) ->
+        add(BindsCallableCandidate(callable, isLocallyDeclared = false))
+      }
+    }
+      // Keep local provenance when the same declaration is also inherited.
+      .distinctBy { it.callable }
+
+    val lowerPriorityDeclarations =
+      trace("Select contribution priorities") {
+        lowerPriorityContributionDeclarations(providerFactoryCandidates, bindsCallableCandidates)
+      }
+
     val ownProviderFactoryCount = node.providerFactories.values.sumOf { it.size }
     val inheritedProviderFactoryCount = inheritedProviderFactories.size
     trace(
       "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
     ) {
-      // Collect provider candidates (flatten from lists)
-      val providerFactoryCandidates = buildList {
-        node.providerFactories.values.flatten().forEach { factory ->
-          add(ProviderFactoryCandidate(factory, isLocallyDeclared = true))
-        }
-        inheritedProviderFactories.forEach { (_, factory) ->
-          add(ProviderFactoryCandidate(factory, isLocallyDeclared = false))
-        }
-      }
-        // Keep local provenance when the same declaration is also inherited.
-        .distinctBy { it.factory }
-
       for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
+        if (providerFactory in lowerPriorityDeclarations) continue
+
         val typeKey = providerFactory.typeKey
         // Track IC lookups but don't add bindings yet - they'll be added lazily
         trackClassLookup(node.sourceGraph, providerFactory.factoryClass)
@@ -257,19 +290,6 @@ internal class BindingGraphGenerator(
     val ownBindsCount = node.bindsCallables.values.sumOf { it.size }
     val inheritedBindsCount = inheritedData.bindsCallables.size
     trace("Collect binds callables (own=$ownBindsCount, inh=$inheritedBindsCount)") {
-      // Collect binds candidates (flatten from lists)
-      val bindsCallableCandidates = buildList {
-        node.bindsCallables.values.flatten().forEach { callable ->
-          add(BindsCallableCandidate(callable, isLocallyDeclared = true))
-        }
-        // Add inherited from extended nodes (already collected in single pass)
-        inheritedData.bindsCallables.forEach { (_, callable) ->
-          add(BindsCallableCandidate(callable, isLocallyDeclared = false))
-        }
-      }
-        // Keep local provenance when the same declaration is also inherited.
-        .distinctBy { it.callable }
-
       // Track IC lookups for all binds callables in one batch: hoists file-path resolution and
       // tracker-lock acquisition out of the per-callable loop.
       trace("Track IC for binds") {
@@ -285,6 +305,8 @@ internal class BindingGraphGenerator(
       }
 
       for ((bindsCallable, isLocallyDeclared) in bindsCallableCandidates) {
+        if (bindsCallable in lowerPriorityDeclarations) continue
+
         val typeKey = bindsCallable.typeKey
 
         // Skip non-dynamic bindings that have dynamic replacements
@@ -712,6 +734,165 @@ internal class BindingGraphGenerator(
     return graph
   }
 
+  /**
+   * Selects individual contributed aliases and providers before either kind enters BindingLookup.
+   *
+   * Multibinding registration is eager, so dropping an element after registration would still leave
+   * its synthetic element key in the graph. Keep implementation classes, set elements, authored
+   * multibindings, and synthetic scoped providers available by selecting only their actual
+   * conflicting contributed declarations.
+   */
+  private fun lowerPriorityContributionDeclarations(
+    providerCandidates: List<ProviderFactoryCandidate>,
+    bindsCandidates: List<BindsCallableCandidate>,
+  ): Set<Any> {
+    if (providerCandidates.size + bindsCandidates.size < 2) return emptySet()
+
+    val priorityProcessing = IrPriorityProcessing(boundTypeResolver)
+    val priorityCandidates = buildList {
+      for (candidate in providerCandidates) {
+        candidate.priorityCandidate(priorityProcessing)?.let(::add)
+      }
+      for (candidate in bindsCandidates) {
+        candidate.priorityCandidate(priorityProcessing)?.let(::add)
+      }
+    }
+    if (priorityCandidates.size < 2) return emptySet()
+
+    val lowerPriorityCandidates =
+      computeLowerPriorityContributions(
+        bindings = priorityCandidates,
+        conflictKeySelector = PriorityCandidate::conflictKey,
+        prioritySelector = PriorityCandidate::priority,
+      )
+    if (lowerPriorityCandidates.isEmpty()) return emptySet()
+
+    return lowerPriorityCandidates.mapTo(mutableSetOf()) { it.declaration }
+  }
+
+  /** Resolves generated providers through their existing contribution-provider `@Origin`. */
+  private fun ProviderFactoryCandidate.priorityCandidate(
+    priorityProcessing: IrPriorityProcessing
+  ): PriorityCandidate? {
+    val providerFactory = factory
+    if (providerFactory.isDynamic || providerFactory.typeKey in node.dynamicTypeKeys) return null
+
+    val contributionContainer = providerFactory.function.parentClassOrNull ?: return null
+    val originAnnotation =
+      contributionContainer.getAnnotation(Symbols.ClassIds.metroOrigin.asSingleFqName())
+        ?: return null
+    val isGeneratedContributionProvider =
+      originAnnotation.originContextOrNull() ==
+        Symbols.StringNames.CONTRIBUTION_PROVIDER_ORIGIN_CONTEXT
+    if (!isGeneratedContributionProvider) return null
+
+    // Binary provider stubs already resolve internal origins into realDeclaration. Source
+    // providers instead retain their function there, so resolve the container's origin instead.
+    val resolvedOrigin = providerFactory.realDeclaration as? IrClass
+    val contributingType =
+      if (resolvedOrigin != null) {
+        resolvedOrigin
+      } else {
+        val originClassId = originAnnotation.originOrNull() ?: return null
+        contributionContainer.lookupClass(originClassId)?.owner ?: return null
+      }
+    val contributionScope = contributionContainer.contributionScope() ?: return null
+
+    return priorityCandidate(
+      declaration = providerFactory,
+      contributingType = contributingType,
+      transformedTypeKey = providerFactory.typeKey,
+      boundTypeKey = providerFactory.rawTypeKey,
+      contributionScope = contributionScope,
+      mapKey = providerFactory.annotations.mapKey,
+      isLocallyDeclared = isLocallyDeclared,
+      priorityProcessing = priorityProcessing,
+    )
+  }
+
+  /** Resolves generated aliases through their original contributed `@Binds` declaration. */
+  private fun BindsCallableCandidate.priorityCandidate(
+    priorityProcessing: IrPriorityProcessing
+  ): PriorityCandidate? {
+    val bindsCallable = callable
+    if (bindsCallable.isDynamic || bindsCallable.typeKey in node.dynamicTypeKeys) return null
+
+    val (sourceDeclaration, isContributed) = bindsCallable.resolveSourceDeclaration()
+    if (!isContributed) return null
+    val contributingType = sourceDeclaration as? IrClass ?: return null
+
+    val sourceFunction =
+      bindsCallable.function.overriddenSymbolsSequence().lastOrNull()?.owner
+        ?: bindsCallable.function
+    val contributionContainer = sourceFunction.parentClassOrNull ?: return null
+    val contributionScope = contributionContainer.contributionScope() ?: return null
+
+    return priorityCandidate(
+      declaration = bindsCallable,
+      contributingType = contributingType,
+      transformedTypeKey = bindsCallable.typeKey,
+      boundTypeKey = bindsCallable.rawTarget,
+      contributionScope = contributionScope,
+      mapKey = bindsCallable.callableMetadata.annotations.mapKey,
+      isLocallyDeclared = isLocallyDeclared,
+      priorityProcessing = priorityProcessing,
+    )
+  }
+
+  private fun priorityCandidate(
+    declaration: Any,
+    contributingType: IrClass,
+    transformedTypeKey: IrTypeKey,
+    boundTypeKey: IrTypeKey,
+    contributionScope: ClassId,
+    mapKey: IrAnnotation?,
+    isLocallyDeclared: Boolean,
+    priorityProcessing: IrPriorityProcessing,
+  ): PriorityCandidate? {
+    val kind =
+      when {
+        mapKey != null -> PriorityKind.MAP
+        transformedTypeKey.multibindingKeyData != null -> return null
+        else -> PriorityKind.BINDING
+      }
+    val bindingConflictKey =
+      when (kind) {
+        PriorityKind.BINDING -> boundTypeKey
+        PriorityKind.MAP -> transformedTypeKey.multibindingBindingId ?: return null
+      }
+
+    // Primary and additional scopes on one graph compete together. Inherited parent scopes belong
+    // to their own graph level and must never suppress an extension's local contributions.
+    val owningGraph =
+      if (isLocallyDeclared) {
+        node.sourceGraph
+      } else {
+        node.allParentGraphs.values
+          .firstOrNull { contributionScope in it.aggregationScopes }
+          ?.sourceGraph ?: return null
+      }
+
+    val priority =
+      priorityProcessing.priorityFor(
+        contributingType = contributingType,
+        boundTypeKey = boundTypeKey,
+        contributionScope = contributionScope,
+        kind = kind,
+        mapKey = mapKey,
+      ) ?: return null
+
+    return PriorityCandidate(
+      declaration = declaration,
+      conflictKey = PriorityConflictKey(owningGraph, bindingConflictKey, mapKey),
+      priority = priority,
+    )
+  }
+
+  private fun IrClass.contributionScope(): ClassId? {
+    val contributionAnnotation = findAnnotations(Symbols.ClassIds.metroContribution).singleOrNull()
+    return contributionAnnotation?.scopeOrNull()
+  }
+
   /** Collects all inherited data from parent nodes in a single pass. */
   private fun collectInheritedData(node: GraphNode.Local): InheritedGraphData {
     val parentSourceGraph = node.parentGraph?.sourceGraph
@@ -904,6 +1085,18 @@ private data class ProviderFactoryCandidate(
 private data class BindsCallableCandidate(
   val callable: BindsCallable,
   val isLocallyDeclared: Boolean,
+)
+
+private data class PriorityCandidate(
+  val declaration: Any,
+  val conflictKey: PriorityConflictKey,
+  val priority: Int,
+)
+
+private data class PriorityConflictKey(
+  val owningGraph: IrClass,
+  val bindingKey: Any,
+  val mapKey: IrAnnotation?,
 )
 
 /**

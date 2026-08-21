@@ -12,11 +12,14 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.IntoMap
+import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Origin
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.Qualifier
 import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.internal.MetroContribution
 import kotlin.reflect.KClass
@@ -157,10 +160,38 @@ interface LibMarker
 /** Mirrors Anvil's rank-bearing contribution annotation in compiled dependency metadata. */
 annotation class LibRankedBinding(val scope: KClass<*>, val rank: Int)
 
+/** Mirrors Metro's first-party priority without depending on the bootstrap runtime version. */
+annotation class LibPrioritizedBinding(val scope: KClass<*>, val priority: Int = Int.MIN_VALUE)
+
+/** Exposes the explicit map value type structurally in compiled Kotlin metadata. */
+annotation class LibPrioritizedMapBinding(
+  val scope: KClass<*>,
+  val boundType: KClass<*>,
+  val priority: Int = Int.MIN_VALUE,
+)
+
+/** Mirrors custom annotations that contribute to sets or prioritized maps. */
+annotation class LibCustomMultibinding(
+  val scope: KClass<*>,
+  val priority: Int = Int.MIN_VALUE,
+  val ignoreQualifier: Boolean = false,
+)
+
+/** Mirrors Kotlin Inject Anvil's repeatable ordinary-or-set contribution annotation. */
+@Repeatable
+annotation class LibMixedMultibindingBinding(
+  val scope: KClass<*>,
+  val multibinding: Boolean = false,
+  val priority: Int = Int.MIN_VALUE,
+)
+
 interface LibRankedService
 
 @Inject
+@StringKey("shared")
 @LibRankedBinding(AppScope::class, rank = 50)
+@LibPrioritizedBinding(AppScope::class, priority = 50)
+@LibPrioritizedMapBinding(AppScope::class, boundType = LibRankedService::class, priority = 50)
 class LibLowerRankedService : LibRankedService, LibMarker {
   interface MetroContributionToAppScope {
     @Binds val LibLowerRankedService.bindLibRankedService: LibRankedService
@@ -168,7 +199,10 @@ class LibLowerRankedService : LibRankedService, LibMarker {
 }
 
 @Inject
+@StringKey("shared")
 @LibRankedBinding(AppScope::class, rank = 100)
+@LibPrioritizedBinding(AppScope::class, priority = 100)
+@LibPrioritizedMapBinding(AppScope::class, boundType = LibRankedService::class, priority = 100)
 class LibHigherRankedService : LibRankedService, LibMarker {
   interface MetroContributionToAppScope {
     @Binds val LibHigherRankedService.bindLibRankedService: LibRankedService
@@ -188,6 +222,7 @@ class LibExplicitImpl : LibExplicit, LibMarker {
 // implementation stay internal.
 interface LibContained
 
+@LibPrioritizedBinding(AppScope::class, priority = 25)
 internal class LibContainedImpl : LibContained
 
 abstract class LibContainedImplContributions {
@@ -197,6 +232,100 @@ abstract class LibContainedImplContributions {
   @ContributesTo(AppScope::class)
   object ToAppScope {
     @Provides fun provideLibContained(): LibContained = LibContainedImpl()
+  }
+}
+
+/** Keeps generated multibinding fixture members out of unrelated AppScope library scans. */
+abstract class LibMultibindingScope
+
+interface LibSetService
+
+@Inject
+@LibCustomMultibinding(LibMultibindingScope::class)
+class LibFirstSetService : LibSetService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds @IntoSet
+    val LibFirstSetService.bindLibSetService: LibSetService
+  }
+}
+
+@Inject
+@LibCustomMultibinding(LibMultibindingScope::class)
+class LibSecondSetService : LibSetService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds @IntoSet
+    val LibSecondSetService.bindLibSetService: LibSetService
+  }
+}
+
+interface LibIgnoreQualifierSetService
+
+@Inject
+@LibEndpoint("ignored")
+@LibCustomMultibinding(LibMultibindingScope::class, ignoreQualifier = true)
+class LibIgnoreQualifierSetServiceImpl : LibIgnoreQualifierSetService
+
+interface LibMixedMultibindingService
+
+@Inject
+@LibMixedMultibindingBinding(LibMultibindingScope::class, priority = 5)
+@LibMixedMultibindingBinding(LibMultibindingScope::class, multibinding = true)
+class LibMixedMultibindingServiceImpl : LibMixedMultibindingService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds
+    val LibMixedMultibindingServiceImpl.bindLibMixedService: LibMixedMultibindingService
+
+    @Binds @IntoSet
+    val LibMixedMultibindingServiceImpl.bindLibMixedSetService: LibMixedMultibindingService
+  }
+}
+
+@Inject
+@LibMixedMultibindingBinding(LibMultibindingScope::class, multibinding = true)
+class LibOtherMixedSetService : LibMixedMultibindingService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds @IntoSet
+    val LibOtherMixedSetService.bindLibMixedSetService: LibMixedMultibindingService
+  }
+}
+
+interface LibPrioritizedCustomMapService
+
+@Inject
+@StringKey("shared")
+@LibCustomMultibinding(LibMultibindingScope::class, priority = 50)
+class LibLowerPriorityCustomMapService : LibPrioritizedCustomMapService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds @IntoMap @StringKey("shared")
+    val LibLowerPriorityCustomMapService.bindLibPrioritizedCustomMapService:
+      LibPrioritizedCustomMapService
+  }
+}
+
+@Inject
+@StringKey("shared")
+@LibCustomMultibinding(LibMultibindingScope::class, priority = 100)
+class LibHigherPriorityCustomMapService : LibPrioritizedCustomMapService, LibMarker {
+  interface MetroContributionToMultibindingScope {
+    @Binds @IntoMap @StringKey("shared")
+    val LibHigherPriorityCustomMapService.bindLibPrioritizedCustomMapService:
+      LibPrioritizedCustomMapService
+  }
+}
+
+interface LibContainedSetService
+
+@LibCustomMultibinding(LibMultibindingScope::class)
+internal class LibContainedSetImpl : LibContainedSetService
+
+abstract class LibContainedSetImplContributions {
+  @MetroContribution(LibMultibindingScope::class)
+  @Origin(LibContainedSetImpl::class, context = "contribution_provider")
+  @BindingContainer
+  @ContributesTo(LibMultibindingScope::class)
+  object ToMultibindingScope {
+    @Provides @IntoSet
+    fun provideLibContainedSet(): LibContainedSetService = LibContainedSetImpl()
   }
 }
 

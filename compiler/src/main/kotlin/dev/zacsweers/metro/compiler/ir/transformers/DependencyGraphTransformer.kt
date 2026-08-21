@@ -162,7 +162,7 @@ internal class DependencyGraphTransformer(
   private val bindingLookupCache = BindingLookupCache()
 
   private val contributionMerger: IrContributionMerger =
-    IrContributionMerger(this, contributionData, boundTypeResolver)
+    IrContributionMerger(this, contributionData)
 
   private val graphNodes =
     GraphNodes(this, metroDeclarations, bindingContainerResolver, contributionMerger)

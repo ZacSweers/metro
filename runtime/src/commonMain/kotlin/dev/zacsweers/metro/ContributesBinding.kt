@@ -39,6 +39,9 @@ import kotlin.reflect.KClass
  *   supertype.
  * @property replaces List of other contributing classes that this binding should replace in the
  *   scope.
+ * @property priority The priority of this binding relative to other contributions for the same
+ *   qualified bound type. The highest-priority contribution is used. Contributions with the same
+ *   priority remain duplicate bindings. Defaults to [Int.MIN_VALUE].
  */
 @Target(CLASS)
 @Repeatable
@@ -46,4 +49,5 @@ public annotation class ContributesBinding(
   val scope: KClass<*>,
   val binding: binding<*> = binding<Nothing>(),
   val replaces: Array<KClass<*>> = [],
+  val priority: Int = Int.MIN_VALUE,
 )
