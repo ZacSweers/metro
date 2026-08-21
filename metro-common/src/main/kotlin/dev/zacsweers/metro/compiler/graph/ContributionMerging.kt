@@ -123,46 +123,45 @@ public fun <T : MergeContribution> applyExcludesAndReplaces(
 }
 
 /**
- * Computes the set of class IDs that have been "outranked" by higher-ranked bindings.
+ * Returns individual contributions superseded by a higher-priority contribution for the same key.
  *
- * This groups bindings by their type key, finds groups with multiple bindings, and for each group
- * keeps only the highest-ranked bindings. Returns the class IDs of all outranked bindings.
- *
- * @param BindingType the binding type
- * @param TypeKeyType the type key type (must support equality for grouping)
- * @param bindings the list of bindings to process
- * @param typeKeySelector extracts the type key from a binding (used for grouping)
- * @param rankSelector extracts the rank from a binding (higher rank wins)
- * @param classId extracts the class ID from a binding (for the result set)
- * @return the set of class IDs that were outranked
+ * A null conflict key excludes a contribution from priority selection, keeping set contributions,
+ * synthetic helpers, and authored multibinding callables untouched. Map contributions additionally
+ * include the actual map-key value. Equally prioritized contributions remain in the graph so
+ * duplicate-binding and duplicate-map-key diagnostics can report them. All-default contributions
+ * skip selection.
  */
-public inline fun <BindingType, TypeKeyType> computeOutrankedBindings(
+public inline fun <BindingType, ConflictKeyType> computeLowerPriorityContributions(
   bindings: List<BindingType>,
-  typeKeySelector: (BindingType) -> TypeKeyType,
-  rankSelector: (BindingType) -> Long,
-  classId: (BindingType) -> ClassId,
-): Set<ClassId> {
-  if (bindings.isEmpty()) return emptySet()
+  conflictKeySelector: (BindingType) -> ConflictKeyType?,
+  prioritySelector: (BindingType) -> Int,
+): Set<BindingType> {
+  if (bindings.size < 2) return emptySet()
 
-  val result = HashSet<ClassId>(bindings.size)
+  val defaultPriority = Int.MIN_VALUE
+  val hasExplicitPriority = bindings.any { binding ->
+    conflictKeySelector(binding) != null && prioritySelector(binding) != defaultPriority
+  }
+  if (!hasExplicitPriority) return emptySet()
 
-  val bindingsByTypeKey = bindings.groupBy(typeKeySelector).filter { (_, group) -> group.size > 1 }
-
-  for ((_, bindingGroup) in bindingsByTypeKey) {
-    val bindingsByRank = bindingGroup.groupBy(rankSelector)
-
-    val maxKey =
-      bindingsByRank.keys.maxOrNull()
-        // Map was empty, nothing to do here
-        ?: continue
-
-    val topBindings = bindingsByRank.getValue(maxKey)
-
-    // These are the bindings that were outranked and should not be processed further
-    for (binding in (bindingGroup - topBindings.toSet())) {
-      result += classId(binding)
+  val highestPrioritiesByKey = HashMap<ConflictKeyType, Int>(bindings.size)
+  for (binding in bindings) {
+    val conflictKey = conflictKeySelector(binding) ?: continue
+    val priority = prioritySelector(binding)
+    val highestPriority = highestPrioritiesByKey[conflictKey]
+    if (highestPriority == null || priority > highestPriority) {
+      highestPrioritiesByKey[conflictKey] = priority
     }
   }
 
-  return result
+  val lowerPriorityContributions = HashSet<BindingType>()
+  for (binding in bindings) {
+    val conflictKey = conflictKeySelector(binding) ?: continue
+    val highestPriority = highestPrioritiesByKey[conflictKey] ?: continue
+    if (prioritySelector(binding) < highestPriority) {
+      lowerPriorityContributions += binding
+    }
+  }
+
+  return lowerPriorityContributions
 }
