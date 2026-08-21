@@ -165,38 +165,77 @@ class ContributionMergeTest {
     assertThat(plan.unmatchedExclusions).isEmpty()
   }
 
-  private data class RankedBinding(val classId: ClassId, val typeKey: String, val rank: Long)
+  private data class PrioritizedContribution(
+    val classId: ClassId,
+    val conflictKey: String,
+    val priority: Int = Int.MIN_VALUE,
+  )
 
   @Test
-  fun `higher ranked bindings replace lower ranked bindings for the same key`() {
-    val low = RankedBinding(id("Low"), "Service", rank = 1)
-    val high = RankedBinding(id("High"), "Service", rank = 2)
+  fun `higher priority removes only the conflicting contribution from an origin`() {
+    val losing = PrioritizedContribution(id("Original"), "FirstService", priority = 1)
+    val retained = PrioritizedContribution(id("Original"), "SecondService", priority = 1)
+    val replacement = PrioritizedContribution(id("Replacement"), "FirstService", priority = 2)
 
-    assertThat(outrankedBindings(low, high)).containsExactly(low.classId)
+    assertThat(lowerPriorityContributions(losing, retained, replacement)).containsExactly(losing)
   }
 
   @Test
-  fun `equal highest ranked bindings are preserved`() {
-    val low = RankedBinding(id("Low"), "Service", rank = 1)
-    val first = RankedBinding(id("First"), "Service", rank = 2)
-    val second = RankedBinding(id("Second"), "Service", rank = 2)
+  fun `higher map priority removes only the matching map key`() {
+    val losing = PrioritizedContribution(id("Original"), "handlers:shared", priority = 1)
+    val retained = PrioritizedContribution(id("Original"), "handlers:other", priority = 1)
+    val replacement = PrioritizedContribution(id("Replacement"), "handlers:shared", priority = 2)
 
-    assertThat(outrankedBindings(low, first, second)).containsExactly(low.classId)
+    assertThat(lowerPriorityContributions(losing, retained, replacement)).containsExactly(losing)
   }
 
   @Test
-  fun `different binding keys do not outrank each other`() {
-    val low = RankedBinding(id("Low"), "FirstService", rank = 1)
-    val high = RankedBinding(id("High"), "SecondService", rank = 2)
+  fun `negative priorities supersede the default priority`() {
+    val default = PrioritizedContribution(id("Default"), "Service")
+    val preferred = PrioritizedContribution(id("Preferred"), "Service", priority = -100)
 
-    assertThat(outrankedBindings(low, high)).isEmpty()
+    assertThat(lowerPriorityContributions(default, preferred)).containsExactly(default)
   }
 
-  private fun outrankedBindings(vararg bindings: RankedBinding): Set<ClassId> =
-    computeOutrankedBindings(
-      bindings = bindings.toList(),
-      typeKeySelector = RankedBinding::typeKey,
-      rankSelector = RankedBinding::rank,
-      classId = RankedBinding::classId,
+  @Test
+  fun `equally prioritized contributions remain for duplicate diagnostics`() {
+    val first = PrioritizedContribution(id("First"), "Service", priority = 10)
+    val second = PrioritizedContribution(id("Second"), "Service", priority = 10)
+
+    assertThat(lowerPriorityContributions(first, second)).isEmpty()
+  }
+
+  @Test
+  fun `default priority contributions are unchanged`() {
+    val first = PrioritizedContribution(id("First"), "Service")
+    val second = PrioritizedContribution(id("Second"), "Service")
+
+    assertThat(lowerPriorityContributions(first, second)).isEmpty()
+  }
+
+  private fun lowerPriorityContributions(
+    vararg contributions: PrioritizedContribution
+  ): Set<PrioritizedContribution> =
+    computeLowerPriorityContributions(
+      bindings = contributions.toList(),
+      conflictKeySelector = PrioritizedContribution::conflictKey,
+      prioritySelector = PrioritizedContribution::priority,
     )
+
+  @Test
+  fun `equal highest priorities are preserved while lower priorities are removed`() {
+    val low = PrioritizedContribution(id("Low"), "Service", priority = 1)
+    val first = PrioritizedContribution(id("First"), "Service", priority = 2)
+    val second = PrioritizedContribution(id("Second"), "Service", priority = 2)
+
+    assertThat(lowerPriorityContributions(low, first, second)).containsExactly(low)
+  }
+
+  @Test
+  fun `different binding keys do not compete by priority`() {
+    val low = PrioritizedContribution(id("Low"), "FirstService", priority = 1)
+    val high = PrioritizedContribution(id("High"), "SecondService", priority = 2)
+
+    assertThat(lowerPriorityContributions(low, high)).isEmpty()
+  }
 }
