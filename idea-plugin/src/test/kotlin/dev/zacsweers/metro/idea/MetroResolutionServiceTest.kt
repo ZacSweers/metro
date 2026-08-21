@@ -4144,6 +4144,24 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     )
     assertTrue(different.emptyContexts.isEmpty())
 
+    val differentConsumer =
+      checkNotNull(index.consumerEntryAt(declarations.parameter("differentRepo")))
+    val appBindings =
+      index.bindingEntriesAt(declarations.klass("DifferentAppRepo")).filter {
+        it.typeKey.renderedType == "test.DifferentRepo"
+      }
+    val contextsByGraph = different.perContext.keys.associateBy { it.graph.name }
+    assertTrue(
+      index
+        .consumersFor(appBindings, contextsByGraph.getValue("AppGraph").path)
+        .contains(differentConsumer)
+    )
+    assertFalse(
+      index
+        .consumersFor(appBindings, contextsByGraph.getValue("OtherGraph").path)
+        .contains(differentConsumer)
+    )
+
     val stable = resolution("stableRepo")
     assertEquals(
       listOf("StableRepoImpl"),

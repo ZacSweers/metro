@@ -9,17 +9,28 @@ internal fun GraphPath.isAtOrBelow(candidate: GraphPath): Boolean {
   return segments.takeLast(candidate.segments.size) == candidate.segments
 }
 
-/** The closest context represented by [pinnedPath], including an inherited parent context. */
+/** The closest inherited context, or the single child context reachable from [pinnedPath]. */
 internal fun Iterable<GraphContext>.matchingContext(pinnedPath: GraphPath): GraphContext? {
-  return filter { pinnedPath.isAtOrBelow(it.path) }.maxByOrNull { it.path.segments.size }
+  val contexts = toList()
+  contexts
+    .filter { pinnedPath.isAtOrBelow(it.path) }
+    .maxByOrNull { it.path.segments.size }
+    ?.let {
+      return it
+    }
+  return contexts.singleOrNull { it.path.isAtOrBelow(pinnedPath) }
 }
 
-/** The closest context entry represented by [pinnedPath], including an inherited parent context. */
+/** The closest inherited entry, or the single child entry reachable from [pinnedPath]. */
 internal fun <T> Map<GraphContext, T>.matchingContextEntry(
   pinnedPath: GraphPath
 ): Map.Entry<GraphContext, T>? {
-  return entries
+  entries
     .asSequence()
     .filter { (context) -> pinnedPath.isAtOrBelow(context.path) }
     .maxByOrNull { (context) -> context.path.segments.size }
+    ?.let {
+      return it
+    }
+  return entries.singleOrNull { (context) -> context.path.isAtOrBelow(pinnedPath) }
 }
