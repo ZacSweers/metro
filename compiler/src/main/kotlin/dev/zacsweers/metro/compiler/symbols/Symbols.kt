@@ -101,6 +101,7 @@ internal class Symbols(
     const val DECLARATION_MIRROR = "declarationMirror"
     const val NEW_INSTANCE = "newInstance"
     const val NON_RESTARTABLE_COMPOSABLE = "NonRestartableComposable"
+    const val PRIORITY = "priority"
     const val PROVIDER = "provider"
     const val PROVIDES = "Provides"
     const val CALLABLE_METADATA = "CallableMetadata"
@@ -273,6 +274,7 @@ internal class Symbols(
     val multibinding = StringNames.MULTIBINDING.asName()
     val modules = "modules".asName()
     val newInstance = StringNames.NEW_INSTANCE.asName()
+    val priority = StringNames.PRIORITY.asName()
     val provider = StringNames.PROVIDER.asName()
     val rank = StringNames.RANK.asName()
     val receiver = "receiver".asName()
