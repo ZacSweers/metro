@@ -277,7 +277,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   private fun validateContext(context: GraphContext) {
-    val element = context.graph.pointer.element ?: return
+    val element = context.contextPointer.element ?: return
     validationService.validateWithExtensionsAsync(element, context) {
       validationFinished(validationVisitor(context))
     }

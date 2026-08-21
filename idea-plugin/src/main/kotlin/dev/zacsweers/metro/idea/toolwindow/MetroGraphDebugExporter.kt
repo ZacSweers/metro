@@ -128,7 +128,7 @@ internal class MetroGraphDebugExporter(
 
   /** Builds a report for the current version of this exact parent path under a read action. */
   fun report(context: GraphContext): String? {
-    val element = context.graph.pointer.element ?: return null
+    val element = context.contextPointer.element ?: return null
     val service = project.service<MetroGraphValidationService>()
     return service.debugLookup(element, context) { index, queryContext, options, lookup ->
       val currentContext = queryContext.graphContext
@@ -224,6 +224,13 @@ private class GraphDebugReport(
     field("includedDependencies", keys(context.includedDependencies))
     field("injectedMemberOwners", classIds(context.injectedMemberOwnerIds))
     field("daggerAnvilInteropEnabled", context.daggerAnvilInteropEnabled)
+    context.dynamicGraph?.let { dynamicGraph ->
+      field("dynamic.callSite", location(dynamicGraph.pointer))
+      field("dynamic.requestedType", classId(dynamicGraph.id.requestedTypeClassId))
+      field("dynamic.isFactory", dynamicGraph.isFactory)
+      field("dynamic.containers", keys(dynamicGraph.containerKeys))
+      field("dynamic.replacementKeys", keys(dynamicGraph.bindingKeys))
+    }
     for (graph in context.chain) {
       ProgressManager.checkCanceled()
       writeGraph(graph)

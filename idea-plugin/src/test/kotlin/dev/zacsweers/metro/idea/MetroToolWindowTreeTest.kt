@@ -43,6 +43,7 @@ import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Walks [MetroTreeStructure] directly, without Swing, and asserts the produced rows. */
@@ -137,6 +138,50 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(
       listOf("DebugAnalytics", "ProdAnalytics"),
       structure.children(multibinding).map { it.text },
+    )
+  }
+
+  fun testDynamicGraphRowsIdentifyAndNavigateToTheirCallSite() {
+    myFixture.configureMetroFile(
+      """
+      @BindingContainer
+      object RealBindings {
+        @Provides fun provideReal(): String = "real"
+      }
+
+      @BindingContainer
+      object FakeBindings {
+        @Provides fun provideFake(): String = "fake"
+      }
+
+      @DependencyGraph(bindingContainers = [RealBindings::class])
+      interface AppGraph {
+        val value: String
+      }
+
+      val graph = createDynamicGraph<AppGraph>(FakeBindings)
+      """,
+      fileName = "DynamicGraph.kt",
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    val staticRow = graphRows.single { it.context.dynamicGraph == null }
+    val dynamicRow = graphRows.single { it.context.dynamicGraph != null }
+
+    assertEquals("DynamicGraph.kt", staticRow.grayText)
+    assertTrue(dynamicRow.grayText, dynamicRow.grayText!!.startsWith("dynamic at DynamicGraph.kt:"))
+    assertTrue(dynamicRow.grayText, "FakeBindings" in dynamicRow.grayText!!)
+    assertTrue(dynamicRow.pointer?.element is KtCallExpression)
+
+    val unscoped =
+      structure.children(dynamicRow).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    assertEquals(
+      listOf("FakeBindings", "String"),
+      structure.children(unscoped).map { it.text },
     )
   }
 

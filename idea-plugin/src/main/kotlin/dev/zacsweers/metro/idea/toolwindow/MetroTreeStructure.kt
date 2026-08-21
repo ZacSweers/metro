@@ -70,7 +70,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
       get() = context.graph
 
     override val icon: Icon = MetroIcons.GRAPH
-    override val pointer: SmartPsiElementPointer<*> = graph.pointer
+    override val pointer: SmartPsiElementPointer<*> = context.contextPointer
     override val identity: Any = context.path
   }
 
@@ -396,14 +396,33 @@ internal class MetroTreeStructure(
         compareBy(
           { it.graph.name.orEmpty() },
           { it.chain.drop(1).joinToString { parent -> parent.name.orEmpty() } },
+          { it.dynamicGraph?.pointer?.virtualFile?.path.orEmpty() },
+          { it.dynamicGraph?.pointer?.element?.textOffset ?: -1 },
+          {
+            it.dynamicGraph
+              ?.containerKeys
+              .orEmpty()
+              .map { key -> key.render(short = false) }
+              .sorted()
+              .joinToString()
+          },
         )
       )
       .map { context ->
         val graph = context.graph
         // Surface the last validation outcome on the graph row itself
-        val cached = graph.pointer.element?.let { validationService.cachedResult(it, context) }
+        val cached =
+          context.contextPointer.element?.let { validationService.cachedResult(it, context) }
         val grayText = buildString {
-          graph.pointer.virtualFile?.name?.let(::append)
+          val dynamicGraph = context.dynamicGraph
+          if (dynamicGraph == null) {
+            graph.pointer.virtualFile?.name?.let(::append)
+          } else {
+            append("dynamic at ")
+            append(dynamicGraphLocation(dynamicGraph.pointer))
+            append(" · ")
+            append(dynamicGraph.containerKeys.map { it.type.shortType }.sorted().joinToString())
+          }
           val parents = context.chain.drop(1)
           if (parents.isNotEmpty()) {
             if (isNotEmpty()) append(" · ")
@@ -422,6 +441,13 @@ internal class MetroTreeStructure(
           grayText = grayText.takeIf { it.isNotEmpty() },
         )
       }
+  }
+
+  private fun dynamicGraphLocation(pointer: SmartPsiElementPointer<*>): String {
+    val file = pointer.virtualFile?.name ?: "<unknown>"
+    val element = pointer.element ?: return file
+    val document = element.containingFile?.viewProvider?.document ?: return file
+    return "$file:${document.getLineNumber(element.textOffset) + 1}"
   }
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {
