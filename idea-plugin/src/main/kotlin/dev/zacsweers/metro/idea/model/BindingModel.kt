@@ -120,7 +120,7 @@ internal class KaGraphDeclaration(
   val supertypeIds: Set<ClassId> = emptySet(),
   /** Member-injected classes explicitly requested by this graph's injector functions. */
   val injectedMemberOwnerIds: Set<ClassId> = emptySet(),
-  /** Whether the owning module enables Anvil's rank-based contribution replacement. */
+  /** Whether the owning module accepts Anvil's `rank` spelling for contribution priority. */
   val daggerAnvilInteropEnabled: Boolean = false,
   /** Extension or extension factory declarations created by this graph's accessors. */
   val extensionCreations: Set<GraphReference> = emptySet(),
@@ -298,7 +298,7 @@ internal class GraphContext(
   val includedDependencies: Set<KaTypeKey>,
   /** Owners injected directly by any graph along this graph's parent path. */
   val injectedMemberOwnerIds: Set<ClassId>,
-  /** Whether this graph applies Anvil's rank-based contribution replacement. */
+  /** Whether this graph accepts Anvil's `rank` spelling for contribution priority. */
   val daggerAnvilInteropEnabled: Boolean,
   /** Exact declarations in this graph path, used for graph-owned consumers. */
   val graphIds: Set<GraphDeclarationId>,

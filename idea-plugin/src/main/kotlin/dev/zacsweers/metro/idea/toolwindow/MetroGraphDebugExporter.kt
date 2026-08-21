@@ -64,7 +64,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaLibraryModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaLibrarySourceModule
@@ -390,7 +389,8 @@ private class GraphDebugReport(
     field("  includedContainer", binding.includedContainerKey?.let(::key) ?: "none")
     field("  scope", binding.scope?.let(::annotation) ?: "none")
     field("  contributionScopes", classIds(binding.contributionScopes))
-    field("  contributionRank", binding.contributionRank)
+    field("  priority", binding.priority)
+    field("  priorityFromAnvilRank", binding.priorityFromAnvilRank)
     field("  replaces", classIds(binding.replaces))
     field("  isGraphPrivate", binding.isGraphPrivate)
     field("  isSuspend", binding.isSuspend)
@@ -487,7 +487,8 @@ private class GraphDebugReport(
           binding.originClassId?.asFqNameString().orEmpty(),
           binding.scope?.render(short = false).orEmpty(),
           binding.contributionScopes.map { it.asFqNameString() }.sorted().joinToString(),
-          binding.contributionRank.toString(),
+          binding.priority.toString(),
+          binding.priorityFromAnvilRank.toString(),
           binding.multibindingId.orEmpty(),
           binding.mapKeyValue.orEmpty(),
           binding.dependencies.joinToString { "${it.render(short = false)}:${it.hasDefault}" },

@@ -49,8 +49,10 @@ internal class BindingData(
   val replaces: Set<ClassId> = emptySet(),
   /** See [KaBinding.contributionScopes]. */
   val contributionScopes: Set<ClassId> = emptySet(),
-  /** See [KaBinding.contributionRank]. */
-  val contributionRank: Long = Long.MIN_VALUE,
+  /** See [KaBinding.priority]. */
+  val priority: Int = Int.MIN_VALUE,
+  /** See [KaBinding.priorityFromAnvilRank]. */
+  val priorityFromAnvilRank: Boolean = false,
   /** See [KaBinding.dependencies]. */
   dependencies: List<KaContextualTypeKey> = emptyList(),
   /** See [KaBinding.ConstructorInjected.constructorDependencies]. */

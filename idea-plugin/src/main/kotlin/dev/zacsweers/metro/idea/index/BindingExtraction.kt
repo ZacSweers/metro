@@ -14,6 +14,8 @@ import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
+import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
@@ -41,6 +43,7 @@ import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -82,6 +85,43 @@ internal fun bindingContributionAnnotations(options: MetroOptions): Set<ClassId>
     addAll(options.customContributesIntoSetAnnotations)
     addAll(options.contributesIntoMapAnnotations)
   }
+}
+
+/** The original annotation value and whether it needs the consuming graph's Anvil interop. */
+internal data class ExtractedPriority(val value: Int, val fromAnvilRank: Boolean)
+
+internal fun KaAnnotation.priority(): ExtractedPriority {
+  fun intArgument(name: String): Int? {
+    val value =
+      arguments
+        .firstOrNull { it.name.asString() == name }
+        ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value }
+    return value as? Int
+  }
+
+  val priority = intArgument("priority")
+  if (priority != null) return ExtractedPriority(priority, fromAnvilRank = false)
+
+  val rank = intArgument("rank")
+  if (rank != null) return ExtractedPriority(rank, fromAnvilRank = true)
+
+  return ExtractedPriority(Int.MIN_VALUE, fromAnvilRank = false)
+}
+
+/** Kotlin Inject Anvil routes binding contributions with this flag into a set instead. */
+internal fun KaAnnotation.isMultibindingContribution(): Boolean {
+  return booleanArgument("multibinding")
+}
+
+/** Anvil contributions can suppress the qualifier declared on their implementation class. */
+private fun KaAnnotation.ignoresContributionQualifier(): Boolean {
+  return booleanArgument("ignoreQualifier")
+}
+
+private fun KaAnnotation.booleanArgument(name: String): Boolean {
+  val argument = arguments.firstOrNull { it.name.asString() == name } ?: return false
+  val value = (argument.expression as? KaAnnotationValue.ConstantValue)?.value?.value
+  return value == true
 }
 
 internal fun nonAccessorCallableAnnotations(options: MetroOptions): Set<ClassId> {
@@ -129,7 +169,7 @@ internal class CallableBindingView(
   val valueParameters: List<CallableParameterView>,
 )
 
-internal fun KaSession.callableBindingView(symbol: KaCallableSymbol): CallableBindingView {
+internal fun callableBindingView(symbol: KaCallableSymbol): CallableBindingView {
   val receiver = symbol.receiverParameter?.let { CallableParameterView(it, it.returnType) }
   val valueParameters =
     (symbol as? KaNamedFunctionSymbol)?.valueParameters.orEmpty().map {
@@ -158,14 +198,6 @@ internal fun KaSession.callableBindingView(
   return CallableBindingView(sourceSymbol, signature.returnType, receiver, valueParameters)
 }
 
-/** Resolves an assisted factory's inherited SAM with its concrete receiver type arguments. */
-internal fun KaSession.assistedFactoryFunction(
-  classSymbol: KaNamedClassSymbol
-): CallableBindingView? {
-  val classType = classSymbol.defaultType as? KaClassType ?: return null
-  return assistedFactoryFunction(classType)
-}
-
 /** Resolves an assisted factory's SAM for the concrete type requested by its graph. */
 internal fun KaSession.assistedFactoryFunction(factoryType: KaClassType): CallableBindingView? {
   val scope = factoryType.scope ?: return null
@@ -181,9 +213,14 @@ internal fun KaSession.assistedFactoryFunction(factoryType: KaClassType): Callab
 /**
  * Resolves the map key of an `@IntoMap` contribution from its map key annotation, mirroring the
  * compiler's `mapKeyType`: the annotation's single member type when the `@MapKey` meta-annotation
- * has `unwrapValue = true` (the default), otherwise the annotation type itself.
+ * has `unwrapValue = true` (the default), otherwise the annotation type itself. Class contributions
+ * also resolve implicit `Nothing::class` keys to their actual implementation.
  */
-internal fun KaSession.mapKeyInfo(annotated: KaAnnotated, options: MetroOptions): MapKeyInfo? {
+internal fun KaSession.mapKeyInfo(
+  annotated: KaAnnotated,
+  options: MetroOptions,
+  implicitClassId: ClassId? = null,
+): MapKeyInfo? {
   for (annotation in annotated.annotations) {
     val classId = annotation.classId ?: continue
     val annotationClass = findClass(classId) as? KaNamedClassSymbol ?: continue
@@ -204,10 +241,47 @@ internal fun KaSession.mapKeyInfo(annotated: KaAnnotated, options: MetroOptions)
       }
     return MapKeyInfo(
       keyTypeRender = renderKeyType(keyType),
-      annotationRender = toKaAnnotationSnapshot(annotation)?.render(short = false),
+      annotationRender =
+        toKaAnnotationSnapshot(annotation)
+          ?.resolveImplicitClassKey(mapKeyMeta, implicitClassId)
+          ?.render(short = false),
     )
   }
   return null
+}
+
+private fun KaAnnotationSnapshot.resolveImplicitClassKey(
+  mapKeyMeta: KaAnnotation,
+  implicitClassId: ClassId?,
+): KaAnnotationSnapshot {
+  if (implicitClassId == null) return this
+
+  val usesImplicitClassKey =
+    mapKeyMeta.arguments
+      .firstOrNull { it.name.asString() == "implicitClassKey" }
+      ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value } == true
+  if (!usesImplicitClassKey) return this
+
+  val valueArgument = arguments.firstOrNull { it.first.asString() == "value" }
+  val existingClassReference = valueArgument?.second as? KaAnnotationValueSnapshot.KClassRef
+  val hasExplicitClassKey =
+    valueArgument != null && existingClassReference?.classId != StandardClassIds.Nothing
+  if (hasExplicitClassKey) return this
+
+  val resolvedClassReference = KaAnnotationValueSnapshot.KClassRef(implicitClassId)
+  val resolvedArguments =
+    if (valueArgument == null) {
+      arguments + (Name.identifier("value") to resolvedClassReference)
+    } else {
+      arguments.map { argument ->
+        if (argument.first.asString() == "value") {
+          argument.first to resolvedClassReference
+        } else {
+          argument
+        }
+      }
+    }
+  return copy(arguments = resolvedArguments)
 }
 
 /**
@@ -497,48 +571,92 @@ private fun KtClassOrObject.classBindingData(
     for (annotation in contributesAnnotations) {
       val classId = annotation.classId ?: continue
       val boundType = contributedBoundType(ktClass, classSymbol, annotation) ?: continue
-      val elementKey = typeKey(boundType, qualifier)
+      val annotatedBoundType = boundType as? KaAnnotated
+      val boundTypeQualifier = annotatedBoundType?.let { qualifierAnnotation(it, options) }
+      val contributionQualifier =
+        if (annotation.ignoresContributionQualifier()) {
+          null
+        } else {
+          boundTypeQualifier ?: qualifier
+        }
+      val elementKey = typeKey(boundType, contributionQualifier)
       val contributionScopes = annotationScopeKeys(annotation)
       val replaces = classListArgument(annotation, "replaces").toSet()
-      val rankValue =
-        annotation.arguments
-          .firstOrNull { it.name.asString() == "rank" }
-          ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value }
-      val contributionRank =
-        when (rankValue) {
-          is Long -> rankValue
-          is Int -> rankValue.toLong()
-          else -> Long.MIN_VALUE
-        }
       val bindingKind =
         if (usesContributionProvider) BindingData.Kind.PROVIDED else BindingData.Kind.ALIAS
       val providerDependencies =
         if (usesContributionProvider) constructorDependencies else emptyList()
-      when (classId) {
-        in options.contributesBindingAnnotations ->
+      val isBindingAnnotation = classId in options.contributesBindingAnnotations
+      val isMultibindingBindingContribution =
+        isBindingAnnotation && annotation.isMultibindingContribution()
+      val isCustomSetContribution = classId in options.customContributesIntoSetAnnotations
+      val isMapAnnotation = classId in options.contributesIntoMapAnnotations
+      val classMapKeyInfo =
+        if (isCustomSetContribution || isMapAnnotation) {
+          mapKeyInfo(classSymbol, options, originClassId)
+        } else {
+          null
+        }
+      val contributionMapKeyInfo =
+        if (isMapAnnotation) {
+          val typeMapKeyInfo = annotatedBoundType?.let { mapKeyInfo(it, options, originClassId) }
+          typeMapKeyInfo ?: classMapKeyInfo
+        } else {
+          classMapKeyInfo
+        }
+      val isKeyedCustomSetContribution = isCustomSetContribution && classMapKeyInfo != null
+      val isMapContribution = isMapAnnotation || isKeyedCustomSetContribution
+      when {
+        isBindingAnnotation && !isMultibindingBindingContribution -> {
+          val priority = annotation.priority()
           result +=
             BindingData(
-              elementKey,
-              bindingKind,
-              scope,
-              ktClass.name,
+              key = elementKey,
+              kind = bindingKind,
+              scope = scope,
+              implementationName = ktClass.name,
               consumedKey = consumedKey,
               originClassId = originClassId,
               replaces = replaces,
               contributionScopes = contributionScopes,
-              contributionRank = contributionRank,
+              priority = priority.value,
+              priorityFromAnvilRank = priority.fromAnvilRank,
               dependencies = providerDependencies,
               memberInjectionOwnerIds = memberInjectionOwnerIds,
               isClassContribution = true,
             )
+        }
 
-        in intoSetIds ->
+        isMapContribution -> {
+          val mapKeyInfo = contributionMapKeyInfo ?: continue
+          val priority = annotation.priority()
           result +=
             BindingData(
-              elementKey,
-              bindingKind,
-              scope,
-              ktClass.name,
+              key = elementKey,
+              kind = bindingKind,
+              scope = scope,
+              implementationName = ktClass.name,
+              consumedKey = consumedKey,
+              multibindingId = createMapBindingId(mapKeyInfo.keyTypeRender, elementKey),
+              originClassId = originClassId,
+              replaces = replaces,
+              contributionScopes = contributionScopes,
+              priority = priority.value,
+              priorityFromAnvilRank = priority.fromAnvilRank,
+              dependencies = providerDependencies,
+              memberInjectionOwnerIds = memberInjectionOwnerIds,
+              mapKeyValue = mapKeyInfo.annotationRender,
+              isClassContribution = true,
+            )
+        }
+
+        classId in intoSetIds || isMultibindingBindingContribution ->
+          result +=
+            BindingData(
+              key = elementKey,
+              kind = bindingKind,
+              scope = scope,
+              implementationName = ktClass.name,
               consumedKey = consumedKey,
               multibindingId = elementKey.computeMultibindingId(),
               originClassId = originClassId,
@@ -548,26 +666,6 @@ private fun KtClassOrObject.classBindingData(
               memberInjectionOwnerIds = memberInjectionOwnerIds,
               isClassContribution = true,
             )
-
-        in options.contributesIntoMapAnnotations -> {
-          val mapKeyInfo = mapKeyInfo(classSymbol, options) ?: continue
-          result +=
-            BindingData(
-              elementKey,
-              bindingKind,
-              scope,
-              ktClass.name,
-              consumedKey = consumedKey,
-              multibindingId = createMapBindingId(mapKeyInfo.keyTypeRender, elementKey),
-              originClassId = originClassId,
-              replaces = replaces,
-              contributionScopes = contributionScopes,
-              dependencies = providerDependencies,
-              memberInjectionOwnerIds = memberInjectionOwnerIds,
-              mapKeyValue = mapKeyInfo.annotationRender,
-              isClassContribution = true,
-            )
-        }
       }
     }
     result

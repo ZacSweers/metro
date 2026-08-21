@@ -70,9 +70,13 @@ internal sealed interface KaBinding :
   val contributionScopes: Set<ClassId>
     get() = emptySet()
 
-  /** Anvil contribution rank; unranked bindings use the same minimum value as the compiler. */
-  val contributionRank: Long
-    get() = Long.MIN_VALUE
+  /** Contribution priority; contributions without an explicit value use Metro's minimum. */
+  val priority: Int
+    get() = Int.MIN_VALUE
+
+  /** Whether [priority] came from Anvil's interop-only `rank` argument. */
+  val priorityFromAnvilRank: Boolean
+    get() = false
 
   /** Module restriction inherited from a non-public compiled contribution hint. */
   val hintAvailability: HintAvailability?
@@ -158,7 +162,8 @@ internal sealed interface KaBinding :
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
-    override val contributionRank: Long = Long.MIN_VALUE,
+    override val priority: Int = Int.MIN_VALUE,
+    override val priorityFromAnvilRank: Boolean = false,
     /** True for a generated `@ContributesBinding` provider rather than an authored callable. */
     val isClassContribution: Boolean = false,
     override val dependencies: List<KaContextualTypeKey> = emptyList(),
@@ -189,7 +194,8 @@ internal sealed interface KaBinding :
     override val includedContainerKey: KaTypeKey? = null,
     override val replaces: Set<ClassId> = emptySet(),
     override val contributionScopes: Set<ClassId> = emptySet(),
-    override val contributionRank: Long = Long.MIN_VALUE,
+    override val priority: Int = Int.MIN_VALUE,
+    override val priorityFromAnvilRank: Boolean = false,
     /** True for `@ContributesBinding`-style class contributions, false for `@Binds` callables. */
     val isClassContribution: Boolean = false,
     override val hintAvailability: HintAvailability? = null,

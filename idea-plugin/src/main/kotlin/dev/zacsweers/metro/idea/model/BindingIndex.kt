@@ -10,8 +10,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.applyExcludesAndReplaces
+import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
 import dev.zacsweers.metro.compiler.graph.computeMergePlan
-import dev.zacsweers.metro.compiler.graph.computeOutrankedBindings
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -64,9 +64,10 @@ internal class BindingIndex(
   private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val validationReplacedOriginsByContext =
     ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val outrankedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val validationOutrankedOriginsByContext =
-    ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
+  private val lowerPriorityBindingsByContext =
+    ConcurrentHashMap<GraphQueryContext, Set<KaBinding>>()
+  private val validationLowerPriorityBindingsByContext =
+    ConcurrentHashMap<GraphQueryContext, Set<KaBinding>>()
   private val removedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
   private val validationRemovedOriginsByContext =
     ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
@@ -1126,7 +1127,8 @@ internal class BindingIndex(
     // (a replacing stub can inject the replaced implementation directly).
     if (entry.contributionScopes.isEmpty()) return true
     val originClassId = entry.originClassId ?: return true
-    return originClassId !in removedContributionOrigins(queryContext, includeIncompatibleScopes)
+    if (originClassId in replacedOrigins(queryContext, includeIncompatibleScopes)) return false
+    return entry !in lowerPriorityBindings(queryContext, includeIncompatibleScopes)
   }
 
   private fun isBindingCandidateInContext(
@@ -1495,6 +1497,11 @@ internal class BindingIndex(
     val containers: Map<KaTypeKey, GraphDeclarationId>,
   )
 
+  private data class MapPriorityKey(
+    val multibindingId: String,
+    val mapKeyValue: String,
+  )
+
   private fun replacedOrigins(
     queryContext: GraphQueryContext,
     includeIncompatibleScopes: Boolean = false,
@@ -1542,53 +1549,98 @@ internal class BindingIndex(
       }
     return cache.computeIfAbsent(queryContext) {
       val replaced = replacedOrigins(queryContext, includeIncompatibleScopes)
-      if (!queryContext.graphContext.daggerAnvilInteropEnabled) return@computeIfAbsent replaced
-      val outranked = outrankedOrigins(queryContext, includeIncompatibleScopes)
-      if (outranked.isEmpty()) replaced else replaced + outranked
+      val lowerPriority = lowerPriorityBindings(queryContext, includeIncompatibleScopes)
+      if (lowerPriority.isEmpty()) return@computeIfAbsent replaced
+
+      buildSet {
+        addAll(replaced)
+        for (binding in lowerPriority) {
+          val originClassId = binding.originClassId ?: continue
+          if (originClassId in this) continue
+
+          val hasSurvivingBinding =
+            bindingsByOrigin[originClassId].orEmpty().any { candidate ->
+              candidate.contributionScopes.isNotEmpty() &&
+                candidate !in lowerPriority &&
+                isBindingCandidateInContext(candidate, queryContext, includeIncompatibleScopes)
+            }
+          if (hasSurvivingBinding) continue
+
+          val hasNonBindingContribution = contributions.any { contribution ->
+            contribution.classId == originClassId &&
+              contribution.kind != ContributionEntry.Kind.OTHER &&
+              contribution.scopeKeys.any(queryContext.graphContext.scopes::contains) &&
+              isVisibleFrom(contribution, queryContext)
+          }
+          if (!hasNonBindingContribution) add(originClassId)
+        }
+      }
     }
   }
 
-  /** Rank is applied after explicit replacements, matching compiler contribution merging. */
-  private fun outrankedOrigins(
+  /** Priority applies to individual surviving contributed bindings after explicit replacements. */
+  private fun lowerPriorityBindings(
     queryContext: GraphQueryContext,
     includeIncompatibleScopes: Boolean,
-  ): Set<ClassId> {
+  ): Set<KaBinding> {
     val cache =
       if (includeIncompatibleScopes) {
-        validationOutrankedOriginsByContext
+        validationLowerPriorityBindingsByContext
       } else {
-        outrankedOriginsByContext
+        lowerPriorityBindingsByContext
       }
     return cache.computeIfAbsent(queryContext) {
       val replaced = replacedOrigins(queryContext, includeIncompatibleScopes)
-      val ranked = bindings.filter { binding ->
+      val prioritized = bindings.filter { binding ->
         val isClassContribution =
           when (binding) {
             is KaBinding.Alias -> binding.isClassContribution
             is KaBinding.Provided -> binding.isClassContribution
             else -> false
           }
+        val isSetContribution = binding.multibindingId != null && binding.mapKeyValue == null
         isClassContribution &&
-          binding.multibindingId == null &&
+          !isSetContribution &&
           binding.originClassId != null &&
           binding.originClassId !in replaced &&
           isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes)
       }
-      val outranked = mutableSetOf<ClassId>()
+      if (prioritized.size < 2) return@computeIfAbsent emptySet()
+
+      val lowerPriority = mutableSetOf<KaBinding>()
       for (graph in queryContext.graphContext.chain) {
-        val levelBindings = ranked.filter { binding ->
+        val levelBindings = prioritized.filter { binding ->
           binding.contributionScopes.any(graph.scopeKeys::contains)
         }
-        outranked +=
-          computeOutrankedBindings(
-            levelBindings,
-            typeKeySelector = { it.typeKey },
-            rankSelector = { it.contributionRank },
-            classId = { checkNotNull(it.originClassId) },
-          )
+        lowerPriority += selectLowerPriorityBindings(levelBindings, queryContext)
       }
-      outranked
+      lowerPriority
     }
+  }
+
+  private fun selectLowerPriorityBindings(
+    candidates: List<KaBinding>,
+    queryContext: GraphQueryContext,
+  ): Set<KaBinding> {
+    val interopEnabled = queryContext.graphContext.daggerAnvilInteropEnabled
+    return computeLowerPriorityContributions(
+      candidates,
+      conflictKeySelector = { binding ->
+        val multibindingId = binding.multibindingId
+        if (multibindingId == null) {
+          binding.typeKey
+        } else {
+          MapPriorityKey(multibindingId, checkNotNull(binding.mapKeyValue))
+        }
+      },
+      prioritySelector = { binding ->
+        if (binding.priorityFromAnvilRank && !interopEnabled) {
+          Int.MIN_VALUE
+        } else {
+          binding.priority
+        }
+      },
+    )
   }
 
   /** Drops bindings replaced by other surviving contributions, via the shared merge engine. */

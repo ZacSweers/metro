@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotationValue
 import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -200,33 +199,22 @@ internal class LibraryIndexPostProcessor(
       val originBindings =
         if (originPsi != null && originPsi != ktClass) originPsi.bindingData(this, options)
         else emptyList()
-      val fallbackContributionRank =
+      val mapContributionAnnotations =
+        options.contributesIntoMapAnnotations + options.customContributesIntoSetAnnotations
+      val priorityAnnotations = options.contributesBindingAnnotations + mapContributionAnnotations
+      val scopedPriorityAnnotations =
         originSymbol
           ?.annotations
-          ?.asSequence()
-          ?.filter { it.classId in options.contributesBindingAnnotations }
+          ?.filter { it.classId in priorityAnnotations }
           ?.filter { scopeId in annotationScopeKeys(it) }
-          ?.mapNotNull { annotation ->
-            val value =
-              annotation.arguments
-                .firstOrNull { it.name.asString() == "rank" }
-                ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value }
-            when (value) {
-              is Long -> value
-              is Int -> value.toLong()
-              else -> null
-            }
-          }
-          ?.singleOrNull()
+          .orEmpty()
       // Explicit generated @Binds members are authoritative when a binary origin has multiple
       // supertypes and its contribution annotation's bound-type argument cannot be recovered.
-      // A single scope-matched rank still belongs to those aliases even without class BindingData.
-      val rankedContributions =
+      // A single scope-matched priority still belongs to those aliases without class BindingData.
+      val classContributions =
         (classBindings + originBindings).filter { contribution ->
           (contribution.kind == BindingData.Kind.ALIAS ||
-            contribution.kind == BindingData.Kind.PROVIDED) &&
-            contribution.isClassContribution &&
-            contribution.contributionRank != Long.MIN_VALUE
+            contribution.kind == BindingData.Kind.PROVIDED) && contribution.isClassContribution
         }
       for (data in classBindings) {
         bindings +=
@@ -247,17 +235,43 @@ internal class LibraryIndexPostProcessor(
         ProgressManager.checkCanceled()
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
           for (data in member.bindingData(this, options)) {
-            val matchingContribution = rankedContributions.firstOrNull { contribution ->
-              contribution.key == data.key && scopeId in contribution.contributionScopes
+            val matchingContribution = classContributions.firstOrNull { contribution ->
+              contribution.key == data.key &&
+                contribution.multibindingId == data.multibindingId &&
+                contribution.mapKeyValue == data.mapKeyValue &&
+                scopeId in contribution.contributionScopes
             }
-            val inheritedRank =
+            val fallbackPriority =
+              scopedPriorityAnnotations
+                .filter { annotation ->
+                  val annotationClassId = annotation.classId
+                  val isBindingAnnotation =
+                    annotationClassId in options.contributesBindingAnnotations
+                  when {
+                    data.multibindingId == null ->
+                      isBindingAnnotation && !annotation.isMultibindingContribution()
+                    data.mapKeyValue != null -> annotationClassId in mapContributionAnnotations
+                    else -> false
+                  }
+                }
+                .map { it.priority() }
+                .singleOrNull()
+            val inheritedPriority =
               when {
-                matchingContribution != null -> matchingContribution.contributionRank
-                fallbackContributionRank != null -> fallbackContributionRank
-                else -> data.contributionRank
+                matchingContribution != null ->
+                  ExtractedPriority(
+                    matchingContribution.priority,
+                    matchingContribution.priorityFromAnvilRank,
+                  )
+                fallbackPriority != null -> fallbackPriority
+                else ->
+                  ExtractedPriority(
+                    data.priority,
+                    data.priorityFromAnvilRank,
+                  )
               }
-            val isRankedClassContribution =
-              matchingContribution != null || fallbackContributionRank != null
+            val isMatchedClassContribution =
+              matchingContribution != null || fallbackPriority != null
             bindings +=
               data.toKaBinding(
                 ptr(member),
@@ -266,8 +280,9 @@ internal class LibraryIndexPostProcessor(
                   data.implementationName ?: originClassId?.shortClassName?.asString(),
                 replaces = classReplaces,
                 contributionScopes = setOf(scopeId),
-                contributionRank = inheritedRank,
-                isClassContribution = isRankedClassContribution || data.isClassContribution,
+                priority = inheritedPriority.value,
+                priorityFromAnvilRank = inheritedPriority.fromAnvilRank,
+                isClassContribution = isMatchedClassContribution || data.isClassContribution,
                 hintAvailability = hintAvailability,
               )
           }
