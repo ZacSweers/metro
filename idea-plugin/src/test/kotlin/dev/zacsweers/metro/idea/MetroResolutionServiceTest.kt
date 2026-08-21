@@ -2584,11 +2584,271 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         listOf("bindLibRankedService"),
         matching.map { (it.pointer.element as? KtNamedDeclaration)?.name },
       )
-      assertEquals(listOf(100L), matching.map { it.contributionRank })
+      assertEquals(listOf(100), matching.map { it.priority })
+      assertTrue(matching.single().priorityFromAnvilRank)
       assertEquals(
         listOf("libtest.LibHigherRankedService"),
         matching.map { it.originClassId?.asFqNameString() },
       )
+    }
+  }
+
+  fun testLibraryGeneratedContributionAliasesPreservePrioritiesWithoutInterop() {
+    project.setMetroOptions("custom-contributes-binding" to "libtest/LibPrioritizedBinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRankedService
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val service: LibRankedService
+          }
+          """,
+          fileName = "PrioritizedLibraryGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val service = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+      val matching = index.resolveConsumer(service).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("libtest.LibHigherRankedService"),
+        matching.map {
+          it.originClassId?.asFqNameString()
+        },
+      )
+      assertEquals(listOf(100), matching.map { it.priority })
+      assertFalse(matching.single().priorityFromAnvilRank)
+    }
+  }
+
+  fun testLibraryContributionProviderRecoversPriorityFromOrigin() {
+    project.setMetroOptions("custom-contributes-binding" to "libtest/LibPrioritizedBinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibContained
+          import libtest.LibPrioritizedBinding
+
+          @Inject @LibPrioritizedBinding(AppScope::class, priority = 100)
+          class HigherContained : LibContained
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val service: LibContained
+          }
+          """,
+          fileName = "PrioritizedOriginGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val service = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+      assertEquals(
+        listOf("HigherContained"),
+        index.resolveConsumer(service).uniformBindings.orEmpty().map { it.implementationName },
+      )
+    }
+  }
+
+  fun testLibraryMapContributionsPreservePrioritiesWithoutInterop() {
+    project.setMetroOptions("custom-into-map" to "libtest/LibPrioritizedMapBinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibRankedService
+
+          @DependencyGraph(AppScope::class)
+          interface AppGraph {
+            val services: Map<String, LibRankedService>
+          }
+          """,
+          fileName = "PrioritizedLibraryMapGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val services =
+        index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+      val matching = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("libtest.LibHigherRankedService"),
+        matching.map { it.originClassId?.asFqNameString() },
+      )
+      assertEquals(listOf(100), matching.map { it.priority })
+      assertFalse(matching.single().priorityFromAnvilRank)
+    }
+  }
+
+  fun testLibrarySetContributionAliasesStayAdditive() {
+    project.setMetroOptions("custom-contributes-into-set" to "libtest/LibCustomMultibinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibSetService
+          import libtest.LibMultibindingScope
+
+          @DependencyGraph(LibMultibindingScope::class)
+          interface AppGraph {
+            val services: Set<LibSetService>
+          }
+          """,
+          fileName = "LibrarySetGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val services =
+        index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+      val matching = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("bindLibSetService", "bindLibSetService"),
+        matching.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+      )
+      assertEquals(
+        setOf("libtest.LibFirstSetService", "libtest.LibSecondSetService"),
+        matching.mapTo(mutableSetOf()) { it.originClassId?.asFqNameString() },
+      )
+      assertEquals(setOf(Int.MIN_VALUE), matching.mapTo(mutableSetOf()) { it.priority })
+      assertTrue(matching.none { it.priorityFromAnvilRank })
+    }
+  }
+
+  fun testLibrarySetContributionProviderStaysAdditive() {
+    project.setMetroOptions("custom-contributes-into-set" to "libtest/LibCustomMultibinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibCustomMultibinding
+          import libtest.LibContainedSetService
+          import libtest.LibMultibindingScope
+
+          @Inject @LibCustomMultibinding(LibMultibindingScope::class)
+          class AdditionalContained : LibContainedSetService
+
+          @DependencyGraph(LibMultibindingScope::class)
+          interface AppGraph {
+            val services: Set<LibContainedSetService>
+          }
+          """,
+          fileName = "SetOriginGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val services =
+        index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+
+      assertEquals(
+        setOf("LibContainedSetImpl", "AdditionalContained"),
+        index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+          it.implementationName
+        },
+      )
+    }
+  }
+
+  fun testLibraryKeyedCustomMultibindingAliasesRecoverMapPriority() {
+    project.setMetroOptions("custom-contributes-into-set" to "libtest/LibCustomMultibinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibPrioritizedCustomMapService
+          import libtest.LibMultibindingScope
+
+          @DependencyGraph(LibMultibindingScope::class)
+          interface AppGraph {
+            val services: Map<String, LibPrioritizedCustomMapService>
+          }
+          """,
+          fileName = "PrioritizedLibraryCustomMapGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val services =
+        index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+      val matching = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("bindLibPrioritizedCustomMapService"),
+        matching.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+      )
+      assertEquals(
+        listOf("libtest.LibHigherPriorityCustomMapService"),
+        matching.map { it.originClassId?.asFqNameString() },
+      )
+      assertEquals(listOf(100), matching.map { it.priority })
+      assertTrue(matching.single().mapKeyValue?.contains("shared") == true)
+    }
+  }
+
+  fun testLibraryMixedBindingPriorityAndSetAliasesStayIndependent() {
+    project.setMetroOptions("custom-contributes-binding" to "libtest/LibMixedMultibindingBinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibMixedMultibindingService
+          import libtest.LibMultibindingScope
+
+          @DependencyGraph(LibMultibindingScope::class)
+          interface AppGraph {
+            val service: LibMixedMultibindingService
+            val services: Set<LibMixedMultibindingService>
+          }
+          """,
+          fileName = "MixedLibrarySetGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val declarations = file.declarationsIncludingNested()
+      val service = index.consumerEntryAt(declarations.property("service"))!!
+      val services = index.consumerEntryAt(declarations.property("services"))!!
+      val ordinary = index.resolveConsumer(service).uniformBindings.orEmpty()
+      val collected = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+      assertEquals(
+        listOf("libtest.LibMixedMultibindingServiceImpl"),
+        ordinary.map { it.originClassId?.asFqNameString() },
+      )
+      assertEquals(listOf(5), ordinary.map { it.priority })
+      assertEquals(
+        setOf("libtest.LibMixedMultibindingServiceImpl", "libtest.LibOtherMixedSetService"),
+        collected.mapTo(mutableSetOf()) { it.originClassId?.asFqNameString() },
+      )
+      assertEquals(setOf(Int.MIN_VALUE), collected.mapTo(mutableSetOf()) { it.priority })
+    }
+  }
+
+  fun testLibrarySetContributionsHonorIgnoredImplementationQualifiers() {
+    project.setMetroOptions("custom-contributes-into-set" to "libtest/LibCustomMultibinding")
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibIgnoreQualifierSetService
+          import libtest.LibCustomMultibinding
+          import libtest.LibMultibindingScope
+
+          @Inject @LibCustomMultibinding(LibMultibindingScope::class)
+          class AdditionalService : LibIgnoreQualifierSetService
+
+          @DependencyGraph(LibMultibindingScope::class)
+          interface AppGraph {
+            val services: Set<LibIgnoreQualifierSetService>
+          }
+          """,
+          fileName = "IgnoreQualifierLibrarySetGraph.kt",
+        )
+      val index = project.service<MetroResolutionService>().index(file)
+      val services =
+        index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+      val matching = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+      assertEquals(
+        setOf("LibIgnoreQualifierSetServiceImpl", "AdditionalService"),
+        matching.mapTo(mutableSetOf()) { it.implementationName },
+      )
+      assertEquals(setOf(Int.MIN_VALUE), matching.mapTo(mutableSetOf()) { it.priority })
     }
   }
 
@@ -3884,6 +4144,761 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       index.resolveConsumer(accessor).uniformBindings.orEmpty().mapNotNull {
         (it.pointer.element as? KtNamedDeclaration)?.name
       },
+    )
+  }
+
+  fun testContributionPrioritiesApplyWithoutAnvilInterop() {
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedBinding(
+          val scope: KClass<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject @PrioritizedBinding(AppScope::class)
+        class DefaultService : Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = -50)
+        class LowerService : Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val accessor = index.consumerEntryAt(declarations.property("service"))!!
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+
+    assertEquals(
+      listOf("HigherService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().map { it.implementationName },
+    )
+    assertEquals(
+      listOf("HigherService"),
+      index.contributionsFor(queryContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testLowerPriorityBindingKeepsOtherBindingsAndSetContributions() {
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        @Repeatable
+        annotation class PrioritizedBinding(
+          val scope: KClass<*>,
+          val boundType: KClass<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+        interface OtherService
+
+        @Inject
+        @PrioritizedBinding(AppScope::class, boundType = Service::class, priority = 10)
+        @PrioritizedBinding(AppScope::class, boundType = OtherService::class, priority = 100)
+        @ContributesIntoSet(AppScope::class, binding = binding<OtherService>())
+        class SharedService : Service, OtherService
+
+        @Inject
+        @PrioritizedBinding(AppScope::class, boundType = Service::class, priority = 50)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val other: OtherService
+          val others: Set<OtherService>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+
+    fun implementations(accessor: String): List<String?> {
+      val consumer = index.consumerEntryAt(declarations.property(accessor))!!
+      return index.bindingsFor(consumer, queryContext).map { it.implementationName }
+    }
+
+    assertEquals(listOf("HigherService"), implementations("service"))
+    assertEquals(listOf("SharedService"), implementations("other"))
+    assertEquals(listOf("SharedService"), implementations("others"))
+    assertEquals(
+      setOf("SharedService", "HigherService"),
+      index.contributionsFor(queryContext).mapNotNullTo(mutableSetOf()) {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testTypeUseQualifiersKeepRepeatedPrioritizedBindingsIndependent() {
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        @Repeatable
+        annotation class PrioritizedBinding(
+          val scope: KClass<*>,
+          val binding: binding<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject
+        @PrioritizedBinding(
+          AppScope::class,
+          binding = binding<@Named("first") Service>(),
+          priority = 10,
+        )
+        @PrioritizedBinding(
+          AppScope::class,
+          binding = binding<@Named("second") Service>(),
+          priority = 100,
+        )
+        class SharedService : Service
+
+        @Inject
+        @PrioritizedBinding(
+          AppScope::class,
+          binding = binding<@Named("first") Service>(),
+          priority = 50,
+        )
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Named("first") val first: Service
+          @Named("second") val second: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val first = index.consumerEntryAt(declarations.property("first"))!!
+    val second = index.consumerEntryAt(declarations.property("second"))!!
+
+    assertEquals(
+      listOf("HigherService"),
+      index.resolveConsumer(first).uniformBindings.orEmpty().map { it.implementationName },
+    )
+    assertEquals(
+      listOf("SharedService"),
+      index.resolveConsumer(second).uniformBindings.orEmpty().map { it.implementationName },
+    )
+  }
+
+  fun testSetContributionsStayAdditiveAndPreserveAuthoredElements() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+        interface OtherService
+
+        @Inject
+        @ContributesBinding(AppScope::class, binding = binding<OtherService>())
+        @ContributesIntoSet(AppScope::class, binding = binding<Service>())
+        class FirstService : Service, OtherService
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Set<Service>
+          val other: OtherService
+
+          @Provides @IntoSet fun authoredService(): Service = object : Service {}
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val services = index.consumerEntryAt(declarations.property("services"))!!
+    val other = index.consumerEntryAt(declarations.property("other"))!!
+
+    assertEquals(
+      setOf("FirstService", "SecondService", "authoredService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) { binding ->
+        binding.implementationName ?: (binding.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    assertEquals(
+      listOf("FirstService"),
+      index.resolveConsumer(other).uniformBindings.orEmpty().map { it.implementationName },
+    )
+  }
+
+  fun testCustomSetContributionsAreAdditive() {
+    project.setMetroOptions("custom-contributes-into-set" to "test/CustomSetContribution")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class CustomSetContribution(val scope: KClass<*>)
+
+        interface Service
+
+        @Inject @CustomSetContribution(AppScope::class)
+        class FirstService : Service
+
+        @Inject @CustomSetContribution(AppScope::class)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+
+    assertEquals(
+      setOf("FirstService", "SecondService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testGeneratedSetContributionProvidersStayAdditive() {
+    project.setMetroOptions("generate-contribution-providers" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class FirstService : Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+    val matching = index.resolveConsumer(services).uniformBindings.orEmpty()
+
+    assertEquals(
+      setOf("FirstService", "SecondService"),
+      matching.mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertTrue(matching.all { it is KaBinding.Provided })
+  }
+
+  fun testExplicitSetContributionReplacementStillApplies() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class ReplacedService : Service
+
+        @Inject @ContributesIntoSet(AppScope::class, replaces = [ReplacedService::class])
+        class ReplacingService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+
+    assertEquals(
+      listOf("ReplacingService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().map { it.implementationName },
+    )
+  }
+
+  fun testExcludedSetContributionsAreDroppedFromGraphContext() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class ExcludedService : Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class RetainedService : Service
+
+        @DependencyGraph(AppScope::class, excludes = [ExcludedService::class])
+        interface AppGraph {
+          val services: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val services = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+
+    assertEquals(
+      listOf("RetainedService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().map { it.implementationName },
+    )
+  }
+
+  fun testSetContributionsFromDifferentGraphScopesStayAdditive() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        abstract class ChildScope
+
+        interface Service
+
+        @Inject @ContributesIntoSet(AppScope::class)
+        class ParentService : Service
+
+        @Inject @ContributesIntoSet(ChildScope::class)
+        class ChildService : Service
+
+        @GraphExtension(ChildScope::class)
+        interface ChildGraph {
+          val services: Set<Service>
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val services = index.consumerEntryAt(declarations.property("services"))!!
+    val child = index.graphEntryAt(declarations.klass("ChildGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(child).single())!!
+
+    assertEquals(
+      setOf("ParentService", "ChildService"),
+      index.bindingsFor(services, queryContext).mapTo(mutableSetOf()) { it.implementationName },
+    )
+  }
+
+  fun testKeyedCustomSetAnnotationsBecomePrioritizedMapContributions() {
+    project.setMetroOptions("custom-contributes-into-set" to "test/PrioritizedMultibinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMultibinding(
+          val scope: KClass<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject @StringKey("shared")
+        @PrioritizedMultibinding(AppScope::class, priority = 10)
+        class LowerMapService : Service
+
+        @Inject @StringKey("shared")
+        @PrioritizedMultibinding(AppScope::class, priority = 100)
+        class HigherMapService : Service
+
+        @Inject @StringKey("other")
+        @PrioritizedMultibinding(AppScope::class, priority = 100)
+        class OtherMapService : Service
+
+        @Inject @PrioritizedMultibinding(AppScope::class)
+        class SetService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val mapped: Map<String, Service>
+          val collected: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val mapped = index.consumerEntryAt(declarations.property("mapped"))!!
+    val collected = index.consumerEntryAt(declarations.property("collected"))!!
+
+    assertEquals(
+      setOf("HigherMapService", "OtherMapService"),
+      index.resolveConsumer(mapped).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+    assertEquals(
+      listOf("SetService"),
+      index.resolveConsumer(collected).uniformBindings.orEmpty().map { it.implementationName },
+    )
+  }
+
+  fun testMixedOrdinaryAndMultibindingAnnotationsStayIndependent() {
+    project.setMetroOptions("custom-contributes-binding" to "test/MixedContribution")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        @Repeatable
+        annotation class MixedContribution(
+          val scope: KClass<*>,
+          val multibinding: Boolean = false,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject
+        @MixedContribution(AppScope::class, priority = 5)
+        @MixedContribution(AppScope::class, multibinding = true)
+        class SharedService : Service
+
+        @Inject @MixedContribution(AppScope::class, multibinding = true)
+        class HigherSetService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val services: Set<Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val service = index.consumerEntryAt(declarations.property("service"))!!
+    val services = index.consumerEntryAt(declarations.property("services"))!!
+
+    assertEquals(
+      listOf("SharedService"),
+      index.resolveConsumer(service).uniformBindings.orEmpty().map { it.implementationName },
+    )
+    assertEquals(
+      setOf("SharedService", "HigherSetService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testIgnoredImplementationQualifierPreservesBindingPriorityAndAdditiveSets() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/RankedBinding",
+      "custom-contributes-into-set" to "test/SetContribution",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class RankedBinding(
+          val scope: KClass<*>,
+          val ignoreQualifier: Boolean = false,
+          val rank: Int,
+        )
+
+        annotation class SetContribution(
+          val scope: KClass<*>,
+          val ignoreQualifier: Boolean = false,
+        )
+
+        interface Service
+
+        @Inject
+        @RankedBinding(AppScope::class, rank = 10)
+        @SetContribution(AppScope::class)
+        class LowerService : Service
+
+        @Inject @Named("ignored")
+        @RankedBinding(AppScope::class, ignoreQualifier = true, rank = 100)
+        @SetContribution(AppScope::class, ignoreQualifier = true)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+          val services: Set<Service>
+          @Named("ignored") val implementation: HigherService
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+
+    for (propertyName in listOf("service", "implementation")) {
+      val consumer = index.consumerEntryAt(declarations.property(propertyName))!!
+      assertEquals(
+        listOf("HigherService"),
+        index.resolveConsumer(consumer).uniformBindings.orEmpty().map { it.implementationName },
+      )
+    }
+
+    val services = index.consumerEntryAt(declarations.property("services"))!!
+    assertEquals(
+      setOf("LowerService", "HigherService"),
+      index.resolveConsumer(services).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testMapPriorityOnlyReplacesTheSameMapKey() {
+    project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMapContribution(
+          val scope: KClass<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject @StringKey("shared")
+        @PrioritizedMapContribution(AppScope::class, priority = 10)
+        class LowerService : Service
+
+        @Inject @StringKey("shared")
+        @PrioritizedMapContribution(AppScope::class, priority = 100)
+        class HigherService : Service
+
+        @Inject @StringKey("other")
+        @PrioritizedMapContribution(AppScope::class, priority = 1)
+        class OtherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Map<String, Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("services"))!!
+
+    assertEquals(
+      setOf("HigherService", "OtherService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testImplicitClassMapKeysDoNotCompeteByPriority() {
+    project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedMapContribution(
+          val scope: KClass<*>,
+          val binding: binding<*> = binding<Nothing>(),
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPE)
+        @MapKey(implicitClassKey = true)
+        annotation class ViewModelKey(val value: KClass<out ViewModel> = Nothing::class)
+
+        abstract class ViewModel
+
+        @Inject
+        @PrioritizedMapContribution(
+          AppScope::class,
+          binding = binding<@ViewModelKey ViewModel>(),
+          priority = 100,
+        )
+        class FooViewModel : ViewModel()
+
+        @Inject @ViewModelKey
+        @PrioritizedMapContribution(AppScope::class, priority = 10)
+        class BarViewModel : ViewModel()
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val viewModels: Map<KClass<out ViewModel>, ViewModel>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor =
+      index.consumerEntryAt(file.declarationsIncludingNested().property("viewModels"))!!
+    val matching = index.resolveConsumer(accessor).uniformBindings.orEmpty()
+
+    assertEquals(
+      setOf("FooViewModel", "BarViewModel"),
+      matching.mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertEquals(
+      setOf(
+        "@test.ViewModelKey(value = test.FooViewModel::class)",
+        "@test.ViewModelKey(value = test.BarViewModel::class)",
+      ),
+      matching.mapTo(mutableSetOf()) { it.mapKeyValue },
+    )
+  }
+
+  fun testRepeatedMapContributionsKeepUnrelatedTypeAnnotatedKeys() {
+    project.setMetroOptions("custom-into-map" to "test/PrioritizedMapContribution")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        @Repeatable
+        annotation class PrioritizedMapContribution(
+          val scope: KClass<*>,
+          val binding: binding<*>,
+          val priority: Int = Int.MIN_VALUE,
+        )
+
+        interface Service
+
+        @Inject
+        @PrioritizedMapContribution(
+          AppScope::class,
+          binding = binding<@StringKey("shared") Service>(),
+          priority = 10,
+        )
+        @PrioritizedMapContribution(
+          AppScope::class,
+          binding = binding<@StringKey("retained") Service>(),
+          priority = 100,
+        )
+        class SharedService : Service
+
+        @Inject
+        @PrioritizedMapContribution(
+          AppScope::class,
+          binding = binding<@StringKey("shared") Service>(),
+          priority = 50,
+        )
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val services: Map<String, Service>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val accessor = index.consumerEntryAt(declarations.property("services"))!!
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val queryContext = index.queryContext(index.contextsFor(graph).single())!!
+
+    assertEquals(
+      setOf("HigherService", "SharedService"),
+      index.bindingsFor(accessor, queryContext).mapTo(mutableSetOf()) { it.implementationName },
+    )
+    assertEquals(
+      setOf("HigherService", "SharedService"),
+      index.contributionsFor(queryContext).mapNotNullTo(mutableSetOf()) {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testEqualContributionPrioritiesKeepAllBindings() {
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedBinding(val scope: KClass<*>, val priority: Int)
+
+        interface Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 100)
+        class FirstService : Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 100)
+        class SecondService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      setOf("FirstService", "SecondService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().mapTo(mutableSetOf()) {
+        it.implementationName
+      },
+    )
+  }
+
+  fun testAnvilRanksIgnoreEnumPriorityArgument() {
+    project.setMetroOptions(
+      "custom-contributes-binding" to "test/RankedBinding",
+      "enable-dagger-anvil-interop" to "true",
+    )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        import kotlin.reflect.KClass
+
+        enum class LegacyPriority { NORMAL }
+
+        annotation class RankedBinding(
+          val scope: KClass<*>,
+          val priority: LegacyPriority = LegacyPriority.NORMAL,
+          val rank: Int,
+        )
+
+        interface Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 50)
+        class LowerService : Service
+
+        @Inject @RankedBinding(AppScope::class, rank = 100)
+        class HigherService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val accessor = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+
+    assertEquals(
+      listOf("HigherService"),
+      index.resolveConsumer(accessor).uniformBindings.orEmpty().map { it.implementationName },
     )
   }
 

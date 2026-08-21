@@ -11,11 +11,19 @@ package metro.hints
 
 import libtest.LibAnalyticsImpl
 import libtest.LibContainedImplContributions
+import libtest.LibContainedSetImplContributions
 import libtest.LibDualImplContributions
 import libtest.LibExplicitImpl
 import libtest.LibHiddenImpl
+import libtest.LibHigherPriorityCustomMapService
+import libtest.LibSecondSetService
 import libtest.LibHigherRankedService
+import libtest.LibOtherMixedSetService
+import libtest.LibIgnoreQualifierSetServiceImpl
+import libtest.LibLowerPriorityCustomMapService
+import libtest.LibFirstSetService
 import libtest.LibLowerRankedService
+import libtest.LibMixedMultibindingServiceImpl
 import libtest.LibServiceImpl
 import libtest.LibTransitiveServiceImpl
 
@@ -36,5 +44,23 @@ fun dev_zacsweers_metro_AppScope(contributed: LibContainedImplContributions.ToAp
 fun dev_zacsweers_metro_AppScope(contributed: LibDualImplContributions.ToScopes) {}
 
 fun libtest_LibScope(contributed: LibDualImplContributions.ToScopes) {}
+
+fun libtest_LibMultibindingScope(contributed: LibFirstSetService) {}
+
+fun libtest_LibMultibindingScope(contributed: LibSecondSetService) {}
+
+fun libtest_LibMultibindingScope(contributed: LibIgnoreQualifierSetServiceImpl) {}
+
+fun libtest_LibMultibindingScope(contributed: LibMixedMultibindingServiceImpl) {}
+
+fun libtest_LibMultibindingScope(contributed: LibOtherMixedSetService) {}
+
+fun libtest_LibMultibindingScope(contributed: LibLowerPriorityCustomMapService) {}
+
+fun libtest_LibMultibindingScope(contributed: LibHigherPriorityCustomMapService) {}
+
+fun libtest_LibMultibindingScope(
+  contributed: LibContainedSetImplContributions.ToMultibindingScope
+) {}
 
 internal fun dev_zacsweers_metro_AppScope(contributed: LibHiddenImpl) {}
