@@ -2258,22 +2258,15 @@ internal fun IrSimpleFunction.asMemberOf(subtype: IrType): IrSimpleFunction {
   }
 }
 
-internal fun IrConstructorCall.rankValue(): Long {
-  // Although the parameter is defined as an Int, the value we receive here may end up being
-  // an Int or a Long so we need to handle both
-  return getAnnotationArgument(Symbols.Names.rank)?.let { arg ->
-    when (arg) {
-      is IrConst -> {
-        when (val value = arg.value) {
-          is Long -> value
-          is Int -> value.toLong()
-          else -> Long.MIN_VALUE
-        }
-      }
+/** Reads first-party contribution priority, or Anvil's numeric rank when interoperability is on. */
+context(context: IrMetroContext)
+internal fun IrConstructorCall.priority(): Int {
+  val priority = (getAnnotationArgument(Symbols.Names.priority) as? IrConst)?.value as? Int
+  if (priority != null) return priority
 
-      else -> Long.MIN_VALUE
-    }
-  } ?: Long.MIN_VALUE
+  if (!context.options.enableDaggerAnvilInterop) return Int.MIN_VALUE
+
+  return (getAnnotationArgument(Symbols.Names.rank) as? IrConst)?.value as? Int ?: Int.MIN_VALUE
 }
 
 context(context: IrMetroContext)
