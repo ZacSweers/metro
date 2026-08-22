@@ -1940,6 +1940,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
       }
 
       @Test
+      @TestMetadata("SwitchingSuspendProvidersWithShards.kt")
+      public void testSwitchingSuspendProvidersWithShards() {
+        run("SwitchingSuspendProvidersWithShards.kt");
+      }
+
+      @Test
       @TestMetadata("ThreeShardsWithOrder.kt")
       public void testThreeShardsWithOrder() {
         run("ThreeShardsWithOrder.kt");

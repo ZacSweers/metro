@@ -106,4 +106,5 @@
 # Android Studio Quail 4 | 2026.1.4 Canary 4 (canary)
 # Android Studio Rabbit 1 | 2026.2.1 Canary 1 (canary)
 # Android Studio Quail 4 | 2026.1.4 RC 1 (beta)
+# Android Studio Rabbit 1 | 2026.2.1 Canary 2 (canary)
 2.4.255-dev-255=2.4.0-dev-2633

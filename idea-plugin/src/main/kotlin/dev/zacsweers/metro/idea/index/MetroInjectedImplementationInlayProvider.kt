@@ -16,6 +16,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -71,7 +72,10 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
         return
       }
       val consumer = index.consumerEntryAt(element) ?: return
-      val bindings = index.resolveConsumer(consumer).uniformBindings ?: return
+      val resolution = index.resolveConsumer(consumer)
+      val pinned =
+        element.project.service<GraphContextPinService>().matchingEntry(resolution.perContext)
+      val bindings = pinned?.value ?: resolution.uniformBindings ?: return
       if (bindings.isEmpty()) return
 
       val contributions = bindings.count { it.multibindingId != null }

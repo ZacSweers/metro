@@ -1,0 +1,588 @@
+@SingleIn(scope = AppScope::class)
+@Inject
+class DeferredSuspendConsumer {
+  val direct: SuspendProvider<DirectSuspendValue>
+    field = direct
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<DeferredSuspendConsumer> {
+    private /* final field */ val direct: SuspendProvider<DirectSuspendValue> = direct
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(direct: SuspendProvider<DirectSuspendValue>): MetroFactory {
+        return MetroFactory(direct = direct)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(direct: SuspendProvider<DirectSuspendValue>): DeferredSuspendConsumer {
+        return DeferredSuspendConsumer(direct = direct)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(direct: SuspendProvider<DirectSuspendValue>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(direct: SuspendProvider<DirectSuspendValue>): DeferredSuspendConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): DeferredSuspendConsumer {
+      return MetroFactory/* companion */.newInstance(direct = <this>.#direct)
+    }
+
+  }
+
+  constructor(direct: SuspendProvider<DirectSuspendValue>) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+class DirectSuspendValue {
+  val value: String
+    field = value
+    get
+
+  constructor(value: String) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class FirstSharedConsumer {
+  val shared: SharedUnscopedSuspendValue
+    field = shared
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<FirstSharedConsumer> {
+    private /* final field */ val shared: Provider<SharedUnscopedSuspendValue> = shared
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(shared: Provider<SharedUnscopedSuspendValue>): MetroFactory {
+        return MetroFactory(shared = shared)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(shared: SharedUnscopedSuspendValue): FirstSharedConsumer {
+        return FirstSharedConsumer(shared = shared)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(shared: Provider<SharedUnscopedSuspendValue>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(shared: SharedUnscopedSuspendValue): FirstSharedConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): FirstSharedConsumer {
+      return MetroFactory/* companion */.newInstance(shared = <this>.#shared.invoke())
+    }
+
+  }
+
+  constructor(shared: SharedUnscopedSuspendValue) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SecondSharedConsumer {
+  val shared: SharedUnscopedSuspendValue
+    field = shared
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SecondSharedConsumer> {
+    private /* final field */ val shared: Provider<SharedUnscopedSuspendValue> = shared
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(shared: Provider<SharedUnscopedSuspendValue>): MetroFactory {
+        return MetroFactory(shared = shared)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(shared: SharedUnscopedSuspendValue): SecondSharedConsumer {
+        return SecondSharedConsumer(shared = shared)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(shared: Provider<SharedUnscopedSuspendValue>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(shared: SharedUnscopedSuspendValue): SecondSharedConsumer {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SecondSharedConsumer {
+      return MetroFactory/* companion */.newInstance(shared = <this>.#shared.invoke())
+    }
+
+  }
+
+  constructor(shared: SharedUnscopedSuspendValue) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@Inject
+class SharedUnscopedSuspendValue {
+  val direct: DirectSuspendValue
+    field = direct
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<SharedUnscopedSuspendValue> {
+    private /* final field */ val direct: Provider<DirectSuspendValue> = direct
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(direct: Provider<DirectSuspendValue>): MetroFactory {
+        return MetroFactory(direct = direct)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(direct: DirectSuspendValue): SharedUnscopedSuspendValue {
+        return SharedUnscopedSuspendValue(direct = direct)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(direct: Provider<DirectSuspendValue>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(direct: DirectSuspendValue): SharedUnscopedSuspendValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SharedUnscopedSuspendValue {
+      return MetroFactory/* companion */.newInstance(direct = <this>.#direct.invoke())
+    }
+
+  }
+
+  constructor(direct: DirectSuspendValue) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class SynchronousScoped {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object MetroFactory : Factory<SynchronousScoped> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun create(): MetroFactory {
+      return MetroFactory
+    }
+
+    @HiddenFromObjC
+    @JvmStatic
+    @JsStatic
+    fun newInstance(): SynchronousScoped {
+      return SynchronousScoped()
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(): SynchronousScoped {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): SynchronousScoped {
+      return MetroFactory.newInstance()
+    }
+
+  }
+
+  constructor() /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@SingleIn(scope = AppScope::class)
+@Inject
+class TransitiveSuspendValue {
+  val direct: DirectSuspendValue
+    field = direct
+    get
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  class MetroFactory : Factory<TransitiveSuspendValue> {
+    private /* final field */ val direct: Provider<DirectSuspendValue> = direct
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(direct: Provider<DirectSuspendValue>): MetroFactory {
+        return MetroFactory(direct = direct)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun newInstance(direct: DirectSuspendValue): TransitiveSuspendValue {
+        return TransitiveSuspendValue(direct = direct)
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(direct: Provider<DirectSuspendValue>) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    fun declarationMirror(direct: DirectSuspendValue): TransitiveSuspendValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override operator fun invoke(): TransitiveSuspendValue {
+      return MetroFactory/* companion */.newInstance(direct = <this>.#direct.invoke())
+    }
+
+  }
+
+  constructor(direct: DirectSuspendValue) /* primary */ {
+    super/*Any*/()
+    /* <init>() */
+
+  }
+
+}
+
+@DependencyGraph(scope = AppScope::class)
+interface AppGraph {
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @MetroImplMarker
+  class Impl : AppGraph {
+    private val thisGraphInstance: Impl
+      field = <this>
+
+    private val provideDirectSuspendValueSuspendProvider: SuspendProvider<DirectSuspendValue>
+
+    private val deferredSuspendConsumerProvider: Provider<DeferredSuspendConsumer>
+
+    private val sharedUnscopedSuspendValueSuspendProvider: SuspendProvider<SharedUnscopedSuspendValue>
+
+    private val synchronousScopedProvider: Provider<SynchronousScoped>
+
+    private val transitiveSuspendValueSuspendProvider: SuspendProvider<TransitiveSuspendValue>
+
+    private class SwitchingProvider<T : Any?> : Provider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override fun invoke(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> DeferredSuspendConsumer(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> SynchronousScoped() /*as T */
+            else -> throw error(message = "Unexpected SwitchingProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+    }
+
+    private class SwitchingSuspendProvider<T : Any?> : SuspendProvider<T> {
+      private val graph: Impl
+
+      private val id: Int
+
+      constructor(graph: Impl, id: Int) /* primary */ {
+        super/*Any*/()
+        <this>.#graph = graph
+        <this>.#id = id
+      }
+
+      override suspend fun invoke(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          val tmp1_selector: Int = tmp0_id.div(other = 2)
+          when {
+            EQEQ(arg0 = tmp1_selector, arg1 = 0) -> <this>.invoke2()
+            EQEQ(arg0 = tmp1_selector, arg1 = 1) -> <this>.invoke3()
+            else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private suspend fun invoke2(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 1) -> SharedUnscopedSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            EQEQ(arg0 = tmp0_id, arg1 = 0) -> TransitiveSuspendValue(direct = <this>.#graph.#provideDirectSuspendValueSuspendProvider.invoke()) /*as T */
+            else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+      private suspend fun invoke3(): T {
+        return { // BLOCK
+          val tmp0_id: Int = <this>.#id
+          when {
+            EQEQ(arg0 = tmp0_id, arg1 = 2) -> <this>.#graph.#thisGraphInstance.provideDirectSuspendValue() /*as T */
+            else -> throw error(message = "Unexpected SwitchingSuspendProvider id: " + tmp0_id)
+          }
+        }
+      }
+
+    }
+
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+      <this>.init()
+      <this>.init2()
+      <this>.init3()
+    }
+
+    override suspend fun direct(): DirectSuspendValue {
+      return <this>.#provideDirectSuspendValueSuspendProvider.invoke()
+    }
+
+    override suspend fun firstShared(): FirstSharedConsumer {
+      return FirstSharedConsumer(shared = <this>.#sharedUnscopedSuspendValueSuspendProvider.invoke())
+    }
+
+    private fun init() {
+      <this>.#provideDirectSuspendValueSuspendProvider = SuspendDoubleCheck/* companion */.provider<DirectSuspendValue>(delegate = SwitchingSuspendProvider<DirectSuspendValue>(graph = <this>, id = 2))
+      <this>.#deferredSuspendConsumerProvider = DoubleCheck/* companion */.provider<Provider<DeferredSuspendConsumer>, DeferredSuspendConsumer>(delegate = SwitchingProvider<DeferredSuspendConsumer>(graph = <this>, id = 1))
+    }
+
+    private fun init2() {
+      <this>.#sharedUnscopedSuspendValueSuspendProvider = SwitchingSuspendProvider<SharedUnscopedSuspendValue>(graph = <this>, id = 1)
+      <this>.#synchronousScopedProvider = DoubleCheck/* companion */.provider<Provider<SynchronousScoped>, SynchronousScoped>(delegate = SwitchingProvider<SynchronousScoped>(graph = <this>, id = 0))
+    }
+
+    private fun init3() {
+      <this>.#transitiveSuspendValueSuspendProvider = SuspendDoubleCheck/* companion */.provider<TransitiveSuspendValue>(delegate = SwitchingSuspendProvider<TransitiveSuspendValue>(graph = <this>, id = 0))
+    }
+
+    override suspend fun secondShared(): SecondSharedConsumer {
+      return SecondSharedConsumer(shared = <this>.#sharedUnscopedSuspendValueSuspendProvider.invoke())
+    }
+
+    override suspend fun transitive(): TransitiveSuspendValue {
+      return <this>.#transitiveSuspendValueSuspendProvider.invoke()
+    }
+
+    override val deferred: DeferredSuspendConsumer
+      override get(): DeferredSuspendConsumer {
+        return <this>.#deferredSuspendConsumerProvider.invoke()
+      }
+
+    override val synchronous: SynchronousScoped
+      override get(): SynchronousScoped {
+        return <this>.#synchronousScopedProvider.invoke()
+      }
+
+  }
+
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @GraphFactoryInvokeFunctionMarker
+    @JvmStatic
+    @JsStatic
+    operator fun invoke(): AppGraph {
+      return Impl()
+    }
+
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  @CallableMetadata(callableName = "provideDirectSuspendValue", propertyName = "", startOffset = 1000, endOffset = 1130, newInstanceName = "provideDirectSuspendValue")
+  class ProvideDirectSuspendValueMetroFactory : SuspendFactory<DirectSuspendValue> {
+    private /* final field */ val instance: AppGraph = instance
+    companion object Companion {
+      private constructor() /* primary */ {
+        super/*Any*/()
+        /* <init>() */
+
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      fun create(instance: AppGraph): ProvideDirectSuspendValueMetroFactory {
+        return ProvideDirectSuspendValueMetroFactory(instance = instance)
+      }
+
+      @HiddenFromObjC
+      @JvmStatic
+      @JsStatic
+      suspend fun provideDirectSuspendValue(instance: AppGraph): DirectSuspendValue {
+        return instance.provideDirectSuspendValue()
+      }
+
+    }
+
+    @HiddenFromObjC
+    private constructor(instance: AppGraph) /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    @SingleIn(scope = AppScope::class)
+    @ComptimeOnly
+    @HiddenFromObjC
+    suspend fun declarationMirror(): DirectSuspendValue {
+      return error(message = "Never called")
+    }
+
+    @HiddenFromObjC
+    override suspend operator fun invoke(): DirectSuspendValue {
+      return ProvideDirectSuspendValueMetroFactory/* companion */.provideDirectSuspendValue(instance = <this>.#instance)
+    }
+
+  }
+
+  abstract suspend fun direct(): DirectSuspendValue
+
+  abstract suspend fun firstShared(): FirstSharedConsumer
+
+  @Provides
+  @SingleIn(scope = AppScope::class)
+  suspend fun provideDirectSuspendValue(): DirectSuspendValue {
+    return DirectSuspendValue(value = "value")
+  }
+
+  abstract suspend fun secondShared(): SecondSharedConsumer
+
+  abstract suspend fun transitive(): TransitiveSuspendValue
+
+  abstract val deferred: DeferredSuspendConsumer
+    abstract get
+
+  abstract val synchronous: SynchronousScoped
+    abstract get
+
+}

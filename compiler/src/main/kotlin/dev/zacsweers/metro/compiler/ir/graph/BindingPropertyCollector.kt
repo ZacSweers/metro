@@ -51,9 +51,9 @@ internal class BindingPropertyCollector(
     // TODO replace with AccessType
     val isProviderType: Boolean = propertyKind == PropertyKind.FIELD,
     /**
-     * The switching ID for this property when using switching providers mode. Only assigned for
-     * FIELD properties that are eligible for SwitchingProvider dispatch. Null means this property
-     * does not use SwitchingProvider.
+     * The switching ID for this property when using switching providers mode. IDs are unique within
+     * the synchronous or suspend provider flavor and are only assigned to eligible FIELD
+     * properties. Null means this property does not use a switching provider.
      */
     val switchingId: Int? = null,
   )
@@ -104,26 +104,24 @@ internal class BindingPropertyCollector(
   private val assistedTargetCounts =
     LinkedHashMap<IrTypeKey, Pair<IrBinding.ConstructorInjected, Int>>()
 
-  /** Counter for assigning switching IDs in switching providers mode. */
-  private var nextSwitchingId = 0
+  /** Counters for assigning IDs within each switching provider flavor. */
+  private var nextSwitchingProviderId = 0
+  private var nextSwitchingSuspendProviderId = 0
 
   /**
-   * Determines if a binding is eligible for SwitchingProvider dispatch. Returns true only for FIELD
-   * properties that can be lazily instantiated via the switching provider pattern.
+   * Determines if a binding is eligible for switching-provider dispatch. Returns true only for
+   * FIELD properties that can be lazily instantiated via the switching provider pattern.
    *
-   * Note: Deferred types (used for cycle-breaking) are eligible for SwitchingProvider. While they
-   * use DelegateFactory for the initial field value, the setDelegate call will use
-   * SwitchingProvider when a switchingId is assigned.
+   * Note: Deferred types (used for cycle-breaking) are eligible. While they use a delegate factory
+   * for the initial field value, the setDelegate call will use the appropriate switching provider
+   * when a switchingId is assigned.
    */
   private fun shouldUseSwitchingProvider(binding: IrBinding, propertyKind: PropertyKind): Boolean {
     if (!metroContext.options.enableSwitchingProviders) return false
     if (propertyKind != PropertyKind.FIELD) return false
-    // Suspend bindings can't be dispatched through SwitchingProvider. Its invoke() is not a
-    // suspend function. They get SuspendProvider<T> fields instead.
-    if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) return false
 
     return when (binding) {
-      // These use specialized initialization, not SwitchingProvider
+      // These use specialized initialization, not switching providers
       is BoundInstance,
       is GraphDependency,
       is Alias,
@@ -139,13 +137,28 @@ internal class BindingPropertyCollector(
       // Assisted inject factories do not implement Provider
       is ConstructorInjected if binding.isAssisted -> false
 
-      // These can use SwitchingProvider
+      // These can use switching providers
       is MembersInjected,
       is CustomWrapper,
       is ConstructorInjected,
       is Provided -> true
     }
   }
+
+  private fun allocateSwitchingId(
+    binding: IrBinding,
+    propertyKind: PropertyKind,
+  ): Int? {
+    if (!shouldUseSwitchingProvider(binding, propertyKind)) return null
+    return if (binding.isSuspendInGraph) {
+      nextSwitchingSuspendProviderId++
+    } else {
+      nextSwitchingProviderId++
+    }
+  }
+
+  private val IrBinding.isSuspendInGraph: Boolean
+    get() = isSuspend || graph.isTransitivelySuspend(typeKey)
 
   // Create getters for multi-use refcounts _unless_ they have no dependencies
   private fun IrBinding.isSimpleBinding(): Boolean {
@@ -256,8 +269,7 @@ internal class BindingPropertyCollector(
             contextualTypeKey = targetBinding.contextualTypeKey,
             // Assisted-inject factories don't implement Provider
             isProviderType = false,
-            // Assisted-inject factories can't use SwitchingProvider
-            switchingId = null,
+            switchingId = allocateSwitchingId(targetBinding, PropertyKind.FIELD),
           )
         keysWithBackingProperties[targetBinding.contextualTypeKey] = prop
         assistedTargetProperties += prop
@@ -328,13 +340,7 @@ internal class BindingPropertyCollector(
           // For multibindings with factory refs, the property returns a Provider type
           (binding is IrBinding.Multibinding && node.factoryRefCount > 0)
 
-      // Assign switching ID if eligible for switching providers
-      val switchingId =
-        if (shouldUseSwitchingProvider(binding, knownPropertyType)) {
-          nextSwitchingId++
-        } else {
-          null
-        }
+      val switchingId = allocateSwitchingId(binding, knownPropertyType)
 
       keysWithBackingProperties[contextKey] =
         CollectedProperty(binding, knownPropertyType, contextKey, isProviderType, switchingId)
@@ -374,9 +380,7 @@ internal class BindingPropertyCollector(
           } else {
             contextKey
           }
-        // Assign switching ID if eligible for switching providers
-        val switchingId =
-          if (shouldUseSwitchingProvider(binding, PropertyKind.FIELD)) nextSwitchingId++ else null
+        val switchingId = allocateSwitchingId(binding, PropertyKind.FIELD)
         keysWithBackingProperties[propertyContextKey] =
           CollectedProperty(
             binding,
@@ -385,12 +389,17 @@ internal class BindingPropertyCollector(
             switchingId = switchingId,
           )
       } else if (effectiveScalarRefCount > 1 && !node.binding.isSimpleBinding()) {
-        if (binding.isSuspend || graph.isTransitivelySuspend(binding.typeKey)) {
+        if (binding.isSuspendInGraph) {
           // A GETTER property is a non-suspend function and can't await suspend resolutions.
           // Shared suspend bindings get a SuspendProvider<T> FIELD instead; each consumer awaits
           // it in its own suspend context.
           keysWithBackingProperties[contextKey] =
-            CollectedProperty(binding, PropertyKind.FIELD, contextKey)
+            CollectedProperty(
+              binding,
+              PropertyKind.FIELD,
+              contextKey,
+              switchingId = allocateSwitchingId(binding, PropertyKind.FIELD),
+            )
         } else {
           keysWithBackingProperties[contextKey] =
             CollectedProperty(binding, PropertyKind.GETTER, contextKey)

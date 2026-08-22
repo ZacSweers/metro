@@ -26,6 +26,7 @@ import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.awt.RelativePoint
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -33,10 +34,12 @@ import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.presentableName
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import java.awt.event.MouseEvent
 import javax.swing.Icon
@@ -141,6 +144,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     consumers: List<ConsumerEntry>,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
+    pinnedSpecializedConsumerMarker(anchor, consumers, index)?.let {
+      return it
+    }
+
     val contexts = linkedSetOf<String>()
     val bindings = linkedSetOf<KaBinding>()
     val firstContextKey = consumers.first().contextKey
@@ -195,6 +202,62 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     )
   }
 
+  private fun pinnedSpecializedConsumerMarker(
+    anchor: PsiElement,
+    consumers: List<ConsumerEntry>,
+    index: BindingIndex,
+  ): RelatedItemLineMarkerInfo<*>? {
+    val pinService = anchor.project.service<GraphContextPinService>()
+    val resolutions = consumers.mapNotNull { consumer ->
+      val entry =
+        pinService.matchingEntry(index.resolveConsumer(consumer).perContext)
+          ?: return@mapNotNull null
+      PinnedConsumerResolution(consumer, entry.key, entry.value)
+    }
+    if (resolutions.isEmpty()) return null
+
+    val context = resolutions.maxBy { it.context.path.segments.size }.context
+    val renderedKeys = resolutions.map { it.consumer.key.render(short = true) }.distinct()
+    val bindings = index.distinctBindingDeclarations(resolutions.flatMap { it.bindings })
+    val missingRequired = resolutions.any { !it.consumer.isOptional && it.bindings.isEmpty() }
+    val contributions = bindings.count { it.multibindingId != null }
+    val tooltip = buildString {
+      append("Metro dependency: ")
+      append(renderedKeys.joinToString(" / "))
+      when {
+        missingRequired -> append(" · no binding found")
+        contributions > 0 -> {
+          append(" · ")
+          append(contributions)
+          append(if (contributions == 1) " contribution" else " contributions")
+        }
+        bindings.size > 1 -> {
+          append(" · ")
+          append(bindings.size)
+          append(" bindings")
+        }
+        bindings.isEmpty() -> append(" · optional, uses its default")
+        else -> {
+          bindings.single().implementationName?.let {
+            append(" · provided by ")
+            append(it)
+          }
+        }
+      }
+      append(" in ")
+      append(context.presentableName())
+    }
+    return navMarker(
+      anchor = anchor,
+      icon = if (missingRequired) MetroIcons.CONSUMER_UNRESOLVED else MetroIcons.CONSUMER,
+      tooltip = tooltip,
+      popupTitle =
+        "Bindings for ${renderedKeys.joinToString(" / ")} in ${context.presentableName()}",
+      emptyText = "No Metro bindings found in ${context.presentableName()}",
+      targets = bindings.map { it.pointer },
+    )
+  }
+
   /** Injector members like `fun inject(target: Foo)` navigate to the target's injected members. */
   private fun injectorMarker(
     anchor: PsiElement,
@@ -202,11 +265,19 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     entries: List<ConsumerEntry>,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
+    val pinService = declaration.project.service<GraphContextPinService>()
+    var pinnedContext: GraphContext? = null
     var missingInSomeContexts = 0
     var unresolved = 0
     for (entry in entries) {
       if (entry.isOptional) continue
       val resolution = index.resolveConsumer(entry)
+      val pinned = pinService.matchingEntry(resolution.perContext)
+      if (pinned != null) {
+        pinnedContext = pinned.key
+        if (pinned.value.isEmpty()) unresolved++
+        continue
+      }
       when {
         resolution.uniformBindings == null && resolution.emptyContexts.isNotEmpty() ->
           missingInSomeContexts++
@@ -222,6 +293,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       append(entries.size)
       append(" dependencies into ")
       append(targetName)
+      pinnedContext?.let {
+        append(" in ")
+        append(it.presentableName())
+      }
       if (missingInSomeContexts > 0) {
         append(" · ")
         append(missingInSomeContexts)
@@ -253,7 +328,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     entries: List<KaBinding>,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val targets = index.consumersFor(entries).map { it.pointer }
+    val graphPath = anchor.project.service<GraphContextPinService>().pinnedPath
+    val targets = index.consumersFor(entries, graphPath).map { it.pointer }
     val tooltip =
       entries.joinToString(separator = "\n") { entry ->
         buildString {
@@ -283,10 +359,12 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
     val resolution = index.resolveConsumer(consumer)
-    val uniformBindings = resolution.uniformBindings
-    val isContextDependent = uniformBindings == null
-    val bindings = uniformBindings.orEmpty()
-    val navigationBindings = uniformBindings ?: resolution.candidateBindings
+    val pinned =
+      anchor.project.service<GraphContextPinService>().matchingEntry(resolution.perContext)
+    val presentedBindings = pinned?.value ?: resolution.uniformBindings
+    val isContextDependent = pinned == null && presentedBindings == null
+    val bindings = presentedBindings.orEmpty()
+    val navigationBindings = presentedBindings ?: resolution.candidateBindings
     val targets = navigationBindings.map { it.pointer }
     val contributions = bindings.count { it.multibindingId != null }
     val tooltip = buildString {
@@ -324,10 +402,15 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
               append(" · provided by ")
               append(it)
             }
-          resolution.perContext.keys.singleOrNull()?.graph?.name?.let {
-            append(" in ")
-            append(it)
-          }
+          resolution.perContext.keys
+            .singleOrNull()
+            ?.graph
+            ?.name
+            ?.takeIf { pinned == null }
+            ?.let {
+              append(" in ")
+              append(it)
+            }
         }
         if (bindings.size > 1 && contributions == 0) {
           append(" · ")
@@ -348,9 +431,15 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
           }
         }
       }
+      pinned?.key?.let {
+        append(" in ")
+        append(it.presentableName())
+      }
     }
-    val missingRequiredContext = !consumer.isOptional && resolution.emptyContexts.isNotEmpty()
-    val unresolvedEverywhere = !consumer.isOptional && uniformBindings?.isEmpty() == true
+    val missingRequiredContext =
+      !consumer.isOptional &&
+        if (pinned != null) pinned.value.isEmpty() else resolution.emptyContexts.isNotEmpty()
+    val unresolvedEverywhere = !consumer.isOptional && presentedBindings?.isEmpty() == true
     val icon =
       if (missingRequiredContext || unresolvedEverywhere) {
         MetroIcons.CONSUMER_UNRESOLVED
@@ -365,6 +454,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         when {
           isContextDependent ->
             "Bindings for ${consumer.key.render(short = true)} across graph contexts"
+          pinned != null ->
+            "Bindings for ${consumer.key.render(short = true)} in ${pinned.key.presentableName()}"
           contributions > 0 -> "Contributions to ${consumer.key.render(short = true)}"
           else -> "Bindings for ${consumer.key.render(short = true)}"
         },
@@ -378,7 +469,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     graph: KaGraphDeclaration,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<*> {
-    val contexts = index.contextsFor(graph)
+    val allContexts = index.contextsFor(graph)
+    val pinned = anchor.project.service<GraphContextPinService>().matchingContext(allContexts)
+    val contexts = pinned?.let(::listOf) ?: allContexts
     val queryContexts = contexts.mapNotNull(index::queryContext)
     val contributions = queryContexts.flatMap { index.contributionsFor(it) }.distinct()
     val inherited = queryContexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
@@ -394,6 +487,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       contexts.firstOrNull()?.chain?.getOrNull(1)?.let { parent ->
         append(" · extends ")
         append(parent.name ?: "parent graph")
+      }
+      pinned?.let {
+        append(" · in ")
+        append(it.presentableName())
       }
     }
     return GraphLineMarkerInfo(
@@ -417,7 +514,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     classId: ClassId,
     index: BindingIndex,
   ): RelatedItemLineMarkerInfo<PsiElement> {
-    val contexts = index.contextsFor(graph)
+    val allContexts = index.contextsFor(graph)
+    val pinned = declaration.project.service<GraphContextPinService>().matchingContext(allContexts)
+    val contexts = pinned?.let(::listOf) ?: allContexts
     val cached = contexts.mapNotNull { context ->
       declaration.project.service<MetroGraphValidationService>().cachedResult(declaration, context)
     }
@@ -439,6 +538,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       }
     val tooltip = buildString {
       append("Validate Metro graph")
+      pinned?.let {
+        append(" in ")
+        append(it.presentableName())
+      }
       if (cached.isNotEmpty()) {
         append(" · last run: ")
         val summaries = mutableListOf<String>()
@@ -503,6 +606,12 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       .createLineMarkerInfo(anchor)
   }
 }
+
+private data class PinnedConsumerResolution(
+  val consumer: ConsumerEntry,
+  val context: GraphContext,
+  val bindings: List<KaBinding>,
+)
 
 /**
  * The graph gutter marker. Clicking lists the graph's contributions. The right-click menu offers

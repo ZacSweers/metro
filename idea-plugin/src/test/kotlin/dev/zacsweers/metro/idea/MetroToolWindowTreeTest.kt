@@ -21,11 +21,13 @@ import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
@@ -36,10 +38,13 @@ import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
+import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Walks [MetroTreeStructure] directly, without Swing, and asserts the produced rows. */
@@ -53,6 +58,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
     project.service<MetroGraphValidationService>().clearResults()
+    project.service<GraphContextPinService>().clear()
   }
 
   private var filter: String = ""
@@ -135,6 +141,121 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       listOf("DebugAnalytics", "ProdAnalytics"),
       structure.children(multibinding).map { it.text },
     )
+  }
+
+  fun testDynamicGraphRowsIdentifyAndNavigateToTheirCallSite() {
+    myFixture.configureMetroFile(
+      """
+      @BindingContainer
+      object RealBindings {
+        @Provides fun provideReal(): String = "real"
+      }
+
+      @BindingContainer
+      object FakeBindings {
+        @Provides fun provideFake(): String = "fake"
+      }
+
+      @DependencyGraph(bindingContainers = [RealBindings::class])
+      interface AppGraph {
+        val value: String
+      }
+
+      val graph = createDynamicGraph<AppGraph>(FakeBindings)
+      """,
+      fileName = "DynamicGraph.kt",
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val graphRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    val staticRow = graphRows.single { it.context.dynamicGraph == null }
+    val dynamicRow = graphRows.single { it.context.dynamicGraph != null }
+
+    assertEquals("DynamicGraph.kt", staticRow.grayText)
+    assertTrue(dynamicRow.grayText, dynamicRow.grayText!!.startsWith("dynamic at DynamicGraph.kt:"))
+    assertTrue(dynamicRow.grayText, "FakeBindings" in dynamicRow.grayText!!)
+    assertTrue(dynamicRow.pointer?.element is KtCallExpression)
+
+    val unscoped =
+      structure.children(dynamicRow).filterIsInstance<MetroTreeNode.Category>().single {
+        it.text == "Unscoped"
+      }
+    assertEquals(
+      listOf("FakeBindings", "String"),
+      structure.children(unscoped).map { it.text },
+    )
+
+    project.service<GraphContextPinService>().pin(dynamicRow.context.path)
+    val pinnedRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf(dynamicRow.context.path), pinnedRows.map { it.context.path })
+  }
+
+  fun testPinnedParentContextFocusesItsExtensionPath() {
+    myFixture.configureMetroFile(
+      """
+      @GraphExtension
+      interface ChildGraph
+
+      @DependencyGraph
+      interface LeftParent {
+        val child: ChildGraph
+      }
+
+      @DependencyGraph
+      interface RightParent {
+        val child: ChildGraph
+      }
+      """
+    )
+
+    val structure = structure()
+    val root = structure.rootElement as MetroTreeNode
+    val allRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(4, allRows.size)
+
+    val leftParent = allRows.single { it.graph.name == "LeftParent" }.context
+    project.service<GraphContextPinService>().pin(leftParent.path)
+    val leftRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf("ChildGraph", "LeftParent"), leftRows.map { it.graph.name })
+    assertEquals(
+      "LeftParent",
+      leftRows.single { it.graph.name == "ChildGraph" }.context.rootGraph.name,
+    )
+
+    val rightParent = allRows.single { it.graph.name == "RightParent" }.context
+    project.service<GraphContextPinService>().pin(rightParent.path)
+    val rightRows = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    assertEquals(listOf("ChildGraph", "RightParent"), rightRows.map { it.graph.name })
+    assertEquals(
+      "RightParent",
+      rightRows.single { it.graph.name == "ChildGraph" }.context.rootGraph.name,
+    )
+
+    project.service<GraphContextPinService>().clear()
+    assertEquals(4, structure.children(root).size)
+  }
+
+  fun testMissingPinnedContextFallsBackToAllGraphs() {
+    val file = configure()
+    val realIndex = project.service<MetroResolutionService>().index(file)
+    var currentIndex = realIndex
+    val pinService = project.service<GraphContextPinService>()
+    val structure =
+      MetroTreeStructure(project, indexProvider = { currentIndex }, pinService = pinService) {
+        filter
+      }
+    val root = structure.rootElement as MetroTreeNode
+    val context = realIndex.contextsFor(realIndex.graphs.single()).single()
+    pinService.pin(context.path)
+    assertEquals(
+      listOf(context.path),
+      structure.children(root).map { (it as MetroTreeNode.Graph).context.path },
+    )
+
+    currentIndex = BindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
+    assertTrue(structure.children(root).isEmpty())
+    assertNull(pinService.pinnedPath)
   }
 
   fun testGenericInheritedProvidersDoNotShowRawTypeParameters() {
@@ -389,6 +510,64 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     panel.clear()
     assertFalse(panel.isVisible)
+  }
+
+  fun testValidationStatusPanelShowsPreparingAndCountedProgress() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val panel = ValidationStatusPanel()
+
+    panel.show(GraphValidationProgress(context.path, graphName = "AppGraph"))
+    assertTrue(panel.isVisible)
+    assertTrue(panel.progressBar.isIndeterminate)
+    assertEquals("Validating Metro graph AppGraph", panel.messageLabel.text)
+
+    panel.show(GraphValidationProgress(context.path, "ChildGraph", completed = 1, total = 3))
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals(1, panel.progressBar.value)
+    assertEquals(3, panel.progressBar.maximum)
+    assertEquals(
+      "Validating Metro graph ChildGraph (2 of 3 graphs)",
+      panel.messageLabel.text,
+    )
+
+    panel.clear()
+    assertFalse(panel.isVisible)
+  }
+
+  fun testValidateActionIsDisabledWhileTheSelectedGraphIsRunning() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    var selectedContext: GraphContext? = null
+    var validationRunning = false
+    var validatedContext: GraphContext? = null
+    val action =
+      ValidateSelectedGraphAction(
+        selectedContext = { selectedContext },
+        isValidationRunning = { validationRunning },
+        validate = { validatedContext = it },
+      )
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    action.update(event)
+    assertFalse(event.presentation.isEnabled)
+
+    selectedContext = context
+    action.update(event)
+    assertTrue(event.presentation.isEnabled)
+
+    validationRunning = true
+    action.update(event)
+    assertFalse(event.presentation.isEnabled)
+    action.actionPerformed(event)
+    assertNull(validatedContext)
+
+    validationRunning = false
+    action.actionPerformed(event)
+    assertSame(context, validatedContext)
   }
 
   fun testGraphBrowserActionLoadsOnceThenRefreshes() {

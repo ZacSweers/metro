@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.SimpleTextAttributes
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -28,6 +29,8 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.isAtOrBelow
+import dev.zacsweers.metro.idea.presentableName
 import java.util.Collections
 import java.util.IdentityHashMap
 import javax.swing.Icon
@@ -70,7 +73,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
       get() = context.graph
 
     override val icon: Icon = MetroIcons.GRAPH
-    override val pointer: SmartPsiElementPointer<*> = graph.pointer
+    override val pointer: SmartPsiElementPointer<*> = context.contextPointer
     override val identity: Any = context.path
   }
 
@@ -303,6 +306,7 @@ internal class MetroTreeStructure(
   private val indexProvider: (Module) -> BindingIndex = { module ->
     project.service<MetroResolutionService>().index(module)
   },
+  private val pinService: GraphContextPinService = project.service(),
   private val filterText: () -> String,
 ) : AbstractTreeStructure() {
 
@@ -373,6 +377,17 @@ internal class MetroTreeStructure(
     return indexes
   }
 
+  internal fun availableContexts(): List<GraphContext> {
+    return currentContexts(currentIndexes()).sortedBy { it.presentableName(includeFile = true) }
+  }
+
+  private fun currentContexts(indexes: List<BindingIndex>): List<GraphContext> {
+    val seen = HashSet<GraphPath>()
+    return indexes
+      .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
+      .filter { context -> seen.add(context.path) }
+  }
+
   /** [node]'s context in the current indexes, refreshed so children never use stale entries. */
   private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, GraphContext>? {
     for (index in currentIndexes()) {
@@ -384,26 +399,47 @@ internal class MetroTreeStructure(
 
   private fun graphNodes(root: MetroTreeNode.Root): List<MetroTreeNode> {
     val validationService = project.service<MetroGraphValidationService>()
-    val seen = HashSet<GraphPath>()
-    val contexts =
-      currentIndexes()
-        .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
-        .filter { context ->
-          seen.add(context.path)
-        }
+    val indexes = currentIndexes()
+    var contexts = currentContexts(indexes)
+    pinService.pinnedPath?.let { pinnedPath ->
+      if (contexts.none { it.path == pinnedPath }) {
+        if (indexes.isNotEmpty()) pinService.clearIf(pinnedPath)
+      } else {
+        contexts = contexts.filter { it.path.isAtOrBelow(pinnedPath) }
+      }
+    }
     return contexts
       .sortedWith(
         compareBy(
           { it.graph.name.orEmpty() },
           { it.chain.drop(1).joinToString { parent -> parent.name.orEmpty() } },
+          { it.dynamicGraph?.pointer?.virtualFile?.path.orEmpty() },
+          { it.dynamicGraph?.pointer?.element?.textOffset ?: -1 },
+          {
+            it.dynamicGraph
+              ?.containerKeys
+              .orEmpty()
+              .map { key -> key.render(short = false) }
+              .sorted()
+              .joinToString()
+          },
         )
       )
       .map { context ->
         val graph = context.graph
         // Surface the last validation outcome on the graph row itself
-        val cached = graph.pointer.element?.let { validationService.cachedResult(it, context) }
+        val cached =
+          context.contextPointer.element?.let { validationService.cachedResult(it, context) }
         val grayText = buildString {
-          graph.pointer.virtualFile?.name?.let(::append)
+          val dynamicGraph = context.dynamicGraph
+          if (dynamicGraph == null) {
+            graph.pointer.virtualFile?.name?.let(::append)
+          } else {
+            append("dynamic at ")
+            append(dynamicGraphLocation(dynamicGraph.pointer))
+            append(" · ")
+            append(dynamicGraph.containerKeys.map { it.type.shortType }.sorted().joinToString())
+          }
           val parents = context.chain.drop(1)
           if (parents.isNotEmpty()) {
             if (isNotEmpty()) append(" · ")
@@ -422,6 +458,13 @@ internal class MetroTreeStructure(
           grayText = grayText.takeIf { it.isNotEmpty() },
         )
       }
+  }
+
+  private fun dynamicGraphLocation(pointer: SmartPsiElementPointer<*>): String {
+    val file = pointer.virtualFile?.name ?: "<unknown>"
+    val element = pointer.element ?: return file
+    val document = element.containingFile?.viewProvider?.document ?: return file
+    return "$file:${document.getLineNumber(element.textOffset) + 1}"
   }
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {

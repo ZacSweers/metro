@@ -71,7 +71,7 @@ Source factories deduplicate non-assisted parameters without defaults by their n
 
 ### Graph fields
 
-When a suspend binding needs a graph field, it is stored as `SuspendProvider<T>`. A generated non-suspend getter could not invoke it, and it cannot participate in fastInit's `SwitchingProvider`.
+When a suspend binding needs a graph field, it is stored as `SuspendProvider<T>`. A generated non-suspend getter could not invoke it. Eligible fields use `SwitchingSuspendProvider<T>` when switching providers are enabled.
 
 Scoped suspend fields are wrapped in `SuspendDoubleCheck`. Dependency cycles that pass through a suspend provider use `SuspendDelegateFactory`.
 

@@ -17,6 +17,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<MetroGraphValidationService>().clearResults()
+    project.service<GraphContextPinService>().clear()
   }
 
   private fun configureAndHighlight(): List<String> {
@@ -370,6 +371,18 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     }
     assertTrue(myFixture.findAllGutters().none { it.icon === MetroIcons.GRAPH_VALIDATED })
 
+    val pinService = project.service<GraphContextPinService>()
+    val pinnedRoot = contexts.first().rootGraph
+    pinService.pin(index.contextsFor(pinnedRoot).single().path)
+    myFixture.doHighlighting()
+    assertEquals(
+      1,
+      myFixture.findAllGutters().count { it.icon === MetroIcons.GRAPH_VALIDATED },
+    )
+    pinService.clear()
+    myFixture.doHighlighting()
+    assertTrue(myFixture.findAllGutters().none { it.icon === MetroIcons.GRAPH_VALIDATED })
+
     validationService.validate(file, contexts.last())
     DaemonCodeAnalyzer.getInstance(project).restart()
     myFixture.doHighlighting()
@@ -511,8 +524,9 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
   }
 
   fun testContextDependentBindingsDoNotUseAttentionMarker() {
-    myFixture.configureMetroFile(
-      """
+    val file =
+      myFixture.configureMetroFile(
+        """
       abstract class OtherScope
 
       interface Repo
@@ -537,7 +551,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         val consumer: Consumer
       }
       """
-    )
+      )
     myFixture.doHighlighting()
 
     val marker =
@@ -549,6 +563,39 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     assertTrue(marker.tooltipText.orEmpty()) {
       "bindings differ across 2 graph contexts · 2 candidates" in marker.tooltipText.orEmpty()
     }
+
+    val index = project.service<MetroResolutionService>().index(file)
+    val contexts =
+      index.graphs.associate { graph ->
+        graph.name to index.contextsFor(graph).single()
+      }
+    val pinService = project.service<GraphContextPinService>()
+
+    pinService.pin(contexts.getValue("AppGraph").path)
+    myFixture.doHighlighting()
+    val appMarker =
+      myFixture.findAllGutters().single {
+        it.icon === MetroIcons.CONSUMER &&
+          it.tooltipText?.startsWith("Metro dependency: Repo") == true
+      }
+    assertSame(MetroIcons.CONSUMER, appMarker.icon)
+    assertEquals(
+      "Metro dependency: Repo · provided by AppRepo in AppGraph",
+      appMarker.tooltipText,
+    )
+
+    pinService.pin(contexts.getValue("OtherGraph").path)
+    myFixture.doHighlighting()
+    val otherMarker =
+      myFixture.findAllGutters().single {
+        it.icon === MetroIcons.CONSUMER &&
+          it.tooltipText?.startsWith("Metro dependency: Repo") == true
+      }
+    assertSame(MetroIcons.CONSUMER, otherMarker.icon)
+    assertEquals(
+      "Metro dependency: Repo · provided by OtherRepo in OtherGraph",
+      otherMarker.tooltipText,
+    )
   }
 
   fun testNoMarkersWhenMetroDisabled() {

@@ -2274,6 +2274,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("SwitchingSuspendProvidersWithShards.kt")
+      public void testSwitchingSuspendProvidersWithShards() {
+        run("SwitchingSuspendProvidersWithShards.kt");
+      }
+
+      @Test
       @TestMetadata("ThreeShardsWithOrder.kt")
       public void testThreeShardsWithOrder() {
         run("ThreeShardsWithOrder.kt");

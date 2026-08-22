@@ -855,6 +855,8 @@ This is analogous to Dagger's `fastInit` option.
 
 You should really _only_ use this if you've benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)
 
+Switching providers also support [suspend providers](coroutines.md).
+
 ```kotlin
 // The graph
 @DependencyGraph(AppScope::class)

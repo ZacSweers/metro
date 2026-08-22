@@ -272,6 +272,7 @@ jobs:
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Inject$Assisted.testBasicAssistedInject' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Multibindings.testMapProviderLazyValues' \
             --tests 'dev.zacsweers.metro.compiler.JsBoxTestGenerated$Suspend.testMixedSuspendChain' \
+            --tests 'dev.zacsweers.metro.compiler.JsFastInitBoxTestGenerated$Dependencygraph$Sharding.testSwitchingSuspendProvidersWithShards' \
             ${{ github.ref != 'refs/heads/main' && '-Dorg.gradle.configuration-cache.read-only=true' || '' }}
 
       - name: Run Wasm contribution hint smoke tests
