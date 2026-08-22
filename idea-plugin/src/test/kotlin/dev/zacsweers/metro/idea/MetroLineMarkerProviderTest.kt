@@ -575,7 +575,8 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     myFixture.doHighlighting()
     val appMarker =
       myFixture.findAllGutters().single {
-        it.tooltipText?.startsWith("Metro dependency: Repo") == true
+        it.icon === MetroIcons.CONSUMER &&
+          it.tooltipText?.startsWith("Metro dependency: Repo") == true
       }
     assertSame(MetroIcons.CONSUMER, appMarker.icon)
     assertEquals(
@@ -587,7 +588,8 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     myFixture.doHighlighting()
     val otherMarker =
       myFixture.findAllGutters().single {
-        it.tooltipText?.startsWith("Metro dependency: Repo") == true
+        it.icon === MetroIcons.CONSUMER &&
+          it.tooltipText?.startsWith("Metro dependency: Repo") == true
       }
     assertSame(MetroIcons.CONSUMER, otherMarker.icon)
     assertEquals(
