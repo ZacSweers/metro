@@ -1493,6 +1493,7 @@ internal class IrGraphGenerator(
                   listOf(contextKey.typeKey.type),
                 )
                 .apply {
+                  type = switchingProvider.irClass.typeWith(contextKey.typeKey.type)
                   arguments[0] = irGet(thisReceiver) // graph/shard reference
                   arguments[1] = irInt(switchingId) // switching ID
                 }
@@ -1910,6 +1911,7 @@ internal class IrGraphGenerator(
         if (switchingId != null && switchingProvider != null) {
           irCallConstructor(switchingProvider.constructor.symbol, listOf(binding.typeKey.type))
             .apply {
+              type = switchingProvider.irClass.typeWith(binding.typeKey.type)
               arguments[0] = irGet(thisReceiver)
               arguments[1] = irInt(switchingId)
             }

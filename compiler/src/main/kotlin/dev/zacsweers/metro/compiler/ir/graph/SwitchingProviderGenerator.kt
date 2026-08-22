@@ -133,11 +133,10 @@ internal class SwitchingProviderGenerator(
         }
         .apply {
           graphOrShardClass.addChild(this)
-
-          createThisReceiverParameter()
         }
     // Add type parameter T
     val typeParam = switchingClass.addTypeParameter("T", irBuiltIns.anyNType)
+    switchingClass.createThisReceiverParameter()
 
     // Implement Provider<T> or SuspendProvider<T>.
     val providerType =
