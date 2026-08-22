@@ -85,15 +85,14 @@ internal class IrPriorityProcessing(private val boundTypeResolver: IrBoundTypeRe
     }
     if (exactMatches.isNotEmpty()) return exactMatches.maxOf { it.priority }
 
-    // Compiled Kotlin metadata can erase binding<T>() type arguments. A single matching annotation
-    // remains unambiguous, but repeated erased bindings cannot safely be paired with their members.
-    return matchingContributions
-      .singleOrNull()
-      ?.takeIf { contribution ->
-        contribution.boundTypeKey == null &&
-          (!isMapContribution || contribution.mapKey == null || contribution.mapKey == mapKey)
-      }
-      ?.priority
+    // Compiled Kotlin metadata can erase binding<T>() type arguments. Repeated erased bindings are
+    // unambiguous only when all applicable annotations have the same priority.
+    val erasedContributions = matchingContributions.filter { contribution ->
+      contribution.boundTypeKey == null &&
+        (!isMapContribution || contribution.mapKey == null || contribution.mapKey == mapKey)
+    }
+    val priority = erasedContributions.firstOrNull()?.priority ?: return null
+    return if (erasedContributions.all { it.priority == priority }) priority else null
   }
 
   context(context: IrMetroContext)
@@ -111,18 +110,23 @@ internal class IrPriorityProcessing(private val boundTypeResolver: IrBoundTypeRe
     val scope = annotation.scopeOrNull() ?: return null
     if (contributionScope != null && scope != contributionScope) return null
 
-    val boundType = boundTypeResolver.resolveBoundType(contributingType, annotation) ?: return null
+    val boundType = boundTypeResolver.resolveBoundType(contributingType, annotation)
+    val explicitBindingMissingMetadata =
+      annotation.getAnnotationArgument(Symbols.Names.binding) is IrConstructorCall &&
+        annotation.bindingTypeArgument() == null
+    if (boundType == null && !explicitBindingMissingMetadata) return null
+
     val annotationMapKey =
       if (kind == PriorityKind.MAP) {
         val sourceMapKey =
-          boundType.explicitBindingType?.originalType?.mapKeyAnnotation()
+          boundType?.explicitBindingType?.originalType?.mapKeyAnnotation()
             ?: contributingType.mapKeyAnnotation()
         effectiveMapKey(sourceMapKey, contributingType)
       } else {
         null
       }
 
-    return MatchingContribution(boundType.typeKey, annotationMapKey, annotation.priority())
+    return MatchingContribution(boundType?.typeKey, annotationMapKey, annotation.priority())
   }
 
   context(context: IrMetroContext)

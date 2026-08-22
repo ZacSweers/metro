@@ -579,7 +579,8 @@ private fun KtClassOrObject.classBindingData(
         } else {
           boundTypeQualifier ?: qualifier
         }
-      val elementKey = typeKey(boundType, contributionQualifier)
+      val elementType = unannotatedBoundType(boundType, classSymbol)
+      val elementKey = typeKey(elementType, contributionQualifier)
       val contributionScopes = annotationScopeKeys(annotation)
       val replaces = classListArgument(annotation, "replaces").toSet()
       val bindingKind =
@@ -720,6 +721,19 @@ private fun KaSession.contributedBoundType(
     is BoundTypeResolution.Resolved -> resolution.type
     else -> null
   }
+}
+
+private fun KaSession.unannotatedBoundType(
+  boundType: KaType,
+  classSymbol: KaNamedClassSymbol,
+): KaType {
+  val annotatedType = boundType as? KaAnnotated ?: return boundType
+  if (annotatedType.annotations.isEmpty()) return boundType
+
+  val classId = (boundType.fullyExpandedType as? KaClassType)?.classId ?: return boundType
+  return classSymbol.superTypes.firstOrNull { superType ->
+    (superType.fullyExpandedType as? KaClassType)?.classId == classId
+  } ?: boundType
 }
 
 /**

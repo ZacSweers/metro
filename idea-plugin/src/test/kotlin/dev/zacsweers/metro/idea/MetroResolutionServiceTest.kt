@@ -2928,7 +2928,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       // resolve through the generated nested MetroContribution @Binds members instead
       val explicitAccessor = index.consumerEntryAt(declarations.property("explicit"))!!
       val explicitBindings = index.bindingsFor(explicitAccessor)
-      assertEquals(listOf("binds"), explicitBindings.map { it.label })
+      assertEquals(listOf("contributed binding"), explicitBindings.map { it.label })
       assertEquals("LibExplicitImpl", explicitBindings.single().implementationName)
 
       // Contribution-provider container objects expose their @Provides members, attributed to
