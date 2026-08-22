@@ -1661,7 +1661,10 @@ internal class BindingIndex(
   }
 
   /** Sites consuming any of [bindingEntries], joining multibinding contributions by id. */
-  fun consumersFor(bindingEntries: Collection<KaBinding>): List<ConsumerEntry> {
+  fun consumersFor(
+    bindingEntries: Collection<KaBinding>,
+    graphPath: GraphPath? = null,
+  ): List<ConsumerEntry> {
     val bindingSet = bindingEntries.toSet()
     val result = LinkedHashSet<ConsumerEntry>()
     val candidates = LinkedHashSet<ConsumerEntry>()
@@ -1677,9 +1680,14 @@ internal class BindingIndex(
 
     for (consumer in candidates) {
       val resolution = resolveConsumer(consumer)
+      val pinnedBindings = graphPath?.let { resolution.perContext.matchingContextEntry(it)?.value }
       val resolvesToEntry =
-        resolution.perContext.values.any { contextBindings ->
-          contextBindings.any { it in bindingSet }
+        if (pinnedBindings != null) {
+          pinnedBindings.any { it in bindingSet }
+        } else {
+          resolution.perContext.values.any { contextBindings ->
+            contextBindings.any { it in bindingSet }
+          }
         }
       if (resolvesToEntry) {
         result += consumer

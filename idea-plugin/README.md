@@ -39,6 +39,10 @@ The plugin adds gutter icons for the standard Metro binding relationships:
 Provider markers navigate to known consumers. Consumer markers navigate to the matching providers,
 or show an unresolved marker when the IDE index has no binding for the key.
 
+When a graph context is pinned in the Metro tool window, gutter tooltips and navigation use that
+context where it applies. This makes context-dependent bindings inspectable without changing the
+underlying project-wide index.
+
 Optional dependencies are handled two ways:
 
 - An injection site is treated as optional when it carries `@OptionalBinding`/`@OptionalDependency`
@@ -84,6 +88,8 @@ Circuit-provided `Screen`/`Navigator` parameters, can show an `assisted` inlay b
 supplied at runtime rather than injected from the graph (explicit `@Assisted` parameters already
 read as assisted in source, so they get no inlay).
 
+Context-dependent implementation inlays use the graph context pinned in the Metro tool window.
+
 > TODO: Add a GIF showing an implementation inlay and click-through navigation.
 
 ### Metro Tool Window
@@ -98,6 +104,11 @@ their call sites. The browser applies each concrete binding-container type as an
 those bindings into graph extensions, and keeps multibinding contributions additive. Equivalent
 calls in one file share a context, matching the compiler, while calls from different files remain
 distinct.
+
+Use the graph selector to focus the tree on one concrete context and its reachable graph
+extensions. The pin button applies that context to editor navigation and implementation inlays for
+the current project session. If the selected path disappears after an index update, the plugin
+returns to **All Graphs**.
 
 Expanding a graph groups its bindings into scoped, unscoped, multibinding, and contributed
 categories. The search field filters by binding key or implementation name, and double-clicking a
@@ -175,8 +186,6 @@ fall back to the global view otherwise.
 
 Not yet modeled:
 
-- A pinnable graph context for editor navigation and inlays. Inlays currently appear only when all
-  applicable graph contexts agree; gutter popups summarize context-dependent candidates.
 - Exact parity with every compiler validation and diagnostic.
 - Validation-backed editor inspections and quick fixes.
 - Graph diagram views.

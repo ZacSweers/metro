@@ -11,7 +11,10 @@ import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
@@ -30,16 +33,20 @@ import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
 import java.awt.event.MouseEvent
 import javax.swing.BoxLayout
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
@@ -59,13 +66,14 @@ internal class MetroToolWindowPanel(private val project: Project) :
   @Volatile private var searchText: String = ""
   private val resolutionService = project.service<MetroResolutionService>()
   private val validationService = project.service<MetroGraphValidationService>()
+  private val pinService = project.service<GraphContextPinService>()
   private val indexBuildStatus = IndexBuildStatusPanel()
   private val validationStatus = ValidationStatusPanel()
   private var indexBuildProgress: IndexBuildProgress? = null
   private var validationProgress: List<GraphValidationProgress> = emptyList()
   private lateinit var actionToolbar: ActionToolbar
   private val treeStructure =
-    MetroTreeStructure(project, resolutionService::indexForToolWindow) { searchText }
+    MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
   /** A validate request whose graph was not indexed yet, retried when a fresh index lands. */
   private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
@@ -81,6 +89,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
       updateIndexBuildStatus()
       treeModel.invalidateAsync()
     }
+  internal val graphContextSelectorAction =
+    GraphContextSelectorAction(pinService, treeStructure::availableContexts)
+  internal val pinSelectedGraphAction =
+    PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
 
   init {
     TreeSpeedSearch.installOn(tree)
@@ -113,6 +125,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
         }
       }
     }
+    pinService.addListener(this) { treeModel.invalidateAsync() }
     resolutionService.addIndexBuildProgressListener(this) { progress ->
       indexBuildProgress = progress
       updateIndexBuildStatus()
@@ -146,6 +159,8 @@ internal class MetroToolWindowPanel(private val project: Project) :
       DefaultActionGroup(
         // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
         loadOrRefreshAction,
+        graphContextSelectorAction,
+        pinSelectedGraphAction,
         ValidateSelectedGraphAction(
           selectedContext = { selectedGraphNode()?.context },
           isValidationRunning = { validationService.isValidationRunning(it.path) },
@@ -359,6 +374,89 @@ internal class ValidateSelectedGraphAction(
 
   override fun actionPerformed(e: AnActionEvent) {
     selectedContext()?.takeUnless(isValidationRunning)?.let(validate)
+  }
+}
+
+internal class GraphContextSelectorAction(
+  private val pinService: GraphContextPinService,
+  private val contextProvider: () -> List<GraphContext>,
+) : ComboBoxAction(), DumbAware {
+
+  init {
+    templatePresentation.text = "All Graphs"
+    templatePresentation.description = "Choose the graph context used for editor presentation"
+    templatePresentation.icon = MetroIcons.GRAPH
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+  override fun update(e: AnActionEvent) {
+    super.update(e)
+    e.presentation.text = pinService.pinnedPath?.presentableName() ?: "All Graphs"
+  }
+
+  override fun createPopupActionGroup(
+    button: JComponent,
+    dataContext: DataContext,
+  ): DefaultActionGroup {
+    return DefaultActionGroup().apply {
+      add(GraphContextOptionAction("All Graphs", null, pinService))
+      addSeparator()
+      for (context in contextProvider()) {
+        add(
+          GraphContextOptionAction(
+            context.presentableName(includeFile = true),
+            context.path,
+            pinService,
+          )
+        )
+      }
+    }
+  }
+}
+
+private class GraphContextOptionAction(
+  text: String,
+  private val path: GraphPath?,
+  private val pinService: GraphContextPinService,
+) : ToggleAction(text), DumbAware {
+
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+  override fun isSelected(e: AnActionEvent): Boolean = pinService.pinnedPath == path
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) {
+    if (!state) return
+    if (path == null) pinService.clear() else pinService.pin(path)
+  }
+}
+
+internal class PinSelectedGraphAction(
+  private val pinService: GraphContextPinService,
+  private val selectedContext: () -> GraphContext?,
+) : ToggleAction("Pin", "Pin the selected graph context", AllIcons.General.Pin_tab), DumbAware {
+
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+  override fun update(e: AnActionEvent) {
+    super.update(e)
+    val context = selectedContext()
+    e.presentation.isEnabled = context != null
+    e.presentation.description =
+      if (context?.path == pinService.pinnedPath) {
+        "Show all graph contexts"
+      } else {
+        "Pin the selected graph context"
+      }
+  }
+
+  override fun isSelected(e: AnActionEvent): Boolean {
+    return selectedContext()?.path == pinService.pinnedPath
+  }
+
+  override fun setSelected(e: AnActionEvent, state: Boolean) {
+    val context = selectedContext() ?: return
+    if (state) pinService.pin(context.path) else pinService.clearIf(context.path)
   }
 }
 

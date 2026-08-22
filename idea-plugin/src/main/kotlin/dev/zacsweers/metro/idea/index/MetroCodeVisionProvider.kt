@@ -15,9 +15,11 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
@@ -50,6 +52,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     }
     if (!ktFile.metroIdeState().isEnabled) return emptyList()
     val index = ktFile.project.service<MetroResolutionService>().index(ktFile)
+    val pinService = ktFile.project.service<GraphContextPinService>()
 
     val entries = mutableListOf<Pair<TextRange, CodeVisionEntry>>()
     ktFile.accept(
@@ -58,7 +61,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
           super.visitDeclaration(dcl)
           // Parameters are too fine-grained for headers; they keep their gutter icons only.
           if (dcl !is KtNamedDeclaration || dcl is KtParameter) return
-          collectFor(dcl, index, entries)
+          collectFor(dcl, index, pinService, entries)
         }
       }
     )
@@ -68,11 +71,12 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
   private fun collectFor(
     declaration: KtNamedDeclaration,
     index: BindingIndex,
+    pinService: GraphContextPinService,
     entries: MutableList<Pair<TextRange, CodeVisionEntry>>,
   ) {
     val bindingEntries = index.bindingEntriesAt(declaration)
     if (bindingEntries.isNotEmpty()) {
-      val consumers = index.consumersFor(bindingEntries)
+      val consumers = index.consumersFor(bindingEntries, pinService.pinnedPath)
       // A zero count is noise, not signal
       if (consumers.isNotEmpty()) {
         val key = bindingEntries.first().typeKey.render(short = true)
@@ -89,7 +93,9 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
 
     val graph = (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }
     if (graph != null) {
-      val contexts = index.contextsFor(graph)
+      val allContexts = index.contextsFor(graph)
+      val pinned = pinService.matchingContext(allContexts)
+      val contexts = pinned?.let(::listOf) ?: allContexts
       val queryContexts = contexts.mapNotNull(index::queryContext)
       val contributions = queryContexts.flatMap { index.contributionsFor(it) }.distinct()
       val inherited = queryContexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
@@ -107,7 +113,15 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
         declaration.textRange to
           entry(
             text = text,
-            tooltip = "Metro contributions to $scopes",
+            tooltip =
+              buildString {
+                append("Metro contributions to ")
+                append(scopes)
+                pinned?.let {
+                  append(" in ")
+                  append(it.presentableName())
+                }
+              },
             targets = (contributions + inherited).map { it.pointer },
             popupTitle = "Contributions to $scopes",
           )

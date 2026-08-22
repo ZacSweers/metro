@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.components.service
 import com.intellij.testFramework.utils.inlays.declarative.DeclarativeInlayHintsProviderTestCase
 import dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 
 class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
 
@@ -12,6 +14,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
     project.setMetroOptions("enable-circuit-codegen" to "true")
     module.addMetroRuntimeLibrary()
     myFixture.addCircuitStubs()
+    project.service<GraphContextPinService>().clear()
   }
 
   fun testImplementationAndAssistedInlays() {
@@ -83,6 +86,50 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       }
       """
         .trimIndent(),
+      MetroInjectedImplementationInlayProvider(),
+    )
+  }
+
+  fun testPinnedContextShowsItsImplementationInlay() {
+    val source =
+      """
+      package test
+
+      import dev.zacsweers.metro.*
+
+      abstract class OtherScope
+
+      interface Repo
+
+      @Inject
+      @ContributesBinding(AppScope::class)
+      class AppRepo : Repo
+
+      @Inject
+      @ContributesBinding(OtherScope::class)
+      class OtherRepo : Repo
+
+      @Inject class Consumer(val repo: Repo/*<#  AppRepo #>*/)
+
+      @DependencyGraph(AppScope::class)
+      interface AppGraph {
+        val consumer: Consumer
+      }
+
+      @DependencyGraph(OtherScope::class)
+      interface OtherGraph {
+        val consumer: Consumer
+      }
+      """
+        .trimIndent()
+    val file = myFixture.configureByText("PinnedContext.kt", source)
+    val index = project.service<MetroResolutionService>().index(file)
+    val appGraph = index.graphs.single { it.name == "AppGraph" }
+    project.service<GraphContextPinService>().pin(index.contextsFor(appGraph).single().path)
+
+    doTestProvider(
+      "PinnedContext.kt",
+      source,
       MetroInjectedImplementationInlayProvider(),
     )
   }
