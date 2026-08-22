@@ -690,6 +690,82 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertEquals(appContext.graphModule, index.queryContext(extensionContext)!!.graphModule)
   }
 
+  fun testDynamicGraphUsesTheCallSiteModuleAndReplacesLibraryGraphBindings() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibGraph.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        @BindingContainer
+        object RealBindings {
+          @Provides fun provideReal(): String = "real"
+        }
+
+        @DependencyGraph(bindingContainers = [RealBindings::class])
+        interface LibGraph {
+          val value: String
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/DynamicGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+        import lib.LibGraph
+
+        @BindingContainer
+        object FakeBindings {
+          @Provides fun provideFake(): String = "fake"
+        }
+
+        val graph = createDynamicGraph<LibGraph>(FakeBindings)
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val graph = index.graphs.single { it.name == "LibGraph" }
+    val contexts = index.contextsFor(graph)
+    val staticContext = contexts.single { it.dynamicGraph == null }
+    val dynamicContext = contexts.single { it.dynamicGraph != null }
+    val appKaModule = KaModuleProvider.getModule(fixture.project, appFile, useSiteModule = null)
+    val consumer =
+      checkNotNull(
+        index.consumerEntryAt(libraryFile.declarationsIncludingNested().property("value"))
+      )
+
+    assertEquals(appKaModule, index.queryContext(dynamicContext)!!.graphModule)
+    assertEquals(
+      listOf("provideReal"),
+      index.bindingsFor(consumer, index.queryContext(staticContext)!!).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    assertEquals(
+      listOf("provideFake"),
+      index.bindingsFor(consumer, index.queryContext(dynamicContext)!!).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+    assertTrue(
+      fixture.project
+        .service<MetroGraphValidationService>()
+        .validate(appFile, dynamicContext)
+        .requireCompleted()
+        .diagnostics
+        .isEmpty()
+    )
+  }
+
   fun testRegularDependenciesAreNotRecursivelyVisible() {
     val libraryFile =
       fixture.addFileToProject(

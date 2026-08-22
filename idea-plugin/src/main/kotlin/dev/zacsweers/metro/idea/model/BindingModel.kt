@@ -9,6 +9,7 @@ import dev.zacsweers.metro.compiler.graph.MergeContribution
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -208,6 +209,26 @@ internal data class GraphDeclarationId(
   val file: VirtualFile?,
 )
 
+/** The compiler identity shared by equivalent dynamic-graph calls in one source file. */
+internal data class DynamicGraphId(
+  val requestedTypeClassId: ClassId,
+  val containerKeys: Set<KaTypeKey>,
+  val callerFile: VirtualFile,
+)
+
+/** One distinct `createDynamicGraph*` context and the bindings supplied by its containers. */
+internal class DynamicGraphCall(
+  val pointer: SmartPsiElementPointer<KtCallExpression>,
+  val id: DynamicGraphId,
+  val targetGraph: GraphReference,
+  val bindingKeys: Set<KaTypeKey>,
+  val containerInputs: List<KaBinding.BoundInstance>,
+  val isFactory: Boolean,
+) {
+  val containerKeys: Set<KaTypeKey>
+    get() = id.containerKeys
+}
+
 /** One concrete assisted-factory declaration, including its exact source or binary file. */
 internal data class SourceAssistedFactoryIdentity(
   val key: KaTypeKey,
@@ -279,7 +300,10 @@ internal class GraphComposition(
 )
 
 /** A concrete graph path, ordered from the graph itself through its ancestors. */
-internal data class GraphPath(val segments: List<GraphDeclarationId>)
+internal data class GraphPath(
+  val segments: List<GraphDeclarationId>,
+  val dynamicGraphId: DynamicGraphId? = null,
+)
 
 /**
  * The aggregated view a single graph (plus its parent chain, for extensions) has of the project:
@@ -303,6 +327,8 @@ internal class GraphContext(
   /** Exact declarations in this graph path, used for graph-owned consumers. */
   val graphIds: Set<GraphDeclarationId>,
   val graphClassIds: Set<ClassId>,
+  /** The dynamic call-site variant inherited by this graph and its extension children. */
+  val dynamicGraph: DynamicGraphCall? = null,
 ) {
   val graph: KaGraphDeclaration
     get() = chain.first()
@@ -311,8 +337,12 @@ internal class GraphContext(
   val rootGraph: KaGraphDeclaration
     get() = chain.last()
 
+  /** The source element whose compilation owns this graph context. */
+  val contextPointer: SmartPsiElementPointer<out KtElement>
+    get() = dynamicGraph?.pointer ?: graph.pointer
+
   /** Stable declaration identity for this exact parent path. */
-  val path: GraphPath = GraphPath(chain.map { it.declarationId })
+  val path: GraphPath = GraphPath(chain.map { it.declarationId }, dynamicGraph?.id)
 }
 
 /**

@@ -93,6 +93,12 @@ project. The status indicator shows loading progress or waits for IDE indexing b
 available. Graph extensions with different parent chains appear as separate rows rather than being
 merged together.
 
+Calls to `createDynamicGraph` and `createDynamicGraphFactory` appear as separate graph contexts at
+their call sites. The browser applies each concrete binding-container type as an override, carries
+those bindings into graph extensions, and keeps multibinding contributions additive. Equivalent
+calls in one file share a context, matching the compiler, while calls from different files remain
+distinct.
+
 Expanding a graph groups its bindings into scoped, unscoped, multibinding, and contributed
 categories. The search field filters by binding key or implementation name, and double-clicking a
 binding navigates to its declaration. After validation, an Unused category lists authored

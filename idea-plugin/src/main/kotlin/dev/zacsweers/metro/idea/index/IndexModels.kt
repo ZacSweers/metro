@@ -8,6 +8,7 @@ import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.DynamicGraphCall
 import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
@@ -160,6 +161,7 @@ internal class FileShard(
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
   val factoryInputs: List<FactoryInputEntry>,
+  val dynamicGraphs: List<DynamicGraphCall>,
   /** Referenced declaration files whose changes require this shard to be rebuilt. */
   val dependencyFiles: Set<VirtualFile>,
   val graphInterfaces: List<GraphInterfaceSurface> = emptyList(),
@@ -167,6 +169,7 @@ internal class FileShard(
   companion object {
     val EMPTY =
       FileShard(
+        emptyList(),
         emptyList(),
         emptyList(),
         emptyList(),

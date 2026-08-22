@@ -20,6 +20,8 @@ import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.DynamicGraphCall
+import dev.zacsweers.metro.idea.model.DynamicGraphId
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
@@ -39,6 +41,7 @@ import dev.zacsweers.metro.idea.scopeAnnotations
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
+import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
@@ -49,10 +52,12 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
@@ -79,6 +84,7 @@ internal class FileShardBuilder(
   private val assistedSites = mutableListOf<AssistedSite>()
   private val bindingContainerEntries = mutableListOf<BindingContainerEntry>()
   private val factoryInputs = mutableListOf<FactoryInputEntry>()
+  private val dynamicGraphs = mutableListOf<DynamicGraphCall>()
   private val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
   private val pointerManager = SmartPointerManager.getInstance(project)
 
@@ -93,6 +99,7 @@ internal class FileShardBuilder(
   private val processedAssistedFactoryTypes = HashSet<AssistedFactoryIdentity>()
   private val processedContainers = HashSet<KtClassOrObject>()
   private val processedFactoryInputs = HashSet<FactoryInputEntry.Id>()
+  private val processedDynamicGraphs = HashSet<DynamicGraphId>()
   private val cacheDependencies = HashSet<PsiFile>()
 
   /**
@@ -137,6 +144,12 @@ internal class FileShardBuilder(
     val assistedFactoryNames = annotationNames(options.assistedFactoryAnnotations)
     val containerNames = annotationNames(options.bindingContainerAnnotations)
     val circuitNames = annotationNames(setOf(CircuitClassIds.CircuitInject))
+    val dynamicGraphNames = buildSet {
+      for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
+        add(callableId.callableName.asString())
+        addAll(aliasedImports[callableId.asSingleFqName()].orEmpty())
+      }
+    }
 
     for (entry in PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java)) {
       ProgressManager.checkCanceled()
@@ -152,6 +165,11 @@ internal class FileShardBuilder(
         processCircuitInject(declaration)
       }
     }
+    for (call in PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java)) {
+      ProgressManager.checkCanceled()
+      val name = call.calleeExpression?.text ?: continue
+      if (name in dynamicGraphNames) processDynamicGraphCall(call)
+    }
     return FileShard(
       bindings,
       consumers,
@@ -160,9 +178,87 @@ internal class FileShardBuilder(
       assistedSites,
       bindingContainerEntries,
       factoryInputs,
+      dynamicGraphs,
       cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
       graphInterfaces,
     )
+  }
+
+  private fun processDynamicGraphCall(call: KtCallExpression) {
+    analyze(call) {
+      val function =
+        call
+          .resolveToCall()
+          ?.successfulFunctionCallOrNull()
+          ?.partiallyAppliedSymbol
+          ?.signature
+          ?.symbol ?: return@analyze
+      val isFactory = DYNAMIC_GRAPH_CALLABLES[function.callableId] ?: return@analyze
+      val requestedType = call.expressionType?.fullyExpandedType as? KaClassType ?: return@analyze
+      val requestedClass = requestedType.symbol as? KaNamedClassSymbol ?: return@analyze
+      val targetGraphType =
+        if (isFactory) {
+          assistedFactoryFunction(requestedType)?.returnType?.fullyExpandedType as? KaClassType
+            ?: return@analyze
+        } else {
+          requestedType
+        }
+      val targetGraphClass = targetGraphType.symbol as? KaNamedClassSymbol ?: return@analyze
+      if (!targetGraphClass.hasAnyAnnotation(options.dependencyGraphAnnotations)) return@analyze
+      val targetGraphFile = targetGraphClass.psi?.containingFile
+      targetGraphFile?.let(cacheDependencies::add)
+      requestedClass.psi?.containingFile?.let(cacheDependencies::add)
+
+      val callerFile = call.containingKtFile.virtualFile ?: return@analyze
+      val containerKeys = linkedSetOf<KaTypeKey>()
+      val inputs = mutableListOf<FactoryInputEntry>()
+      for (argument in call.valueArguments) {
+        val expression = argument.getArgumentExpression() ?: continue
+        val containerType = expression.expressionType?.fullyExpandedType as? KaClassType ?: continue
+        val containerClass = containerType.symbol as? KaNamedClassSymbol ?: continue
+        if (!containerClass.hasAnyAnnotation(options.bindingContainerAnnotations)) continue
+        val containerKey = typeKey(containerType, qualifier = null)
+        if (!containerKeys.add(containerKey)) continue
+        val input =
+          bindingContainerInput(
+            containerType,
+            containerKey,
+            expression,
+            options,
+            pointerManager,
+            cacheDependencies,
+            GraphDeclarationId(targetGraphType.classId, targetGraphFile?.virtualFile),
+          )
+        inputs += input
+      }
+      if (containerKeys.isEmpty()) return@analyze
+      val id = DynamicGraphId(requestedType.classId, containerKeys.toSet(), callerFile)
+      if (!processedDynamicGraphs.add(id)) return@analyze
+      for (input in inputs) {
+        val inputBinding = input.bindings.firstOrNull()
+        if (inputBinding is KaBinding.BoundInstance) {
+          bindings += inputBinding
+        }
+        if (processedFactoryInputs.add(input.id)) {
+          factoryInputs += input
+        }
+      }
+      val bindingKeys =
+        inputs
+          .asSequence()
+          .flatMap { it.bindings.asSequence() }
+          .filterNot { it is KaBinding.BoundInstance || it.multibindingId != null }
+          .mapTo(linkedSetOf()) { it.typeKey }
+      dynamicGraphs +=
+        DynamicGraphCall(
+          pointerManager.createSmartPsiElementPointer(call),
+          id,
+          targetGraphType.graphReference(),
+          bindingKeys,
+          inputs.mapNotNull { it.bindings.firstOrNull() as? KaBinding.BoundInstance },
+          isFactory,
+        )
+    }
   }
 
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
@@ -1231,3 +1327,10 @@ internal class FileShardBuilder(
     }
   }
 }
+
+internal val DYNAMIC_GRAPH_CALLABLES =
+  mapOf(
+    CallableId(MetroClassIds.metroRuntimePackage, Name.identifier("createDynamicGraph")) to false,
+    CallableId(MetroClassIds.metroRuntimePackage, Name.identifier("createDynamicGraphFactory")) to
+      true,
+  )
