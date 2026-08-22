@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787425313312,
+  "lastUpdate": 1787433152854,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22064,6 +22064,62 @@ window.BENCHMARK_DATA = {
             "value": 19544.532,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.87%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4fedd3d6~1",
+          "message": "[before] Add priority properties to ContributesBinding and ",
+          "timestamp": "2026-08-22T20:13:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4fedd3d656bb4a10de470a497fd60a689ce86c4d"
+        },
+        "date": 1787433152854,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18148.858,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "4fedd3d656bb4a10de470a497fd60a689ce86c4d",
+          "message": "[after] Add priority properties to ContributesBinding and ",
+          "timestamp": "2026-08-22T20:13:29Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/4fedd3d656bb4a10de470a497fd60a689ce86c4d"
+        },
+        "date": 1787433152855,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18553.941,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.23%"
           }
         ]
       }
