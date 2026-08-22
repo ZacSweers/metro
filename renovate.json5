@@ -85,6 +85,13 @@
       ],
     },
     {
+      groupName: 'AndroidX Lifecycle',
+      matchPackageNames: [
+        '/^androidx\\.lifecycle:/',
+        '/^org\\.jetbrains\\.androidx\\.lifecycle:/',
+      ],
+    },
+    {
       description: 'Keep the Metro Gradle plugin and compiler bootstrap versions in lockstep',
       groupName: 'Metro bootstrap',
       groupSlug: 'metro-bootstrap',
