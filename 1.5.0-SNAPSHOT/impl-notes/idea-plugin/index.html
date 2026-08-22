@@ -1995,8 +1995,8 @@ keep their existing in-place paths where a generic IDE-friendly representation w
 scan more than the original compiler implementation.</p>
 <p>Graph roots retain the compiler&rsquo;s single map-write fast path. Suspend validation stays out of<br />
 ordinary compilations and only builds diagnostic paths after suspend behavior actually needs them.</p>
-<p>Anvil contribution ranking uses the same inline selection helper in FIR, IR, and the IDE. Moving<br />
-that small helper does not change compiler contribution scans, feature gates, or allocations.</p>
+<p>Contribution priority selection uses the same inline helper in IR and the IDE. Anvil&rsquo;s<br />
+<code>rank</code> is treated as an alternative priority argument only when its interop is enabled.</p>
 <p>The plugin is K2-only and reads Metro compiler plugin options from the IDE&rsquo;s Kotlin compiler<br />
 facet configuration, so custom annotations and interop options behave like they do in builds.</p>
 <p>The shared graph algorithms also have a standalone JMH stress benchmark:</p>
@@ -2071,14 +2071,14 @@ BindingIndex (membership queries)
   accessors, inject classes, top-level function injection, contributions, assisted factories, and<br />
   binding containers.</li>
 <li><code>index/BindingExtraction.kt</code>: symbol-to-model extraction shared by source and library paths.<br />
-  Computes type keys, dependency keys, map key info, contribution ranks, and multibinding ids.<br />
+  Computes type keys, dependency keys, map key info, contribution priorities, and multibinding ids.<br />
   Generated contribution providers depend only on constructor parameters, matching the actual<br />
   compiler-generated provider; an exposed injectable implementation retains its injected members.</li>
 <li><code>index/LibraryIndexPostProcessor.kt</code>: cross-file pass for compiled dependencies. Resolves<br />
   binary inject classes and assisted factories on demand, specializing factory methods and target<br />
   dependencies to their requested generic arguments. This includes transitive dependencies of<br />
   generated contribution providers and discoveries from generated hint functions, the same way<br />
-  the compiler does. Generated aliases inherit their origin&rsquo;s Anvil contribution rank. Public<br />
+  the compiler does. Generated aliases inherit their origin&rsquo;s contribution priority. Public<br />
   hints only need classpath visibility; nonpublic hints still use Kotlin&rsquo;s friend-module rules.</li>
 </ul>
 <h3 id="model">Model<a class="headerlink" href="#model" title="Permanent link">&para;</a></h3>
@@ -2095,9 +2095,11 @@ arguments, including declared defaults), and declarations are held as <code>Smar
   ScatterMaps) plus per-graph membership. <code>contextsFor(graph)</code> merges the extension parent chain<br />
   into a <code>GraphContext</code> (scopes, containers, includes, excludes, supertype ids).</li>
 <li>Membership filtering applies graph/module visibility, scope matching, declaration-specific<br />
-    containers, member-injection ownership, exclusions, explicit replacements, and Anvil ranks.<br />
-    Exclusions happen before replacements, and rank runs last within each graph&rsquo;s own scopes.<br />
-    Replacing or outranking a contribution never removes its separate injectable concrete type.<br />
+    containers, member-injection ownership, exclusions, explicit replacements, and contribution<br />
+    priorities. Exclusions happen before replacements, and priority selection runs last within<br />
+    each graph&rsquo;s own scopes. Higher-priority bindings replace only matching qualified bindings;<br />
+    map contributions additionally match their map-key values. Replacing a contribution never<br />
+    removes its separate injectable concrete type.<br />
     Graph-private bindings, including optional bindings, stay in their owning graph, and assisted<br />
     targets are not presented as ordinary injectable bindings.</li>
 </ul>

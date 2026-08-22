@@ -972,6 +972,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#contribution-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Contribution priority
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#implicitly-injected-contributesbinding-types" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2026,6 +2037,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#contribution-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Contribution priority
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#implicitly-injected-contributesbinding-types" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2265,6 +2287,16 @@
 <p class="admonition-title">Tip</p>
 <p>Contributions may be <code>object</code> classes. In this event, Metro will automatically provide the object instance in its binding.</p>
 </div>
+<h3 id="contribution-priority">Contribution priority<a class="headerlink" href="#contribution-priority" title="Permanent link">&para;</a></h3>
+<p><code>@ContributesBinding</code> supports a <code>priority</code> argument for choosing between contributions to the same qualified bound type without directly referencing another implementation. The highest-priority contribution is used:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">DefaultCache</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
+
+<span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">priority</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">10</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">PreferredCache</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
+</code></pre></div>
+<p>In this example, <code>PreferredCache</code> supplies the <code>Cache</code> binding. Priorities default to <code>Int.MIN_VALUE</code>, so any explicitly specified higher value takes precedence. Contributions with equal priorities remain duplicate bindings and produce the usual error.</p>
+<p>Priority only suppresses the individual conflicting binding. Other bindings or set/map contributions from the same implementation remain available. Explicit <code>excludes</code> and <code>replaces</code> are applied first and still exclude or replace whole contributing classes.</p>
 <h3 id="implicitly-injected-contributesbinding-types">Implicitly-injected <code>@ContributesBinding</code> types<a class="headerlink" href="#implicitly-injected-contributesbinding-types" title="Permanent link">&para;</a></h3>
 <p>Unlike Anvil, Metro does not require <code>@Inject</code> on <code>@Contributes*</code> annotated types. The <code>@Contributes*</code> annotation itself is sufficient to indicate that the type should be injected.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2297,6 +2329,21 @@
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
 </code></pre></div>
 <p>This annotation is also repeatable and can be used to contribute to multiple scopes, multiple bound types, and multiple map keys.</p>
+<p><code>@ContributesIntoMap</code> also supports <code>priority</code> when multiple contributions target the same qualified map and the same map-key value:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@StringKey</span><span class="p">(</span><span class="s">"remote"</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">DefaultRemoteCache</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
+
+<span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">priority</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">10</span><span class="p">)</span>
+<span class="nd">@StringKey</span><span class="p">(</span><span class="s">"remote"</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">PreferredRemoteCache</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
+
+<span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
+<span class="nd">@StringKey</span><span class="p">(</span><span class="s">"local"</span><span class="p">)</span>
+<span class="kd">class</span><span class="w"> </span><span class="nc">LocalCache</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span>
+</code></pre></div>
+<p>Here the <code>"remote"</code> entry uses <code>PreferredRemoteCache</code>, while the separate <code>"local"</code> entry remains unaffected. Equal-priority contributions to the same map key still produce the usual duplicate-key error.</p>
+<p>Set contributions are additive and do not support <code>priority</code>; use <code>replaces</code> or graph <code>excludes</code> to remove a contribution. <code>@ContributesTo</code> also does not support priority.</p>
 <p>You can use <code>@IntoMap</code>/<code>@IntoSet</code> to provide into the same container:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Method 1: applying @ContributesIntoMap to bind directly from the implementation class</span>
 <span class="nd">@ContributesIntoMap</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
@@ -2415,6 +2462,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>The tradeoff is that <code>Impl</code> is no longer available directly on the graph.</p>
+<p>Contribution priorities are also honored for generated providers, including contributions from <code>internal</code> implementations in upstream modules.</p>
 <h2 id="implementation-notes">Implementation notes<a class="headerlink" href="#implementation-notes" title="Permanent link">&para;</a></h2>
 <p>This leans on Kotlin’s ability to put generic type parameters on annotations. That in turn allows for both generic bound types and to contribute map bindings to multiple map keys.</p>
 <p>Because it’s a first-party feature, there’s no need for intermediary “merged” components like kotlin-inject-anvil and anvil-ksp do.</p>

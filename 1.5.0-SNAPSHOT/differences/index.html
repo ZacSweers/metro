@@ -1897,8 +1897,8 @@
 </div>
 <div class="tabbed-block">
 <ul>
-<li>There is no <code>rank</code> in Metro&rsquo;s <code>@Contributes*</code> annotations.<ul>
-<li>Note that if Anvil interop is enabled, <em>its</em> <code>rank</code> properties are supported in interop.</li>
+<li><code>@ContributesBinding</code> and <code>@ContributesIntoMap</code> use <code>priority</code> instead of Anvil&rsquo;s <code>rank</code>.<ul>
+<li>If Anvil interop is enabled, its numeric <code>rank</code> properties are treated as contribution priorities.</li>
 </ul>
 </li>
 <li>There is no <code>ignoreQualifier</code> in Metro&rsquo;s <code>@Contributes*</code> annotations.<ul>
