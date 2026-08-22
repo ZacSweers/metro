@@ -1838,6 +1838,12 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
       }
 
       @Test
+      @TestMetadata("SwitchingSuspendProvidersWithShards.kt")
+      public void testSwitchingSuspendProvidersWithShards() {
+        run("SwitchingSuspendProvidersWithShards.kt");
+      }
+
+      @Test
       @TestMetadata("ThreeShardsWithOrder.kt")
       public void testThreeShardsWithOrder() {
         run("ThreeShardsWithOrder.kt");

@@ -513,7 +513,7 @@ Switching providers have several tradeoffs:
 - They add provider dispatch.
 - They retain a graph or shard reference.
 
-Suspend bindings do not use switching providers yet.
+Suspend provider fields use a separate `SwitchingSuspendProvider`.
 
 ## Generated binary size
 
