@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[IR]** Support suspend providers with switching providers.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
 

@@ -542,6 +542,12 @@ public class IrDumpTestGenerated extends AbstractIrDumpTest {
       public void testSwitchingProvidersWithMembersInjectProvider() {
         run("SwitchingProvidersWithMembersInjectProvider.kt");
       }
+
+      @Test
+      @TestMetadata("SwitchingSuspendProviders.kt")
+      public void testSwitchingSuspendProviders() {
+        run("SwitchingSuspendProviders.kt");
+      }
     }
   }
 

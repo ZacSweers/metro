@@ -62,9 +62,10 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.name.Name
 
 /**
- * Generates a SwitchingProvider nested class for switching providers mode.
+ * Generates a SwitchingProvider or SwitchingSuspendProvider nested class for switching providers
+ * mode.
  *
- * SwitchingProvider consolidates provider instantiation into a single class with a switch
+ * Each generated class consolidates provider instantiation into a single class with a switch
  * statement, reducing class loading time by deferring binding creation until first access.
  *
  * Example generated structure:
@@ -85,13 +86,14 @@ internal class SwitchingProviderGenerator(
   metroContext: IrMetroContext,
   private val graphOrShardClass: IrClass,
   private val switchingBindings: List<SwitchingBinding>,
+  private val isSuspend: Boolean,
   private val expressionGeneratorFactory: GraphExpressionGenerator.Factory,
   private val shardExprContext: ShardExpressionContext?,
   private val classNameAllocator: NameAllocator,
 ) : IrMetroContext by metroContext {
 
   /**
-   * Represents a binding that will be dispatched via the SwitchingProvider.
+   * Represents a binding that will be dispatched via the generated switching provider.
    *
    * @param id The unique ID for this binding within the switch statement
    * @param binding The binding to create
@@ -116,38 +118,36 @@ internal class SwitchingProviderGenerator(
 
   data class SwitchingProvider(val irClass: IrClass, val constructor: IrConstructor)
 
-  /**
-   * Generates the SwitchingProvider nested class.
-   *
-   * @return The generated class, or null if there are no switching bindings
-   */
+  /** Generates the switching provider nested class for the configured provider flavor. */
   fun generate(): SwitchingProvider? {
     if (switchingBindings.isEmpty()) {
       return null
     }
 
+    val className = if (isSuspend) "SwitchingSuspendProvider" else "SwitchingProvider"
     val switchingClass =
       irFactory
         .buildClass {
-          name = classNameAllocator.newName("SwitchingProvider").asName()
+          name = classNameAllocator.newName(className).asName()
           visibility = DescriptorVisibilities.PRIVATE
         }
         .apply {
           graphOrShardClass.addChild(this)
-
-          createThisReceiverParameter()
         }
     // Add type parameter T
     val typeParam = switchingClass.addTypeParameter("T", irBuiltIns.anyNType)
+    switchingClass.createThisReceiverParameter()
 
-    // Implement Provider<T>
+    // Implement Provider<T> or SuspendProvider<T>.
+    val providerType =
+      if (isSuspend) metroSymbols.metroSuspendProvider else metroSymbols.metroProvider
     switchingClass.superTypes =
-      listOf(irBuiltIns.anyType, metroSymbols.metroProvider.typeWith(typeParam.defaultType))
+      listOf(irBuiltIns.anyType, providerType.typeWith(typeParam.defaultType))
 
     // Add constructor with (graph, id) params and backing fields
     val (constructor, graphProperty, idProperty) = switchingClass.addConstructorAndFields()
 
-    // Implement invoke(): T
+    // Implement invoke(): T or suspend invoke(): T.
     switchingClass.addInvokeFunction(typeParam, graphProperty, idProperty)
 
     return SwitchingProvider(switchingClass, constructor)
@@ -208,7 +208,7 @@ internal class SwitchingProviderGenerator(
   }
 
   /**
-   * Adds the `invoke(): T` function that implements Provider<T>.
+   * Adds the `invoke(): T` function that implements Provider<T> or SuspendProvider<T>.
    *
    * If there are more bindings than [MetroOptions.statementsPerInitFun], bindings are grouped by
    * their ID divided by that limit. The main function selects one private helper directly to avoid
@@ -274,6 +274,7 @@ internal class SwitchingProviderGenerator(
     addFunction {
       name = Symbols.Names.invoke
       returnType = typeParam.defaultType
+      isSuspend = this@SwitchingProviderGenerator.isSuspend
     }
       .apply {
         // Pass explicit type to avoid type parameter remapping (class has T, function has none)
@@ -283,7 +284,13 @@ internal class SwitchingProviderGenerator(
             type = this@addMainInvokeFunction.defaultType,
           )
         setDispatchReceiver(localDispatchReceiver)
-        overriddenSymbols = listOf(metroSymbols.providerInvoke)
+        val invokeSymbol =
+          if (this@SwitchingProviderGenerator.isSuspend) {
+            metroSymbols.suspendProviderInvoke
+          } else {
+            metroSymbols.providerInvoke
+          }
+        overriddenSymbols = listOf(invokeSymbol)
 
         body =
           withIrBuilder(symbol) {
@@ -310,6 +317,7 @@ internal class SwitchingProviderGenerator(
     addFunction {
       name = Symbols.Names.invoke
       returnType = typeParam.defaultType
+      isSuspend = this@SwitchingProviderGenerator.isSuspend
     }
       .apply {
         val localDispatchReceiver =
@@ -318,7 +326,13 @@ internal class SwitchingProviderGenerator(
             type = this@addRoutingInvokeFunction.defaultType,
           )
         setDispatchReceiver(localDispatchReceiver)
-        overriddenSymbols = listOf(metroSymbols.providerInvoke)
+        val invokeSymbol =
+          if (this@SwitchingProviderGenerator.isSuspend) {
+            metroSymbols.suspendProviderInvoke
+          } else {
+            metroSymbols.providerInvoke
+          }
+        overriddenSymbols = listOf(invokeSymbol)
 
         body =
           withIrBuilder(symbol) {
@@ -347,6 +361,7 @@ internal class SwitchingProviderGenerator(
       name = nameAllocator.newName(Symbols.Names.invoke)
       returnType = typeParam.defaultType
       visibility = DescriptorVisibilities.PRIVATE
+      isSuspend = this@SwitchingProviderGenerator.isSuspend
     }
       .apply {
         val localDispatchReceiver =
@@ -479,8 +494,9 @@ internal class SwitchingProviderGenerator(
     }
 
   private fun IrBuilderWithScope.generateUnexpectedIdExpression(id: IrExpression): IrExpression {
+    val className = if (isSuspend) "SwitchingSuspendProvider" else "SwitchingProvider"
     val errorString = irConcat()
-    errorString.addArgument(irString("Unexpected SwitchingProvider id: "))
+    errorString.addArgument(irString("Unexpected $className id: "))
     errorString.addArgument(id)
     return irThrow(irInvoke(callee = metroSymbols.stdlibErrorFunction, args = listOf(errorString)))
   }
