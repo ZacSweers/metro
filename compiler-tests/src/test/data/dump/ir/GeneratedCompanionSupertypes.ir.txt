@@ -187,7 +187,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
   CLASS CLASS name:MarkerContribution modality:FINAL visibility:public superTypes:[<root>.MarkerBinding]
     annotations:
       ExposeImplBinding
-      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>)
+      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>, priority = <null>)
       Inject
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.MarkerContribution
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.MarkerContribution>]
@@ -297,7 +297,7 @@ FILE fqName:<root> fileName:/GeneratedCompanionSupertypes.kt
         public open fun toString (): kotlin.String declared in <root>.MarkerBinding
   CLASS CLASS name:ProviderContribution modality:FINAL visibility:public superTypes:[<root>.ProviderBinding]
     annotations:
-      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>)
+      ContributesBinding(scope = AppScope::class, binding = <null>, replaces = <null>, priority = <null>)
       Inject
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:<root>.ProviderContribution
     CLASS GENERATED[dev.zacsweers.metro.compiler.fir.Keys.InjectConstructorFactoryClassDeclaration] CLASS name:MetroFactory modality:FINAL visibility:public superTypes:[kotlin.Any; dev.zacsweers.metro.internal.Factory<<root>.ProviderContribution>]
