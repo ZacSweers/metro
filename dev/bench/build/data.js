@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787251057939,
+  "lastUpdate": 1787425313312,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22008,6 +22008,62 @@ window.BENCHMARK_DATA = {
             "value": 18159.678,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.21%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f4999c82~1",
+          "message": "[before] Implement suspend switching providers (#2716)",
+          "timestamp": "2026-08-22T14:04:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f4999c82daac23d374d1f6314d09dd7a3c9e49b5"
+        },
+        "date": 1787425313312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19185.035,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "f4999c82daac23d374d1f6314d09dd7a3c9e49b5",
+          "message": "[after] Implement suspend switching providers (#2716)",
+          "timestamp": "2026-08-22T14:04:26-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/f4999c82daac23d374d1f6314d09dd7a3c9e49b5"
+        },
+        "date": 1787425313313,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19544.532,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.87%"
           }
         ]
       }
