@@ -3440,6 +3440,7 @@
 <p>Switching providers are an optimization in graph generation that defers class loading. This can reduce graph initialization time by deferring bindings&rsquo; class init until it&rsquo;s actually requested.</p>
 <p>This is analogous to Dagger&rsquo;s <code>fastInit</code> option.</p>
 <p>You should really <em>only</em> use this if you&rsquo;ve benchmarked it and measured a meaningful difference, as it comes with the same tradeoffs (always holding a graph instance ref, etc.)</p>
+<p>Switching providers also support <a href="../coroutines/">suspend providers</a>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// The graph</span>
 <span class="nd">@DependencyGraph</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
