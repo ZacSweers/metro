@@ -579,7 +579,7 @@ private fun KtClassOrObject.classBindingData(
         } else {
           boundTypeQualifier ?: qualifier
         }
-      val elementType = unannotatedBoundType(boundType, classSymbol)
+      val elementType = unannotatedBoundType(boundType)
       val elementKey = typeKey(elementType, contributionQualifier)
       val contributionScopes = annotationScopeKeys(annotation)
       val replaces = classListArgument(annotation, "replaces").toSet()
@@ -723,17 +723,16 @@ private fun KaSession.contributedBoundType(
   }
 }
 
-private fun KaSession.unannotatedBoundType(
-  boundType: KaType,
-  classSymbol: KaNamedClassSymbol,
-): KaType {
+/** Removes outer type annotations without replacing the declared projections or nullability. */
+private fun KaSession.unannotatedBoundType(boundType: KaType): KaType {
   val annotatedType = boundType as? KaAnnotated ?: return boundType
   if (annotatedType.annotations.isEmpty()) return boundType
 
-  val classId = (boundType.fullyExpandedType as? KaClassType)?.classId ?: return boundType
-  return classSymbol.superTypes.firstOrNull { superType ->
-    (superType.fullyExpandedType as? KaClassType)?.classId == classId
-  } ?: boundType
+  val classType = boundType.fullyExpandedType as? KaClassType ?: return boundType
+  return buildClassType(classType.classId) {
+    isMarkedNullable = classType.isMarkedNullable
+    for (projection in classType.typeArguments) argument(projection)
+  }
 }
 
 /**
