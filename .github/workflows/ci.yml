@@ -24,7 +24,7 @@ jobs:
 
       - parallel:
           - name: Configure JDK
-            uses: actions/setup-java@v5
+            uses: actions/setup-java@v6
             with:
               distribution: 'zulu'
               java-version-file: .github/workflows/.java-version
@@ -197,7 +197,7 @@ jobs:
       # Keep the build and R8 on the project's JDK 25 while making JDK 21 available for the
       # compiler-test and TestKit workers that execute the shaded compiler.
       - name: Configure test JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: 'zulu'
           java-version: '21'
