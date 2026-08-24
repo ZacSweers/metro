@@ -51,7 +51,7 @@ okio = "3.18.1"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.1"
 tracing = "2.0.0"
-wire = "6.4.6"
+wire = "6.4.7"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
