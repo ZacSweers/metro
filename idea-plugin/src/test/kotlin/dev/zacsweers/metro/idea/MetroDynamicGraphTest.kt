@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
@@ -106,6 +108,9 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
         """
           .trimIndent(),
       ) as KtFile
+
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
 
     val index = project.service<MetroResolutionService>().index(declarations)
     val graph = index.graphs.single { it.name == "AppGraph" }
