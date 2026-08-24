@@ -24,6 +24,7 @@ Changelog
 Special thanks to the following contributors for contributing to this release!
 
 - [@grandstaish](https://github.com/grandstaish)
+- [@kevinguitar](https://github.com/kevinguitar)
 
 1.4.2
 -----
