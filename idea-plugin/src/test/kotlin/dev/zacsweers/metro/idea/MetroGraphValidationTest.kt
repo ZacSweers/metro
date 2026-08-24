@@ -2630,6 +2630,39 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.RealRepo" })
   }
 
+  fun testContributesBindingWithTypeUseQualifier() {
+    val result =
+      validate(
+        """
+        @Qualifier
+        @Target(AnnotationTarget.TYPE, AnnotationTarget.VALUE_PARAMETER)
+        annotation class Chosen
+
+        interface Page<T>
+
+        @Inject
+        @ContributesBinding(AppScope::class, binding = binding<@Chosen Page<*>>())
+        class RealPage : Page<String>
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          @Chosen val page: Page<*>
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    assertTrue(
+      result.bindings.asMap().keys.joinToString {
+        it.render(short = false, includeQualifier = true)
+      },
+      result.bindings.any { key, _ ->
+        key.renderedType == "test.Page<*>" &&
+          key.qualifier?.classId?.shortClassName?.asString() == "Chosen"
+      },
+    )
+  }
+
   fun testGeneratedContributionProviderDoesNotExposeItsImplementation() {
     project.setMetroOptions("generate-contribution-providers" to "true")
 
