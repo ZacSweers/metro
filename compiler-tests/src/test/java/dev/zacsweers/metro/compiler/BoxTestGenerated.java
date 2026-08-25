@@ -2774,6 +2774,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("BindingContainerWithJavaxInjectConstructor.kt")
+      public void testBindingContainerWithJavaxInjectConstructor() {
+        run("BindingContainerWithJavaxInjectConstructor.kt");
+      }
+
+      @Test
       @TestMetadata("BindsOptionalInAMultibindingCycle.kt")
       public void testBindsOptionalInAMultibindingCycle() {
         run("BindsOptionalInAMultibindingCycle.kt");
