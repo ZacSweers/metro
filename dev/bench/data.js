@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787433152682,
+  "lastUpdate": 1787692265553,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -22120,6 +22120,62 @@ window.BENCHMARK_DATA = {
             "value": 0.21954462699671556,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: -4.00%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bf7edeaf~1",
+          "message": "[before] Fix binding container race in interop (#2729)",
+          "timestamp": "2026-08-25T20:21:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb"
+        },
+        "date": 1787692265553,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23032200612341822,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb",
+          "message": "[after] Fix binding container race in interop (#2729)",
+          "timestamp": "2026-08-25T20:21:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb"
+        },
+        "date": 1787692265554,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23225202643658976,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: +0.84%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }

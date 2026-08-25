@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787433152854,
+  "lastUpdate": 1787692265834,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22120,6 +22120,62 @@ window.BENCHMARK_DATA = {
             "value": 18553.941,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.23%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bf7edeaf~1",
+          "message": "[before] Fix binding container race in interop (#2729)",
+          "timestamp": "2026-08-25T20:21:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb"
+        },
+        "date": 1787692265834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14521.763,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb",
+          "message": "[after] Fix binding container race in interop (#2729)",
+          "timestamp": "2026-08-25T20:21:45Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/bf7edeaf9724f17e7ff751fc5cef527a3b8e5dbb"
+        },
+        "date": 1787692265835,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14888.139000000001,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.52%"
           }
         ]
       }
