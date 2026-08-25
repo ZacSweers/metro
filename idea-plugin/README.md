@@ -58,6 +58,17 @@ so it gets no consumer marker.
 
 > TODO: Add a screenshot of a consumer marker popup resolving an interface to a concrete binding.
 
+### Find Usages
+
+IntelliJ's Find Usages keeps its ordinary Kotlin results and adds resolved Metro relationships for declarations already represented in the binding index:
+
+- Find Usages on a binding source, such as an `@Provides`, `@Binds`, `@Inject`, or contributed declaration, lists its consumers under **Injected at**.
+- Find Usages on an injection site or graph accessor lists its selected bindings under **Provided by**.
+
+These results use the same graph membership, module visibility, and multibinding resolution as editor navigation. A graph context pinned in the Metro tool window limits the relationships to that context; with no pin, Find Usages shows the union across applicable graph contexts. Plain classes and interfaces that are not themselves indexed binding or consumer declarations continue to use Kotlin's standard Find Usages behavior.
+
+> TODO: Add a screenshot of Find Usages showing the Injected at and Provided by groups alongside an ordinary Kotlin usage.
+
 ### Code Vision
 
 Metro code vision entries summarize binding relationships above declarations:

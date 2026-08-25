@@ -278,6 +278,42 @@ class MetroResolutionService(
     return index(module)
   }
 
+  /** Returns a current cached index without scheduling or performing analysis. */
+  internal fun cachedIndex(element: PsiElement): BindingIndex {
+    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
+    return index(module, IndexRequestMode.CACHE_ONLY)
+  }
+
+  /** Returns the distinct current indexes that can contain an exact Find Usages target. */
+  internal fun usageIndexes(element: PsiElement): List<BindingIndex> {
+    val module = ModuleUtilCore.findModuleForPsiElement(element)
+    if (module != null) return index(element).asUsageIndexList()
+    return distinctUsageIndexes { index(it) }
+  }
+
+  /**
+   * Cache-only counterpart to [usageIndexes] used before deciding whether a usage build is needed.
+   */
+  internal fun cachedUsageIndexes(element: PsiElement): List<BindingIndex> {
+    val module = ModuleUtilCore.findModuleForPsiElement(element)
+    if (module != null) return cachedIndex(element).asUsageIndexList()
+    return distinctUsageIndexes { index(it, IndexRequestMode.CACHE_ONLY) }
+  }
+
+  private fun distinctUsageIndexes(indexForModule: (Module) -> BindingIndex): List<BindingIndex> {
+    val result = mutableListOf<BindingIndex>()
+    for (module in ModuleManager.getInstance(project).modules) {
+      ProgressManager.checkCanceled()
+      val index = indexForModule(module)
+      if (index !== BindingIndex.EMPTY && result.none { it === index }) result += index
+    }
+    return result
+  }
+
+  private fun BindingIndex.asUsageIndexList(): List<BindingIndex> {
+    return if (this === BindingIndex.EMPTY) emptyList() else listOf(this)
+  }
+
   /**
    * Returns a current project snapshot for [module]. Production EDT callers never perform Kotlin
    * analysis: they trigger a coalesced smart-mode build and receive an empty index until it lands.
@@ -2323,7 +2359,7 @@ private class IndexOptionsFingerprint(val options: MetroOptions) {
   }
 }
 
-private fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
+internal fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
   return buildSet {
     addAll(options.providesAnnotations)
     addAll(options.bindsAnnotations)
