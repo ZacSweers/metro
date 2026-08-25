@@ -293,13 +293,21 @@ internal class BindingContainerTransformer(
     // without inheritance
     val shouldGenerateMetadata =
       bindingContainerAnnotation != null || isContributedGraph || !container.isEmpty()
+    val injectedClassMetadata = declaration.pendingInjectedClassMetadata
+    val shouldRegisterMetadata = shouldGenerateMetadata || injectedClassMetadata != null
 
-    if (shouldGenerateMetadata) {
+    if (shouldRegisterMetadata) {
       trace("Generate metadata") {
         checkNotLocked()
         val metroMetadata =
           createMetroMetadata(
-            dependency_graph = container.toProto(generateClassesInIr = options.generateClassesInIr)
+            dependency_graph =
+              if (shouldGenerateMetadata) {
+                container.toProto(generateClassesInIr = options.generateClassesInIr)
+              } else {
+                null
+              },
+            injected_class = injectedClassMetadata,
           )
         declaration.metroMetadata = metroMetadata
       }

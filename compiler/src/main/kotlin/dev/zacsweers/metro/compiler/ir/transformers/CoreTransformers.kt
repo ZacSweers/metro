@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.ir.IrScope
 import dev.zacsweers.metro.compiler.ir.allScopes
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.isCompanionObject
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.reportCompilerBug
@@ -140,7 +141,8 @@ internal class CoreTransformers(
     val injectTransformed =
       trace("InjectedClass") { injectedClassTransformer.visitClass(declaration) }
     // Need to always run member and class inject both
-    if (memberTransformed || injectTransformed) {
+    val injectionTransformed = memberTransformed || injectTransformed
+    if (injectionTransformed && !declaration.isBindingContainer()) {
       return
     }
     if (trace("AssistedFactory") { assistedFactoryTransformer.visitClass(declaration) }) return

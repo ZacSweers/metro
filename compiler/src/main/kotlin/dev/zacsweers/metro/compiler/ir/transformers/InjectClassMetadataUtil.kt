@@ -5,28 +5,37 @@ package dev.zacsweers.metro.compiler.ir.transformers
 import dev.zacsweers.metro.compiler.ir.ClassFactory
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.createMetroMetadata
+import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.metroMetadata
 import dev.zacsweers.metro.compiler.proto.InjectedClassProto
 import dev.zacsweers.metro.compiler.proto.SignatureCarrier
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.irAttribute
+
+/** Held until binding-container processing can register both metadata sections as one value. */
+internal var IrClass.pendingInjectedClassMetadata: InjectedClassProto? by
+  irAttribute(copyByDefault = false)
 
 context(metroContext: IrMetroContext)
 internal fun IrClass.writeInjectedClassMetadata(
   classFactory: ClassFactory?,
   memberInjectClass: MembersInjectorTransformer.MemberInjectClass?,
 ) {
-  metroMetadata =
-    createMetroMetadata(
-      injected_class =
-        InjectedClassProto(
-          factory_class_name = classFactory?.factoryClass?.name?.asString(),
-          member_injections = memberInjectClass?.toProto(),
-          signature_carrier =
-            when (classFactory) {
-              is ClassFactory.MetroFactory -> classFactory.signatureCarrier
-              is ClassFactory.DaggerFactory,
-              null -> SignatureCarrier.MIRROR_FUNCTION
-            },
-        )
+  val injectedClassMetadata =
+    InjectedClassProto(
+      factory_class_name = classFactory?.factoryClass?.name?.asString(),
+      member_injections = memberInjectClass?.toProto(),
+      signature_carrier =
+        when (classFactory) {
+          is ClassFactory.MetroFactory -> classFactory.signatureCarrier
+          is ClassFactory.DaggerFactory,
+          null -> SignatureCarrier.MIRROR_FUNCTION
+        },
     )
+
+  if (isBindingContainer()) {
+    pendingInjectedClassMetadata = injectedClassMetadata
+  } else {
+    metroMetadata = createMetroMetadata(injected_class = injectedClassMetadata)
+  }
 }
