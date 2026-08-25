@@ -8,10 +8,13 @@ import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.impl.TestOnlyThreading
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.platform.eel.fs.EelFiles
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
@@ -31,6 +34,7 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
+import dev.zacsweers.metro.idea.toolwindow.GraphContextSelectorAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
@@ -42,6 +46,7 @@ import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
+import javax.swing.JPanel
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -174,7 +179,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     assertEquals("DynamicGraph.kt", staticRow.grayText)
     assertTrue(dynamicRow.grayText, dynamicRow.grayText!!.startsWith("dynamic at DynamicGraph.kt:"))
-    assertTrue(dynamicRow.grayText, "FakeBindings" in dynamicRow.grayText!!)
+    assertTrue(dynamicRow.grayText, "FakeBindings" in dynamicRow.grayText)
     assertTrue(dynamicRow.pointer?.element is KtCallExpression)
 
     val unscoped =
@@ -256,6 +261,31 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     currentIndex = BindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
     assertTrue(structure.children(root).isEmpty())
     assertNull(pinService.pinnedPath)
+  }
+
+  fun testGraphContextSelectorAcquiresReadAccess() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().index(file)
+    val structure =
+      MetroTreeStructure(project, indexProvider = { index }, pinService = project.service()) {
+        filter
+      }
+    val application = ApplicationManager.getApplication()
+    val action =
+      GraphContextSelectorAction(project.service()) {
+        assertTrue(application.isReadAccessAllowed)
+        structure.availableContexts()
+      }
+    var contextActionName: String? = null
+
+    TestOnlyThreading.releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+      assertFalse(application.isReadAccessAllowed)
+      val group = action.createPopupActionGroup(JPanel()) { null }
+      contextActionName = group.getChildren(null).last().templatePresentation.text
+    }
+
+    assertTrue(contextActionName, contextActionName!!.startsWith("AppGraph ("))
+    assertTrue(contextActionName, contextActionName.endsWith(": ${file.name})"))
   }
 
   fun testGenericInheritedProvidersDoNotShowRawTypeParameters() {
@@ -549,8 +579,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         isValidationRunning = { validationRunning },
         validate = { validatedContext = it },
       )
-    val event =
-      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
 
     action.update(event)
     assertFalse(event.presentation.isEnabled)
@@ -575,8 +604,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     var refreshes = 0
     val action = LoadOrRefreshGraphsAction(service) { refreshes++ }
-    val event =
-      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
 
     action.update(event)
     assertEquals("Load", event.presentation.text)
@@ -762,7 +790,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       for (privateValue in privateValues) {
         assertFalse("Report leaked $privateValue", privateValue in report)
       }
-      assertEquals("keep this report", Files.readString(sentinel))
+      assertEquals("keep this report", EelFiles.readString(sentinel))
       assertFalse("Reading options must not initialize traceDir", Files.exists(trace))
 
       val serviceRequest = debugRequest(report, "test.Service")
@@ -824,8 +852,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertTrue(first.fileName.toString().startsWith("metro-graph-debug-"))
       assertTrue(first.fileName.toString().endsWith(".txt"))
       assertFalse(first == second)
-      assertEquals("first report", Files.readString(first))
-      assertEquals("second report", Files.readString(second))
+      assertEquals("first report", EelFiles.readString(first))
+      assertEquals("second report", EelFiles.readString(second))
     } finally {
       FileUtil.delete(outputRoot.toFile())
     }
@@ -963,8 +991,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val context = index.contextsFor(index.graphs.single()).single()
     var selected: GraphContext? = null
     val action = ExportGraphDebugInfoAction(project) { selected }
-    val event =
-      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
 
     action.update(event)
     assertFalse(event.presentation.isEnabled)

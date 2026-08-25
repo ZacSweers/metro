@@ -15,6 +15,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
@@ -395,21 +396,20 @@ internal class GraphContextSelectorAction(
     e.presentation.text = pinService.pinnedPath?.presentableName() ?: "All Graphs"
   }
 
-  override fun createPopupActionGroup(
+  public override fun createPopupActionGroup(
     button: JComponent,
     dataContext: DataContext,
   ): DefaultActionGroup {
+    val contextOptions = runReadActionBlocking {
+      contextProvider().map { context ->
+        context.presentableName(includeFile = true) to context.path
+      }
+    }
     return DefaultActionGroup().apply {
       add(GraphContextOptionAction("All Graphs", null, pinService))
       addSeparator()
-      for (context in contextProvider()) {
-        add(
-          GraphContextOptionAction(
-            context.presentableName(includeFile = true),
-            context.path,
-            pinService,
-          )
-        )
+      for ((name, path) in contextOptions) {
+        add(GraphContextOptionAction(name, path, pinService))
       }
     }
   }
