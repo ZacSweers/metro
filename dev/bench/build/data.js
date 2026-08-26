@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787692265834,
+  "lastUpdate": 1787723921494,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22176,6 +22176,62 @@ window.BENCHMARK_DATA = {
             "value": 14888.139000000001,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.52%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3b147dca~1",
+          "message": "[before] Fix member injection nullability metadata with int",
+          "timestamp": "2026-08-26T05:07:59Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3b147dca84b9e51b51a577d48eea79943ed76170"
+        },
+        "date": 1787723921494,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13935.594000000001,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "3b147dca84b9e51b51a577d48eea79943ed76170",
+          "message": "[after] Fix member injection nullability metadata with int",
+          "timestamp": "2026-08-26T05:07:59Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/3b147dca84b9e51b51a577d48eea79943ed76170"
+        },
+        "date": 1787723921495,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 13446.530999999999,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.51%"
           }
         ]
       }
