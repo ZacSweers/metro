@@ -3050,6 +3050,12 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
       }
 
       @Test
+      @TestMetadata("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt")
+      public void testSourceMemberInjectionTakesPrecedenceOverDaggerInjector() {
+        run("SourceMemberInjectionTakesPrecedenceOverDaggerInjector.kt");
+      }
+
+      @Test
       @TestMetadata("ZeroArgConstructorInjectionGeneratedByAnvil.kt")
       public void testZeroArgConstructorInjectionGeneratedByAnvil() {
         run("ZeroArgConstructorInjectionGeneratedByAnvil.kt");

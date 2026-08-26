@@ -203,7 +203,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
     fun computeMemberInjectClass(injectorClass: IrClass, isDagger: Boolean): MemberInjectClass {
       // Use cached member inject parameters if available, otherwise fall back to fresh lookup
-      val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(isDagger)
+      val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters()
       // This map is sparse: classes with no direct injected members are omitted, even if inherited
       // members still require an injector for this class.
       val directInjectedMembers = injectedMembersByClass[injectedClassId].orEmpty()
@@ -277,7 +277,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         }
           ?: run {
             if (options.generateClassesInIr) {
-              val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters(false)
+              val injectedMembersByClass = declaration.getOrComputeMemberInjectParameters()
               if (injectedMembersByClass.values.all { it.isEmpty() }) {
                 // For in-compilation classes, assume no members to inject
                 generatedInjectors[injectedClassId] = Optional.empty()
@@ -298,7 +298,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
         companionObject.functions.none { it.origin == Origins.MembersInjectorStaticInjectFunction }
     ) {
       val directMemberInjectParameters =
-        declaration.getOrComputeMemberInjectParameters(isDagger = false)[injectedClassId].orEmpty()
+        declaration.getOrComputeMemberInjectParameters()[injectedClassId].orEmpty()
       for (params in directMemberInjectParameters) {
         val name =
           if (params.isProperty) {
@@ -578,9 +578,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
       }
   }
 
-  private fun IrClass.getOrComputeMemberInjectParameters(
-    isDagger: Boolean
-  ): Map<ClassId, List<Parameters>> {
+  private fun IrClass.getOrComputeMemberInjectParameters(): Map<ClassId, List<Parameters>> {
     // Compute supertypes once - we'll need them for either cached lookup or fresh computation
     val allTypes =
       allSupertypesSequence(excludeSelf = false, excludeAny = true)
@@ -591,28 +589,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     val result =
       processTypes(allTypes) { clazz, classId, nameAllocator ->
         injectorParamsByClass.computeIfAbsent(classId) {
-          // Check for Dagger injector first if we're in Dagger mode or interop is enabled
-          if (isDagger || options.enableDaggerRuntimeInterop) {
-            val daggerParams = clazz.tryDeriveDaggerMemberInjectParameters(nameAllocator)
-            if (daggerParams != null) {
-              return@computeIfAbsent daggerParams
-            }
-          }
-
-          if (clazz.isExternalParent) {
-            // No Dagger injector found - check Metro metadata
-            val metadata = clazz.metroMetadata?.injected_class?.member_injections
-            val injectFunctionNames = metadata?.member_inject_functions ?: emptyList()
-
-            if (injectFunctionNames.isNotEmpty()) {
-              // Derive from existing injector class using cached function names
-              deriveParametersFromInjectFunctionNames(clazz, injectFunctionNames, nameAllocator)
-            } else {
-              emptyList()
-            }
-          } else {
-            // No Dagger injector found - compute from source and cache
-            val computed =
+          if (!clazz.isExternalParent) {
+            // Source declarations are authoritative for Kotlin types. In particular, Dagger's
+            // generated Java members injectors expose Kotlin member types as platform types.
+            val sourceParameters =
               clazz
                 .declaredCallableMembers(
                   functionFilter = { it.isAnnotatedWithAny(metroSymbols.injectAnnotations) },
@@ -629,8 +609,36 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
                 .sortedBy { !it.isProperty }
                 .toList()
 
-            computed
+            if (sourceParameters.isNotEmpty()) {
+              return@computeIfAbsent sourceParameters
+            }
           }
+
+          if (clazz.isExternalParent) {
+            // Keep the parameter model aligned with the Metro injector selected for this class.
+            val metadata = clazz.metroMetadata?.injected_class?.member_injections
+            if (metadata != null) {
+              val injectFunctionNames = metadata.member_inject_functions
+              return@computeIfAbsent if (injectFunctionNames.isNotEmpty()) {
+                deriveParametersFromInjectFunctionNames(
+                  clazz,
+                  injectFunctionNames,
+                  nameAllocator,
+                )
+              } else {
+                emptyList()
+              }
+            }
+          }
+
+          if (options.enableDaggerRuntimeInterop) {
+            val daggerParams = clazz.tryDeriveDaggerMemberInjectParameters(nameAllocator)
+            if (daggerParams != null) {
+              return@computeIfAbsent daggerParams
+            }
+          }
+
+          emptyList()
         }
       }
 
