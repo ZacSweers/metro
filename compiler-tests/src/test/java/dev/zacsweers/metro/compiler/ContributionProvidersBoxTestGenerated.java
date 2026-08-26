@@ -2708,6 +2708,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       public void testMultiInheritanceMemberInject() {
         run("MultiInheritanceMemberInject.kt");
       }
+
+      @Test
+      @TestMetadata("ZeroArgumentMethodInjection.kt")
+      public void testZeroArgumentMethodInjection() {
+        run("ZeroArgumentMethodInjection.kt");
+      }
     }
   }
 
@@ -3059,6 +3065,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       @TestMetadata("ZeroArgConstructorInjectionGeneratedByAnvil.kt")
       public void testZeroArgConstructorInjectionGeneratedByAnvil() {
         run("ZeroArgConstructorInjectionGeneratedByAnvil.kt");
+      }
+
+      @Test
+      @TestMetadata("ZeroArgumentMethodInjection.kt")
+      public void testZeroArgumentMethodInjection() {
+        run("ZeroArgumentMethodInjection.kt");
       }
 
       @Nested

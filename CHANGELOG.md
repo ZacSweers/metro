@@ -13,6 +13,7 @@ Changelog
 
 ### Fixes
 
+- **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.

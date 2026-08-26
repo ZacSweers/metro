@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.fir.generators
 
 import dev.zacsweers.metro.compiler.NameAllocator
 import dev.zacsweers.metro.compiler.api.fir.metroGeneratedInjectClassData
+import dev.zacsweers.metro.compiler.asName
 import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.compat.CompatContext
 import dev.zacsweers.metro.compiler.fir.Keys
@@ -371,8 +372,9 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
                     memberKey = memberKey,
                   )
                 }
-              // Guaranteed at least one param if we're generating here
-              members[params[0].memberInjectorFunctionName] = params
+              val memberInjectorFunctionName =
+                "inject${memberKey.capitalizeUS().asString()}".asName()
+              members[memberInjectorFunctionName] = params
             }
             // Handle injected fields from java supertypes (i.e. Dagger-processed)
             is FirFieldSymbol -> {
@@ -606,9 +608,7 @@ internal class InjectedClassFirGenerator(session: FirSession, compatContext: Com
       val targetClass = classSymbol.getContainingClassSymbol()?.classId ?: return emptySet()
       val injectedClass = membersInjectorClassIdsToInjectedClass[targetClass] ?: return emptySet()
       // Only declared members matter here
-      for (member in injectedClass.injectedMembersParameters) {
-        names += member.memberInjectorFunctionName
-      }
+      names += injectedClass.injectedMembersParamsByMemberKey.keys
     }
 
     return names

@@ -2374,6 +2374,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       public void testMultiInheritanceMemberInject() {
         run("MultiInheritanceMemberInject.kt");
       }
+
+      @Test
+      @TestMetadata("ZeroArgumentMethodInjection.kt")
+      public void testZeroArgumentMethodInjection() {
+        run("ZeroArgumentMethodInjection.kt");
+      }
     }
   }
 
