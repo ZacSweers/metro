@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787723921494,
+  "lastUpdate": 1787769639491,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22232,6 +22232,62 @@ window.BENCHMARK_DATA = {
             "value": 13446.530999999999,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.51%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "24336eed~1",
+          "message": "[before] Fix support for zero-arg function member injection",
+          "timestamp": "2026-08-26T17:38:30Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/24336eedc14d74fab3a2dbe071e539b6274f6593"
+        },
+        "date": 1787769639491,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 22119.582000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "24336eedc14d74fab3a2dbe071e539b6274f6593",
+          "message": "[after] Fix support for zero-arg function member injection",
+          "timestamp": "2026-08-26T17:38:30Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/24336eedc14d74fab3a2dbe071e539b6274f6593"
+        },
+        "date": 1787769639492,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 21425.223,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.14%"
           }
         ]
       }
