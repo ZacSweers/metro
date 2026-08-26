@@ -50,7 +50,7 @@ okhttp = "5.5.0"
 okio = "3.18.1"
 pluginId = "dev.zacsweers.metro.compiler"
 poko = "0.23.1"
-tracing = "2.0.0"
+tracing = "2.0.1"
 wire = "6.4.7"
 
 [plugins]
