@@ -1690,6 +1690,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idea-plugin-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        IDEA Plugin Development
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Development Tools
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2050,6 +2078,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Development">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idea-plugin-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        IDEA Plugin Development
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Development Tools
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2274,6 +2330,14 @@
 <li><code>:compose-viewmodels</code> — A multi-module integration test.</li>
 </ol>
 <p>To include the <code>samples</code> project in IntelliJ, open the Gradle tab and just add it as another project. It depends on the regular artifacts as included build dependencies.</p>
+<h3 id="idea-plugin-development">IDEA Plugin Development<a class="headerlink" href="#idea-plugin-development" title="Permanent link">&para;</a></h3>
+<p><code>idea-plugin/</code> is a separate Gradle build, not a subproject of the root build. Add it as another Gradle project in IntelliJ when working on the plugin. From the repository root, use the root wrapper with <code>-p idea-plugin</code>:</p>
+<div class="highlight"><pre><span></span><code>./gradlew<span class="w"> </span>-p<span class="w"> </span>idea-plugin<span class="w"> </span>compileKotlin<span class="w"> </span>--quiet
+./gradlew<span class="w"> </span>-p<span class="w"> </span>idea-plugin<span class="w"> </span>compileTestKotlin<span class="w"> </span>--quiet
+./gradlew<span class="w"> </span>-p<span class="w"> </span>idea-plugin<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--tests<span class="w"> </span><span class="s1">'*MyTest*'</span><span class="w"> </span>--quiet
+</code></pre></div>
+<p><code>compileTestKotlin</code> compiles test sources without running tests. Replace <code>*MyTest*</code> with the test you want to run. Root task paths such as <code>:idea-plugin:compileKotlin</code> will not work because the plugin has its own settings file.</p>
+<h3 id="development-tools">Development Tools<a class="headerlink" href="#development-tools" title="Permanent link">&para;</a></h3>
 <p>Code formatting is handled by <a href="https://github.com/ZacSweers/kempt">kempt</a>, which wraps ktfmt + google-java-format and is configured via <code>.kempt.toml</code>. Install with <code>brew install ZacSweers/tap/kempt-fmt</code> or <code>cargo install kempt-fmt</code>.</p>
 <p>Git hooks for code formatting are automatically configured on the first Gradle invocation via <code>config/git/.gitconfig</code>. The pre-commit hook delegates to <code>kempt hook</code>. The formatter versions are pinned in <code>.kempt.toml</code> and bumped automatically by Renovate; bump them manually with <code>kempt upgrade</code>.</p>
 <p>There is a useful <code>./metrow</code> helper CLI that can perform a few common commands across the various subprojects. See its <code>--help</code> usage for more details.</p>
