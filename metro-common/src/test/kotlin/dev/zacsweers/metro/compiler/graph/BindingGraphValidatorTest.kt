@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.graph
 
 import androidx.collection.MutableScatterMap
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class BindingGraphValidatorTest {
@@ -109,6 +110,33 @@ class BindingGraphValidatorTest {
           contributions = listOf(first, second),
         )
       )
+  }
+
+  @Test
+  fun `map validation checks cancellation after work has started`() {
+    val contributions = List(300) { index -> validationBinding("Contribution$index") }
+    val multibinding = validationBinding("Map<String, Value>")
+    val validator =
+      validator(
+        bindings = bindingsOf(*(contributions + multibinding).toTypedArray()),
+        multibindingKindOf = { candidate ->
+          MultibindingKind.MAP.takeIf { candidate == multibinding }
+        },
+        multibindingSourceKeys = { contributions.map { it.typeKey } },
+        isMapContribution = { true },
+      )
+    var checks = 0
+
+    assertFailsWith<ValidationCancellationException> {
+      validator.validate(
+        multibinding,
+        ensureActive = {
+          if (++checks == 2) throw ValidationCancellationException()
+        },
+      ) {}
+    }
+
+    assertThat(checks).isEqualTo(2)
   }
 
   @Test
@@ -222,6 +250,8 @@ private typealias StringBindingGraphValidator =
     String,
     String,
   >
+
+private class ValidationCancellationException : RuntimeException()
 
 private fun StringBindingGraphValidator.validateAll(
   binding: StringBinding

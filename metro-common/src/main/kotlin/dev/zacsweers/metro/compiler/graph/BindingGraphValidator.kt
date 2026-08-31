@@ -31,9 +31,14 @@ public class BindingGraphValidator<
   private val rootKeys: Set<TypeKey> = emptySet(),
   private val reverseAdjacency: Map<TypeKey, Set<TypeKey>> = emptyMap(),
 ) {
-  /** Reports every structural issue originating at [binding] to [onIssue]. */
+  /**
+   * Reports every structural issue originating at [binding] to [onIssue].
+   *
+   * @param ensureActive cancellation callback polled while checking dependents and contributions.
+   */
   public fun validate(
     binding: Binding,
+    ensureActive: () -> Unit = {},
     onIssue: (GraphValidationIssue<Binding, Scope, MapKey>) -> Unit,
   ) {
     val bindingScope = scopeOf(binding)
@@ -43,6 +48,7 @@ public class BindingGraphValidator<
 
     if (assistedKindOf(binding) == AssistedBindingKind.TARGET) {
       for (requestingKey in reverseAdjacency[binding.typeKey].orEmpty()) {
+        ensureActive()
         val requestingBinding = bindings[requestingKey] ?: continue
         if (assistedKindOf(requestingBinding) != AssistedBindingKind.FACTORY) {
           onIssue(GraphValidationIssue.InvalidAssistedInjection(binding, requestingBinding))
@@ -64,11 +70,13 @@ public class BindingGraphValidator<
 
     val contributionsByMapKey = mutableMapOf<MapKey?, MutableList<Binding>>()
     for (sourceKey in sourceKeys) {
+      ensureActive()
       val contribution = bindings[sourceKey] ?: continue
       if (!isMapContribution(contribution)) continue
       contributionsByMapKey.getOrPut(mapKeyOf(contribution), ::mutableListOf) += contribution
     }
     for ((mapKey, contributions) in contributionsByMapKey) {
+      ensureActive()
       if (contributions.size > 1) {
         onIssue(GraphValidationIssue.DuplicateMapKey(binding, mapKey, contributions))
       }

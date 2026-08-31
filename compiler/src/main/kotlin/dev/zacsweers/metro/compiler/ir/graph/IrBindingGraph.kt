@@ -1176,7 +1176,7 @@ internal class IrBindingGraph(
           requiresRuntimeCoroutines = true
         }
       }
-      structuralValidator.validate(binding, reportIssue)
+      structuralValidator.validate(binding, onIssue = reportIssue)
     }
     if (!suspendProvidersEnabled) {
       for ((contextKey, metroFunction) in node.accessors) {

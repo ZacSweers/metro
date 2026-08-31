@@ -132,6 +132,23 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `seal checks for cancellation`() {
+    val graph = newStringBindingGraph()
+    repeat(300) { index -> graph.tryPut("Binding$index".typeKey.toBinding()) }
+    var checks = 0
+
+    assertFailsWith<BindingGraphCancellationException> {
+      graph.seal(
+        shrinkUnusedBindings = false,
+        ensureActive = {
+          if (++checks == 2) throw BindingGraphCancellationException()
+        },
+      )
+    }
+    assertThat(checks).isEqualTo(2)
+  }
+
+  @Test
   fun `TypeKey dependsOn withDeferrableTypes`() {
     val a = "A".typeKey
     val b = "B".typeKey
@@ -478,6 +495,8 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
       )
   }
 }
+
+private class BindingGraphCancellationException : RuntimeException()
 
 private val String.typeKey: StringTypeKey
   get() = contextualTypeKey.typeKey

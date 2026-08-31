@@ -12,6 +12,7 @@ internal class ReusableCycleChecker<V>(
   private val vertices: List<V>,
   private val sccAdjacency: Map<V, Set<V>>,
   private val deferrableEdgesFrom: Map<V, Set<V>>,
+  private val ensureActive: () -> Unit = {},
 ) {
   // Reuse these traversal structures across checks to reduce allocations.
   private val visited: HashSet<V>
@@ -35,6 +36,7 @@ internal class ReusableCycleChecker<V>(
     resetTraversal()
 
     for (node in vertices) {
+      ensureActive()
       if (node !in visited && !isAcyclicFrom(node, deferredNodes)) {
         return false
       }
@@ -68,6 +70,7 @@ internal class ReusableCycleChecker<V>(
     pushFrame(node, deferredNodes)
 
     while (frames.isNotEmpty()) {
+      ensureActive()
       val frame = frames.last()
       if (!frame.neighbors.hasNext()) {
         frames.removeLast()

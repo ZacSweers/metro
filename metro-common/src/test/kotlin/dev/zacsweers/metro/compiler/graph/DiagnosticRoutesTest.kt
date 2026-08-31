@@ -5,9 +5,58 @@ package dev.zacsweers.metro.compiler.graph
 import com.google.common.truth.Truth.assertThat
 import java.util.TreeMap
 import java.util.TreeSet
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class DiagnosticRoutesTest {
+  @Test
+  fun `route indexing checks for cancellation`() {
+    val root = routeContextKey("Node0")
+    val adjacency = TreeMap<StringTypeKey, Set<StringTypeKey>>()
+    repeat(300) { index ->
+      adjacency[routeKey("Node$index")] = TreeSet(setOf(routeKey("Node${index + 1}")))
+    }
+    adjacency[routeKey("Node300")] = TreeSet()
+    val routes = DiagnosticRoutes(mapOf(root to StringBindingStack.Entry(root)), adjacency)
+    var checks = 0
+
+    assertFailsWith<RouteCancellationException> {
+      routes.routeToRoot(
+        key = routeKey("Node300"),
+        ensureActive = {
+          if (++checks == 2) throw RouteCancellationException()
+        },
+        createDependencyEntry = ::dependencyEntry,
+      )
+    }
+
+    assertThat(checks).isEqualTo(2)
+  }
+
+  @Test
+  fun `cached route reconstruction checks for cancellation`() {
+    val root = routeContextKey("Root")
+    val routes =
+      DiagnosticRoutes(
+        roots = mapOf(root to StringBindingStack.Entry(root)),
+        adjacency =
+          sortedAdjacency(
+            "Root" to setOf("Middle"),
+            "Middle" to setOf("Target"),
+            "Target" to emptySet(),
+          ),
+      )
+    routes.routeToRoot(routeKey("Target"), createDependencyEntry = ::dependencyEntry)
+
+    assertFailsWith<RouteCancellationException> {
+      routes.routeToRoot(
+        key = routeKey("Target"),
+        ensureActive = { throw RouteCancellationException() },
+        createDependencyEntry = ::dependencyEntry,
+      )
+    }
+  }
+
   @Test
   fun `uses the shortest deterministic route from a graph root`() {
     val firstRoot = routeContextKey("FirstRoot")
@@ -26,7 +75,7 @@ class DiagnosticRoutesTest {
       )
     val routes = DiagnosticRoutes(roots, adjacency)
 
-    val route = routes.routeToRoot(routeKey("Target"), ::dependencyEntry)
+    val route = routes.routeToRoot(routeKey("Target"), createDependencyEntry = ::dependencyEntry)
 
     assertThat(route.map { it.usage }).containsExactly("second", "SecondRoot -> Target").inOrder()
   }
@@ -40,9 +89,14 @@ class DiagnosticRoutesTest {
         adjacency = sortedAdjacency("Root" to emptySet(), "Unreachable" to emptySet()),
       )
 
-    assertThat(routes.routeToRoot(routeKey("Unreachable"), ::dependencyEntry)).isEmpty()
+    assertThat(
+        routes.routeToRoot(routeKey("Unreachable"), createDependencyEntry = ::dependencyEntry)
+      )
+      .isEmpty()
   }
 }
+
+private class RouteCancellationException : RuntimeException()
 
 private fun dependencyEntry(
   callingKey: StringTypeKey,

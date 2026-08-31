@@ -3,12 +3,49 @@
 package dev.zacsweers.metro.compiler.graph
 
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFailsWith
 import org.jetbrains.kotlin.name.ClassId
 import org.junit.Test
 
 class ContributionMergeTest {
 
   private fun id(name: String): ClassId = ClassId.fromString("test/$name")
+
+  @Test
+  fun `merge plan checks for cancellation`() {
+    val presentIds = buildSet { repeat(300) { index -> add(id("Contribution$index")) } }
+    var checks = 0
+
+    assertFailsWith<MergeCancellationException> {
+      computeMergePlan(
+        presentIds = presentIds,
+        excluded = emptySet(),
+        ensureActive = {
+          if (++checks == 2) throw MergeCancellationException()
+        },
+        replacesOf = { emptySet() },
+      )
+    }
+
+    assertThat(checks).isEqualTo(2)
+  }
+
+  @Test
+  fun `exclude and replace filtering checks for cancellation`() {
+    val items = List(300) { index -> Item(id("Contribution$index"), emptySet()) }
+    var checks = 0
+
+    assertFailsWith<MergeCancellationException> {
+      applyExcludesAndReplaces(
+        items = items,
+        ensureActive = {
+          if (++checks == 2) throw MergeCancellationException()
+        },
+      )
+    }
+
+    assertThat(checks).isEqualTo(2)
+  }
 
   @Test
   fun `excludes remove by id`() {
@@ -172,6 +209,26 @@ class ContributionMergeTest {
   )
 
   @Test
+  fun `priority filtering checks for cancellation`() {
+    val contributions =
+      List(300) { index -> PrioritizedContribution(id("Contribution$index"), "Service", index) }
+    var checks = 0
+
+    assertFailsWith<MergeCancellationException> {
+      computeLowerPriorityContributions(
+        bindings = contributions,
+        ensureActive = {
+          if (++checks == 2) throw MergeCancellationException()
+        },
+        conflictKeySelector = PrioritizedContribution::conflictKey,
+        prioritySelector = PrioritizedContribution::priority,
+      )
+    }
+
+    assertThat(checks).isEqualTo(2)
+  }
+
+  @Test
   fun `higher priority removes only the conflicting contribution from an origin`() {
     val losing = PrioritizedContribution(id("Original"), "FirstService", priority = 1)
     val retained = PrioritizedContribution(id("Original"), "SecondService", priority = 1)
@@ -239,3 +296,5 @@ class ContributionMergeTest {
     assertThat(lowerPriorityContributions(low, high)).isEmpty()
   }
 }
+
+private class MergeCancellationException : RuntimeException()

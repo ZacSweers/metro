@@ -32,6 +32,70 @@ import org.jetbrains.annotations.TestOnly
 
 class MetroSortTest : TraceScope by TraceScope.noop() {
   @Test
+  fun metroSortChecksForCancellation() {
+    val adjacency = sortedMapOf<String, SortedSet<String>>()
+    repeat(300) { index -> adjacency[index.toString()] = sortedSetOf() }
+    var checks = 0
+
+    assertFailsWith<TestCancellationException> {
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { _, _ -> false },
+        onCycle = { fail("cycle") },
+        ensureActive = {
+          if (++checks == 2) throw TestCancellationException()
+        },
+      )
+    }
+    assertEquals(2, checks)
+  }
+
+  @Test
+  fun adjacencyBuildChecksForCancellation() {
+    val bindings = MutableScatterMap<String, Any>()
+    repeat(300) { index -> bindings[index.toString()] = Any() }
+    var checks = 0
+
+    assertFailsWith<TestCancellationException> {
+      buildFullAdjacency(
+        map = bindings,
+        sourceToTarget = { emptyList() },
+        ensureActive = {
+          if (++checks == 2) throw TestCancellationException()
+        },
+        onMissing = { _, _ -> fail("missing") },
+      )
+    }
+    assertEquals(2, checks)
+  }
+
+  @Test
+  fun candidateSortingChecksForCancellation() {
+    val adjacency = sortedMapOf<String, SortedSet<String>>()
+    repeat(300) { index ->
+      adjacency[index.toString()] = sortedSetOf(((index + 1) % 300).toString())
+    }
+    var sortingStarted = false
+
+    assertFailsWith<TestCancellationException> {
+      metroSort(
+        fullAdjacency = adjacency,
+        isDeferrable = { _, _ -> true },
+        onCycle = { fail("cycle") },
+        isImplicitlyDeferrable = {
+          sortingStarted = true
+          false
+        },
+        ensureActive = {
+          if (sortingStarted) throw TestCancellationException()
+        },
+      )
+    }
+
+    assertTrue(sortingStarted)
+  }
+
+  @Test
   fun emptyEdges() {
     val unsorted = listOf("a", "b", "c")
     val sorted = listOf("a", "b", "c")
@@ -618,6 +682,8 @@ class MetroSortTest : TraceScope by TraceScope.noop() {
   }
 }
 
+private class TestCancellationException : RuntimeException()
+
 /**
  * Returns a new list where each element is preceded by its results in [sourceToTarget]. The first
  * element will return no values in [sourceToTarget].
@@ -662,7 +728,7 @@ private fun <T : Comparable<T>> Iterable<T>.topologicalSort(
         put(key, Any())
       }
     }
-  val fullAdjacency = buildFullAdjacency(fakeMap, sourceToTarget, onMissing)
+  val fullAdjacency = buildFullAdjacency(fakeMap, sourceToTarget, onMissing = onMissing)
   val topology = with(TraceScope.noop()) { metroSort(fullAdjacency, isDeferrable, onCycle) }
   return topology.sortedKeys
 }
