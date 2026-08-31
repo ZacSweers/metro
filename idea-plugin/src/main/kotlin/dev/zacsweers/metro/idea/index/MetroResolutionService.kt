@@ -94,13 +94,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
@@ -151,10 +151,9 @@ class MetroResolutionService(
       ): Boolean = size > MAX_CACHED_INDEXES
     }
 
-  private val mutableIndexBuildProgress = MutableStateFlow<IndexBuildProgress?>(null)
   /** Latest progress of the coordinator's current index build. */
-  internal val indexBuildProgress: StateFlow<IndexBuildProgress?> =
-    mutableIndexBuildProgress.asStateFlow()
+  internal val indexBuildProgress: StateFlow<IndexBuildProgress?>
+    field: MutableStateFlow<IndexBuildProgress?> = MutableStateFlow(null)
   /** Broadcasts refresh signals to all active tool-window listeners. */
   private val indexChanges =
     MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -311,7 +310,7 @@ class MetroResolutionService(
   /** Processes resolution requests in priority order. */
   private suspend fun resolutionCoordinator() {
     try {
-      for (unused in ingress.wakeups) {
+      ingress.wakeups.consumeEach {
         drainCoordinatorEvents()
         while (!isDisposed && !project.isDisposed && hasRunnableCoordinatorWork()) {
           val coordinatorMetadataMayHaveChanged =
@@ -462,13 +461,7 @@ class MetroResolutionService(
               bundle.anchorsAreCurrent(event.modificationStamp) &&
               completedFilePresentationAnchorBundles.none { it.key == event.key }
           ) {
-            if (
-              pending != null &&
-                pending.baseBundle === event.baseBundle &&
-                pending.modificationStamp == event.modificationStamp
-            ) {
-              pendingFilePresentationAnchorRequests.remove(event.key)
-            }
+            pendingFilePresentationAnchorRequests.remove(event.key)
             completedFilePresentationAnchorBundles +=
               CompletedFilePresentationAnchorBundle(
                 event.index,
@@ -606,7 +599,7 @@ class MetroResolutionService(
       readAction {
         reconcileProjectInputs()
       }
-    } catch (exception: ProcessCanceledException) {
+    } catch (_: ProcessCanceledException) {
       projectInputsPending = true
       yield()
     } catch (exception: CancellationException) {
@@ -712,8 +705,8 @@ class MetroResolutionService(
     key: FilePresentationKey,
     bundle: FilePresentationBundle,
   ): Boolean {
-    if (!isPresentationIndexPublished(index)) return false
-    return publishedResolution.value.filePresentationBundles[key] === bundle
+    return isPresentationIndexPublished(index) &&
+      publishedResolution.value.filePresentationBundles[key] === bundle
   }
 
   private fun completeCoordinatorBarriers() {
@@ -980,9 +973,18 @@ class MetroResolutionService(
       try {
         val capturedInvalidations = capturePendingInvalidations()
         smartReadAction(project) {
-          val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
+          val targets =
+            resolutionTargets(
+              if (manualRequest != null) {
+                null
+              } else {
+                demandedModules
+              }
+            )
           if (manualRequest != null) {
-            for (target in targets) demandedModules += target.modules
+            for ((_, modules) in targets) {
+              demandedModules += modules
+            }
           }
           if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
             throw ResolutionCandidateSupersededException()
@@ -1000,7 +1002,7 @@ class MetroResolutionService(
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
-      } catch (exception: ProcessCanceledException) {
+      } catch (_: ProcessCanceledException) {
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
@@ -1017,7 +1019,7 @@ class MetroResolutionService(
       try {
         currentCoroutineContext().ensureActive()
         val builtIndexes =
-          buildMap<SnapshotKey, BindingIndex>(candidate.buildersByKey.size) {
+          buildMap(candidate.buildersByKey.size) {
             for ((key, builder) in candidate.buildersByKey) {
               if (
                 resolutionCandidateIsSuperseded(
@@ -1038,7 +1040,7 @@ class MetroResolutionService(
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
-      } catch (exception: ProcessCanceledException) {
+      } catch (_: ProcessCanceledException) {
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
@@ -1095,8 +1097,7 @@ class MetroResolutionService(
         graphBrowserRefreshRevision =
           if (manualRequest != null) candidate.semanticRevision
           else previous.graphBrowserRefreshRevision,
-        manualStaleNotificationSent =
-          if (manualRequest != null) false else previous.manualStaleNotificationSent,
+        manualStaleNotificationSent = manualRequest == null && previous.manualStaleNotificationSent,
       )
     }
     if (published == null) {
@@ -1226,8 +1227,8 @@ class MetroResolutionService(
   }
 
   private fun isPresentationIndexPublished(index: BindingIndex): Boolean {
-    if (index === BindingIndex.EMPTY || isDisposed || project.isDisposed) return false
-    return publishedResolution.value.presentation.contains(index)
+    return !(index === BindingIndex.EMPTY || isDisposed || project.isDisposed) &&
+      publishedResolution.value.presentation.contains(index)
   }
 
   private fun retainPublishedFilePresentationBundles() {
@@ -1448,6 +1449,7 @@ class MetroResolutionService(
     }
   }
 
+  /** Reads cached data first, then applies the request mode's scheduling and waiting behavior. */
   private fun index(module: Module, requestMode: IndexRequestMode): BindingIndex {
     val publication = publishedResolution.value
     when (requestMode) {
@@ -1491,8 +1493,6 @@ class MetroResolutionService(
     val projectStateService = project.service<MetroIdeProjectService>()
     val moduleState =
       when (requestMode) {
-        IndexRequestMode.STALE_CACHE_ONLY -> return publication.presentation.index(module)
-        IndexRequestMode.CACHE_ONLY -> projectStateService.currentStateOrSchedule(module)
         IndexRequestMode.AUTOMATIC_BACKGROUND ->
           projectStateService.currentStateOrSchedule(
             module,
@@ -1504,13 +1504,12 @@ class MetroResolutionService(
             retryExplicitIndexAfterStateWarmup,
           )
         IndexRequestMode.SYNCHRONOUS -> projectStateService.state(module)
+        else -> projectStateService.currentStateOrSchedule(module)
       } ?: return BindingIndex.EMPTY
     if (!moduleState.isEnabled) return BindingIndex.EMPTY
     if (requestMode == IndexRequestMode.CACHE_ONLY) return BindingIndex.EMPTY
 
     return when (requestMode) {
-      IndexRequestMode.CACHE_ONLY,
-      IndexRequestMode.STALE_CACHE_ONLY -> BindingIndex.EMPTY
       IndexRequestMode.AUTOMATIC_BACKGROUND -> {
         scheduleBuild(module, IndexBuildIntent.AUTOMATIC)
         BindingIndex.EMPTY
@@ -1519,7 +1518,7 @@ class MetroResolutionService(
         scheduleBuild(module, IndexBuildIntent.EXPLICIT)
         BindingIndex.EMPTY
       }
-      IndexRequestMode.SYNCHRONOUS -> {
+      else -> {
         val application = ApplicationManager.getApplication()
         val staleIndex = publication.current.index(module)
         val classificationPending =
@@ -1725,7 +1724,7 @@ class MetroResolutionService(
     val compilerSettingsChanged =
       previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
     val fingerprintChanged =
-      compilerSettingsChanged && previous!!.moduleFingerprints != moduleFingerprints()
+      compilerSettingsChanged && previous.moduleFingerprints != moduleFingerprints()
     val candidateInvalidations =
       if (fingerprintChanged) {
         capturedInvalidations.copy(semanticRevision = capturedInvalidations.semanticRevision + 1)
@@ -1754,7 +1753,7 @@ class MetroResolutionService(
           progress,
         )
       } else {
-        incremental(previous!!, inputs, candidateInvalidations, progress)
+        incremental(previous, inputs, candidateInvalidations, progress)
       }
     if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, inputs)) {
       throw ResolutionCandidateSupersededException()
@@ -1775,12 +1774,11 @@ class MetroResolutionService(
     val buildersByKey = linkedMapOf<SnapshotKey, BindingIndexBuilder>()
     val keysByModule = linkedMapOf<Module, SnapshotKey>()
     val declarationSignatureFiles = finalizedSource.shardOrder.toSet()
-    for (target in targets) {
+    for ((key, modules) in targets) {
       ProgressManager.checkCanceled()
       if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, inputs)) {
         throw ResolutionCandidateSupersededException()
       }
-      val key = target.key
       val library =
         if (key.resolveFromLibraries) {
           progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
@@ -1804,7 +1802,7 @@ class MetroResolutionService(
         }
       indexBuilder.captureResolutionInputs(declarationSignatureFiles)
       buildersByKey[key] = indexBuilder
-      for (module in target.modules) {
+      for (module in modules) {
         keysByModule[module] = key
       }
     }
@@ -2551,18 +2549,20 @@ class MetroResolutionService(
       fun appendDeclarations(declarations: List<KtDeclaration>, owner: String) {
         for (declaration in declarations) {
           ProgressManager.checkCanceled()
-          when {
-            declaration is KtTypeAlias -> {
+          when (declaration) {
+            is KtTypeAlias -> {
               append('\n')
               append(owner)
               append(declaration.text)
             }
-            declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD) -> {
+
+            is KtProperty if declaration.hasModifier(KtTokens.CONST_KEYWORD) -> {
               append('\n')
               append(owner)
               append(declaration.text)
             }
-            declaration is KtClassOrObject -> {
+
+            is KtClassOrObject -> {
               appendDeclarations(declaration.declarations, "$owner${declaration.name}.")
             }
           }
@@ -2607,15 +2607,16 @@ class MetroResolutionService(
     event: PsiTreeChangeEvent,
     oldTreeMayDisappear: Boolean,
   ): Boolean {
-    if (!oldTreeMayDisappear) return false
-    return when (val removed = event.oldChild ?: event.child) {
-      // The background classifier checks files and declaration containers.
-      is KtFile,
-      is KtClassOrObject -> false
-      is KtTypeAlias -> true
-      is KtProperty -> removed.hasModifier(KtTokens.CONST_KEYWORD)
-      else -> false
-    }
+    return oldTreeMayDisappear &&
+      when (val removed = event.oldChild ?: event.child) {
+        // The background classifier checks files and declaration containers.
+        is KtFile,
+        is KtClassOrObject -> false
+
+        is KtTypeAlias -> true
+        is KtProperty -> removed.hasModifier(KtTokens.CONST_KEYWORD)
+        else -> false
+      }
   }
 
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
@@ -2628,16 +2629,17 @@ class MetroResolutionService(
 
   private fun hasSharedSemanticDeclarations(declaration: KtDeclaration): Boolean {
     // Consts commonly live inside objects and companion objects, so recurse through all nesting.
-    return when {
-      declaration is KtTypeAlias -> true
-      declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD) -> true
-      declaration is KtClassOrObject -> {
+    return when (declaration) {
+      is KtTypeAlias -> true
+      is KtProperty if declaration.hasModifier(KtTokens.CONST_KEYWORD) -> true
+      is KtClassOrObject -> {
         for (nested in declaration.declarations) {
           ProgressManager.checkCanceled()
           if (hasSharedSemanticDeclarations(nested)) return true
         }
         false
       }
+
       else -> false
     }
   }
@@ -2932,17 +2934,17 @@ class MetroResolutionService(
 
   /** Serial EDT delivery preserves the manual browser's single stale notification per refresh. */
   private suspend fun deliverIndexChanges() {
-    for (unused in notificationRequests) {
+    notificationRequests.consumeEach {
       if (isDisposed) return
       // Service disposal and scope cancellation own the consumer's lifetime.
-      if (project.isDisposed) continue
-      if (indexChanges.subscriptionCount.value == 0) continue
+      if (project.isDisposed) return@consumeEach
+      if (indexChanges.subscriptionCount.value == 0) return@consumeEach
       if (isManualGraphDataRefreshRequired) {
         val previous = publishedResolution.getAndUpdate { publication ->
           if (publication.isDisposed) publication
           else publication.copy(manualStaleNotificationSent = true)
         }
-        if (previous.isDisposed || previous.manualStaleNotificationSent) continue
+        if (previous.isDisposed || previous.manualStaleNotificationSent) return@consumeEach
       }
       indexChanges.emit(Unit)
     }
@@ -2951,7 +2953,7 @@ class MetroResolutionService(
   /** Publishes the current build progress for UI collectors. */
   private fun publishIndexBuildProgress(progress: IndexBuildProgress?) {
     if (isDisposed || project.isDisposed) return
-    mutableIndexBuildProgress.value = progress
+    indexBuildProgress.value = progress
   }
 
   /** Coalesces write-action events so an open graph window can refresh or show stale status. */
@@ -2976,7 +2978,7 @@ class MetroResolutionService(
     notificationRequests.close()
     notificationScope.cancel()
     declarationAnchorSignatures.clear()
-    mutableIndexBuildProgress.value = null
+    indexBuildProgress.value = null
   }
 
   private companion object {
@@ -3566,6 +3568,10 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
     }
   }
 
+  /**
+   * Preserves surviving file order and appends new files. Reuses the library summary when lookup
+   * inputs are unchanged.
+   */
   fun snapshot(
     inputs: IndexInputs,
     moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
@@ -3625,6 +3631,7 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
     )
   }
 
+  /** Returns null for staged removals and uses the previous snapshot for unchanged files. */
   private fun currentShard(file: VirtualFile): FileShard? {
     if (shardChanges.containsKey(file)) return shardChanges[file]
     return previous?.shards?.get(file)
@@ -4043,6 +4050,7 @@ private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
 
   operator fun get(file: VirtualFile): V? = buckets[bucketIndex(file)]?.get(file)
 
+  /** Applies replacements and null removals while sharing unchanged buckets. */
   fun withChanges(changes: Map<VirtualFile, V?>): PartitionedFileMap<V> {
     if (changes.isEmpty()) return this
 
@@ -4063,6 +4071,7 @@ private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
     return PartitionedFileMap(updatedBuckets)
   }
 
+  /** Mixes high hash bits into the bucket selection. [BUCKET_COUNT] must be a power of two. */
   private fun bucketIndex(file: VirtualFile): Int {
     val hash = file.hashCode()
     return (hash xor (hash ushr 16)) and (BUCKET_COUNT - 1)
