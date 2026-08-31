@@ -19,13 +19,16 @@ import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
-import dev.zacsweers.metro.idea.index.ConsumerGraphContexts
+import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingIndexBuilder
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.sourcePointerIdentity
+import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
@@ -90,6 +93,50 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     } finally {
       super.tearDown()
     }
+  }
+
+  fun testResolutionInputsShareFileOrdinalsAcrossIsolatedModuleViews() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryService.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.Inject
+
+        @Inject class LibraryService
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.DependencyGraph
+        import lib.LibraryService
+
+        @DependencyGraph
+        interface AppGraph {
+          val service: LibraryService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val inputs = index.resolutionInputs
+    val appView = checkNotNull(inputs.moduleViewFor(appFile.virtualFile))
+    val libraryView = checkNotNull(inputs.moduleViewFor(libraryFile.virtualFile))
+
+    assertSame(inputs.fileOrdinalTable, appView.fileOrdinalTable)
+    assertSame(inputs.fileOrdinalTable, libraryView.fileOrdinalTable)
+    assertFalse(appView.sharesVisibilityArrayWith(libraryView))
+    assertTrue(appView.resolutionScope.contains(libraryFile))
+    assertFalse(libraryView.resolutionScope.contains(appFile))
   }
 
   fun testContributedInterfacesProvideInheritedRootsAcrossModules() {
@@ -991,28 +1038,50 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         isClassContribution = true,
         hintAvailability = availability,
       )
-    val restrictedIndex =
-      BindingIndex(
-        bindings = baseIndex.bindings + hiddenBinding,
-        consumers = baseIndex.consumers,
-        graphs = baseIndex.graphs,
-        contributions =
-          baseIndex.contributions +
-            ContributionEntry(
-              pointerManager.createSmartPsiElementPointer(hiddenService),
-              friendGraph.scopeKeys,
-              hiddenServiceId,
-              availability,
-            ) +
-            ContributionEntry(
-              pointerManager.createSmartPsiElementPointer(hiddenContainer),
-              friendGraph.scopeKeys,
-              hiddenContainerId,
-              availability,
-            ),
-        assistedSites = baseIndex.assistedSites,
-        bindingContainers = baseIndex.bindingContainers,
-      )
+    val restrictedBindings = baseIndex.bindings + hiddenBinding
+    val restrictedContributions =
+      baseIndex.contributions +
+        ContributionEntry(
+          pointerManager.createSmartPsiElementPointer(hiddenService),
+          friendGraph.scopeKeys,
+          hiddenServiceId,
+          availability,
+        ) +
+        ContributionEntry(
+          pointerManager.createSmartPsiElementPointer(hiddenContainer),
+          friendGraph.scopeKeys,
+          hiddenContainerId,
+          availability,
+        )
+    val capturedBindingSourceIdentities =
+      IdentityHashMap<KaBinding, BindingIndex.SourcePointerIdentity>(restrictedBindings.size)
+    val bindingsWithNestedGraphEntries = buildList {
+      addAll(restrictedBindings)
+      for (graph in baseIndex.graphs) {
+        for (contribution in graph.contributedInterfaces) addAll(contribution.bindings)
+      }
+      for (dynamicGraph in baseIndex.dynamicGraphs) addAll(dynamicGraph.containerInputs)
+    }
+    for (binding in bindingsWithNestedGraphEntries) {
+      val sourceIdentity = sourcePointerIdentity(binding.pointer) ?: continue
+      capturedBindingSourceIdentities[binding] = sourceIdentity
+    }
+    val hiddenBindingSourceIdentity = checkNotNull(capturedBindingSourceIdentities[hiddenBinding])
+    val restrictedBuilder =
+      BindingIndexBuilder().apply {
+        bindings += restrictedBindings
+        consumers += baseIndex.consumers
+        graphs += baseIndex.graphs
+        contributions += restrictedContributions
+        assistedSites += baseIndex.assistedSites
+        bindingContainers += baseIndex.bindingContainers
+        dynamicGraphs += baseIndex.dynamicGraphs
+        resolutionInputs = baseIndex.resolutionInputs
+        this.capturedBindingSourceIdentities = capturedBindingSourceIdentities
+      }
+    val restrictedIndex = restrictedBuilder.build()
+    capturedBindingSourceIdentities.clear()
+    assertEquals(hiddenBindingSourceIdentity, restrictedIndex.sourceIdentityFor(hiddenBinding))
 
     val unrelatedGraph = restrictedIndex.graphs.single { it.name == "UnrelatedGraph" }
     val friendContext =
@@ -1405,7 +1474,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           }
         val owners =
           checkNotNull(
-            ConsumerGraphContexts(index.graphs).includedContainerPointers(includedConsumer)
+            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer)
           )
         assertEquals(
           setOf(appModule, bridgeModule),
@@ -1674,7 +1743,10 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           index.consumerEntryAt(ordinaryFile.declarationsIncludingNested().property("factory"))
         )
       val ordinaryResolution = index.resolveConsumer(ordinaryConsumer)
-      assertEquals(setOf(ordinaryContext), ordinaryResolution.perContext.keys)
+      assertEquals(
+        ordinaryContext.path,
+        ordinaryResolution.perContext.keys.single().path,
+      )
       assertTrue(ordinaryResolution.candidateBindings.isEmpty())
 
       val validation = fixture.project.service<MetroGraphValidationService>()
@@ -2021,7 +2093,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
           }
         val owners =
           checkNotNull(
-            ConsumerGraphContexts(index.graphs).includedContainerPointers(includedConsumer)
+            ConsumerOwnershipBundle.build(index).includedContainerPointers(includedConsumer)
           )
         assertEquals("Two graphs in the app module should share one owner", 2, owners.size)
         val ownerModules =

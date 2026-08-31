@@ -17,6 +17,7 @@ import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
@@ -31,7 +32,6 @@ import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -63,7 +63,7 @@ internal class LibraryIndexPostProcessor(
   private val graphs: List<KaGraphDeclaration>,
   private val contributions: MutableList<ContributionEntry>,
   private val sourceFactoryUseSites: SourceAssistedFactoryUseSites,
-  private val consumerGraphContexts: ConsumerGraphContexts,
+  private val consumerOwnership: ConsumerOwnershipBundle,
   private val initialSourceFactories: SourceFactoryResolution,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
@@ -78,7 +78,7 @@ internal class LibraryIndexPostProcessor(
         project,
         bindings,
         consumers,
-        consumerGraphContexts,
+        consumerOwnership,
         initialSourceFactories,
       )
     val resumed = sourceFactories.resumeBoundaries()
@@ -353,9 +353,9 @@ internal class LibraryIndexPostProcessor(
       if (consumer.multibindingId != null) {
         continue
       }
-      val containerOwners = consumerGraphContexts.owningGraphPointers(consumer)
+      val containerOwners = consumerOwnership.owningGraphPointers(consumer)
       if (containerOwners == null) {
-        val context = consumerGraphContexts.pointer(consumer).element ?: continue
+        val context = consumerOwnership.pointer(consumer).element ?: continue
         queue += LibraryInjectRequest(consumer.key, classId, context, direct = true)
       } else {
         for (owner in containerOwners) {
@@ -592,49 +592,134 @@ internal fun sourceAssistedFactoryUseSites(
   project: Project,
   bindings: List<KaBinding>,
   consumers: List<ConsumerEntry>,
-  graphs: List<KaGraphDeclaration>,
-  graphContexts: ConsumerGraphContexts = ConsumerGraphContexts(graphs),
+  consumerOwnership: ConsumerOwnershipBundle,
 ): SourceAssistedFactoryUseSites {
-  return SourceAssistedFactoryPostProcessor(project, bindings, consumers, graphContexts)
+  return SourceAssistedFactoryPostProcessor(project, bindings, consumers, consumerOwnership)
     .resolveInitial()
     .factoryUseSites
 }
 
-/** Inherited callables resolve from their exact owning graph, not the upstream declaration file. */
+/** Graph owners captured once for dependency resolution in the owning modules. */
 @OptIn(KaPlatformInterface::class)
-internal class ConsumerGraphContexts(private val index: BindingIndex) {
-  constructor(
-    graphs: List<KaGraphDeclaration>
-  ) : this(BindingIndex(emptyList(), emptyList(), graphs, emptyList()))
+internal class ConsumerOwnershipBundle
+private constructor(
+  private val pointersByGraphId: Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>>,
+  private val pointersByIncludedContainer:
+    Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>>,
+  private val graphOwnersByConsumer: Map<ConsumerEntry, FrozenConsumerOwners>,
+) {
+  private constructor(
+    state: ConsumerOwnershipState
+  ) : this(
+    state.pointersByGraphId,
+    state.pointersByIncludedContainer,
+    state.graphOwnersByConsumer,
+  )
 
-  private val graphs = index.graphs
-  private val queryContextsByGraphId =
-    ConcurrentHashMap<GraphDeclarationId, List<GraphQueryContext>>()
-  private val graphsById: Map<GraphDeclarationId, KaGraphDeclaration> by lazy {
-    graphs.associateBy { it.declarationId }
+  fun pointer(consumer: ConsumerEntry): SmartPsiElementPointer<out KtElement> {
+    val graphId = consumer.graphId ?: return consumer.pointer
+    return pointersByGraphId[graphId] ?: consumer.pointer
   }
-  private val rootPointersByGraphId:
-    Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>> by lazy {
-    if (graphs.none { it.isExtension }) {
-      emptyMap()
-    } else {
-      // Graph paths already encode exact same-FQN parent identities. Reuse that implementation
-      // rather than maintaining a second ancestry walk for source/classpath resolution.
-      buildMap {
-        for (graph in graphs) {
-          if (!graph.isExtension) continue
-          val roots = index.contextsFor(graph).map { it.rootGraph.pointer }.distinct()
-          if (roots.isNotEmpty()) put(graph.declarationId, roots)
-        }
+
+  /** Returns the graph roots used to resolve an included container, with one entry per module. */
+  fun includedContainerPointers(
+    consumer: ConsumerEntry
+  ): List<SmartPsiElementPointer<out KtElement>>? {
+    if (consumer.graphId != null) return null
+    val containerKey = consumer.includedContainerKey ?: return null
+    return pointersByIncludedContainer[containerKey]
+  }
+
+  /**
+   * Returns graph contexts for resolving [consumer], or null to use [pointer]. An empty list means
+   * the consumer has no active graph owner.
+   */
+  fun owningGraphPointers(consumer: ConsumerEntry): List<SmartPsiElementPointer<out KtElement>>? {
+    val graphId = consumer.graphId
+    if (graphId != null) {
+      if (graphId !in pointersByGraphId) return emptyList()
+      return when (val owners = graphOwnersByConsumer[consumer]) {
+        null -> null
+        FrozenConsumerOwners.None -> emptyList()
+        is FrozenConsumerOwners.GraphRoots -> owners.pointers
+      }
+    }
+    return includedContainerPointers(consumer)
+  }
+
+  companion object {
+    fun build(index: BindingIndex): ConsumerOwnershipBundle {
+      return ConsumerOwnershipBundle(buildState(index))
+    }
+
+    private fun buildState(index: BindingIndex): ConsumerOwnershipState {
+      return index.withResolutionSession { session ->
+        ConsumerOwnershipBuilder(index, session).build()
       }
     }
   }
-  private val pointersByGraphId:
-    Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>> by lazy {
-    graphs.associate { it.declarationId to it.pointer }
+}
+
+@OptIn(KaPlatformInterface::class)
+private class ConsumerOwnershipBuilder(
+  private val index: BindingIndex,
+  private val session: BindingResolutionSession,
+) {
+  private val graphs = index.graphs
+  private val graphsById = graphs.associateBy { it.declarationId }
+  private val pointersByGraphId = graphs.associate { it.declarationId to it.pointer }
+
+  fun build(): ConsumerOwnershipState {
+    val rootPointersByGraphId = buildRootPointersByGraphId()
+    val pointersByIncludedContainer = buildIncludedContainerPointers(rootPointersByGraphId)
+    val graphOwnersByConsumer = linkedMapOf<ConsumerEntry, FrozenConsumerOwners>()
+    val consumersByGraphId = linkedMapOf<GraphDeclarationId, MutableList<ConsumerEntry>>()
+    for (consumer in index.consumers) {
+      ProgressManager.checkCanceled()
+      val graphId = consumer.graphId ?: continue
+      consumersByGraphId.getOrPut(graphId) { mutableListOf() } += consumer
+    }
+    for ((graphId, consumers) in consumersByGraphId) {
+      ProgressManager.checkCanceled()
+      val graph = graphsById[graphId]
+      if (graph == null) {
+        for (consumer in consumers) graphOwnersByConsumer[consumer] = FrozenConsumerOwners.None
+        continue
+      }
+      val contexts = session.contextsFor(graph).mapNotNull(session::queryContext)
+      for (consumer in consumers) {
+        ProgressManager.checkCanceled()
+        val owners = ownerPointers(consumer, graphId, contexts)
+        if (owners != null) graphOwnersByConsumer[consumer] = owners
+      }
+    }
+    ProgressManager.checkCanceled()
+    return ConsumerOwnershipState(
+      pointersByGraphId.toMap(),
+      pointersByIncludedContainer,
+      graphOwnersByConsumer.toMap(),
+    )
   }
-  private val pointersByIncludedContainer:
-    Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>> by lazy {
+
+  private fun buildRootPointersByGraphId():
+    Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>> {
+    val needsExtensionRoots = graphs.any {
+      it.isExtension && it.includedBindingContainers.isNotEmpty()
+    }
+    if (!needsExtensionRoots) return emptyMap()
+    return buildMap {
+      for (graph in graphs) {
+        ProgressManager.checkCanceled()
+        if (!graph.isExtension || graph.includedBindingContainers.isEmpty()) continue
+        val roots = session.contextsFor(graph).map { it.rootGraph.pointer }.distinct()
+        if (roots.isNotEmpty()) put(graph.declarationId, roots)
+      }
+    }
+  }
+
+  private fun buildIncludedContainerPointers(
+    rootPointersByGraphId: Map<GraphDeclarationId, List<SmartPsiElementPointer<out KtElement>>>
+  ): Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>> {
     val pointers = linkedMapOf<KaTypeKey, MutableList<SmartPsiElementPointer<out KtElement>>>()
     val modulesByContainer = HashMap<KaTypeKey, MutableSet<KaModule>>()
     for (graph in graphs) {
@@ -652,50 +737,42 @@ internal class ConsumerGraphContexts(private val index: BindingIndex) {
         }
       }
     }
-    pointers
+    return pointers.mapValues { (_, values) -> values.toList() }
   }
 
-  fun pointer(consumer: ConsumerEntry): SmartPsiElementPointer<out KtElement> {
-    val graphId = consumer.graphId ?: return consumer.pointer
-    return pointersByGraphId[graphId] ?: consumer.pointer
-  }
-
-  /** Factory-input shards are shared, so every graph including their exact key can own a site. */
-  fun includedContainerPointers(
-    consumer: ConsumerEntry
-  ): List<SmartPsiElementPointer<out KtElement>>? {
-    if (consumer.graphId != null) return null
-    val containerKey = consumer.includedContainerKey ?: return null
-    return pointersByIncludedContainer[containerKey]
-  }
-
-  /** Null is the allocation-free ordinary single-owner path used by [pointer]. */
-  fun owningGraphPointers(consumer: ConsumerEntry): List<SmartPsiElementPointer<out KtElement>>? {
-    val graphId = consumer.graphId
-    if (graphId != null) {
-      val graph = graphsById[graphId] ?: return emptyList()
-      val contexts =
-        queryContextsByGraphId.computeIfAbsent(graphId) {
-          index.contextsFor(graph).mapNotNull(index::queryContext)
-        }
-      if (contexts.size == 1) {
-        val context = contexts.single()
-        if (!index.isConsumerInContext(consumer, context)) return emptyList()
-        // Keep the normal one-graph owner path allocation-free after checking actual membership.
-        if (context.graphContext.rootGraph.declarationId == graphId) return null
-        return listOf(context.graphContext.rootGraph.pointer)
-      }
-      val owners = mutableListOf<SmartPsiElementPointer<out KtElement>>()
-      val modules = mutableSetOf<KaModule>()
-      for (context in contexts) {
-        ProgressManager.checkCanceled()
-        if (!index.isConsumerInContext(consumer, context)) continue
-        if (modules.add(context.graphModule)) owners += context.graphContext.rootGraph.pointer
-      }
-      return owners
+  private fun ownerPointers(
+    consumer: ConsumerEntry,
+    graphId: GraphDeclarationId,
+    contexts: List<GraphQueryContext>,
+  ): FrozenConsumerOwners? {
+    if (contexts.size == 1) {
+      val context = contexts.single()
+      if (!session.isConsumerInContext(consumer, context)) return FrozenConsumerOwners.None
+      if (context.graphContext.rootGraph.declarationId == graphId) return null
+      return FrozenConsumerOwners.GraphRoots(listOf(context.graphContext.rootGraph.pointer))
     }
-    return includedContainerPointers(consumer)
+    val owners = mutableListOf<SmartPsiElementPointer<out KtElement>>()
+    val modules = mutableSetOf<KaModule>()
+    for (context in contexts) {
+      ProgressManager.checkCanceled()
+      if (!session.isConsumerInContext(consumer, context)) continue
+      if (modules.add(context.graphModule)) owners += context.graphContext.rootGraph.pointer
+    }
+    if (owners.isEmpty()) return FrozenConsumerOwners.None
+    return FrozenConsumerOwners.GraphRoots(owners)
   }
+}
+
+private class ConsumerOwnershipState(
+  val pointersByGraphId: Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>>,
+  val pointersByIncludedContainer: Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>>,
+  val graphOwnersByConsumer: Map<ConsumerEntry, FrozenConsumerOwners>,
+)
+
+private sealed interface FrozenConsumerOwners {
+  data object None : FrozenConsumerOwners
+
+  class GraphRoots(val pointers: List<SmartPsiElementPointer<out KtElement>>) : FrozenConsumerOwners
 }
 
 /** Session-free source factory groups that remain reusable when equivalent shards are rebuilt. */

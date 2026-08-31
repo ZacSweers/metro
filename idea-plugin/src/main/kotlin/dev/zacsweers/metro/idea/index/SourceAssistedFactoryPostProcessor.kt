@@ -67,7 +67,7 @@ internal class SourceAssistedFactoryPostProcessor(
   private val project: Project,
   bindings: List<KaBinding>,
   private val consumers: List<ConsumerEntry>,
-  private val graphContexts: ConsumerGraphContexts,
+  private val consumerOwnership: ConsumerOwnershipBundle,
   previous: SourceFactoryResolution? = null,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
@@ -133,9 +133,9 @@ internal class SourceAssistedFactoryPostProcessor(
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       if (consumer.multibindingId != null) continue
-      val owners = graphContexts.owningGraphPointers(consumer)
+      val owners = consumerOwnership.owningGraphPointers(consumer)
       if (owners == null) {
-        enqueue(consumer.key, graphContexts.pointer(consumer), direct = true)
+        enqueue(consumer.key, consumerOwnership.pointer(consumer), direct = true)
       } else {
         for (owner in owners) enqueue(consumer.key, owner, direct = true)
       }

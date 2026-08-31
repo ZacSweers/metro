@@ -207,7 +207,10 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
       checkNotNull(index.consumerEntryAt(file.declarationsIncludingNested().property("value")))
 
     assertSame(parentContext.dynamicGraph, childContext.dynamicGraph)
-    assertEquals(listOf(childContext), index.extensionContextsOf(parentContext))
+    assertEquals(
+      listOf(childContext.path),
+      index.extensionContextsOf(parentContext).map { it.path },
+    )
     assertEquals(listOf("provideFake"), index.providerNames(childConsumer, childContext))
 
     val results =

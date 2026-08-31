@@ -2,23 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
-import androidx.collection.MutableScatterMap
-import androidx.collection.ScatterMap
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
-import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.applyExcludesAndReplaces
 import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
 import dev.zacsweers.metro.compiler.graph.computeMergePlan
-import dev.zacsweers.metro.idea.metroIdeState
+import dev.zacsweers.metro.idea.checkCanceledEvery
 import java.util.IdentityHashMap
-import java.util.concurrent.ConcurrentHashMap
-import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
-import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -28,301 +21,25 @@ import org.jetbrains.kotlin.psi.KtElement
  * Resolution starts with project-wide key matches, then filters those candidates through each
  * graph's aggregation context for editor features that need graph membership.
  */
-internal class BindingIndex(
-  val bindings: List<KaBinding>,
-  val consumers: List<ConsumerEntry>,
-  val graphs: List<KaGraphDeclaration>,
-  val contributions: List<ContributionEntry>,
-  val assistedSites: List<AssistedSite> = emptyList(),
-  val bindingContainers: List<BindingContainerEntry> = emptyList(),
-  private val incompleteAssistedFactories:
-    Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> =
-    emptyMap(),
-  val dynamicGraphs: List<DynamicGraphCall> = emptyList(),
-) {
-  private val containersById: ScatterMap<ClassId, List<BindingContainerEntry>> by lazy {
-    bindingContainers.groupToScatter { it.classId }
-  }
+internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
+  val generationToken = data.generationToken
+  val bindings = data.bindings
+  val consumers = data.consumers
+  val graphs = data.graphs
+  val contributions = data.contributions
+  val assistedSites = data.assistedSites
+  val bindingContainers = data.bindingContainers
+  private val incompleteAssistedFactories = data.incompleteAssistedFactories
+  val dynamicGraphs = data.dynamicGraphs
+  internal val resolutionInputs = data.resolutionInputs
+  private val lookups = data.lookups
 
-  private val bindingsByOrigin: ScatterMap<ClassId, List<KaBinding>> by lazy {
-    bindings.groupToScatter { it.originClassId }
-  }
+  /** Creates mutable query state for one operation. Concurrent access is unsupported. */
+  fun createResolutionSession(): BindingResolutionSession = BindingResolutionSession(this)
 
-  private val bindingsByMemberOwner: ScatterMap<ClassId, List<KaBinding>> by lazy {
-    val result = MutableScatterMap<ClassId, MutableList<KaBinding>>()
-    for (binding in bindings) {
-      for (ownerId in binding.memberInjectionOwnerIds) {
-        result.getOrPut(ownerId, ::mutableListOf) += binding
-      }
-    }
-    @Suppress("UNCHECKED_CAST")
-    result as ScatterMap<ClassId, List<KaBinding>>
-  }
-
-  private val graphContexts = ConcurrentHashMap<KaGraphDeclaration, List<GraphContext>>()
-  private val graphQueryContexts = ConcurrentHashMap<GraphContext, GraphQueryContext>()
-  private val ownContainersByContext =
-    ConcurrentHashMap<GraphQueryContext, ConcurrentHashMap<GraphDeclarationId, Set<ClassId>>>()
-  private val replacedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val validationReplacedOriginsByContext =
-    ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val lowerPriorityBindingsByContext =
-    ConcurrentHashMap<GraphQueryContext, Set<KaBinding>>()
-  private val validationLowerPriorityBindingsByContext =
-    ConcurrentHashMap<GraphQueryContext, Set<KaBinding>>()
-  private val removedOriginsByContext = ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val validationRemovedOriginsByContext =
-    ConcurrentHashMap<GraphQueryContext, Set<ClassId>>()
-  private val consumerResolutions = ConcurrentHashMap<ConsumerEntry, ConsumerResolution>()
-  private val nearestFactoryInputOwners =
-    ConcurrentHashMap<GraphContext, NearestFactoryInputOwners>()
-  private val graphCompositions = ConcurrentHashMap<GraphCompositionKey, SelectedGraphComposition>()
-  /** Avoid rebuilding a suffix path for every binding checked in the same immutable query view. */
-  private val graphCompositionsByOwner =
-    ConcurrentHashMap<
-      GraphQueryContext,
-      ConcurrentHashMap<GraphDeclarationId, SelectedGraphComposition>,
-    >()
-  private val contributionSelections =
-    ConcurrentHashMap<GraphCompositionKey, ContributionSelection>()
-
-  private val contributionsByScope: ScatterMap<ClassId, List<ContributionEntry>> by lazy {
-    val result = MutableScatterMap<ClassId, MutableList<ContributionEntry>>()
-    for (contribution in contributions) {
-      for (scope in contribution.scopeKeys) {
-        result.getOrPut(scope, ::mutableListOf) += contribution
-      }
-    }
-    @Suppress("UNCHECKED_CAST")
-    result as ScatterMap<ClassId, List<ContributionEntry>>
-  }
-
-  /** These are exact candidate objects from this immutable index, not declaration-name aliases. */
-  private val contributedBindingOwners: Map<KaBinding, GraphInterfaceContribution> by lazy {
-    val result = IdentityHashMap<KaBinding, GraphInterfaceContribution>()
-    for (graph in graphs) {
-      for (contribution in graph.contributedInterfaces) {
-        for (binding in contribution.bindings) result[binding] = contribution
-      }
-    }
-    result
-  }
-
-  private val graphsByReference: Map<GraphReference, List<KaGraphDeclaration>> by lazy {
-    val result = linkedMapOf<GraphReference, MutableList<KaGraphDeclaration>>()
-    for (graph in graphs) {
-      for (reference in graph.selfReferences) {
-        result.getOrPut(reference, ::mutableListOf) += graph
-      }
-    }
-    result
-  }
-
-  private val dynamicGraphsByTarget: Map<GraphReference, List<DynamicGraphCall>> by lazy {
-    dynamicGraphs.groupBy { it.targetGraph }
-  }
-
-  /** Potential edges only. Their contribution must survive in the eventual parent's root module. */
-  private val potentialParentsByReference: Map<GraphReference, List<KaGraphDeclaration>> by lazy {
-    val result = linkedMapOf<GraphReference, MutableList<KaGraphDeclaration>>()
-    for (graph in graphs) {
-      val references = linkedSetOf<GraphReference>()
-      references += graph.extensionCreations
-      for (contribution in graph.contributedInterfaces) references +=
-        contribution.extensionCreations
-      for (reference in references) result.getOrPut(reference, ::mutableListOf) += graph
-    }
-    result
-  }
-
-  private val allGraphContexts: List<GraphContext> by lazy {
-    graphs.flatMap { graph ->
-      ProgressManager.checkCanceled()
-      contextsFor(graph)
-    }
-  }
-
-  private val contextsByGraphId: ScatterMap<GraphDeclarationId, List<GraphContext>> by lazy {
-    val result = MutableScatterMap<GraphDeclarationId, MutableList<GraphContext>>()
-    for (context in allGraphContexts) {
-      for (graphId in context.graphIds) {
-        result.getOrPut(graphId, ::mutableListOf) += context
-      }
-    }
-    @Suppress("UNCHECKED_CAST")
-    result as ScatterMap<GraphDeclarationId, List<GraphContext>>
-  }
-
-  /** Session-free identities also record whether an inherited declaration is publicly visible. */
-  private val specializedBindingIdentities: Map<SpecializedBindingIdentity, Boolean> by lazy {
-    buildMap {
-      for (binding in bindings) {
-        if (binding is KaBinding.BoundInstance) continue
-        if (binding in contributedBindingOwners) continue
-        val graphId = binding.ownerGraphId ?: continue
-        val identity = pointerIdentity(binding.pointer) ?: continue
-        val specialization =
-          SpecializedBindingIdentity(graphId, identity, binding.javaClass, binding.typeKey)
-        val alreadyPublic = get(specialization) == true
-        put(specialization, alreadyPublic || !binding.isGraphPrivate)
-      }
-    }
-  }
-
-  /** A concrete specialization replaces its raw declaration even when its return key changes. */
-  private val specializedDeclarationIdentities: Set<SpecializedDeclarationIdentity> by lazy {
-    if (specializedBindingIdentities.isEmpty()) {
-      emptySet()
-    } else {
-      buildSet {
-        for (identity in specializedBindingIdentities.keys) {
-          add(
-            SpecializedDeclarationIdentity(
-              identity.graphId,
-              identity.pointer,
-              identity.bindingClass,
-            )
-          )
-        }
-      }
-    }
-  }
-
-  private val contributedSpecializedBindings:
-    Map<SpecializedBindingIdentity, List<KaBinding>> by lazy {
-    val result = linkedMapOf<SpecializedBindingIdentity, MutableList<KaBinding>>()
-    for (binding in contributedBindingOwners.keys) {
-      val owner = binding.ownerGraphId ?: continue
-      val source = pointerIdentity(binding.pointer) ?: continue
-      val identity = SpecializedBindingIdentity(owner, source, binding.javaClass, binding.typeKey)
-      result.getOrPut(identity, ::mutableListOf) += binding
-    }
-    result
-  }
-
-  private val contributedSpecializedDeclarations:
-    Map<SpecializedDeclarationIdentity, List<KaBinding>> by lazy {
-    val result = linkedMapOf<SpecializedDeclarationIdentity, MutableList<KaBinding>>()
-    for (binding in contributedBindingOwners.keys) {
-      val owner = binding.ownerGraphId ?: continue
-      val source = pointerIdentity(binding.pointer) ?: continue
-      val identity = SpecializedDeclarationIdentity(owner, source, binding.javaClass)
-      result.getOrPut(identity, ::mutableListOf) += binding
-    }
-    result
-  }
-
-  /** Raw source callables remain authoritative when their interface was written explicitly. */
-  private val unownedBindingDeclarations: Map<BindingDeclarationIdentity, List<KaBinding>> by lazy {
-    val result = linkedMapOf<BindingDeclarationIdentity, MutableList<KaBinding>>()
-    for (binding in bindings) {
-      if (binding.ownerGraphId != null || binding.containerId == null) continue
-      val source = pointerIdentity(binding.pointer) ?: continue
-      val identity = BindingDeclarationIdentity(source, binding.javaClass, binding.typeKey)
-      result.getOrPut(identity, ::mutableListOf) += binding
-    }
-    result
-  }
-
-  private val contextsByScope: ScatterMap<ClassId, List<GraphContext>> by lazy {
-    val result = MutableScatterMap<ClassId, MutableList<GraphContext>>()
-    for (context in allGraphContexts) {
-      for (scope in context.scopes) {
-        result.getOrPut(scope, ::mutableListOf) += context
-      }
-    }
-    @Suppress("UNCHECKED_CAST")
-    result as ScatterMap<ClassId, List<GraphContext>>
-  }
-
-  // Contributions are keyed solely by multibindingId, mirroring the compiler's
-  // @MultibindingElement qualifier swap. Their element key must not satisfy plain consumers.
-  private val bindingsByKey: ScatterMap<KaTypeKey, List<KaBinding>> by lazy {
-    bindings.groupToScatter { binding ->
-      binding.typeKey.takeIf { binding.multibindingId == null }
-    }
-  }
-
-  private val bindingsByType: ScatterMap<KaTypeSnapshot, List<KaBinding>> by lazy {
-    bindings.groupToScatter { it.typeKey.type }
-  }
-
-  private val assistedFactoriesByTarget:
-    ScatterMap<KaTypeKey, List<KaBinding.AssistedFactory>> by lazy {
-    bindings.filterIsInstance<KaBinding.AssistedFactory>().groupToScatter { it.targetTypeKey }
-  }
-
-  private val consumersByKey: ScatterMap<KaTypeKey, List<ConsumerEntry>> by lazy {
-    consumers.groupToScatter { it.key }
-  }
-
-  private val contributionsByMultibindingId: ScatterMap<String, List<KaBinding>> by lazy {
-    bindings.groupToScatter { it.multibindingId }
-  }
-
-  private val consumersByMultibindingId: ScatterMap<String, List<ConsumerEntry>> by lazy {
-    consumers.groupToScatter { it.multibindingId }
-  }
-
-  private val accessorsByGraph: ScatterMap<GraphDeclarationId, List<ConsumerEntry>> by lazy {
-    consumers.groupToScatter { it.graphId }
-  }
-
-  // PSI-identity lookups for editor features classifying the element under the caret/pass.
-  // Bucketed by the pointers' virtual files (no PSI dereference) so the index never pins PSI
-  // project-wide; only the queried file's bucket dereferences its pointers. Must be accessed in
-  // a read action.
-  private val bindingsByFile: ScatterMap<VirtualFile, List<KaBinding>> by lazy {
-    bindings.groupToScatter { it.pointer.virtualFile }
-  }
-
-  private val consumersByFile: ScatterMap<VirtualFile, List<ConsumerEntry>> by lazy {
-    consumers.groupToScatter { it.pointer.virtualFile }
-  }
-
-  private val specializedConsumerIdentities: Set<SpecializedConsumerIdentity> by lazy {
-    buildSet {
-      for (consumer in consumers) {
-        val graphId = consumer.graphId ?: continue
-        if (consumer.graphRequestKind != null) continue
-        if (consumer.graphContribution != null) continue
-        val identity = pointerIdentity(consumer.pointer) ?: continue
-        add(SpecializedConsumerIdentity(graphId, identity))
-      }
-    }
-  }
-
-  private val contributedSpecializedConsumers:
-    Map<SpecializedConsumerIdentity, List<ConsumerEntry>> by lazy {
-    val result = linkedMapOf<SpecializedConsumerIdentity, MutableList<ConsumerEntry>>()
-    for (consumer in consumers) {
-      if (consumer.graphContribution == null || consumer.graphRequestKind != null) continue
-      val graphId = consumer.graphId ?: continue
-      val source = pointerIdentity(consumer.pointer) ?: continue
-      val identity = SpecializedConsumerIdentity(graphId, source)
-      result.getOrPut(identity, ::mutableListOf) += consumer
-    }
-    result
-  }
-
-  /** Specializations can be discovered independently from several consuming source-file shards. */
-  private val duplicatedAssistedFactoryKeys: Set<KaTypeKey> by lazy {
-    val seen = HashSet<Triple<ClassId?, VirtualFile?, KaTypeKey>>()
-    buildSet {
-      for (binding in bindings) {
-        if (binding !is KaBinding.AssistedFactory) continue
-        val identity = Triple(binding.originClassId, binding.pointer.virtualFile, binding.typeKey)
-        if (!seen.add(identity)) add(binding.typeKey)
-      }
-    }
-  }
-
-  private val graphsByFile: ScatterMap<VirtualFile, List<KaGraphDeclaration>> by lazy {
-    graphs.groupToScatter { it.pointer.virtualFile }
-  }
-
-  private val assistedSitesByFile: ScatterMap<VirtualFile, List<AssistedSite>> by lazy {
-    assistedSites.groupToScatter { it.pointer.virtualFile }
+  /** Creates a session for [block]'s queries. */
+  fun <T> withResolutionSession(block: (BindingResolutionSession) -> T): T {
+    return block(createResolutionSession())
   }
 
   /**
@@ -330,9 +47,15 @@ internal class BindingIndex(
    * the multibinding contributions collected into them.
    */
   fun bindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    val useSiteModule = moduleFor(consumer.pointer.element)
-    val resolutionScope = useSiteModule?.resolutionScope()
-    return visibleBindingsFor(consumer, useSiteModule, resolutionScope)
+    return withResolutionSession { session -> session.bindingsFor(consumer) }
+  }
+
+  internal fun bindingsFor(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+  ): List<KaBinding> {
+    val view = session.resolutionViewFor(consumer.sourceIdentity, consumer.pointer)
+    return visibleBindingsFor(consumer, view?.module, view?.resolutionScope)
   }
 
   /**
@@ -344,9 +67,18 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
+    return withResolutionSession { session -> session.bindingsFor(consumer, queryContext) }
+  }
+
+  internal fun bindingsFor(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> {
+    val plan = editorPlan(session, queryContext)
     val visible =
       visibleBindingsFor(consumer, queryContext.graphModule, queryContext.resolutionScope)
-    return applyReplaces(visible.filter { isBindingInContext(it, queryContext) })
+    return applyReplaces(visible.filter { isBindingInContext(it, plan) })
   }
 
   /**
@@ -354,23 +86,35 @@ internal class BindingIndex(
    * plus the use-site-visible candidates as a fallback for files/projects without graphs.
    */
   fun resolveConsumer(consumer: ConsumerEntry): ConsumerResolution {
-    return consumerResolutions.computeIfAbsent(consumer, ::buildConsumerResolution)
+    return withResolutionSession { session -> session.resolveConsumer(consumer) }
   }
 
-  private fun buildConsumerResolution(consumer: ConsumerEntry): ConsumerResolution {
-    val consumerModule = moduleFor(consumer.pointer.element)
-    val consumerResolutionScope = consumerModule?.resolutionScope()
-    val global = visibleBindingsFor(consumer, consumerModule, consumerResolutionScope)
+  internal fun resolveConsumer(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+  ): ConsumerResolution {
+    return session.consumerResolution(consumer) {
+      buildConsumerResolution(session, consumer)
+    }
+  }
+
+  private fun buildConsumerResolution(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+  ): ConsumerResolution {
+    val consumerView = session.resolutionViewFor(consumer.sourceIdentity, consumer.pointer)
+    val global = visibleBindingsFor(consumer, consumerView?.module, consumerView?.resolutionScope)
     if (graphs.isEmpty()) {
       return ConsumerResolution(global, emptyMap(), hasGraphs = false, index = this)
     }
 
     val perContext = LinkedHashMap<GraphContext, List<KaBinding>>()
     val visibleByModule = HashMap<KaModule, List<KaBinding>>()
-    for (context in candidateContextsFor(consumer)) {
+    for (context in candidateContextsFor(session, consumer)) {
       ProgressManager.checkCanceled()
-      val queryContext = queryContext(context) ?: continue
-      if (!isConsumerInContext(consumer, queryContext)) continue
+      val queryContext = queryContext(session, context) ?: continue
+      val plan = editorPlan(session, queryContext)
+      if (!isConsumerInContext(consumer, plan)) continue
       val visible =
         visibleByModule.getOrPut(queryContext.graphModule) {
           visibleBindingsFor(
@@ -379,24 +123,46 @@ internal class BindingIndex(
             queryContext.resolutionScope,
           )
         }
-      perContext[context] = filterBindingsInContext(visible, queryContext)
+      perContext[context] = filterBindingsInContext(visible, plan)
     }
     return ConsumerResolution(global, perContext, hasGraphs = true, index = this)
   }
 
-  private fun candidateContextsFor(consumer: ConsumerEntry): List<GraphContext> {
+  private fun candidateContextsFor(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+  ): List<GraphContext> {
     val graphId = consumer.graphId
-    if (graphId != null) return contextsByGraphId[graphId].orEmpty()
+    if (graphId != null) {
+      val candidateGraphs = lookups.graphsByReachableAncestor[graphId].orEmpty()
+      return buildList {
+        for ((index, graph) in candidateGraphs.withIndex()) {
+          checkCanceledEvery(index)
+          for (context in session.contextsFor(graph)) {
+            ProgressManager.checkCanceled()
+            // A graph may have several parent paths. Keep only paths containing this consumer's
+            // owner.
+            if (graphId in context.graphIds) add(context)
+          }
+        }
+      }
+    }
 
     if (consumer.contributionScopes.isNotEmpty()) {
+      val candidateGraphs = linkedSetOf<KaGraphDeclaration>()
+      for ((index, scope) in consumer.contributionScopes.withIndex()) {
+        checkCanceledEvery(index)
+        candidateGraphs += lookups.graphsByReachableScope[scope].orEmpty()
+      }
       val contexts = linkedSetOf<GraphContext>()
-      for (scope in consumer.contributionScopes) {
-        contexts += contextsByScope[scope].orEmpty()
+      for ((index, graph) in candidateGraphs.withIndex()) {
+        checkCanceledEvery(index)
+        contexts += session.contextsFor(graph)
       }
       return contexts.toList()
     }
 
-    return allGraphContexts
+    return session.allGraphContexts()
   }
 
   /**
@@ -406,9 +172,9 @@ internal class BindingIndex(
    */
   private fun filterBindingsInContext(
     visible: List<KaBinding>,
-    queryContext: GraphQueryContext,
+    plan: GraphQueryPlan,
   ): List<KaBinding> {
-    return applyReplaces(visible.filter { isBindingInContext(it, queryContext) })
+    return applyReplaces(visible.filter { isBindingInContext(it, plan) })
   }
 
   /**
@@ -419,16 +185,28 @@ internal class BindingIndex(
     key: KaTypeKey,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    // Membership filtering already applies context-wide excludes and replaces via the cached
-    // replacedOrigins set.
-    return bindingsByKey[key].orEmpty().withoutDuplicateAssistedFactories(key).filter {
-      isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
+    return withResolutionSession { session -> session.bindingsForKey(key, queryContext) }
+  }
+
+  internal fun bindingsForKey(
+    session: BindingResolutionSession,
+    key: KaTypeKey,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> = bindingsForKey(key, validationPlan(session, queryContext))
+
+  internal fun bindingsForKey(
+    key: KaTypeKey,
+    plan: GraphQueryPlan,
+  ): List<KaBinding> {
+    // Membership filtering already applies context-wide excludes and replaces from this plan.
+    return lookups.bindingsByKey[key].orEmpty().withoutDuplicateAssistedFactories(key).filter {
+      isBindingInContext(it, plan)
     }
   }
 
   /** All indexed bindings for the same unqualified type, regardless of graph membership. */
   fun bindingsWithType(key: KaTypeKey): List<KaBinding> {
-    return bindingsByType[key.type].orEmpty().withoutDuplicateAssistedFactories()
+    return lookups.bindingsByType[key.type].orEmpty().withoutDuplicateAssistedFactories()
   }
 
   /** Type-level factory checks use module visibility, not a graph's binding exclusions. */
@@ -446,7 +224,7 @@ internal class BindingIndex(
 
   /** Known assisted factories creating [key], regardless of graph membership. */
   fun assistedFactoriesForTarget(key: KaTypeKey): List<KaBinding.AssistedFactory> {
-    return assistedFactoriesByTarget[key].orEmpty().withoutDuplicateAssistedFactories()
+    return lookups.assistedFactoriesByTarget[key].orEmpty().withoutDuplicateAssistedFactories()
   }
 
   /** Why this exact factory's dependency expansion stopped in the graph's compilation module. */
@@ -462,7 +240,7 @@ internal class BindingIndex(
 
   /** Indexed source sites for [key], used when a graph diagnostic needs its real declaration. */
   fun consumerEntriesForKey(key: KaTypeKey): List<ConsumerEntry> {
-    return consumersByKey[key].orEmpty()
+    return lookups.consumersByKey[key].orEmpty()
   }
 
   /** Contributions collected into [multibindingId] in [queryContext]'s graph. */
@@ -470,8 +248,24 @@ internal class BindingIndex(
     multibindingId: String,
     queryContext: GraphQueryContext,
   ): List<KaBinding> {
-    return contributionsByMultibindingId[multibindingId].orEmpty().filter {
-      isBindingInContext(it, queryContext, includeIncompatibleScopes = true)
+    return withResolutionSession { session ->
+      session.multibindingContributions(multibindingId, queryContext)
+    }
+  }
+
+  internal fun multibindingContributions(
+    session: BindingResolutionSession,
+    multibindingId: String,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> =
+    multibindingContributions(multibindingId, validationPlan(session, queryContext))
+
+  internal fun multibindingContributions(
+    multibindingId: String,
+    plan: GraphQueryPlan,
+  ): List<KaBinding> {
+    return lookups.contributionsByMultibindingId[multibindingId].orEmpty().filter {
+      isBindingInContext(it, plan)
     }
   }
 
@@ -480,23 +274,42 @@ internal class BindingIndex(
    * demand only.
    */
   fun bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> {
-    return bindings
-      .filter {
-        !it.isValidationOnlyAssistedTarget() && isBindingInContext(it, queryContext)
+    return withResolutionSession { session -> session.bindingsInContext(queryContext) }
+  }
+
+  internal fun bindingsInContext(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): List<KaBinding> {
+    val plan = editorPlan(session, queryContext)
+    val result = buildList {
+      for ((index, binding) in bindings.withIndex()) {
+        checkCanceledEvery(index)
+        if (!binding.isValidationOnlyAssistedTarget() && isBindingInContext(binding, plan)) {
+          add(binding)
+        }
       }
-      .withoutDuplicateAssistedFactories()
+    }
+    return result.withoutDuplicateAssistedFactories()
   }
 
   /** The consumer sites declared on [graph] itself, used as seal roots. */
   fun accessorsFor(graph: KaGraphDeclaration): List<ConsumerEntry> {
-    return accessorsByGraph[graph.declarationId].orEmpty().filter {
+    return lookups.accessorsByGraph[graph.declarationId].orEmpty().filter {
       it.graphContribution == null
     }
   }
 
   /** The actual seal roots after selecting this graph's contributed interface surface. */
   fun accessorsFor(queryContext: GraphQueryContext): List<ConsumerEntry> {
-    return graphComposition(queryContext).accessors
+    return withResolutionSession { session -> session.accessorsFor(queryContext) }
+  }
+
+  internal fun accessorsFor(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): List<ConsumerEntry> {
+    return graphComposition(session, queryContext).accessors
   }
 
   /** The selected surface of [graph] in this exact root module and ancestor suffix. */
@@ -504,40 +317,66 @@ internal class BindingIndex(
     queryContext: GraphQueryContext,
     graph: KaGraphDeclaration = queryContext.graphContext.graph,
   ): GraphComposition {
-    val selected = selectedGraphComposition(queryContext, graph.declarationId)
+    return withResolutionSession { session -> session.graphComposition(queryContext, graph) }
+  }
+
+  internal fun graphComposition(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+    graph: KaGraphDeclaration = queryContext.graphContext.graph,
+  ): GraphComposition {
+    val selected = selectedGraphComposition(session, queryContext, graph.declarationId)
+    requireNotNull(selected) { "Graph is not in the requested parent path" }
+    return selected.composition
+  }
+
+  internal fun graphComposition(
+    plan: GraphQueryPlan,
+    graph: KaGraphDeclaration = plan.structure.queryContext.graphContext.graph,
+  ): GraphComposition {
+    val selected = selectedGraphComposition(plan.structure, graph.declarationId)
     requireNotNull(selected) { "Graph is not in the requested parent path" }
     return selected.composition
   }
 
   private fun selectedGraphComposition(
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
     ownerId: GraphDeclarationId,
   ): SelectedGraphComposition? {
-    graphCompositionsByOwner[queryContext]?.get(ownerId)?.let {
-      return it
-    }
-    val context = queryContext.graphContext
-    if (ownerId !in context.graphIds) return null
-    val byOwner = graphCompositionsByOwner.computeIfAbsent(queryContext) { ConcurrentHashMap() }
-    return byOwner.computeIfAbsent(ownerId) {
-      val chain = context.chain
-      val graphIndex = chain.indexOfFirst { graph -> graph.declarationId == ownerId }
-      check(graphIndex >= 0) { "Graph is not in the requested parent path" }
-      selectedGraphComposition(
-        chain.subList(graphIndex, chain.size),
-        queryContext.graphModule,
-        queryContext.resolutionScope,
-      )
-    }
+    return structure.compositionsByOwner[ownerId]
   }
 
   private fun selectedGraphComposition(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+    ownerId: GraphDeclarationId,
+  ): SelectedGraphComposition? {
+    val context = queryContext.graphContext
+    if (ownerId !in context.graphIds) return null
+    val graphIndex = context.chain.indexOfFirst { graph -> graph.declarationId == ownerId }
+    check(graphIndex >= 0) { "Graph is not in the requested parent path" }
+    return selectedGraphComposition(
+      session,
+      context.chain.subList(graphIndex, context.chain.size),
+      queryContext.graphModule,
+      queryContext.resolutionScope,
+    )
+  }
+
+  private fun selectedGraphComposition(
+    session: BindingResolutionSession,
     chain: List<KaGraphDeclaration>,
     module: KaModule,
     resolutionScope: DeclarationResolutionScope,
   ): SelectedGraphComposition {
-    val key = GraphCompositionKey(GraphPath(chain.map { it.declarationId }), module)
-    return graphCompositions.computeIfAbsent(key) {
+    val graphPath =
+      GraphPath(
+        chain.mapIndexed { index, graph ->
+          checkCanceledEvery(index)
+          graph.declarationId
+        }
+      )
+    return session.graphComposition(graphPath, module) {
       val graph = chain.first()
       val selection = contributionSelection(chain, module, resolutionScope)
       val typeKeys = LinkedHashSet(graph.supertypeKeys)
@@ -563,20 +402,29 @@ internal class BindingIndex(
             }
         for (implementation in implementations) {
           ProgressManager.checkCanceled()
-          val declaration = implementation.declaration.pointer
-          if (!isVisibleFrom(declaration, null, module, resolutionScope)) continue
+          val declaration = implementation.declaration
+          if (
+            !isVisibleFrom(
+              declaration.pointer,
+              declaration.sourceIdentity,
+              null,
+              module,
+              resolutionScope,
+            )
+          )
+            continue
           // A fake override can still point at the concrete declaration itself. Its optional
           // request, if any, is retained by isImplementedGraphRequest below.
-          pointerIdentity(declaration)?.let(identities::add)
+          declaration.sourceIdentity?.let(identities::add)
           for (overridden in implementation.overriddenDeclarations) {
-            pointerIdentity(overridden.pointer)?.let(identities::add)
+            overridden.sourceIdentity?.let(identities::add)
           }
         }
       }
 
       fun addAccessor(consumer: ConsumerEntry) {
         if (consumer.graphRequestKind == null) return
-        val source = pointerIdentity(consumer.pointer)
+        val source = consumer.sourceIdentity
         val identity =
           if (source == null) consumer
           else
@@ -584,14 +432,16 @@ internal class BindingIndex(
               source,
               consumer.contextKey,
               consumer.graphRequestKind,
-              consumer.injectedMemberPointer?.let(::pointerIdentity),
+              consumer.injectedMemberSourceIdentity,
               consumer.isOptional,
               consumer.isSuspend,
             )
         if (accessorIdentities.add(identity)) accessors += consumer
       }
 
-      for (consumer in accessorsByGraph[graph.declarationId].orEmpty()) {
+      for ((index, consumer) in
+        lookups.accessorsByGraph[graph.declarationId].orEmpty().withIndex()) {
+        checkCanceledEvery(index)
         if (consumer.graphContribution == null) addAccessor(consumer)
       }
       addDefaultImplementations(graph.defaultImplementations)
@@ -610,9 +460,10 @@ internal class BindingIndex(
         factories += candidate.extensionFactories
         memberOwners += candidate.injectedMemberOwnerIds
         addDefaultImplementations(candidate.defaultImplementations)
-        for (binding in candidate.bindings) {
+        for ((bindingIndex, binding) in candidate.bindings.withIndex()) {
+          checkCanceledEvery(bindingIndex)
           if (hasWrittenBinding(binding, graph)) continue
-          val source = pointerIdentity(binding.pointer)
+          val source = bindingSourceIdentity(binding)
           val identity =
             if (source == null) binding
             else
@@ -624,7 +475,10 @@ internal class BindingIndex(
               )
           if (bindingIdentities.add(identity)) selectedBindings += binding
         }
-        candidate.consumers.forEach(::addAccessor)
+        for ((consumerIndex, consumer) in candidate.consumers.withIndex()) {
+          checkCanceledEvery(consumerIndex)
+          addAccessor(consumer)
+        }
       }
       val implementedRequests = implementedDeclarations.orEmpty()
       if (implementedRequests.isNotEmpty()) {
@@ -632,28 +486,29 @@ internal class BindingIndex(
       }
       SelectedGraphComposition(
         GraphComposition(
-          typeKeys,
-          declarations,
-          creations,
-          factories,
-          selectedContributions,
-          accessors,
-          memberOwners,
+          typeKeys.toSet(),
+          declarations.toSet(),
+          creations.toSet(),
+          factories.toList(),
+          selectedContributions.toList(),
+          accessors.toList(),
+          memberOwners.toSet(),
         ),
-        contributionIds,
-        selectedBindings,
-        implementedRequests,
+        selection,
+        contributionIds.toSet(),
+        selectedBindings.toSet(),
+        implementedRequests.toSet(),
       )
     }
   }
 
   private fun hasWrittenBinding(binding: KaBinding, graph: KaGraphDeclaration): Boolean {
-    val source = pointerIdentity(binding.pointer) ?: return false
+    val source = bindingSourceIdentity(binding) ?: return false
     val specialization =
       SpecializedBindingIdentity(graph.declarationId, source, binding.javaClass, binding.typeKey)
-    if (specialization in specializedBindingIdentities) return true
+    if (specialization in lookups.specializedBindingIdentities) return true
     val declaration = BindingDeclarationIdentity(source, binding.javaClass, binding.typeKey)
-    return unownedBindingDeclarations[declaration].orEmpty().any { raw ->
+    return lookups.unownedBindingDeclarations[declaration].orEmpty().any { raw ->
       val owner = raw.containerId ?: return@any false
       val reference = GraphReference(owner, raw.pointer.virtualFile)
       reference in graph.supertypeDeclarations || reference in graph.selfReferences
@@ -665,15 +520,22 @@ internal class BindingIndex(
     module: KaModule,
     resolutionScope: DeclarationResolutionScope,
   ): ContributionSelection {
-    val key = GraphCompositionKey(GraphPath(chain.map { it.declarationId }), module)
-    return contributionSelections.computeIfAbsent(key) {
-      selectContributions(
-        chain.first().scopeKeys,
-        chain.flatMapToSet { it.excludes },
-        module,
-        resolutionScope,
-      )
+    var excludeIndex = 0
+    val excludes = buildSet {
+      for (graph in chain) {
+        checkCanceledEvery(excludeIndex++)
+        for (excluded in graph.excludes) {
+          checkCanceledEvery(excludeIndex++)
+          add(excluded)
+        }
+      }
     }
+    return selectContributions(
+      chain.first().scopeKeys,
+      excludes,
+      module,
+      resolutionScope,
+    )
   }
 
   private fun selectContributions(
@@ -683,13 +545,29 @@ internal class BindingIndex(
     resolutionScope: DeclarationResolutionScope,
   ): ContributionSelection {
     val candidates =
-      contributionsForScopes(scopes).filter { contribution ->
-        isVisibleFrom(contribution.pointer, contribution.hintAvailability, module, resolutionScope)
+      contributionsForScopes(scopes).filterIndexed { index, contribution ->
+        checkCanceledEvery(index)
+        isVisibleFrom(
+          contribution.pointer,
+          contribution.sourceIdentity,
+          contribution.hintAvailability,
+          module,
+          resolutionScope,
+        )
       }
-    val byId = candidates.groupBy { it.classId }
-    val presentIds = byId.keys.filterNotNullTo(mutableSetOf())
+    val byId = linkedMapOf<ClassId?, MutableList<ContributionEntry>>()
+    for ((index, candidate) in candidates.withIndex()) {
+      checkCanceledEvery(index)
+      byId.getOrPut(candidate.classId, ::mutableListOf) += candidate
+    }
+    val presentIds = mutableSetOf<ClassId>()
+    for ((index, classId) in byId.keys.withIndex()) {
+      checkCanceledEvery(index)
+      classId?.let(presentIds::add)
+    }
     val nestedFactories = mutableMapOf<ClassId, MutableSet<ClassId>>()
-    for (contribution in candidates) {
+    for ((index, contribution) in candidates.withIndex()) {
+      checkCanceledEvery(index)
       val child = contribution.graphExtension ?: continue
       val factoryId = contribution.classId ?: continue
       nestedFactories.getOrPut(child.classId, ::mutableSetOf) += factoryId
@@ -700,34 +578,83 @@ internal class BindingIndex(
         excluded = excludes,
         // Compiler exclusions expand ChildGraph to its contributed Factory; replacements do not.
         nestedChildrenOf = { nestedFactories[it].orEmpty() },
-        replacesOf = { id -> byId[id].orEmpty().flatMapToSet { it.replaces } },
+        ensureActive = ProgressManager::checkCanceled,
+        replacesOf = { id ->
+          buildSet {
+            for ((index, contribution) in byId[id].orEmpty().withIndex()) {
+              checkCanceledEvery(index)
+              addAll(contribution.replaces)
+            }
+          }
+        },
       )
-    val selected = candidates.filter { it.classId !in plan.removed }
+    val selected = candidates.filterIndexed { index, contribution ->
+      checkCanceledEvery(index)
+      contribution.classId !in plan.removed
+    }
+    val declarationIds = mutableSetOf<GraphReference>()
+    for ((index, contribution) in selected.withIndex()) {
+      checkCanceledEvery(index)
+      contribution.declarationId?.let(declarationIds::add)
+    }
     return ContributionSelection(
-      selected,
-      selected.mapNotNullTo(mutableSetOf()) { it.declarationId },
-      plan.removed,
+      selected.toList(),
+      declarationIds.toSet(),
+      plan.removed.toSet(),
     )
   }
 
   /** The extension graphs created by [graph]'s accessors. */
   fun extensionsOf(graph: KaGraphDeclaration): List<KaGraphDeclaration> {
     if (graph.extensionCreations.isEmpty()) return emptyList()
-    return graphs.filter { candidate ->
-      candidate.isExtension && candidate.selfReferences.any { it in graph.extensionCreations }
+    return buildList {
+      for ((candidateIndex, candidate) in graphs.withIndex()) {
+        checkCanceledEvery(candidateIndex)
+        if (!candidate.isExtension) continue
+        for ((referenceIndex, reference) in candidate.selfReferences.withIndex()) {
+          checkCanceledEvery(referenceIndex)
+          if (reference in graph.extensionCreations) {
+            add(candidate)
+            break
+          }
+        }
+      }
     }
   }
 
   /** Child declarations created by the selected surface, excluding recursive parent paths. */
   fun extensionsOf(queryContext: GraphQueryContext): List<KaGraphDeclaration> {
+    return withResolutionSession { session -> session.extensionsOf(queryContext) }
+  }
+
+  internal fun extensionsOf(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): List<KaGraphDeclaration> {
+    return extensionsOf(queryContext, graphComposition(session, queryContext))
+  }
+
+  internal fun extensionsOf(plan: GraphQueryPlan): List<KaGraphDeclaration> {
+    val queryContext = plan.structure.queryContext
+    return extensionsOf(queryContext, graphComposition(plan))
+  }
+
+  private fun extensionsOf(
+    queryContext: GraphQueryContext,
+    composition: GraphComposition,
+  ): List<KaGraphDeclaration> {
     val context = queryContext.graphContext
     val result = linkedSetOf<KaGraphDeclaration>()
-    for (reference in graphComposition(queryContext).extensionCreations) {
-      for (candidate in graphsByReference[reference].orEmpty()) {
+    for ((referenceIndex, reference) in composition.extensionCreations.withIndex()) {
+      checkCanceledEvery(referenceIndex)
+      for ((candidateIndex, candidate) in
+        lookups.graphsByReference[reference].orEmpty().withIndex()) {
+        checkCanceledEvery(candidateIndex)
         if (!candidate.isExtension || candidate.declarationId in context.graphIds) continue
         if (
           !isVisibleFrom(
             candidate.pointer,
+            candidate.sourceIdentity,
             null,
             queryContext.graphModule,
             queryContext.resolutionScope,
@@ -742,39 +669,238 @@ internal class BindingIndex(
 
   /** Every valid aggregation context for [graph]. Extensions can have multiple parent paths. */
   fun contextsFor(graph: KaGraphDeclaration): List<GraphContext> {
-    return graphContexts.computeIfAbsent(graph) { buildContexts(it) }
+    return withResolutionSession { session -> session.contextsFor(graph) }
+  }
+
+  internal fun contextsFor(
+    session: BindingResolutionSession,
+    graph: KaGraphDeclaration,
+  ): List<GraphContext> {
+    return session.cachedContextsFor(graph) { buildContexts(session, graph) }
   }
 
   /** Builds the module-aware query view for [context], or null if its graph disappeared. */
   fun queryContext(context: GraphContext): GraphQueryContext? {
-    graphQueryContexts[context]?.let {
+    return withResolutionSession { session -> session.queryContext(context) }
+  }
+
+  internal fun queryContext(
+    session: BindingResolutionSession,
+    context: GraphContext,
+  ): GraphQueryContext? {
+    session.plannedQuery(context)?.let {
+      return it.queryContext
+    }
+    val sourceIdentity = context.dynamicGraph?.sourceIdentity ?: context.rootGraph.sourceIdentity
+    val pointer = context.dynamicGraph?.pointer ?: context.rootGraph.pointer
+    val view = session.resolutionViewFor(sourceIdentity, pointer) ?: return null
+    val aggregateSelection =
+      selectContributions(
+        context.scopes,
+        context.excludes,
+        view.module,
+        view.resolutionScope,
+      )
+    val containers = containersFor(context, view.module, view.resolutionScope, aggregateSelection)
+    val queryContext = GraphQueryContext(context, view.module, view.resolutionScope, containers)
+    val planned = BindingResolutionSession.PlannedGraphQuery(queryContext, aggregateSelection)
+    ProgressManager.checkCanceled()
+    return session.plannedQuery(context) { planned }.queryContext
+  }
+
+  /** Includes bindings with incompatible scopes so validation can report them. */
+  internal fun validationPlan(queryContext: GraphQueryContext): GraphQueryPlan {
+    return withResolutionSession { session -> session.validationPlan(queryContext) }
+  }
+
+  internal fun validationPlan(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): GraphQueryPlan {
+    val published = session.plannedQuery(queryContext.graphContext)
+    if (published == null || published.queryContext !== queryContext) {
+      return createGraphQueryPlan(session, queryContext, includeIncompatibleScopes = true)
+    }
+    val structure = structureFor(session, published)
+    return createGraphQueryPlan(structure, includeIncompatibleScopes = true)
+  }
+
+  private fun editorPlan(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): GraphQueryPlan {
+    val published = session.plannedQuery(queryContext.graphContext)
+    if (published == null || published.queryContext !== queryContext) {
+      return createGraphQueryPlan(session, queryContext, includeIncompatibleScopes = false)
+    }
+    published.editorPlan?.let {
       return it
     }
-    val graphElement =
-      context.dynamicGraph?.pointer?.element ?: context.rootGraph.pointer.element ?: return null
-    val graphModule = moduleFor(graphElement) ?: return null
-    val resolutionScope = graphModule.resolutionScope()
-    val containers = containersFor(context, graphModule, resolutionScope)
-    val queryContext = GraphQueryContext(context, graphModule, resolutionScope, containers)
-    return graphQueryContexts.putIfAbsent(context, queryContext) ?: queryContext
+    val structure = structureFor(session, published)
+    val computed = createGraphQueryPlan(structure, includeIncompatibleScopes = false)
+    ProgressManager.checkCanceled()
+    published.editorPlan = computed
+    return computed
+  }
+
+  private fun structureFor(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): GraphQueryStructure {
+    val published = session.plannedQuery(queryContext.graphContext)
+    if (published?.queryContext === queryContext) return structureFor(session, published)
+    return createGraphQueryStructure(session, queryContext, aggregateSelection(queryContext))
+  }
+
+  private fun structureFor(
+    session: BindingResolutionSession,
+    published: BindingResolutionSession.PlannedGraphQuery,
+  ): GraphQueryStructure {
+    published.structure?.let {
+      return it
+    }
+    val computed =
+      createGraphQueryStructure(session, published.queryContext, published.aggregateSelection)
+    ProgressManager.checkCanceled()
+    published.structure = computed
+    return computed
+  }
+
+  private fun aggregateSelection(queryContext: GraphQueryContext): ContributionSelection {
+    val context = queryContext.graphContext
+    return selectContributions(
+      context.scopes,
+      context.excludes,
+      queryContext.graphModule,
+      queryContext.resolutionScope,
+    )
+  }
+
+  private fun createGraphQueryPlan(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+    includeIncompatibleScopes: Boolean,
+  ): GraphQueryPlan {
+    val aggregateSelection = aggregateSelection(queryContext)
+    return createGraphQueryPlan(
+      session,
+      queryContext,
+      aggregateSelection,
+      includeIncompatibleScopes,
+    )
+  }
+
+  private fun createGraphQueryPlan(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+    aggregateSelection: ContributionSelection,
+    includeIncompatibleScopes: Boolean,
+  ): GraphQueryPlan {
+    val structure = createGraphQueryStructure(session, queryContext, aggregateSelection)
+    return createGraphQueryPlan(structure, includeIncompatibleScopes)
+  }
+
+  private fun createGraphQueryPlan(
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
+  ): GraphQueryPlan {
+    val pruning = contributionPruning(structure, includeIncompatibleScopes)
+    ProgressManager.checkCanceled()
+    return GraphQueryPlan(structure, pruning, includeIncompatibleScopes)
+  }
+
+  private fun createGraphQueryStructure(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+    aggregateSelection: ContributionSelection,
+  ): GraphQueryStructure {
+    val context = queryContext.graphContext
+    val compositionsByOwner =
+      LinkedHashMap<GraphDeclarationId, SelectedGraphComposition>(context.chain.size)
+    for ((graphIndex, graph) in context.chain.withIndex()) {
+      checkCanceledEvery(graphIndex)
+      compositionsByOwner[graph.declarationId] =
+        selectedGraphComposition(
+          session,
+          context.chain.subList(graphIndex, context.chain.size),
+          queryContext.graphModule,
+          queryContext.resolutionScope,
+        )
+    }
+
+    val currentOwner = context.graph
+    val currentSelection = checkNotNull(compositionsByOwner[currentOwner.declarationId]).selection
+    val ownContainers = buildOwnContainers(queryContext, currentOwner, currentSelection)
+    val nearestInputOwners = buildNearestFactoryInputOwners(context)
+    ProgressManager.checkCanceled()
+    return GraphQueryStructure(
+      queryContext,
+      aggregateSelection,
+      compositionsByOwner.toMap(),
+      ownContainers,
+      nearestInputOwners,
+    )
+  }
+
+  private fun buildNearestFactoryInputOwners(context: GraphContext): NearestFactoryInputOwners {
+    val dependencyOwners = mutableMapOf<KaTypeKey, GraphDeclarationId>()
+    val containerOwners = mutableMapOf<KaTypeKey, GraphDeclarationId>()
+    for ((graphIndex, graph) in context.chain.withIndex()) {
+      checkCanceledEvery(graphIndex)
+      for ((keyIndex, key) in graph.includedDependencies.withIndex()) {
+        checkCanceledEvery(keyIndex)
+        dependencyOwners.putIfAbsent(key, graph.declarationId)
+      }
+      for ((keyIndex, key) in graph.includedBindingContainers.withIndex()) {
+        checkCanceledEvery(keyIndex)
+        containerOwners.putIfAbsent(key, graph.declarationId)
+      }
+    }
+    return NearestFactoryInputOwners(dependencyOwners.toMap(), containerOwners.toMap())
   }
 
   /** Finds the current index's context for a path retained across an index rebuild. */
   fun findContext(path: GraphPath): GraphContext? {
+    return withResolutionSession { session -> session.findContext(path) }
+  }
+
+  internal fun findContext(
+    session: BindingResolutionSession,
+    path: GraphPath,
+  ): GraphContext? {
     val graphSegment = path.segments.firstOrNull() ?: return null
-    return graphs
-      .asSequence()
-      .filter { it.declarationId == graphSegment }
-      .flatMap { contextsFor(it).asSequence() }
-      .firstOrNull { it.path == path }
+    for ((graphIndex, graph) in graphs.withIndex()) {
+      checkCanceledEvery(graphIndex)
+      if (graph.declarationId != graphSegment) continue
+      for ((contextIndex, context) in contextsFor(session, graph).withIndex()) {
+        checkCanceledEvery(contextIndex)
+        if (context.path == path) return context
+      }
+    }
+    return null
   }
 
   /** Concrete child contexts created directly from [parent]'s exact graph path. */
   fun extensionContextsOf(parent: GraphContext): List<GraphContext> {
-    val queryContext = queryContext(parent) ?: return emptyList()
-    return extensionsOf(queryContext).flatMap { extension ->
-      contextsFor(extension).filter { child ->
-        child.chain.drop(1) == parent.chain && child.dynamicGraph?.id == parent.dynamicGraph?.id
+    return withResolutionSession { session -> session.extensionContextsOf(parent) }
+  }
+
+  internal fun extensionContextsOf(
+    session: BindingResolutionSession,
+    parent: GraphContext,
+  ): List<GraphContext> {
+    val queryContext = queryContext(session, parent) ?: return emptyList()
+    return buildList {
+      for ((extensionIndex, extension) in extensionsOf(session, queryContext).withIndex()) {
+        checkCanceledEvery(extensionIndex)
+        for ((contextIndex, child) in contextsFor(session, extension).withIndex()) {
+          checkCanceledEvery(contextIndex)
+          if (
+            child.chain.drop(1) == parent.chain && child.dynamicGraph?.id == parent.dynamicGraph?.id
+          ) {
+            add(child)
+          }
+        }
       }
     }
   }
@@ -785,8 +911,16 @@ internal class BindingIndex(
    * chain are reported separately by [inheritedContributionsFor].
    */
   fun contributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
+    return withResolutionSession { session -> session.contributionsFor(queryContext) }
+  }
+
+  internal fun contributionsFor(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): List<ContributionEntry> {
+    val plan = editorPlan(session, queryContext)
     val context = queryContext.graphContext
-    val removedOrigins = removedContributionOrigins(queryContext)
+    val removedOrigins = plan.pruning.removedOrigins
     return contributionsForScopes(context.graph.scopeKeys).filter {
       it.classId !in context.excludes &&
         it.classId !in removedOrigins &&
@@ -799,9 +933,17 @@ internal class BindingIndex(
    * itself: matched against ancestor scopes only, minus excluded. Empty for non-extension graphs.
    */
   fun inheritedContributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
+    return withResolutionSession { session -> session.inheritedContributionsFor(queryContext) }
+  }
+
+  internal fun inheritedContributionsFor(
+    session: BindingResolutionSession,
+    queryContext: GraphQueryContext,
+  ): List<ContributionEntry> {
+    val plan = editorPlan(session, queryContext)
     val context = queryContext.graphContext
     val inheritedScopes = context.scopes - context.graph.scopeKeys
-    val removedOrigins = removedContributionOrigins(queryContext)
+    val removedOrigins = plan.pruning.removedOrigins
     return contributionsForScopes(inheritedScopes).filter {
       it.classId !in context.excludes &&
         it.classId !in removedOrigins &&
@@ -810,29 +952,39 @@ internal class BindingIndex(
     }
   }
 
-  private fun buildContexts(graph: KaGraphDeclaration): List<GraphContext> {
-    return buildChains(graph, visited = setOf(graph)).flatMap { chain ->
-      buildList {
-        add(buildContext(chain, dynamicGraph = null))
+  private fun buildContexts(
+    session: BindingResolutionSession,
+    graph: KaGraphDeclaration,
+  ): List<GraphContext> {
+    return buildList {
+      for ((chainIndex, chain) in buildChains(session, graph, visited = setOf(graph)).withIndex()) {
+        checkCanceledEvery(chainIndex)
+        add(buildContext(session, chain, dynamicGraph = null))
         val root = chain.last()
         val rootReference =
           root.classId?.let { classId -> GraphReference(classId, root.pointer.virtualFile) }
-        for (dynamicGraph in rootReference?.let(dynamicGraphsByTarget::get).orEmpty()) {
-          add(buildContext(chain, dynamicGraph))
+        for ((dynamicIndex, dynamicGraph) in
+          rootReference?.let(lookups.dynamicGraphsByTarget::get).orEmpty().withIndex()) {
+          checkCanceledEvery(dynamicIndex)
+          add(buildContext(session, chain, dynamicGraph))
         }
       }
     }
   }
 
   private fun buildChains(
+    session: BindingResolutionSession,
     graph: KaGraphDeclaration,
     visited: Set<KaGraphDeclaration>,
   ): List<List<KaGraphDeclaration>> {
     if (!graph.isExtension) return listOf(listOf(graph))
 
     val parents = linkedSetOf<KaGraphDeclaration>()
-    for (reference in graph.selfReferences) {
-      for (candidate in potentialParentsByReference[reference].orEmpty()) {
+    for ((referenceIndex, reference) in graph.selfReferences.withIndex()) {
+      checkCanceledEvery(referenceIndex)
+      for ((candidateIndex, candidate) in
+        lookups.potentialParentsByReference[reference].orEmpty().withIndex()) {
+        checkCanceledEvery(candidateIndex)
         if (candidate !in visited) parents += candidate
       }
     }
@@ -841,12 +993,29 @@ internal class BindingIndex(
     val chains = mutableListOf<List<KaGraphDeclaration>>()
     for (parent in parents) {
       ProgressManager.checkCanceled()
-      val parentChains = buildChains(parent, visited + parent)
-      for (parentChain in parentChains) {
-        val module = moduleFor(parentChain.last().pointer.element) ?: continue
-        val resolutionScope = module.resolutionScope()
-        if (!isVisibleFrom(graph.pointer, null, module, resolutionScope)) continue
-        val composition = selectedGraphComposition(parentChain, module, resolutionScope).composition
+      val parentChains = buildChains(session, parent, visited + parent)
+      for ((chainIndex, parentChain) in parentChains.withIndex()) {
+        checkCanceledEvery(chainIndex)
+        val root = parentChain.last()
+        val view = session.resolutionViewFor(root.sourceIdentity, root.pointer) ?: continue
+        if (
+          !isVisibleFrom(
+            graph.pointer,
+            graph.sourceIdentity,
+            null,
+            view.module,
+            view.resolutionScope,
+          )
+        )
+          continue
+        val composition =
+          selectedGraphComposition(
+              session,
+              parentChain,
+              view.module,
+              view.resolutionScope,
+            )
+            .composition
         if (composition.extensionCreations.none(graph.selfReferences::contains)) continue
         chains += listOf(graph) + parentChain
       }
@@ -855,34 +1024,64 @@ internal class BindingIndex(
   }
 
   private fun buildContext(
+    session: BindingResolutionSession,
     chain: List<KaGraphDeclaration>,
     dynamicGraph: DynamicGraphCall?,
   ): GraphContext {
-    val scopes = chain.flatMapToSet { it.scopeKeys }
-    val excludes = chain.flatMapToSet { it.excludes }
-    // Supertype members merge into the graph, so their classes gate membership like the graph
-    val graphClassIds = chain.flatMapToSet { it.selfIds + it.supertypeIds }
-    val includedBindingContainers = buildSet {
-      chain.flatMapTo(this) { it.includedBindingContainers }
-      addAll(dynamicGraph?.containerKeys.orEmpty())
+    fun <T> collectFromChain(values: (KaGraphDeclaration) -> Iterable<T>): Set<T> {
+      var workIndex = 0
+      return buildSet {
+        for (graph in chain) {
+          checkCanceledEvery(workIndex++)
+          for (value in values(graph)) {
+            checkCanceledEvery(workIndex++)
+            add(value)
+          }
+        }
+      }
     }
-    val includedDependencies = chain.flatMapToSet { it.includedDependencies }
-    val graphIds = chain.mapTo(mutableSetOf()) { it.declarationId }
-    val dynamicGraphElement = dynamicGraph?.pointer?.element
+
+    val scopes = collectFromChain { it.scopeKeys }
+    val excludes = collectFromChain { it.excludes }
+    // Supertype members merge into the graph, so their classes gate membership like the graph
+    val graphClassIds = collectFromChain { it.selfIds + it.supertypeIds }
+    var containerIndex = 0
+    val includedBindingContainers = buildSet {
+      for (graph in chain) {
+        checkCanceledEvery(containerIndex++)
+        for (container in graph.includedBindingContainers) {
+          checkCanceledEvery(containerIndex++)
+          add(container)
+        }
+      }
+      for (container in dynamicGraph?.containerKeys.orEmpty()) {
+        checkCanceledEvery(containerIndex++)
+        add(container)
+      }
+    }
+    val includedDependencies = collectFromChain { it.includedDependencies }
+    val graphIds = buildSet {
+      for ((index, graph) in chain.withIndex()) {
+        checkCanceledEvery(index)
+        add(graph.declarationId)
+      }
+    }
     val daggerAnvilInteropEnabled =
-      if (dynamicGraphElement == null) {
+      if (dynamicGraph == null) {
         chain.last().daggerAnvilInteropEnabled
       } else {
-        dynamicGraphElement.metroIdeState().options.enableDaggerAnvilInterop
+        session
+          .resolutionViewFor(dynamicGraph.sourceIdentity, dynamicGraph.pointer)
+          ?.daggerAnvilInteropEnabled ?: chain.last().daggerAnvilInteropEnabled
       }
     return GraphContext(
       chain = chain,
       scopes = scopes,
-      scopingAnnotations = chain.flatMapToSet { it.scopingAnnotations },
+      scopingAnnotations = collectFromChain { it.scopingAnnotations },
       excludes = excludes,
       includedBindingContainers = includedBindingContainers,
       includedDependencies = includedDependencies,
-      injectedMemberOwnerIds = chain.flatMapToSet { it.injectedMemberOwnerIds },
+      injectedMemberOwnerIds = collectFromChain { it.injectedMemberOwnerIds },
       daggerAnvilInteropEnabled = daggerAnvilInteropEnabled,
       graphIds = graphIds,
       graphClassIds = graphClassIds,
@@ -894,20 +1093,31 @@ internal class BindingIndex(
     context: GraphContext,
     useSiteModule: KaModule,
     resolutionScope: DeclarationResolutionScope,
+    aggregateSelection: ContributionSelection,
   ): Set<ClassId> {
     // Containers are declared on the graphs, contributed into scope, or transitively included.
-    val containerRoots = context.chain.flatMapTo(hashSetOf()) { it.bindingContainers }
-    for (containerKey in context.includedBindingContainers) {
+    val containerRoots = hashSetOf<ClassId>()
+    for ((graphIndex, graph) in context.chain.withIndex()) {
+      checkCanceledEvery(graphIndex)
+      containerRoots += graph.bindingContainers
+    }
+    for ((containerKeyIndex, containerKey) in context.includedBindingContainers.withIndex()) {
+      checkCanceledEvery(containerKeyIndex)
       val containerId = containerKey.type.classId ?: continue
-      visibleContainers(containerId, useSiteModule, resolutionScope).forEach { container ->
-        container.includes.forEach(containerRoots::add)
+      for ((containerIndex, container) in
+        visibleContainers(containerId, useSiteModule, resolutionScope).withIndex()) {
+        checkCanceledEvery(containerIndex)
+        for ((includeIndex, included) in container.includes.withIndex()) {
+          checkCanceledEvery(includeIndex)
+          containerRoots += included
+        }
       }
     }
-    selectContributions(context.scopes, context.excludes, useSiteModule, resolutionScope)
-      .entries
-      .asSequence()
-      .filter { it.classId != null && it.classId in containersById }
-      .mapTo(containerRoots) { it.classId!! }
+    for ((index, contribution) in aggregateSelection.entries.withIndex()) {
+      checkCanceledEvery(index)
+      val classId = contribution.classId ?: continue
+      if (classId in lookups.containersById) containerRoots += classId
+    }
 
     return resolveContainerClosure(containerRoots, useSiteModule, resolutionScope)
   }
@@ -921,40 +1131,59 @@ internal class BindingIndex(
     graph: KaGraphDeclaration,
     queryContext: GraphQueryContext,
   ): Set<ClassId> {
+    return withResolutionSession { session -> session.graphOwnContainers(graph, queryContext) }
+  }
+
+  internal fun graphOwnContainers(
+    session: BindingResolutionSession,
+    graph: KaGraphDeclaration,
+    queryContext: GraphQueryContext,
+  ): Set<ClassId> = graphOwnContainers(graph, structureFor(session, queryContext))
+
+  internal fun graphOwnContainers(
+    graph: KaGraphDeclaration,
+    plan: GraphQueryPlan,
+  ): Set<ClassId> = graphOwnContainers(graph, plan.structure)
+
+  private fun graphOwnContainers(
+    graph: KaGraphDeclaration,
+    structure: GraphQueryStructure,
+  ): Set<ClassId> {
     val ownerId = graph.declarationId
-    ownContainersByContext[queryContext]?.get(ownerId)?.let {
-      return it
-    }
+    val queryContext = structure.queryContext
     val context = queryContext.graphContext
     require(ownerId in context.graphIds) { "Graph is not in the requested parent path" }
-    val byOwner = ownContainersByContext.computeIfAbsent(queryContext) { ConcurrentHashMap() }
-    return byOwner.computeIfAbsent(ownerId) {
-      val chain = context.chain
-      val graphIndex = chain.indexOfFirst { candidate -> candidate.declarationId == ownerId }
-      check(graphIndex >= 0) { "Graph is not in the requested parent path" }
-      val ownerChain = chain.subList(graphIndex, chain.size)
-      val owner = ownerChain.first()
-      val roots = hashSetOf<ClassId>()
-      roots += owner.bindingContainers
-      for (containerKey in owner.includedBindingContainers) {
+    if (ownerId == context.graph.declarationId) return structure.currentOwnerOwnContainers
+
+    val owner = context.chain.first { candidate -> candidate.declarationId == ownerId }
+    val selection = checkNotNull(structure.compositionsByOwner[ownerId]).selection
+    return buildOwnContainers(queryContext, owner, selection)
+  }
+
+  private fun buildOwnContainers(
+    queryContext: GraphQueryContext,
+    owner: KaGraphDeclaration,
+    selection: ContributionSelection,
+  ): Set<ClassId> {
+    val context = queryContext.graphContext
+    val roots = hashSetOf<ClassId>()
+    roots += owner.bindingContainers
+    for ((index, containerKey) in owner.includedBindingContainers.withIndex()) {
+      checkCanceledEvery(index)
+      containerKey.type.classId?.let(roots::add)
+    }
+    if (owner.declarationId == context.rootGraph.declarationId) {
+      for ((index, containerKey) in context.dynamicGraph?.containerKeys.orEmpty().withIndex()) {
+        checkCanceledEvery(index)
         containerKey.type.classId?.let(roots::add)
       }
-      if (owner.declarationId == context.rootGraph.declarationId) {
-        for (containerKey in context.dynamicGraph?.containerKeys.orEmpty()) {
-          containerKey.type.classId?.let(roots::add)
-        }
-      }
-      contributionSelection(
-          ownerChain,
-          queryContext.graphModule,
-          queryContext.resolutionScope,
-        )
-        .entries
-        .asSequence()
-        .filter { it.classId != null && it.classId in containersById }
-        .mapTo(roots) { it.classId!! }
-      resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
     }
+    for ((index, contribution) in selection.entries.withIndex()) {
+      checkCanceledEvery(index)
+      val classId = contribution.classId ?: continue
+      if (classId in lookups.containersById) roots += classId
+    }
+    return resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
   }
 
   /** Whether [binding] belongs to this graph itself rather than one of its ancestors. */
@@ -962,6 +1191,27 @@ internal class BindingIndex(
     binding: KaBinding,
     queryContext: GraphQueryContext,
   ): Boolean {
+    return withResolutionSession { session ->
+      session.isBindingOwnedByCurrentGraph(binding, queryContext)
+    }
+  }
+
+  internal fun isBindingOwnedByCurrentGraph(
+    session: BindingResolutionSession,
+    binding: KaBinding,
+    queryContext: GraphQueryContext,
+  ): Boolean = isBindingOwnedByCurrentGraph(binding, structureFor(session, queryContext))
+
+  internal fun isBindingOwnedByCurrentGraph(
+    binding: KaBinding,
+    plan: GraphQueryPlan,
+  ): Boolean = isBindingOwnedByCurrentGraph(binding, plan.structure)
+
+  private fun isBindingOwnedByCurrentGraph(
+    binding: KaBinding,
+    structure: GraphQueryStructure,
+  ): Boolean {
+    val queryContext = structure.queryContext
     val context = queryContext.graphContext
     val graph = context.graph
     val ownerGraphId = binding.ownerGraphId
@@ -980,9 +1230,11 @@ internal class BindingIndex(
 
     val containerId = binding.containerId
     if (containerId != null) {
+      val composition =
+        checkNotNull(selectedGraphComposition(structure, graph.declarationId)).composition
       return containerId in graph.selfIds ||
-        graphComposition(queryContext).supertypeDeclarations.any { it.classId == containerId } ||
-        containerId in graphOwnContainers(graph, queryContext)
+        composition.supertypeDeclarations.any { it.classId == containerId } ||
+        containerId in structure.currentOwnerOwnContainers
     }
 
     if (binding.contributionScopes.isNotEmpty()) {
@@ -994,27 +1246,58 @@ internal class BindingIndex(
 
   /** Whether an ancestor can resolve [key] through one of its private bindings. */
   fun hasPrivateAncestorBinding(key: KaTypeKey, queryContext: GraphQueryContext): Boolean {
-    val candidates = bindingsByKey[key].orEmpty()
-    if (candidates.none { it.isGraphPrivate }) {
+    return withResolutionSession { session ->
+      session.hasPrivateAncestorBinding(key, queryContext)
+    }
+  }
+
+  internal fun hasPrivateAncestorBinding(
+    session: BindingResolutionSession,
+    key: KaTypeKey,
+    queryContext: GraphQueryContext,
+  ): Boolean {
+    return hasPrivateAncestorBinding(session, key, structureFor(session, queryContext))
+  }
+
+  private fun hasPrivateAncestorBinding(
+    session: BindingResolutionSession,
+    key: KaTypeKey,
+    structure: GraphQueryStructure,
+  ): Boolean {
+    val candidates = lookups.bindingsByKey[key].orEmpty()
+    val hasPrivateCandidate =
+      candidates.withIndex().any { (index, binding) ->
+        checkCanceledEvery(index)
+        binding.isGraphPrivate
+      }
+    if (!hasPrivateCandidate) {
       return false
     }
 
-    val context = queryContext.graphContext
+    val context = structure.queryContext.graphContext
     val chain = context.chain
     for (ancestorIndex in 1 until chain.size) {
+      checkCanceledEvery(ancestorIndex - 1)
+      val ancestorSegments = ArrayList<GraphDeclarationId>(chain.size - ancestorIndex)
+      for (chainIndex in ancestorIndex until chain.size) {
+        checkCanceledEvery(chainIndex - ancestorIndex)
+        ancestorSegments += chain[chainIndex].declarationId
+      }
       val ancestorPath =
         GraphPath(
-          chain.drop(ancestorIndex).map { it.declarationId },
+          ancestorSegments,
           context.dynamicGraph?.id,
         )
-      val ancestorContext = findContext(ancestorPath) ?: continue
-      val ancestorQueryContext = queryContext(ancestorContext) ?: continue
-      for (binding in candidates) {
+      val ancestorContext = findContext(session, ancestorPath) ?: continue
+      val ancestorQueryContext = queryContext(session, ancestorContext) ?: continue
+      val ancestorStructure = structureFor(session, ancestorQueryContext)
+      for ((candidateIndex, binding) in candidates.withIndex()) {
+        checkCanceledEvery(candidateIndex)
         if (
           binding.isGraphPrivate &&
             isBindingCandidateInContext(
               binding,
-              ancestorQueryContext,
+              ancestorStructure,
               includeIncompatibleScopes = true,
             )
         ) {
@@ -1033,15 +1316,21 @@ internal class BindingIndex(
     val containers = hashSetOf<ClassId>()
     val visitedDeclarations = hashSetOf<GraphReference>()
     val queue = ArrayDeque(containerRoots)
+    var workIndex = 0
     while (queue.isNotEmpty()) {
+      checkCanceledEvery(workIndex++)
       val id = queue.removeFirst()
       containers += id
       for (container in visibleContainers(id, useSiteModule, resolutionScope)) {
+        checkCanceledEvery(workIndex++)
         if (!visitedDeclarations.add(container.declarationId)) continue
-        container.includes.forEach(queue::add)
+        for (included in container.includes) {
+          checkCanceledEvery(workIndex++)
+          queue.add(included)
+        }
       }
     }
-    return containers
+    return containers.toSet()
   }
 
   private fun visibleContainers(
@@ -1049,8 +1338,14 @@ internal class BindingIndex(
     useSiteModule: KaModule,
     resolutionScope: DeclarationResolutionScope,
   ): List<BindingContainerEntry> {
-    return containersById[classId].orEmpty().filter { container ->
-      isVisibleFrom(container.pointer, null, useSiteModule, resolutionScope)
+    return lookups.containersById[classId].orEmpty().filter { container ->
+      isVisibleFrom(
+        container.pointer,
+        container.sourceIdentity,
+        null,
+        useSiteModule,
+        resolutionScope,
+      )
     }
   }
 
@@ -1060,7 +1355,13 @@ internal class BindingIndex(
     resolutionScope: DeclarationResolutionScope?,
   ): List<KaBinding> {
     return candidateBindingsFor(consumer).filter {
-      isVisibleFrom(it.pointer, it.hintAvailability, useSiteModule, resolutionScope)
+      isVisibleFrom(
+        it.pointer,
+        bindingSourceIdentity(it),
+        it.hintAvailability,
+        useSiteModule,
+        resolutionScope,
+      )
     }
   }
 
@@ -1068,13 +1369,14 @@ internal class BindingIndex(
     // Assisted targets are kept in the index for graph diagnostics, but are never ordinary
     // injectable bindings for editor resolution or navigation.
     val direct =
-      bindingsByKey[consumer.key]
+      lookups.bindingsByKey[consumer.key]
         .orEmpty()
         .withoutDuplicateAssistedFactories(consumer.key)
         .filterNot {
           it.isValidationOnlyAssistedTarget()
         }
-    val contributions = consumer.multibindingId?.let { contributionsByMultibindingId[it] }.orEmpty()
+    val contributions =
+      consumer.multibindingId?.let { lookups.contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions
   }
 
@@ -1082,9 +1384,27 @@ internal class BindingIndex(
     consumer: ConsumerEntry,
     queryContext: GraphQueryContext,
   ): Boolean {
+    return withResolutionSession { session ->
+      session.isConsumerInContext(consumer, queryContext)
+    }
+  }
+
+  internal fun isConsumerInContext(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): Boolean = isConsumerInContext(consumer, editorPlan(session, queryContext))
+
+  private fun isConsumerInContext(
+    consumer: ConsumerEntry,
+    plan: GraphQueryPlan,
+  ): Boolean {
+    val structure = plan.structure
+    val queryContext = structure.queryContext
     if (
       !isVisibleFrom(
         consumer.pointer,
+        consumer.sourceIdentity,
         hintAvailability = null,
         useSiteModule = queryContext.graphModule,
         resolutionScope = queryContext.resolutionScope,
@@ -1093,11 +1413,11 @@ internal class BindingIndex(
       return false
     }
     val context = queryContext.graphContext
-    if (!isContributedConsumerActive(consumer, queryContext)) return false
+    if (!isContributedConsumerActive(consumer, structure)) return false
 
     val isUnspecializedContainerConsumer = consumer.graphId == null && consumer.containerId != null
     if (isUnspecializedContainerConsumer) {
-      if (isSupersededInheritedConsumer(consumer, queryContext)) return false
+      if (isSupersededInheritedConsumer(consumer, structure)) return false
     }
 
     val originClassId = consumer.originClassId
@@ -1105,8 +1425,8 @@ internal class BindingIndex(
       if (originClassId in context.excludes) return false
       // A replaced origin's consumers stay live only while it still has surviving bindings
       if (
-        originClassId in replacedOrigins(queryContext) &&
-          !hasOriginBindingInContext(originClassId, queryContext)
+        originClassId in plan.pruning.replacedOrigins &&
+          !hasOriginBindingInContext(originClassId, plan)
       ) {
         return false
       }
@@ -1116,7 +1436,7 @@ internal class BindingIndex(
     if (graphId != null) {
       if (graphId !in context.graphIds) return false
       if (consumer.graphRequestKind == null || consumer.isOptional) return true
-      val selected = selectedGraphComposition(queryContext, graphId) ?: return false
+      val selected = selectedGraphComposition(structure, graphId) ?: return false
       return !isImplementedGraphRequest(consumer, selected.implementedRequests)
     }
 
@@ -1125,10 +1445,10 @@ internal class BindingIndex(
       if (memberOwnerClassId in context.excludes) return false
       return memberOwnerClassId in context.injectedMemberOwnerIds ||
         context.chain.any { graph ->
-          memberOwnerClassId in graphComposition(queryContext, graph).injectedMemberOwnerIds
+          memberOwnerClassId in graphComposition(plan, graph).injectedMemberOwnerIds
         } ||
-        bindingsByMemberOwner[memberOwnerClassId].orEmpty().any { binding ->
-          isBindingInContext(binding, queryContext)
+        lookups.bindingsByMemberOwner[memberOwnerClassId].orEmpty().any { binding ->
+          isBindingInContext(binding, plan)
         }
     }
 
@@ -1139,7 +1459,7 @@ internal class BindingIndex(
 
     val containerId = consumer.containerId
     if (containerId != null) {
-      return isGraphMemberContainer(containerId, consumer.pointer.virtualFile, queryContext) ||
+      return isGraphMemberContainer(containerId, consumer.pointer.virtualFile, structure) ||
         containerId in queryContext.containers
     }
 
@@ -1148,7 +1468,7 @@ internal class BindingIndex(
     }
 
     if (originClassId != null) {
-      return hasOriginBindingInContext(originClassId, queryContext)
+      return hasOriginBindingInContext(originClassId, plan)
     }
 
     return true
@@ -1156,34 +1476,42 @@ internal class BindingIndex(
 
   private fun hasOriginBindingInContext(
     originClassId: ClassId,
-    queryContext: GraphQueryContext,
+    plan: GraphQueryPlan,
   ): Boolean {
-    return bindingsByOrigin[originClassId].orEmpty().any { binding ->
-      isBindingInContext(binding, queryContext)
+    return lookups.bindingsByOrigin[originClassId].orEmpty().any { binding ->
+      isBindingInContext(binding, plan)
     }
   }
 
   private fun isBindingInContext(
     entry: KaBinding,
-    queryContext: GraphQueryContext,
-    includeIncompatibleScopes: Boolean = false,
+    plan: GraphQueryPlan,
   ): Boolean {
-    if (!isBindingCandidateInContext(entry, queryContext, includeIncompatibleScopes)) return false
+    if (
+      !isBindingCandidateInContext(
+        entry,
+        plan.structure,
+        plan.includeIncompatibleScopes,
+      )
+    ) {
+      return false
+    }
     // Replaces removes the origin's contributions only; its own injectable type stays available
     // (a replacing stub can inject the replaced implementation directly).
     if (entry.contributionScopes.isEmpty()) return true
     val originClassId = entry.originClassId ?: return true
-    if (originClassId in replacedOrigins(queryContext, includeIncompatibleScopes)) return false
-    return entry !in lowerPriorityBindings(queryContext, includeIncompatibleScopes)
+    if (originClassId in plan.pruning.replacedOrigins) return false
+    return entry !in plan.pruning.lowerPriorityBindings
   }
 
   private fun isBindingCandidateInContext(
     entry: KaBinding,
-    queryContext: GraphQueryContext,
-    includeIncompatibleScopes: Boolean = false,
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
   ): Boolean {
+    val queryContext = structure.queryContext
     if (!isVisibleFrom(entry, queryContext)) return false
-    if (!isContributedBindingActive(entry, queryContext)) return false
+    if (!isContributedBindingActive(entry, structure)) return false
     val isUnspecializedContainerCallable =
       entry.ownerGraphId == null &&
         entry.containerId != null &&
@@ -1195,9 +1523,9 @@ internal class BindingIndex(
           else -> false
         }
     if (isUnspecializedContainerCallable) {
-      if (isSupersededInheritedBinding(entry, queryContext)) return false
+      if (isSupersededInheritedBinding(entry, structure)) return false
     }
-    if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, queryContext)) return false
+    if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, structure)) return false
     val context = queryContext.graphContext
     if (isSupersededByDynamicBinding(entry, context)) return false
     val ownerGraphId = entry.ownerGraphId
@@ -1207,10 +1535,10 @@ internal class BindingIndex(
           ownerGraphId in context.graphIds ||
             context.graphIds.any { it in entry.additionalOwnerGraphIds }
         if (!ownedByContext) return false
-        if (isSupersededByNearerFactoryInput(entry, context)) return false
+        if (isSupersededByNearerFactoryInput(entry, structure)) return false
       } else {
         if (ownerGraphId !in context.graphIds) return false
-        if (isSupersededByNearerInheritedBinding(entry, queryContext)) return false
+        if (isSupersededByNearerInheritedBinding(entry, structure)) return false
       }
     }
     if (entry.originClassId != null && entry.originClassId in context.excludes) return false
@@ -1243,7 +1571,7 @@ internal class BindingIndex(
         } else {
           entry.contributionScopes.isNotEmpty() ||
             containerId == null ||
-            isGraphMemberContainer(containerId, entry.pointer.virtualFile, queryContext) ||
+            isGraphMemberContainer(containerId, entry.pointer.virtualFile, structure) ||
             containerId in queryContext.containers
         }
       }
@@ -1279,10 +1607,10 @@ internal class BindingIndex(
       return false
     }
     if (binding is KaBinding.BoundInstance && binding.isBindingContainerInput) {
-      val source = pointerIdentity(binding.pointer)
+      val source = bindingSourceIdentity(binding)
       val isDynamicInput =
         dynamicGraph.containerInputs.any { input ->
-          input.typeKey == binding.typeKey && pointerIdentity(input.pointer) == source
+          input.typeKey == binding.typeKey && bindingSourceIdentity(input) == source
         }
       if (isDynamicInput) return false
     }
@@ -1291,21 +1619,21 @@ internal class BindingIndex(
 
   private fun isContributedBindingActive(
     binding: KaBinding,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
-    if (binding !in contributedBindingOwners) return true
+    if (binding !in lookups.contributedBindingOwners) return true
     val ownerId = binding.ownerGraphId ?: return false
-    val selected = selectedGraphComposition(queryContext, ownerId) ?: return false
+    val selected = selectedGraphComposition(structure, ownerId) ?: return false
     return binding in selected.bindings
   }
 
   private fun isContributedConsumerActive(
     consumer: ConsumerEntry,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
     val contribution = consumer.graphContribution ?: return true
     val ownerId = consumer.graphId ?: return false
-    val selected = selectedGraphComposition(queryContext, ownerId) ?: return false
+    val selected = selectedGraphComposition(structure, ownerId) ?: return false
     return contribution in selected.contributionIds
   }
 
@@ -1316,37 +1644,41 @@ internal class BindingIndex(
   ): Boolean {
     if (consumer.graphRequestKind == null || consumer.isOptional) return false
     if (implementedRequests.isEmpty()) return false
-    val source = pointerIdentity(consumer.pointer) ?: return false
+    val source = consumer.sourceIdentity ?: return false
     return source in implementedRequests
   }
 
   private fun isGraphMemberContainer(
     containerId: ClassId,
     file: VirtualFile?,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
+    val queryContext = structure.queryContext
     val context = queryContext.graphContext
     if (containerId in context.graphClassIds) return true
     val reference = GraphReference(containerId, file)
-    return context.chain.any { graph ->
-      reference in graphComposition(queryContext, graph).supertypeDeclarations
+    for ((index, graph) in context.chain.withIndex()) {
+      checkCanceledEvery(index)
+      val composition = selectedGraphComposition(structure, graph.declarationId)?.composition
+      if (composition != null && reference in composition.supertypeDeclarations) return true
     }
+    return false
   }
 
   private fun isSupersededInheritedBinding(
     binding: KaBinding,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
-    val pointerIdentity = pointerIdentity(binding.pointer) ?: return false
-    for (graphId in queryContext.graphContext.graphIds) {
+    val pointerIdentity = bindingSourceIdentity(binding) ?: return false
+    for ((graphIndex, graphId) in structure.queryContext.graphContext.graphIds.withIndex()) {
+      checkCanceledEvery(graphIndex)
       val identity = SpecializedDeclarationIdentity(graphId, pointerIdentity, binding.javaClass)
-      if (identity in specializedDeclarationIdentities) return true
-      if (
-        contributedSpecializedDeclarations[identity].orEmpty().any {
-          isContributedBindingActive(it, queryContext)
-        }
-      )
-        return true
+      if (identity in lookups.specializedDeclarationIdentities) return true
+      for ((candidateIndex, candidate) in
+        lookups.contributedSpecializedDeclarations[identity].orEmpty().withIndex()) {
+        checkCanceledEvery(candidateIndex)
+        if (isContributedBindingActive(candidate, structure)) return true
+      }
     }
     return false
   }
@@ -1361,26 +1693,13 @@ internal class BindingIndex(
   /** A child factory input replaces an ancestor's separate parameter of the same type. */
   private fun isSupersededByNearerFactoryInput(
     binding: KaBinding.BoundInstance,
-    context: GraphContext,
+    structure: GraphQueryStructure,
   ): Boolean {
+    val context = structure.queryContext.graphContext
     if (context.chain.size < 2) return false
     if (!binding.isGraphInput && !binding.isBindingContainerInput) return false
 
-    val inputOwners =
-      nearestFactoryInputOwners.computeIfAbsent(context) {
-        val dependencyOwners = mutableMapOf<KaTypeKey, GraphDeclarationId>()
-        val containerOwners = mutableMapOf<KaTypeKey, GraphDeclarationId>()
-        for (graph in context.chain) {
-          ProgressManager.checkCanceled()
-          for (key in graph.includedDependencies) {
-            dependencyOwners.putIfAbsent(key, graph.declarationId)
-          }
-          for (key in graph.includedBindingContainers) {
-            containerOwners.putIfAbsent(key, graph.declarationId)
-          }
-        }
-        NearestFactoryInputOwners(dependencyOwners, containerOwners)
-      }
+    val inputOwners = structure.nearestFactoryInputOwners
     val nearestOwner =
       if (binding.isGraphInput) {
         inputOwners.dependencies[binding.typeKey]
@@ -1393,26 +1712,29 @@ internal class BindingIndex(
   /** The same inherited declaration belongs to the nearest graph that can expose it. */
   private fun isSupersededByNearerInheritedBinding(
     binding: KaBinding,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
+    val queryContext = structure.queryContext
     val context = queryContext.graphContext
     if (context.chain.size < 2) return false
     val ownerGraphId = binding.ownerGraphId ?: return false
-    val sourceIdentity = pointerIdentity(binding.pointer) ?: return false
-    for (graph in context.chain) {
-      ProgressManager.checkCanceled()
+    val sourceIdentity = bindingSourceIdentity(binding) ?: return false
+    for ((graphIndex, graph) in context.chain.withIndex()) {
+      checkCanceledEvery(graphIndex)
       val graphId = graph.declarationId
       if (graphId == ownerGraphId) return false
       val identity =
         SpecializedBindingIdentity(graphId, sourceIdentity, binding.javaClass, binding.typeKey)
       // An intermediate graph's private declaration cannot hide a public farther ancestor from a
       // grandchild. A private declaration is only available to the graph that owns it.
-      if (identity in specializedBindingIdentities) {
+      if (identity in lookups.specializedBindingIdentities) {
         if (graphId == context.graph.declarationId) return true
-        if (specializedBindingIdentities[identity] == true) return true
+        if (lookups.specializedBindingIdentities[identity] == true) return true
       }
-      for (candidate in contributedSpecializedBindings[identity].orEmpty()) {
-        if (!isContributedBindingActive(candidate, queryContext)) continue
+      for ((candidateIndex, candidate) in
+        lookups.contributedSpecializedBindings[identity].orEmpty().withIndex()) {
+        checkCanceledEvery(candidateIndex)
+        if (!isContributedBindingActive(candidate, structure)) continue
         if (graphId == context.graph.declarationId || !candidate.isGraphPrivate) return true
       }
     }
@@ -1421,18 +1743,18 @@ internal class BindingIndex(
 
   private fun isSupersededInheritedConsumer(
     consumer: ConsumerEntry,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Boolean {
-    val pointerIdentity = pointerIdentity(consumer.pointer) ?: return false
-    for (graphId in queryContext.graphContext.graphIds) {
+    val pointerIdentity = consumer.sourceIdentity ?: return false
+    for ((graphIndex, graphId) in structure.queryContext.graphContext.graphIds.withIndex()) {
+      checkCanceledEvery(graphIndex)
       val identity = SpecializedConsumerIdentity(graphId, pointerIdentity)
-      if (identity in specializedConsumerIdentities) return true
-      if (
-        contributedSpecializedConsumers[identity].orEmpty().any {
-          isContributedConsumerActive(it, queryContext)
-        }
-      )
-        return true
+      if (identity in lookups.specializedConsumerIdentities) return true
+      for ((candidateIndex, candidate) in
+        lookups.contributedSpecializedConsumers[identity].orEmpty().withIndex()) {
+        checkCanceledEvery(candidateIndex)
+        if (isContributedConsumerActive(candidate, structure)) return true
+      }
     }
     return false
   }
@@ -1441,9 +1763,9 @@ internal class BindingIndex(
     requestedKey: KaTypeKey? = null
   ): List<T> {
     if (size < 2) return this
-    if (requestedKey != null && requestedKey !in duplicatedAssistedFactoryKeys) return this
+    if (requestedKey != null && requestedKey !in lookups.duplicatedAssistedFactoryKeys) return this
     if (requestedKey == null && none { it is KaBinding.AssistedFactory }) return this
-    if (requestedKey == null && duplicatedAssistedFactoryKeys.isEmpty()) return this
+    if (requestedKey == null && lookups.duplicatedAssistedFactoryKeys.isEmpty()) return this
     val seen = HashSet<Triple<ClassId?, VirtualFile?, KaTypeKey>>()
     return filter { binding ->
       binding !is KaBinding.AssistedFactory ||
@@ -1452,9 +1774,41 @@ internal class BindingIndex(
   }
 
   internal fun pointerIdentity(pointer: SmartPsiElementPointer<*>): SourcePointerIdentity? {
-    val file = pointer.virtualFile ?: return null
-    val range = pointer.psiRange ?: return null
-    return SourcePointerIdentity(file, range.startOffset, range.endOffset)
+    return resolutionInputs.sourceIdentity(pointer)
+  }
+
+  private fun bindingSourceIdentity(binding: KaBinding): SourcePointerIdentity? {
+    lookups.bindingSourceIdentities[binding]?.let {
+      return it
+    }
+    return null
+  }
+
+  internal fun sourceIdentityFor(binding: KaBinding): SourcePointerIdentity? {
+    return bindingSourceIdentity(binding)
+  }
+
+  private fun isVisibleFrom(entry: KaBinding, queryContext: GraphQueryContext): Boolean {
+    return isVisibleFrom(
+      entry.pointer,
+      bindingSourceIdentity(entry),
+      entry.hintAvailability,
+      queryContext.graphModule,
+      queryContext.resolutionScope,
+    )
+  }
+
+  private fun isVisibleFrom(
+    entry: ContributionEntry,
+    queryContext: GraphQueryContext,
+  ): Boolean {
+    return isVisibleFrom(
+      entry.pointer,
+      entry.sourceIdentity,
+      entry.hintAvailability,
+      queryContext.graphModule,
+      queryContext.resolutionScope,
+    )
   }
 
   /** The same session-free identity for an enclosing source declaration already under a read. */
@@ -1470,7 +1824,7 @@ internal class BindingIndex(
     val seen = HashSet<BindingDeclarationIdentity>()
     val result = ArrayList<KaBinding>(entries.size)
     for (binding in entries) {
-      val sourceIdentity = pointerIdentity(binding.pointer)
+      val sourceIdentity = bindingSourceIdentity(binding)
       if (sourceIdentity == null) {
         result += binding
         continue
@@ -1486,7 +1840,7 @@ internal class BindingIndex(
     if (entries.isEmpty()) return emptySet()
     val result = HashSet<Any>(entries.size)
     for (binding in entries) {
-      val sourceIdentity = pointerIdentity(binding.pointer)
+      val sourceIdentity = bindingSourceIdentity(binding)
       val identity =
         if (sourceIdentity == null) {
           binding
@@ -1509,12 +1863,6 @@ internal class BindingIndex(
     val endOffset: Int,
   )
 
-  private data class BindingDeclarationIdentity(
-    val pointer: SourcePointerIdentity,
-    val bindingClass: Class<*>,
-    val bindingKey: KaTypeKey,
-  )
-
   private data class BindingResolutionIdentity(
     val pointer: SourcePointerIdentity,
     val bindingClass: Class<*>,
@@ -1522,37 +1870,38 @@ internal class BindingIndex(
     val dependencies: List<KaContextualTypeKey>,
   )
 
-  private data class SpecializedBindingIdentity(
-    val graphId: GraphDeclarationId,
-    val pointer: SourcePointerIdentity,
-    val bindingClass: Class<*>,
-    val bindingKey: KaTypeKey,
-  )
-
-  private data class SpecializedDeclarationIdentity(
-    val graphId: GraphDeclarationId,
-    val pointer: SourcePointerIdentity,
-    val bindingClass: Class<*>,
-  )
-
-  private data class SpecializedConsumerIdentity(
-    val graphId: GraphDeclarationId,
-    val pointer: SourcePointerIdentity,
-  )
-
-  private data class GraphCompositionKey(val path: GraphPath, val module: KaModule)
-
-  private class ContributionSelection(
+  internal class ContributionSelection(
     val entries: List<ContributionEntry>,
     val declarationIds: Set<GraphReference>,
     val removed: Set<ClassId>,
   )
 
-  private class SelectedGraphComposition(
+  internal class SelectedGraphComposition(
     val composition: GraphComposition,
+    val selection: ContributionSelection,
     val contributionIds: Set<GraphReference>,
     val bindings: Set<KaBinding>,
     val implementedRequests: Set<SourcePointerIdentity>,
+  )
+
+  internal class GraphQueryStructure(
+    val queryContext: GraphQueryContext,
+    val aggregateSelection: ContributionSelection,
+    val compositionsByOwner: Map<GraphDeclarationId, SelectedGraphComposition>,
+    val currentOwnerOwnContainers: Set<ClassId>,
+    val nearestFactoryInputOwners: NearestFactoryInputOwners,
+  )
+
+  internal class ContributionPruning(
+    val replacedOrigins: Set<ClassId>,
+    val lowerPriorityBindings: Set<KaBinding>,
+    val removedOrigins: Set<ClassId>,
+  )
+
+  internal class GraphQueryPlan(
+    val structure: GraphQueryStructure,
+    val pruning: ContributionPruning,
+    val includeIncompatibleScopes: Boolean,
   )
 
   private data class GraphAccessorIdentity(
@@ -1564,7 +1913,7 @@ internal class BindingIndex(
     val isSuspend: Boolean,
   )
 
-  private data class NearestFactoryInputOwners(
+  internal data class NearestFactoryInputOwners(
     val dependencies: Map<KaTypeKey, GraphDeclarationId>,
     val containers: Map<KaTypeKey, GraphDeclarationId>,
   )
@@ -1574,129 +1923,115 @@ internal class BindingIndex(
     val mapKeyValue: String,
   )
 
-  private fun replacedOrigins(
-    queryContext: GraphQueryContext,
-    includeIncompatibleScopes: Boolean = false,
-  ): Set<ClassId> {
-    val cache =
-      if (includeIncompatibleScopes) {
-        validationReplacedOriginsByContext
-      } else {
-        replacedOriginsByContext
-      }
-    return cache.computeIfAbsent(queryContext) {
-      val context = queryContext.graphContext
-      val removed =
-        selectContributions(
-            context.scopes,
-            context.excludes,
-            queryContext.graphModule,
-            queryContext.resolutionScope,
-          )
-          .removed
-      // Interface contributions can replace another origin without declaring any binding at all.
-      // Keep their shared merge plan alongside binding-derived replacements (including generated
-      // contribution providers that have no separate source contribution entry).
-      buildSet {
-        addAll(removed)
-        for (binding in bindings) {
-          if (binding.replaces.isEmpty()) continue
-          if (!isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes))
-            continue
-          addAll(binding.replaces)
-        }
-      }
-    }
+  private fun contributionPruning(
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
+  ): ContributionPruning {
+    val replaced = replacedOrigins(structure, includeIncompatibleScopes)
+    val lowerPriority = lowerPriorityBindings(structure, includeIncompatibleScopes, replaced)
+    val removed =
+      removedContributionOrigins(
+        structure,
+        includeIncompatibleScopes,
+        replaced,
+        lowerPriority,
+      )
+    return ContributionPruning(replaced, lowerPriority, removed)
   }
 
-  private fun removedContributionOrigins(
-    queryContext: GraphQueryContext,
-    includeIncompatibleScopes: Boolean = false,
+  private fun replacedOrigins(
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
   ): Set<ClassId> {
-    val cache =
-      if (includeIncompatibleScopes) {
-        validationRemovedOriginsByContext
-      } else {
-        removedOriginsByContext
-      }
-    return cache.computeIfAbsent(queryContext) {
-      val replaced = replacedOrigins(queryContext, includeIncompatibleScopes)
-      val lowerPriority = lowerPriorityBindings(queryContext, includeIncompatibleScopes)
-      if (lowerPriority.isEmpty()) return@computeIfAbsent replaced
-
-      buildSet {
-        addAll(replaced)
-        for (binding in lowerPriority) {
-          val originClassId = binding.originClassId ?: continue
-          if (originClassId in this) continue
-
-          val hasSurvivingBinding =
-            bindingsByOrigin[originClassId].orEmpty().any { candidate ->
-              candidate.contributionScopes.isNotEmpty() &&
-                candidate !in lowerPriority &&
-                isBindingCandidateInContext(candidate, queryContext, includeIncompatibleScopes)
-            }
-          if (hasSurvivingBinding) continue
-
-          val hasNonBindingContribution = contributions.any { contribution ->
-            contribution.classId == originClassId &&
-              contribution.kind != ContributionEntry.Kind.OTHER &&
-              contribution.scopeKeys.any(queryContext.graphContext.scopes::contains) &&
-              isVisibleFrom(contribution, queryContext)
-          }
-          if (!hasNonBindingContribution) add(originClassId)
-        }
+    // Replacements may come from interface contributions with no binding. Start with the shared
+    // merge plan, then add replacements from active bindings.
+    return buildSet {
+      addAll(structure.aggregateSelection.removed)
+      for ((index, binding) in lookups.bindingsWithReplacements.withIndex()) {
+        checkCanceledEvery(index)
+        if (!isBindingCandidateInContext(binding, structure, includeIncompatibleScopes)) continue
+        addAll(binding.replaces)
       }
     }
   }
 
   /** Priority applies to individual surviving contributed bindings after explicit replacements. */
   private fun lowerPriorityBindings(
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
     includeIncompatibleScopes: Boolean,
+    replaced: Set<ClassId>,
   ): Set<KaBinding> {
-    val cache =
-      if (includeIncompatibleScopes) {
-        validationLowerPriorityBindingsByContext
-      } else {
-        lowerPriorityBindingsByContext
-      }
-    return cache.computeIfAbsent(queryContext) {
-      val replaced = replacedOrigins(queryContext, includeIncompatibleScopes)
-      val prioritized = bindings.filter { binding ->
-        val isClassContribution =
-          when (binding) {
-            is KaBinding.Alias -> binding.isClassContribution
-            is KaBinding.Provided -> binding.isClassContribution
-            else -> false
-          }
-        val isSetContribution = binding.multibindingId != null && binding.mapKeyValue == null
-        isClassContribution &&
-          !isSetContribution &&
-          binding.originClassId != null &&
-          binding.originClassId !in replaced &&
-          isBindingCandidateInContext(binding, queryContext, includeIncompatibleScopes)
-      }
-      if (prioritized.size < 2) return@computeIfAbsent emptySet()
-
-      val lowerPriority = mutableSetOf<KaBinding>()
-      for (graph in queryContext.graphContext.chain) {
-        val levelBindings = prioritized.filter { binding ->
-          binding.contributionScopes.any(graph.scopeKeys::contains)
+    val prioritized = buildList {
+      for ((index, binding) in lookups.priorityEligibleBindings.withIndex()) {
+        checkCanceledEvery(index)
+        val originClassId = binding.originClassId ?: continue
+        if (
+          originClassId !in replaced &&
+            isBindingCandidateInContext(binding, structure, includeIncompatibleScopes)
+        ) {
+          add(binding)
         }
-        lowerPriority += selectLowerPriorityBindings(levelBindings, queryContext)
       }
-      lowerPriority
+    }
+    if (prioritized.size < 2) return emptySet()
+
+    val lowerPriority = mutableSetOf<KaBinding>()
+    for ((graphIndex, graph) in structure.queryContext.graphContext.chain.withIndex()) {
+      checkCanceledEvery(graphIndex)
+      val levelBindings = prioritized.filterIndexed { index, binding ->
+        checkCanceledEvery(index)
+        binding.contributionScopes.any(graph.scopeKeys::contains)
+      }
+      lowerPriority += selectLowerPriorityBindings(levelBindings, structure)
+    }
+    return lowerPriority.toSet()
+  }
+
+  private fun removedContributionOrigins(
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
+    replaced: Set<ClassId>,
+    lowerPriority: Set<KaBinding>,
+  ): Set<ClassId> {
+    if (lowerPriority.isEmpty()) return replaced
+
+    val queryContext = structure.queryContext
+    return buildSet {
+      addAll(replaced)
+      for ((index, binding) in lowerPriority.withIndex()) {
+        checkCanceledEvery(index)
+        val originClassId = binding.originClassId ?: continue
+        if (originClassId in this) continue
+
+        val hasSurvivingBinding =
+          lookups.bindingsByOrigin[originClassId].orEmpty().any { candidate ->
+            candidate.contributionScopes.isNotEmpty() &&
+              candidate !in lowerPriority &&
+              isBindingCandidateInContext(candidate, structure, includeIncompatibleScopes)
+          }
+        if (hasSurvivingBinding) continue
+
+        val hasNonBindingContribution =
+          lookups.contributionsByOrigin[originClassId].orEmpty().withIndex().any {
+            (contributionIndex, contribution) ->
+            checkCanceledEvery(contributionIndex)
+            contribution.kind != ContributionEntry.Kind.OTHER &&
+              contribution.scopeKeys.any(queryContext.graphContext.scopes::contains) &&
+              isVisibleFrom(contribution, queryContext)
+          }
+        if (!hasNonBindingContribution) add(originClassId)
+      }
     }
   }
 
   private fun selectLowerPriorityBindings(
     candidates: List<KaBinding>,
-    queryContext: GraphQueryContext,
+    structure: GraphQueryStructure,
   ): Set<KaBinding> {
-    val interopEnabled = queryContext.graphContext.daggerAnvilInteropEnabled
+    val interopEnabled = structure.queryContext.graphContext.daggerAnvilInteropEnabled
     return computeLowerPriorityContributions(
       candidates,
+      ensureActive = ProgressManager::checkCanceled,
       conflictKeySelector = { binding ->
         val multibindingId = binding.multibindingId
         if (multibindingId == null) {
@@ -1717,11 +2052,19 @@ internal class BindingIndex(
 
   /** Drops bindings replaced by other surviving contributions, via the shared merge engine. */
   private fun applyReplaces(entries: List<KaBinding>): List<KaBinding> {
-    return applyExcludesAndReplaces(entries)
+    return applyExcludesAndReplaces(entries, ensureActive = ProgressManager::checkCanceled)
   }
 
   /** Sites consuming any of [bindingEntries], joining multibinding contributions by id. */
   fun consumersFor(
+    bindingEntries: Collection<KaBinding>,
+    graphPath: GraphPath? = null,
+  ): List<ConsumerEntry> {
+    return withResolutionSession { session -> session.consumersFor(bindingEntries, graphPath) }
+  }
+
+  internal fun consumersFor(
+    session: BindingResolutionSession,
     bindingEntries: Collection<KaBinding>,
     graphPath: GraphPath? = null,
   ): List<ConsumerEntry> {
@@ -1731,15 +2074,15 @@ internal class BindingIndex(
     for (entry in bindingSet) {
       val multibindingId = entry.multibindingId
       if (multibindingId != null) {
-        candidates += consumersByMultibindingId[multibindingId].orEmpty()
+        candidates += lookups.consumersByMultibindingId[multibindingId].orEmpty()
       } else {
-        candidates += consumersByKey[entry.typeKey].orEmpty()
+        candidates += lookups.consumersByKey[entry.typeKey].orEmpty()
       }
     }
     if (graphs.isEmpty()) return candidates.toList()
 
     for (consumer in candidates) {
-      val resolution = resolveConsumer(consumer)
+      val resolution = resolveConsumer(session, consumer)
       val pinnedBindings = graphPath?.let { resolution.perContext.matchingContextEntry(it)?.value }
       val resolvesToEntry =
         if (pinnedBindings != null) {
@@ -1758,8 +2101,14 @@ internal class BindingIndex(
 
   fun bindingEntriesAt(element: KtElement): List<KaBinding> {
     val file = element.containingFile?.virtualFile ?: return emptyList()
-    return bindingsByFile[file].orEmpty().withoutDuplicateAssistedFactories().filter {
+    return lookups.bindingsByFile[file].orEmpty().withoutDuplicateAssistedFactories().filter {
       !it.isValidationOnlyAssistedTarget() && it.pointer.element === element
+    }
+  }
+
+  internal fun bindingEntriesInFile(file: VirtualFile): List<KaBinding> {
+    return lookups.bindingsByFile[file].orEmpty().withoutDuplicateAssistedFactories().filterNot {
+      it.isValidationOnlyAssistedTarget()
     }
   }
 
@@ -1783,10 +2132,25 @@ internal class BindingIndex(
     return entries.firstOrNull()
   }
 
+  internal fun consumerEntriesInFile(file: VirtualFile): List<ConsumerEntry> {
+    val entries = lookups.consumersByFile[file].orEmpty()
+    val specializedIdentities =
+      entries
+        .asSequence()
+        .filter { it.graphId != null && it.graphRequestKind == null }
+        .mapNotNull { it.sourceIdentity }
+        .toSet()
+    if (specializedIdentities.isEmpty()) return entries
+    return entries.filter { entry ->
+      val identity = entry.sourceIdentity
+      identity == null || identity !in specializedIdentities || entry.graphId != null
+    }
+  }
+
   /** All consumer entries anchored at [element]. Injector members anchor one per injected key. */
   fun consumerEntriesAt(element: KtElement): List<ConsumerEntry> {
     val file = element.containingFile?.virtualFile ?: return emptyList()
-    val entries = consumersByFile[file].orEmpty().filter { it.pointer.element === element }
+    val entries = lookups.consumersByFile[file].orEmpty().filter { it.pointer.element === element }
     val hasSpecializedEntries = entries.any { it.graphId != null && it.graphRequestKind == null }
     if (!hasSpecializedEntries) return entries
     return entries.filter { it.graphId != null }
@@ -1794,7 +2158,11 @@ internal class BindingIndex(
 
   fun graphEntryAt(element: KtElement): KaGraphDeclaration? {
     val file = element.containingFile?.virtualFile ?: return null
-    return graphsByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+    return lookups.graphsByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+  }
+
+  internal fun graphEntriesInFile(file: VirtualFile): List<KaGraphDeclaration> {
+    return lookups.graphsByFile[file].orEmpty()
   }
 
   /** Refreshes a retained graph declaration against this index. */
@@ -1804,39 +2172,46 @@ internal class BindingIndex(
 
   fun assistedSiteAt(element: KtElement): AssistedSite? {
     val file = element.containingFile?.virtualFile ?: return null
-    return assistedSitesByFile[file].orEmpty().firstOrNull { it.pointer.element === element }
+    return lookups.assistedSitesByFile[file].orEmpty().firstOrNull {
+      it.pointer.element === element
+    }
+  }
+
+  internal fun assistedSitesInFile(file: VirtualFile): List<AssistedSite> {
+    return lookups.assistedSitesByFile[file].orEmpty()
   }
 
   fun contributionsForScopes(scopeKeys: Set<ClassId>): List<ContributionEntry> {
     if (scopeKeys.isEmpty()) return emptyList()
-    if (scopeKeys.size == 1) return contributionsByScope[scopeKeys.first()].orEmpty()
+    if (scopeKeys.size == 1) return lookups.contributionsByScope[scopeKeys.first()].orEmpty()
     val result = linkedSetOf<ContributionEntry>()
-    for (scope in scopeKeys) result += contributionsByScope[scope].orEmpty()
+    for ((index, scope) in scopeKeys.withIndex()) {
+      checkCanceledEvery(index)
+      result += lookups.contributionsByScope[scope].orEmpty()
+    }
     return result.toList()
   }
 
   fun graphsForScopes(scopeKeys: Set<ClassId>): List<KaGraphDeclaration> {
     if (scopeKeys.isEmpty()) return emptyList()
-    return graphs.filter { graph -> graph.scopeKeys.any(scopeKeys::contains) }
+    return graphs.filterIndexed { index, graph ->
+      checkCanceledEvery(index)
+      graph.scopeKeys.any(scopeKeys::contains)
+    }
   }
 
   companion object {
-    val EMPTY = BindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
-  }
-}
+    internal fun fromBuilder(data: FrozenBindingIndexData): BindingIndex = BindingIndex(data)
 
-/**
- * Groups entries into a memory-compact ScatterMap, skipping entries whose key is null. These maps
- * live for the whole index lifetime, so the per-entry savings over HashMap add up.
- */
-private inline fun <T, K : Any> List<T>.groupToScatter(keyOf: (T) -> K?): ScatterMap<K, List<T>> {
-  val result = MutableScatterMap<K, MutableList<T>>()
-  for (entry in this) {
-    val key = keyOf(entry) ?: continue
-    result.getOrPut(key, ::mutableListOf) += entry
+    val EMPTY =
+      BindingIndexBuilder(IndexGenerationToken.EMPTY)
+        .apply {
+          resolutionInputs =
+            BindingIndexResolutionInputs(FileOrdinalTable.EMPTY, emptyMap(), emptyMap())
+          capturedBindingSourceIdentities = emptyMap()
+        }
+        .build()
   }
-  @Suppress("UNCHECKED_CAST")
-  return result as ScatterMap<K, List<T>>
 }
 
 private fun KaBinding.isValidationOnlyAssistedTarget(): Boolean {
@@ -1892,12 +2267,9 @@ internal class ConsumerResolution(
   }
 }
 
-private fun moduleFor(element: KtElement?): KaModule? {
-  return element?.let { KaModuleProvider.getModule(it.project, it, useSiteModule = null) }
-}
-
 private fun isVisibleFrom(
   pointer: SmartPsiElementPointer<*>,
+  sourceIdentity: BindingIndex.SourcePointerIdentity?,
   hintAvailability: HintAvailability?,
   useSiteModule: KaModule?,
   resolutionScope: DeclarationResolutionScope?,
@@ -1905,31 +2277,10 @@ private fun isVisibleFrom(
   if (hintAvailability != null) {
     if (useSiteModule == null || !hintAvailability.isVisibleFrom(useSiteModule)) return false
   }
+  if (resolutionScope is FrozenDeclarationResolutionScope) {
+    val file = sourceIdentity?.file ?: pointer.virtualFile
+    return resolutionScope.contains(file)
+  }
   val element = pointer.element ?: return false
-  if (resolutionScope == null) return true
-  return resolutionScope.contains(element)
-}
-
-private fun isVisibleFrom(entry: KaBinding, queryContext: GraphQueryContext): Boolean {
-  return isVisibleFrom(
-    entry.pointer,
-    entry.hintAvailability,
-    queryContext.graphModule,
-    queryContext.resolutionScope,
-  )
-}
-
-private fun isVisibleFrom(entry: ContributionEntry, queryContext: GraphQueryContext): Boolean {
-  return isVisibleFrom(
-    entry.pointer,
-    entry.hintAvailability,
-    queryContext.graphModule,
-    queryContext.resolutionScope,
-  )
-}
-
-@OptIn(KaPlatformInterface::class)
-private fun KaModule.resolutionScope(): DeclarationResolutionScope {
-  val resolutionScope = KaResolutionScope.forModule(this)
-  return DeclarationResolutionScope(resolutionScope::contains)
+  return resolutionScope?.contains(element) ?: true
 }

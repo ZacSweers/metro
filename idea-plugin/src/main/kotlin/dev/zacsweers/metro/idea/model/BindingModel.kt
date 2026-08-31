@@ -53,6 +53,10 @@ internal class ConsumerEntry(
   /** Exact implicit interface contribution that must survive in the owning graph path. */
   val graphContribution: GraphReference? = null,
 ) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+  val injectedMemberSourceIdentity: BindingIndex.SourcePointerIdentity? =
+    injectedMemberPointer?.let(::sourcePointerIdentity)
+
   val key: KaTypeKey
     get() = contextKey.typeKey
 
@@ -98,7 +102,9 @@ internal class AssistedSite(
    * explicit ones don't need a second marker.
    */
   val isImplicit: Boolean,
-)
+) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+}
 
 /** A `@DependencyGraph`/`@GraphExtension`-annotated class and its aggregation metadata. */
 internal class KaGraphDeclaration(
@@ -145,6 +151,7 @@ internal class KaGraphDeclaration(
   /** Concrete members from the written graph hierarchy that satisfy inherited abstract requests. */
   val defaultImplementations: List<GraphDefaultImplementation> = emptyList(),
 ) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val declarationId: GraphDeclarationId = GraphDeclarationId(classId, pointer.virtualFile)
   val selfReferences: Set<GraphReference> =
     selfIds.mapTo(mutableSetOf()) { GraphReference(it, pointer.virtualFile) }
@@ -193,6 +200,7 @@ internal class BindingContainerEntry(
   val classId: ClassId,
   val includes: Set<ClassId>,
 ) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   /** Separate modules can declare containers with the same fully qualified class name. */
   val declarationId: GraphReference = GraphReference(classId, pointer.virtualFile)
 }
@@ -225,6 +233,7 @@ internal class DynamicGraphCall(
   val containerInputs: List<KaBinding.BoundInstance>,
   val isFactory: Boolean,
 ) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
   val containerKeys: Set<KaTypeKey>
     get() = id.containerKeys
 }
@@ -258,7 +267,9 @@ internal data class GraphCallableSignature(
 internal class GraphCallableReference(
   val pointer: SmartPsiElementPointer<out KtElement>,
   val signature: GraphCallableSignature,
-)
+) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+}
 
 /** A concrete graph member and the real declarations that it overrides. */
 internal class GraphDefaultImplementation(
@@ -273,7 +284,9 @@ internal class GraphExtensionFactoryAccessor(
   val factoryKey: KaTypeKey,
   val extensionKey: KaTypeKey,
   val extension: GraphReference,
-)
+) {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+}
 
 /** One extracted interface surface, materialized for an exact candidate owning graph. */
 internal class GraphInterfaceContribution(
@@ -369,6 +382,11 @@ internal fun interface DeclarationResolutionScope {
   fun contains(element: PsiElement): Boolean
 }
 
+/** A file visibility snapshot that remains unchanged for the lifetime of an index. */
+internal interface FrozenDeclarationResolutionScope : DeclarationResolutionScope {
+  fun contains(file: VirtualFile?): Boolean
+}
+
 /** Modules from which declarations synthesized from a non-public contribution hint are visible. */
 internal class HintAvailability(modules: Set<KaModule>) {
   private val modules = modules.toSet()
@@ -390,11 +408,12 @@ internal class ContributionEntry(
   /** Excluding this child graph also excludes its contributed nested factory. */
   val graphExtension: GraphReference? = null,
 ) : MergeContribution {
+  val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
+
   override val mergeId: ClassId?
     get() = classId
 
-  val declarationId: GraphReference?
-    get() = classId?.let { GraphReference(it, pointer.virtualFile) }
+  val declarationId: GraphReference? = classId?.let { GraphReference(it, pointer.virtualFile) }
 
   enum class Kind {
     OTHER,

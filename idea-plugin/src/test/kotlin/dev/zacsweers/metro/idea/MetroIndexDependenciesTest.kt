@@ -3,12 +3,16 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.multibindingId
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -239,6 +243,106 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       setOf("test.Consumer", "kotlin.String", "test.Tracker"),
       accessors.map { it.key.renderedType }.toSet(),
     )
+  }
+
+  fun testParallelSessionsDoNotShareStateOrExpandUnrelatedGraphs() {
+    val file = configure()
+    myFixture.addFileToProject(
+      "test/UnrelatedGraph.kt",
+      """
+      package test
+
+      import dev.zacsweers.metro.DependencyGraph
+
+      interface Missing
+
+      @DependencyGraph
+      interface UnrelatedGraph {
+        val missing: Missing
+      }
+      """
+        .trimIndent(),
+    )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = checkNotNull(index.consumerEntryAt(declarations.property("baseUrl")))
+    assertNotNull(consumer.graphId)
+    val unrelatedGraph = index.graphs.single { it.name == "UnrelatedGraph" }
+    val ready = CountDownLatch(2)
+    val start = CountDownLatch(1)
+
+    fun resolveInNewSession(): CompletableFuture<Triple<List<String?>, List<String>, Boolean>> {
+      return CompletableFuture.supplyAsync {
+        ready.countDown()
+        start.await()
+        index.withResolutionSession { session ->
+          val resolution = session.resolveConsumer(consumer)
+          Triple(
+            resolution.perContext.keys.map { it.graph.name },
+            resolution.perContext.values.flatten().map { it.label },
+            session.hasComputedContextsFor(unrelatedGraph),
+          )
+        }
+      }
+    }
+
+    val first = resolveInNewSession()
+    val second = resolveInNewSession()
+    try {
+      assertTrue(ready.await(30, TimeUnit.SECONDS))
+    } finally {
+      start.countDown()
+    }
+    PlatformTestUtil.waitForFuture(first, 30_000)
+    PlatformTestUtil.waitForFuture(second, 30_000)
+    val firstResult = first.join()
+    val secondResult = second.join()
+
+    assertEquals(firstResult, secondResult)
+    assertEquals(listOf("AppGraph"), firstResult.first)
+    assertEquals(listOf("provides"), firstResult.second)
+    assertFalse(firstResult.third)
+  }
+
+  fun testGraphOwnedConsumerIncludesDescendantContextsWithoutExpandingUnrelatedGraphs() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val value: String
+          val child: ChildGraph
+
+          @Provides fun provideValue(): String = "app"
+        }
+
+        @GraphExtension
+        interface ChildGraph
+
+        @DependencyGraph
+        interface UnrelatedGraph {
+          val unrelated: Long
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().index(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = checkNotNull(index.consumerEntryAt(declarations.property("value")))
+    val unrelatedGraph = index.graphs.single { it.name == "UnrelatedGraph" }
+
+    index.withResolutionSession { session ->
+      val resolution = session.resolveConsumer(consumer)
+
+      assertEquals(
+        listOf("AppGraph", "ChildGraph"),
+        resolution.perContext.keys.map { it.graph.name },
+      )
+      assertEquals(
+        listOf(listOf("provides"), listOf("provides")),
+        resolution.perContext.values.map { bindings -> bindings.map { it.label } },
+      )
+      assertFalse(session.hasComputedContextsFor(unrelatedGraph))
+    }
   }
 
   fun testProvidesReceiverIsADependencyAndConsumer() {

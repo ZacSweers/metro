@@ -14,6 +14,7 @@ import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.idea.annotationScopeKeys
+import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.implicitSingleInAnnotation
 import dev.zacsweers.metro.idea.model.AssistedSite
@@ -52,6 +53,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -69,6 +71,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
+import org.jetbrains.kotlin.psi.KtTypeAlias
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 
@@ -101,6 +104,12 @@ internal class FileShardBuilder(
   private val processedFactoryInputs = HashSet<FactoryInputEntry.Id>()
   private val processedDynamicGraphs = HashSet<DynamicGraphId>()
   private val cacheDependencies = HashSet<PsiFile>()
+  private val sharedDeclarationDependencies = HashSet<PsiFile>()
+  private var cancellationWorkIndex = 0
+
+  private fun checkCanceled() {
+    checkCanceledEvery(cancellationWorkIndex++)
+  }
 
   /**
    * The PSI files backing [FileShard.dependencyFiles], for the caller's CachedValue registration.
@@ -114,6 +123,7 @@ internal class FileShardBuilder(
     // the original short-name-only path without seven repeated PSI import walks.
     val aliasedImports = mutableMapOf<FqName, MutableSet<String>>()
     for (directive in file.importDirectives) {
+      checkCanceled()
       val alias = directive.aliasName ?: continue
       val importedName = directive.importedFqName ?: continue
       aliasedImports.getOrPut(importedName, ::mutableSetOf) += alias
@@ -151,10 +161,11 @@ internal class FileShardBuilder(
       }
     }
 
-    for (entry in PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java)) {
-      ProgressManager.checkCanceled()
-      val shortName = entry.shortName?.asString() ?: continue
-      val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: continue
+    PsiTreeUtil.processElements(file) { element ->
+      checkCanceled()
+      val entry = element as? KtAnnotationEntry ?: return@processElements true
+      val shortName = entry.shortName?.asString() ?: return@processElements true
+      val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: return@processElements true
       if (shortName in bindingCallableNames) processBindingCallable(declaration)
       if (shortName in injectNames) processInjectAnnotated(declaration)
       if (shortName in contributesNames) processContribution(declaration)
@@ -164,11 +175,14 @@ internal class FileShardBuilder(
       if (options.enableCircuitCodegen && shortName in circuitNames) {
         processCircuitInject(declaration)
       }
+      true
     }
-    for (call in PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java)) {
-      ProgressManager.checkCanceled()
-      val name = call.calleeExpression?.text ?: continue
+    PsiTreeUtil.processElements(file) { element ->
+      checkCanceled()
+      val call = element as? KtCallExpression ?: return@processElements true
+      val name = call.calleeExpression?.text ?: return@processElements true
       if (name in dynamicGraphNames) processDynamicGraphCall(call)
+      true
     }
     return FileShard(
       bindings,
@@ -180,6 +194,7 @@ internal class FileShardBuilder(
       factoryInputs,
       dynamicGraphs,
       cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
+      sharedDeclarationDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
       graphInterfaces,
     )
   }
@@ -213,6 +228,7 @@ internal class FileShardBuilder(
       val containerKeys = linkedSetOf<KaTypeKey>()
       val inputs = mutableListOf<FactoryInputEntry>()
       for (argument in call.valueArguments) {
+        checkCanceled()
         val expression = argument.getArgumentExpression() ?: continue
         val containerType = expression.expressionType?.fullyExpandedType as? KaClassType ?: continue
         val containerClass = containerType.symbol as? KaNamedClassSymbol ?: continue
@@ -235,6 +251,7 @@ internal class FileShardBuilder(
       val id = DynamicGraphId(requestedType.classId, containerKeys.toSet(), callerFile)
       if (!processedDynamicGraphs.add(id)) return@analyze
       for (input in inputs) {
+        checkCanceled()
         val inputBinding = input.bindings.firstOrNull()
         if (inputBinding is KaBinding.BoundInstance) {
           bindings += inputBinding
@@ -299,6 +316,7 @@ internal class FileShardBuilder(
           val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
           val ownerDependency = graphOwnerDependency(target)
           for (data in dataEntries) {
+            checkCanceled()
             bindings +=
               data.toKaBinding(
                 ptr(target),
@@ -324,6 +342,7 @@ internal class FileShardBuilder(
           // Provider function parameters are consumers themselves.
           if (target is KtNamedFunction && !target.isAnnotatedWithAny(options.bindsAnnotations)) {
             for (parameter in target.valueParameters) {
+              checkCanceled()
               addParameterConsumer(
                 parameter,
                 originClassId = consumerOriginClassId,
@@ -399,6 +418,7 @@ internal class FileShardBuilder(
           } else {
             // Member injection site: parameters are consumers
             for (parameter in declaration.valueParameters) {
+              checkCanceled()
               addParameterConsumer(
                 parameter,
                 memberOwnerClassId = declaration.containingClassOrObject?.getClassId(),
@@ -425,6 +445,7 @@ internal class FileShardBuilder(
     val typeKey = KaTypeKey(KaTypeSnapshot(classId.asSingleFqName().asString(), name, classId))
     val dependencies =
       symbol.valueParameters
+        .onEach { checkCanceled() }
         .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
         .map { dependencyKey(it, options) }
     bindings +=
@@ -437,6 +458,7 @@ internal class FileShardBuilder(
         constructorDependencies = dependencies,
       )
     for (parameter in function.valueParameters) {
+      checkCanceled()
       addParameterConsumer(parameter, originClassId = classId)
     }
   }
@@ -451,12 +473,14 @@ internal class FileShardBuilder(
       val dataEntries = ktClass.bindingData(this, options)
       val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
       for (data in dataEntries) {
+        checkCanceled()
         bindings += data.toKaBinding(ptr(ktClass))
       }
       // Gate constructor consumers on the owning class's binding only when it originates one.
       val originClassId = ktClass.getClassId().takeIf { dataEntries.isNotEmpty() }
       val injectConstructor = findInjectConstructor(ktClass, classSymbol, options)
       for (parameter in injectConstructor?.valueParameters.orEmpty()) {
+        checkCanceled()
         addParameterConsumer(
           parameter,
           originClassId = originClassId,
@@ -539,6 +563,7 @@ internal class FileShardBuilder(
         factoryContext = classType,
       )
     for (type in sequenceOf(classType) + classType.allSupertypes) {
+      checkCanceled()
       if (type.isAnyType) continue
       val superType = type as? KaClassType ?: continue
       if (!typeKeys.add(typeKey(superType, null))) continue
@@ -596,6 +621,7 @@ internal class FileShardBuilder(
         )
 
       for (member in ktClass.declarations) {
+        checkCanceled()
         when (member) {
           is KtClassOrObject -> {
             val memberClassId = member.getClassId() ?: continue
@@ -608,6 +634,7 @@ internal class FileShardBuilder(
             includedBindingContainers += graphInputs.bindingContainers
             includedDependencies += graphInputs.graphDependencies
             for (input in graphInputs.inputs) {
+              checkCanceled()
               val inputBinding = input.bindings.firstOrNull()
               if (inputBinding is KaBinding.BoundInstance) {
                 bindings += inputBinding
@@ -641,6 +668,7 @@ internal class FileShardBuilder(
           if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
         }
       for (superType in writtenSupertypes) {
+        checkCanceled()
         if (superType.isAnyType) continue
         val classType = superType as? KaClassType ?: continue
         val superClass = classType.symbol as? KaNamedClassSymbol ?: continue
@@ -700,6 +728,7 @@ internal class FileShardBuilder(
         options.multibindsAnnotations +
         bindsOptionalOfAnnotations(options)
     for (signature in scope.getCallableSignatures()) {
+      checkCanceled()
       val view = callableBindingView(signature) ?: continue
       val callable = view.symbol
       if (callable.callableId?.classId != superClass.classId) continue
@@ -738,6 +767,7 @@ internal class FileShardBuilder(
     val overriddenDeclarations = mutableListOf<GraphCallableReference>()
     val seenDeclarations = HashSet<KtElement>()
     for (overridden in callable.allOverriddenSymbols) {
+      checkCanceled()
       val original = overridden.fakeOverrideOriginal
       val declaration = original.psi as? KtElement ?: continue
       if (!seenDeclarations.add(declaration)) continue
@@ -878,7 +908,9 @@ internal class FileShardBuilder(
     if (ownerType != null) roots += ownerType
     val seen = hashSetOf<KaTypeKey>()
     for (root in roots) {
+      checkCanceled()
       for (type in sequenceOf(root) + root.allSupertypes) {
+        checkCanceled()
         val factoryType = type as? KaClassType ?: continue
         if (!seen.add(typeKey(factoryType, null))) continue
         if (!factoryType.symbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) continue
@@ -919,6 +951,7 @@ internal class FileShardBuilder(
         ?: (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
     var addedBinding = false
     for (data in callable.bindingData(this, options)) {
+      checkCanceled()
       val templates = target.bindingTemplates
       if (templates != null) {
         templates += GraphInterfaceBinding(ptr(declaration), data)
@@ -941,6 +974,7 @@ internal class FileShardBuilder(
     }
     if (!addedBinding) return
     for (parameter in callable.valueParameters) {
+      checkCanceled()
       val source = parameter.symbol.psi as? KtElement ?: continue
       addConsumer(
         source,
@@ -1016,14 +1050,16 @@ internal class FileShardBuilder(
     val targetType = targetParameterType.fullyExpandedType as? KaClassType ?: return
     val targetSymbol = targetType.symbol as? KaNamedClassSymbol ?: return
     for (owner in memberInjectOwners(targetSymbol)) {
+      checkCanceled()
       owner.classId?.let(injectedMemberOwnerIds::add)
       owner.psi?.containingFile?.let(cacheDependencies::add)
     }
     for (site in
       memberInjectSites(targetType, options) { dependencyType ->
-        ProgressManager.checkCanceled()
+        checkCanceled()
         processRequestedAssistedFactory(dependencyType)
       }) {
+      checkCanceled()
       val contextKey = site.key
       targetConsumers +=
         ConsumerEntry(
@@ -1056,6 +1092,7 @@ internal class FileShardBuilder(
   private fun KaSession.processRequestedAssistedFactory(type: KaType) {
     var factoryType = type.fullyExpandedType as? KaClassType ?: return
     while (true) {
+      checkCanceled()
       val classId = factoryType.classId
       val isWrapper =
         classId in options.providerTypes ||
@@ -1152,12 +1189,14 @@ internal class FileShardBuilder(
           // parameters.
           val dependencies =
             symbol.valueParameters
+              .onEach { checkCanceled() }
               .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
               .filterNot { isCircuitProvidedType(it.returnType) }
               .map { dependencyKey(it, options) }
           addCircuitContribution(declaration, scopes, factoryClassId, dependencies)
 
           for (parameter in declaration.valueParameters) {
+            checkCanceled()
             addCircuitParameterConsumer(parameter, contributionScopes = scopes)
           }
         }
@@ -1170,7 +1209,9 @@ internal class FileShardBuilder(
             classSymbol.annotations.firstOrNull { it.classId == CircuitClassIds.CircuitInject }
               ?: return@analyze
           val supertypeIds =
-            classSymbol.defaultType.allSupertypes.mapNotNull { (it as? KaClassType)?.classId }
+            classSymbol.defaultType.allSupertypes
+              .onEach { checkCanceled() }
+              .mapNotNull { (it as? KaClassType)?.classId }
           val factoryClassId =
             when {
               CircuitClassIds.Ui in supertypeIds -> CircuitClassIds.UiFactory
@@ -1184,6 +1225,7 @@ internal class FileShardBuilder(
             findInjectConstructorSymbol(classSymbol, options)
               ?.valueParameters
               .orEmpty()
+              .onEach { checkCanceled() }
               .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
               .filterNot { isCircuitProvidedType(it.returnType) }
               .map { dependencyKey(it, options) }
@@ -1315,8 +1357,28 @@ internal class FileShardBuilder(
     val metadataAnnotations =
       options.qualifierAnnotations + options.scopeAnnotations + options.mapKeyAnnotations
     for (annotation in annotated.annotations) {
+      checkCanceled()
       val annotationClassId = annotation.classId ?: continue
       val annotationClass = findClass(annotationClassId) ?: continue
+
+      // Track constants and type aliases in annotation arguments so their edits rebuild this shard.
+      val argumentList = (annotation.psi as? KtAnnotationEntry)?.valueArgumentList
+      if (argumentList != null) {
+        PsiTreeUtil.processElements(argumentList) { element ->
+          ProgressManager.checkCanceled()
+          for (reference in element.references) {
+            val referenced = reference.resolve()
+            val isSharedDeclaration =
+              referenced is KtTypeAlias ||
+                (referenced is KtProperty && referenced.hasModifier(KtTokens.CONST_KEYWORD))
+            if (!isSharedDeclaration) continue
+            val referencedFile = referenced.containingFile ?: continue
+            if (referencedFile !== useSiteFile) sharedDeclarationDependencies += referencedFile
+          }
+          true
+        }
+      }
+
       if (annotationClass.annotations.none { it.classId in metadataAnnotations }) continue
       val declarationFile = annotationClass.psi?.containingFile ?: continue
       if (declarationFile !== useSiteFile) cacheDependencies += declarationFile

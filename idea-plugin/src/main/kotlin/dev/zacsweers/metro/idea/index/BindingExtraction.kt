@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.compiler.graph.createMapBindingId
 import dev.zacsweers.metro.compiler.graph.resolveImplicitBoundType
 import dev.zacsweers.metro.idea.annotationScopeKeys
+import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.ContributionEntry
@@ -201,13 +202,17 @@ internal fun KaSession.callableBindingView(
 /** Resolves an assisted factory's SAM for the concrete type requested by its graph. */
 internal fun KaSession.assistedFactoryFunction(factoryType: KaClassType): CallableBindingView? {
   val scope = factoryType.scope ?: return null
-  val signature =
-    scope.getCallableSignatures().filterIsInstance<KaFunctionSignature<*>>().singleOrNull {
-      candidate ->
-      val symbol = candidate.symbol
-      symbol is KaNamedFunctionSymbol && symbol.modality == KaSymbolModality.ABSTRACT
-    } ?: return null
-  return callableBindingView(signature)
+  var signature: KaFunctionSignature<*>? = null
+  for ((index, candidate) in scope.getCallableSignatures().withIndex()) {
+    checkCanceledEvery(index)
+    if (candidate !is KaFunctionSignature<*>) continue
+    val symbol = candidate.symbol
+    if (symbol !is KaNamedFunctionSymbol || symbol.modality != KaSymbolModality.ABSTRACT) continue
+    if (signature != null) return null
+    signature = candidate
+  }
+  val factorySignature = signature ?: return null
+  return callableBindingView(factorySignature)
 }
 
 /**
@@ -221,7 +226,8 @@ internal fun KaSession.mapKeyInfo(
   options: MetroOptions,
   implicitClassId: ClassId? = null,
 ): MapKeyInfo? {
-  for (annotation in annotated.annotations) {
+  for ((index, annotation) in annotated.annotations.withIndex()) {
+    checkCanceledEvery(index)
     val classId = annotation.classId ?: continue
     val annotationClass = findClass(classId) as? KaNamedClassSymbol ?: continue
     val mapKeyMeta =
@@ -450,7 +456,10 @@ internal fun CallableBindingView.bindingData(
         val dependencies =
           listOfNotNull(receiverDependency) +
             callable.valueParameters
-              .filterNot { it.symbol.hasAnyAnnotation(options.assistedAnnotations) }
+              .filterIndexed { index, parameter ->
+                checkCanceledEvery(index)
+                !parameter.symbol.hasAnyAnnotation(options.assistedAnnotations)
+              }
               .map { dependencyKey(it.returnType, it.symbol, options) }
         listOf(
           BindingData(
@@ -568,7 +577,8 @@ private fun KtClassOrObject.classBindingData(
 
     val intoSetIds =
       options.contributesIntoSetAnnotations + options.customContributesIntoSetAnnotations
-    for (annotation in contributesAnnotations) {
+    for ((index, annotation) in contributesAnnotations.withIndex()) {
+      checkCanceledEvery(index)
       val classId = annotation.classId ?: continue
       val boundType = contributedBoundType(ktClass, classSymbol, annotation) ?: continue
       val annotatedBoundType = boundType as? KaAnnotated
@@ -711,7 +721,11 @@ private fun KaSession.contributedBoundType(
   }
   // The implicit bound type (supertype @DefaultBinding, else sole supertype) is resolved by the
   // shared decision so the IDE and compiler agree on ambiguity. Ambiguous/multiple → unresolved.
-  val superTypes = classSymbol.superTypes.filterNot { it.isAnyType }
+  val superTypes =
+    classSymbol.superTypes.filterIndexed { index, type ->
+      checkCanceledEvery(index)
+      !type.isAnyType
+    }
   val resolution =
     resolveImplicitBoundType(superTypes) { superType ->
       val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
@@ -731,7 +745,10 @@ private fun KaSession.unannotatedBoundType(boundType: KaType): KaType {
   val classType = boundType.fullyExpandedType as? KaClassType ?: return boundType
   return buildClassType(classType.classId) {
     isMarkedNullable = classType.isMarkedNullable
-    for (projection in classType.typeArguments) argument(projection)
+    for ((index, projection) in classType.typeArguments.withIndex()) {
+      checkCanceledEvery(index)
+      argument(projection)
+    }
   }
 }
 
@@ -749,9 +766,15 @@ private fun KaSession.resolveDefaultBindingType(supertypeSymbol: KaClassSymbol):
   }
   val mirror =
     supertypeSymbol.declaredMemberScope.classifiers
+      .withIndex()
+      .onEach { checkCanceledEvery(it.index) }
+      .map { it.value }
       .filterIsInstance<KaNamedClassSymbol>()
       .firstOrNull { it.name.asString() == "DefaultBindingMirror" } ?: return null
   return mirror.declaredMemberScope.callables
+    .withIndex()
+    .onEach { checkCanceledEvery(it.index) }
+    .map { it.value }
     .filterIsInstance<KaNamedFunctionSymbol>()
     .firstOrNull { it.name.asString() == "defaultBinding" }
     ?.returnType
@@ -768,9 +791,11 @@ internal fun KaSession.findInjectConstructorSymbol(
   if (!classSymbol.isInjectableKind()) return null
   val classLevel = hasClassLevelInject(classSymbol, options)
   val constructors = classSymbol.memberScope.constructors.toList()
-  val annotatedConstructor = constructors.firstOrNull {
-    it.hasAnyAnnotation(options.allInjectAnnotations)
-  }
+  val annotatedConstructor =
+    constructors.withIndex().firstNotNullOfOrNull { (index, constructor) ->
+      checkCanceledEvery(index)
+      constructor.takeIf { it.hasAnyAnnotation(options.allInjectAnnotations) }
+    }
   if (annotatedConstructor != null) return annotatedConstructor
   return if (classLevel) constructors.firstOrNull { it.isPrimary } else null
 }
@@ -787,7 +812,10 @@ internal fun KaSession.injectConstructorDependencyKeys(
   return constructor
     ?.valueParameters
     .orEmpty()
-    .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+    .filterIndexed { index, parameter ->
+      checkCanceledEvery(index)
+      !parameter.hasAnyAnnotation(options.assistedAnnotations)
+    }
     .map { dependencyKey(it, options) }
 }
 
@@ -845,6 +873,7 @@ internal fun KaSession.injectConstructorDependencyKeys(
   }
 
   val substitutions = typeParameters.mapIndexedNotNull { index, parameter ->
+    checkCanceledEvery(index)
     val argument = classType.typeArguments.getOrNull(index)?.type ?: return@mapIndexedNotNull null
     parameter to argument
   }
@@ -854,7 +883,10 @@ internal fun KaSession.injectConstructorDependencyKeys(
 
   val substitutor = if (substitutions.isEmpty()) null else createSubstitutor(substitutions.toMap())
   return constructor.valueParameters
-    .filterNot { it.hasAnyAnnotation(options.assistedAnnotations) }
+    .filterIndexed { index, parameter ->
+      checkCanceledEvery(index)
+      !parameter.hasAnyAnnotation(options.assistedAnnotations)
+    }
     .map { parameter ->
       val dependencyType = substitutor?.substitute(parameter.returnType) ?: parameter.returnType
       onDependencyType?.invoke(dependencyType)
@@ -908,7 +940,8 @@ internal fun KaSession.memberInjectSites(
   val scope = classType.scope ?: return memberInjectSites(classSymbol, options)
   val ownerIds = owners.mapNotNullTo(linkedSetOf()) { it.classId }
   val result = mutableListOf<MemberInjectSite>()
-  for (signature in scope.getCallableSignatures()) {
+  for ((index, signature) in scope.getCallableSignatures().withIndex()) {
+    checkCanceledEvery(index)
     val view = callableBindingView(signature) ?: continue
     val symbol = view.symbol
     val ownerId = symbol.callableId?.classId ?: continue
@@ -932,7 +965,8 @@ internal fun KaSession.memberInjectSites(
       }
       is KaNamedFunctionSymbol -> {
         if (symbol.hasAnyAnnotation(options.allInjectAnnotations)) {
-          view.valueParameters.mapTo(result) { parameter ->
+          view.valueParameters.withIndex().mapTo(result) { (index, parameter) ->
+            checkCanceledEvery(index)
             onDependencyType?.invoke(parameter.returnType)
             MemberInjectSite(
               ownerId,
@@ -953,7 +987,8 @@ internal fun KaSession.memberInjectSites(
   options: MetroOptions,
 ): List<MemberInjectSite> {
   val result = mutableListOf<MemberInjectSite>()
-  for (owner in memberInjectOwners(classSymbol)) {
+  for ((index, owner) in memberInjectOwners(classSymbol).withIndex()) {
+    checkCanceledEvery(index)
     collectDeclaredMemberInjectKeys(owner, options, result)
   }
   return result
@@ -969,7 +1004,9 @@ internal fun KaSession.memberInjectOwners(
 ): List<KaNamedClassSymbol> {
   val result = mutableListOf<KaNamedClassSymbol>()
   var current: KaNamedClassSymbol? = classSymbol
+  var depth = 0
   while (current != null) {
+    checkCanceledEvery(depth++)
     result += current
     current =
       superClassSymbol(current)?.takeIf {
@@ -985,7 +1022,8 @@ private fun KaSession.collectDeclaredMemberInjectKeys(
   result: MutableList<MemberInjectSite>,
 ) {
   val injectIds = options.allInjectAnnotations
-  for (callable in classSymbol.declaredMemberScope.callables) {
+  for ((index, callable) in classSymbol.declaredMemberScope.callables.withIndex()) {
+    checkCanceledEvery(index)
     when (callable) {
       is KaPropertySymbol -> {
         // @Inject has no PROPERTY target. A bare annotation lands on the backing field.
@@ -1004,7 +1042,8 @@ private fun KaSession.collectDeclaredMemberInjectKeys(
       }
       is KaNamedFunctionSymbol ->
         if (callable.hasAnyAnnotation(injectIds)) {
-          callable.valueParameters.mapTo(result) { parameter ->
+          callable.valueParameters.withIndex().mapTo(result) { (index, parameter) ->
+            checkCanceledEvery(index)
             MemberInjectSite(
               classSymbol.classId,
               parameter.psi as? KtElement ?: callable.psi as? KtElement,
@@ -1018,7 +1057,8 @@ private fun KaSession.collectDeclaredMemberInjectKeys(
 }
 
 private fun KaSession.superClassSymbol(classSymbol: KaNamedClassSymbol): KaNamedClassSymbol? {
-  for (superType in classSymbol.superTypes) {
+  for ((index, superType) in classSymbol.superTypes.withIndex()) {
+    checkCanceledEvery(index)
     val symbol =
       (superType.fullyExpandedType as? KaClassType)?.symbol as? KaNamedClassSymbol ?: continue
     if (symbol.classKind == KaClassKind.CLASS) return symbol
@@ -1031,7 +1071,11 @@ internal fun classListArgument(annotation: KaAnnotation, name: String): List<Cla
   val argument =
     annotation.arguments.firstOrNull { it.name.asString() == name } ?: return emptyList()
   return when (val value = argument.expression) {
-    is KaAnnotationValue.ArrayValue -> value.values.mapNotNull { classLiteralClassId(it) }
+    is KaAnnotationValue.ArrayValue ->
+      value.values.mapIndexedNotNull { index, annotationValue ->
+        checkCanceledEvery(index)
+        classLiteralClassId(annotationValue)
+      }
     else -> listOfNotNull(classLiteralClassId(value))
   }
 }

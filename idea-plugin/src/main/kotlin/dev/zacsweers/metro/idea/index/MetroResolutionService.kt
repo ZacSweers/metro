@@ -46,14 +46,20 @@ import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.MetroIdeModuleState
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
+import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingIndexBuilder
+import dev.zacsweers.metro.idea.model.BindingIndexModuleView
+import dev.zacsweers.metro.idea.model.BindingIndexResolutionInputs
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
 import dev.zacsweers.metro.idea.model.DynamicGraphId
+import dev.zacsweers.metro.idea.model.FileOrdinal
+import dev.zacsweers.metro.idea.model.FileOrdinalTable
 import dev.zacsweers.metro.idea.model.GraphCallableReference
 import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
@@ -66,7 +72,9 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
+import dev.zacsweers.metro.idea.model.ModuleViewId
 import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
+import dev.zacsweers.metro.idea.model.sourcePointerIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -80,7 +88,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsListener
@@ -578,19 +588,21 @@ class MetroResolutionService(
           LibraryShard.EMPTY
         }
       progress?.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
-      val index =
-        BindingIndex(
-          bindings = source.bindings + library.bindings,
-          consumers = source.consumers,
-          graphs = source.graphs,
-          contributions = source.contributions + library.contributions,
-          assistedSites = source.assistedSites,
-          bindingContainers = source.bindingContainers,
-          incompleteAssistedFactories =
+      val indexBuilder =
+        BindingIndexBuilder().apply {
+          bindings += source.bindings + library.bindings
+          consumers += source.consumers
+          graphs += source.graphs
+          contributions += source.contributions + library.contributions
+          assistedSites += source.assistedSites
+          bindingContainers += source.bindingContainers
+          incompleteAssistedFactories +=
             if (key.resolveFromLibraries) library.incompleteFactories
-            else summary.sourceFactories.incompleteFactories,
-          dynamicGraphs = source.dynamicGraphs,
-        )
+            else summary.sourceFactories.incompleteFactories
+          dynamicGraphs += source.dynamicGraphs
+        }
+      indexBuilder.captureResolutionInputs(project)
+      val index = indexBuilder.build()
       // Only cache when nothing invalidated the pass semantically. A plain re-drain of new dirty
       // files under the same generation still describes this exact source snapshot.
       if (invalidations.get().generation == start.generation) {
@@ -844,7 +856,7 @@ class MetroResolutionService(
           source.graphs,
           contributions,
           summary.factoryUseSites,
-          summary.consumerGraphContexts,
+          summary.consumerOwnership,
           summary.sourceFactories,
         )
         .postProcess()
@@ -1364,6 +1376,131 @@ class MetroResolutionService(
     const val MAX_CACHED_INDEXES = 8
     const val MAX_CACHED_OPTION_FINGERPRINTS = 64
   }
+}
+
+/** Builds the immutable source index used to capture dependency ownership. */
+private fun buildSourceOwnershipIndex(project: Project, source: SourceAggregate): BindingIndex {
+  val builder =
+    BindingIndexBuilder().apply {
+      bindings += source.bindings
+      consumers += source.consumers
+      graphs += source.graphs
+      contributions += source.contributions
+      assistedSites += source.assistedSites
+      bindingContainers += source.bindingContainers
+      dynamicGraphs += source.dynamicGraphs
+    }
+  builder.captureResolutionInputs(project)
+  return builder.build()
+}
+
+/** Captures module visibility and source declaration identities during the index read. */
+@OptIn(KaPlatformInterface::class)
+private fun BindingIndexBuilder.captureResolutionInputs(project: Project) {
+  val representatives = linkedMapOf<VirtualFile, PsiElement>()
+  val pointerSourceIdentities =
+    IdentityHashMap<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>()
+  val capturedBindings = Collections.newSetFromMap(IdentityHashMap<KaBinding, Boolean>())
+  var pointerCaptureWorkIndex = 0
+
+  fun capture(pointer: SmartPsiElementPointer<*>) {
+    checkCanceledEvery(pointerCaptureWorkIndex++)
+    val identity = sourcePointerIdentity(pointer)
+    if (identity != null) pointerSourceIdentities[pointer] = identity
+    val file = pointer.virtualFile ?: return
+    if (file in representatives) return
+    val element = pointer.element ?: return
+    representatives.putIfAbsent(file, element)
+  }
+
+  fun captureBinding(binding: KaBinding) {
+    capturedBindings += binding
+    capture(binding.pointer)
+  }
+
+  for (binding in bindings) captureBinding(binding)
+  for (consumer in consumers) {
+    capture(consumer.pointer)
+    consumer.injectedMemberPointer?.let { pointer -> capture(pointer) }
+  }
+  for (graph in graphs) {
+    capture(graph.pointer)
+    for (factory in graph.extensionFactories) capture(factory.pointer)
+    for (implementation in graph.defaultImplementations) {
+      capture(implementation.declaration.pointer)
+      for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+    }
+    for (contribution in graph.contributedInterfaces) {
+      capture(contribution.contribution.pointer)
+      for (binding in contribution.bindings) captureBinding(binding)
+      for (consumer in contribution.consumers) capture(consumer.pointer)
+      for (factory in contribution.extensionFactories) capture(factory.pointer)
+      for (implementation in contribution.defaultImplementations) {
+        capture(implementation.declaration.pointer)
+        for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+      }
+    }
+  }
+  for (contribution in contributions) capture(contribution.pointer)
+  for (site in assistedSites) capture(site.pointer)
+  for (container in bindingContainers) capture(container.pointer)
+  for (dynamicGraph in dynamicGraphs) {
+    capture(dynamicGraph.pointer)
+    for (input in dynamicGraph.containerInputs) captureBinding(input)
+  }
+  capturedBindingSourceIdentities =
+    IdentityHashMap<KaBinding, BindingIndex.SourcePointerIdentity>().apply {
+      for (binding in capturedBindings) {
+        checkCanceledEvery(pointerCaptureWorkIndex++)
+        pointerSourceIdentities[binding.pointer]?.let { identity -> put(binding, identity) }
+      }
+    }
+
+  val fileOrdinalTable =
+    FileOrdinalTable.freeze(
+      representatives.keys.withIndex().associate { (ordinal, file) ->
+        file to FileOrdinal(ordinal)
+      }
+    )
+  val moduleByFile = linkedMapOf<VirtualFile, ModuleViewId>()
+  val moduleIds = linkedMapOf<KaModule, ModuleViewId>()
+  val moduleRepresentatives = linkedMapOf<KaModule, PsiElement>()
+  for ((file, element) in representatives) {
+    ProgressManager.checkCanceled()
+    val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
+    val moduleId = moduleIds.getOrPut(module) { ModuleViewId(moduleIds.size) }
+    moduleByFile[file] = moduleId
+    moduleRepresentatives.putIfAbsent(module, element)
+  }
+
+  val moduleViews = linkedMapOf<ModuleViewId, BindingIndexModuleView>()
+  for ((module, moduleId) in moduleIds) {
+    ProgressManager.checkCanceled()
+    val scope = KaResolutionScope.forModule(module)
+    val visibleFiles = BooleanArray(fileOrdinalTable.size)
+    for ((file, element) in representatives) {
+      ProgressManager.checkCanceled()
+      if (scope.contains(element)) {
+        visibleFiles[fileOrdinalTable.getValue(file).value] = true
+      }
+    }
+    val moduleElement = checkNotNull(moduleRepresentatives[module])
+    moduleViews[moduleId] =
+      BindingIndexModuleView(
+        id = moduleId,
+        module = module,
+        visibleFileOrdinals = visibleFiles,
+        fileOrdinalTable = fileOrdinalTable,
+        daggerAnvilInteropEnabled = moduleElement.metroIdeState().options.enableDaggerAnvilInterop,
+      )
+  }
+  resolutionInputs =
+    BindingIndexResolutionInputs(
+      fileOrdinalTable,
+      moduleByFile,
+      moduleViews,
+      pointerSourceIdentities,
+    )
 }
 
 private enum class IndexRequestMode {
@@ -2090,32 +2227,23 @@ private class SourceLibrarySummaryReference {
       summary?.let {
         return it
       }
-      val sourceIndex =
-        BindingIndex(
-          source.bindings,
-          source.consumers,
-          source.graphs,
-          source.contributions,
-          source.assistedSites,
-          source.bindingContainers,
-          dynamicGraphs = source.dynamicGraphs,
-        )
-      val consumerGraphContexts = ConsumerGraphContexts(sourceIndex)
+      val sourceIndex = buildSourceOwnershipIndex(project, source)
+      val consumerOwnership = ConsumerOwnershipBundle.build(sourceIndex)
       val sourceFactories =
         SourceAssistedFactoryPostProcessor(
             project,
             source.bindings,
             source.consumers,
-            consumerGraphContexts,
+            consumerOwnership,
           )
           .resolveInitial()
       val completeSource = source.withAddedFactories(sourceFactories.addedBindings)
-      val inputs = completeSource.libraryInputs(project, sourceFactories, consumerGraphContexts)
+      val inputs = completeSource.libraryInputs(project, sourceFactories, consumerOwnership)
       val result =
         SourceLibrarySummary(
           inputs,
           sourceFactories.factoryUseSites,
-          consumerGraphContexts,
+          consumerOwnership,
           sourceFactories,
         )
       ProgressManager.checkCanceled()
@@ -2128,7 +2256,7 @@ private class SourceLibrarySummaryReference {
 private data class SourceLibrarySummary(
   val inputs: LibraryInputs,
   val factoryUseSites: SourceAssistedFactoryUseSites,
-  val consumerGraphContexts: ConsumerGraphContexts,
+  val consumerOwnership: ConsumerOwnershipBundle,
   val sourceFactories: SourceFactoryResolution,
 )
 
@@ -2149,7 +2277,7 @@ private data class SourceAggregate(
   fun libraryInputs(
     project: Project,
     sourceFactories: SourceFactoryResolution,
-    consumerGraphContexts: ConsumerGraphContexts,
+    consumerOwnership: ConsumerOwnershipBundle,
   ): LibraryInputs {
     val sourceFactoryUseSites = sourceFactories.factoryUseSites
     val scopeIds = linkedSetOf<ClassId>()
@@ -2187,9 +2315,9 @@ private data class SourceAggregate(
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       val classId = consumer.typeClassId
-      val containerOwners = consumerGraphContexts.owningGraphPointers(consumer)
+      val containerOwners = consumerOwnership.owningGraphPointers(consumer)
       if (containerOwners == null) {
-        val module = addModule(consumerGraphContexts.pointer(consumer).element) ?: continue
+        val module = addModule(consumerOwnership.pointer(consumer).element) ?: continue
         if (classId == null || consumer.multibindingId != null) continue
         injectRequests += LibraryInjectInput(module, consumer.key, classId)
       } else {

@@ -12,6 +12,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
@@ -2202,7 +2203,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       )
 
       val useSites = allowAnalysisOnEdt {
-        sourceAssistedFactoryUseSites(project, index.bindings, index.consumers, index.graphs)
+        sourceAssistedFactoryUseSites(
+          project,
+          index.bindings,
+          index.consumers,
+          ConsumerOwnershipBundle.build(index),
+        )
       }
       val sharedUseSites = checkNotNull(useSites[specializedFactories.first()])
       assertEquals(1, sharedUseSites.size)

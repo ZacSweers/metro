@@ -166,6 +166,10 @@ internal class FileShard(
   val dynamicGraphs: List<DynamicGraphCall>,
   /** Referenced declaration files whose changes require this shard to be rebuilt. */
   val dependencyFiles: Set<VirtualFile>,
+  /**
+   * Files containing referenced constants or type aliases. Fingerprint changes rebuild this shard.
+   */
+  val sharedDeclarationFiles: Set<VirtualFile>,
   val graphInterfaces: List<GraphInterfaceSurface> = emptyList(),
 ) {
   companion object {
@@ -179,6 +183,7 @@ internal class FileShard(
         emptyList(),
         emptyList(),
         emptyList(),
+        emptySet(),
         emptySet(),
       )
   }

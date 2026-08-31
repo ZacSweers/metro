@@ -258,7 +258,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       structure.children(root).map { (it as MetroTreeNode.Graph).context.path },
     )
 
-    currentIndex = BindingIndex(emptyList(), emptyList(), emptyList(), emptyList())
+    currentIndex = BindingIndex.EMPTY
     assertTrue(structure.children(root).isEmpty())
     assertNull(pinService.pinnedPath)
   }
