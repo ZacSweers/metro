@@ -29,6 +29,7 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
@@ -130,11 +131,11 @@ internal class MetroGraphDebugExporter(
   fun report(context: GraphContext): String? {
     val element = context.contextPointer.element ?: return null
     val service = project.service<MetroGraphValidationService>()
-    return service.debugLookup(element, context) { index, queryContext, options, lookup ->
+    return service.debugLookup(element, context) { index, session, queryContext, options, lookup ->
       val currentContext = queryContext.graphContext
       val declaration = currentContext.graph.pointer.element ?: element
       val cached = service.cachedResult(declaration, currentContext)
-      GraphDebugReport(project, index, queryContext, options, cached, lookup).render()
+      GraphDebugReport(project, index, session, queryContext, options, cached, lookup).render()
     }
   }
 
@@ -161,6 +162,7 @@ internal fun writeGraphDebugReport(directory: Path, report: String): Path {
 private class GraphDebugReport(
   private val project: Project,
   private val index: BindingIndex,
+  private val session: BindingResolutionSession,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
   private val cachedValidation: CachedValidation?,
@@ -203,6 +205,7 @@ private class GraphDebugReport(
     field("suppressUnusedWarnings", settings.suppressUnusedWarnings)
     field("suppressKaptConfigurationWarning", settings.suppressKaptConfigurationWarning)
     field("enableBindingResolution", settings.enableBindingResolution)
+    field("automaticallyRefreshGraphData", settings.automaticallyRefreshGraphData)
     field("resolveFromLibraries", settings.resolveFromLibraries)
     field("assistedParameterInlays", settings.assistedParameterInlays)
 
@@ -237,8 +240,8 @@ private class GraphDebugReport(
     }
 
     section("Contributions")
-    val ownContributions = index.contributionsFor(queryContext)
-    val inheritedContributions = index.inheritedContributionsFor(queryContext)
+    val ownContributions = session.contributionsFor(queryContext)
+    val inheritedContributions = session.inheritedContributionsFor(queryContext)
     field("own", ownContributions.size)
     val contributionOrder =
       compareBy<ContributionEntry>(
@@ -260,7 +263,7 @@ private class GraphDebugReport(
     }
 
     val requests =
-      index
+      session
         .accessorsFor(queryContext)
         .sortedWith(
           compareBy({ pointerSortKey(it.pointer) }, { it.contextKey.render(short = false) })
@@ -271,7 +274,7 @@ private class GraphDebugReport(
       "bindingKinds",
       index.bindings.groupingBy { it.javaClass.simpleName }.eachCount().toSortedMap(),
     )
-    field("bindingsInContext", index.bindingsInContext(queryContext).size)
+    field("bindingsInContext", session.bindingsInContext(queryContext).size)
     field("consumers", index.consumers.size)
     field("graphs", index.graphs.size)
     field("contributions", index.contributions.size)
@@ -291,7 +294,9 @@ private class GraphDebugReport(
         request.contextKey.withDefault(request.isOptional || request.contextKey.hasDefault)
       val raw = rawCandidates.getOrPut(request.key.type) { index.bindingsWithType(request.key) }
       val inContext =
-        contextCandidates.getOrPut(request.key) { index.bindingsForKey(request.key, queryContext) }
+        contextCandidates.getOrPut(request.key) {
+          index.bindingsForKey(request.key, lookup.queryPlan)
+        }
       val selected = selectCandidates(requestKey)
       line("request ${number + 1}:")
       field("  location", location(request.pointer))
@@ -351,7 +356,7 @@ private class GraphDebugReport(
   }
 
   private fun writeGraph(graph: KaGraphDeclaration) {
-    val composition = index.graphComposition(queryContext, graph)
+    val composition = session.graphComposition(queryContext, graph)
     line("graph ${graphId(graph.declarationId)}:")
     field("  declaration", location(graph.pointer))
     field("  isExtension", graph.isExtension)

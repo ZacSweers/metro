@@ -11,6 +11,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.ide.progress.withBackgroundProgress
@@ -21,22 +22,28 @@ import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
-import java.util.Collections
-import java.util.concurrent.ConcurrentHashMap
+import java.util.IdentityHashMap
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.TestOnly
 
 /** A retained validation result plus whether the index changed since it was produced. */
 internal class CachedValidation(val result: KaGraphValidationResult, val stale: Boolean)
@@ -52,7 +59,49 @@ internal class MetroGraphValidationService(
   private val scope: CoroutineScope,
 ) {
 
-  private class CachedEntry(val result: KaGraphValidationResult, val index: BindingIndex)
+  private class CachedEntry(
+    val result: KaGraphValidationResult,
+    val generationToken: IndexGenerationToken,
+    val runVersion: Long,
+  )
+
+  private class PublishedResults(
+    val clearVersion: Long,
+    val entries: Map<GraphPath, CachedEntry>,
+  ) {
+    fun cleared(): PublishedResults = PublishedResults(clearVersion + 1, emptyMap())
+
+    fun with(bundle: ValidationResultBundle): PublishedResults {
+      if (bundle.clearVersion != clearVersion || bundle.entries.isEmpty()) return this
+
+      val updated = LinkedHashMap(entries)
+      for ((path, entry) in bundle.entries) {
+        val current = updated[path]
+        if (current != null && current.runVersion > entry.runVersion) continue
+        updated.remove(path)
+        updated[path] = entry
+      }
+      val iterator = updated.entries.iterator()
+      while (updated.size > MAX_CACHED_RESULTS && iterator.hasNext()) {
+        iterator.next()
+        iterator.remove()
+      }
+      return PublishedResults(clearVersion, updated.toMap())
+    }
+  }
+
+  private class ValidationResultBundle(
+    val clearVersion: Long,
+    val runVersion: Long,
+    val entries: Map<GraphPath, CachedEntry>,
+  )
+
+  /** A finished computation waiting to be added to the shared result cache. */
+  private class CompletedValidation<T>(
+    val requestPath: GraphPath,
+    val result: T,
+    val bundle: ValidationResultBundle,
+  )
 
   /** A current graph context interpreted using the compilation that owns it. */
   private class ValidationInput(
@@ -61,48 +110,111 @@ internal class MetroGraphValidationService(
     val context: GraphContext,
   )
 
-  private class ValidationTraversal(
-    val requestPath: GraphPath,
-    val inputs: List<ValidationInput>,
+  private class ValidationTraversal(val requestPath: GraphPath, val inputs: List<ValidationInput>)
+
+  /** Shares one resolution session per index within a validation run. */
+  private class ResolutionRun {
+    private val sessions = IdentityHashMap<BindingIndex, BindingResolutionSession>()
+
+    fun session(index: BindingIndex): BindingResolutionSession {
+      return sessions.getOrPut(index) { index.createResolutionSession() }
+    }
+  }
+
+  private class ValidationWorkspace(
+    private val initial: PublishedResults,
+    private val runVersion: Long,
+  ) {
+    val resolutionRun = ResolutionRun()
+    private val results = linkedMapOf<GraphPath, CachedEntry>()
+    private val publishableResults = linkedMapOf<GraphPath, CachedEntry>()
+
+    fun cached(path: GraphPath, generationToken: IndexGenerationToken): KaGraphValidationResult? {
+      val entry = results[path] ?: initial.entries[path]
+      return entry?.takeIf { it.generationToken === generationToken }?.result
+    }
+
+    fun cache(
+      path: GraphPath,
+      result: KaGraphValidationResult,
+      generationToken: IndexGenerationToken,
+    ) {
+      val entry = CachedEntry(result, generationToken, runVersion)
+      results[path] = entry
+      publishableResults.remove(path)
+      publishableResults[path] = entry
+      if (publishableResults.size > MAX_CACHED_RESULTS) {
+        val oldest = publishableResults.entries.iterator()
+        oldest.next()
+        oldest.remove()
+      }
+    }
+
+    fun finish(): ValidationResultBundle {
+      return ValidationResultBundle(
+        initial.clearVersion,
+        runVersion,
+        publishableResults.toMap(),
+      )
+    }
+  }
+
+  /** Tracks one validation request so replacements can suppress its results and callbacks. */
+  private class ValidationRequest(
+    val path: GraphPath,
+    val token: Any,
+    val publishProgress: (GraphValidationProgress) -> Unit,
   )
+
+  private class ActiveValidation(
+    val token: Any,
+    val job: Job,
+    val progress: GraphValidationProgress,
+  )
+
+  private class ValidationActivity(val byPath: Map<GraphPath, ActiveValidation>) {
+    fun starting(path: GraphPath, validation: ActiveValidation): ValidationActivity {
+      return ValidationActivity(byPath + (path to validation))
+    }
+
+    fun progressing(
+      path: GraphPath,
+      token: Any,
+      progress: GraphValidationProgress,
+    ): ValidationActivity {
+      val validation = byPath[path] ?: return this
+      if (validation.token !== token) return this
+      return ValidationActivity(
+        byPath + (path to ActiveValidation(token, validation.job, progress))
+      )
+    }
+
+    fun completed(path: GraphPath, token: Any): ValidationActivity {
+      val validation = byPath[path] ?: return this
+      if (validation.token !== token) return this
+      return ValidationActivity(byPath - path)
+    }
+  }
 
   private fun cacheKey(context: GraphContext): GraphPath? {
     val hasLocalGraph = context.path.segments.any { it.classId == null }
     return context.path.takeUnless { hasLocalGraph }
   }
 
-  /**
-   * Contexts visited during active traversals stay available until those traversals finish. The
-   * normal cache limit applies again afterward so one large graph does not raise it forever.
-   */
-  private val retainFloor = AtomicInteger(0)
-  private val activeTraversals = AtomicInteger(0)
-
-  // An access-ordered LinkedHashMap with removeEldestEntry as an LRU. The bound keeps a long
-  // browsing session from retaining every sealed graph forever. The synchronized wrapper is
-  // required because async validation seals on pooled threads and access ordering mutates
-  // internal links even on reads.
-  private val results: MutableMap<GraphPath, CachedEntry> =
-    Collections.synchronizedMap(
-      object : LinkedHashMap<GraphPath, CachedEntry>(8, 0.75f, true) {
-        override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<GraphPath, CachedEntry>
-        ): Boolean = size > maxOf(MAX_CACHED_RESULTS, retainFloor.get())
-      }
-    )
-
-  /** In-flight validations by stable graph path, so repeat requests coalesce into one run. */
-  private val inFlight = ConcurrentHashMap<GraphPath, Job>()
-  private val validationProgress = ConcurrentHashMap<GraphPath, GraphValidationProgress>()
+  private val publishedResults = AtomicReference(PublishedResults(0, emptyMap()))
+  private val validationActivity = AtomicReference(ValidationActivity(emptyMap()))
+  private val validationRunVersion = AtomicLong()
+  /** Keeps asynchronous result publication atomic with request replacement. */
+  private val validationRequestLock = Any()
+  private val validationProgressNotificationPending = AtomicBoolean()
   private val validationProgressListeners =
     CopyOnWriteArrayList<(List<GraphValidationProgress>) -> Unit>()
+  private val beforeValidationPublicationObserver =
+    AtomicReference<((GraphPath, Long) -> Unit)?>(null)
 
   /** Drops all retained results. */
   fun clearResults() {
-    results.clear()
-    if (activeTraversals.get() == 0) {
-      retainFloor.set(0)
-    }
+    publishedResults.updateAndGet(PublishedResults::cleared)
   }
 
   internal fun addValidationProgressListener(
@@ -115,7 +227,13 @@ internal class MetroGraphValidationService(
   }
 
   internal fun isValidationRunning(path: GraphPath): Boolean {
-    return validationProgress.values.any { it.covers(path) }
+    return validationActivity.get().byPath.values.any { it.progress.covers(path) }
+  }
+
+  /** Lets tests pause after computation to control result publication order. */
+  @TestOnly
+  internal fun setBeforeValidationPublicationObserver(observer: ((GraphPath, Long) -> Unit)?) {
+    beforeValidationPublicationObserver.set(observer)
   }
 
   /**
@@ -125,10 +243,14 @@ internal class MetroGraphValidationService(
    */
   fun cachedResult(element: PsiElement, context: GraphContext): CachedValidation? {
     val key = cacheKey(context) ?: return null
-    val entry = results[key] ?: return null
+    val entry = publishedResults.get().entries[key] ?: return null
     val contextElement = context.contextPointer.element ?: element
-    val currentIndex = project.service<MetroResolutionService>().cachedIndex(contextElement)
-    return CachedValidation(entry.result, stale = entry.index !== currentIndex)
+    val resolutionService = project.service<MetroResolutionService>()
+    val presentationIndex = resolutionService.presentationIndex(contextElement)
+    val stale =
+      entry.generationToken !== presentationIndex.generationToken ||
+        !resolutionService.isCurrent(presentationIndex)
+    return CachedValidation(entry.result, stale)
   }
 
   /**
@@ -136,7 +258,18 @@ internal class MetroGraphValidationService(
    * Must be called under a read action.
    */
   fun validate(element: PsiElement, context: GraphContext): KaGraphValidationResult {
-    return validate(validationInput(element, context))
+    return publishCompletedValidation(computeValidation(element, context))
+  }
+
+  /** Keeps this computation's cache entries private until the caller publishes the result. */
+  private fun computeValidation(
+    element: PsiElement,
+    context: GraphContext,
+  ): CompletedValidation<KaGraphValidationResult> {
+    val workspace = validationWorkspace()
+    val input = validationInput(element, context, workspace.resolutionRun)
+    val result = validate(input, workspace)
+    return CompletedValidation(context.path, result, workspace.finish())
   }
 
   /**
@@ -146,32 +279,43 @@ internal class MetroGraphValidationService(
   fun <T> debugLookup(
     element: PsiElement,
     context: GraphContext,
-    block: (BindingIndex, GraphQueryContext, MetroOptions, KaBindingLookup) -> T,
+    block:
+      (
+        BindingIndex,
+        BindingResolutionSession,
+        GraphQueryContext,
+        MetroOptions,
+        KaBindingLookup,
+      ) -> T,
   ): T? {
-    val input = validationInputOrNull(element, context) ?: return null
-    val queryContext = input.index.queryContext(input.context) ?: return null
+    val resolutionRun = ResolutionRun()
+    val input = validationInputOrNull(element, context, resolutionRun) ?: return null
+    val session = resolutionRun.session(input.index)
+    val queryContext = session.queryContext(input.context) ?: return null
     val options = moduleOptions(input.contextElement)
     val lookup =
-      KaBindingLookup(input.index, queryContext, options) { parentContext ->
-        parentGraphLookup(input.contextElement, parentContext)
+      KaBindingLookup(input.index, session, queryContext, options) { parentContext ->
+        parentGraphLookup(input.contextElement, parentContext, resolutionRun)
       }
     return try {
-      block(input.index, queryContext, options, lookup)
+      block(input.index, session, queryContext, options, lookup)
     } finally {
       lookup.clear()
     }
   }
 
-  private fun validate(input: ValidationInput): KaGraphValidationResult {
+  private fun validate(
+    input: ValidationInput,
+    workspace: ValidationWorkspace,
+  ): KaGraphValidationResult {
     val index = input.index
+    val resolutionRun = workspace.resolutionRun
+    val session = resolutionRun.session(index)
     val context = input.context
     val key = cacheKey(context)
     if (key != null) {
-      results[key]
-        ?.takeIf { it.index === index }
-        ?.let {
-          return it.result
-        }
+      val cached = workspace.cached(key, index.generationToken)
+      if (cached != null) return cached
     }
 
     // Extension children seal first, mirroring the compiler's traversal, so any keys they
@@ -181,9 +325,11 @@ internal class MetroGraphValidationService(
     val reservations = mutableListOf<ReservedParentKey>()
     var childFailed = false
     var incompleteChild: KaGraphValidationResult.Incomplete? = null
-    for (extensionContext in index.extensionContextsOf(context)) {
-      val childInput = validationInputOrNull(input.contextElement, extensionContext) ?: continue
-      val childResult = validate(childInput)
+    for (extensionContext in session.extensionContextsOf(context)) {
+      ProgressManager.checkCanceled()
+      val childInput =
+        validationInputOrNull(input.contextElement, extensionContext, resolutionRun) ?: continue
+      val childResult = validate(childInput, workspace)
       when (childResult) {
         is KaGraphValidationResult.Completed -> {
           for ((reservedKey, binding) in childResult.parentReservations) {
@@ -214,11 +360,11 @@ internal class MetroGraphValidationService(
         runGraphValidation(context, graphName) {
           val options = moduleOptions(input.contextElement)
           val queryContext =
-            checkNotNull(index.queryContext(context)) {
+            checkNotNull(session.queryContext(context)) {
               "Graph declaration disappeared: $graphName"
             }
-          KaBindingGraph(index, queryContext, options, reservations) { parentContext ->
-              parentGraphLookup(input.contextElement, parentContext)
+          KaBindingGraph(index, session, queryContext, options, reservations) { parentContext ->
+              parentGraphLookup(input.contextElement, parentContext, resolutionRun)
             }
             .seal()
         }
@@ -227,7 +373,7 @@ internal class MetroGraphValidationService(
     // gutter refresh. Internal errors stay uncached so transient plugin failures can retry. A
     // parent sealed without a crashed child's reservations must also retry once the child does.
     if (key != null && result !is KaGraphValidationResult.InternalError && !childFailed) {
-      results[key] = CachedEntry(result, index)
+      workspace.cache(key, result, index.generationToken)
     }
     return result
   }
@@ -242,15 +388,31 @@ internal class MetroGraphValidationService(
     graph: KaGraphDeclaration,
     onProgress: (GraphValidationProgress) -> Unit = {},
   ): List<KaGraphValidationResult> {
+    return publishCompletedValidation(computeValidationWithExtensions(element, graph, onProgress))
+  }
+
+  /** Collects every extension result before the caller updates the shared cache. */
+  private fun computeValidationWithExtensions(
+    element: PsiElement,
+    graph: KaGraphDeclaration,
+    onProgress: (GraphValidationProgress) -> Unit,
+  ): CompletedValidation<List<KaGraphValidationResult>> {
     val declarationElement = graph.pointer.element ?: element
     val index = project.service<MetroResolutionService>().currentIndex(declarationElement)
     val currentGraph =
       index.graphFor(graph)
         ?: throw CancellationException("Metro graph declaration is no longer current")
+    val workspace = validationWorkspace()
     val requestPath = GraphPath(listOf(currentGraph.declarationId))
     val traversal =
-      validationTraversal(declarationElement, requestPath, index.contextsFor(currentGraph))
-    return validateTraversal(traversal, onProgress)
+      validationTraversal(
+        declarationElement,
+        requestPath,
+        workspace.resolutionRun.session(index).contextsFor(currentGraph),
+        workspace.resolutionRun,
+      )
+    val results = validateTraversal(traversal, workspace, onProgress)
+    return CompletedValidation(requestPath, results, workspace.finish())
   }
 
   /** Validates one concrete graph path and the extension paths it creates. */
@@ -259,84 +421,96 @@ internal class MetroGraphValidationService(
     context: GraphContext,
     onProgress: (GraphValidationProgress) -> Unit = {},
   ): List<KaGraphValidationResult> {
-    val traversal = validationTraversal(element, context.path, listOf(context))
-    return validateTraversal(traversal, onProgress)
+    return publishCompletedValidation(computeValidationWithExtensions(element, context, onProgress))
+  }
+
+  /** Collects results for this graph path and its extensions before updating the shared cache. */
+  private fun computeValidationWithExtensions(
+    element: PsiElement,
+    context: GraphContext,
+    onProgress: (GraphValidationProgress) -> Unit,
+  ): CompletedValidation<List<KaGraphValidationResult>> {
+    val workspace = validationWorkspace()
+    val traversal =
+      validationTraversal(element, context.path, listOf(context), workspace.resolutionRun)
+    val results = validateTraversal(traversal, workspace, onProgress)
+    return CompletedValidation(context.path, results, workspace.finish())
   }
 
   private fun validationTraversal(
     declarationFallback: PsiElement,
     requestPath: GraphPath,
     rootContexts: List<GraphContext>,
+    resolutionRun: ResolutionRun,
   ): ValidationTraversal {
     val inputs = mutableListOf<ValidationInput>()
     val visited = mutableSetOf<GraphPath>()
 
     fun visit(context: GraphContext) {
-      val input = validationInput(declarationFallback, context)
+      ProgressManager.checkCanceled()
+      val input = validationInput(declarationFallback, context, resolutionRun)
       if (!visited.add(input.context.path)) return
-      for (extension in input.index.extensionContextsOf(input.context)) {
+      for (extension in resolutionRun.session(input.index).extensionContextsOf(input.context)) {
         visit(extension)
       }
       inputs += input
     }
 
-    rootContexts.forEach(::visit)
+    for (context in rootContexts) {
+      ProgressManager.checkCanceled()
+      visit(context)
+    }
     return ValidationTraversal(requestPath, inputs)
   }
 
   private fun validateTraversal(
     traversal: ValidationTraversal,
+    workspace: ValidationWorkspace,
     onProgress: (GraphValidationProgress) -> Unit,
   ): List<KaGraphValidationResult> {
-    activeTraversals.incrementAndGet()
-    try {
-      val traversalResults = ArrayList<KaGraphValidationResult>(traversal.inputs.size)
-      for ((index, input) in traversal.inputs.withIndex()) {
-        val graphName =
-          input.context.graph.name ?: input.context.graph.classId?.asFqNameString() ?: "<unknown>"
-        onProgress(
-          GraphValidationProgress(
-            requestPath = traversal.requestPath,
-            graphName = graphName,
-            completed = index,
-            total = traversal.inputs.size,
-          )
+    val traversalResults = ArrayList<KaGraphValidationResult>(traversal.inputs.size)
+    for ((index, input) in traversal.inputs.withIndex()) {
+      ProgressManager.checkCanceled()
+      val graphName =
+        input.context.graph.name ?: input.context.graph.classId?.asFqNameString() ?: "<unknown>"
+      onProgress(
+        GraphValidationProgress(
+          requestPath = traversal.requestPath,
+          graphName = graphName,
+          completed = index,
+          total = traversal.inputs.size,
         )
-        traversalResults += validate(input)
-        retainFloor.updateAndGet { floor -> maxOf(floor, traversalResults.size + 1) }
-      }
-      return traversalResults
-    } finally {
-      if (activeTraversals.decrementAndGet() == 0) {
-        retainFloor.set(0)
-        synchronized(results) {
-          val entries = results.entries.iterator()
-          while (results.size > MAX_CACHED_RESULTS && entries.hasNext()) {
-            entries.next()
-            entries.remove()
-          }
-        }
-      }
+      )
+      traversalResults += validate(input, workspace)
     }
+    return traversalResults
   }
 
   /** Parent binding analysis follows the parent's own module, index, and compiler options. */
   private fun parentGraphLookup(
     declarationFallback: PsiElement,
     context: GraphContext,
+    resolutionRun: ResolutionRun,
   ): ParentGraphLookup? {
-    val input = validationInputOrNull(declarationFallback, context) ?: return null
-    val queryContext = input.index.queryContext(input.context) ?: return null
-    return ParentGraphLookup(input.index, queryContext, moduleOptions(input.contextElement))
+    val input = validationInputOrNull(declarationFallback, context, resolutionRun) ?: return null
+    val session = resolutionRun.session(input.index)
+    val queryContext = session.queryContext(input.context) ?: return null
+    return ParentGraphLookup(
+      input.index,
+      session,
+      queryContext,
+      moduleOptions(input.contextElement),
+    )
   }
 
   private fun validationInputOrNull(
     declarationFallback: PsiElement,
     context: GraphContext,
+    resolutionRun: ResolutionRun,
   ): ValidationInput? {
     val contextElement = context.contextPointer.element ?: declarationFallback
     val index = project.service<MetroResolutionService>().currentIndex(contextElement)
-    val currentContext = index.findContext(context.path) ?: return null
+    val currentContext = resolutionRun.session(index).findContext(context.path) ?: return null
     val currentContextElement = currentContext.contextPointer.element ?: return null
     return ValidationInput(currentContextElement, index, currentContext)
   }
@@ -344,11 +518,12 @@ internal class MetroGraphValidationService(
   private fun validationInput(
     declarationFallback: PsiElement,
     context: GraphContext,
+    resolutionRun: ResolutionRun,
   ): ValidationInput {
     val contextElement = context.contextPointer.element ?: declarationFallback
     val index = project.service<MetroResolutionService>().currentIndex(contextElement)
     val currentContext =
-      index.findContext(context.path)
+      resolutionRun.session(index).findContext(context.path)
         ?: throw CancellationException("Metro graph context is no longer current")
     val currentContextElement =
       currentContext.contextPointer.element
@@ -356,19 +531,22 @@ internal class MetroGraphValidationService(
     return ValidationInput(currentContextElement, index, currentContext)
   }
 
-  /** Runs [validate] for one context in a smart-mode read action and delivers it on the EDT. */
+  /**
+   * Validates under a cancellable read action. Results enter the cache after the read ends, and
+   * [onDone] runs on the EDT.
+   */
   fun validateAsync(
     element: PsiElement,
     context: GraphContext,
     onDone: Consumer<KaGraphValidationResult>,
-  ) {
-    launchCoalesced(context.path, context.graph) { publish ->
-      val result =
+  ): Job {
+    return launchLatestValidation(context.path, context.graph) { request ->
+      val completed =
         withBackgroundProgress(project, progressTitle(context.graph)) {
           reportRawProgress { reporter ->
             retryCancelledIndexBuild {
               smartReadAction(project) {
-                publish(
+                request.publishProgress(
                   GraphValidationProgress(
                     requestPath = context.path,
                     graphName = graphDisplayName(context.graph),
@@ -378,32 +556,40 @@ internal class MetroGraphValidationService(
                 )
                 reporter.details("Validating ${graphDisplayName(context.graph)}")
                 reporter.fraction(0.0)
-                validate(element, context)
+                computeValidation(element, context)
               }
             }
           }
         }
-      withContext(Dispatchers.EDT) { onDone.accept(result) }
+      if (publishCompletedValidationIfCurrent(request, completed)) {
+        withContext(Dispatchers.EDT) {
+          if (isCurrentValidation(request)) onDone.accept(completed.result)
+        }
+      }
     }
   }
 
-  /** Runs [validateWithExtensions] like [validateAsync]. */
+  /**
+   * Validates the graph and its extensions asynchronously. Results are cached after the read ends,
+   * and [onDone] runs on the EDT.
+   */
   fun validateWithExtensionsAsync(
-    element: PsiElement,
     graph: KaGraphDeclaration,
     onDone: Consumer<List<KaGraphValidationResult>>,
-  ) {
-    // Keyed by the root path so this coalesces with validateAsync for the same graph and stays
-    // stable across index rebuilds, unlike the declaration instance.
+  ): Job {
+    // Use the same path as validateAsync so either entry point replaces an older request.
     val requestPath = GraphPath(listOf(graph.declarationId))
-    launchCoalesced(requestPath, graph) { publish ->
-      val results =
+    return launchLatestValidation(requestPath, graph) { request ->
+      val completed =
         withBackgroundProgress(project, progressTitle(graph)) {
           reportRawProgress { reporter ->
             retryCancelledIndexBuild {
               smartReadAction(project) {
-                validateWithExtensions(element, graph) { progress ->
-                  publish(progress)
+                val element =
+                  graph.pointer.element
+                    ?: throw CancellationException("Metro graph is no longer available")
+                computeValidationWithExtensions(element, graph) { progress ->
+                  request.publishProgress(progress)
                   reporter.details(progress.message)
                   reporter.fraction(progress.fraction)
                 }
@@ -411,24 +597,33 @@ internal class MetroGraphValidationService(
             }
           }
         }
-      withContext(Dispatchers.EDT) { onDone.accept(results) }
+      if (publishCompletedValidationIfCurrent(request, completed)) {
+        withContext(Dispatchers.EDT) {
+          if (isCurrentValidation(request)) onDone.accept(completed.result)
+        }
+      }
     }
   }
 
-  /** Runs [validateWithExtensions] for one concrete graph path like [validateAsync]. */
+  /**
+   * Validates this graph path and its extensions asynchronously. Results are cached after the read
+   * ends, and [onDone] runs on the EDT.
+   */
   fun validateWithExtensionsAsync(
-    element: PsiElement,
     context: GraphContext,
     onDone: Consumer<List<KaGraphValidationResult>>,
-  ) {
-    launchCoalesced(context.path, context.graph) { publish ->
-      val results =
+  ): Job {
+    return launchLatestValidation(context.path, context.graph) { request ->
+      val completed =
         withBackgroundProgress(project, progressTitle(context.graph)) {
           reportRawProgress { reporter ->
             retryCancelledIndexBuild {
               smartReadAction(project) {
-                validateWithExtensions(element, context) { progress ->
-                  publish(progress)
+                val element =
+                  context.contextPointer.element
+                    ?: throw CancellationException("Metro graph context is no longer available")
+                computeValidationWithExtensions(element, context) { progress ->
+                  request.publishProgress(progress)
                   reporter.details(progress.message)
                   reporter.fraction(progress.fraction)
                 }
@@ -436,7 +631,11 @@ internal class MetroGraphValidationService(
             }
           }
         }
-      withContext(Dispatchers.EDT) { onDone.accept(results) }
+      if (publishCompletedValidationIfCurrent(request, completed)) {
+        withContext(Dispatchers.EDT) {
+          if (isCurrentValidation(request)) onDone.accept(completed.result)
+        }
+      }
     }
   }
 
@@ -447,16 +646,20 @@ internal class MetroGraphValidationService(
     return graph.name ?: graph.classId?.asFqNameString() ?: "<unknown>"
   }
 
-  /** Launches [block], cancelling any in-flight run for the same graph request. */
-  private fun launchCoalesced(
+  private fun launchLatestValidation(
     key: GraphPath,
     graph: KaGraphDeclaration,
-    block: suspend CoroutineScope.((GraphValidationProgress) -> Unit) -> Unit,
-  ) {
+    block: suspend CoroutineScope.(ValidationRequest) -> Unit,
+  ): Job {
+    val token = Any()
     val job =
       scope.launch(start = CoroutineStart.LAZY) {
         try {
-          block { progress -> publishValidationProgress(key, progress) }
+          block(
+            ValidationRequest(key, token) { progress ->
+              publishValidationProgress(key, token, progress)
+            }
+          )
         } catch (e: ProcessCanceledException) {
           throw e
         } catch (e: CancellationException) {
@@ -465,39 +668,108 @@ internal class MetroGraphValidationService(
           logger<MetroGraphValidationService>().warn("Metro graph validation failed", e)
         }
       }
-    inFlight.put(key, job)?.cancel()
-    publishValidationProgress(
-      key,
-      GraphValidationProgress(requestPath = key, graphName = graphDisplayName(graph)),
-    )
+    val validation =
+      ActiveValidation(
+        token,
+        job,
+        GraphValidationProgress(requestPath = key, graphName = graphDisplayName(graph)),
+      )
+    val previous = startValidation(key, validation)
+    previous?.job?.cancel()
+    scheduleValidationProgressNotification()
     job.invokeOnCompletion {
-      if (inFlight.remove(key, job)) {
-        publishValidationProgress(key, null)
+      if (completeValidation(key, token)) {
+        scheduleValidationProgressNotification()
       }
     }
     job.start()
+    return job
   }
 
-  private fun publishValidationProgress(key: GraphPath, progress: GraphValidationProgress?) {
-    if (progress == null) {
-      validationProgress.remove(key)
-    } else {
-      validationProgress[key] = progress
+  private fun startValidation(
+    path: GraphPath,
+    validation: ActiveValidation,
+  ): ActiveValidation? {
+    return synchronized(validationRequestLock) {
+      val previous = validationActivity.getAndUpdate { it.starting(path, validation) }
+      previous.byPath[path]
     }
-    notifyValidationProgressListeners()
   }
 
-  private fun notifyValidationProgressListeners() {
-    val application = ApplicationManager.getApplication()
-    if (!application.isDispatchThread) {
-      application.invokeLater {
-        if (!project.isDisposed) notifyValidationProgressListeners()
+  private fun completeValidation(path: GraphPath, token: Any): Boolean {
+    val previous = validationActivity.getAndUpdate { it.completed(path, token) }
+    return previous.byPath[path]?.token === token
+  }
+
+  private fun publishValidationProgress(
+    path: GraphPath,
+    token: Any,
+    progress: GraphValidationProgress,
+  ) {
+    val previous = validationActivity.getAndUpdate { it.progressing(path, token, progress) }
+    val changed = previous.byPath[path]?.token === token
+    if (changed) scheduleValidationProgressNotification()
+  }
+
+  private fun isCurrentValidation(request: ValidationRequest): Boolean {
+    return validationActivity.get().byPath[request.path]?.token === request.token
+  }
+
+  /** Adds a completed result to the cache before returning it. */
+  private fun <T> publishCompletedValidation(completed: CompletedValidation<T>): T {
+    beforeValidationPublicationObserver
+      .get()
+      ?.invoke(completed.requestPath, completed.bundle.runVersion)
+    publish(completed.bundle)
+    return completed.result
+  }
+
+  /** Only the latest active request may update the result cache. */
+  private suspend fun publishCompletedValidationIfCurrent(
+    request: ValidationRequest,
+    completed: CompletedValidation<*>,
+  ): Boolean {
+    val coroutineContext = currentCoroutineContext()
+    coroutineContext.ensureActive()
+    beforeValidationPublicationObserver
+      .get()
+      ?.invoke(completed.requestPath, completed.bundle.runVersion)
+    coroutineContext.ensureActive()
+    val published =
+      synchronized(validationRequestLock) {
+        coroutineContext.ensureActive()
+        if (!isCurrentValidation(request)) {
+          false
+        } else {
+          publish(completed.bundle)
+          true
+        }
       }
-      return
-    }
-    val snapshot = validationProgress.values.sortedBy { it.requestPath.toString() }
-    for (listener in validationProgressListeners.toList()) {
-      listener(snapshot)
+    coroutineContext.ensureActive()
+    return published && isCurrentValidation(request)
+  }
+
+  private fun publish(bundle: ValidationResultBundle) {
+    if (bundle.entries.isEmpty()) return
+    publishedResults.updateAndGet { it.with(bundle) }
+  }
+
+  private fun validationWorkspace(): ValidationWorkspace {
+    return ValidationWorkspace(publishedResults.get(), validationRunVersion.incrementAndGet())
+  }
+
+  /** Queues one EDT update for the latest progress, even when a traversal reports many graphs. */
+  private fun scheduleValidationProgressNotification() {
+    if (validationProgressListeners.isEmpty()) return
+    if (!validationProgressNotificationPending.compareAndSet(false, true)) return
+    ApplicationManager.getApplication().invokeLater {
+      // Clear first so completion during listener callbacks can still queue an update.
+      validationProgressNotificationPending.set(false)
+      if (project.isDisposed) return@invokeLater
+      val snapshot = validationProgressSnapshot()
+      for (listener in validationProgressListeners.toList()) {
+        listener(snapshot)
+      }
     }
   }
 
@@ -512,7 +784,13 @@ internal class MetroGraphValidationService(
       return
     }
     if (listener in validationProgressListeners) {
-      listener(validationProgress.values.sortedBy { it.requestPath.toString() })
+      listener(validationProgressSnapshot())
+    }
+  }
+
+  private fun validationProgressSnapshot(): List<GraphValidationProgress> {
+    return validationActivity.get().byPath.values.map(ActiveValidation::progress).sortedBy {
+      it.requestPath.toString()
     }
   }
 

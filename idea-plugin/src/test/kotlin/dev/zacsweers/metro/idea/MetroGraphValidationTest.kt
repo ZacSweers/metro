@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
@@ -17,10 +20,19 @@ import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
@@ -36,6 +48,12 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
     project.service<MetroGraphValidationService>().clearResults()
+  }
+
+  private fun refreshedIndex(file: KtFile): BindingIndex {
+    val service = project.service<MetroResolutionService>()
+    service.refreshGraphData()
+    return service.awaitIndex(file)
   }
 
   private fun validate(
@@ -1181,7 +1199,9 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         queryContext.containers,
       )
 
-    val result = KaBindingGraph(index, countedContext, file.metroIdeState().options).seal()
+    val result = index.withResolutionSession { session ->
+      KaBindingGraph(index, session, countedContext, file.metroIdeState().options).seal()
+    }
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
     val parameters = diagnostics.map { it.stack.first().pointer?.element as? KtParameter }
 
@@ -2630,6 +2650,33 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.topology!!.sortedKeys.any { it.renderedType == "test.RealRepo" })
   }
 
+  fun testReplacementFromInactiveScopeDoesNotRemoveContribution() {
+    val result =
+      validate(
+        """
+        object OtherScope
+        interface Repo
+
+        @Inject @ContributesBinding(AppScope::class)
+        class RealRepo : Repo
+
+        @Inject
+        @ContributesBinding(OtherScope::class, replaces = [RealRepo::class])
+        class OtherRepo : Repo
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val repo: Repo
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val repoBinding =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "test.Repo" }
+    assertEquals("RealRepo", repoBinding.implementationName)
+  }
+
   fun testContributesBindingWithTypeUseQualifier() {
     val result =
       validate(
@@ -2943,6 +2990,38 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(serviceBinding is KaBinding.Provided)
     assertEquals("HigherService", serviceBinding.implementationName)
     assertEquals(100, serviceBinding.priority)
+  }
+
+  fun testContributionPriorityIgnoresInactiveScopes() {
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
+
+    val result =
+      validate(
+        """
+        import kotlin.reflect.KClass
+
+        annotation class PrioritizedBinding(val scope: KClass<*>, val priority: Int)
+
+        object OtherScope
+        interface Service
+
+        @Inject @PrioritizedBinding(OtherScope::class, priority = 100)
+        class OtherService : Service
+
+        @Inject @PrioritizedBinding(AppScope::class, priority = 10)
+        class AppService : Service
+
+        @DependencyGraph(AppScope::class)
+        interface AppGraph {
+          val service: Service
+        }
+        """
+      )
+
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val serviceBinding =
+      result.bindings.asMap().values.single { it.typeKey.renderedType == "test.Service" }
+    assertEquals("AppService", serviceBinding.implementationName)
   }
 
   fun testContributedAssistedFactoryRetainsItsTargetsNonAssistedDependencies() {
@@ -4207,6 +4286,240 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertSame(first, second)
   }
 
+  fun testSupersededAsyncValidationDoesNotPublishOrDeliverItsResult() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val firstReady = CompletableFuture<Unit>()
+    val releaseFirst = CountDownLatch(1)
+    val publicationAttempts = AtomicInteger()
+    val firstResult = CompletableFuture<KaGraphValidationResult>()
+    val secondResult = CompletableFuture<KaGraphValidationResult>()
+    var firstJob: Job? = null
+    var secondJob: Job? = null
+
+    validationService.setBeforeValidationPublicationObserver { _, _ ->
+      if (publicationAttempts.incrementAndGet() == 1) {
+        firstReady.complete(Unit)
+        releaseFirst.await()
+      }
+    }
+    try {
+      val startedFirstJob =
+        validationService.validateAsync(file, context) { firstResult.complete(it) }
+      firstJob = startedFirstJob
+      startedFirstJob.invokeOnCompletion { failure ->
+        if (failure != null) firstReady.completeExceptionally(failure)
+      }
+      PlatformTestUtil.waitForFuture(firstReady, 30_000)
+
+      val startedSecondJob =
+        validationService.validateAsync(file, context) { secondResult.complete(it) }
+      secondJob = startedSecondJob
+      startedSecondJob.invokeOnCompletion { failure ->
+        if (failure != null) secondResult.completeExceptionally(failure)
+      }
+      val published = PlatformTestUtil.waitForFuture(secondResult, 30_000)
+      releaseFirst.countDown()
+
+      val firstCompleted = CompletableFuture<Unit>()
+      startedFirstJob.invokeOnCompletion { firstCompleted.complete(Unit) }
+      val secondCompleted = CompletableFuture<Unit>()
+      startedSecondJob.invokeOnCompletion { secondCompleted.complete(Unit) }
+      PlatformTestUtil.waitForFuture(firstCompleted, 30_000)
+      PlatformTestUtil.waitForFuture(secondCompleted, 30_000)
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertEquals(2, publicationAttempts.get())
+      assertFalse(firstResult.isDone)
+      assertSame(published, validationService.cachedResult(file, context)!!.result)
+    } finally {
+      releaseFirst.countDown()
+      firstJob?.cancel()
+      secondJob?.cancel()
+      validationService.setBeforeValidationPublicationObserver(null)
+    }
+  }
+
+  fun testClearDuringAsyncValidationPreventsRetainingTheCompletedResult() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val publicationReady = CompletableFuture<Unit>()
+    val releasePublication = CountDownLatch(1)
+    val delivered = CompletableFuture<KaGraphValidationResult>()
+    val publicationHeldReadAccess = AtomicBoolean()
+    var job: Job? = null
+
+    validationService.setBeforeValidationPublicationObserver { _, _ ->
+      publicationHeldReadAccess.set(ApplicationManager.getApplication().isReadAccessAllowed)
+      publicationReady.complete(Unit)
+      releasePublication.await()
+    }
+    try {
+      val startedJob = validationService.validateAsync(file, context) { delivered.complete(it) }
+      job = startedJob
+      PlatformTestUtil.waitForFuture(publicationReady, 30_000)
+      validationService.clearResults()
+      releasePublication.countDown()
+
+      PlatformTestUtil.waitForFuture(delivered, 30_000)
+      val completed = CompletableFuture<Unit>()
+      startedJob.invokeOnCompletion { completed.complete(Unit) }
+      PlatformTestUtil.waitForFuture(completed, 30_000)
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertFalse(publicationHeldReadAccess.get())
+      assertNull(validationService.cachedResult(file, context))
+    } finally {
+      releasePublication.countDown()
+      job?.cancel()
+      validationService.setBeforeValidationPublicationObserver(null)
+    }
+  }
+
+  fun testReverseValidationCompletionKeepsTheNewerResult() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val publicationAttempts = AtomicInteger()
+    val firstReady = CompletableFuture<Long>()
+    val secondReady = CompletableFuture<Long>()
+    val releaseFirst = CountDownLatch(1)
+    val releaseSecond = CountDownLatch(1)
+    val executor = Executors.newFixedThreadPool(2)
+
+    validationService.setBeforeValidationPublicationObserver { _, runVersion ->
+      when (publicationAttempts.incrementAndGet()) {
+        1 -> {
+          firstReady.complete(runVersion)
+          releaseFirst.await()
+        }
+        2 -> {
+          secondReady.complete(runVersion)
+          releaseSecond.await()
+        }
+      }
+    }
+    try {
+      fun validateInBackground(): CompletableFuture<KaGraphValidationResult> {
+        return CompletableFuture.supplyAsync(
+          {
+            runBlocking {
+              retryCancelledIndexBuild {
+                ApplicationManager.getApplication().runReadAction<KaGraphValidationResult> {
+                  validationService.validate(file, context)
+                }
+              }
+            }
+          },
+          executor,
+        )
+      }
+
+      val first = validateInBackground()
+      first.whenComplete { _, failure ->
+        if (failure != null) firstReady.completeExceptionally(failure)
+      }
+      val firstRunVersion = PlatformTestUtil.waitForFuture(firstReady, 30_000)
+      val second = validateInBackground()
+      second.whenComplete { _, failure ->
+        if (failure != null) secondReady.completeExceptionally(failure)
+      }
+      val secondRunVersion = PlatformTestUtil.waitForFuture(secondReady, 30_000)
+      assertTrue(firstRunVersion < secondRunVersion)
+
+      releaseSecond.countDown()
+      val secondResult = PlatformTestUtil.waitForFuture(second, 30_000)
+      releaseFirst.countDown()
+      val firstResult = PlatformTestUtil.waitForFuture(first, 30_000)
+
+      assertNotSame(firstResult, secondResult)
+      assertSame(secondResult, validationService.cachedResult(file, context)!!.result)
+    } finally {
+      releaseFirst.countDown()
+      releaseSecond.countDown()
+      executor.shutdownNow()
+      validationService.setBeforeValidationPublicationObserver(null)
+    }
+  }
+
+  fun testAsyncValidationProgressCoalescesAndStillDeliversRemoval() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @GraphExtension
+        interface ChildGraph
+
+        @DependencyGraph
+        interface AppGraph {
+          val child: ChildGraph
+        }
+        """
+      )
+    val index = refreshedIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val validationService = project.service<MetroGraphValidationService>()
+    val snapshots = mutableListOf<List<GraphValidationProgress>>()
+    val sawActive = AtomicBoolean()
+    val terminal = CompletableFuture<Unit>()
+    validationService.addValidationProgressListener(testRootDisposable) { progress ->
+      snapshots += progress
+      if (progress.isEmpty()) {
+        if (sawActive.get()) terminal.complete(Unit)
+      } else {
+        sawActive.set(true)
+      }
+    }
+    UIUtil.dispatchAllInvocationEvents()
+    snapshots.clear()
+
+    val publicationReady = CountDownLatch(1)
+    val startupFailure = AtomicReference<Throwable?>()
+    val releasePublication = CountDownLatch(1)
+    val delivered = CompletableFuture<List<KaGraphValidationResult>>()
+    var job: Job? = null
+    validationService.setBeforeValidationPublicationObserver { _, _ ->
+      publicationReady.countDown()
+      releasePublication.await()
+    }
+    try {
+      val startedJob =
+        validationService.validateWithExtensionsAsync(graph) { delivered.complete(it) }
+      job = startedJob
+      startedJob.invokeOnCompletion { failure ->
+        if (failure != null) startupFailure.set(failure)
+        publicationReady.countDown()
+      }
+      assertTrue(publicationReady.await(30, TimeUnit.SECONDS))
+      startupFailure.get()?.let { throw AssertionError(it) }
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertEquals(1, snapshots.size)
+      val active = snapshots.single().single()
+      assertEquals(1, active.completed)
+      assertEquals(2, active.total)
+
+      releasePublication.countDown()
+      PlatformTestUtil.waitForFuture(delivered, 30_000)
+      PlatformTestUtil.waitForFuture(terminal, 30_000)
+      val completed = CompletableFuture<Unit>()
+      startedJob.invokeOnCompletion { completed.complete(Unit) }
+      PlatformTestUtil.waitForFuture(completed, 30_000)
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertEquals(2, snapshots.size)
+      assertTrue(snapshots.last().isEmpty())
+    } finally {
+      releasePublication.countDown()
+      job?.cancel()
+      validationService.setBeforeValidationPublicationObserver(null)
+    }
+  }
+
   fun testResultsSurviveIndexInvalidationAsStale() {
     val file =
       myFixture.configureMetroFile(
@@ -4222,14 +4535,26 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val result = validationService.validate(file, context)
     assertFalse(validationService.cachedResult(file, context)!!.stale)
 
-    // Any PSI change invalidates the index; the result must stay visible, flagged stale
-    myFixture.openFileInEditor(file.virtualFile)
-    myFixture.type(" ")
+    // A new binding invalidates the index while the previous validation stays visible as stale.
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n\n@Inject class AddedBinding")
+    }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
-    project.service<MetroResolutionService>().awaitIndex(file)
     val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)
+
+    val rebuiltIndex = project.service<MetroResolutionService>().awaitIndex(file)
+    assertNotSame(index.generationToken, rebuiltIndex.generationToken)
+    val rebuiltGraph = rebuiltIndex.graphs.single()
+    val rebuiltContext = rebuiltIndex.contextsFor(rebuiltGraph).single()
+    val rebuiltResult = validationService.validate(file, rebuiltContext)
+    assertNotSame(result, rebuiltResult)
+    assertSame(rebuiltResult, validationService.validate(file, rebuiltContext))
+    val rebuiltCached = validationService.cachedResult(file, rebuiltContext)!!
+    assertSame(rebuiltResult, rebuiltCached.result)
+    assertFalse(rebuiltCached.stale)
   }
 
   fun testValidationCancelsWhenRetainedGraphDisappears() {

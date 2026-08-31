@@ -37,6 +37,7 @@ import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndex.SourcePointerIdentity
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -76,6 +77,7 @@ private typealias KaSourcePointer = SmartPsiElementPointer<out PsiElement>
  */
 internal class KaBindingGraph(
   private val index: BindingIndex,
+  private val session: BindingResolutionSession,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
   /** Keys extension children delegate to this graph, validated here like the compiler does. */
@@ -89,7 +91,7 @@ internal class KaBindingGraph(
   private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
-  private val graphConsumers = index.accessorsFor(queryContext)
+  private val graphConsumers = session.accessorsFor(queryContext)
   private val diagnostics = mutableListOf<KaGraphDiagnostic>()
   private var suspendKeys: Set<KaTypeKey> = emptySet()
   private val pendingEmptyMultibindings = mutableListOf<KaBinding.Multibinding>()
@@ -105,7 +107,7 @@ internal class KaBindingGraph(
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
   private var _bindingLookup: KaBindingLookup? =
-    KaBindingLookup(index, queryContext, options, resolveParentGraph)
+    KaBindingLookup(index, session, queryContext, options, resolveParentGraph)
     set(value) {
       if (value == null) {
         field?.clear()
@@ -133,6 +135,7 @@ internal class KaBindingGraph(
             reportDuplicateBindings(key, bindings, stack)
           }
         for (binding in resolved) {
+          ProgressManager.checkCanceled()
           // Explicit providers can terminate a growing factory chain. Only stop after the normal
           // graph lookup actually chooses the implicit factory whose expansion was bounded.
           if (binding is KaBinding.AssistedFactory) {
@@ -161,7 +164,7 @@ internal class KaBindingGraph(
 
   fun seal(): KaGraphValidationResult.Completed {
     val keeps = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
-    val extensions = index.extensionsOf(queryContext)
+    val extensions = session.extensionsOf(queryContext)
     if (extensions.isNotEmpty()) {
       // Extension children depend on this graph's instance and reserve its key in the compiler's
       // parent seal. Keep it explicitly so the instance joins the sorted root set and the
@@ -177,6 +180,7 @@ internal class KaBindingGraph(
       }
     }
     for (binding in bindingLookup.directExtensionBindings()) {
+      ProgressManager.checkCanceled()
       // Resolve the kept key through the normal lookup, where an explicit binding or an existing
       // graph-supertype alias wins over synthesizing a child instance.
       keeps[binding.contextualTypeKey] =
@@ -187,6 +191,7 @@ internal class KaBindingGraph(
         )
     }
     for (reservation in reservations) {
+      ProgressManager.checkCanceled()
       // The parent may not request this collection itself, so its synthetic element exists only
       // because a child requested it. Carry the original element into the parent's lookup.
       if (reservation.key.qualifier?.classId == MetroClassIds.multibindingElement) {
@@ -205,6 +210,7 @@ internal class KaBindingGraph(
 
     val roots = LinkedHashMap<KaContextualTypeKey, KaBindingStack.Entry>()
     for (consumer in graphConsumers) {
+      ProgressManager.checkCanceled()
       // hasDefault is what makes the shared core treat an absent optional binding as not missing.
       // Union with any default already on the key so a defaulted context key never turns required.
       val contextKey =
@@ -218,6 +224,7 @@ internal class KaBindingGraph(
     // FIR checks graph request sites independently, before missing-binding resolution. Keep each
     // accessor even when several request the same canonical key.
     for (consumer in graphConsumers) {
+      ProgressManager.checkCanceled()
       if (consumer.graphRequestKind == null) continue
       val contextKey = consumer.contextKey
       if (!contextKey.isWrappedInLazy) continue
@@ -229,6 +236,7 @@ internal class KaBindingGraph(
     }
 
     var reservedParentBindings: Map<KaTypeKey, KaBinding> = emptyMap()
+    var sealCompleted = false
     val topology =
       try {
         val topo =
@@ -236,18 +244,23 @@ internal class KaBindingGraph(
             roots = roots,
             keep = keeps,
             shrinkUnusedBindings = options.shrinkUnusedBindings,
+            ensureActive = ProgressManager::checkCanceled,
             validateBindings = ::validateBindings,
           )
         // The compiler stops before empty-multibinding reporting when the seal produced errors.
         if (diagnostics.none { it.severity == MetroSeverity.ERROR }) {
           reportEmptyMultibindings()
         }
+        sealCompleted = true
         topo
       } catch (_: SealAborted) {
+        sealCompleted = true
         null
       } finally {
-        // Capture the delegated bindings, then clear the lookup now that we're done.
-        reservedParentBindings = _bindingLookup?.reservedParentBindings?.toMap().orEmpty()
+        // Skip copying parent reservations when cancellation interrupts the seal.
+        if (sealCompleted) {
+          reservedParentBindings = _bindingLookup?.reservedParentBindings?.toMap().orEmpty()
+        }
         _bindingLookup = null
       }
 
@@ -293,6 +306,7 @@ internal class KaBindingGraph(
 
   private fun reportEmptyMultibindings() {
     for (multibinding in pendingEmptyMultibindings) {
+      ProgressManager.checkCanceled()
       report(emptyMultibindingDiagnostic(multibinding.typeKey), KaBindingStack(graph))
     }
   }
@@ -332,7 +346,7 @@ internal class KaBindingGraph(
       )
     bindings.forEachValue { binding ->
       ProgressManager.checkCanceled()
-      structuralValidator.validate(binding) { issue ->
+      structuralValidator.validate(binding, ProgressManager::checkCanceled) { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
     }
@@ -522,12 +536,14 @@ internal class KaBindingGraph(
   ) {
     var checkedRequests: MutableSet<KaContextualTypeKey>? = null
     for (dependency in dependencies) {
+      ProgressManager.checkCanceled()
       if (!dependency.isWrappedInLazy) continue
       val factory = assistedFactoryFor(dependency) ?: continue
       val checked = checkedRequests ?: HashSet<KaContextualTypeKey>().also { checkedRequests = it }
       if (!checked.add(dependency)) continue
       val sourcePointers = lazyRequestSources(dependency, requestingBinding)
       for (sourcePointer in sourcePointers) {
+        ProgressManager.checkCanceled()
         val diagnosticStack = stack.copy()
         diagnosticStack.push(KaBindingStack.Entry.injectedAt(dependency, requestingBinding))
         reportLazyAssistedFactory(
@@ -688,14 +704,18 @@ internal class KaBindingGraph(
     fallback: KaBindingStack,
   ): KaBindingStack {
     val route =
-      diagnosticRoutes.routeToRoot(key) { callingKey, dependencyKey ->
-        val callingBinding = checkNotNull(realGraph.bindings[callingKey])
-        val contextKey =
-          callingBinding.dependencies.first { dependency ->
-            dependency.typeKey == dependencyKey
-          }
-        KaBindingStack.Entry.injectedAt(contextKey, callingBinding)
-      }
+      diagnosticRoutes.routeToRoot(
+        key,
+        createDependencyEntry = { callingKey, dependencyKey ->
+          val callingBinding = checkNotNull(realGraph.bindings[callingKey])
+          val contextKey =
+            callingBinding.dependencies.first { dependency ->
+              dependency.typeKey == dependencyKey
+            }
+          KaBindingStack.Entry.injectedAt(contextKey, callingBinding)
+        },
+        ensureActive = ProgressManager::checkCanceled,
+      )
     if (route.isEmpty()) return fallback.copy()
     val result = KaBindingStack(graph)
     for (entry in route) {

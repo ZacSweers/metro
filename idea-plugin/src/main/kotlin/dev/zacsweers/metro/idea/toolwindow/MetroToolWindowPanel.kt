@@ -287,15 +287,13 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   private fun validateGraph(graph: KaGraphDeclaration) {
-    val element = graph.pointer.element ?: return
-    validationService.validateWithExtensionsAsync(element, graph) {
+    validationService.validateWithExtensionsAsync(graph) {
       validationFinished(validationVisitor(graph))
     }
   }
 
   private fun validateContext(context: GraphContext) {
-    val element = context.contextPointer.element ?: return
-    validationService.validateWithExtensionsAsync(element, context) {
+    validationService.validateWithExtensionsAsync(context) {
       validationFinished(validationVisitor(context))
     }
   }

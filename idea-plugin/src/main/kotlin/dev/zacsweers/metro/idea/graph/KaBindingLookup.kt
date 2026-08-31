@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphComposition
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.name.Name
 /** The index and compiler options belonging to a parent graph's own declaration module. */
 internal class ParentGraphLookup(
   val index: BindingIndex,
+  val session: BindingResolutionSession,
   val queryContext: GraphQueryContext,
   val options: MetroOptions,
 )
@@ -40,11 +42,13 @@ internal class ParentGraphLookup(
  */
 internal class KaBindingLookup(
   private val index: BindingIndex,
+  private val session: BindingResolutionSession,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
   private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) {
   private val graph: KaGraphDeclaration = queryContext.graphContext.graph
+  internal val queryPlan = session.validationPlan(queryContext)
 
   /**
    * Element bindings by their synthetic qualifier-swapped keys. A multibinding's dependencies use
@@ -72,10 +76,10 @@ internal class KaBindingLookup(
       buildSet {
         addAll(child.selfIds)
         addAll(child.supertypeIds)
-        for (supertype in index.graphComposition(queryContext).supertypeDeclarations) {
+        for (supertype in index.graphComposition(queryPlan).supertypeDeclarations) {
           add(supertype.classId)
         }
-        addAll(index.graphOwnContainers(child, queryContext))
+        addAll(index.graphOwnContainers(child, queryPlan))
       }
     }
 
@@ -122,7 +126,7 @@ internal class KaBindingLookup(
       return setOf(it)
     }
 
-    val candidates = index.bindingsForKey(typeKey, queryContext)
+    val candidates = index.bindingsForKey(typeKey, queryPlan)
     val explicit = mutableListOf<KaBinding>()
     val implicit = mutableListOf<KaBinding>()
     val optional = mutableListOf<KaBinding>()
@@ -170,7 +174,7 @@ internal class KaBindingLookup(
 
     val multibindingId = contextKey.multibindingId(options)
     if (multibindingId != null) {
-      val contributions = index.multibindingContributions(multibindingId, queryContext)
+      val contributions = index.multibindingContributions(multibindingId, queryPlan)
       if (contributions.isNotEmpty() || multibindingDeclarations.isNotEmpty()) {
         return synthesizeMultibinding(
           contextKey,
@@ -212,11 +216,11 @@ internal class KaBindingLookup(
     // Resolve that alias entirely in the parent, where its implementation remains visible.
     if (binding is KaBinding.Alias && !binding.isGraphPrivate) {
       val consumedKey = binding.consumedKey
-      val belongsToAncestor = !index.isBindingOwnedByCurrentGraph(binding, queryContext)
+      val belongsToAncestor = !index.isBindingOwnedByCurrentGraph(binding, queryPlan)
       if (
         belongsToAncestor &&
           consumedKey != null &&
-          index.hasPrivateAncestorBinding(consumedKey.typeKey, queryContext)
+          session.hasPrivateAncestorBinding(consumedKey.typeKey, queryContext)
       ) {
         return delegateToParent(binding, chain)
       }
@@ -247,7 +251,7 @@ internal class KaBindingLookup(
         if (includedContainerKey != null) {
           // Factory-included containers carry their concrete input key instead of a container ID.
           // Their graph ownership must survive synthetic multibinding element re-keying.
-          if (index.isBindingOwnedByCurrentGraph(binding, queryContext)) {
+          if (index.isBindingOwnedByCurrentGraph(binding, queryPlan)) {
             return binding
           }
         } else {
@@ -311,20 +315,26 @@ internal class KaBindingLookup(
         chain.drop(1).map { it.declarationId },
         queryContext.graphContext.dynamicGraph?.id,
       )
-    val parentContext = index.findContext(parentPath) ?: return null
+    val parentContext = session.findContext(parentPath) ?: return null
     val resolvedParent = resolveParentGraph(parentContext)
     val parent =
       if (resolvedParent != null) {
         resolvedParent
       } else {
-        val parentQueryContext = index.queryContext(parentContext) ?: return null
-        ParentGraphLookup(index, parentQueryContext, options)
+        val parentQueryContext = session.queryContext(parentContext) ?: return null
+        ParentGraphLookup(index, session, parentQueryContext, options)
       }
     if (!parent.options.enableSuspendProviders) {
       return null
     }
     val lookup =
-      KaBindingLookup(parent.index, parent.queryContext, parent.options, resolveParentGraph)
+      KaBindingLookup(
+        parent.index,
+        parent.session,
+        parent.queryContext,
+        parent.options,
+        resolveParentGraph,
+      )
     parentSuspendLookup = lookup
     val analysis = SuspendBindingAnalysis { key ->
       lookup.lookup(key.canonicalContextKey()) { _, _ -> }.firstOrNull { it.typeKey == key }
@@ -354,10 +364,10 @@ internal class KaBindingLookup(
       return emptyList()
     }
 
-    val composition = index.graphComposition(queryContext)
+    val composition = index.graphComposition(queryPlan)
     val activeGraphIds = queryContext.graphContext.graphIds
     val bindings = mutableListOf<KaBinding.GraphExtension>()
-    for (extension in index.extensionsOf(queryContext)) {
+    for (extension in index.extensionsOf(queryPlan)) {
       ProgressManager.checkCanceled()
       if (extension.declarationId in activeGraphIds) continue
       val classId = extension.classId ?: continue
@@ -381,7 +391,7 @@ internal class KaBindingLookup(
     for (owner in chain) {
       ProgressManager.checkCanceled()
       val ownerKey = owner.graphTypeKey() ?: continue
-      val composition = index.graphComposition(queryContext, owner)
+      val composition = index.graphComposition(queryPlan, owner)
       compositions[owner] = composition
       val consumedKey = ownerKey.canonicalContextKey()
       for (supertypeKey in composition.supertypeKeys) {
