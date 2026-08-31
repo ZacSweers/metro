@@ -51,7 +51,7 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
       return emptyList()
     }
     if (!ktFile.metroIdeState().isEnabled) return emptyList()
-    val index = ktFile.project.service<MetroResolutionService>().index(ktFile)
+    val index = ktFile.project.service<MetroResolutionService>().presentationIndex(ktFile)
     val pinService = ktFile.project.service<GraphContextPinService>()
 
     val entries = mutableListOf<Pair<TextRange, CodeVisionEntry>>()

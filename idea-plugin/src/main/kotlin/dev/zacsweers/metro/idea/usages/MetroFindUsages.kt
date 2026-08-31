@@ -26,6 +26,7 @@ import com.intellij.usages.impl.rules.UsageWithType
 import com.intellij.util.Processor
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.matchingContextEntry
@@ -202,7 +203,9 @@ internal suspend fun collectMetroUsages(
 ): List<Usage> {
   val project = element.project
   if (DumbService.isDumb(project)) return emptyList()
-  val result = smartReadAction(project) { collectMetroUsagesInReadAction(element, options) }
+  val result = retryCancelledIndexBuild {
+    smartReadAction(project) { collectMetroUsagesInReadAction(element, options) }
+  }
   result.cacheEntry?.let(project.service<MetroUsageTypeCache>()::replace)
   return result.usages
 }

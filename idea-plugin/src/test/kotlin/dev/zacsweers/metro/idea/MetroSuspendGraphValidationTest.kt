@@ -23,7 +23,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
   ): KaGraphValidationResult.Completed {
     project.setMetroOptions("enable-suspend-providers" to suspendProvidersEnabled.toString())
     val file = myFixture.configureMetroFile(source)
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     return project
       .service<MetroGraphValidationService>()
@@ -124,7 +124,7 @@ class MetroSuspendGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
     val result =
       project

@@ -111,7 +111,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testProvidesFunctionParametersAreDependencies() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.function("provideBaseUrl")).single()
@@ -124,7 +124,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testBindsDependencyIsItsSourceKey() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.function("bindService")).single()
@@ -134,7 +134,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testInjectConstructorParametersAreDependencies() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.klass("Consumer")).single()
@@ -155,7 +155,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testContributedBindingAliasesItsOwnInjectBinding() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entries = index.bindingEntriesAt(declarations.klass("RealHttpApi"))
@@ -172,7 +172,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testAssistedFactoryFlattensTargetConstructorDependencies() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.klass("WidgetFactory")).single()
@@ -183,7 +183,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testMapKeyValuesAreCaptured() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val handlerA = index.bindingEntriesAt(declarations.function("handlerA")).single()
@@ -198,7 +198,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testConsumerEntriesCarryContextualKeys() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val providerParam = index.consumerEntryAt(declarations.parameter("serviceProvider"))!!
@@ -215,7 +215,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testSealFacingQueries() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
@@ -264,7 +264,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         .trimIndent(),
     )
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val consumer = checkNotNull(index.consumerEntryAt(declarations.property("baseUrl")))
     assertNotNull(consumer.graphId)
@@ -326,7 +326,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val consumer = checkNotNull(index.consumerEntryAt(declarations.property("value")))
     val unrelatedGraph = index.graphs.single { it.name == "UnrelatedGraph" }
@@ -348,7 +348,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testProvidesReceiverIsADependencyAndConsumer() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val provideTag = declarations.function("provideTag")
@@ -363,7 +363,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testMemberInjectSitesFoldIntoClassBindingDependencies() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val entry = index.bindingEntriesAt(declarations.klass("Telemetry")).single()
@@ -376,7 +376,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testMemberInjectionsOnlyTraverseHasMemberInjectionsSuperclasses() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     // Superclass marked @HasMemberInjections contributes its member-inject keys
@@ -393,7 +393,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   fun testGraphInjectorMembersConsumeTargetMemberInjectKeys() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val injectFunction = declarations.function("inject")
@@ -418,7 +418,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         """,
         fileName = "App.kt",
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
 
     // The generated class is keyed by the function's name in its package
     val binding = index.bindings.single { it.typeKey.renderedType == "test.App" }
@@ -445,7 +445,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         """,
         fileName = "App.kt",
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
 
     assertTrue(index.bindings.none { it.typeKey.renderedType == "test.App" })
     val declarations = file.declarationsIncludingNested()
@@ -478,7 +478,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         """,
         fileName = "Activities.kt",
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
 
     val consumer = index.consumerEntryAt(declarations.property("activityProviders"))!!
@@ -505,7 +505,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
           """,
           fileName = "LibConsumer.kt",
         )
-      val index = project.service<MetroResolutionService>().index(file)
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
       val declarations = file.declarationsIncludingNested()
 
       val clientParam = index.consumerEntryAt(declarations.parameter("client"))!!
@@ -541,7 +541,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         """,
         fileName = "InheritedFactory.kt",
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declaration = file.declarationsIncludingNested().klass("WidgetFactory")
     val factory = index.bindingEntriesAt(declaration).single() as KaBinding.AssistedFactory
 

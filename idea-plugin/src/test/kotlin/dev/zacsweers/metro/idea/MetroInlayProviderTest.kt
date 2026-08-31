@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.codeInsight.hints.InlayDumpUtil
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.utils.inlays.declarative.DeclarativeInlayHintsProviderTestCase
 import dev.zacsweers.metro.idea.index.MetroInjectedImplementationInlayProvider
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
+import org.jetbrains.kotlin.psi.KtFile
 
 class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
 
@@ -17,8 +20,23 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
     project.service<GraphContextPinService>().clear()
   }
 
+  /** Builds presentation data for the same configured PSI that the platform inlay pass uses. */
+  private fun doTestMetroProvider(
+    fileName: String,
+    expectedText: String,
+    provider: MetroInjectedImplementationInlayProvider,
+    configure: (BindingIndex) -> Unit = {},
+  ) {
+    val sourceText = InlayDumpUtil.removeInlays(expectedText)
+    val file = myFixture.configureByText(fileName, sourceText) as KtFile
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    configure(index)
+    file.awaitMetroPresentation()
+    doTestProviderWithConfigured(sourceText, expectedText, provider, emptyMap())
+  }
+
   fun testImplementationAndAssistedInlays() {
-    doTestProvider(
+    doTestMetroProvider(
       "CircuitImpl.kt",
       """
       package test
@@ -54,7 +72,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testContextDependentResolutionHasNoImplementationInlay() {
-    doTestProvider(
+    doTestMetroProvider(
       "ContextDependent.kt",
       """
       package test
@@ -122,20 +140,18 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
       }
       """
         .trimIndent()
-    val file = myFixture.configureByText("PinnedContext.kt", source)
-    val index = project.service<MetroResolutionService>().index(file)
-    val appGraph = index.graphs.single { it.name == "AppGraph" }
-    project.service<GraphContextPinService>().pin(index.contextsFor(appGraph).single().path)
-
-    doTestProvider(
+    doTestMetroProvider(
       "PinnedContext.kt",
       source,
       MetroInjectedImplementationInlayProvider(),
-    )
+    ) { index ->
+      val appGraph = index.graphs.single { it.name == "AppGraph" }
+      project.service<GraphContextPinService>().pin(index.contextsFor(appGraph).single().path)
+    }
   }
 
   fun testGenericProviderParameterUsesItsConcreteImplementationInlay() {
-    doTestProvider(
+    doTestMetroProvider(
       "GenericProvider.kt",
       """
       package test
@@ -163,7 +179,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testIdenticalGenericSpecializationsKeepTheirImplementationInlay() {
-    doTestProvider(
+    doTestMetroProvider(
       "MatchingGenericProviders.kt",
       """
       package test
@@ -195,7 +211,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testParentAndChildSpecializedAliasesKeepTheirImplementationInlay() {
-    doTestProvider(
+    doTestMetroProvider(
       "InheritedParentChildBindings.kt",
       """
       package test
@@ -228,7 +244,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testDifferentAliasTargetsDoNotShowImplementationInlays() {
-    doTestProvider(
+    doTestMetroProvider(
       "DifferentAliasTargets.kt",
       """
       package test
@@ -267,7 +283,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
   }
 
   fun testDifferentGenericProviderSpecializationsDoNotShowAnImplementationInlay() {
-    doTestProvider(
+    doTestMetroProvider(
       "ContextDependentGenericProvider.kt",
       """
       package test

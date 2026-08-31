@@ -2,17 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.application.smartReadAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
+import dev.zacsweers.metro.idea.index.FilePresentationBundle
+import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.model.BindingIndex
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.psi.KtClass
@@ -148,6 +168,80 @@ internal fun CodeInsightTestFixture.configureMetroFile(
     appendLine(source.trimIndent())
   }
   return configureByText(fileName, text) as KtFile
+}
+
+/** Waits outside the fixture's EDT read action for the current index generation. */
+internal fun MetroResolutionService.awaitIndex(element: PsiElement): BindingIndex {
+  return awaitCurrentIndex(element.project) { index(element) }
+}
+
+/** Waits for a module's current index when a fixture has no single query declaration. */
+internal fun MetroResolutionService.awaitIndex(module: Module): BindingIndex {
+  return awaitCurrentIndex(module.project) { index(module) }
+}
+
+/** Drains queued invalidations before returning the fixture's final index. */
+private fun MetroResolutionService.awaitCurrentIndex(
+  project: Project,
+  query: () -> BindingIndex,
+): BindingIndex {
+  fun requestCurrentIndex(): BindingIndex {
+    val result = CompletableFuture.supplyAsync {
+      runBlocking {
+        retryCancelledIndexBuild { smartReadAction(project) { query() } }
+      }
+    }
+    PlatformTestUtil.waitForFuture(result, 30_000)
+    return result.join()
+  }
+
+  requestCurrentIndex()
+  val barrier = CompletableFuture.runAsync { runBlocking { awaitCoordinatorBarrier() } }
+  PlatformTestUtil.waitForFuture(barrier, 30_000)
+  return requestCurrentIndex()
+}
+
+/** Starts collecting state before returning and keeps test callbacks on the publishing thread. */
+internal fun <T> StateFlow<T>.collectInTest(onValue: (T) -> Unit): AutoCloseable {
+  val scope = CoroutineScope(Dispatchers.Unconfined)
+  val collection = scope.async(start = CoroutineStart.UNDISPATCHED) { collect(onValue) }
+  return AutoCloseable {
+    scope.cancel()
+    runBlocking {
+      try {
+        collection.await()
+      } catch (_: CancellationException) {
+        // Closing the test's collection cancels its suspended state subscription.
+      }
+    }
+  }
+}
+
+/** Pumps the EDT until a worker has finished, including its cancellation cleanup. */
+internal fun Job.awaitTestCompletion() {
+  val completed = CompletableFuture<Unit>()
+  invokeOnCompletion { completed.complete(Unit) }
+  PlatformTestUtil.waitForFuture(completed, 30_000)
+}
+
+/** Waits for a published bundle whose declaration anchors match the current PSI stamp. */
+internal fun KtFile.awaitMetroPresentation(
+  service: MetroResolutionService = project.service()
+): FilePresentationBundle {
+  var result: FilePresentationBundle? = null
+  object : WaitFor(30_000) {
+      override fun condition(): Boolean {
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        val expectedStamp = modificationStamp
+        val bundle = service.presentationBundle(this@awaitMetroPresentation)
+        val anchorsAreCurrent = bundle != null && bundle.anchorsAreCurrent(expectedStamp)
+        if (!anchorsAreCurrent || modificationStamp != expectedStamp) return false
+        result = bundle
+        return true
+      }
+    }
+    .assertCompleted("Metro should publish a presentation bundle with current declaration anchors")
+  return checkNotNull(result)
 }
 
 internal fun KtFile.declarationsIncludingNested(): List<KtDeclaration> {

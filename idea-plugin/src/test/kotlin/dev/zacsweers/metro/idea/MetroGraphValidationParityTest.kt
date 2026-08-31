@@ -253,7 +253,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
       val source = compilerContracts.source(case)
       val file =
         myFixture.configureByText(case.sourceFile ?: "${case.fixtureName}.kt", source) as KtFile
-      val index = project.service<MetroResolutionService>().index(file)
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
       val graphName = case.graphPath.first()
       val graph = index.graphs.single { it.classId?.asFqNameString() == graphName }
       val context =

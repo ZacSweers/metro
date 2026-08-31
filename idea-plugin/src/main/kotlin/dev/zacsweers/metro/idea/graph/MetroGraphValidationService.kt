@@ -127,7 +127,7 @@ internal class MetroGraphValidationService(
     val key = cacheKey(context) ?: return null
     val entry = results[key] ?: return null
     val contextElement = context.contextPointer.element ?: element
-    val currentIndex = project.service<MetroResolutionService>().index(contextElement)
+    val currentIndex = project.service<MetroResolutionService>().cachedIndex(contextElement)
     return CachedValidation(entry.result, stale = entry.index !== currentIndex)
   }
 
@@ -243,7 +243,7 @@ internal class MetroGraphValidationService(
     onProgress: (GraphValidationProgress) -> Unit = {},
   ): List<KaGraphValidationResult> {
     val declarationElement = graph.pointer.element ?: element
-    val index = project.service<MetroResolutionService>().index(declarationElement)
+    val index = project.service<MetroResolutionService>().currentIndex(declarationElement)
     val currentGraph =
       index.graphFor(graph)
         ?: throw CancellationException("Metro graph declaration is no longer current")
@@ -335,7 +335,7 @@ internal class MetroGraphValidationService(
     context: GraphContext,
   ): ValidationInput? {
     val contextElement = context.contextPointer.element ?: declarationFallback
-    val index = project.service<MetroResolutionService>().index(contextElement)
+    val index = project.service<MetroResolutionService>().currentIndex(contextElement)
     val currentContext = index.findContext(context.path) ?: return null
     val currentContextElement = currentContext.contextPointer.element ?: return null
     return ValidationInput(currentContextElement, index, currentContext)
@@ -346,7 +346,7 @@ internal class MetroGraphValidationService(
     context: GraphContext,
   ): ValidationInput {
     val contextElement = context.contextPointer.element ?: declarationFallback
-    val index = project.service<MetroResolutionService>().index(contextElement)
+    val index = project.service<MetroResolutionService>().currentIndex(contextElement)
     val currentContext =
       index.findContext(context.path)
         ?: throw CancellationException("Metro graph context is no longer current")

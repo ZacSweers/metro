@@ -22,6 +22,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.WaitFor
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
@@ -102,7 +103,11 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     )
   }
 
-  private fun structure(): MetroTreeStructure = MetroTreeStructure(project) { filter }
+  /** Direct tree assertions start after the asynchronous index has been published. */
+  private fun structure(): MetroTreeStructure {
+    project.service<MetroResolutionService>().awaitIndex(module)
+    return MetroTreeStructure(project) { filter }
+  }
 
   private fun MetroTreeStructure.children(node: MetroTreeNode): List<MetroTreeNode> =
     computeChildren(node)
@@ -243,7 +248,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testMissingPinnedContextFallsBackToAllGraphs() {
     val file = configure()
-    val realIndex = project.service<MetroResolutionService>().index(file)
+    val realIndex = project.service<MetroResolutionService>().awaitIndex(file)
     var currentIndex = realIndex
     val pinService = project.service<GraphContextPinService>()
     val structure =
@@ -269,7 +274,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       document.replaceString(graphNameStart, graphNameStart + "AppGraph".length, "ReplacementGraph")
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
-    currentIndex = project.service<MetroResolutionService>().index(file)
+    currentIndex = project.service<MetroResolutionService>().awaitIndex(file)
 
     assertEquals(listOf("ReplacementGraph"), structure.children(root).map { it.text })
     assertNull(pinService.pinnedPath)
@@ -277,7 +282,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testGraphContextSelectorAcquiresReadAccess() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val structure =
       MetroTreeStructure(project, indexProvider = { index }, pinService = project.service()) {
         filter
@@ -556,7 +561,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testValidationStatusPanelShowsPreparingAndCountedProgress() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val panel = ValidationStatusPanel()
 
@@ -580,7 +585,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testValidateActionIsDisabledWhileTheSelectedGraphIsRunning() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     var selectedContext: GraphContext? = null
     var validationRunning = false
@@ -647,7 +652,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testToolWindowPanelRecoversAfterDumbMode() {
     val file = configure()
-    project.service<MetroResolutionService>().index(file)
+    project.service<MetroResolutionService>().awaitIndex(file)
     var panel: MetroToolWindowPanel? = null
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       panel = MetroToolWindowPanel(project)
@@ -658,15 +663,20 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     }
 
     val tree = toolWindowTree(checkNotNull(panel))
-    PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
-    assertTrue("The Metro tree should populate when smart mode resumes", tree.rowCount > 0)
+    object : WaitFor(30_000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
+          return tree.rowCount > 0
+        }
+      }
+      .assertCompleted("The Metro tree should populate when smart mode resumes")
     assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
     com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
   }
 
   fun testDisposedToolWindowPanelIgnoresValidationRequests() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val panel = MetroToolWindowPanel(project)
@@ -679,7 +689,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testMissingRequestedGraphDoesNotValidateTheSelectedGraph() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val panel = MetroToolWindowPanel(project)
@@ -772,7 +782,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           }
           """
         )
-      val index = project.service<MetroResolutionService>().index(file)
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
       val graph = index.graphs.single { it.name == "AppGraph" }
       val context = index.contextsFor(graph).single()
       val exporter = project.service<MetroGraphDebugExporter>()
@@ -895,7 +905,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
     val contexts = index.contextsFor(child).associateBy { it.rootGraph.name }
     val exporter = project.service<MetroGraphDebugExporter>()
@@ -936,7 +946,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     val report =
       checkNotNull(
@@ -971,7 +981,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         @DependencyGraph interface AppGraph { val service: Service }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val exporter = project.service<MetroGraphDebugExporter>()
     val validation = project.service<MetroGraphValidationService>()
@@ -989,6 +999,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       document.insertString(insertion, "val missing: Long; ")
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+    project.service<MetroResolutionService>().awaitIndex(file)
 
     val stale = checkNotNull(exporter.report(context))
     assertTrue(stale, "freshness=stale" in stale)
@@ -999,7 +1010,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testExportGraphDebugInfoActionRequiresAnExactGraphSelection() {
     val file = configure()
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     var selected: GraphContext? = null
     val action = ExportGraphDebugInfoAction(project) { selected }
@@ -1102,6 +1113,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       )
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+    project.service<MetroResolutionService>().awaitIndex(file)
 
     val after = structure.children(graph).single { it.text == "Unscoped" } as MetroTreeNode.Category
     assertFalse(before == after)
@@ -1284,6 +1296,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       document.insertString(memberOffset, "val missing: Long\n        ")
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+    project.service<MetroResolutionService>().awaitIndex(file)
 
     val currentGraph = treeStructure.children(root).single() as MetroTreeNode.Graph
     project.service<MetroGraphValidationService>().validate(file, currentGraph.context)

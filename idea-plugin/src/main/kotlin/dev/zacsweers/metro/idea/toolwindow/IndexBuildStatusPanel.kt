@@ -51,6 +51,13 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
     isVisible = true
   }
 
+  fun showRefreshRequired() {
+    messageLabel.text = "Metro graph data may be stale. Click Refresh to update"
+    progressBar.isVisible = false
+    progressBar.isIndeterminate = false
+    isVisible = true
+  }
+
   fun clear() {
     isVisible = false
     progressBar.isIndeterminate = false

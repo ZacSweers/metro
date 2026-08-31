@@ -304,7 +304,7 @@ private fun validationSummary(result: KaGraphValidationResult): String {
 internal class MetroTreeStructure(
   private val project: Project,
   private val indexProvider: (Module) -> BindingIndex = { module ->
-    project.service<MetroResolutionService>().index(module)
+    project.service<MetroResolutionService>().currentIndex(module)
   },
   private val pinService: GraphContextPinService = project.service(),
   private val filterText: () -> String,

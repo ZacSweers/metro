@@ -52,7 +52,7 @@ class MetroInjectedImplementationInlayProvider : InlayHintsProvider {
     override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
       if (element !is KtParameter && element !is KtProperty && element !is KtNamedFunction) return
       element as KtElement
-      val index = element.project.service<MetroResolutionService>().index(element)
+      val index = element.project.service<MetroResolutionService>().presentationIndex(element)
       // Only implicitly assisted parameters get the inlay; explicit @Assisted already reads as
       // assisted in source.
       if (

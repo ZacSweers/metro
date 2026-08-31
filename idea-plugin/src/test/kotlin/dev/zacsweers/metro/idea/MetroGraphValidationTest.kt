@@ -50,7 +50,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     graphName: String = "AppGraph",
   ): KaGraphValidationResult {
     val file = myFixture.configureMetroFile(source)
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == graphName }
     return project
       .service<MetroGraphValidationService>()
@@ -73,7 +73,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testUnexpectedFailureReturnsInternalError() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val failure = IllegalStateException("broken model")
     var reported: Throwable? = null
@@ -96,7 +96,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testExpectedAnalysisLimitReturnsIncompleteWithoutLoggingAnInternalError() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val reason = "source assisted-factory analysis reached its type-depth limit"
     var reported: Throwable? = null
@@ -119,7 +119,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testCancellationEscapesInternalErrorBoundary() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val cancellation = CancellationException("cancelled")
     var reported: Throwable? = null
@@ -141,7 +141,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testPlatformCancellationEscapesInternalErrorBoundary() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val cancellation = ProcessCanceledException()
     var reported: Throwable? = null
@@ -163,7 +163,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
   fun testPlatformCancellationRetriesGraphValidation() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val expected = project.service<MetroGraphValidationService>().validate(file, context)
     var attempts = 0
@@ -282,7 +282,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val results =
       project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
@@ -1166,7 +1166,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       appendLine("}")
     }
     val file = myFixture.configureMetroFile(source)
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     val queryContext = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
     var parameterScopeChecks = 0
@@ -1620,7 +1620,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val declarations = file.declarationsIncludingNested()
     val widget = declarations.klass("Widget")
     val consumer = checkNotNull(index.consumerEntryAt(declarations.parameter("widget")))
@@ -1798,7 +1798,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val parentContext = index.contextsFor(parent).single()
     val child = index.graphs.single { it.name == "ChildGraph" }
@@ -1871,7 +1871,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val results =
       project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
@@ -2029,7 +2029,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val results =
       project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
@@ -2277,7 +2277,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val results =
       project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
@@ -2452,7 +2452,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
     val contextsByParent = index.contextsFor(child).associateBy { it.chain[1].name }
     val leftContext = contextsByParent.getValue("LeftParent")
@@ -2555,7 +2555,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val appGraph = index.graphs.single { it.name == "AppGraph" }
     val results =
       project.service<MetroGraphValidationService>().validateWithExtensions(file, appGraph)
@@ -2592,7 +2592,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val childGraph = index.graphs.single { it.name == "ChildGraph" }
     val contexts = index.contextsFor(childGraph)
     val leftContext = contexts.single { it.chain[1].name == "LeftGraph" }
@@ -2712,7 +2712,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val result =
       project
@@ -3011,7 +3011,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
           }
           """
         )
-      val index = project.service<MetroResolutionService>().index(file)
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
       // The concrete factory is reached through the contribution's Alias binding, not a source
       // consumer that directly requests ContributedFactory or Inner.Factory<Int>.
       assertTrue(index.consumers.none { it.key.renderedType == "test.ContributedFactory" })
@@ -3123,7 +3123,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface IntGraph : GenericBase<Int>
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val service = project.service<MetroGraphValidationService>()
     for ((graphName, expectedType) in
       listOf("StringGraph" to "kotlin.String", "IntGraph" to "kotlin.Int")) {
@@ -3171,7 +3171,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val validation = project.service<MetroGraphValidationService>()
 
     for ((graphName, expectedParameterType) in
@@ -3244,7 +3244,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single { it.name == "AppGraph" }
     val result =
       project
@@ -3358,7 +3358,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         """
       )
     PsiDocumentManager.getInstance(project).commitAllDocuments()
-    val index = project.service<MetroResolutionService>().index(graph)
+    val index = project.service<MetroResolutionService>().awaitIndex(graph)
     val declaration = index.graphs.single { it.name == "AppGraph" }
     val result =
       project
@@ -3611,7 +3611,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val parent = index.graphs.single { it.name == "AppGraph" }
     val child = index.graphs.single { it.name == "ChildGraph" }
     val parentContext = index.contextsFor(parent).single()
@@ -3958,7 +3958,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     assertEquals(
       listOf("kotlin.String"),
-      service.index(graph).consumers.map { it.key.renderedType },
+      service.awaitIndex(graph).consumers.map { it.key.renderedType },
     )
 
     val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(base))
@@ -3978,7 +3978,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
 
     assertEquals(
       listOf("kotlin.Int"),
-      service.index(graph).consumers.map { it.key.renderedType },
+      service.awaitIndex(graph).consumers.map { it.key.renderedType },
     )
   }
 
@@ -3997,7 +3997,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     // Project-file fixtures can leave the second document uncommitted.
     PsiDocumentManager.getInstance(project).commitAllDocuments()
 
-    val index = project.service<MetroResolutionService>().index(fileA)
+    val index = project.service<MetroResolutionService>().awaitIndex(fileA)
     val graphs = index.graphs.filter { it.classId?.asFqNameString() == "test.AppGraph" }
     assertEquals(2, graphs.size)
     val (graphA, graphB) = graphs
@@ -4198,7 +4198,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
@@ -4215,7 +4215,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
@@ -4226,6 +4226,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     myFixture.openFileInEditor(file.virtualFile)
     myFixture.type(" ")
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+    project.service<MetroResolutionService>().awaitIndex(file)
     val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)
@@ -4239,7 +4240,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
         interface AppGraph
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     val context = index.contextsFor(graph).single()
     val validationService = project.service<MetroGraphValidationService>()
@@ -4256,6 +4257,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
 
+    project.service<MetroResolutionService>().awaitIndex(file)
     val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)

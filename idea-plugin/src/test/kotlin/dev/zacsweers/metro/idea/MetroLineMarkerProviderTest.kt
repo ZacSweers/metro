@@ -8,7 +8,9 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
 import kotlin.test.assertTrue
+import org.jetbrains.kotlin.psi.KtFile
 
 class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
@@ -18,6 +20,14 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     module.addMetroRuntimeLibrary()
     project.service<MetroGraphValidationService>().clearResults()
     project.service<GraphContextPinService>().clear()
+  }
+
+  /** Waits for the index and file bundle before running the platform's highlighting pass. */
+  private fun highlightMetroFile() {
+    val file = myFixture.file as KtFile
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    if (index !== BindingIndex.EMPTY) file.awaitMetroPresentation()
+    myFixture.doHighlighting()
   }
 
   private fun configureAndHighlight(): List<String> {
@@ -55,7 +65,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       """
         .trimIndent(),
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val metroIcons =
       setOf(
         MetroIcons.PROVIDER,
@@ -90,7 +100,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -116,7 +126,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -153,7 +163,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -191,7 +201,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -236,7 +246,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -263,7 +273,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         }
         """
       )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     fun validateIcons() =
       myFixture
         .findAllGutters()
@@ -276,12 +286,12 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     // Not validated yet: plain graph icon
     assertEquals(listOf<Any>(MetroIcons.GRAPH), validateIcons())
 
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val graph = index.graphs.single()
     project.service<MetroGraphValidationService>().validate(file, index.contextsFor(graph).single())
     // The file didn't change, so mimic production's post-validation daemon restart
     DaemonCodeAnalyzer.getInstance(project).restart()
-    myFixture.doHighlighting()
+    highlightMetroFile()
     assertEquals(listOf<Any>(MetroIcons.GRAPH_PROBLEMS), validateIcons())
     val tooltip =
       myFixture
@@ -311,7 +321,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()
     val validationService = project.service<MetroGraphValidationService>()
     val result = validationService.validate(file, context)
@@ -320,7 +330,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     assertSame(result, validationService.validate(file, context))
 
     DaemonCodeAnalyzer.getInstance(project).restart()
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val gutters = myFixture.findAllGutters()
     assertTrue(gutters.none { it.icon === MetroIcons.GRAPH_VALIDATED })
     val tooltip =
@@ -352,7 +362,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
         }
         """
       )
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val child = index.graphs.single { it.name == "ChildGraph" }
     val contexts = index.contextsFor(child)
     assertEquals(2, contexts.size)
@@ -360,7 +370,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
     validationService.validate(file, contexts.first())
     DaemonCodeAnalyzer.getInstance(project).restart()
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val partialTooltips =
       myFixture
         .findAllGutters()
@@ -374,18 +384,18 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     val pinService = project.service<GraphContextPinService>()
     val pinnedRoot = contexts.first().rootGraph
     pinService.pin(index.contextsFor(pinnedRoot).single().path)
-    myFixture.doHighlighting()
+    highlightMetroFile()
     assertEquals(
       1,
       myFixture.findAllGutters().count { it.icon === MetroIcons.GRAPH_VALIDATED },
     )
     pinService.clear()
-    myFixture.doHighlighting()
+    highlightMetroFile()
     assertTrue(myFixture.findAllGutters().none { it.icon === MetroIcons.GRAPH_VALIDATED })
 
     validationService.validate(file, contexts.last())
     DaemonCodeAnalyzer.getInstance(project).restart()
-    myFixture.doHighlighting()
+    highlightMetroFile()
     assertEquals(
       1,
       myFixture.findAllGutters().count { it.icon === MetroIcons.GRAPH_VALIDATED },
@@ -411,7 +421,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val tooltips =
       myFixture
         .findAllGutters()
@@ -471,7 +481,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val gutters = myFixture.findAllGutters()
     val providerTooltips =
       gutters.filter { it.icon === MetroIcons.PROVIDER }.mapNotNull { it.tooltipText }
@@ -510,7 +520,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
     )
-    myFixture.doHighlighting()
+    highlightMetroFile()
 
     val marker =
       myFixture.findAllGutters().single {
@@ -552,7 +562,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       }
       """
       )
-    myFixture.doHighlighting()
+    highlightMetroFile()
 
     val marker =
       myFixture.findAllGutters().single {
@@ -564,7 +574,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
       "bindings differ across 2 graph contexts · 2 candidates" in marker.tooltipText.orEmpty()
     }
 
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val contexts =
       index.graphs.associate { graph ->
         graph.name to index.contextsFor(graph).single()
@@ -572,7 +582,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     val pinService = project.service<GraphContextPinService>()
 
     pinService.pin(contexts.getValue("AppGraph").path)
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val appMarker =
       myFixture.findAllGutters().single {
         it.icon === MetroIcons.CONSUMER &&
@@ -585,7 +595,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     )
 
     pinService.pin(contexts.getValue("OtherGraph").path)
-    myFixture.doHighlighting()
+    highlightMetroFile()
     val otherMarker =
       myFixture.findAllGutters().single {
         it.icon === MetroIcons.CONSUMER &&

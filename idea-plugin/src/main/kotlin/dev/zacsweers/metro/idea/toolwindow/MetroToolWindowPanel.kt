@@ -199,6 +199,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
       when {
         progress != null -> indexBuildStatus.show(progress)
         !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
+        resolutionService.isManualGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
         else -> indexBuildStatus.clear()
       }
     }
@@ -245,7 +246,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
   private fun findGraph(classId: ClassId, file: VirtualFile?): KaGraphDeclaration? {
     val psiFile =
       file?.let { PsiManager.getInstance(project).findFile(it) } as? KtFile ?: return null
-    return project.service<MetroResolutionService>().index(psiFile).graphs.firstOrNull {
+    return project.service<MetroResolutionService>().currentIndex(psiFile).graphs.firstOrNull {
       it.classId == classId && it.pointer.virtualFile == file
     }
   }
@@ -474,7 +475,7 @@ internal class LoadOrRefreshGraphsAction(
   }
 
   override fun actionPerformed(e: AnActionEvent) {
-    resolutionService.activateGraphBrowser()
+    resolutionService.refreshGraphData()
     refresh()
   }
 }

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.SimplePersistentStateComponent
@@ -26,6 +25,9 @@ class MetroSettingsState : BaseState() {
 
   /** Shows binding navigation in the editor without disabling graph browsing or validation. */
   var enableBindingResolution by property(true)
+
+  /** Keeps graph and binding data current as project code changes. */
+  var automaticallyRefreshGraphData by property(true)
 
   /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
   var resolveFromLibraries by property(true)
@@ -72,6 +74,11 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         .bindSelected(state::resolveFromLibraries)
         .comment("Includes bindings contributed by compiled project dependencies")
     }
+    row {
+      checkBox("Automatically refresh graphs and bindings after code changes")
+        .bindSelected(state::automaticallyRefreshGraphData)
+        .comment("When disabled, use Refresh in the Metro tool window to update graph data")
+    }
     indent {
       row {
         checkBox("Show \"assisted\" inlay hints")
@@ -86,9 +93,9 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
 
   override fun apply() {
     super.apply()
-    // Refresh cached indexes when binary dependency resolution changes.
+    // Apply changes to library resolution and automatic graph refresh.
     project.service<MetroResolutionService>().settingsChanged()
-    // Re-run highlighting so the gates take effect without further edits
-    DaemonCodeAnalyzer.getInstance(project).restart()
+    // Apply editor display settings without waiting for a source edit.
+    project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
   }
 }

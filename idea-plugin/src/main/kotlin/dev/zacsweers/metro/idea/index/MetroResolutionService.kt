@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.facet.Facet
 import com.intellij.facet.FacetManager
 import com.intellij.facet.FacetManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -18,6 +18,7 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
@@ -25,6 +26,7 @@ import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.ShutDownTracker
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.vfs.VirtualFile
@@ -43,6 +45,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.mapToSet
+import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIdeModuleState
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
@@ -66,6 +69,7 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
+import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
@@ -78,18 +82,32 @@ import dev.zacsweers.metro.idea.model.sourcePointerIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
-import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
@@ -105,96 +123,144 @@ import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtTypeAlias
 
 /**
- * Shared resolution service powering Metro's editor decorations, graph browser, and validation.
+ * Builds and caches the binding data used by editor decorations, the graph browser, and validation.
  *
  * A cold snapshot discovers candidate Kotlin files through stub indexes. Later PSI changes rebuild
  * only the changed file and shards that explicitly depend on it. Binary declarations live in a
- * separate cache so unrelated source edits do not repeat classpath analysis.
+ * separate cache so unrelated source edits do not repeat classpath analysis. One coordinator owns
+ * pending changes and publishes complete immutable generations for concurrent readers. Explicit
+ * queries use the current generation. In manual refresh mode, editor features keep the last
+ * presentation generation until the user refreshes it.
+ *
+ * The supplied scope owns background execution. IntelliJ injects a scope using Dispatchers.Default.
  */
 @Service(Service.Level.PROJECT)
 class MetroResolutionService(
   private val project: Project,
   private val scope: CoroutineScope,
 ) : Disposable {
-  // Project-wide indexes are deduped by options that actually affect IDE extraction. Gradle emits
-  // module-specific report/trace destinations, but those paths do not change declaration semantics.
-  private val snapshots: MutableMap<SnapshotKey, IndexSnapshot> =
-    Collections.synchronizedMap(
-      object : LinkedHashMap<SnapshotKey, IndexSnapshot>(8, 0.75f, true) {
-        override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<SnapshotKey, IndexSnapshot>
-        ): Boolean = size > MAX_CACHED_INDEXES
-      }
+  private val libraryShards =
+    object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
+      override fun removeEldestEntry(
+        eldest: MutableMap.MutableEntry<LibraryCacheKey, LibraryShard>
+      ): Boolean = size > MAX_CACHED_INDEXES
+    }
+
+  private val mutableIndexBuildProgress = MutableStateFlow<IndexBuildProgress?>(null)
+  /** Latest progress of the coordinator's current index build. */
+  internal val indexBuildProgress: StateFlow<IndexBuildProgress?> =
+    mutableIndexBuildProgress.asStateFlow()
+  /** Broadcasts refresh signals to all active tool-window listeners. */
+  private val indexChanges =
+    MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+  /** Coalesces pending refresh requests until the EDT can notify listeners. */
+  private val notificationRequests = Channel<Unit>(Channel.CONFLATED)
+  /** Cancels EDT delivery and disposable-bound collectors when this service is disposed. */
+  private val notificationScope =
+    CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
+  /** Previous alias and constant contents, used to recognize edits that affect other files. */
+  private val sharedDeclarationFingerprints = mutableMapOf<VirtualFile, String>()
+  /** Remembers irrelevant files so repeated queries leave the current index intact. */
+  private val knownIrrelevantFiles = mutableSetOf<VirtualFile>()
+  /** Readers observe complete generations together with their browser and lifecycle state. */
+  private val publishedResolution = MutableStateFlow(PublishedResolution.EMPTY)
+  private val isDisposed: Boolean
+    get() = publishedResolution.value.isDisposed
+
+  private val retryAutomaticIndexAfterStateWarmup: (Module) -> Unit = { module ->
+    if (automaticallyRefreshGraphData && !isDisposed && !project.isDisposed && !module.isDisposed) {
+      index(module, IndexRequestMode.AUTOMATIC_BACKGROUND)
+    }
+  }
+  private val retryExplicitIndexAfterStateWarmup: (Module) -> Unit = { module ->
+    if (!isDisposed && !project.isDisposed && !module.isDisposed) {
+      index(module, IndexRequestMode.BACKGROUND)
+    }
+  }
+
+  /** Only the resolution coordinator reads or changes this pending source work. */
+  private val pendingDirtyFiles = linkedSetOf<VirtualFile>()
+  private val pendingRequestedFiles = linkedSetOf<VirtualFile>()
+  private var forceAllFiles = false
+  private var semanticRevision = 0L
+  private var sourceSnapshot: SourceSnapshot? = null
+  /** Accepts callbacks from any thread and wakes the coordinator with coalesced requests. */
+  private val ingress =
+    ResolutionIngress(
+      coalescingKey = ResolutionCoordinatorEvent::coalescingKey,
+      merge = ::mergeResolutionCoordinatorEvents,
     )
+  /** Combines requests by module while retaining every caller waiting for the result. */
+  private val pendingBuilds = linkedMapOf<Module, PendingIndexBuild>()
+  /** Retains requested modules for later automatic rebuilds. */
+  private val demandedModules = linkedSetOf<Module>()
+  private var pendingPsiChanges = PendingPsiChanges()
+  private var projectInputsPending = false
+  private var settingsPending = false
+  private var pendingManualRefresh: ManualRefreshRequest? = null
+  /** Clocks captured at the last event drain, used to reject superseded work. */
+  private var coordinatorSnapshot = ingress.snapshot()
+  private val coordinatorJob: Job
+  private val pendingFilePresentationRequests = linkedMapOf<FilePresentationKey, BindingIndex>()
+  private val completedFilePresentationBundles = ArrayDeque<CompletedFilePresentationBundle>()
+  private val pendingFilePresentationAnchorRequests =
+    linkedMapOf<FilePresentationKey, PendingFilePresentationAnchorBuild>()
+  private val completedFilePresentationAnchorBundles =
+    ArrayDeque<CompletedFilePresentationAnchorBundle>()
+  private val pendingCoordinatorBarriers = mutableListOf<CompletableDeferred<Unit>>()
 
-  private val libraryShards: MutableMap<LibraryCacheKey, LibraryShard> =
-    Collections.synchronizedMap(
-      object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
-        override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<LibraryCacheKey, LibraryShard>
-        ): Boolean = size > MAX_CACHED_INDEXES
-      }
-    )
+  /** The coordinator caps this cache and publishes immutable copies for readers. */
+  private val filePresentationBundles =
+    LinkedHashMap<FilePresentationKey, FilePresentationBundle>(MAX_FILE_PRESENTATION_BUNDLES)
+  /** Active attempts retain their worker slots until completion, including during cancellation. */
+  private val filePresentationBuilds =
+    mutableMapOf<FilePresentationKey, FilePresentationBuildAttempt>()
+  private val filePresentationAnchorBuilds =
+    mutableMapOf<FilePresentationKey, FilePresentationAnchorBuildAttempt>()
 
-  private val listeners = Collections.newSetFromMap(ConcurrentHashMap<() -> Unit, Boolean>())
-  private val indexBuildProgressListeners =
-    Collections.newSetFromMap(ConcurrentHashMap<(IndexBuildProgress?) -> Unit, Boolean>())
-  private val indexBuildProgress = AtomicReference<IndexBuildProgress?>(null)
-  /** Pre-change shared declarations, so broad PSI events do not invalidate unrelated edits. */
-  private val sharedDeclarationFingerprints = ConcurrentHashMap<VirtualFile, String>()
-  private val invalidationPending = AtomicBoolean()
-  /** The first source state in a batch of roots, facet, or compiler-settings callbacks. */
-  private val pendingProjectInputs = AtomicReference<PendingProjectInputs?>(null)
-  private val graphBrowserActivated = AtomicBoolean()
-  private val disposed = AtomicBoolean()
+  /** Declaration identities captured with each index generation's source ranges. */
+  private val declarationAnchorSignatures =
+    ConcurrentHashMap<
+      IndexGenerationToken,
+      Map<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>,
+    >()
+  private var nextFilePresentationAttemptId = 0L
 
-  /**
-   * The pending-invalidation ledger. Every mutation replaces the whole immutable value, so a
-   * builder can drain it at the start of a pass and publish results with one compare-and-set. Any
-   * concurrent invalidation changes the reference and fails the publish, forcing a re-drain.
-   * Builders always run inside read actions, so PSI itself cannot change mid-pass. The ledger is
-   * the only state other threads can move underneath a build.
-   */
-  private val invalidations = AtomicReference(Invalidations())
-
-  /** The last fully built source view. Published atomically after a successful drain. */
-  private val sourceSnapshot = AtomicReference<SourceSnapshot?>(null)
-
-  /** Keys whose background builds were requested from the EDT, drained by [buildWorker]. */
-  private val pendingBuilds = ConcurrentHashMap<SnapshotKey, Module>()
-  private val buildSignal = Channel<Unit>(Channel.CONFLATED)
-
-  private val lastResolveFromLibraries =
-    AtomicBoolean(MetroSettings.getInstance(project).state.resolveFromLibraries)
-  private val fingerprintsByModuleState: MutableMap<MetroIdeModuleState, IndexOptionsFingerprint> =
-    Collections.synchronizedMap(
-      object : LinkedHashMap<MetroIdeModuleState, IndexOptionsFingerprint>(16, 0.75f, true) {
-        override fun removeEldestEntry(
-          eldest: MutableMap.MutableEntry<MetroIdeModuleState, IndexOptionsFingerprint>
-        ): Boolean = size > MAX_CACHED_OPTION_FINGERPRINTS
-      }
-    )
+  private var lastResolveFromLibraries =
+    MetroSettings.getInstance(project).state.resolveFromLibraries
+  private var lastAutomaticallyRefreshGraphData = automaticallyRefreshGraphData
 
   init {
     PsiManager.getInstance(project)
       .addPsiTreeChangeListener(
         object : PsiTreeChangeAdapter() {
           override fun beforeChildRemoval(event: PsiTreeChangeEvent) =
-            psiChanged(event, structuralChange = isFileStructureChange(event))
+            psiChanged(
+              event,
+              structuralChange = isFileStructureChange(event),
+              oldTreeMayDisappear = true,
+            )
 
           override fun beforeChildMovement(event: PsiTreeChangeEvent) =
-            psiChanged(event, structuralChange = isFileStructureChange(event))
+            psiChanged(
+              event,
+              structuralChange = isFileStructureChange(event),
+              oldTreeMayDisappear = true,
+            )
 
           override fun beforePropertyChange(event: PsiTreeChangeEvent) =
             psiChanged(event, structuralChange = isFileStructureChange(event))
 
-          override fun beforeChildReplacement(event: PsiTreeChangeEvent) = psiChanged(event)
+          override fun beforeChildReplacement(event: PsiTreeChangeEvent) =
+            psiChanged(event, oldTreeMayDisappear = true)
 
-          override fun beforeChildrenChange(event: PsiTreeChangeEvent) = psiChanged(event)
+          override fun beforeChildrenChange(event: PsiTreeChangeEvent) =
+            psiChanged(event, oldTreeMayDisappear = true)
 
           override fun childAdded(event: PsiTreeChangeEvent) =
             psiChanged(event, structuralChange = isFileStructureChange(event))
@@ -237,58 +303,957 @@ class MetroResolutionService(
         override fun <T> settingsChanged(oldSettings: T?, newSettings: T?) = projectInputsChanged()
       },
     )
-    scope.launch { buildWorker() }
+    coordinatorJob = scope.launch { resolutionCoordinator() }
+    notificationScope.launch(Dispatchers.EDT) { deliverIndexChanges() }
   }
 
-  /** Drains UI-requested background builds one at a time on the service scope. */
-  private suspend fun buildWorker() {
+  /** Processes resolution requests in priority order. */
+  private suspend fun resolutionCoordinator() {
     try {
-      for (unused in buildSignal) {
-        while (true) {
-          val (key, module) = pendingBuilds.entries.firstOrNull() ?: break
-          pendingBuilds.remove(key, module)
-          val progress = IndexBuildProgressReporter(::publishIndexBuildProgress)
-          progress.phase(IndexBuildPhase.QUEUED)
-          val built =
-            try {
-              retryCancelledIndexBuild {
-                smartReadAction(project) { buildCurrentIndex(module, key, progress) }
+      for (unused in ingress.wakeups) {
+        drainCoordinatorEvents()
+        while (!isDisposed && !project.isDisposed && hasRunnableCoordinatorWork()) {
+          val coordinatorMetadataMayHaveChanged =
+            when {
+              !pendingPsiChanges.isEmpty -> {
+                processPendingPsiChanges()
+                true
               }
-            } catch (exception: CancellationException) {
-              throw exception
-            } catch (failure: Throwable) {
-              // The worker must survive analysis failures or every future EDT-scheduled build
-              // would silently stop. Requesters reschedule on their next query.
-              logger<MetroResolutionService>()
-                .warn("Metro index build failed for ${module.name}", failure)
-              continue
+              projectInputsPending -> {
+                processPendingProjectInputs()
+                true
+              }
+              settingsPending -> {
+                processPendingSettings()
+                true
+              }
+              pendingManualRefresh != null -> {
+                processResolutionCandidate(manualRefresh = true)
+                true
+              }
+              completeSatisfiedBuildRequests() -> false
+              pendingBuilds.isNotEmpty() -> {
+                processResolutionCandidate(manualRefresh = false)
+                true
+              }
+              completedFilePresentationBundles.isNotEmpty() -> {
+                publishCompletedFileBundles()
+                false
+              }
+              completedFilePresentationAnchorBundles.isNotEmpty() -> {
+                publishCompletedFilePresentationAnchors()
+                false
+              }
+              else -> {
+                startPendingFileBundles()
+                false
+              }
             }
-          if (built === BindingIndex.EMPTY) {
-            continue
+          if (coordinatorMetadataMayHaveChanged) {
+            publishCoordinatorMetadata()
           }
-          withContext(Dispatchers.EDT) {
-            val current = snapshots[key]
-            if (!project.isDisposed && current?.index === built) {
-              notifyListeners(restartDaemon = true)
-            }
-          }
+          drainCoordinatorEvents()
         }
-        publishIndexBuildProgress(null)
+        completeCoordinatorBarriers()
+        if (pendingBuilds.isEmpty()) publishIndexBuildProgress(null)
       }
     } finally {
+      cancelCoordinatorWork()
       publishIndexBuildProgress(null)
     }
   }
 
-  /** Returns the current index for [element]'s module, or an empty index when Metro is inactive. */
-  internal fun index(element: PsiElement): BindingIndex {
+  private fun drainCoordinatorEvents() {
+    val drained = ingress.drain()
+    coordinatorSnapshot = drained.snapshot
+    for (event in drained.events) {
+      when (event) {
+        is ResolutionCoordinatorEvent.Psi -> mergePendingPsiChanges(event.changes)
+        ResolutionCoordinatorEvent.ProjectInputs -> projectInputsPending = true
+        ResolutionCoordinatorEvent.Settings -> settingsPending = true
+        is ResolutionCoordinatorEvent.PresentationDemand -> demandedModules += event.module
+        is ResolutionCoordinatorEvent.Build -> mergePendingBuild(event)
+        is ResolutionCoordinatorEvent.ManualRefresh -> {
+          pendingManualRefresh = ManualRefreshRequest(event.requestId)
+        }
+        is ResolutionCoordinatorEvent.FilePresentationRequest -> {
+          if (isPresentationIndexPublished(event.index) && !hasFilePresentationWork(event.key)) {
+            pendingFilePresentationRequests.putIfAbsent(event.key, event.index)
+          }
+        }
+        is ResolutionCoordinatorEvent.FilePresentationComplete -> {
+          val activeAttempt = filePresentationBuilds[event.key]
+          val accepted = activeAttempt?.id == event.attemptId && activeAttempt.index === event.index
+          if (!accepted) {
+            continue
+          }
+          filePresentationBuilds.remove(event.key)
+          val bundle =
+            when (val outcome = event.outcome) {
+              FilePresentationBuildOutcome.Canceled,
+              FilePresentationBuildOutcome.Failed -> null
+              is FilePresentationBuildOutcome.Succeeded -> outcome.bundle
+            }
+          if (
+            bundle != null &&
+              isPresentationIndexPublished(event.index) &&
+              event.key !in filePresentationBundles &&
+              completedFilePresentationBundles.none { it.key == event.key }
+          ) {
+            completedFilePresentationBundles +=
+              CompletedFilePresentationBundle(
+                event.index,
+                event.key,
+                bundle,
+              )
+          }
+        }
+        is ResolutionCoordinatorEvent.FilePresentationAnchorRequest -> {
+          val publishedBundle = filePresentationBundles[event.key]
+          if (
+            isPresentationIndexPublished(event.index) &&
+              publishedBundle != null &&
+              publishedBundle === event.baseBundle &&
+              !publishedBundle.anchorsAreCurrent(event.modificationStamp)
+          ) {
+            val active = filePresentationAnchorBuilds[event.key]
+            val sameActiveRequest =
+              active != null &&
+                active.baseBundle === event.baseBundle &&
+                active.modificationStamp == event.modificationStamp
+            if (!sameActiveRequest) {
+              pendingFilePresentationAnchorRequests[event.key] =
+                PendingFilePresentationAnchorBuild(
+                  event.index,
+                  event.key,
+                  event.baseBundle,
+                  event.modificationStamp,
+                )
+              active?.job?.cancel()
+            }
+          }
+        }
+        is ResolutionCoordinatorEvent.FilePresentationAnchorComplete -> {
+          val activeAttempt = filePresentationAnchorBuilds[event.key]
+          val accepted =
+            activeAttempt?.id == event.attemptId &&
+              activeAttempt.index === event.index &&
+              activeAttempt.baseBundle === event.baseBundle &&
+              activeAttempt.modificationStamp == event.modificationStamp
+          if (!accepted) continue
+          filePresentationAnchorBuilds.remove(event.key)
+          val bundle =
+            when (val outcome = event.outcome) {
+              FilePresentationBuildOutcome.Canceled,
+              FilePresentationBuildOutcome.Failed -> null
+              is FilePresentationBuildOutcome.Succeeded -> outcome.bundle
+            }
+          val pending = pendingFilePresentationAnchorRequests[event.key]
+          val superseded =
+            pending != null &&
+              (pending.baseBundle !== event.baseBundle ||
+                pending.modificationStamp != event.modificationStamp)
+          if (
+            bundle != null &&
+              !superseded &&
+              isPresentationBundlePublished(event.index, event.key, event.baseBundle) &&
+              bundle.sharesSemanticData(event.baseBundle) &&
+              bundle.anchorsAreCurrent(event.modificationStamp) &&
+              completedFilePresentationAnchorBundles.none { it.key == event.key }
+          ) {
+            if (
+              pending != null &&
+                pending.baseBundle === event.baseBundle &&
+                pending.modificationStamp == event.modificationStamp
+            ) {
+              pendingFilePresentationAnchorRequests.remove(event.key)
+            }
+            completedFilePresentationAnchorBundles +=
+              CompletedFilePresentationAnchorBundle(
+                event.index,
+                event.key,
+                event.baseBundle,
+                event.modificationStamp,
+                bundle,
+              )
+          }
+        }
+        is ResolutionCoordinatorEvent.TestBarrier -> {
+          pendingCoordinatorBarriers += event.completion
+        }
+      }
+    }
+  }
+
+  /** Returns whether queued work can run before another request or worker completion arrives. */
+  private fun hasRunnableCoordinatorWork(): Boolean {
+    return !pendingPsiChanges.isEmpty ||
+      projectInputsPending ||
+      settingsPending ||
+      pendingManualRefresh != null ||
+      pendingBuilds.isNotEmpty() ||
+      completedFilePresentationBundles.isNotEmpty() ||
+      completedFilePresentationAnchorBundles.isNotEmpty() ||
+      hasStartableFilePresentationWork()
+  }
+
+  private fun mergePendingPsiChanges(added: PendingPsiChanges) {
+    val files = pendingPsiChanges.files.toMutableMap()
+    for ((file, change) in added.files) {
+      files[file] = files[file]?.merge(change) ?: change
+    }
+    pendingPsiChanges =
+      PendingPsiChanges(
+        files = files,
+        directories = pendingPsiChanges.directories + added.directories,
+      )
+  }
+
+  private fun mergePendingBuild(event: ResolutionCoordinatorEvent.Build) {
+    demandedModules += event.module
+    val existing = pendingBuilds[event.module]
+    if (existing == null) {
+      pendingBuilds[event.module] =
+        PendingIndexBuild(
+          module = event.module,
+          intent = event.intent,
+          waiters = event.completions.toMutableList(),
+        )
+    } else {
+      existing.upgrade(event.intent)
+      existing.waiters += event.completions
+    }
+  }
+
+  /** Completes requests when their data is already available to every active reader. */
+  private fun completeSatisfiedBuildRequests(): Boolean {
+    if (
+      pendingBuilds.isEmpty() || pendingManualRefresh != null || isDisposed || project.isDisposed
+    ) {
+      return false
+    }
+    val publication = publishedResolution.value
+    if (publication.isDisposed) return false
+    val current = publication.current
+    if (!generationIsCurrent(current)) return false
+    val presentation = publication.presentation
+    val needsCurrentPresentation = automaticallyRefreshGraphData
+    // Explicit queries can refresh current data while manual mode keeps the old presentation.
+    // Reenabling automatic refresh must update both before queued requests are satisfied.
+    if (needsCurrentPresentation && !generationIsCurrent(presentation)) return false
+    if (isDisposed || project.isDisposed || publishedResolution.value.current !== current) {
+      return false
+    }
+
+    val satisfied = mutableListOf<PendingIndexBuild>()
+    val requests = pendingBuilds.entries.iterator()
+    while (requests.hasNext()) {
+      val request = requests.next().value
+      if (current.index(request.module) === BindingIndex.EMPTY) continue
+      if (needsCurrentPresentation && presentation.index(request.module) === BindingIndex.EMPTY) {
+        continue
+      }
+      requests.remove()
+      satisfied += request
+    }
+    completeBuildRequests(satisfied, IndexBuildOutcome.PUBLISHED)
+    return satisfied.isNotEmpty()
+  }
+
+  private suspend fun processPendingPsiChanges() {
+    val batch = pendingPsiChanges
+    pendingPsiChanges = PendingPsiChanges()
+    try {
+      val classified =
+        smartReadAction(project) {
+          checkPsiClassificationActive()
+          classifyPsiChanges(batch)
+        }
+      checkPsiClassificationActive()
+      applyClassifiedPsiChanges(classified)
+    } catch (exception: ProcessCanceledException) {
+      mergePendingPsiChanges(batch)
+      yield()
+    } catch (exception: CancellationException) {
+      mergePendingPsiChanges(batch)
+      throw exception
+    } catch (failure: Throwable) {
+      checkPsiClassificationActive()
+      logger<MetroResolutionService>().warn("Metro PSI invalidation failed", failure)
+      val requested = failedClassificationRequests(batch)
+      recordForceAllInvalidation()
+      pendingRequestedFiles += requested
+      evictStaleCaches(ProjectRootModificationTracker.getInstance(project).modificationCount)
+      notifyListeners(restartDaemon = true)
+    }
+  }
+
+  private suspend fun processPendingProjectInputs() {
+    projectInputsPending = false
+    try {
+      readAction {
+        reconcileProjectInputs()
+      }
+    } catch (exception: ProcessCanceledException) {
+      projectInputsPending = true
+      yield()
+    } catch (exception: CancellationException) {
+      projectInputsPending = true
+      throw exception
+    } catch (failure: Throwable) {
+      logger<MetroResolutionService>().warn("Metro project input reconciliation failed", failure)
+      semanticRevision++
+      evictStaleCaches(ProjectRootModificationTracker.getInstance(project).modificationCount)
+      notifyListeners(restartDaemon = false)
+    }
+  }
+
+  private fun processPendingSettings() {
+    settingsPending = false
+    val state = MetroSettings.getInstance(project).state
+    val resolveFromLibraries = state.resolveFromLibraries
+    val resolveFromLibrariesChanged = lastResolveFromLibraries != resolveFromLibraries
+    lastResolveFromLibraries = resolveFromLibraries
+    val automaticallyRefresh = state.automaticallyRefreshGraphData
+    val automaticallyRefreshChanged = lastAutomaticallyRefreshGraphData != automaticallyRefresh
+    lastAutomaticallyRefreshGraphData = automaticallyRefresh
+    if (!resolveFromLibrariesChanged && !automaticallyRefreshChanged) return
+    if (automaticallyRefreshChanged) {
+      updatePublishedResolution { it.copy(manualStaleNotificationSent = false) }
+    }
+
+    if (automaticallyRefreshChanged && !automaticallyRefresh) {
+      discardAutomaticPendingBuilds()
+      updatePublishedResolution { publication ->
+        val presentationRevision = publication.presentation.semanticRevision
+        val refreshRevision =
+          if (presentationRevision == ResolutionGeneration.EMPTY_REVISION) semanticRevision
+          else presentationRevision
+        publication.copy(graphBrowserRefreshRevision = refreshRevision)
+      }
+    }
+
+    if (resolveFromLibrariesChanged) {
+      semanticRevision++
+      if (!resolveFromLibraries) libraryShards.clear()
+      evictStaleCaches(ProjectRootModificationTracker.getInstance(project).modificationCount)
+    }
+
+    if (automaticallyRefreshChanged && automaticallyRefresh) {
+      for (module in demandedModules) {
+        if (module.isDisposed || module in pendingBuilds) continue
+        pendingBuilds[module] =
+          PendingIndexBuild(module, IndexBuildIntent.AUTOMATIC, mutableListOf())
+      }
+    }
+    notifyListeners(restartDaemon = automaticallyRefreshChanged && automaticallyRefresh)
+  }
+
+  private fun publishCoordinatorMetadata() {
+    if (!pendingPsiChanges.isEmpty || projectInputsPending || settingsPending) return
+    val publication = publishedResolution.value
+    val currentTrackedFiles = sourceSnapshot?.shardOrder.orEmpty()
+    val trackedFilesUnchanged =
+      publication.trackedSourceFiles.size == currentTrackedFiles.size &&
+        publication.trackedSourceFiles.containsAll(currentTrackedFiles)
+    val irrelevantFilesUnchanged = publication.knownIrrelevantFiles == knownIrrelevantFiles
+    val metadataUnchanged =
+      publication.classifiedSemanticClock == coordinatorSnapshot.semanticClock &&
+        publication.latestSemanticRevision == semanticRevision &&
+        trackedFilesUnchanged &&
+        irrelevantFilesUnchanged
+    if (metadataUnchanged) return
+
+    val trackedSourceFiles =
+      if (trackedFilesUnchanged) publication.trackedSourceFiles else currentTrackedFiles.toSet()
+    val irrelevantFiles =
+      if (irrelevantFilesUnchanged) publication.knownIrrelevantFiles
+      else knownIrrelevantFiles.toSet()
+    updatePublishedResolution { previous ->
+      previous.copy(
+        classifiedSemanticClock = coordinatorSnapshot.semanticClock,
+        latestSemanticRevision = semanticRevision,
+        trackedSourceFiles = trackedSourceFiles,
+        knownIrrelevantFiles = irrelevantFiles,
+      )
+    }
+  }
+
+  private fun hasFilePresentationWork(key: FilePresentationKey): Boolean {
+    return key in filePresentationBuilds ||
+      key in filePresentationAnchorBuilds ||
+      key in filePresentationBundles ||
+      completedFilePresentationBundles.any { it.key == key }
+  }
+
+  /** A worker needs a free slot and exclusive access to its file's presentation. */
+  private fun hasStartableFilePresentationWork(): Boolean {
+    val activeBuilds = filePresentationBuilds.size + filePresentationAnchorBuilds.size
+    if (activeBuilds >= MAX_CONCURRENT_FILE_PRESENTATION_BUILDS) return false
+    val activeKeys = filePresentationBuilds.keys + filePresentationAnchorBuilds.keys
+    return pendingFilePresentationRequests.keys.any { it !in activeKeys } ||
+      pendingFilePresentationAnchorRequests.keys.any { it !in activeKeys }
+  }
+
+  private fun isPresentationBundlePublished(
+    index: BindingIndex,
+    key: FilePresentationKey,
+    bundle: FilePresentationBundle,
+  ): Boolean {
+    if (!isPresentationIndexPublished(index)) return false
+    return publishedResolution.value.filePresentationBundles[key] === bundle
+  }
+
+  private fun completeCoordinatorBarriers() {
+    if (pendingCoordinatorBarriers.isEmpty()) return
+    pendingCoordinatorBarriers.forEach { it.complete(Unit) }
+    pendingCoordinatorBarriers.clear()
+  }
+
+  /** Applies a pure state transformation and preserves disposal as a terminal state. */
+  private fun updatePublishedResolution(
+    update: (PublishedResolution) -> PublishedResolution
+  ): PublishedResolution? {
+    val updated = publishedResolution.updateAndGet { publication ->
+      if (publication.isDisposed || project.isDisposed) publication else update(publication)
+    }
+    return updated.takeUnless { it.isDisposed || project.isDisposed }
+  }
+
+  private fun startPendingFileBundles() {
+    var available =
+      MAX_CONCURRENT_FILE_PRESENTATION_BUILDS -
+        filePresentationBuilds.size -
+        filePresentationAnchorBuilds.size
+    if (available <= 0) return
+    val requests = pendingFilePresentationRequests.entries.iterator()
+    while (requests.hasNext() && available > 0) {
+      val (key, index) = requests.next()
+      if (!isPresentationIndexPublished(index)) {
+        requests.remove()
+        continue
+      }
+      if (hasFilePresentationWork(key)) {
+        requests.remove()
+        continue
+      }
+      requests.remove()
+      val attemptId = ++nextFilePresentationAttemptId
+      val job =
+        scope.async(start = CoroutineStart.LAZY) {
+          try {
+            currentCoroutineContext().ensureActive()
+            if (!isPresentationIndexPublished(index)) {
+              return@async FilePresentationBuildOutcome.Canceled
+            }
+            val semanticBundle = index.withResolutionSession { session ->
+              FilePresentationBundleBuilder(
+                  index = index,
+                  session = session,
+                  file = key.file,
+                  declarationAnchorSignatures =
+                    declarationAnchorSignatures[index.generationToken].orEmpty(),
+                )
+                .build()
+            }
+            val bundle =
+              smartReadAction(project) {
+                val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
+                ktFile?.let(semanticBundle::rebuildAnchors) ?: semanticBundle
+              }
+            currentCoroutineContext().ensureActive()
+            FilePresentationBuildOutcome.Succeeded(bundle)
+          } catch (exception: CancellationException) {
+            throw exception
+          } catch (_: ProcessCanceledException) {
+            FilePresentationBuildOutcome.Canceled
+          } catch (failure: Throwable) {
+            logger<MetroResolutionService>()
+              .warn("Metro file presentation build failed for ${key.file.name}", failure)
+            FilePresentationBuildOutcome.Failed
+          }
+        }
+      filePresentationBuilds[key] = FilePresentationBuildAttempt(attemptId, index, job)
+      reportFilePresentationCompletion(job) { outcome ->
+        ResolutionCoordinatorEvent.FilePresentationComplete(index, key, attemptId, outcome)
+      }
+      job.start()
+      available--
+    }
+    if (available > 0) startPendingFilePresentationAnchors(available)
+  }
+
+  /** Refreshes declaration locations using slots left after starting new presentation builds. */
+  private fun startPendingFilePresentationAnchors(availableSlots: Int) {
+    var available = availableSlots
+    val requests = pendingFilePresentationAnchorRequests.entries.iterator()
+    while (requests.hasNext() && available > 0) {
+      val (key, request) = requests.next()
+      if (!isPresentationBundlePublished(request.index, key, request.baseBundle)) {
+        requests.remove()
+        continue
+      }
+      if (key in filePresentationBuilds || key in filePresentationAnchorBuilds) continue
+      requests.remove()
+      val attemptId = ++nextFilePresentationAttemptId
+      val job =
+        scope.async(start = CoroutineStart.LAZY) {
+          try {
+            currentCoroutineContext().ensureActive()
+            if (!isPresentationBundlePublished(request.index, key, request.baseBundle)) {
+              return@async FilePresentationBuildOutcome.Canceled
+            }
+            val bundle =
+              smartReadAction(project) {
+                val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
+                if (ktFile?.modificationStamp != request.modificationStamp) {
+                  null
+                } else {
+                  request.baseBundle.rebuildAnchors(ktFile)
+                }
+              }
+            currentCoroutineContext().ensureActive()
+            if (bundle != null && bundle.anchorsAreCurrent(request.modificationStamp)) {
+              FilePresentationBuildOutcome.Succeeded(bundle)
+            } else {
+              FilePresentationBuildOutcome.Canceled
+            }
+          } catch (exception: CancellationException) {
+            throw exception
+          } catch (_: ProcessCanceledException) {
+            FilePresentationBuildOutcome.Canceled
+          } catch (failure: Throwable) {
+            logger<MetroResolutionService>()
+              .warn("Metro file presentation anchor build failed for ${key.file.name}", failure)
+            FilePresentationBuildOutcome.Failed
+          }
+        }
+      filePresentationAnchorBuilds[key] =
+        FilePresentationAnchorBuildAttempt(
+          attemptId,
+          request.index,
+          request.baseBundle,
+          request.modificationStamp,
+          job,
+        )
+      reportFilePresentationCompletion(job) { outcome ->
+        ResolutionCoordinatorEvent.FilePresentationAnchorComplete(
+          request.index,
+          key,
+          attemptId,
+          request.baseBundle,
+          request.modificationStamp,
+          outcome,
+        )
+      }
+      job.start()
+      available--
+    }
+  }
+
+  /** Awaiting also releases attempts canceled before their lazy worker entered its body. */
+  private fun reportFilePresentationCompletion(
+    worker: Deferred<FilePresentationBuildOutcome>,
+    event: (FilePresentationBuildOutcome) -> ResolutionCoordinatorEvent,
+  ) {
+    scope.launch {
+      val outcome =
+        try {
+          worker.await()
+        } catch (_: CancellationException) {
+          // Service cancellation owns cleanup. An individually canceled worker releases its slot
+          // here.
+          currentCoroutineContext().ensureActive()
+          FilePresentationBuildOutcome.Canceled
+        }
+      ingress.submit { event(outcome) }
+    }
+  }
+
+  private fun publishCompletedFileBundles() {
+    while (completedFilePresentationBundles.isNotEmpty()) {
+      val completed = completedFilePresentationBundles.removeFirst()
+      if (!isPresentationIndexPublished(completed.index)) continue
+      filePresentationBundles[completed.key] = completed.bundle
+      while (filePresentationBundles.size > MAX_FILE_PRESENTATION_BUNDLES) {
+        val eldest = filePresentationBundles.entries.iterator()
+        eldest.next()
+        eldest.remove()
+      }
+      val published = updatePublishedResolution { publication ->
+        publication.copy(filePresentationBundles = filePresentationBundles.toMap())
+      }
+      if (published != null && !isDisposed && !project.isDisposed) {
+        project.service<MetroDaemonRestartService>().requestRestart()
+      }
+    }
+  }
+
+  /** Updates declaration locations while keeping the previously computed binding results. */
+  private fun publishCompletedFilePresentationAnchors() {
+    while (completedFilePresentationAnchorBundles.isNotEmpty()) {
+      val completed = completedFilePresentationAnchorBundles.removeFirst()
+      if (!isPresentationIndexPublished(completed.index)) continue
+      val current = filePresentationBundles[completed.key] ?: continue
+      if (current !== completed.baseBundle) continue
+      if (!completed.bundle.sharesSemanticData(current)) continue
+      if (!completed.bundle.anchorsAreCurrent(completed.modificationStamp)) continue
+      val pending = pendingFilePresentationAnchorRequests[completed.key]
+      if (
+        pending != null &&
+          (pending.baseBundle !== completed.baseBundle ||
+            pending.modificationStamp != completed.modificationStamp)
+      ) {
+        continue
+      }
+      val updatedBundles = LinkedHashMap(filePresentationBundles)
+      updatedBundles[completed.key] = completed.bundle
+      val published = updatePublishedResolution { publication ->
+        if (publication.filePresentationBundles[completed.key] !== completed.baseBundle) {
+          publication
+        } else {
+          publication.copy(filePresentationBundles = updatedBundles.toMap())
+        }
+      }
+      val accepted = published?.filePresentationBundles?.get(completed.key) === completed.bundle
+      if (!accepted) continue
+      filePresentationBundles[completed.key] = completed.bundle
+      if (!isDisposed && !project.isDisposed) {
+        project.service<MetroDaemonRestartService>().requestRestart()
+      }
+    }
+  }
+
+  private fun cancelCoordinatorWork() {
+    completeBuildRequests(pendingBuilds.values, IndexBuildOutcome.CANCELED)
+    pendingBuilds.clear()
+    pendingFilePresentationRequests.clear()
+    completedFilePresentationBundles.clear()
+    pendingFilePresentationAnchorRequests.clear()
+    completedFilePresentationAnchorBundles.clear()
+    filePresentationBuilds.values.forEach { it.job.cancel() }
+    filePresentationBuilds.clear()
+    filePresentationAnchorBuilds.values.forEach { it.job.cancel() }
+    filePresentationAnchorBuilds.clear()
+    filePresentationBundles.clear()
+    completeCoordinatorBarriers()
+  }
+
+  private suspend fun processResolutionCandidate(manualRefresh: Boolean) {
+    val existingPublication = publishedResolution.value
+    val retainedTokens =
+      existingPublication.current.indexGenerationTokens +
+        existingPublication.presentation.indexGenerationTokens
+    declarationAnchorSignatures.keys.removeIf { token -> token !in retainedTokens }
+    val manualRequest =
+      if (manualRefresh) pendingManualRefresh.also { pendingManualRefresh = null } else null
+    val requests = pendingBuilds.toMap()
+    pendingBuilds.clear()
+    val intent =
+      when {
+        manualRequest != null -> IndexBuildIntent.MANUAL_REFRESH
+        requests.values.any { it.intent == IndexBuildIntent.EXPLICIT } -> IndexBuildIntent.EXPLICIT
+        else -> IndexBuildIntent.AUTOMATIC
+      }
+    if (intent == IndexBuildIntent.AUTOMATIC && !automaticallyRefreshGraphData) {
+      completeBuildRequests(requests.values, IndexBuildOutcome.SKIPPED)
+      return
+    }
+
+    val buildSnapshot = coordinatorSnapshot
+    val generationToken = IndexGenerationToken.create()
+    val progress = IndexBuildProgressReporter(::publishIndexBuildProgress)
+    progress.phase(IndexBuildPhase.QUEUED)
+    val candidate =
+      try {
+        val capturedInvalidations = capturePendingInvalidations()
+        smartReadAction(project) {
+          val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
+          if (manualRequest != null) {
+            for (target in targets) demandedModules += target.modules
+          }
+          if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
+            throw ResolutionCandidateSupersededException()
+          }
+          collectResolutionCandidate(
+            targets = targets,
+            progress = progress,
+            generationToken = generationToken,
+            buildSnapshot = buildSnapshot,
+            manualRequest = manualRequest,
+            capturedInvalidations = capturedInvalidations,
+          )
+        }
+      } catch (_: ResolutionCandidateSupersededException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        yield()
+        return
+      } catch (exception: ProcessCanceledException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        yield()
+        return
+      } catch (exception: CancellationException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        throw exception
+      } catch (failure: Throwable) {
+        logger<MetroResolutionService>().warn("Metro resolution preparation failed", failure)
+        completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
+        return
+      }
+
+    val indexesByKey =
+      try {
+        currentCoroutineContext().ensureActive()
+        val builtIndexes =
+          buildMap<SnapshotKey, BindingIndex>(candidate.buildersByKey.size) {
+            for ((key, builder) in candidate.buildersByKey) {
+              if (
+                resolutionCandidateIsSuperseded(
+                  buildSnapshot,
+                  manualRequest,
+                  candidate.inputs,
+                )
+              ) {
+                throw ResolutionCandidateSupersededException()
+              }
+              put(key, builder.build())
+            }
+          }
+        // Cancellation of the service scope must stop this candidate before publication.
+        currentCoroutineContext().ensureActive()
+        builtIndexes
+      } catch (_: ResolutionCandidateSupersededException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        yield()
+        return
+      } catch (exception: ProcessCanceledException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        yield()
+        return
+      } catch (exception: CancellationException) {
+        requeueResolutionCandidate(requests, manualRequest)
+        throw exception
+      } catch (failure: Throwable) {
+        logger<MetroResolutionService>().warn("Metro resolution build failed", failure)
+        completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
+        return
+      }
+
+    val completedInputs = currentInputs()
+    val latestIngress = ingress.snapshot()
+    val sameSemanticClock = latestIngress.semanticClock == buildSnapshot.semanticClock
+    val latestManual =
+      manualRequest == null || latestIngress.latestManualRequestId == manualRequest.id
+    val sourceIsCurrent = candidate.source == null || candidate.source.inputs == completedInputs
+    val completeTargetSet = indexesByKey.keys == candidate.buildersByKey.keys
+    val metadataMatches = indexesByKey.values.all { it.generationToken === generationToken }
+    if (
+      !sameSemanticClock ||
+        !latestManual ||
+        completedInputs != candidate.inputs ||
+        !sourceIsCurrent ||
+        !completeTargetSet ||
+        !metadataMatches ||
+        isDisposed ||
+        project.isDisposed
+    ) {
+      requeueResolutionCandidate(requests, manualRequest)
+      yield()
+      return
+    }
+
+    val generation =
+      ResolutionGeneration(
+        token = generationToken,
+        inputs = candidate.inputs,
+        semanticRevision = candidate.semanticRevision,
+        source = candidate.source,
+        indexesByKey = indexesByKey,
+        keysByModule = candidate.keysByModule,
+      )
+    val publishPresentation = manualRequest != null || automaticallyRefreshGraphData
+    val published = updatePublishedResolution { previous ->
+      previous.copy(
+        current = generation,
+        presentation = if (publishPresentation) generation else previous.presentation,
+        classifiedSemanticClock = buildSnapshot.semanticClock,
+        latestSemanticRevision = candidate.semanticRevision,
+        trackedSourceFiles = candidate.source?.shardOrder?.toSet().orEmpty(),
+        knownIrrelevantFiles = knownIrrelevantFiles.toSet(),
+        graphBrowserRefreshRevision =
+          if (manualRequest != null) candidate.semanticRevision
+          else previous.graphBrowserRefreshRevision,
+        manualStaleNotificationSent =
+          if (manualRequest != null) false else previous.manualStaleNotificationSent,
+      )
+    }
+    if (published == null) {
+      completeBuildRequests(requests.values, IndexBuildOutcome.CANCELED)
+      return
+    }
+    sourceSnapshot = candidate.source
+    consumeCapturedInvalidations(candidate.consumedInvalidations)
+    evictStaleCaches(
+      currentRoots = candidate.inputs.roots,
+      activeFingerprints = candidate.source?.moduleFingerprints?.values?.toSet().orEmpty(),
+    )
+    retainPublishedFilePresentationBundles()
+    completeBuildRequests(requests.values, IndexBuildOutcome.PUBLISHED)
+
+    if (manualRequest != null) {
+      notifyListeners(restartDaemon = true, forceDaemonRestart = true)
+    } else {
+      notifyIndexPublished(intent)
+    }
+  }
+
+  private fun resolutionTargets(modules: Set<Module>?): List<ManualRefreshTarget> {
+    demandedModules.removeIf(Module::isDisposed)
+    val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
+    val projectStateService = project.service<MetroIdeProjectService>()
+    val selectedModules = modules ?: ModuleManager.getInstance(project).modules.toSet()
+    val modulesByKey = linkedMapOf<SnapshotKey, MutableList<Module>>()
+    for (module in selectedModules) {
+      ProgressManager.checkCanceled()
+      if (module.isDisposed) continue
+      val state = projectStateService.state(module)
+      if (!state.isEnabled) continue
+      val key = SnapshotKey(fingerprintFor(state), resolveFromLibraries)
+      modulesByKey.getOrPut(key) { mutableListOf() } += module
+    }
+    return modulesByKey.map { (key, groupedModules) -> ManualRefreshTarget(key, groupedModules) }
+  }
+
+  private fun resolutionCandidateIsSuperseded(
+    buildSnapshot: ResolutionIngressSnapshot,
+    manualRequest: ManualRefreshRequest?,
+    expectedInputs: IndexInputs? = null,
+  ): Boolean {
+    if (isDisposed || project.isDisposed) return true
+    val latest = ingress.snapshot()
+    if (latest.semanticClock != buildSnapshot.semanticClock) return true
+    if (manualRequest != null && latest.latestManualRequestId != manualRequest.id) return true
+    return expectedInputs != null && currentInputs() != expectedInputs
+  }
+
+  private fun requeueResolutionCandidate(
+    requests: Map<Module, PendingIndexBuild>,
+    manualRequest: ManualRefreshRequest?,
+  ) {
+    for ((module, request) in requests) {
+      val existing = pendingBuilds[module]
+      if (existing == null) {
+        pendingBuilds[module] = request
+      } else {
+        existing.upgrade(request.intent)
+        existing.waiters += request.waiters
+      }
+    }
+    if (manualRequest != null && pendingManualRefresh == null) {
+      pendingManualRefresh = manualRequest
+    }
+  }
+
+  private fun completeBuildRequests(
+    requests: Collection<PendingIndexBuild>,
+    outcome: IndexBuildOutcome,
+  ) {
+    for (request in requests) {
+      request.waiters.forEach { waiter -> waiter.complete(outcome) }
+    }
+  }
+
+  private fun notifyIndexPublished(intent: IndexBuildIntent) {
+    val restartDaemon = intent == IndexBuildIntent.EXPLICIT || automaticallyRefreshGraphData
+    notifyListeners(
+      restartDaemon = restartDaemon,
+      forceDaemonRestart = intent == IndexBuildIntent.EXPLICIT,
+    )
+  }
+
+  /** Returns current graph data after applying pending invalidations. */
+  internal fun currentIndex(element: PsiElement): BindingIndex {
     val file = element as? KtFile ?: element.containingFile as? KtFile
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
     if (file != null) enrollRequestedFile(file)
-    return index(module)
+    return currentIndex(module)
   }
 
-  /** Returns a current cached index without scheduling or performing analysis. */
+  /** Returns the published presentation generation without scheduling analysis in manual mode. */
+  internal fun presentationIndex(element: PsiElement): BindingIndex {
+    val file = element as? KtFile ?: element.containingFile as? KtFile
+    val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
+    if (file != null) enrollRequestedFile(file)
+    ingress.submit { ResolutionCoordinatorEvent.PresentationDemand(module) }
+    return index(module, automaticPresentationRequestMode())
+  }
+
+  /** Returns a cached presentation bundle or schedules its background construction. */
+  internal fun presentationBundle(element: KtElement): FilePresentationBundle? {
+    val ktFile = element.containingFile as? KtFile ?: return null
+    val file = ktFile.virtualFile
+    val index = presentationIndex(element)
+    if (index === BindingIndex.EMPTY) return null
+    val key = FilePresentationKey(index.generationToken, file)
+    publishedResolution.value.filePresentationBundles[key]?.let { bundle ->
+      val modificationStamp = ktFile.modificationStamp
+      if (!bundle.anchorsAreCurrent(modificationStamp)) {
+        ingress.submit {
+          ResolutionCoordinatorEvent.FilePresentationAnchorRequest(
+            index,
+            key,
+            bundle,
+            modificationStamp,
+          )
+        }
+      }
+      return bundle
+    }
+    ingress.submit { ResolutionCoordinatorEvent.FilePresentationRequest(index, key) }
+    return null
+  }
+
+  private fun isPresentationIndexPublished(index: BindingIndex): Boolean {
+    if (index === BindingIndex.EMPTY || isDisposed || project.isDisposed) return false
+    return publishedResolution.value.presentation.contains(index)
+  }
+
+  private fun retainPublishedFilePresentationBundles() {
+    val activeTokens = publishedResolution.value.presentation.indexGenerationTokens
+    declarationAnchorSignatures.keys.removeIf { token -> token !in activeTokens }
+    pendingFilePresentationRequests.keys.removeIf { key ->
+      key.generationToken !in activeTokens
+    }
+    completedFilePresentationBundles.removeAll { completed ->
+      completed.key.generationToken !in activeTokens
+    }
+    pendingFilePresentationAnchorRequests.keys.removeIf { key ->
+      key.generationToken !in activeTokens
+    }
+    completedFilePresentationAnchorBundles.removeAll { completed ->
+      completed.key.generationToken !in activeTokens
+    }
+    filePresentationBundles.keys.removeIf { key -> key.generationToken !in activeTokens }
+    val builds = filePresentationBuilds.entries.iterator()
+    while (builds.hasNext()) {
+      val (key, attempt) = builds.next()
+      if (key.generationToken in activeTokens) continue
+      attempt.job.cancel()
+    }
+    val anchorBuilds = filePresentationAnchorBuilds.entries.iterator()
+    while (anchorBuilds.hasNext()) {
+      val (key, attempt) = anchorBuilds.next()
+      if (key.generationToken in activeTokens) continue
+      attempt.job.cancel()
+    }
+    updatePublishedResolution { publication ->
+      publication.copy(filePresentationBundles = filePresentationBundles.toMap())
+    }
+  }
+
+  @TestOnly internal fun index(element: PsiElement): BindingIndex = currentIndex(element)
+
+  /** Returns a current cached index and schedules missing settings work in the background. */
   internal fun cachedIndex(element: PsiElement): BindingIndex {
     val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return BindingIndex.EMPTY
     return index(module, IndexRequestMode.CACHE_ONLY)
@@ -297,8 +1262,8 @@ class MetroResolutionService(
   /** Returns the distinct current indexes that can contain an exact Find Usages target. */
   internal fun usageIndexes(element: PsiElement): List<BindingIndex> {
     val module = ModuleUtilCore.findModuleForPsiElement(element)
-    if (module != null) return index(element).asUsageIndexList()
-    return distinctUsageIndexes { index(it) }
+    if (module != null) return currentIndex(element).asUsageIndexList()
+    return distinctUsageIndexes { currentIndex(it) }
   }
 
   /**
@@ -325,133 +1290,330 @@ class MetroResolutionService(
   }
 
   /**
-   * Returns a current project snapshot for [module]. Production EDT callers never perform Kotlin
-   * analysis: they trigger a coalesced smart-mode build and receive an empty index until it lands.
-   * Background highlighting and the platform's synchronous unit-test fixtures build immediately.
+   * Returns current binding data for [module]. Production EDT callers schedule a background build
+   * and receive an empty index until it finishes. Other callers wait for the coordinator. Callers
+   * in a read action use [retryCancelledIndexBuild] to release the read lock before waiting.
    */
-  internal fun index(module: Module): BindingIndex {
-    val application = ApplicationManager.getApplication()
-    val requestMode =
-      if (application.isDispatchThread && !application.isUnitTestMode) {
-        IndexRequestMode.BACKGROUND
-      } else {
-        IndexRequestMode.SYNCHRONOUS
-      }
-    return index(module, requestMode)
+  internal fun currentIndex(module: Module): BindingIndex {
+    return index(module, currentRequestMode())
   }
+
+  @TestOnly internal fun index(module: Module): BindingIndex = currentIndex(module)
 
   /** Returns a cached graph-browser index, building in the background only after first use. */
   internal fun indexForToolWindow(module: Module): BindingIndex {
     val requestMode =
-      if (graphBrowserActivated.get()) {
-        IndexRequestMode.BACKGROUND
+      if (!isGraphBrowserActivated) {
+        if (automaticallyRefreshGraphData) IndexRequestMode.CACHE_ONLY
+        else IndexRequestMode.STALE_CACHE_ONLY
       } else {
-        IndexRequestMode.CACHE_ONLY
+        automaticToolWindowRequestMode()
       }
+    ingress.submit { ResolutionCoordinatorEvent.PresentationDemand(module) }
     val index = index(module, requestMode)
-    if (index !== BindingIndex.EMPTY && graphBrowserActivated.compareAndSet(false, true)) {
-      // currentIndexes() may have skipped earlier modules while the browser was inactive. Ask the
-      // tree to make one active pass so those modules can schedule their own snapshots.
-      scheduleInvalidationNotification()
+    if (index !== BindingIndex.EMPTY) {
+      val indexIsCurrent = isCurrent(index)
+      val previous = publishedResolution.getAndUpdate { publication ->
+        if (publication.isDisposed || publication.graphBrowserActivated) {
+          publication
+        } else {
+          val refreshRevision =
+            if (indexIsCurrent && publication.current.contains(index))
+              publication.latestSemanticRevision
+            else publication.graphBrowserRefreshRevision
+          publication.copy(
+            graphBrowserActivated = true,
+            graphBrowserRefreshRevision = refreshRevision,
+          )
+        }
+      }
+      if (!previous.isDisposed && !previous.graphBrowserActivated) {
+        // currentIndexes() may have skipped earlier modules while the browser was inactive. Ask the
+        // tree to make one active pass so those modules can schedule their own snapshots.
+        scheduleInvalidationNotification()
+      }
     }
     return index
   }
 
   internal val isGraphBrowserActivated: Boolean
-    get() = graphBrowserActivated.get()
+    get() = publishedResolution.value.graphBrowserActivated
 
   internal fun activateGraphBrowser() {
-    graphBrowserActivated.set(true)
+    updatePublishedResolution { it.copy(graphBrowserActivated = true) }
   }
+
+  /** Builds and publishes a generation containing every pending change. */
+  internal fun refreshGraphData() {
+    activateGraphBrowser()
+    ingress.submit(manualRefresh = true) { ticket ->
+      ResolutionCoordinatorEvent.ManualRefresh(ticket.eventClock)
+    }
+  }
+
+  internal val isManualGraphDataRefreshRequired: Boolean
+    get() {
+      val publication = publishedResolution.value
+      if (automaticallyRefreshGraphData || !publication.graphBrowserActivated) return false
+      val ingressSnapshot = ingress.snapshot()
+      val classificationPending =
+        publication.classifiedSemanticClock < ingressSnapshot.semanticClock
+      return classificationPending ||
+        publication.latestSemanticRevision > publication.graphBrowserRefreshRevision
+    }
 
   @TestOnly
   internal fun resetGraphBrowserActivation() {
-    graphBrowserActivated.set(false)
+    updatePublishedResolution {
+      it.copy(graphBrowserActivated = false, manualStaleNotificationSent = false)
+    }
+  }
+
+  /** Resolves a graph in a cancellable smart read and invokes [onResult] on the EDT. */
+  internal fun findGraphAsync(
+    classId: ClassId,
+    file: VirtualFile?,
+    onResult: (KaGraphDeclaration?) -> Unit,
+  ): Job {
+    return scope.launch {
+      if (project.isDisposed) return@launch
+      val graph = retryCancelledIndexBuild {
+        smartReadAction(project) {
+          val psiFile = file?.let { PsiManager.getInstance(project).findFile(it) } as? KtFile
+          psiFile?.let { sourceFile ->
+            val module = ModuleUtilCore.findModuleForPsiElement(sourceFile)
+            if (module == null) {
+              null
+            } else {
+              enrollRequestedFile(sourceFile)
+              index(module, IndexRequestMode.BACKGROUND).graphs.firstOrNull {
+                ProgressManager.checkCanceled()
+                it.classId == classId && it.pointer.virtualFile == file
+              }
+            }
+          }
+        }
+      }
+      withContext(Dispatchers.EDT) {
+        if (!project.isDisposed) onResult(graph)
+      }
+    }
+  }
+
+  /** Waits until the coordinator has drained every event submitted before this call. */
+  @TestOnly
+  internal suspend fun awaitCoordinatorBarrier() {
+    val completion = CompletableDeferred<Unit>()
+    if (ingress.submit { ResolutionCoordinatorEvent.TestBarrier(completion) } != null) {
+      completion.await()
+    }
+  }
+
+  private val automaticallyRefreshGraphData: Boolean
+    get() = MetroSettings.getInstance(project).state.automaticallyRefreshGraphData
+
+  private fun currentRequestMode(): IndexRequestMode {
+    val application = ApplicationManager.getApplication()
+    return if (application.isDispatchThread && !application.isUnitTestMode) {
+      IndexRequestMode.BACKGROUND
+    } else {
+      IndexRequestMode.SYNCHRONOUS
+    }
+  }
+
+  private fun automaticPresentationRequestMode(): IndexRequestMode {
+    if (!automaticallyRefreshGraphData) return IndexRequestMode.STALE_CACHE_ONLY
+    val application = ApplicationManager.getApplication()
+    return if (application.isUnitTestMode) IndexRequestMode.SYNCHRONOUS
+    else IndexRequestMode.AUTOMATIC_BACKGROUND
+  }
+
+  private fun automaticToolWindowRequestMode(): IndexRequestMode {
+    return if (automaticallyRefreshGraphData) {
+      IndexRequestMode.AUTOMATIC_BACKGROUND
+    } else {
+      IndexRequestMode.STALE_CACHE_ONLY
+    }
   }
 
   private fun index(module: Module, requestMode: IndexRequestMode): BindingIndex {
-    val moduleState = project.service<MetroIdeProjectService>().state(module)
-    if (!moduleState.isEnabled) return BindingIndex.EMPTY
-
-    val fingerprint = fingerprintFor(moduleState)
-    val key =
-      SnapshotKey(fingerprint, MetroSettings.getInstance(project).state.resolveFromLibraries)
-    val inputs = currentInputs()
-    val sourceInputs = sourceSnapshot.get()?.inputs
-    val compilerSettingsChanged = sourceInputs?.compilerSettings != inputs.compilerSettings
-    if (!compilerSettingsChanged && sourceInputs?.roots == inputs.roots) {
-      snapshots[key]
-        ?.takeIf { it.matches(invalidations.get().generation, inputs.roots) }
-        ?.let {
-          return it.index
+    val publication = publishedResolution.value
+    when (requestMode) {
+      IndexRequestMode.STALE_CACHE_ONLY -> return publication.presentation.index(module)
+      IndexRequestMode.CACHE_ONLY -> {
+        val current = publication.current
+        if (generationIsCurrent(current)) {
+          current
+            .index(module)
+            .takeUnless { it === BindingIndex.EMPTY }
+            ?.let {
+              return it
+            }
         }
+      }
+      IndexRequestMode.AUTOMATIC_BACKGROUND -> {
+        val presentation = publication.presentation
+        if (generationIsCurrent(presentation)) {
+          presentation
+            .index(module)
+            .takeUnless { it === BindingIndex.EMPTY }
+            ?.let {
+              return it
+            }
+        }
+      }
+      IndexRequestMode.BACKGROUND,
+      IndexRequestMode.SYNCHRONOUS -> {
+        val current = publication.current
+        if (generationIsCurrent(current)) {
+          current
+            .index(module)
+            .takeUnless { it === BindingIndex.EMPTY }
+            ?.let {
+              return it
+            }
+        }
+      }
     }
+
+    val projectStateService = project.service<MetroIdeProjectService>()
+    val moduleState =
+      when (requestMode) {
+        IndexRequestMode.STALE_CACHE_ONLY -> return publication.presentation.index(module)
+        IndexRequestMode.CACHE_ONLY -> projectStateService.currentStateOrSchedule(module)
+        IndexRequestMode.AUTOMATIC_BACKGROUND ->
+          projectStateService.currentStateOrSchedule(
+            module,
+            retryAutomaticIndexAfterStateWarmup,
+          )
+        IndexRequestMode.BACKGROUND ->
+          projectStateService.currentStateOrSchedule(
+            module,
+            retryExplicitIndexAfterStateWarmup,
+          )
+        IndexRequestMode.SYNCHRONOUS -> projectStateService.state(module)
+      } ?: return BindingIndex.EMPTY
+    if (!moduleState.isEnabled) return BindingIndex.EMPTY
+    if (requestMode == IndexRequestMode.CACHE_ONLY) return BindingIndex.EMPTY
 
     return when (requestMode) {
-      IndexRequestMode.CACHE_ONLY -> BindingIndex.EMPTY
-      IndexRequestMode.BACKGROUND -> {
-        scheduleBuild(module, key)
+      IndexRequestMode.CACHE_ONLY,
+      IndexRequestMode.STALE_CACHE_ONLY -> BindingIndex.EMPTY
+      IndexRequestMode.AUTOMATIC_BACKGROUND -> {
+        scheduleBuild(module, IndexBuildIntent.AUTOMATIC)
         BindingIndex.EMPTY
       }
-      IndexRequestMode.SYNCHRONOUS ->
-        if (ApplicationManager.getApplication().isDispatchThread) {
-          // BasePlatformTestCase performs existing marker/index assertions synchronously on the
-          // EDT. Production callers take the background path and never reach this exception.
-          allowAnalysisOnEdt { buildCurrentIndex(module, key) }
-        } else {
-          buildCurrentIndex(module, key)
+      IndexRequestMode.BACKGROUND -> {
+        scheduleBuild(module, IndexBuildIntent.EXPLICIT)
+        BindingIndex.EMPTY
+      }
+      IndexRequestMode.SYNCHRONOUS -> {
+        val application = ApplicationManager.getApplication()
+        val staleIndex = publication.current.index(module)
+        val classificationPending =
+          publication.classifiedSemanticClock < ingress.snapshot().semanticClock
+        if (
+          application.isUnitTestMode &&
+            application.isDispatchThread &&
+            classificationPending &&
+            staleIndex !== BindingIndex.EMPTY
+        ) {
+          scheduleBuild(module, IndexBuildIntent.EXPLICIT)
+          return staleIndex
         }
+        if (application.isReadAccessAllowed) {
+          // Release this read action before waiting for the coordinator's smart read.
+          val completion = CompletableDeferred<IndexBuildOutcome>()
+          scheduleBuild(module, IndexBuildIntent.EXPLICIT, completion)
+          throw ResolutionBuildPendingException(completion)
+        }
+        val completion = CompletableDeferred<IndexBuildOutcome>()
+        scheduleBuild(module, IndexBuildIntent.EXPLICIT, completion)
+        val outcome = runBlockingCancellable { completion.await() }
+        if (outcome != IndexBuildOutcome.PUBLISHED) return BindingIndex.EMPTY
+        val current = publishedResolution.value.current
+        if (!generationIsCurrent(current)) return BindingIndex.EMPTY
+        current.index(module)
+      }
     }
+  }
+
+  private fun generationIsCurrent(generation: ResolutionGeneration): Boolean {
+    if (generation === ResolutionGeneration.EMPTY) return false
+    val publication = publishedResolution.value
+    val ingressSnapshot = ingress.snapshot()
+    return generation.semanticRevision == publication.latestSemanticRevision &&
+      publication.classifiedSemanticClock == ingressSnapshot.semanticClock &&
+      generation.inputs == currentInputs()
+  }
+
+  /** Returns true when [index] matches the current project state. */
+  internal fun isCurrent(index: BindingIndex): Boolean {
+    if (index === BindingIndex.EMPTY) return false
+    val current = publishedResolution.value.current
+    return current.contains(index) && generationIsCurrent(current)
   }
 
   /** Notifies a tool window when a fresh background index is ready; callbacks run on the EDT. */
   internal fun addIndexListener(parentDisposable: Disposable, listener: () -> Unit) {
-    listeners += listener
-    Disposer.register(parentDisposable) { listeners -= listener }
+    collectForDisposable(indexChanges, parentDisposable) { listener() }
   }
 
-  /** Reports serialized tool-window index builds on the EDT. */
+  /** Reports index-build progress to tool-window listeners on the EDT. */
   internal fun addIndexBuildProgressListener(
     parentDisposable: Disposable,
     listener: (IndexBuildProgress?) -> Unit,
   ) {
-    indexBuildProgressListeners += listener
-    Disposer.register(parentDisposable) { indexBuildProgressListeners -= listener }
-    notifyIndexBuildProgressListener(listener, indexBuildProgress.get())
+    collectForDisposable(indexBuildProgress, parentDisposable, listener)
   }
 
   /**
-   * Invalidates snapshots after an index-relevant setting changes without discarding source shards.
+   * Subscribes immediately and marshals each Swing callback to the EDT for its owner's lifetime.
    */
+  private fun <T> collectForDisposable(
+    events: Flow<T>,
+    parentDisposable: Disposable,
+    listener: (T) -> Unit,
+  ) {
+    val job =
+      notificationScope.launch(Dispatchers.EDT, start = CoroutineStart.UNDISPATCHED) {
+        events.collect { value ->
+          withContext(Dispatchers.EDT) {
+            if (!isDisposed && !project.isDisposed) listener(value)
+          }
+        }
+      }
+    Disposer.register(parentDisposable) { job.cancel() }
+  }
+
+  /** Queues settings reconciliation and resumes automatic presentation builds. */
   internal fun settingsChanged() {
-    val resolveFromLibraries = MetroSettings.getInstance(project).state.resolveFromLibraries
-    if (lastResolveFromLibraries.getAndSet(resolveFromLibraries) == resolveFromLibraries) {
-      return
+    ingress.submit(semanticChange = true) { ResolutionCoordinatorEvent.Settings }
+  }
+
+  private fun discardAutomaticPendingBuilds() {
+    val iterator = pendingBuilds.entries.iterator()
+    while (iterator.hasNext()) {
+      val request = iterator.next().value
+      if (request.intent != IndexBuildIntent.AUTOMATIC) continue
+      iterator.remove()
+      request.waiters.forEach { it.complete(IndexBuildOutcome.SKIPPED) }
     }
-    val bumped = invalidations.updateAndGet { it.bumpGeneration() }
-    if (!resolveFromLibraries) {
-      synchronized(libraryShards) { libraryShards.clear() }
-    }
-    evictStaleCaches(
-      bumped.generation,
-      ProjectRootModificationTracker.getInstance(project).modificationCount,
-    )
-    notifyListeners(restartDaemon = false)
   }
 
   /** Roots/facet changes should refresh open windows even when no editor asks for the index. */
   private fun projectInputsChanged() {
-    val pending = PendingProjectInputs(sourceSnapshot.get())
-    if (!pendingProjectInputs.compareAndSet(null, pending)) return
     ApplicationManager.getApplication().invokeLater {
-      val scheduled = pendingProjectInputs.getAndSet(null) ?: return@invokeLater
-      if (disposed.get() || project.isDisposed) return@invokeLater
-      reconcileProjectInputs(scheduled.snapshot)
+      if (!isDisposed && !project.isDisposed) {
+        ingress.submit(semanticChange = true) { ResolutionCoordinatorEvent.ProjectInputs }
+      }
     }
   }
 
   /** A sync can change many modules together; compare their semantic options once per batch. */
-  private fun reconcileProjectInputs(snapshot: SourceSnapshot?) {
+  private fun reconcileProjectInputs() {
+    knownIrrelevantFiles.clear()
+    val snapshot = sourceSnapshot
     if (snapshot == null) {
       // An already-open window may be waiting for Metro to be configured for the first time.
       scheduleInvalidationNotification()
@@ -466,130 +1628,157 @@ class MetroResolutionService(
     val semanticSettingsChanged =
       compilerSettingsChanged && snapshot.moduleFingerprints != currentFingerprints
     if (!rootsChanged && !semanticSettingsChanged) {
-      // Reenabling Metro can match the last built options after disabling evicted every index.
-      if (snapshots.isEmpty()) scheduleInvalidationNotification()
+      if (snapshot.inputs != inputs) updatePublishedInputs(snapshot, inputs)
+      // Reenabling Metro can restore the last built options while its retained data is stale.
+      val current = publishedResolution.value.current
+      val needsBuild =
+        current.indexesByKey.isEmpty() || current.semanticRevision != semanticRevision
+      if (needsBuild) {
+        scheduleInvalidationNotification()
+      }
       return
     }
 
-    val latest = sourceSnapshot.get()
-    val currentSourceAlreadyPublished =
-      latest != null &&
-        latest.inputs == inputs &&
-        (!semanticSettingsChanged || latest.moduleFingerprints == currentFingerprints)
-    if (!currentSourceAlreadyPublished) {
-      val bumped = invalidations.updateAndGet { it.bumpGeneration() }
-      evictStaleCaches(bumped.generation, inputs.roots)
-    }
+    semanticRevision++
+    evictStaleCaches(inputs.roots)
     scheduleInvalidationNotification()
   }
 
-  /** Entries stranded by generation or root changes can never be served again, so drop them. */
-  private fun evictStaleCaches(currentGeneration: Long, currentRoots: Long) {
-    synchronized(snapshots) {
-      snapshots.values.removeIf { !it.matches(currentGeneration, currentRoots) }
-    }
-    synchronized(libraryShards) {
-      libraryShards.keys.removeIf { it.rootsGeneration != currentRoots }
-    }
-  }
-
-  private fun scheduleBuild(module: Module, key: SnapshotKey) {
-    if (pendingBuilds.putIfAbsent(key, module) != null) return
-    val queued = IndexBuildProgress(IndexBuildPhase.QUEUED)
-    if (indexBuildProgress.compareAndSet(null, queued)) {
-      notifyIndexBuildProgress(queued)
-    }
-    buildSignal.trySend(Unit)
-  }
-
-  /**
-   * Builds (or reuses) the index for [key] with an optimistic drain/compute/publish loop:
-   * 1. Drain the invalidation ledger and read the last published source snapshot.
-   * 2. Compute a new immutable snapshot outside any lock. Analysis is allowed here, and the
-   *    caller's read action keeps PSI stable for the whole pass.
-   * 3. Publish with a single compare-and-set against the drained ledger. A concurrent invalidation
-   *    fails the publish and the loop re-drains. Unchanged shards replay from their per-file cached
-   *    values, so retries are cheap.
-   */
-  private fun buildCurrentIndex(
-    module: Module,
-    key: SnapshotKey,
-    progress: IndexBuildProgressReporter? = null,
-  ): BindingIndex {
-    if (DumbService.isDumb(project)) return BindingIndex.EMPTY
-    val moduleState = project.service<MetroIdeProjectService>().state(module)
-    if (!moduleState.isEnabled) return BindingIndex.EMPTY
-    val currentKey =
-      SnapshotKey(
-        fingerprintFor(moduleState),
-        MetroSettings.getInstance(project).state.resolveFromLibraries,
-      )
-    if (currentKey != key) return BindingIndex.EMPTY
-
-    while (true) {
-      ProgressManager.checkCanceled()
-      var start = invalidations.get()
-      val inputs = currentInputs()
-      val prev = sourceSnapshot.get()
-
-      if (prev != null && prev.inputs == inputs) {
-        snapshots[key]
-          ?.takeIf { it.matches(start.generation, inputs.roots) }
-          ?.let {
-            return it.index
-          }
-      }
-
-      val compilerSettingsChanged =
-        prev != null && prev.inputs.compilerSettings != inputs.compilerSettings
-      val fingerprintChanged =
-        compilerSettingsChanged && prev!!.moduleFingerprints != moduleFingerprints()
-      if (fingerprintChanged) {
-        // A semantic option change makes everything keyed by the old generation stale. Bump once
-        // and
-        // adopt the bumped ledger as this pass's drain point so the loop cannot spin.
-        start = invalidations.updateAndGet { it.bumpGeneration() }
-      }
-
-      val coldSweep = prev == null || prev.inputs.roots != inputs.roots || fingerprintChanged
-      val next =
-        if (coldSweep) {
-          coldSweep(moduleState.options, inputs, start, progress)
+  /** Updates project-input versions when changed settings leave the binding data unchanged. */
+  private fun updatePublishedInputs(snapshot: SourceSnapshot, inputs: IndexInputs) {
+    val updatedSource = snapshot.withInputs(inputs)
+    sourceSnapshot = updatedSource
+    updatePublishedResolution { publication ->
+      val current = publication.current.withUpdatedInputs(snapshot, updatedSource, inputs)
+      val presentation =
+        if (publication.presentation === publication.current) {
+          current
         } else {
-          incremental(prev!!, inputs, start, progress)
+          publication.presentation.withUpdatedInputs(snapshot, updatedSource, inputs)
         }
+      if (current === publication.current && presentation === publication.presentation) {
+        publication
+      } else {
+        publication.copy(current = current, presentation = presentation)
+      }
+    }
+  }
 
-      // Publish the snapshot before draining the ledger. A builder that observes the drained
-      // ledger then also observes this snapshot, so no builder can pair a drained ledger with
-      // the previous snapshot and re-publish or cache stale state. If the drain CAS below fails,
-      // the early publish is harmless because the files it incorporated are still marked dirty
-      // and simply replay from their per-file cached values on the retry.
-      sourceSnapshot.set(next)
-      val drained = start.drainAll()
-      if (!invalidations.compareAndSet(start, drained)) {
-        continue
+  /** Drops stale library data without changing the published presentation generation. */
+  private fun evictStaleCaches(
+    currentRoots: Long,
+    activeFingerprints: Set<IndexOptionsFingerprint>? = null,
+  ) {
+    libraryShards.keys.removeIf { key ->
+      key.rootsGeneration != currentRoots ||
+        (activeFingerprints != null && key.fingerprint !in activeFingerprints)
+    }
+  }
+
+  private fun scheduleBuild(
+    module: Module,
+    intent: IndexBuildIntent,
+    completion: CompletableDeferred<IndexBuildOutcome>? = null,
+  ) {
+    if (isDisposed || project.isDisposed || module.isDisposed) {
+      completion?.complete(IndexBuildOutcome.CANCELED)
+      return
+    }
+    if (intent == IndexBuildIntent.AUTOMATIC && !automaticallyRefreshGraphData) {
+      completion?.complete(IndexBuildOutcome.SKIPPED)
+      return
+    }
+    val accepted = ingress.submit {
+      val completions = mutableListOf<CompletableDeferred<IndexBuildOutcome>>()
+      if (completion != null) completions += completion
+      ResolutionCoordinatorEvent.Build(module, intent, completions)
+    }
+    if (accepted == null) {
+      completion?.complete(IndexBuildOutcome.CANCELED)
+    }
+  }
+
+  private fun collectResolutionCandidate(
+    targets: List<ManualRefreshTarget>,
+    progress: IndexBuildProgressReporter,
+    generationToken: IndexGenerationToken,
+    buildSnapshot: ResolutionIngressSnapshot,
+    manualRequest: ManualRefreshRequest?,
+    capturedInvalidations: CapturedInvalidations,
+  ): CollectedResolutionCandidate {
+    check(!DumbService.isDumb(project))
+    ProgressManager.checkCanceled()
+    val inputs = currentInputs()
+    val previous = sourceSnapshot
+    val compilerSettingsChanged =
+      previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
+    val fingerprintChanged =
+      compilerSettingsChanged && previous!!.moduleFingerprints != moduleFingerprints()
+    val candidateInvalidations =
+      if (fingerprintChanged) {
+        capturedInvalidations.copy(semanticRevision = capturedInvalidations.semanticRevision + 1)
+      } else {
+        capturedInvalidations
       }
 
-      snapshots[key]
-        ?.takeIf { it.matches(start.generation, inputs.roots) }
-        ?.let {
-          return it.index
-        }
-      progress?.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
-      val rawSource = aggregateSource(next, progress)
-      progress?.phase(IndexBuildPhase.RESOLVING_ASSISTED_FACTORIES)
-      val summary = next.librarySummary.getOrCreate(project, rawSource)
-      val source = rawSource.withAddedFactories(summary.sourceFactories.addedBindings)
+    if (targets.isEmpty()) {
+      return CollectedResolutionCandidate(
+        source = null,
+        consumedInvalidations = candidateInvalidations,
+        semanticRevision = candidateInvalidations.semanticRevision,
+        inputs = inputs,
+        buildersByKey = emptyMap(),
+        keysByModule = emptyMap(),
+      )
+    }
+
+    val coldSweep = previous == null || previous.inputs.roots != inputs.roots || fingerprintChanged
+    val collectedSource =
+      if (coldSweep) {
+        coldSweep(
+          targets.first().key.fingerprint.options,
+          inputs,
+          candidateInvalidations,
+          progress,
+        )
+      } else {
+        incremental(previous!!, inputs, candidateInvalidations, progress)
+      }
+    if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, inputs)) {
+      throw ResolutionCandidateSupersededException()
+    }
+
+    progress.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
+    val rawSource = aggregateSource(collectedSource, progress)
+    progress.phase(IndexBuildPhase.RESOLVING_ASSISTED_FACTORIES)
+    val summary =
+      collectedSource.librarySummary
+        ?: buildFinalizedSourceLibrarySummary(
+          project,
+          rawSource,
+          buildSourceOwnershipIndex(rawSource),
+        )
+    val finalizedSource = collectedSource.withLibrarySummary(summary)
+    val source = rawSource.withAddedFactories(summary.sourceFactories.addedBindings)
+    val buildersByKey = linkedMapOf<SnapshotKey, BindingIndexBuilder>()
+    val keysByModule = linkedMapOf<Module, SnapshotKey>()
+    val declarationSignatureFiles = finalizedSource.shardOrder.toSet()
+    for (target in targets) {
+      ProgressManager.checkCanceled()
+      if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, inputs)) {
+        throw ResolutionCandidateSupersededException()
+      }
+      val key = target.key
       val library =
         if (key.resolveFromLibraries) {
-          progress?.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
+          progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
           libraryShardFor(key.fingerprint, inputs.roots, source, summary)
         } else {
           LibraryShard.EMPTY
         }
-      progress?.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
+      progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
-        BindingIndexBuilder().apply {
+        BindingIndexBuilder(generationToken).apply {
           bindings += source.bindings + library.bindings
           consumers += source.consumers
           graphs += source.graphs
@@ -601,22 +1790,191 @@ class MetroResolutionService(
             else summary.sourceFactories.incompleteFactories
           dynamicGraphs += source.dynamicGraphs
         }
-      indexBuilder.captureResolutionInputs(project)
-      val index = indexBuilder.build()
-      // Only cache when nothing invalidated the pass semantically. A plain re-drain of new dirty
-      // files under the same generation still describes this exact source snapshot.
-      if (invalidations.get().generation == start.generation) {
-        snapshots[key] = IndexSnapshot(index, start.generation, inputs.roots)
-        evictStaleCaches(start.generation, inputs.roots)
+      indexBuilder.captureResolutionInputs(declarationSignatureFiles)
+      buildersByKey[key] = indexBuilder
+      for (module in target.modules) {
+        keysByModule[module] = key
       }
-      return index
     }
+    return CollectedResolutionCandidate(
+      source = finalizedSource,
+      consumedInvalidations = candidateInvalidations,
+      semanticRevision = candidateInvalidations.semanticRevision,
+      inputs = inputs,
+      buildersByKey = buildersByKey,
+      keysByModule = keysByModule,
+    )
+  }
+
+  private fun buildSourceOwnershipIndex(source: SourceAggregate): BindingIndex {
+    val builder =
+      BindingIndexBuilder().apply {
+        bindings += source.bindings
+        consumers += source.consumers
+        graphs += source.graphs
+        contributions += source.contributions
+        assistedSites += source.assistedSites
+        bindingContainers += source.bindingContainers
+        dynamicGraphs += source.dynamicGraphs
+      }
+    builder.captureResolutionInputs(emptySet())
+    return builder.build()
+  }
+
+  /** Captures module visibility and source declaration identities inside the generation read. */
+  @OptIn(KaPlatformInterface::class)
+  private fun BindingIndexBuilder.captureResolutionInputs(
+    declarationSignatureFiles: Set<VirtualFile>
+  ) {
+    val representatives = linkedMapOf<VirtualFile, PsiElement>()
+    val pointerSourceIdentities =
+      IdentityHashMap<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>()
+    val capturedDeclarationSignatures =
+      linkedMapOf<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>()
+    val ambiguousDeclarationSignatures = mutableSetOf<BindingIndex.SourcePointerIdentity>()
+    val capturedBindings = Collections.newSetFromMap(IdentityHashMap<KaBinding, Boolean>())
+    var pointerCaptureWorkIndex = 0
+
+    fun capture(
+      pointer: SmartPsiElementPointer<*>,
+      captureAnchorSignature: Boolean = false,
+    ) {
+      checkCanceledEvery(pointerCaptureWorkIndex++)
+      val identity = sourcePointerIdentity(pointer)
+      if (identity != null) pointerSourceIdentities[pointer] = identity
+      val file = pointer.virtualFile ?: return
+      val needsAnchorSignature = captureAnchorSignature && file in declarationSignatureFiles
+      if (!needsAnchorSignature && file in representatives) return
+      val element = pointer.element ?: return
+      representatives.putIfAbsent(file, element)
+      if (!needsAnchorSignature || identity == null) return
+      val ktElement = element as? KtElement ?: return
+      val currentIdentity =
+        BindingIndex.SourcePointerIdentity(
+          file,
+          ktElement.textRange.startOffset,
+          ktElement.textRange.endOffset,
+        )
+      if (currentIdentity != identity) return
+      val signature = DeclarationAnchorSignature.capture(ktElement)
+      val existing = capturedDeclarationSignatures.putIfAbsent(identity, signature)
+      if (existing != null && existing != signature) {
+        ambiguousDeclarationSignatures += identity
+      }
+    }
+
+    fun captureBinding(binding: KaBinding) {
+      capturedBindings += binding
+      capture(binding.pointer, captureAnchorSignature = true)
+    }
+
+    for (binding in bindings) captureBinding(binding)
+    for (consumer in consumers) {
+      capture(consumer.pointer, captureAnchorSignature = true)
+      consumer.injectedMemberPointer?.let { pointer -> capture(pointer) }
+    }
+    for (graph in graphs) {
+      capture(graph.pointer, captureAnchorSignature = true)
+      for (factory in graph.extensionFactories) capture(factory.pointer)
+      for (implementation in graph.defaultImplementations) {
+        capture(implementation.declaration.pointer)
+        for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+      }
+      for (contribution in graph.contributedInterfaces) {
+        capture(contribution.contribution.pointer)
+        for (binding in contribution.bindings) captureBinding(binding)
+        for (consumer in contribution.consumers) {
+          capture(consumer.pointer, captureAnchorSignature = true)
+        }
+        for (factory in contribution.extensionFactories) capture(factory.pointer)
+        for (implementation in contribution.defaultImplementations) {
+          capture(implementation.declaration.pointer)
+          for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
+        }
+      }
+    }
+    for (contribution in contributions) capture(contribution.pointer)
+    for (site in assistedSites) {
+      capture(site.pointer, captureAnchorSignature = true)
+    }
+    for (container in bindingContainers) capture(container.pointer)
+    for (dynamicGraph in dynamicGraphs) {
+      capture(dynamicGraph.pointer)
+      for (input in dynamicGraph.containerInputs) captureBinding(input)
+    }
+    capturedBindingSourceIdentities =
+      IdentityHashMap<KaBinding, BindingIndex.SourcePointerIdentity>().apply {
+        for (binding in capturedBindings) {
+          checkCanceledEvery(pointerCaptureWorkIndex++)
+          pointerSourceIdentities[binding.pointer]?.let { identity -> put(binding, identity) }
+        }
+      }
+    if (declarationSignatureFiles.isNotEmpty()) {
+      ambiguousDeclarationSignatures.forEach(capturedDeclarationSignatures::remove)
+      declarationAnchorSignatures.compute(generationToken) { _, existing ->
+        val merged = existing.orEmpty().toMutableMap()
+        val conflicts = mutableSetOf<BindingIndex.SourcePointerIdentity>()
+        for ((identity, signature) in capturedDeclarationSignatures) {
+          val previous = merged.putIfAbsent(identity, signature)
+          if (previous != null && previous != signature) conflicts += identity
+        }
+        conflicts.forEach(merged::remove)
+        merged.toMap()
+      }
+    }
+
+    val fileOrdinalTable =
+      FileOrdinalTable.freeze(
+        representatives.keys.withIndex().associate { (ordinal, file) ->
+          file to FileOrdinal(ordinal)
+        }
+      )
+    val moduleByFile = linkedMapOf<VirtualFile, ModuleViewId>()
+    val moduleIds = linkedMapOf<KaModule, ModuleViewId>()
+    val moduleRepresentatives = linkedMapOf<KaModule, PsiElement>()
+    for ((file, element) in representatives) {
+      ProgressManager.checkCanceled()
+      val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
+      val moduleId = moduleIds.getOrPut(module) { ModuleViewId(moduleIds.size) }
+      moduleByFile[file] = moduleId
+      moduleRepresentatives.putIfAbsent(module, element)
+    }
+
+    val moduleViews = linkedMapOf<ModuleViewId, BindingIndexModuleView>()
+    for ((module, moduleId) in moduleIds) {
+      ProgressManager.checkCanceled()
+      val scope = KaResolutionScope.forModule(module)
+      val visibleFiles = BooleanArray(fileOrdinalTable.size)
+      for ((file, element) in representatives) {
+        ProgressManager.checkCanceled()
+        if (scope.contains(element)) {
+          visibleFiles[fileOrdinalTable.getValue(file).value] = true
+        }
+      }
+      val moduleElement = checkNotNull(moduleRepresentatives[module])
+      moduleViews[moduleId] =
+        BindingIndexModuleView(
+          id = moduleId,
+          module = module,
+          visibleFileOrdinals = visibleFiles,
+          fileOrdinalTable = fileOrdinalTable,
+          daggerAnvilInteropEnabled =
+            moduleElement.metroIdeState().options.enableDaggerAnvilInterop,
+        )
+    }
+    resolutionInputs =
+      BindingIndexResolutionInputs(
+        fileOrdinalTable,
+        moduleByFile,
+        moduleViews,
+        pointerSourceIdentities,
+      )
   }
 
   private fun coldSweep(
     options: MetroOptions,
     inputs: IndexInputs,
-    start: Invalidations,
+    pending: CapturedInvalidations,
     progress: IndexBuildProgressReporter?,
   ): SourceSnapshot {
     progress?.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
@@ -624,7 +1982,7 @@ class MetroResolutionService(
     val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
     val transaction = SourceSnapshotTransaction()
     val candidates = candidateFiles(annotationIds, shortNames)
-    val total = candidates.size + start.requested.size
+    val total = candidates.size + pending.requested.size
     var completed = 0
     progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
     for (file in candidates) {
@@ -638,7 +1996,7 @@ class MetroResolutionService(
       }
     }
     // Stub loading can surface requested files before their annotations reach the stub index.
-    for (virtualFile in start.requested) {
+    for (virtualFile in pending.requested) {
       ProgressManager.checkCanceled()
       try {
         if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
@@ -659,24 +2017,24 @@ class MetroResolutionService(
   private fun incremental(
     prev: SourceSnapshot,
     inputs: IndexInputs,
-    start: Invalidations,
+    pending: CapturedInvalidations,
     progress: IndexBuildProgressReporter?,
   ): SourceSnapshot {
     val dirty =
-      if (start.forceAll) {
+      if (pending.forceAll) {
         buildSet {
           addAll(prev.shardOrder)
-          addAll(start.dirty)
+          addAll(pending.dirty)
         }
       } else {
-        start.dirty
+        pending.dirty
       }
-    if (dirty.isEmpty() && start.requested.isEmpty()) {
+    if (dirty.isEmpty() && pending.requested.isEmpty()) {
       // Output-only compiler-option changes update inputs without touching any shard.
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
     val transaction = SourceSnapshotTransaction(prev)
-    val total = dirty.size + start.requested.size
+    val total = dirty.size + pending.requested.size
     var completed = 0
     progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
     for (virtualFile in dirty) {
@@ -691,16 +2049,18 @@ class MetroResolutionService(
           transaction.removeShard(virtualFile)
           continue
         }
-        val forced = start.forceAll || virtualFile in start.forced
-        transaction.applyShard(virtualFile, shardFor(file, forced))
+        transaction.applyShard(
+          virtualFile,
+          shardFor(file, forceRebuild = pending.forceAll),
+        )
       } finally {
         completed++
         progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
       }
     }
     // Requested files were enqueued before their stubs or directory events settled. Draining
-    // them here keeps them from lingering in the ledger until a cold sweep.
-    for (virtualFile in start.requested) {
+    // them here keeps them from lingering until a cold sweep.
+    for (virtualFile in pending.requested) {
       ProgressManager.checkCanceled()
       try {
         if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
@@ -801,7 +2161,7 @@ class MetroResolutionService(
     )
   }
 
-  /** Materialize each scope-matched candidate once; BindingIndex owns path-specific selection. */
+  /** Attaches interfaces with matching scopes. BindingIndex selects them for each graph path. */
   private fun attachGraphInterfaces(
     surfaces: List<GraphInterfaceSurface>,
     graphs: MutableList<KaGraphDeclaration>,
@@ -838,7 +2198,7 @@ class MetroResolutionService(
     fingerprint: IndexOptionsFingerprint,
     rootsGeneration: Long,
     source: SourceAggregate,
-    summary: SourceLibrarySummary,
+    summary: FinalizedSourceLibrarySummary,
   ): LibraryShard {
     val key = LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs)
     libraryShards[key]?.let {
@@ -855,7 +2215,7 @@ class MetroResolutionService(
           source.consumers,
           source.graphs,
           contributions,
-          summary.factoryUseSites,
+          summary.sourceFactories.factoryUseSites,
           summary.consumerOwnership,
           summary.sourceFactories,
         )
@@ -899,7 +2259,7 @@ class MetroResolutionService(
   }
 
   private fun fingerprintFor(state: MetroIdeModuleState): IndexOptionsFingerprint {
-    return fingerprintsByModuleState.computeIfAbsent(state) { IndexOptionsFingerprint(it.options) }
+    return IndexOptionsFingerprint(state.options)
   }
 
   /** Files containing any Metro-relevant annotation or an exact aliased import, via indexes. */
@@ -914,8 +2274,7 @@ class MetroResolutionService(
       }
     }
 
-    // Search a distinctive package component rather than common names like Inject/Provides.
-    // This visits import/package occurrences, not every annotation usage in the whole project.
+    // Searching a distinctive package component limits this pass to import and package occurrences.
     val idsBySearchWord = annotationIds.groupBy { annotationId ->
       annotationId.packageFqName.pathSegments().maxByOrNull { it.asString().length }?.asString()
         ?: annotationId.shortClassName.asString()
@@ -961,8 +2320,16 @@ class MetroResolutionService(
   }
 
   private fun containsRelevantAnnotation(file: KtFile, shortNames: Set<String>): Boolean {
+    var hasAliasedImport = false
+    for (directive in file.importDirectives) {
+      ProgressManager.checkCanceled()
+      if (directive.aliasName != null) {
+        hasAliasedImport = true
+        break
+      }
+    }
     val names =
-      if (file.importDirectives.any { it.aliasName != null }) {
+      if (hasAliasedImport) {
         shortNames +
           file.annotationShortNamesIncludingAliases(
             sweepAnnotationIds(file.metroIdeState().options)
@@ -970,25 +2337,41 @@ class MetroResolutionService(
       } else {
         shortNames
       }
-    val hasRelevantAnnotation =
-      PsiTreeUtil.collectElementsOfType(file, KtAnnotationEntry::class.java).any { entry ->
-        entry.shortName?.asString() in names
+    var hasRelevantAnnotation = false
+    PsiTreeUtil.processElements(file) { element ->
+      ProgressManager.checkCanceled()
+      if (element is KtAnnotationEntry && element.shortName?.asString() in names) {
+        hasRelevantAnnotation = true
+        false
+      } else {
+        true
       }
+    }
     if (hasRelevantAnnotation) return true
 
     val dynamicGraphNames = buildSet {
       for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
+        ProgressManager.checkCanceled()
         add(callableId.callableName.asString())
         for (directive in file.importDirectives) {
+          ProgressManager.checkCanceled()
           if (directive.importedFqName == callableId.asSingleFqName()) {
             directive.aliasName?.let(::add)
           }
         }
       }
     }
-    return PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java).any { call ->
-      call.calleeExpression?.text in dynamicGraphNames
+    var hasDynamicGraphCall = false
+    PsiTreeUtil.processElements(file) { element ->
+      ProgressManager.checkCanceled()
+      if (element is KtCallExpression && element.calleeExpression?.text in dynamicGraphNames) {
+        hasDynamicGraphCall = true
+        false
+      } else {
+        true
+      }
     }
+    return hasDynamicGraphCall
   }
 
   private fun shardFor(file: KtFile, forceRebuild: Boolean = false): FileShard {
@@ -1005,8 +2388,8 @@ class MetroResolutionService(
         val state = file.metroIdeState()
         val builder = if (state.isEnabled) FileShardBuilder(file.project, state.options) else null
         val shard = builder?.buildShard(file) ?: FileShard.EMPTY
-        // Dependency PSI is only handed to the platform's cache registration here. The shard
-        // model and the service retain virtual files instead of pinning PSI.
+        // Register dependency PSI with the platform cache. The shard and service store virtual
+        // files so they do not keep those PSI trees alive.
         CachedValueProvider.Result.create(
           shard,
           file,
@@ -1025,7 +2408,28 @@ class MetroResolutionService(
         return shardFor(file, forceRebuild = true)
       }
     }
+    seedSharedDeclarationFingerprints(file, cached)
     return cached
+  }
+
+  /** Records shared declaration fingerprints during the shard's background read. */
+  private fun seedSharedDeclarationFingerprints(file: KtFile, shard: FileShard) {
+    seedSharedDeclarationFingerprint(file)
+    val psiManager = PsiManager.getInstance(project)
+    for (dependencyFile in shard.dependencyFiles + shard.sharedDeclarationFiles) {
+      ProgressManager.checkCanceled()
+      if (sharedDeclarationFingerprints.containsKey(dependencyFile)) continue
+      val dependency = psiManager.findFile(dependencyFile) as? KtFile ?: continue
+      seedSharedDeclarationFingerprint(dependency)
+    }
+  }
+
+  private fun seedSharedDeclarationFingerprint(file: KtFile) {
+    ProgressManager.checkCanceled()
+    val virtualFile = file.virtualFile ?: return
+    if (sharedDeclarationFingerprints.containsKey(virtualFile)) return
+    if (!fileHasSharedDeclarationsCached(file)) return
+    sharedDeclarationFingerprints.putIfAbsent(virtualFile, sharedDeclarationFingerprint(file))
   }
 
   /** Stored on the file so the tracker and the cached value share one lifetime. */
@@ -1055,26 +2459,22 @@ class MetroResolutionService(
   /** An opened file may be available before its stub index or directory-creation event settles. */
   private fun enrollRequestedFile(file: KtFile) {
     val virtualFile = file.virtualFile ?: return
-    val state = sourceSnapshot.get()
-    if (state == null) {
-      invalidations.updateAndGet { it.withRequested(virtualFile) }
+    val publication = publishedResolution.value
+    if (
+      virtualFile in publication.trackedSourceFiles ||
+        virtualFile in publication.knownIrrelevantFiles
+    ) {
       return
     }
-    if (virtualFile in state.shards || virtualFile in invalidations.get().dirty) {
-      return
-    }
-    // Editor features call index() once per declaration. A cached negative keeps files without
-    // Metro annotations from paying a full PSI walk on every call.
-    if (!isRelevantFileCached(file)) {
-      return
-    }
-    invalidations.updateAndGet { it.withDirty(setOf(virtualFile)) }
+    enqueuePsiChange(
+      PendingPsiChanges(files = mapOf(virtualFile to PendingFileChange(requestedByQuery = true)))
+    )
   }
 
   private fun isRelevantFileCached(file: KtFile): Boolean {
     return CachedValuesManager.getCachedValue(file) {
       val shortNames =
-        sourceSnapshot.get()?.shortNames ?: projectSweepShortNames(file.metroIdeState().options)
+        sourceSnapshot?.shortNames ?: projectSweepShortNames(file.metroIdeState().options)
       CachedValueProvider.Result.create(
         containsRelevantAnnotation(file, shortNames),
         file,
@@ -1083,92 +2483,50 @@ class MetroResolutionService(
     }
   }
 
-  private fun psiChanged(event: PsiTreeChangeEvent, structuralChange: Boolean = false) {
-    val file = changedFile(event)
-    val directory = event.child as? PsiDirectory ?: event.element as? PsiDirectory
-    if (file == null && directory != null && structuralChange) {
-      directoryChanged(directory)
-      return
-    }
-    if (file == null || !file.isValid) return
-    val virtualFile = file.virtualFile ?: return
-    val state = sourceSnapshot.get()
-    if (state == null) {
-      if (structuralChange) {
-        invalidations.updateAndGet { it.withRequested(virtualFile) }
-      }
-      return
-    }
-    val requestFile = structuralChange && virtualFile !in state.shards
-    val ownerFiles = state.dependencyOwners[virtualFile]
-    val alreadyIndexed = virtualFile in state.shards
-    val newlyRelevant = !alreadyIndexed && isRelevantFileCached(file)
-    // A file can mix indexed declarations with constants or aliases that unrelated shards
-    // reference. Only a change to those declarations needs the whole-project fallback.
-    val globalSemanticChange = sharedDeclarationChanged(event, file, structuralChange)
-    val affectsIndexedDeclarations =
-      alreadyIndexed ||
-        !ownerFiles.isNullOrEmpty() ||
-        newlyRelevant ||
-        structuralChange ||
-        globalSemanticChange
-    if (!affectsIndexedDeclarations) {
-      if (requestFile) {
-        invalidations.updateAndGet { it.withRequested(virtualFile) }
+  private fun psiChanged(
+    event: PsiTreeChangeEvent,
+    structuralChange: Boolean = false,
+    oldTreeMayDisappear: Boolean = false,
+  ) {
+    val virtualFile = changedVirtualFile(event)
+    if (virtualFile == null) {
+      val directory = changedDirectoryVirtualFile(event)
+      if (directory != null && structuralChange) {
+        enqueuePsiChange(PendingPsiChanges(directories = setOf(directory)))
       }
       return
     }
 
-    val dirty = mutableSetOf(virtualFile)
-    if (ownerFiles != null) {
-      dirty += ownerFiles
-    }
-    invalidations.updateAndGet { ledger ->
-      var updated = ledger.withDirty(dirty)
-      if (globalSemanticChange) {
-        updated = updated.withForceAll()
-      }
-      if (requestFile) {
-        updated = updated.withRequested(virtualFile)
-      }
-      updated
-    }
-    scheduleInvalidationNotification()
+    val sharedChange = sharedDeclarationChange(event, oldTreeMayDisappear)
+    val mayHaveRemovedSharedDeclaration =
+      mayHaveRemovedSharedDeclaration(event, oldTreeMayDisappear)
+
+    enqueuePsiChange(
+      PendingPsiChanges(
+        files =
+          mapOf(
+            virtualFile to
+              PendingFileChange(
+                structuralChange = structuralChange,
+                sharedDeclarationChanges =
+                  if (sharedChange == SharedDeclarationChange.NONE) emptySet()
+                  else setOf(sharedChange),
+                removedTrackedSharedDeclaration = mayHaveRemovedSharedDeclaration,
+              )
+          )
+      )
+    )
   }
 
   /**
-   * Unannotated aliases/constants can change keys across unrelated files without PSI pointers.
-   * Edits to such files force a whole-project re-shard because dependency tracking only records
-   * annotation and factory declaration files. Narrowing this needs referenced-declaration files
-   * recorded during type-key snapshotting.
+   * Aliases and constants can change binding keys in other files. Their dependencies are only
+   * partially tracked, so edits to these declarations rebuild all source shards. Tracking every
+   * referenced declaration during type-key capture would allow narrower invalidation.
    */
   private fun fileHasSharedDeclarationsCached(file: KtFile): Boolean {
     return CachedValuesManager.getCachedValue(file) {
       CachedValueProvider.Result.create(hasSharedSemanticDeclarations(file), file)
     }
-  }
-
-  private fun sharedDeclarationChanged(
-    event: PsiTreeChangeEvent,
-    file: KtFile,
-    structuralChange: Boolean,
-  ): Boolean {
-    val virtualFile = file.virtualFile ?: return false
-    val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)
-    val previous = sharedDeclarationFingerprints[virtualFile]
-    if (!hasSharedDeclarations) {
-      if (previous != null) {
-        sharedDeclarationFingerprints.remove(virtualFile)
-        return true
-      }
-      return changedSharedElement(event)
-    }
-
-    val current = sharedDeclarationFingerprint(file)
-    sharedDeclarationFingerprints[virtualFile] = current
-    if (previous != null && previous != current) return true
-    if (structuralChange) return true
-    return changedSharedElement(event)
   }
 
   /** Names and declaration text catch value, alias, containing-object, and import changes. */
@@ -1180,6 +2538,7 @@ class MetroResolutionService(
 
       fun appendDeclarations(declarations: List<KtDeclaration>, owner: String) {
         for (declaration in declarations) {
+          ProgressManager.checkCanceled()
           when {
             declaration is KtTypeAlias -> {
               append('\n')
@@ -1202,22 +2561,57 @@ class MetroResolutionService(
     }
   }
 
-  private fun changedSharedElement(event: PsiTreeChangeEvent): Boolean {
-    val candidate = event.child ?: event.element ?: event.parent ?: return false
-    if (candidate is KtFile || candidate is PsiDirectory) return false
-    if (candidate is KtClassOrObject && hasSharedSemanticDeclarations(candidate)) return true
+  /** Records the change type before removed PSI becomes unavailable. */
+  private fun sharedDeclarationChange(
+    event: PsiTreeChangeEvent,
+    oldTreeMayDisappear: Boolean,
+  ): SharedDeclarationChange {
+    val candidate =
+      event.child ?: event.element ?: event.parent ?: return SharedDeclarationChange.NONE
+    if (candidate is KtFile) {
+      // Bulk reparses may omit individual removal events, so record a possible file-wide change.
+      return if (oldTreeMayDisappear) SharedDeclarationChange.FILE_CONTENTS
+      else SharedDeclarationChange.NONE
+    }
+    if (candidate is PsiDirectory) return SharedDeclarationChange.NONE
+    if (candidate is KtClassOrObject) return SharedDeclarationChange.DECLARATION_CONTAINER
 
     var current: PsiElement? = candidate
     while (current != null && current !is KtFile) {
-      if (current is KtTypeAlias) return true
-      if (current is KtProperty && current.hasModifier(KtTokens.CONST_KEYWORD)) return true
+      if (current is KtTypeAlias) return SharedDeclarationChange.DECLARATION
+      if (current is KtProperty && current.hasModifier(KtTokens.CONST_KEYWORD)) {
+        return SharedDeclarationChange.DECLARATION
+      }
+      if (current is KtImportDirective || current is KtPackageDirective) {
+        return SharedDeclarationChange.FILE_METADATA
+      }
       current = current.parent
     }
-    return false
+    return SharedDeclarationChange.NONE
+  }
+
+  /** Detects removed type aliases and const properties before their PSI is discarded. */
+  private fun mayHaveRemovedSharedDeclaration(
+    event: PsiTreeChangeEvent,
+    oldTreeMayDisappear: Boolean,
+  ): Boolean {
+    if (!oldTreeMayDisappear) return false
+    return when (val removed = event.oldChild ?: event.child) {
+      // The background classifier checks files and declaration containers.
+      is KtFile,
+      is KtClassOrObject -> false
+      is KtTypeAlias -> true
+      is KtProperty -> removed.hasModifier(KtTokens.CONST_KEYWORD)
+      else -> false
+    }
   }
 
   private fun hasSharedSemanticDeclarations(file: KtFile): Boolean {
-    return file.declarations.any(::hasSharedSemanticDeclarations)
+    for (declaration in file.declarations) {
+      ProgressManager.checkCanceled()
+      if (hasSharedSemanticDeclarations(declaration)) return true
+    }
+    return false
   }
 
   private fun hasSharedSemanticDeclarations(declaration: KtDeclaration): Boolean {
@@ -1225,288 +2619,571 @@ class MetroResolutionService(
     return when {
       declaration is KtTypeAlias -> true
       declaration is KtProperty && declaration.hasModifier(KtTokens.CONST_KEYWORD) -> true
-      declaration is KtClassOrObject ->
-        declaration.declarations.any(::hasSharedSemanticDeclarations)
+      declaration is KtClassOrObject -> {
+        for (nested in declaration.declarations) {
+          ProgressManager.checkCanceled()
+          if (hasSharedSemanticDeclarations(nested)) return true
+        }
+        false
+      }
       else -> false
     }
   }
 
+  private fun changedVirtualFile(event: PsiTreeChangeEvent): VirtualFile? {
+    event.file?.virtualFile?.let {
+      return it
+    }
+    (event.element as? KtFile)?.virtualFile?.let {
+      return it
+    }
+    return (event.child as? KtFile)?.virtualFile
+  }
+
+  private fun changedDirectoryVirtualFile(event: PsiTreeChangeEvent): VirtualFile? {
+    val directory =
+      event.child as? PsiDirectory
+        ?: event.element as? PsiDirectory
+        ?: event.parent as? PsiDirectory
+    return directory?.virtualFile
+  }
+
+  private fun enqueuePsiChange(change: PendingPsiChanges) {
+    if (change.isEmpty || isDisposed) return
+    ingress.submit(semanticChange = true) { ResolutionCoordinatorEvent.Psi(change) }
+  }
+
+  /** Collects Kotlin files from failed classification requests without reading PSI. */
+  private suspend fun failedClassificationRequests(batch: PendingPsiChanges): Set<VirtualFile> {
+    val requested = linkedSetOf<VirtualFile>()
+    requested += batch.files.keys
+    val remaining = ArrayDeque(batch.directories)
+    var visited = 0
+    while (remaining.isNotEmpty()) {
+      if (visited++ % 64 == 0) yield()
+      checkPsiClassificationActive()
+      val file = remaining.removeFirst()
+      if (!file.isValid) continue
+      if (file.isDirectory) {
+        remaining += file.children
+      } else if (file.extension == "kt" || file.extension == "kts") {
+        requested += file
+      }
+    }
+    return requested
+  }
+
+  /** Stops VFS access when JVM shutdown precedes cancellation of the project service scope. */
+  private fun checkPsiClassificationActive() {
+    val ownerDisposed = isDisposed || project.isDisposed
+    val applicationStopping =
+      ShutDownTracker.isShutdownStarted() || ApplicationManager.getApplication().isDisposed
+    if (ownerDisposed || applicationStopping) {
+      throw CancellationException("Metro PSI classification stopped during disposal")
+    }
+  }
+
+  /** Called by the coordinator inside a smart read action. */
+  private fun classifyPsiChanges(batch: PendingPsiChanges): ClassifiedPsiChanges {
+    val result = ClassifiedPsiChanges.Builder()
+    val state = sourceSnapshot
+    for (directory in batch.directories) {
+      ProgressManager.checkCanceled()
+      classifyDirectoryChange(directory, state, result)
+    }
+    for ((virtualFile, change) in batch.files) {
+      ProgressManager.checkCanceled()
+      classifyFileChange(virtualFile, change, state, result)
+    }
+    return result.build()
+  }
+
   /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
-  private fun directoryChanged(directory: PsiDirectory) {
-    if (!directory.isValid || !directory.virtualFile.isValid) return
-    val files = mutableListOf<KtFile>()
+  private fun classifyDirectoryChange(
+    virtualFile: VirtualFile,
+    state: SourceSnapshot?,
+    result: ClassifiedPsiChanges.Builder,
+  ) {
+    checkPsiClassificationActive()
+    if (!virtualFile.isValid) {
+      // The removed directory cannot be traversed. Rebuild all published shards.
+      if (state != null) result.forceAll = true
+      return
+    }
+    val directory = PsiManager.getInstance(project).findDirectory(virtualFile) ?: return
     val remaining = ArrayDeque<PsiDirectory>()
     remaining += directory
     while (remaining.isNotEmpty()) {
       ProgressManager.checkCanceled()
+      checkPsiClassificationActive()
       val current = remaining.removeFirst()
       if (!current.isValid || !current.virtualFile.isValid) continue
-      files += current.files.filterIsInstance<KtFile>()
+      for (file in current.files.filterIsInstance<KtFile>()) {
+        ProgressManager.checkCanceled()
+        checkPsiClassificationActive()
+        val fileVirtualFile = file.virtualFile ?: continue
+        val alreadyTracked =
+          state != null &&
+            (fileVirtualFile in state.shards ||
+              !state.dependencyOwners[fileVirtualFile].isNullOrEmpty() ||
+              !state.sharedDeclarationOwners[fileVirtualFile].isNullOrEmpty())
+        if (alreadyTracked) continue
+        classifyFileChange(
+          fileVirtualFile,
+          PendingFileChange(structuralChange = true),
+          state,
+          result,
+          file,
+        )
+      }
       remaining += current.subdirectories
     }
-    if (files.isEmpty()) return
+  }
 
-    val state = sourceSnapshot.get() ?: return
-    val requested = mutableSetOf<VirtualFile>()
-    val dirty = mutableSetOf<VirtualFile>()
-    var sharedDeclarationsChanged = false
-    for (file in files) {
-      ProgressManager.checkCanceled()
-      val virtualFile = file.virtualFile ?: continue
-      if (fileHasSharedDeclarationsCached(file)) {
-        sharedDeclarationsChanged = true
+  /** Reads PSI and fingerprints shared declarations inside the coordinator's smart read. */
+  private fun classifyFileChange(
+    virtualFile: VirtualFile,
+    change: PendingFileChange,
+    state: SourceSnapshot?,
+    result: ClassifiedPsiChanges.Builder,
+    knownFile: KtFile? = null,
+  ) {
+    checkPsiClassificationActive()
+    val ownerFiles = state?.dependencyOwners?.get(virtualFile)
+    val alreadyIndexed = state != null && virtualFile in state.shards
+    val file =
+      knownFile
+        ?: virtualFile
+          .takeIf { it.isValid }
+          ?.let {
+            PsiManager.getInstance(project).findFile(it) as? KtFile
+          }
+    if (file == null || !file.isValid) {
+      result.fingerprints[virtualFile] = null
+      result.irrelevantFilesToRemove += virtualFile
+      if (change.structuralChange) result.requestedToRemove += virtualFile
+      result.dirty += ownerFiles.orEmpty()
+      if (alreadyIndexed || !ownerFiles.isNullOrEmpty()) result.dirty += virtualFile
+      val lostFingerprint = sharedDeclarationFingerprints.containsKey(virtualFile)
+      val directlyChangesSharedDeclaration =
+        change.sharedDeclarationChanges.any { it.forcesGlobalInvalidation }
+      val lostSharedDeclaration =
+        lostFingerprint ||
+          change.removedTrackedSharedDeclaration ||
+          directlyChangesSharedDeclaration
+      if (lostSharedDeclaration) {
+        result.forceAll = true
       }
-      if (virtualFile !in state.shards) {
-        requested += virtualFile
-      }
-      val owners = state.dependencyOwners[virtualFile]
-      val relevant = virtualFile in state.shards || !owners.isNullOrEmpty()
-      val newlyRelevant = containsRelevantAnnotation(file, state.shortNames)
-      if (!relevant && !newlyRelevant) {
-        continue
-      }
-      dirty += virtualFile
-      if (owners != null) {
-        dirty += owners
-      }
-    }
-    if (requested.isEmpty() && dirty.isEmpty() && !sharedDeclarationsChanged) {
       return
     }
-    invalidations.updateAndGet { ledger ->
-      var updated = ledger.withRequested(requested)
-      if (dirty.isNotEmpty()) {
-        updated = updated.withDirty(dirty)
+
+    val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)
+    val previousFingerprint = sharedDeclarationFingerprints[virtualFile]
+    val currentFingerprint = if (hasSharedDeclarations) sharedDeclarationFingerprint(file) else null
+    result.fingerprints[virtualFile] = currentFingerprint
+    val fingerprintChanged =
+      previousFingerprint != null && previousFingerprint != currentFingerprint
+    val metadataAffectsSharedDeclarations =
+      SharedDeclarationChange.FILE_METADATA in change.sharedDeclarationChanges &&
+        (hasSharedDeclarations || previousFingerprint != null)
+    val removedSharedDeclarationWithoutFingerprint =
+      change.removedTrackedSharedDeclaration &&
+        previousFingerprint == null &&
+        !hasSharedDeclarations
+    val directlyChangesSharedDeclaration =
+      change.sharedDeclarationChanges.any { it.forcesGlobalInvalidation }
+    val asynchronouslyDiscoveredGlobalChange =
+      metadataAffectsSharedDeclarations ||
+        fingerprintChanged ||
+        removedSharedDeclarationWithoutFingerprint
+    val globalSemanticChange =
+      directlyChangesSharedDeclaration || asynchronouslyDiscoveredGlobalChange
+
+    val relevant =
+      if (state == null) {
+        isRelevantFileCached(file)
+      } else {
+        containsRelevantAnnotation(file, state.shortNames)
       }
-      if (sharedDeclarationsChanged) {
-        updated = updated.withForceAll()
-      }
-      updated
+    if (relevant) {
+      result.irrelevantFilesToRemove += virtualFile
+    } else {
+      result.irrelevantFiles += virtualFile
     }
-    if (dirty.isNotEmpty() || sharedDeclarationsChanged) {
+
+    if (state == null) {
+      if (change.structuralChange || change.requestedByQuery) {
+        if (relevant) {
+          result.requested += virtualFile
+        } else {
+          result.requestedToRemove += virtualFile
+        }
+      }
+      if (globalSemanticChange) result.forceAll = true
+      return
+    }
+
+    val newlyRelevant = !alreadyIndexed && ownerFiles.isNullOrEmpty() && relevant
+    val needsRebuild =
+      alreadyIndexed || !ownerFiles.isNullOrEmpty() || relevant || globalSemanticChange
+    if (needsRebuild) {
+      result.dirty += virtualFile
+      result.dirty += ownerFiles.orEmpty()
+    }
+    if (change.structuralChange && !alreadyIndexed) {
+      if (relevant) {
+        result.requested += virtualFile
+      } else {
+        result.requestedToRemove += virtualFile
+      }
+    }
+    if (globalSemanticChange) result.forceAll = true
+    if (newlyRelevant) result.restartDaemon = true
+  }
+
+  private fun applyClassifiedPsiChanges(classified: ClassifiedPsiChanges) {
+    for ((file, fingerprint) in classified.fingerprints) {
+      if (fingerprint == null) {
+        sharedDeclarationFingerprints.remove(file)
+      } else {
+        sharedDeclarationFingerprints[file] = fingerprint
+      }
+    }
+    knownIrrelevantFiles.removeAll(classified.irrelevantFilesToRemove)
+    knownIrrelevantFiles.addAll(classified.irrelevantFiles)
+
+    val dirtyInvalidationAdded = recordDirtyInvalidations(classified.dirty)
+    val forceAllInvalidationAdded = classified.forceAll && recordForceAllInvalidation()
+    pendingRequestedFiles += classified.requested
+    pendingRequestedFiles.removeAll(classified.requestedToRemove)
+    val semanticInvalidationAdded = dirtyInvalidationAdded || forceAllInvalidationAdded
+    if (classified.restartDaemon || semanticInvalidationAdded) {
+      // The edit-triggered daemon pass may have finished before background classification landed.
+      notifyListeners(restartDaemon = true)
+    } else if (classified.dirty.isNotEmpty() || classified.forceAll) {
       scheduleInvalidationNotification()
     }
   }
 
-  private fun changedFile(event: PsiTreeChangeEvent): KtFile? {
-    val file = event.file as? KtFile
-    if (file != null) return file
-
-    val elementFile = event.element as? KtFile
-    if (elementFile != null) return elementFile
-
-    val childFile = event.child as? KtFile
-    if (childFile != null) return childFile
-
-    val parentFile = event.parent?.containingFile as? KtFile
-    if (parentFile != null) return parentFile
-
-    return event.child?.containingFile as? KtFile
+  private fun recordDirtyInvalidations(files: Set<VirtualFile>): Boolean {
+    if (files.isEmpty()) return false
+    pendingDirtyFiles += files
+    semanticRevision++
+    return true
   }
 
-  private fun notifyListeners(restartDaemon: Boolean) {
-    val application = ApplicationManager.getApplication()
-    if (!application.isDispatchThread) {
-      application.invokeLater {
-        if (!project.isDisposed) notifyListeners(restartDaemon)
-      }
-      return
-    }
-    if (restartDaemon) DaemonCodeAnalyzer.getInstance(project).restart()
-    for (listener in listeners.toList()) listener()
+  private fun recordForceAllInvalidation(): Boolean {
+    if (forceAllFiles) return false
+    forceAllFiles = true
+    semanticRevision++
+    return true
   }
 
-  private fun publishIndexBuildProgress(progress: IndexBuildProgress?) {
-    indexBuildProgress.set(progress)
-    notifyIndexBuildProgress(progress)
+  /** Copies the pending source changes for one build attempt. */
+  private fun capturePendingInvalidations(): CapturedInvalidations {
+    return CapturedInvalidations(
+      dirty = pendingDirtyFiles.toSet(),
+      requested = pendingRequestedFiles.toSet(),
+      forceAll = forceAllFiles,
+      semanticRevision = semanticRevision,
+    )
   }
 
-  private fun notifyIndexBuildProgress(progress: IndexBuildProgress?) {
-    for (listener in indexBuildProgressListeners.toList()) {
-      notifyIndexBuildProgressListener(listener, progress)
-    }
+  /** Removes captured work only after its complete generation has published. */
+  private fun consumeCapturedInvalidations(captured: CapturedInvalidations) {
+    if (semanticRevision > captured.semanticRevision) return
+    pendingDirtyFiles.removeAll(captured.dirty)
+    pendingRequestedFiles.removeAll(captured.requested)
+    if (captured.forceAll) forceAllFiles = false
+    semanticRevision = captured.semanticRevision
   }
 
-  private fun notifyIndexBuildProgressListener(
-    listener: (IndexBuildProgress?) -> Unit,
-    progress: IndexBuildProgress?,
+  /** Daemon restart intent is recorded before conflating UI refresh requests. */
+  private fun notifyListeners(
+    restartDaemon: Boolean,
+    forceDaemonRestart: Boolean = false,
   ) {
-    val application = ApplicationManager.getApplication()
-    if (!application.isDispatchThread) {
-      application.invokeLater {
-        if (progress == null && indexBuildProgress.get() != null) return@invokeLater
-        if (!disposed.get() && !project.isDisposed && listener in indexBuildProgressListeners) {
-          listener(progress)
-        }
-      }
-      return
+    if (isDisposed || project.isDisposed) return
+    if (restartDaemon && (forceDaemonRestart || automaticallyRefreshGraphData)) {
+      project.service<MetroDaemonRestartService>().requestRestart()
     }
-    if (progress == null && indexBuildProgress.get() != null) return
-    if (!disposed.get() && !project.isDisposed && listener in indexBuildProgressListeners) {
-      listener(progress)
+    scheduleInvalidationNotification()
+  }
+
+  /** Serial EDT delivery preserves the manual browser's single stale notification per refresh. */
+  private suspend fun deliverIndexChanges() {
+    for (unused in notificationRequests) {
+      if (isDisposed) return
+      // Service disposal and scope cancellation own the consumer's lifetime.
+      if (project.isDisposed) continue
+      if (indexChanges.subscriptionCount.value == 0) continue
+      if (isManualGraphDataRefreshRequired) {
+        val previous = publishedResolution.getAndUpdate { publication ->
+          if (publication.isDisposed) publication
+          else publication.copy(manualStaleNotificationSent = true)
+        }
+        if (previous.isDisposed || previous.manualStaleNotificationSent) continue
+      }
+      indexChanges.emit(Unit)
     }
   }
 
-  /** Coalesces write-action events so an open graph window requests a fresh background snapshot. */
+  /** Publishes the current build progress for UI collectors. */
+  private fun publishIndexBuildProgress(progress: IndexBuildProgress?) {
+    if (isDisposed || project.isDisposed) return
+    mutableIndexBuildProgress.value = progress
+  }
+
+  /** Coalesces write-action events so an open graph window can refresh or show stale status. */
   private fun scheduleInvalidationNotification() {
-    if (listeners.isEmpty()) return
-    if (!invalidationPending.compareAndSet(false, true)) return
-    ApplicationManager.getApplication().invokeLater {
-      invalidationPending.set(false)
-      if (!disposed.get() && !project.isDisposed) notifyListeners(restartDaemon = false)
-    }
+    if (!isDisposed && !project.isDisposed) notificationRequests.trySend(Unit)
   }
 
   override fun dispose() {
-    disposed.set(true)
-    pendingProjectInputs.set(null)
-    buildSignal.close()
-    pendingBuilds.clear()
-    graphBrowserActivated.set(false)
-    listeners.clear()
-    indexBuildProgressListeners.clear()
-    indexBuildProgress.set(null)
-    sharedDeclarationFingerprints.clear()
-    snapshots.clear()
-    libraryShards.clear()
-    fingerprintsByModuleState.clear()
+    publishedResolution.value = PublishedResolution.DISPOSED
+    val abandonedEvents = ingress.close()
+    for (event in abandonedEvents) {
+      when (event) {
+        is ResolutionCoordinatorEvent.Build -> {
+          event.completions.forEach { it.complete(IndexBuildOutcome.CANCELED) }
+        }
+        is ResolutionCoordinatorEvent.TestBarrier -> event.completion.complete(Unit)
+        else -> Unit
+      }
+    }
+    coordinatorJob.cancel()
+    notificationRequests.close()
+    notificationScope.cancel()
+    declarationAnchorSignatures.clear()
+    mutableIndexBuildProgress.value = null
   }
 
   private companion object {
     const val MAX_CACHED_INDEXES = 8
-    const val MAX_CACHED_OPTION_FINGERPRINTS = 64
+    const val MAX_CONCURRENT_FILE_PRESENTATION_BUILDS = 2
+    const val MAX_FILE_PRESENTATION_BUNDLES = 64
   }
-}
-
-/** Builds the immutable source index used to capture dependency ownership. */
-private fun buildSourceOwnershipIndex(project: Project, source: SourceAggregate): BindingIndex {
-  val builder =
-    BindingIndexBuilder().apply {
-      bindings += source.bindings
-      consumers += source.consumers
-      graphs += source.graphs
-      contributions += source.contributions
-      assistedSites += source.assistedSites
-      bindingContainers += source.bindingContainers
-      dynamicGraphs += source.dynamicGraphs
-    }
-  builder.captureResolutionInputs(project)
-  return builder.build()
-}
-
-/** Captures module visibility and source declaration identities during the index read. */
-@OptIn(KaPlatformInterface::class)
-private fun BindingIndexBuilder.captureResolutionInputs(project: Project) {
-  val representatives = linkedMapOf<VirtualFile, PsiElement>()
-  val pointerSourceIdentities =
-    IdentityHashMap<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>()
-  val capturedBindings = Collections.newSetFromMap(IdentityHashMap<KaBinding, Boolean>())
-  var pointerCaptureWorkIndex = 0
-
-  fun capture(pointer: SmartPsiElementPointer<*>) {
-    checkCanceledEvery(pointerCaptureWorkIndex++)
-    val identity = sourcePointerIdentity(pointer)
-    if (identity != null) pointerSourceIdentities[pointer] = identity
-    val file = pointer.virtualFile ?: return
-    if (file in representatives) return
-    val element = pointer.element ?: return
-    representatives.putIfAbsent(file, element)
-  }
-
-  fun captureBinding(binding: KaBinding) {
-    capturedBindings += binding
-    capture(binding.pointer)
-  }
-
-  for (binding in bindings) captureBinding(binding)
-  for (consumer in consumers) {
-    capture(consumer.pointer)
-    consumer.injectedMemberPointer?.let { pointer -> capture(pointer) }
-  }
-  for (graph in graphs) {
-    capture(graph.pointer)
-    for (factory in graph.extensionFactories) capture(factory.pointer)
-    for (implementation in graph.defaultImplementations) {
-      capture(implementation.declaration.pointer)
-      for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
-    }
-    for (contribution in graph.contributedInterfaces) {
-      capture(contribution.contribution.pointer)
-      for (binding in contribution.bindings) captureBinding(binding)
-      for (consumer in contribution.consumers) capture(consumer.pointer)
-      for (factory in contribution.extensionFactories) capture(factory.pointer)
-      for (implementation in contribution.defaultImplementations) {
-        capture(implementation.declaration.pointer)
-        for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
-      }
-    }
-  }
-  for (contribution in contributions) capture(contribution.pointer)
-  for (site in assistedSites) capture(site.pointer)
-  for (container in bindingContainers) capture(container.pointer)
-  for (dynamicGraph in dynamicGraphs) {
-    capture(dynamicGraph.pointer)
-    for (input in dynamicGraph.containerInputs) captureBinding(input)
-  }
-  capturedBindingSourceIdentities =
-    IdentityHashMap<KaBinding, BindingIndex.SourcePointerIdentity>().apply {
-      for (binding in capturedBindings) {
-        checkCanceledEvery(pointerCaptureWorkIndex++)
-        pointerSourceIdentities[binding.pointer]?.let { identity -> put(binding, identity) }
-      }
-    }
-
-  val fileOrdinalTable =
-    FileOrdinalTable.freeze(
-      representatives.keys.withIndex().associate { (ordinal, file) ->
-        file to FileOrdinal(ordinal)
-      }
-    )
-  val moduleByFile = linkedMapOf<VirtualFile, ModuleViewId>()
-  val moduleIds = linkedMapOf<KaModule, ModuleViewId>()
-  val moduleRepresentatives = linkedMapOf<KaModule, PsiElement>()
-  for ((file, element) in representatives) {
-    ProgressManager.checkCanceled()
-    val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
-    val moduleId = moduleIds.getOrPut(module) { ModuleViewId(moduleIds.size) }
-    moduleByFile[file] = moduleId
-    moduleRepresentatives.putIfAbsent(module, element)
-  }
-
-  val moduleViews = linkedMapOf<ModuleViewId, BindingIndexModuleView>()
-  for ((module, moduleId) in moduleIds) {
-    ProgressManager.checkCanceled()
-    val scope = KaResolutionScope.forModule(module)
-    val visibleFiles = BooleanArray(fileOrdinalTable.size)
-    for ((file, element) in representatives) {
-      ProgressManager.checkCanceled()
-      if (scope.contains(element)) {
-        visibleFiles[fileOrdinalTable.getValue(file).value] = true
-      }
-    }
-    val moduleElement = checkNotNull(moduleRepresentatives[module])
-    moduleViews[moduleId] =
-      BindingIndexModuleView(
-        id = moduleId,
-        module = module,
-        visibleFileOrdinals = visibleFiles,
-        fileOrdinalTable = fileOrdinalTable,
-        daggerAnvilInteropEnabled = moduleElement.metroIdeState().options.enableDaggerAnvilInterop,
-      )
-  }
-  resolutionInputs =
-    BindingIndexResolutionInputs(
-      fileOrdinalTable,
-      moduleByFile,
-      moduleViews,
-      pointerSourceIdentities,
-    )
 }
 
 private enum class IndexRequestMode {
   CACHE_ONLY,
+  STALE_CACHE_ONLY,
+  AUTOMATIC_BACKGROUND,
   BACKGROUND,
   SYNCHRONOUS,
+}
+
+private enum class IndexBuildIntent {
+  AUTOMATIC,
+  EXPLICIT,
+  MANUAL_REFRESH,
+}
+
+private enum class IndexBuildOutcome {
+  PUBLISHED,
+  SKIPPED,
+  FAILED,
+  CANCELED,
+}
+
+private class PendingIndexBuild(
+  val module: Module,
+  var intent: IndexBuildIntent,
+  val waiters: MutableList<CompletableDeferred<IndexBuildOutcome>>,
+) {
+  fun upgrade(addedIntent: IndexBuildIntent) {
+    if (intent == IndexBuildIntent.AUTOMATIC && addedIntent == IndexBuildIntent.EXPLICIT) {
+      intent = IndexBuildIntent.EXPLICIT
+    }
+  }
+}
+
+private data class ManualRefreshRequest(val id: Long)
+
+private data class ManualRefreshTarget(
+  val key: SnapshotKey,
+  val modules: List<Module>,
+)
+
+private data class CollectedResolutionCandidate(
+  val source: SourceSnapshot?,
+  val consumedInvalidations: CapturedInvalidations,
+  val semanticRevision: Long,
+  val inputs: IndexInputs,
+  val buildersByKey: Map<SnapshotKey, BindingIndexBuilder>,
+  val keysByModule: Map<Module, SnapshotKey>,
+)
+
+private class ResolutionCandidateSupersededException : RuntimeException() {
+  override fun fillInStackTrace(): Throwable = this
+}
+
+private data class CompletedFilePresentationBundle(
+  val index: BindingIndex,
+  val key: FilePresentationKey,
+  val bundle: FilePresentationBundle,
+)
+
+/** Requests updated declaration locations for one published bundle and file version. */
+private data class PendingFilePresentationAnchorBuild(
+  val index: BindingIndex,
+  val key: FilePresentationKey,
+  val baseBundle: FilePresentationBundle,
+  val modificationStamp: Long,
+)
+
+/** Updated declaration locations waiting for the coordinator to check and publish them. */
+private data class CompletedFilePresentationAnchorBundle(
+  val index: BindingIndex,
+  val key: FilePresentationKey,
+  val baseBundle: FilePresentationBundle,
+  val modificationStamp: Long,
+  val bundle: FilePresentationBundle,
+)
+
+/** Tracks one worker so only its matching terminal event can release the slot. */
+private data class FilePresentationBuildAttempt(
+  val id: Long,
+  val index: BindingIndex,
+  val job: Job,
+)
+
+/** Tracks the original bundle and file version used by one declaration-location worker. */
+private data class FilePresentationAnchorBuildAttempt(
+  val id: Long,
+  val index: BindingIndex,
+  val baseBundle: FilePresentationBundle,
+  val modificationStamp: Long,
+  val job: Job,
+)
+
+/** Terminal state for a presentation worker attempt. */
+private sealed interface FilePresentationBuildOutcome {
+  data class Succeeded(val bundle: FilePresentationBundle) : FilePresentationBuildOutcome
+
+  data object Failed : FilePresentationBuildOutcome
+
+  data object Canceled : FilePresentationBuildOutcome
+}
+
+private sealed interface ResolutionCoordinatorEvent {
+  val coalescingKey: Any
+
+  data class Psi(val changes: PendingPsiChanges) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.Psi
+  }
+
+  data object ProjectInputs : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.ProjectInputs
+  }
+
+  data object Settings : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.Settings
+  }
+
+  data class PresentationDemand(val module: Module) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.PresentationDemand(module)
+  }
+
+  class Build(
+    val module: Module,
+    var intent: IndexBuildIntent,
+    val completions: MutableList<CompletableDeferred<IndexBuildOutcome>>,
+  ) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.Build(module)
+  }
+
+  data class ManualRefresh(val requestId: Long) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.ManualRefresh
+  }
+
+  data class FilePresentationRequest(
+    val index: BindingIndex,
+    val key: FilePresentationKey,
+  ) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.FilePresentationRequest(key)
+  }
+
+  data class FilePresentationComplete(
+    val index: BindingIndex,
+    val key: FilePresentationKey,
+    val attemptId: Long,
+    val outcome: FilePresentationBuildOutcome,
+  ) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any =
+      ResolutionIngressEventKey.FilePresentationComplete(key, attemptId)
+  }
+
+  data class FilePresentationAnchorRequest(
+    val index: BindingIndex,
+    val key: FilePresentationKey,
+    val baseBundle: FilePresentationBundle,
+    val modificationStamp: Long,
+  ) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = ResolutionIngressEventKey.FilePresentationAnchorRequest(key)
+  }
+
+  data class FilePresentationAnchorComplete(
+    val index: BindingIndex,
+    val key: FilePresentationKey,
+    val attemptId: Long,
+    val baseBundle: FilePresentationBundle,
+    val modificationStamp: Long,
+    val outcome: FilePresentationBuildOutcome,
+  ) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any =
+      ResolutionIngressEventKey.FilePresentationAnchorComplete(key, attemptId)
+  }
+
+  class TestBarrier(val completion: CompletableDeferred<Unit>) : ResolutionCoordinatorEvent {
+    override val coalescingKey: Any = this
+  }
+}
+
+private sealed interface ResolutionIngressEventKey {
+  data object Psi : ResolutionIngressEventKey
+
+  data object ProjectInputs : ResolutionIngressEventKey
+
+  data object Settings : ResolutionIngressEventKey
+
+  data object ManualRefresh : ResolutionIngressEventKey
+
+  data class PresentationDemand(val module: Module) : ResolutionIngressEventKey
+
+  data class Build(val module: Module) : ResolutionIngressEventKey
+
+  data class FilePresentationRequest(val key: FilePresentationKey) : ResolutionIngressEventKey
+
+  data class FilePresentationComplete(val key: FilePresentationKey, val attemptId: Long) :
+    ResolutionIngressEventKey
+
+  data class FilePresentationAnchorRequest(val key: FilePresentationKey) : ResolutionIngressEventKey
+
+  data class FilePresentationAnchorComplete(
+    val key: FilePresentationKey,
+    val attemptId: Long,
+  ) : ResolutionIngressEventKey
+}
+
+private fun mergeResolutionCoordinatorEvents(
+  existing: ResolutionCoordinatorEvent,
+  added: ResolutionCoordinatorEvent,
+): ResolutionCoordinatorEvent {
+  check(existing.coalescingKey == added.coalescingKey)
+  return when (added) {
+    is ResolutionCoordinatorEvent.Psi -> {
+      val previous = existing as ResolutionCoordinatorEvent.Psi
+      ResolutionCoordinatorEvent.Psi(previous.changes.mergeInPlace(added.changes))
+    }
+    is ResolutionCoordinatorEvent.Build -> {
+      val previous = existing as ResolutionCoordinatorEvent.Build
+      if (added.intent == IndexBuildIntent.EXPLICIT) previous.intent = IndexBuildIntent.EXPLICIT
+      previous.completions += added.completions
+      previous
+    }
+    else -> added
+  }
 }
 
 /** Keeps one factory instance per source parameter while retaining every exact graph owner. */
@@ -1590,16 +3267,31 @@ private class FactoryInputBindingGroup(
   var additionalOwners: MutableSet<GraphDeclarationId>? = null,
 )
 
-/** Retries platform read-action cancellations without cancelling the long-lived index worker. */
+/** Retries platform read-action cancellations while the calling operation remains active. */
 internal suspend fun <T> retryCancelledIndexBuild(build: suspend () -> T): T {
   while (true) {
     try {
       return build()
-    } catch (_: ProcessCanceledException) {
-      // Yield before retrying so a cancelled service scope still stops the worker promptly.
+    } catch (exception: ProcessCanceledException) {
+      if (exception is ResolutionBuildPendingException) {
+        when (exception.completion.await()) {
+          IndexBuildOutcome.PUBLISHED -> Unit
+          IndexBuildOutcome.CANCELED ->
+            throw CancellationException("Metro resolution service was disposed")
+          IndexBuildOutcome.SKIPPED,
+          IndexBuildOutcome.FAILED -> throw exception
+        }
+      }
+      // Yield before retrying so cancellation of the calling coroutine stops promptly.
       yield()
     }
   }
+}
+
+private class ResolutionBuildPendingException(
+  val completion: CompletableDeferred<IndexBuildOutcome>
+) : ProcessCanceledException() {
+  override fun fillInStackTrace(): Throwable = this
 }
 
 private val FORCE_TRACKER_KEY = Key.create<SimpleModificationTracker>("metro.shard.force.tracker")
@@ -1611,60 +3303,165 @@ private data class SnapshotKey(
 
 private data class IndexInputs(val roots: Long, val compilerSettings: Long)
 
-/**
- * Captures the pre-change state once so deferred callbacks retain activation and refresh events.
- */
-private data class PendingProjectInputs(val snapshot: SourceSnapshot?)
-
-private data class IndexSnapshot(
-  val index: BindingIndex,
-  val generation: Long,
-  val rootsGeneration: Long,
+/** Immutable indexes and the index selected for each module in one generation. */
+private class ResolutionGeneration(
+  val token: IndexGenerationToken,
+  val inputs: IndexInputs,
+  val semanticRevision: Long,
+  val source: SourceSnapshot?,
+  indexesByKey: Map<SnapshotKey, BindingIndex>,
+  keysByModule: Map<Module, SnapshotKey>,
 ) {
-  fun matches(currentGeneration: Long, currentRootsGeneration: Long): Boolean =
-    generation == currentGeneration && rootsGeneration == currentRootsGeneration
-}
+  val indexesByKey: Map<SnapshotKey, BindingIndex> = indexesByKey.toMap()
+  val keysByModule: Map<Module, SnapshotKey> = keysByModule.toMap()
+  val indexGenerationTokens: Set<IndexGenerationToken> =
+    this.indexesByKey.values.mapTo(linkedSetOf()) { it.generationToken }
 
-/**
- * Pending invalidations as one immutable value. [stamp] moves on every transition so a builder's
- * publish compare-and-set observes any concurrent change. [generation] moves only on semantic
- * invalidations and keys the snapshot cache.
- */
-private class Invalidations(
-  val stamp: Long = 0,
-  val generation: Long = 0,
-  val dirty: Set<VirtualFile> = emptySet(),
-  val forced: Set<VirtualFile> = emptySet(),
-  val requested: Set<VirtualFile> = emptySet(),
-  /** Re-shard every indexed file, recorded as a flag so listeners never copy the shard set. */
-  val forceAll: Boolean = false,
-) {
-  fun bumpGeneration(): Invalidations =
-    Invalidations(stamp + 1, generation + 1, dirty, forced, requested, forceAll)
-
-  fun withDirty(files: Set<VirtualFile>): Invalidations =
-    Invalidations(stamp + 1, generation + 1, dirty + files, forced, requested, forceAll)
-
-  fun withForceAll(): Invalidations =
-    Invalidations(stamp + 1, generation + 1, dirty, forced, requested, forceAll = true)
-
-  /** Requested files feed a future pass and do not invalidate published results. */
-  fun withRequested(file: VirtualFile): Invalidations =
-    if (file in requested) {
-      this
-    } else {
-      Invalidations(stamp + 1, generation, dirty, forced, requested + file, forceAll)
-    }
-
-  /** Directory events merge all requests once instead of repeatedly copying the growing set. */
-  fun withRequested(files: Set<VirtualFile>): Invalidations {
-    if (files.isEmpty() || requested.containsAll(files)) return this
-    return Invalidations(stamp + 1, generation, dirty, forced, requested + files, forceAll)
+  fun index(module: Module): BindingIndex {
+    val key = keysByModule[module] ?: return BindingIndex.EMPTY
+    return indexesByKey[key] ?: BindingIndex.EMPTY
   }
 
-  /** The ledger after a successful publish, which consumed every pending entry. */
-  fun drainAll(): Invalidations = Invalidations(stamp + 1, generation)
+  fun contains(index: BindingIndex): Boolean = indexesByKey.values.any { it === index }
+
+  /** Updates project-input versions when the binding data is unchanged. */
+  fun withUpdatedInputs(
+    previousSource: SourceSnapshot,
+    updatedSource: SourceSnapshot,
+    updatedInputs: IndexInputs,
+  ): ResolutionGeneration {
+    if (source !== previousSource) return this
+    return ResolutionGeneration(
+      token = token,
+      inputs = updatedInputs,
+      semanticRevision = semanticRevision,
+      source = updatedSource,
+      indexesByKey = indexesByKey,
+      keysByModule = keysByModule,
+    )
+  }
+
+  companion object {
+    const val EMPTY_REVISION = -1L
+    val EMPTY =
+      ResolutionGeneration(
+        token = IndexGenerationToken.EMPTY,
+        inputs = IndexInputs(roots = -1L, compilerSettings = -1L),
+        semanticRevision = EMPTY_REVISION,
+        source = null,
+        indexesByKey = emptyMap(),
+        keysByModule = emptyMap(),
+      )
+  }
 }
+
+/**
+ * Complete reader state. Disposal is terminal and browser revisions track the frozen presentation.
+ */
+private data class PublishedResolution(
+  val current: ResolutionGeneration,
+  val presentation: ResolutionGeneration,
+  val filePresentationBundles: Map<FilePresentationKey, FilePresentationBundle> = emptyMap(),
+  val classifiedSemanticClock: Long = 0L,
+  val latestSemanticRevision: Long = 0L,
+  val trackedSourceFiles: Set<VirtualFile> = emptySet(),
+  val knownIrrelevantFiles: Set<VirtualFile> = emptySet(),
+  val graphBrowserActivated: Boolean = false,
+  val graphBrowserRefreshRevision: Long = 0L,
+  val manualStaleNotificationSent: Boolean = false,
+  val isDisposed: Boolean = false,
+) {
+  companion object {
+    val EMPTY = PublishedResolution(ResolutionGeneration.EMPTY, ResolutionGeneration.EMPTY)
+    val DISPOSED = EMPTY.copy(isDisposed = true)
+  }
+}
+
+private enum class SharedDeclarationChange(val forcesGlobalInvalidation: Boolean) {
+  NONE(false),
+  FILE_METADATA(false),
+  DECLARATION_CONTAINER(false),
+  FILE_CONTENTS(false),
+  DECLARATION(true),
+}
+
+private data class PendingFileChange(
+  val structuralChange: Boolean = false,
+  val sharedDeclarationChanges: Set<SharedDeclarationChange> = emptySet(),
+  val removedTrackedSharedDeclaration: Boolean = false,
+  val requestedByQuery: Boolean = false,
+) {
+  fun merge(other: PendingFileChange): PendingFileChange {
+    return PendingFileChange(
+      structuralChange = structuralChange || other.structuralChange,
+      sharedDeclarationChanges = sharedDeclarationChanges + other.sharedDeclarationChanges,
+      removedTrackedSharedDeclaration =
+        removedTrackedSharedDeclaration || other.removedTrackedSharedDeclaration,
+      requestedByQuery = requestedByQuery || other.requestedByQuery,
+    )
+  }
+}
+
+private class PendingPsiChanges(
+  files: Map<VirtualFile, PendingFileChange> = emptyMap(),
+  directories: Set<VirtualFile> = emptySet(),
+) {
+  val files = LinkedHashMap(files)
+  val directories = LinkedHashSet(directories)
+
+  val isEmpty: Boolean
+    get() = files.isEmpty() && directories.isEmpty()
+
+  fun mergeInPlace(added: PendingPsiChanges): PendingPsiChanges {
+    for ((file, change) in added.files) {
+      files[file] = files[file]?.merge(change) ?: change
+    }
+    directories += added.directories
+    return this
+  }
+}
+
+private data class ClassifiedPsiChanges(
+  val dirty: Set<VirtualFile>,
+  val requested: Set<VirtualFile>,
+  val requestedToRemove: Set<VirtualFile>,
+  val forceAll: Boolean,
+  val restartDaemon: Boolean,
+  val fingerprints: Map<VirtualFile, String?>,
+  val irrelevantFiles: Set<VirtualFile>,
+  val irrelevantFilesToRemove: Set<VirtualFile>,
+) {
+  class Builder {
+    val dirty = linkedSetOf<VirtualFile>()
+    val requested = linkedSetOf<VirtualFile>()
+    val requestedToRemove = linkedSetOf<VirtualFile>()
+    var forceAll = false
+    var restartDaemon = false
+    val fingerprints = linkedMapOf<VirtualFile, String?>()
+    val irrelevantFiles = linkedSetOf<VirtualFile>()
+    val irrelevantFilesToRemove = linkedSetOf<VirtualFile>()
+
+    fun build(): ClassifiedPsiChanges =
+      ClassifiedPsiChanges(
+        dirty = dirty.toSet(),
+        requested = requested.toSet(),
+        requestedToRemove = requestedToRemove.toSet(),
+        forceAll = forceAll,
+        restartDaemon = restartDaemon,
+        fingerprints = fingerprints.toMap(),
+        irrelevantFiles = irrelevantFiles.toSet(),
+        irrelevantFilesToRemove = irrelevantFilesToRemove.toSet(),
+      )
+  }
+}
+
+/** Immutable source work captured for one generation attempt. */
+private data class CapturedInvalidations(
+  val dirty: Set<VirtualFile>,
+  val requested: Set<VirtualFile>,
+  val forceAll: Boolean,
+  val semanticRevision: Long,
+)
 
 /** An immutable source view. Incremental passes copy it with only the changed shards replaced. */
 private class SourceSnapshot(
@@ -1676,8 +3473,10 @@ private class SourceSnapshot(
   val shardOrder: List<VirtualFile>,
   /** Dependency file to the shard files that must rebuild when it changes. */
   val dependencyOwners: PartitionedFileMap<Set<VirtualFile>>,
+  /** Maps shared declaration files to the shards that reference them. */
+  val sharedDeclarationOwners: PartitionedFileMap<Set<VirtualFile>>,
   /** Reused when changed shards leave every effective binary lookup input unchanged. */
-  val librarySummary: SourceLibrarySummaryReference,
+  val librarySummary: FinalizedSourceLibrarySummary?,
 ) {
   fun withInputs(newInputs: IndexInputs): SourceSnapshot =
     SourceSnapshot(
@@ -1687,14 +3486,30 @@ private class SourceSnapshot(
       shards,
       shardOrder,
       dependencyOwners,
+      sharedDeclarationOwners,
       librarySummary,
     )
+
+  fun withLibrarySummary(summary: FinalizedSourceLibrarySummary): SourceSnapshot {
+    if (librarySummary === summary) return this
+    return SourceSnapshot(
+      inputs,
+      moduleFingerprints,
+      shortNames,
+      shards,
+      shardOrder,
+      dependencyOwners,
+      sharedDeclarationOwners,
+      summary,
+    )
+  }
 }
 
-/** Collects one immutable source transition without copying unrelated shards or owner sets. */
+/** Collects changed shards and dependency owners, then builds a snapshot sharing unchanged data. */
 private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = null) {
   private val shardChanges = linkedMapOf<VirtualFile, FileShard?>()
   private val ownerChanges = linkedMapOf<VirtualFile, MutableSet<VirtualFile>?>()
+  private val sharedOwnerChanges = linkedMapOf<VirtualFile, MutableSet<VirtualFile>?>()
 
   fun containsShard(file: VirtualFile): Boolean = currentShard(file) != null
 
@@ -1705,6 +3520,9 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
     shardChanges[file] = shard
     for (dependencyFile in shard.dependencyFiles) {
       mutableOwners(dependencyFile).add(file)
+    }
+    for (sharedDeclarationFile in shard.sharedDeclarationFiles) {
+      mutableSharedOwners(sharedDeclarationFile).add(file)
     }
   }
 
@@ -1718,6 +3536,13 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
         ownerChanges[dependencyFile] = null
       }
     }
+    for (sharedDeclarationFile in existing.sharedDeclarationFiles) {
+      val owners = mutableSharedOwners(sharedDeclarationFile)
+      owners.remove(file)
+      if (owners.isEmpty()) {
+        sharedOwnerChanges[sharedDeclarationFile] = null
+      }
+    }
   }
 
   fun snapshot(
@@ -1727,12 +3552,18 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
   ): SourceSnapshot {
     val previousShards = previous?.shards ?: PartitionedFileMap.empty()
     val previousOwners = previous?.dependencyOwners ?: PartitionedFileMap.empty()
+    val previousSharedOwners = previous?.sharedDeclarationOwners ?: PartitionedFileMap.empty()
     val ownerUpdates = linkedMapOf<VirtualFile, Set<VirtualFile>?>()
     for ((file, owners) in ownerChanges) {
       ownerUpdates[file] = owners?.toSet()
     }
+    val sharedOwnerUpdates = linkedMapOf<VirtualFile, Set<VirtualFile>?>()
+    for ((file, owners) in sharedOwnerChanges) {
+      sharedOwnerUpdates[file] = owners?.toSet()
+    }
     val shards = previousShards.withChanges(shardChanges)
     val owners = previousOwners.withChanges(ownerUpdates)
+    val sharedOwners = previousSharedOwners.withChanges(sharedOwnerUpdates)
 
     val existingOrder = previous?.shardOrder.orEmpty()
     val membershipChanged = shardChanges.any { (file, updated) ->
@@ -1760,9 +3591,7 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
           val after = updated?.librarySignature()
           before != after
         }
-    val librarySummary =
-      if (!libraryInputsChanged && previousSummary != null) previousSummary
-      else SourceLibrarySummaryReference()
+    val librarySummary = if (!libraryInputsChanged) previousSummary else null
     return SourceSnapshot(
       inputs,
       moduleFingerprints,
@@ -1770,6 +3599,7 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
       shards,
       order,
       owners,
+      sharedOwners,
       librarySummary,
     )
   }
@@ -1787,6 +3617,16 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
     }
     val existing = previous?.dependencyOwners?.get(file).orEmpty()
     return LinkedHashSet(existing).also { ownerChanges[file] = it }
+  }
+
+  private fun mutableSharedOwners(file: VirtualFile): MutableSet<VirtualFile> {
+    if (sharedOwnerChanges.containsKey(file)) {
+      val existing = sharedOwnerChanges[file]
+      if (existing != null) return existing
+      return linkedSetOf<VirtualFile>().also { sharedOwnerChanges[file] = it }
+    }
+    val existing = previous?.sharedDeclarationOwners?.get(file).orEmpty()
+    return LinkedHashSet(existing).also { sharedOwnerChanges[file] = it }
   }
 }
 
@@ -2172,7 +4012,7 @@ private data class FactoryInputLibrarySignature(
   val bindings: List<BindingLibrarySignature>,
 )
 
-/** Fixed-width immutable hash buckets; a transition copies only buckets whose entries change. */
+/** Stores immutable hash buckets so updates copy only the buckets containing changed entries. */
 private class PartitionedFileMap<V : Any>
 private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
 
@@ -2215,47 +4055,28 @@ private constructor(private val buckets: Array<Map<VirtualFile, V>?>) {
   }
 }
 
-/** A failed or canceled calculation is never published; equivalent source snapshots share this. */
-private class SourceLibrarySummaryReference {
-  @Volatile private var summary: SourceLibrarySummary? = null
-
-  fun getOrCreate(project: Project, source: SourceAggregate): SourceLibrarySummary {
-    summary?.let {
-      return it
-    }
-    synchronized(this) {
-      summary?.let {
-        return it
-      }
-      val sourceIndex = buildSourceOwnershipIndex(project, source)
-      val consumerOwnership = ConsumerOwnershipBundle.build(sourceIndex)
-      val sourceFactories =
-        SourceAssistedFactoryPostProcessor(
-            project,
-            source.bindings,
-            source.consumers,
-            consumerOwnership,
-          )
-          .resolveInitial()
-      val completeSource = source.withAddedFactories(sourceFactories.addedBindings)
-      val inputs = completeSource.libraryInputs(project, sourceFactories, consumerOwnership)
-      val result =
-        SourceLibrarySummary(
-          inputs,
-          sourceFactories.factoryUseSites,
-          consumerOwnership,
-          sourceFactories,
-        )
-      ProgressManager.checkCanceled()
-      summary = result
-      return result
-    }
-  }
+private fun buildFinalizedSourceLibrarySummary(
+  project: Project,
+  source: SourceAggregate,
+  sourceIndex: BindingIndex,
+): FinalizedSourceLibrarySummary {
+  val consumerOwnership = ConsumerOwnershipBundle.build(sourceIndex)
+  val sourceFactories =
+    SourceAssistedFactoryPostProcessor(
+        project,
+        source.bindings,
+        source.consumers,
+        consumerOwnership,
+      )
+      .resolveInitial()
+  val completeSource = source.withAddedFactories(sourceFactories.addedBindings)
+  val inputs = completeSource.libraryInputs(project, sourceFactories, consumerOwnership)
+  ProgressManager.checkCanceled()
+  return FinalizedSourceLibrarySummary(inputs, consumerOwnership, sourceFactories)
 }
 
-private data class SourceLibrarySummary(
+private data class FinalizedSourceLibrarySummary(
   val inputs: LibraryInputs,
-  val factoryUseSites: SourceAssistedFactoryUseSites,
   val consumerOwnership: ConsumerOwnershipBundle,
   val sourceFactories: SourceFactoryResolution,
 )
@@ -2508,12 +4329,21 @@ internal fun sweepAnnotationIds(options: MetroOptions): Set<ClassId> {
  * Includes local import aliases without resolving annotations or starting an Analysis API session.
  */
 internal fun KtFile.annotationShortNamesIncludingAliases(annotationIds: Set<ClassId>): Set<String> {
-  val names = annotationIds.mapTo(mutableSetOf()) { it.shortClassName.asString() }
+  val names = mutableSetOf<String>()
+  for (annotationId in annotationIds) {
+    ProgressManager.checkCanceled()
+    names += annotationId.shortClassName.asString()
+  }
   for (directive in importDirectives) {
+    ProgressManager.checkCanceled()
     val alias = directive.aliasName ?: continue
     val importedName = directive.importedFqName ?: continue
-    if (annotationIds.any { it.asSingleFqName() == importedName }) {
-      names += alias
+    for (annotationId in annotationIds) {
+      ProgressManager.checkCanceled()
+      if (annotationId.asSingleFqName() == importedName) {
+        names += alias
+        break
+      }
     }
   }
   return names

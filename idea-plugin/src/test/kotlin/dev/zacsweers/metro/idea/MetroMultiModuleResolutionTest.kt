@@ -4,13 +4,16 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.UsefulTestCase
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -29,6 +32,8 @@ import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
 import java.util.IdentityHashMap
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
@@ -127,7 +132,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val inputs = index.resolutionInputs
     val appView = checkNotNull(inputs.moduleViewFor(appFile.virtualFile))
     val libraryView = checkNotNull(inputs.moduleViewFor(libraryFile.virtualFile))
@@ -248,7 +253,10 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    // Synchronous validation needs a current index for each graph's declaration module.
+    fixture.project.service<MetroResolutionService>().awaitIndex(apiFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(implementationFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val validation = fixture.project.service<MetroGraphValidationService>()
     val graph =
       checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
@@ -406,7 +414,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val validation = fixture.project.service<MetroGraphValidationService>()
     fun context(name: String) = index.contextsFor(index.graphs.single { it.name == name }).single()
     fun accessors(name: String) =
@@ -517,7 +525,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val validation = fixture.project.service<MetroGraphValidationService>()
     fun context(name: String) = index.contextsFor(index.graphs.single { it.name == name }).single()
     fun accessors(name: String) =
@@ -609,7 +617,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(apiFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val child =
       checkNotNull(index.graphEntryAt(apiFile.declarationsIncludingNested().klass("SharedChild")))
     val childContexts = index.contextsFor(child).associateBy { it.rootGraph.name }
@@ -682,7 +691,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val serviceConsumer =
       index.consumerEntryAt(libraryFile.declarationsIncludingNested().parameter("service"))!!
     val resolution = index.resolveConsumer(serviceConsumer)
@@ -779,7 +788,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val graph = index.graphs.single { it.name == "LibGraph" }
     val contexts = index.contextsFor(graph)
     val staticContext = contexts.single { it.dynamicGraph == null }
@@ -871,7 +880,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val graph = index.graphs.single { it.name == "LibGraph" }
     val contexts = index.contextsFor(graph)
     val staticContext = contexts.single { it.dynamicGraph == null }
@@ -930,7 +939,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(indirectGraphFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(indirectGraphFile)
     val contribution = libraryFile.declarationsIncludingNested().klass("LibService")
     val graph = index.graphs.single { it.name == "IndirectGraph" }
     assertTrue(
@@ -1009,7 +1018,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val baseIndex = fixture.project.service<MetroResolutionService>().index(friendFile)
+    val baseIndex = fixture.project.service<MetroResolutionService>().awaitIndex(friendFile)
     val declarations = libraryFile.declarationsIncludingNested()
     val hiddenService = declarations.klass("HiddenService")
     val hiddenContainer =
@@ -1161,7 +1170,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val appGraph = index.graphEntryAt(appFile.declarationsIncludingNested().klass("SharedGraph"))!!
     val bridgeGraph =
       index.graphEntryAt(bridgeFile.declarationsIncludingNested().klass("SharedGraph"))!!
@@ -1233,7 +1243,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val service = fixture.project.service<MetroGraphValidationService>()
     for ((file, expectedType) in listOf(appFile to "kotlin.String", bridgeFile to "kotlin.Int")) {
       val declaration = file.declarationsIncludingNested().klass("SharedGraph")
@@ -1295,7 +1306,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val graph = index.graphs.single { it.name == "AppGraph" }
       val result =
         fixture.project
@@ -1394,7 +1405,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val graph =
         checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
       val context = index.contextsFor(graph).single()
@@ -1465,7 +1476,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
         IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-        val index = fixture.project.service<MetroResolutionService>().index(appFile)
+        fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+        val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
         val includedConsumer =
           index.consumers.single {
             it.includedContainerKey?.renderedType ==
@@ -1533,7 +1545,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val graph =
         checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph")))
       val context = index.contextsFor(graph).single()
@@ -1616,7 +1628,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val sourceFactoryType = "app.Outer.Factory<libtest.LibClientWithDeps>"
       assertTrue(index.consumers.none { it.key.renderedType == sourceFactoryType })
       assertTrue(
@@ -1708,7 +1720,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(annotatedFile)
+      fixture.project.service<MetroResolutionService>().awaitIndex(ordinaryFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(annotatedFile)
       val annotatedGraph =
         checkNotNull(
           index.graphEntryAt(annotatedFile.declarationsIncludingNested().klass("SharedGraph"))
@@ -1829,7 +1842,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val validation = fixture.project.service<MetroGraphValidationService>()
       val appGraph =
         checkNotNull(index.graphEntryAt(appFile.declarationsIncludingNested().klass("SharedGraph")))
@@ -1908,7 +1922,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val graph = index.graphs.single { it.name == "AppGraph" }
       val result =
         fixture.project
@@ -1988,7 +2002,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
       IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-      val index = fixture.project.service<MetroResolutionService>().index(appFile)
+      val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
       val graph = index.graphs.single { it.name == "AppGraph" }
       val result =
         fixture.project
@@ -2084,7 +2098,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
         IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-        val index = fixture.project.service<MetroResolutionService>().index(appFile)
+        fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+        val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
         val includedConsumer =
           index.consumers.single {
             it.includedContainerKey?.renderedType ==
@@ -2155,7 +2170,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val validation = fixture.project.service<MetroGraphValidationService>()
     for (file in listOf(appFile, bridgeFile)) {
       val declaration = file.declarationsIncludingNested().klass("SharedGraph")
@@ -2223,7 +2239,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val appDeclarations = appFile.declarationsIncludingNested()
     val bridgeDeclarations = bridgeFile.declarationsIncludingNested()
     val appParent = index.graphEntryAt(appDeclarations.klass("ParentGraph"))!!
@@ -2297,7 +2313,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(bridgeFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val validationService = fixture.project.service<MetroGraphValidationService>()
     val appGraph = index.graphEntryAt(appFile.declarationsIncludingNested().klass("FactoryGraph"))!!
     val bridgeGraph =
@@ -2352,8 +2369,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
     val resolutionService = fixture.project.service<MetroResolutionService>()
-    val appIndex = resolutionService.index(appFile)
-    assertNotSame(appIndex, resolutionService.index(libraryFile))
+    val appIndex = resolutionService.awaitIndex(appFile)
+    assertNotSame(appIndex, resolutionService.awaitIndex(libraryFile))
     val appGraph = appIndex.graphEntryAt(appFile.declarationsIncludingNested().klass("AppGraph"))!!
     val results =
       fixture.project
@@ -2366,6 +2383,134 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       results.first().requireCompleted().diagnostics.map { it.id },
     )
     assertTrue(results.last().requireCompleted().diagnostics.isEmpty())
+  }
+
+  fun testManualRefreshPublishesDifferentOptionKeysAsOneGeneration() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryGraph.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        @Inject class OriginalLibraryService
+
+        @DependencyGraph
+        interface LibraryGraph {
+          val service: OriginalLibraryService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+
+        import dev.zacsweers.metro.*
+
+        @Inject class OriginalAppService
+
+        @DependencyGraph
+        interface AppGraph {
+          val service: OriginalAppService
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    appModule.setModuleMetroOptions("enable-function-providers" to "true")
+    libraryModule.setModuleMetroOptions("enable-function-providers" to "false")
+    for (otherModule in ModuleManager.getInstance(fixture.project).modules) {
+      if (otherModule != appModule && otherModule != libraryModule) {
+        otherModule.setModuleMetroOptions("enabled" to "false")
+      }
+    }
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val service = fixture.project.service<MetroResolutionService>()
+    // Wait for both option keys before reading the shared presentation generation.
+    service.awaitIndex(appFile)
+    service.awaitIndex(libraryFile)
+    val initialApp = service.presentationIndex(appFile)
+    val initialLibrary = service.presentationIndex(libraryFile)
+    assertNotSame(initialApp, initialLibrary)
+    assertSame(initialApp.generationToken, initialLibrary.generationToken)
+    val settings = MetroSettings.getInstance(fixture.project).state
+
+    try {
+      settings.automaticallyRefreshGraphData = false
+      service.settingsChanged()
+
+      val documents = PsiDocumentManager.getInstance(fixture.project)
+      val appDocument = checkNotNull(documents.getDocument(appFile))
+      val libraryDocument = checkNotNull(documents.getDocument(libraryFile))
+      runInEdtAndWait {
+        WriteCommandAction.runWriteCommandAction(fixture.project) {
+          appDocument.insertString(appDocument.textLength, "\n\n@Inject class AddedAppService")
+          libraryDocument.insertString(
+            libraryDocument.textLength,
+            "\n\n@Inject class AddedLibraryService",
+          )
+        }
+        documents.commitAllDocuments()
+      }
+
+      assertSame(initialApp, service.presentationIndex(appFile))
+      assertSame(initialLibrary, service.presentationIndex(libraryFile))
+
+      val refreshStarted = AtomicBoolean()
+      val inconsistentListenerSnapshot = AtomicBoolean()
+      val refreshed = CompletableFuture<Pair<BindingIndex, BindingIndex>>()
+      service.addIndexListener(testRootDisposable) {
+        if (!refreshStarted.get()) return@addIndexListener
+        val appPresentation = service.presentationIndex(appFile)
+        val libraryPresentation = service.presentationIndex(libraryFile)
+        val appChanged = appPresentation !== initialApp
+        val libraryChanged = libraryPresentation !== initialLibrary
+        val appContainsEdit =
+          appPresentation.bindings.any { it.typeKey.renderedType == "app.AddedAppService" }
+        val libraryContainsEdit =
+          libraryPresentation.bindings.any {
+            it.typeKey.renderedType == "lib.AddedLibraryService"
+          }
+        val completePublication =
+          appChanged &&
+            libraryChanged &&
+            appPresentation.generationToken === libraryPresentation.generationToken &&
+            appContainsEdit &&
+            libraryContainsEdit
+        if ((appChanged || libraryChanged) && !completePublication) {
+          inconsistentListenerSnapshot.set(true)
+        }
+        if (completePublication) {
+          refreshed.complete(appPresentation to libraryPresentation)
+        }
+      }
+
+      refreshStarted.set(true)
+      service.refreshGraphData()
+      PlatformTestUtil.waitForFuture(refreshed, 30_000)
+      val (refreshedApp, refreshedLibrary) = refreshed.join()
+
+      assertFalse(inconsistentListenerSnapshot.get())
+      assertNotSame(initialApp, refreshedApp)
+      assertNotSame(initialLibrary, refreshedLibrary)
+      assertTrue(refreshedApp.bindings.any { it.typeKey.renderedType == "app.AddedAppService" })
+      assertTrue(
+        refreshedLibrary.bindings.any {
+          it.typeKey.renderedType == "lib.AddedLibraryService"
+        }
+      )
+      assertSame(refreshedApp.generationToken, refreshedLibrary.generationToken)
+    } finally {
+      settings.automaticallyRefreshGraphData = true
+      service.settingsChanged()
+    }
   }
 
   fun testParentSuspendResolutionUsesParentOptionsButRejectsDisabledChild() {
@@ -2419,7 +2564,8 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val appIndex = fixture.project.service<MetroResolutionService>().index(appFile)
+    fixture.project.service<MetroResolutionService>().awaitIndex(libraryFile)
+    val appIndex = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val extension = appIndex.graphs.single { it.name == "LibExtension" }
     val context = appIndex.contextsFor(extension).single { it.chain.last().name == "AppGraph" }
     val result =
@@ -2488,7 +2634,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().index(appFile)
+    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
     val appAccessor =
       index.consumerEntryAt(appFile.declarationsIncludingNested().property("appValue"))!!
     val bridgeAccessor =
