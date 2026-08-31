@@ -158,39 +158,42 @@ internal fun BindingIndex.metroUsageRelations(
   target: KtDeclaration,
   pinnedPath: GraphPath?,
 ): List<MetroUsageRelation> {
-  val result = linkedMapOf<MetroUsageRelationKey, MetroUsageRelation>()
+  return withResolutionSession { session ->
+    val result = linkedMapOf<MetroUsageRelationKey, MetroUsageRelation>()
 
-  val targetBindings = bindingEntriesAt(target)
-  if (targetBindings.isNotEmpty()) {
-    val targetBindingSet = targetBindings.toSet()
-    for (consumer in consumersFor(targetBindings)) {
+    val targetBindings = bindingEntriesAt(target)
+    if (targetBindings.isNotEmpty()) {
+      val targetBindingSet = targetBindings.toSet()
+      for (consumer in session.consumersFor(targetBindings)) {
+        ProgressManager.checkCanceled()
+        if (pinnedPath != null) {
+          val pinnedBindings =
+            session.resolveConsumer(consumer).perContext.matchingContextEntry(pinnedPath)?.value
+              ?: continue
+          if (pinnedBindings.none { it in targetBindingSet }) continue
+        }
+        val declaration = consumer.pointer.element?.metroSourceDeclaration() ?: continue
+        addUsageRelation(result, declaration, MetroUsageRelationship.INJECTED_AT)
+      }
+    }
+
+    for (consumer in consumerEntriesAt(target)) {
       ProgressManager.checkCanceled()
-      if (pinnedPath != null) {
-        val pinnedBindings =
-          resolveConsumer(consumer).perContext.matchingContextEntry(pinnedPath)?.value ?: continue
-        if (pinnedBindings.none { it in targetBindingSet }) continue
+      val resolution = session.resolveConsumer(consumer)
+      val bindings =
+        if (pinnedPath == null) {
+          resolution.candidateBindings
+        } else {
+          resolution.perContext.matchingContextEntry(pinnedPath)?.value.orEmpty()
+        }
+      for (binding in distinctBindingDeclarations(bindings)) {
+        val declaration = binding.pointer.element?.metroSourceDeclaration() ?: continue
+        addUsageRelation(result, declaration, MetroUsageRelationship.PROVIDED_BY)
       }
-      val declaration = consumer.pointer.element?.metroSourceDeclaration() ?: continue
-      addUsageRelation(result, declaration, MetroUsageRelationship.INJECTED_AT)
     }
-  }
 
-  for (consumer in consumerEntriesAt(target)) {
-    ProgressManager.checkCanceled()
-    val resolution = resolveConsumer(consumer)
-    val bindings =
-      if (pinnedPath == null) {
-        resolution.candidateBindings
-      } else {
-        resolution.perContext.matchingContextEntry(pinnedPath)?.value.orEmpty()
-      }
-    for (binding in distinctBindingDeclarations(bindings)) {
-      val declaration = binding.pointer.element?.metroSourceDeclaration() ?: continue
-      addUsageRelation(result, declaration, MetroUsageRelationship.PROVIDED_BY)
-    }
+    result.values.toList()
   }
-
-  return result.values.toList()
 }
 
 private fun BindingIndex.hasMetroUsageTarget(target: KtDeclaration): Boolean {

@@ -107,8 +107,14 @@ Context-dependent implementation inlays use the graph context pinned in the Metr
 
 Open `View > Tool Windows > Metro`, then click **Load** to browse every graph context in the
 project. The status indicator shows loading progress or waits for IDE indexing before graphs become
-available. Graph extensions with different parent chains appear as separate rows rather than being
-merged together.
+available. Graph extensions with different parent chains appear as separate rows.
+
+Graph and binding data refreshes incrementally after relevant code changes by default. Large projects
+can disable automatic refresh in Metro's project settings. Editor decorations and the tool window
+then keep using the last published graph data. Decoration positions still update as declarations
+move, and decorations disappear when their declarations can no longer be identified safely. The tool
+window reports that graph data may be stale until **Refresh** or reenabling automatic refresh brings
+it up to date. Validation, Find Usages, and graph debug export still request current data directly.
 
 Calls to `createDynamicGraph` and `createDynamicGraphFactory` appear as separate graph contexts at
 their call sites. The browser applies each concrete binding-container type as an override, carries
@@ -164,6 +170,7 @@ Project settings live under `Settings > Tools > Metro`.
 - Suppress unused-declaration warnings for Metro-injected declarations
 - Suppress false-positive kapt configuration warnings in Metro-enabled modules
 - Show binding navigation (gutter icons, code vision, inlay hints)
+- Automatically refresh graphs and bindings after code changes
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types
 

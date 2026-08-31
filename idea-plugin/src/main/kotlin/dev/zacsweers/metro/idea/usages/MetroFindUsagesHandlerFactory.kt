@@ -7,6 +7,7 @@ import com.intellij.find.findUsages.FindUsagesHandler
 import com.intellij.find.findUsages.FindUsagesHandlerFactory
 import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
@@ -18,7 +19,14 @@ import com.intellij.util.Processor
 /** Warms Metro usage relationships before delegating ordinary Kotlin usage discovery. */
 class MetroFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
   override fun canFindUsages(element: PsiElement): Boolean {
-    return element.metroSourceDeclaration()?.hasPotentialMetroContext() == true
+    val declaration = element.metroSourceDeclaration() ?: return false
+    return if (ApplicationManager.getApplication().isDispatchThread) {
+      // Action updates use cached module state and fall back to Metro's default annotations.
+      declaration.hasPotentialCachedMetroContext() == true ||
+        declaration.hasPotentialDefaultMetroContext()
+    } else {
+      declaration.hasPotentialMetroContext()
+    }
   }
 
   override fun createFindUsagesHandler(

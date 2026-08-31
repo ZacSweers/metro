@@ -11,14 +11,14 @@ import com.intellij.codeInsight.hints.codeVision.DaemonBoundCodeVisionProvider
 import com.intellij.codeInsight.navigation.PsiTargetNavigator
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.GraphContextPinService
+import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.MetroSettings
-import dev.zacsweers.metro.idea.metroIdeState
-import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -50,18 +50,21 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     if (!MetroSettings.getInstance(ktFile.project).state.enableBindingResolution) {
       return emptyList()
     }
-    if (!ktFile.metroIdeState().isEnabled) return emptyList()
-    val index = ktFile.project.service<MetroResolutionService>().presentationIndex(ktFile)
+    val bundle =
+      ktFile.project.service<MetroResolutionService>().presentationBundle(ktFile)
+        ?: return emptyList()
     val pinService = ktFile.project.service<GraphContextPinService>()
 
     val entries = mutableListOf<Pair<TextRange, CodeVisionEntry>>()
     ktFile.accept(
       object : KtTreeVisitorVoid() {
         override fun visitDeclaration(dcl: KtDeclaration) {
+          ProgressManager.checkCanceled()
           super.visitDeclaration(dcl)
           // Parameters are too fine-grained for headers; they keep their gutter icons only.
           if (dcl !is KtNamedDeclaration || dcl is KtParameter) return
-          collectFor(dcl, index, pinService, entries)
+          val presentation = bundle.declaration(dcl) ?: return
+          collectFor(dcl, presentation, pinService, entries)
         }
       }
     )
@@ -70,14 +73,15 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
 
   private fun collectFor(
     declaration: KtNamedDeclaration,
-    index: BindingIndex,
+    presentation: FileDeclarationPresentation,
     pinService: GraphContextPinService,
     entries: MutableList<Pair<TextRange, CodeVisionEntry>>,
   ) {
-    val bindingEntries = index.bindingEntriesAt(declaration)
+    ProgressManager.checkCanceled()
+    val bindingEntries = presentation.bindingEntries
     if (bindingEntries.isNotEmpty()) {
-      val consumers = index.consumersFor(bindingEntries, pinService.pinnedPath)
-      // A zero count is noise, not signal
+      val consumers = presentation.reverseUsage?.consumersFor(pinService.pinnedPath).orEmpty()
+      // Omit zero counts to keep declaration headers useful.
       if (consumers.isNotEmpty()) {
         val key = bindingEntries.first().typeKey.render(short = true)
         entries +=
@@ -91,14 +95,27 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
       }
     }
 
-    val graph = (declaration as? KtClassOrObject)?.let { index.graphEntryAt(it) }
-    if (graph != null) {
-      val allContexts = index.contextsFor(graph)
+    val graphPresentation = if (declaration is KtClassOrObject) presentation.graph else null
+    if (graphPresentation != null) {
+      val graph = graphPresentation.graph
+      val allContexts = graphPresentation.contexts.map { it.context }
       val pinned = pinService.matchingContext(allContexts)
       val contexts = pinned?.let(::listOf) ?: allContexts
-      val queryContexts = contexts.mapNotNull(index::queryContext)
-      val contributions = queryContexts.flatMap { index.contributionsFor(it) }.distinct()
-      val inherited = queryContexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
+      val selected = graphPresentation.contexts.filter { it.context in contexts }
+      val contributions =
+        selected
+          .flatMap { context ->
+            ProgressManager.checkCanceled()
+            context.contributions
+          }
+          .distinct()
+      val inherited =
+        selected
+          .flatMap { context ->
+            ProgressManager.checkCanceled()
+            context.inheritedContributions
+          }
+          .distinct()
       if (contributions.isEmpty() && inherited.isEmpty()) return
       val scopes = graph.scopeKeys.joinToString { it.shortClassName.asString() }
       val text = buildString {
@@ -151,11 +168,14 @@ class MetroCodeVisionProvider : DaemonBoundCodeVisionProvider {
     targets: List<SmartPsiElementPointer<out KtElement>>,
     popupTitle: String,
   ) {
-    val elements = targets.mapNotNull { it.element }
-    when {
-      elements.isEmpty() -> {}
-      elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
-      else -> PsiTargetNavigator(elements.toTypedArray()).navigate(editor, popupTitle)
+    val project = editor.project ?: return
+    project.service<MetroNavigationService>().resolveTargets(editor, targets) { elements ->
+      if (editor.isDisposed) return@resolveTargets
+      when {
+        elements.isEmpty() -> {}
+        elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
+        else -> PsiTargetNavigator(elements.toTypedArray()).navigate(editor, popupTitle)
+      }
     }
   }
 

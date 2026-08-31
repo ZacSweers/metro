@@ -5,20 +5,24 @@ package dev.zacsweers.metro.idea.index
 import com.intellij.codeInsight.daemon.GutterIconDescriptor
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
-import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.PsiTargetNavigator
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.icons.AllIcons
+import com.intellij.ide.DataManager
 import com.intellij.navigation.GotoRelatedItem
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
@@ -28,21 +32,22 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.ui.awt.RelativePoint
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIcons
+import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
-import dev.zacsweers.metro.idea.metroIdeState
-import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.presentableName
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
+import java.awt.Component
 import java.awt.event.MouseEvent
 import javax.swing.Icon
+import kotlinx.coroutines.Job
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaSourceModule
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -85,42 +90,48 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     val declaration = element.parent as? KtNamedDeclaration ?: return
     if (declaration.nameIdentifier !== element) return
     if (!MetroSettings.getInstance(element.project).state.enableBindingResolution) return
-    if (!declaration.metroIdeState().isEnabled) return
-
-    val index = element.project.service<MetroResolutionService>().presentationIndex(declaration)
+    val bundle =
+      element.project.service<MetroResolutionService>().presentationBundle(declaration) ?: return
+    val presentation = bundle.declaration(declaration) ?: return
 
     if (GRAPH_OPTION.isEnabled || VALIDATE_OPTION.isEnabled) {
-      (declaration as? KtClassOrObject)
-        ?.let { index.graphEntryAt(it) }
-        ?.let { graph ->
+      if (declaration is KtClassOrObject) {
+        presentation.graph?.let { graphPresentation ->
+          val graph = graphPresentation.graph
           if (GRAPH_OPTION.isEnabled) {
-            result += graphMarker(element, graph, index)
+            result += graphMarker(element, graphPresentation)
           }
           // Validation is addressed by ClassId, so graphs without one (local declarations)
           // get no validate marker
           val classId = graph.classId
           if (VALIDATE_OPTION.isEnabled && classId != null) {
-            result += validateMarker(element, declaration, graph, classId, index)
+            result += validateMarker(element, declaration, graphPresentation, classId)
           }
         }
+      }
     }
 
     if (BINDING_OPTION.isEnabled) {
-      val bindingEntries = index.bindingEntriesAt(declaration)
+      val bindingEntries = presentation.bindingEntries
       if (bindingEntries.isNotEmpty()) {
-        result += bindingMarker(element, bindingEntries, index)
+        result += bindingMarker(element, bindingEntries, presentation.reverseUsage)
       }
     }
 
     if (CONSUMER_OPTION.isEnabled) {
-      val consumerEntries = index.consumerEntriesAt(declaration)
+      val consumerEntries = presentation.consumerEntries
       when {
         consumerEntries.size == 1 -> {
           val consumer = consumerEntries.single()
           if (consumer.graphRequestKind == ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR) {
-            result += injectorMarker(element, declaration, consumerEntries, index)
+            result += injectorMarker(element, declaration, consumerEntries, presentation)
           } else {
-            result += consumerMarker(element, consumer, index)
+            result +=
+              consumerMarker(
+                element,
+                consumer,
+                presentation.consumerResolutions.getValue(consumer),
+              )
           }
         }
         consumerEntries.size > 1 -> {
@@ -129,9 +140,9 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
             it.graphRequestKind == ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR
           }
           if (injectorEntries.isNotEmpty()) {
-            result += injectorMarker(element, declaration, injectorEntries, index)
+            result += injectorMarker(element, declaration, injectorEntries, presentation)
           } else {
-            result += specializedConsumerMarker(element, consumerEntries, index)
+            result += specializedConsumerMarker(element, consumerEntries, presentation, bundle)
           }
         }
       }
@@ -142,9 +153,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun specializedConsumerMarker(
     anchor: PsiElement,
     consumers: List<ConsumerEntry>,
-    index: BindingIndex,
+    presentation: FileDeclarationPresentation,
+    bundle: FilePresentationBundle,
   ): RelatedItemLineMarkerInfo<*> {
-    pinnedSpecializedConsumerMarker(anchor, consumers, index)?.let {
+    pinnedSpecializedConsumerMarker(anchor, consumers, presentation, bundle)?.let {
       return it
     }
 
@@ -157,7 +169,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     var hasMissingRequiredContext = false
     for (consumer in consumers) {
       if (consumer.contextKey != firstContextKey) requestedKeysDiffer = true
-      val resolution = index.resolveConsumer(consumer)
+      val resolution = presentation.consumerResolutions.getValue(consumer)
       contexts +=
         resolution.perContext.keys.map { context ->
           context.path.toString()
@@ -165,7 +177,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       for (contextBindings in resolution.perContext.values) {
         bindings += contextBindings
         if (resolutionsDiffer) continue
-        val identities = index.bindingResolutionIdentities(contextBindings)
+        val identities = bundle.bindingResolutionIdentities(contextBindings)
         val previousResolution = firstResolution
         if (previousResolution == null) {
           firstResolution = identities
@@ -178,7 +190,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       }
     }
     val renderedKeys = consumers.map { it.key.render(short = true) }.distinct()
-    val distinctBindings = index.distinctBindingDeclarations(bindings)
+    val distinctBindings = bundle.distinctBindingDeclarations(bindings)
     val bindingsDiffer = requestedKeysDiffer || resolutionsDiffer || hasMissingRequiredContext
     val tooltip = buildString {
       append("Metro dependency: ")
@@ -205,12 +217,13 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun pinnedSpecializedConsumerMarker(
     anchor: PsiElement,
     consumers: List<ConsumerEntry>,
-    index: BindingIndex,
+    presentation: FileDeclarationPresentation,
+    bundle: FilePresentationBundle,
   ): RelatedItemLineMarkerInfo<*>? {
     val pinService = anchor.project.service<GraphContextPinService>()
     val resolutions = consumers.mapNotNull { consumer ->
       val entry =
-        pinService.matchingEntry(index.resolveConsumer(consumer).perContext)
+        pinService.matchingEntry(presentation.consumerResolutions.getValue(consumer).perContext)
           ?: return@mapNotNull null
       PinnedConsumerResolution(consumer, entry.key, entry.value)
     }
@@ -218,7 +231,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     val context = resolutions.maxBy { it.context.path.segments.size }.context
     val renderedKeys = resolutions.map { it.consumer.key.render(short = true) }.distinct()
-    val bindings = index.distinctBindingDeclarations(resolutions.flatMap { it.bindings })
+    val bindings = bundle.distinctBindingDeclarations(resolutions.flatMap { it.bindings })
     val missingRequired = resolutions.any { !it.consumer.isOptional && it.bindings.isEmpty() }
     val contributions = bindings.count { it.multibindingId != null }
     val tooltip = buildString {
@@ -263,7 +276,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     anchor: PsiElement,
     declaration: KtNamedDeclaration,
     entries: List<ConsumerEntry>,
-    index: BindingIndex,
+    presentation: FileDeclarationPresentation,
   ): RelatedItemLineMarkerInfo<*> {
     val pinService = declaration.project.service<GraphContextPinService>()
     var pinnedContext: GraphContext? = null
@@ -271,7 +284,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     var unresolved = 0
     for (entry in entries) {
       if (entry.isOptional) continue
-      val resolution = index.resolveConsumer(entry)
+      val resolution = presentation.consumerResolutions.getValue(entry)
       val pinned = pinService.matchingEntry(resolution.perContext)
       if (pinned != null) {
         pinnedContext = pinned.key
@@ -326,10 +339,10 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun bindingMarker(
     anchor: PsiElement,
     entries: List<KaBinding>,
-    index: BindingIndex,
+    reverseUsage: ReverseUsagePresentation?,
   ): RelatedItemLineMarkerInfo<*> {
     val graphPath = anchor.project.service<GraphContextPinService>().pinnedPath
-    val targets = index.consumersFor(entries, graphPath).map { it.pointer }
+    val targets = reverseUsage?.consumersFor(graphPath).orEmpty().map { it.pointer }
     val tooltip =
       entries.joinToString(separator = "\n") { entry ->
         buildString {
@@ -356,9 +369,8 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun consumerMarker(
     anchor: PsiElement,
     consumer: ConsumerEntry,
-    index: BindingIndex,
+    resolution: ConsumerResolution,
   ): RelatedItemLineMarkerInfo<*> {
-    val resolution = index.resolveConsumer(consumer)
     val pinned =
       anchor.project.service<GraphContextPinService>().matchingEntry(resolution.perContext)
     val presentedBindings = pinned?.value ?: resolution.uniformBindings
@@ -424,7 +436,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
         if (bindings.isEmpty()) {
           if (consumer.isOptional) {
-            // An absent optional binding is by design, not a missing-binding error.
+            // Optional bindings use their default value when no binding is available.
             append(" · optional, uses its default")
           } else {
             append(" · no binding found in project sources (may be in a library or generated)")
@@ -466,15 +478,15 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
   private fun graphMarker(
     anchor: PsiElement,
-    graph: KaGraphDeclaration,
-    index: BindingIndex,
+    presentation: GraphPresentation,
   ): RelatedItemLineMarkerInfo<*> {
-    val allContexts = index.contextsFor(graph)
+    val graph = presentation.graph
+    val allContexts = presentation.contexts.map { it.context }
     val pinned = anchor.project.service<GraphContextPinService>().matchingContext(allContexts)
     val contexts = pinned?.let(::listOf) ?: allContexts
-    val queryContexts = contexts.mapNotNull(index::queryContext)
-    val contributions = queryContexts.flatMap { index.contributionsFor(it) }.distinct()
-    val inherited = queryContexts.flatMap { index.inheritedContributionsFor(it) }.distinct()
+    val selected = presentation.contexts.filter { it.context in contexts }
+    val contributions = selected.flatMap { it.contributions }.distinct()
+    val inherited = selected.flatMap { it.inheritedContributions }.distinct()
     val targets = (contributions + inherited).map { it.pointer }
     val scopesDisplay = graph.scopeKeys.joinToString { it.shortClassName.asString() }
     val tooltip = buildString {
@@ -498,7 +510,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       tooltip = tooltip,
       popupTitle =
         if (graph.scopeKeys.isEmpty()) "Contributions" else "Contributions to $scopesDisplay",
-      targets = targets,
+      targets = orderNavigationTargets(targets),
       graphClassId = graph.classId,
     )
   }
@@ -510,11 +522,11 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
   private fun validateMarker(
     anchor: PsiElement,
     declaration: KtNamedDeclaration,
-    graph: KaGraphDeclaration,
+    presentation: GraphPresentation,
     classId: ClassId,
-    index: BindingIndex,
   ): RelatedItemLineMarkerInfo<PsiElement> {
-    val allContexts = index.contextsFor(graph)
+    val graph = presentation.graph
+    val allContexts = presentation.contexts.map { it.context }
     val pinned = declaration.project.service<GraphContextPinService>().matchingContext(allContexts)
     val contexts = pinned?.let(::listOf) ?: allContexts
     val cached = contexts.mapNotNull { context ->
@@ -591,19 +603,15 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     emptyText: String,
     targets: List<SmartPsiElementPointer<out PsiElement>>,
   ): RelatedItemLineMarkerInfo<*> {
-    return NavigationGutterIconBuilder.create(icon)
-      .setTargets(
-        NotNullLazyValue.lazy {
-          // Cluster KMP source sets in hierarchy order: commonMain first, then intermediate
-          // source sets like nativeMain, then leaf platforms, alphabetical within each.
-          targets.mapNotNull { it.element }.sortedWith(sourceSetOrder)
-        }
-      )
-      .setTooltipText(tooltip)
-      .setPopupTitle(popupTitle)
-      .setEmptyPopupText(emptyText)
-      .setTargetRenderer { MetroTargetRenderer() }
-      .createLineMarkerInfo(anchor)
+    val orderedTargets = orderNavigationTargets(targets)
+    return MetroNavigationLineMarkerInfo(
+      anchor,
+      icon,
+      tooltip,
+      popupTitle,
+      emptyText,
+      orderedTargets,
+    )
   }
 }
 
@@ -612,6 +620,27 @@ private data class PinnedConsumerResolution(
   val context: GraphContext,
   val bindings: List<KaBinding>,
 )
+
+/** Resolves line marker targets only when navigation is requested. */
+private class MetroNavigationLineMarkerInfo(
+  anchor: PsiElement,
+  icon: Icon,
+  tooltip: String,
+  popupTitle: String,
+  emptyText: String,
+  targets: List<SmartPsiElementPointer<out PsiElement>>,
+) :
+  RelatedItemLineMarkerInfo<PsiElement>(
+    anchor,
+    anchor.textRange,
+    icon,
+    { tooltip },
+    { event, element ->
+      showTargets(event, element.project, popupTitle, emptyText, targets)
+    },
+    GutterIconRenderer.Alignment.LEFT,
+    { relatedItems(targets) },
+  )
 
 /**
  * The graph gutter marker. Clicking lists the graph's contributions. The right-click menu offers
@@ -629,9 +658,11 @@ private class GraphLineMarkerInfo(
     anchor.textRange,
     MetroIcons.CONTRIBUTED,
     { tooltip },
-    { event, element -> showTargets(event, element.project, popupTitle, targets) },
+    { event, element ->
+      showTargets(event, element.project, popupTitle, "No Metro contributions found", targets)
+    },
     GutterIconRenderer.Alignment.RIGHT,
-    { targets.mapNotNull { it.element }.map(::GotoRelatedItem) },
+    { relatedItems(targets) },
   ) {
 
   override fun createGutterRenderer(): GutterIconRenderer {
@@ -651,6 +682,16 @@ private class GraphLineMarkerInfo(
   }
 }
 
+/** The platform invokes related-item factories from its background read action. */
+private fun relatedItems(
+  targets: List<SmartPsiElementPointer<out PsiElement>>
+): List<GotoRelatedItem> {
+  return targets.mapNotNull { pointer ->
+    ProgressManager.checkCanceled()
+    pointer.element?.let(::GotoRelatedItem)
+  }
+}
+
 /** `@SingleIn(AppScope::class)` reads as its scope argument; marker-only scopes as themselves. */
 private fun scopeDisplay(scope: KaAnnotationSnapshot): String {
   val classArg =
@@ -664,35 +705,98 @@ private fun showTargets(
   event: MouseEvent?,
   project: Project,
   title: String,
+  emptyText: String,
   targets: List<SmartPsiElementPointer<out PsiElement>>,
 ) {
-  val elements = targets.mapNotNull { it.element }.sortedWith(sourceSetOrder)
-  when {
-    elements.isEmpty() -> {}
-    elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
-    else -> {
-      val popup =
-        PsiTargetNavigator(elements.toTypedArray())
-          .presentationProvider(MetroTargetRenderer())
-          .createPopup(project, title)
-      if (event != null) {
-        popup.show(RelativePoint(event))
-      } else {
-        popup.showInFocusCenter()
+  val relativePoint = event?.let(::RelativePoint)
+  val eventComponent = event?.component
+  resolveLineMarkerTargets(event, project, targets) { elements ->
+    if (eventComponent != null && !eventComponent.isShowing) return@resolveLineMarkerTargets
+    when {
+      elements.isEmpty() -> {
+        val popup = JBPopupFactory.getInstance().createMessage(emptyText)
+        if (relativePoint != null) popup.show(relativePoint) else popup.showInFocusCenter()
+      }
+      elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
+      else -> {
+        val popup =
+          PsiTargetNavigator(elements.toTypedArray())
+            .presentationProvider(MetroTargetRenderer())
+            .createPopup(project, title)
+        if (relativePoint != null) {
+          popup.show(relativePoint)
+        } else {
+          popup.showInFocusCenter()
+        }
       }
     }
   }
 }
 
-/**
- * Clusters KMP source sets in hierarchy order, commonMain first, then intermediate source sets like
- * nativeMain, then leaf platforms, alphabetical within each.
- */
-private val sourceSetOrder: Comparator<PsiElement> =
+/** Groups clicks by editor so a newer click replaces pending navigation from that editor. */
+internal fun resolveLineMarkerTargets(
+  event: MouseEvent?,
+  project: Project,
+  targets: List<SmartPsiElementPointer<out PsiElement>>,
+  onResolved: (List<PsiElement>) -> Unit,
+): Job? {
+  val eventComponent = event?.component
+  val editor =
+    eventComponent?.let(::editorForComponent)
+      ?: FileEditorManager.getInstance(project).selectedTextEditor
+  val navigation = project.service<MetroNavigationService>()
+  return if (editor != null) {
+    navigation.resolveTargets(editor, targets, onResolved)
+  } else {
+    navigation.resolveTargets(project, targets, onResolved)
+  }
+}
+
+/** Finds the clicked gutter's editor, including editors outside the selected file tab. */
+private fun editorForComponent(component: Component): Editor? {
+  val dataContext = DataManager.getInstance().getDataContext(component)
+  return CommonDataKeys.EDITOR.getData(dataContext)
+}
+
+private data class NavigationTargetOrder(
+  val pointer: SmartPsiElementPointer<out PsiElement>,
+  val sourceSetDepth: Int,
+  val moduleName: String,
+  val declarationName: String,
+  val originalIndex: Int,
+)
+
+/** Precomputes KMP source-set ordering during background marker collection. */
+internal fun orderNavigationTargets(
+  targets: List<SmartPsiElementPointer<out PsiElement>>
+): List<SmartPsiElementPointer<out PsiElement>> {
+  return targets
+    .mapIndexedNotNull { index, pointer ->
+      ProgressManager.checkCanceled()
+      val element = pointer.element ?: return@mapIndexedNotNull null
+      NavigationTargetOrder(
+        pointer = pointer,
+        sourceSetDepth = sourceSetDepth(element),
+        moduleName = ModuleUtilCore.findModuleForPsiElement(element)?.name.orEmpty(),
+        declarationName = (element as? KtNamedDeclaration)?.name.orEmpty(),
+        originalIndex = index,
+      )
+    }
+    .sortedWith(
+      Comparator { left, right ->
+        ProgressManager.checkCanceled()
+        navigationTargetOrder.compare(left, right)
+      }
+    )
+    .map(NavigationTargetOrder::pointer)
+}
+
+private val navigationTargetOrder: Comparator<NavigationTargetOrder> =
   compareBy(
-    { sourceSetDepth(it) },
-    { ModuleUtilCore.findModuleForPsiElement(it)?.name.orEmpty() },
-    { (it as? KtNamedDeclaration)?.name.orEmpty() },
+    NavigationTargetOrder::sourceSetDepth,
+    NavigationTargetOrder::moduleName,
+    NavigationTargetOrder::declarationName,
+    NavigationTargetOrder::originalIndex,
   )
 
 /**

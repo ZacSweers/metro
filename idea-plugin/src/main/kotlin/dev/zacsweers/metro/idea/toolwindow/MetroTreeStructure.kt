@@ -10,6 +10,7 @@ import com.intellij.ide.util.treeView.PresentableNodeDescriptor
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.SmartPsiElementPointer
@@ -22,6 +23,7 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
@@ -36,6 +38,8 @@ import java.util.IdentityHashMap
 import javax.swing.Icon
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+
+internal data class GraphContextOption(val text: String, val path: GraphPath)
 
 /** A row in the Metro tool window tree. Display data is precomputed under a read action. */
 internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
@@ -311,6 +315,9 @@ internal class MetroTreeStructure(
 ) : AbstractTreeStructure() {
 
   private val root = MetroTreeNode.Root()
+  private val contextOptionSnapshotLock = Any()
+  private var contextOptionSnapshotGeneration = 0L
+  @Volatile private var contextOptionSnapshot: List<GraphContextOption> = emptyList()
 
   override fun getRootElement(): Any = root
 
@@ -343,7 +350,10 @@ internal class MetroTreeStructure(
       is MetroTreeNode.Graph -> graphChildren(node)
       is MetroTreeNode.Category -> categoryRows(node)
       is MetroTreeNode.Multibinding ->
-        node.contributions.map { bindingRow(node, it, inMultibinding = true) }
+        node.contributions.map {
+          ProgressManager.checkCanceled()
+          bindingRow(node, it, inMultibinding = true)
+        }
       is MetroTreeNode.Validation -> validationChildren(node)
       is MetroTreeNode.Diagnostic -> diagnosticChildren(node)
       else -> emptyList()
@@ -353,13 +363,20 @@ internal class MetroTreeStructure(
   private fun categoryRows(node: MetroTreeNode.Category): List<MetroTreeNode> {
     if (!node.grouped) {
       return node.bindings.map {
+        ProgressManager.checkCanceled()
         bindingRow(node, it, ambiguousQualifiers = node.ambiguousQualifiers)
       }
     }
     return node.bindings
-      .groupBy { it.multibindingId!! }
+      .groupBy {
+        ProgressManager.checkCanceled()
+        it.multibindingId!!
+      }
       .toSortedMap()
-      .map { (id, contributions) -> MetroTreeNode.Multibinding(node, id, contributions) }
+      .map { (id, contributions) ->
+        ProgressManager.checkCanceled()
+        MetroTreeNode.Multibinding(node, id, contributions)
+      }
   }
 
   /**
@@ -369,49 +386,109 @@ internal class MetroTreeStructure(
   private fun currentIndexes(): List<BindingIndex> {
     val indexes = mutableListOf<BindingIndex>()
     for (module in ModuleManager.getInstance(project).modules) {
+      ProgressManager.checkCanceled()
       val index = indexProvider(module)
-      if (index !== BindingIndex.EMPTY && indexes.none { it === index }) {
+      val isNewIndex =
+        index !== BindingIndex.EMPTY &&
+          indexes.none {
+            ProgressManager.checkCanceled()
+            it === index
+          }
+      if (isNewIndex) {
         indexes += index
       }
     }
     return indexes
   }
 
-  internal fun availableContexts(): List<GraphContext> {
-    return currentContexts(currentIndexes()).sortedBy { it.presentableName(includeFile = true) }
+  internal fun contextOptions(): List<GraphContextOption> = contextOptionSnapshot
+
+  internal fun clearContextOptions() {
+    synchronized(contextOptionSnapshotLock) {
+      contextOptionSnapshotGeneration++
+      contextOptionSnapshot = emptyList()
+    }
   }
 
   private fun currentContexts(indexes: List<BindingIndex>): List<GraphContext> {
     val seen = HashSet<GraphPath>()
-    return indexes
-      .flatMap { index -> index.graphs.flatMap(index::contextsFor) }
-      .filter { context -> seen.add(context.path) }
+    return buildList {
+      for (index in indexes) {
+        ProgressManager.checkCanceled()
+        index.withResolutionSession { session ->
+          for (graph in index.graphs) {
+            ProgressManager.checkCanceled()
+            for (context in session.contextsFor(graph)) {
+              ProgressManager.checkCanceled()
+              if (seen.add(context.path)) add(context)
+            }
+          }
+        }
+      }
+    }
   }
 
-  /** [node]'s context in the current indexes, refreshed so children never use stale entries. */
-  private fun resolveGraph(node: MetroTreeNode.Graph): Pair<BindingIndex, GraphContext>? {
+  private class ResolvedGraph(
+    val index: BindingIndex,
+    val session: BindingResolutionSession,
+    val context: GraphContext,
+  )
+
+  /** Resolves [node]'s path against the indexes currently shown by the tree. */
+  private fun resolveGraph(node: MetroTreeNode.Graph): ResolvedGraph? {
     for (index in currentIndexes()) {
-      val fresh = index.findContext(node.context.path)
-      if (fresh != null) return index to fresh
+      val resolved = index.withResolutionSession { session ->
+        val fresh = session.findContext(node.context.path) ?: return@withResolutionSession null
+        ResolvedGraph(index, session, fresh)
+      }
+      if (resolved != null) return resolved
     }
     return null
   }
 
   private fun graphNodes(root: MetroTreeNode.Root): List<MetroTreeNode> {
+    val snapshotGeneration =
+      synchronized(contextOptionSnapshotLock) { contextOptionSnapshotGeneration }
     val validationService = project.service<MetroGraphValidationService>()
     val indexes = currentIndexes()
     var contexts = currentContexts(indexes)
+    val freshContextOptions =
+      contexts
+        .map { context ->
+          ProgressManager.checkCanceled()
+          GraphContextOption(context.presentableName(includeFile = true), context.path)
+        }
+        .sortedWith { left, right ->
+          ProgressManager.checkCanceled()
+          left.text.compareTo(right.text)
+        }
+    synchronized(contextOptionSnapshotLock) {
+      if (contextOptionSnapshotGeneration == snapshotGeneration) {
+        contextOptionSnapshot = freshContextOptions
+      }
+    }
     pinService.pinnedPath?.let { pinnedPath ->
-      if (contexts.none { it.path == pinnedPath }) {
+      if (
+        contexts.none {
+          ProgressManager.checkCanceled()
+          it.path == pinnedPath
+        }
+      ) {
         if (indexes.isNotEmpty()) pinService.clearIf(pinnedPath)
       } else {
-        contexts = contexts.filter { it.path.isAtOrBelow(pinnedPath) }
+        contexts = contexts.filter {
+          ProgressManager.checkCanceled()
+          it.path.isAtOrBelow(pinnedPath)
+        }
       }
     }
     return contexts
       .sortedWith(
         compareBy(
-          { it.graph.name.orEmpty() },
+          {
+            ProgressManager.checkCanceled()
+            it.graph.name.orEmpty()
+          },
           { it.chain.drop(1).joinToString { parent -> parent.name.orEmpty() } },
           { it.dynamicGraph?.pointer?.virtualFile?.path.orEmpty() },
           { it.dynamicGraph?.pointer?.element?.textOffset ?: -1 },
@@ -426,6 +503,7 @@ internal class MetroTreeStructure(
         )
       )
       .map { context ->
+        ProgressManager.checkCanceled()
         val graph = context.graph
         // Surface the last validation outcome on the graph row itself
         val cached =
@@ -468,31 +546,47 @@ internal class MetroTreeStructure(
   }
 
   private fun graphChildren(node: MetroTreeNode.Graph): List<MetroTreeNode> {
-    val (index, context) = resolveGraph(node) ?: return emptyList()
-    val queryContext = index.queryContext(context) ?: return emptyList()
+    val resolved = resolveGraph(node) ?: return emptyList()
+    val index = resolved.index
+    val session = resolved.session
+    val context = resolved.context
+    val queryContext = session.queryContext(context) ?: return emptyList()
     val graph = context.graph
-    val bindings = index.bindingsInContext(queryContext)
+    val bindings = session.bindingsInContext(queryContext)
     val filter = filterText().trim()
     val filtered =
       if (filter.isEmpty()) {
         bindings
       } else {
         bindings.filter { binding ->
+          ProgressManager.checkCanceled()
           binding.typeKey.render(short = true).contains(filter, ignoreCase = true) ||
             binding.implementationName?.contains(filter, ignoreCase = true) == true
         }
       }
 
-    val (multibound, regular) = filtered.partition { it.multibindingId != null }
-    val (scoped, unscopedOrContributed) = regular.partition { it.scope != null }
-    val (contributed, unscoped) =
-      unscopedOrContributed.partition { it.contributionScopes.isNotEmpty() }
+    val multibound = mutableListOf<KaBinding>()
+    val scoped = mutableListOf<KaBinding>()
+    val contributed = mutableListOf<KaBinding>()
+    val unscoped = mutableListOf<KaBinding>()
+    for (binding in filtered) {
+      ProgressManager.checkCanceled()
+      when {
+        binding.multibindingId != null -> multibound += binding
+        binding.scope != null -> scoped += binding
+        binding.contributionScopes.isNotEmpty() -> contributed += binding
+        else -> unscoped += binding
+      }
+    }
 
     // Distinct qualifier classes sharing a simple name render with abbreviated packages so rows
     // like two different @InternalApi qualifiers stay tellable apart
     val ambiguousQualifiers =
       filtered
-        .mapNotNull { it.typeKey.qualifier?.classId }
+        .mapNotNull {
+          ProgressManager.checkCanceled()
+          it.typeKey.qualifier?.classId
+        }
         .distinct()
         .groupBy { it.shortClassName }
         .filterValues { it.size > 1 }
@@ -520,7 +614,11 @@ internal class MetroTreeStructure(
           parent = node,
           title = title,
           icon = icon,
-          bindings = bindings.sortedBy { it.typeKey.render(short = true) },
+          bindings =
+            bindings.sortedWith { left, right ->
+              ProgressManager.checkCanceled()
+              left.typeKey.render(short = true).compareTo(right.typeKey.render(short = true))
+            },
           ambiguousQualifiers = ambiguousQualifiers,
           grouped = grouped,
           hint = hint,
@@ -544,6 +642,7 @@ internal class MetroTreeStructure(
 
       fun collectUsage(result: KaGraphValidationResult.Completed) {
         result.bindings.forEach { key, binding ->
+          ProgressManager.checkCanceled()
           usedKeys += key
           usedPointers += binding.pointer
         }
@@ -551,7 +650,8 @@ internal class MetroTreeStructure(
       collectUsage(validated)
       val visited = mutableSetOf<GraphPath>()
       fun visitExtensions(parent: GraphContext) {
-        for (extension in index.extensionContextsOf(parent)) {
+        for (extension in session.extensionContextsOf(parent)) {
+          ProgressManager.checkCanceled()
           if (!visited.add(extension.path)) continue
           extension.graph.pointer.element
             ?.let { validationService.cachedResult(it, extension) }
@@ -565,6 +665,7 @@ internal class MetroTreeStructure(
       visitExtensions(context)
 
       val unused = filtered.filter { binding ->
+        ProgressManager.checkCanceled()
         (binding is KaBinding.Provided || binding is KaBinding.Alias) &&
           binding.typeKey !in usedKeys &&
           binding.pointer !in usedPointers
@@ -625,6 +726,7 @@ internal class MetroTreeStructure(
         // multibinding nodes). Re-keyed multibinding elements count, one per contribution.
         var used = 0
         result.bindings.forEach { _, binding ->
+          ProgressManager.checkCanceled()
           if (binding !is KaBinding.GraphInstance && binding !is KaBinding.Multibinding) used++
         }
         val text = buildString {
@@ -641,6 +743,7 @@ internal class MetroTreeStructure(
         MetroTreeNode.Summary(node, "Validation aborted on a fatal error")
       }
     result.diagnostics.mapIndexedTo(children) { i, diagnostic ->
+      ProgressManager.checkCanceled()
       MetroTreeNode.Diagnostic(node, diagnostic, i)
     }
     return children
@@ -651,6 +754,7 @@ internal class MetroTreeStructure(
       (node.parent?.parent as? MetroTreeNode.Graph)?.graph?.classId?.asSingleFqName()
     val children = mutableListOf<MetroTreeNode>()
     node.diagnostic.stack.mapIndexedTo(children) { i, entry ->
+      ProgressManager.checkCanceled()
       val text =
         entry.render(graphFqName ?: FqName.ROOT, short = true).lineSequence().joinToString(" ") {
           it.trim()
@@ -658,7 +762,10 @@ internal class MetroTreeStructure(
       MetroTreeNode.StackEntry(node, text, entry.pointer, i)
     }
     // The offending bindings themselves, such as each source of a duplicate
-    node.diagnostic.related.mapTo(children) { bindingRow(node, it) }
+    node.diagnostic.related.mapTo(children) {
+      ProgressManager.checkCanceled()
+      bindingRow(node, it)
+    }
     return children
   }
 }

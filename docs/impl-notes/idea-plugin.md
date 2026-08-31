@@ -53,17 +53,19 @@ Data flows in one direction:
 module options
       |
       v
-index (per-file shards)
+coordinator (changes, requests, background builds)
       |
       v
-BindingIndex (membership queries)
+immutable BindingIndex generations
       |
-      +--> editor features (markers, vision, inlays)
+      +--> presentation generation --> file bundles --> editor features
+      |                         |
+      |                         '--> graph browser
       |
-      '--> validation (graph seal)
+      '--> current generation --> validation (graph seal)
                  |
                  v
-            tool window
+            retained results --> tool window and validation badges
 ```
 
 ### Options and settings
@@ -72,31 +74,50 @@ BindingIndex (membership queries)
   facet's compiler plugin args, plus an options fingerprint for cache keying. A module is active
   only when Metro compiler plugin options are present and the plugin is enabled. Kotlin modules
   without Metro stay inactive even though the compiler option itself defaults to enabled.
+  UI callbacks read cached options and schedule missing options in a background read. Requests for
+  the same module share that work, and waiting callers are notified when the options are available.
   Contribution-provider mode follows the compiler: contributed implementation bindings stay
   hidden unless `@ExposeImplBinding` or another compiler exemption keeps them available.
-- `MetroSettings`: project-level toggles for editor navigation, library resolution, and inlays.
+- `MetroSettings`: project-level toggles for editor navigation, automatic refresh, library resolution,
+  and inlays.
   Hiding editor navigation does not disable graph browsing or validation. Library resolution
   applies to both editor features and graph tools.
 
 ### Index
 
-- `index/MetroResolutionService.kt`: owns the project-wide `BindingIndex`. Snapshots use semantic
-  compiler options, so module-specific report and trace paths do not create duplicate indexes.
-  The first build finds candidate files through annotation stub indexes and targeted indexed
-  import searches for annotation aliases. Later edits update changed files and dependent shards,
-  including inherited declarations and qualifier, scope, or map-key annotation defaults, without
-  copying unrelated shard or dependency state. Changes to otherwise untracked type aliases or
-  constants, including directory moves, refresh existing shards. Edits to unrelated declarations
-  in the same file remain incremental. Project roots, Kotlin compiler settings, and facet changes
-  coalesce into one semantic check per event batch while direct queries still see current options.
-  Directory changes enroll new files as a batch. Compiled-library results have a separate cache
-  keyed by classpath, graph scopes, requested types, binding-derived dependencies, and their
-  actual use-site modules. Equivalent per-file library inputs reuse the same session-free source
-  summary, so unrelated edits do not repeat factory visibility checks. Inherited graph requests
-  use their exact owning graph declaration and module instead of the upstream declaration file.
-  Production UI-thread requests schedule a cancellable smart-mode build instead of running
-  Analysis API work on the UI thread. Canceled background builds are retried rather than treated
-  as plugin failures.
+`index/MetroResolutionService.kt` owns index requests, invalidation, background builds, and
+publication. PSI and project listeners enqueue changes. One coordinator classifies those changes,
+updates dependency tracking, and decides which work to start. Readers use an immutable published
+snapshot. A cache hit checks captured revisions without rescanning modules or resolving PSI.
+
+Index generations use semantic compiler options, so module-specific report and trace paths do not
+create duplicate indexes. The first build finds candidate files through annotation stub indexes and
+targeted import searches for annotation aliases. Later edits update changed files and dependent
+shards, including inherited declarations and qualifier, scope, or map-key annotation defaults.
+Unrelated shards and dependency state are reused. Changes to otherwise untracked type aliases or
+constants, including directory moves, conservatively rebuild all source shards. Project roots and
+compiler settings are checked once per queued batch. Directory changes add newly relevant files as a
+batch.
+
+The current generation serves validation, Find Usages, and debug export. The presentation generation
+serves editor decorations and the graph browser. Automatic refresh advances both. Manual refresh mode
+retains the presentation generation while explicit operations can build current data. **Refresh** or
+reenabling automatic refresh brings editor presentation up to date, including after an explicit query
+refreshed current data in manual mode. A generation records the inputs it used, so a late worker
+cannot publish over newer work.
+
+Analysis API work runs in cancellable background smart reads. Graph query results and lookup tables
+are built from captured data outside read actions where possible. Explicit callers wait for a missing
+generation outside their read action, then retry against the published result. Presentation requests
+return available data and schedule missing work. Duplicate requests share a build. Presentation
+workers have a concurrency limit, and completion or cancellation releases a slot before queued work
+starts.
+
+Compiled-library results have a separate cache keyed by classpath, graph scopes, requested types,
+binding dependencies, and their use-site modules. Equivalent per-file inputs reuse the same source
+summary, so unrelated edits do not repeat factory visibility checks. Inherited graph requests retain
+their owning graph declaration and module.
+
 - `index/FileShardBuilder.kt`: builds one file's shard. Files are found through
   `KotlinAnnotationsIndex` by annotation short names or import aliases, then resolved with the
   Analysis API inside `analyze {}` blocks. Handles graphs (including supertype members and
@@ -126,8 +147,11 @@ arguments, including declared defaults), and declarations are held as `SmartPsiE
 - `model/KaBinding.kt`: the binding model. Mirrors the compiler's `IrBinding` + sealed subtypes.
 - `model/KaContextualTypeKey.kt` / `model/KaTypeSnapshot.kt`: key model. Key equality is
   string-render equality, so both sides of any match must canonicalize the same way.
-- `model/BindingIndex.kt`: the query surface. Global lookups (`bindingsByKey`, by-file buckets in
-  ScatterMaps) plus per-graph membership. `contextsFor(graph)` merges the extension parent chain
+- `model/BindingIndex.kt`: the immutable query surface. `BindingIndexBuilder` captures its inputs,
+  and each published index keeps its `BindingIndexLookups` key and file tables for queries to reuse.
+  `BindingResolutionSession` owns query caches for one operation, so a file presentation build or
+  validation traversal reuses context and consumer resolution without sharing mutable query state
+  with concurrent operations. `contextsFor(graph)` merges the extension parent chain
   into a `GraphContext` (scopes, containers, includes, excludes, supertype ids).
   - Membership filtering applies graph/module visibility, scope matching, declaration-specific
     containers, member-injection ownership, exclusions, explicit replacements, and contribution
@@ -160,13 +184,15 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   qualifier, matching the compiler's key swap. Parent-owned scoped bindings, including
   multibinding contributions from included binding containers, resolve through the owning graph
   and its module options.
-- `graph/MetroGraphValidationService.kt`: the entry point. Coroutine-based
-  (service `CoroutineScope`, `smartReadAction`, background progress, per-graph coalescing).
-  Results are retained per graph (keyed by `ClassId` plus file, since same-FQN graphs can exist
-  across modules) in a bounded cache and survive index invalidation flagged as stale rather than
-  vanishing.
-  `validateWithExtensions` seals extensions before their parents, mirroring the compiler's
-  traversal.
+- `graph/MetroGraphValidationService.kt`: computes validation in cancellable background smart
+  reads, sharing one resolution session per index throughout a traversal. Each attempt collects
+  results locally. Asynchronous requests publish only after the read succeeds and the request is
+  still current. Cancellation and replaced requests leave retained results unchanged. Publication
+  also checks whether results were cleared and which run produced each entry, so an older run
+  cannot overwrite newer results.
+  Results are retained by graph declaration and parent path in a bounded cache. They remain visible
+  with a stale flag after index invalidation. `validateWithExtensions` seals extensions before their
+  parents, mirroring the compiler's traversal. Progress and completion callbacks update the EDT.
 - `graph/KaSuspendBindingValidator.kt`: converts Analysis API bindings and graph requests to shared
   suspend-validation inputs, then turns shared issues and witness paths into navigable IDEA
   diagnostics. Witness provenance is built only when a diagnostic needs it and reused across
@@ -177,15 +203,33 @@ Validation is strictly on demand. Nothing seals during index builds or highlight
 
 ### Editor features
 
+`index/FilePresentationBundle.kt` holds one file's resolved consumers, reverse usages, graph
+contributions, and inlay choices. Providers request a cached bundle and return promptly while missing
+data is built. Reverse usages retain both positive and negative answers for each consumer's graph
+contexts, so pinning a graph excludes consumers that resolve to a different binding there.
+
+Binding results and source anchors have separate lifetimes. A file edit invalidates the bundle's
+offset map. A background read rebuilds that map from smart pointers and checks declaration names,
+kinds, and enclosing declarations. Changed declaration identities and ambiguous matches receive no
+decoration. This keeps manual refresh data usable as declarations move, and each editor lookup
+remains a direct map lookup after the file's current modification stamp is checked.
+
 - `index/MetroLineMarkerProvider.kt`: binding, consumer, injector, graph contributions, and
-  validate markers. Targets are captured as smart pointers during the background pass so clicks
-  never resolve on the EDT. The validate marker badges the last validation outcome and runs
-  validation through the tool window.
+  validate markers. Navigation targets are captured as smart pointers during background collection.
+  `MetroNavigationService` restores them in a background read and delivers only the latest request
+  for each editor or tool window while its owner remains open. The validate marker badges the last
+  validation outcome and runs validation through the tool window.
 - `index/MetroCodeVisionProvider.kt`: consumer and contribution counts. Zero counts are omitted.
 - `index/MetroInjectedImplementationInlayProvider.kt`: resolved-implementation and
   multibinding-count inlays, plus `assisted` hints for implicitly assisted parameters.
 - `MetroImplicitUsageProvider.kt` and `MetroUnusedDeclarationInspectionSuppressor.kt`: implicit
-  usage and inspection suppression driven by the same options.
+  usage and inspection suppression driven by the same options. EDT checks use cached answers from
+  resolved annotation identities. A miss schedules one background read for the whole file. PSI,
+  root, and compiler setting changes invalidate those answers.
+
+`MetroDaemonRestartService` batches highlighting refresh requests and waits for an active daemon pass
+to finish. Index and presentation publication, pin changes, and validation can request a refresh
+without repeatedly interrupting the current highlighting pass.
 
 ### Tool window
 
@@ -261,15 +305,21 @@ Most tests use `BasePlatformTestCase`, with helpers in `ktTestUtils.kt`: `config
 (default package and Metro star import), `setMetroOptions`, `addMetroRuntimeLibrary`, and
 `withMetroLibFixtureLibrary` (a jar compiled from `src/test/data/libFixtures/` for binary
 resolution tests). `MetroMultiModuleResolutionTest` uses a dedicated multi-module fixture instead.
+`awaitIndex` waits for the current generation outside the fixture's EDT read action.
+`awaitMetroPresentation` waits for both the file's binding results and its current source anchors.
 
 `setMetroOptions()` always supplies `enabled=true` unless a test explicitly overrides it.
 `clearMetroOptions()` represents a module where the Metro compiler plugin is not configured.
 
-- `MetroResolutionServiceTest`: index construction and editor resolution.
+- `MetroResolutionServiceTest`: index construction, request coalescing, cancellation, generation
+  reuse, manual refresh, and editor resolution.
+- `MetroFilePresentationTest`: pinned reverse usages, source edits, anchor rebuild coalescing,
+  stale completion, and disposal.
 - `MetroMultiModuleResolutionTest`: graph visibility, inherited bindings, and ownership across
   source modules.
 - `MetroIndexDependenciesTest`: dependency keys, contextual keys, seal-facing queries.
-- `MetroGraphValidationTest`: seal semantics per diagnostic kind, membership edge cases, caching.
+- `MetroGraphValidationTest`: seal semantics per diagnostic kind, membership edge cases, caching,
+  cancellation, and publication ordering.
 - `MetroSuspendGraphValidationTest`: suspend propagation, request boundaries, member injection, assisted factories, multibindings, and runtime requirements.
 - `MetroGraphValidationParityTest`: live IDEA validation compared with checked-in compiler graph reports, including suspend success and failure cases.
 - `MetroToolWindowTreeTest`: tree rows, filtering, refresh identity, a full
@@ -278,10 +328,10 @@ resolution tests). `MetroMultiModuleResolutionTest` uses a dedicated multi-modul
 
 Harness gotchas that repeat:
 
-- Tests compute markers on the EDT. Calling `tooltipText` on non-Metro gutters triggers Kotlin's
+- Calling `tooltipText` on non-Metro gutters triggers Kotlin's
   inheritor markers into prohibited EDT analysis, so always filter to Metro icons first. The
-  index permits synchronous EDT analysis only in unit-test mode; production builds always run
-  in background smart read actions.
+  index and file presentation workers remain asynchronous in tests. Wait through the fixture
+  helpers before checking decorations.
 - The daemon caches markers for unchanged files. Re-highlighting after validation requires
   `DaemonCodeAnalyzer.restart()`, same as production.
 - Validation results are retained by design, so test classes call

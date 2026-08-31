@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.toolwindow
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.Disposable
@@ -15,7 +14,6 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
-import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
@@ -23,7 +21,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
-import com.intellij.psi.PsiManager
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.SearchTextField
@@ -35,7 +32,9 @@ import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.GraphContextPinService
+import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIcons
+import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
@@ -52,21 +51,28 @@ import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 import javax.swing.tree.TreePath
+import kotlinx.coroutines.Job
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.psi.KtFile
 
 /** The Metro tool window: browse graphs and their bindings, and run on-demand validation. */
-internal class MetroToolWindowPanel(private val project: Project) :
-  SimpleToolWindowPanel(true, true), Disposable {
+internal class MetroToolWindowPanel(
+  private val project: Project,
+  private val graphLookup: (ClassId, VirtualFile?, (KaGraphDeclaration?) -> Unit) -> Job =
+    { classId, file, onResult ->
+      project.service<MetroResolutionService>().findGraphAsync(classId, file, onResult)
+    },
+) : SimpleToolWindowPanel(true, true), Disposable {
 
   // No history popup, so the search icon doesn't render a misleading dropdown arrow
   private val searchField = SearchTextField(false)
 
-  // The tree structure computes children on a background invoker, so it reads a snapshot of the
-  // search text instead of touching the Swing component off the EDT.
+  // Tree children are computed in the background. Copy the search text on the EDT so that work
+  // can read it safely.
   @Volatile private var searchText: String = ""
   private val resolutionService = project.service<MetroResolutionService>()
   private val validationService = project.service<MetroGraphValidationService>()
+  private val validationRequestService = project.service<MetroValidationRequestService>()
   private val pinService = project.service<GraphContextPinService>()
   private val indexBuildStatus = IndexBuildStatusPanel()
   private val validationStatus = ValidationStatusPanel()
@@ -76,8 +82,12 @@ internal class MetroToolWindowPanel(private val project: Project) :
   private val treeStructure =
     MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
-  /** A validate request whose graph was not indexed yet, retried when a fresh index lands. */
+  /** Validation waiting for its graph to become available in a published index. */
   private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
+  private var pendingValidationGeneration = 0L
+  private var latestValidationRequestToken = 0L
+  private var pendingValidationLookup: Job? = null
+  private var pendingValidationLookupGeneration = 0L
   @Volatile private var disposed: Boolean = false
   private val treeModel = StructureTreeModel(treeStructure, this)
   private val tree =
@@ -88,10 +98,11 @@ internal class MetroToolWindowPanel(private val project: Project) :
   internal val loadOrRefreshAction =
     LoadOrRefreshGraphsAction(resolutionService) {
       updateIndexBuildStatus()
+      treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
     }
   internal val graphContextSelectorAction =
-    GraphContextSelectorAction(pinService, treeStructure::availableContexts)
+    GraphContextSelectorAction(pinService, treeStructure::contextOptions)
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
 
@@ -105,6 +116,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
         DumbService.DUMB_MODE,
         object : DumbService.DumbModeListener {
           override fun enteredDumbMode() {
+            treeStructure.clearContextOptions()
             updateIndexBuildStatus()
           }
 
@@ -116,15 +128,10 @@ internal class MetroToolWindowPanel(private val project: Project) :
       )
     resolutionService.addIndexListener(this) {
       updateIndexBuildStatus()
+      treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
-      pendingValidation?.let { (classId, file) ->
-        // Invalidation and other modules publish through this same listener. Keep the request
-        // until its own graph is available rather than dropping it on an unrelated update.
-        findGraph(classId, file)?.let { graph ->
-          pendingValidation = null
-          validateGraph(graph)
-        }
-      }
+      // Retry until a published index contains the requested graph.
+      resolvePendingValidation()
     }
     pinService.addListener(this) { treeModel.invalidateAsync() }
     resolutionService.addIndexBuildProgressListener(this) { progress ->
@@ -158,7 +165,7 @@ internal class MetroToolWindowPanel(private val project: Project) :
       }
     val actionGroup =
       DefaultActionGroup(
-        // Not DumbAware: the refreshed tree needs stub indexes, so wait for smart mode
+        // Loading needs stub indexes, so the action waits for smart mode.
         loadOrRefreshAction,
         graphContextSelectorAction,
         pinSelectedGraphAction,
@@ -223,33 +230,113 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   /** Expands to [classId]'s graph node, selects it, and runs validation. */
-  fun selectAndValidate(classId: ClassId, file: VirtualFile?) {
-    if (disposed) return
+  fun selectAndValidate(
+    classId: ClassId,
+    file: VirtualFile?,
+    requestToken: Long = validationRequestService.beginRequest(),
+  ) {
+    val generation = beginValidationRequest(requestToken) ?: return
     TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
-      if (disposed) return@onProcessed
+      if (
+        generation == pendingValidationGeneration &&
+          !validationRequestService.isLatest(requestToken)
+      ) {
+        cancelPendingValidation()
+        return@onProcessed
+      }
+      if (
+        disposed ||
+          generation != pendingValidationGeneration ||
+          !validationRequestService.isLatest(requestToken)
+      ) {
+        return@onProcessed
+      }
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
       val selectedGraph = selectedGraphNode()?.takeIf { it.matches(classId, file) }?.graph
-      val graph = selectedGraph ?: findGraph(classId, file)
-      if (graph != null) {
+      if (selectedGraph != null) {
         pendingValidation = null
-        validateGraph(graph)
+        validateGraph(selectedGraph, generation)
       } else {
-        // A cold index returns nothing on the EDT and builds in the background. Retry when the
-        // fresh index lands instead of dropping the action.
+        // Resolve the source file in a background read before updating the EDT.
         pendingValidation = classId to file
+        resolvePendingValidation()
       }
     }
   }
 
-  /** Resolves [classId]'s graph straight from its file's index, bypassing the tree. */
-  private fun findGraph(classId: ClassId, file: VirtualFile?): KaGraphDeclaration? {
-    val psiFile =
-      file?.let { PsiManager.getInstance(project).findFile(it) } as? KtFile ?: return null
-    return project.service<MetroResolutionService>().currentIndex(psiFile).graphs.firstOrNull {
-      it.classId == classId && it.pointer.virtualFile == file
+  private fun resolvePendingValidation() {
+    val target = pendingValidation ?: return
+    val generation = pendingValidationGeneration
+    val requestToken = latestValidationRequestToken
+    if (!validationRequestService.isLatest(requestToken)) {
+      cancelPendingValidation()
+      return
     }
+    val lookupGeneration = ++pendingValidationLookupGeneration
+    pendingValidationLookup?.cancel()
+    pendingValidationLookup =
+      graphLookup(
+        target.first,
+        target.second,
+        onResult@{ graph ->
+          if (lookupGeneration != pendingValidationLookupGeneration) {
+            return@onResult
+          }
+          if (
+            generation == pendingValidationGeneration &&
+              !validationRequestService.isLatest(requestToken)
+          ) {
+            cancelPendingValidation()
+            return@onResult
+          }
+          val isCurrentLookup =
+            generation == pendingValidationGeneration &&
+              pendingValidation == target &&
+              validationRequestService.isLatest(requestToken)
+          if (disposed || !isCurrentLookup) {
+            return@onResult
+          }
+          pendingValidationLookup = null
+          if (graph != null) {
+            pendingValidation = null
+            validateGraph(graph, generation)
+          }
+        },
+      )
   }
+
+  private fun beginValidationRequest(requestToken: Long): Long? {
+    if (
+      disposed ||
+        !validationRequestService.isLatest(requestToken) ||
+        requestToken <= latestValidationRequestToken
+    ) {
+      return null
+    }
+    latestValidationRequestToken = requestToken
+    pendingValidation = null
+    pendingValidationLookupGeneration++
+    pendingValidationLookup?.cancel()
+    pendingValidationLookup = null
+    return ++pendingValidationGeneration
+  }
+
+  private fun cancelPendingValidation() {
+    pendingValidation = null
+    pendingValidationGeneration++
+    pendingValidationLookupGeneration++
+    pendingValidationLookup?.cancel()
+    pendingValidationLookup = null
+  }
+
+  @TestOnly
+  internal fun retryPendingValidationForTest() {
+    resolvePendingValidation()
+  }
+
+  @TestOnly
+  internal fun hasPendingValidationLookupForTest(): Boolean = pendingValidationLookup != null
 
   private fun MetroTreeNode.Graph.matches(classId: ClassId?, file: VirtualFile?): Boolean {
     return graph.classId == classId && (file == null || graph.pointer.virtualFile == file)
@@ -286,27 +373,36 @@ internal class MetroToolWindowPanel(private val project: Project) :
     return null
   }
 
-  private fun validateGraph(graph: KaGraphDeclaration) {
+  private fun validateGraph(graph: KaGraphDeclaration, generation: Long) {
     validationService.validateWithExtensionsAsync(graph) {
-      validationFinished(validationVisitor(graph))
+      validationFinished(validationVisitor(graph), generation)
     }
   }
 
   private fun validateContext(context: GraphContext) {
+    val requestToken = validationRequestService.beginRequest()
+    val generation = beginValidationRequest(requestToken) ?: return
     validationService.validateWithExtensionsAsync(context) {
-      validationFinished(validationVisitor(context))
+      validationFinished(validationVisitor(context), generation)
     }
   }
 
-  private fun validationFinished(visitor: TreeVisitor) {
+  private fun validationFinished(visitor: TreeVisitor, generation: Long) {
     if (disposed || project.isDisposed) return
     // Rerun highlighting so the gutter's validation badge picks up the new result
-    DaemonCodeAnalyzer.getInstance(project).restart()
+    project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
     // Select the validation node once the refreshed children load, so the outcome is visible even
     // when the run produced no problems.
     treeModel.invalidateAsync().thenRun {
       SwingUtilities.invokeLater {
-        if (disposed || project.isDisposed) return@invokeLater
+        if (
+          disposed ||
+            project.isDisposed ||
+            generation != pendingValidationGeneration ||
+            !validationRequestService.isLatest(latestValidationRequestToken)
+        ) {
+          return@invokeLater
+        }
         TreeUtil.promiseSelect(tree, visitor)
       }
     }
@@ -346,15 +442,18 @@ internal class MetroToolWindowPanel(private val project: Project) :
   }
 
   private fun navigateSelected(): Boolean {
-    val target = selectedNode()?.pointer?.element as? Navigatable ?: return false
-    if (!target.canNavigate()) return false
-    target.navigate(true)
+    val pointer = selectedNode()?.pointer ?: return false
+    project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets ->
+      if (disposed) return@resolveTargets
+      val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
+      if (target.canNavigate()) target.navigate(true)
+    }
     return true
   }
 
   override fun dispose() {
     disposed = true
-    pendingValidation = null
+    cancelPendingValidation()
     indexBuildStatus.clear()
     validationStatus.clear()
   }
@@ -379,7 +478,7 @@ internal class ValidateSelectedGraphAction(
 
 internal class GraphContextSelectorAction(
   private val pinService: GraphContextPinService,
-  private val contextProvider: () -> List<GraphContext>,
+  private val contextProvider: () -> List<GraphContextOption>,
 ) : ComboBoxAction(), DumbAware {
 
   init {
@@ -399,16 +498,11 @@ internal class GraphContextSelectorAction(
     button: JComponent,
     dataContext: DataContext,
   ): DefaultActionGroup {
-    val contextOptions = runReadActionBlocking {
-      contextProvider().map { context ->
-        context.presentableName(includeFile = true) to context.path
-      }
-    }
     return DefaultActionGroup().apply {
       add(GraphContextOptionAction("All Graphs", null, pinService))
       addSeparator()
-      for ((name, path) in contextOptions) {
-        add(GraphContextOptionAction(name, path, pinService))
+      for (option in contextProvider()) {
+        add(GraphContextOptionAction(option.text, option.path, pinService))
       }
     }
   }

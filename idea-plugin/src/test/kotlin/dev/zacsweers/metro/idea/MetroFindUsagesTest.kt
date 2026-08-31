@@ -12,13 +12,16 @@ import com.intellij.psi.search.SearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.usages.Usage
 import com.intellij.usages.impl.rules.UsageWithType
 import com.intellij.usages.rules.PsiElementUsage
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.usages.MetroFindUsagesHandlerFactory
 import dev.zacsweers.metro.idea.usages.collectMetroUsages
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 
@@ -82,6 +85,64 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
       listOf(FoundUsage("AppGraph.provideService", "Provided by")),
       metroUsages(serviceParameter),
     )
+  }
+
+  fun testFindUsagesCapabilityCheckUsesDefaultMetroSyntaxOnEdt() {
+    val file =
+      myFixture.configureByText(
+        "Capability.kt",
+        """
+        import dev.zacsweers.metro.Inject
+
+        @Deprecated("test")
+        class Annotated {
+          fun deprecatedMember() = Unit
+        }
+
+        @Inject
+        class MetroAnnotated {
+          fun metroMember() = Unit
+        }
+
+        fun plain() = Unit
+        """
+          .trimIndent(),
+      )
+    project.clearMetroOptions()
+    val declarations = (file as KtFile).declarationsIncludingNested()
+    val factory = MetroFindUsagesHandlerFactory()
+
+    runInEdtAndWait {
+      assertFalse(factory.canFindUsages(declarations.function("deprecatedMember")))
+      assertTrue(factory.canFindUsages(declarations.function("metroMember")))
+      assertFalse(factory.canFindUsages(declarations.function("plain")))
+    }
+  }
+
+  fun testFindUsagesCapabilityCheckUsesCachedCustomMetroSyntaxOnEdt() {
+    project.setMetroOptions("custom-inject" to "test/CustomInject")
+    val file =
+      myFixture.configureByText(
+        "CustomCapability.kt",
+        """
+        package test
+
+        annotation class CustomInject
+
+        @CustomInject
+        class CustomAnnotated {
+          fun customMember() = Unit
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val customMember = file.declarationsIncludingNested().function("customMember")
+    project.service<MetroIdeProjectService>().state(customMember)
+    val factory = MetroFindUsagesHandlerFactory()
+
+    runInEdtAndWait {
+      assertTrue(factory.canFindUsages(customMember))
+    }
   }
 
   fun testBindsAndMultibindingDeclarationsFindAggregateConsumers() {

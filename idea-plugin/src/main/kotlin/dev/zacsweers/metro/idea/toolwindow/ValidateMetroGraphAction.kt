@@ -6,14 +6,21 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.currentThreadCoroutineScope
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.annotationShortNamesIncludingAliases
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
 
@@ -31,9 +38,21 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
-    val ktClass = graphClassAt(e) ?: return
-    val classId = ktClass.getClassId() ?: return
-    openAndValidate(project, classId, ktClass.containingFile?.virtualFile)
+    val editor = e.getData(CommonDataKeys.EDITOR) ?: return
+    val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
+    val offset = editor.caretModel.offset
+    val requestToken = project.service<MetroValidationRequestService>().beginRequest()
+    currentThreadCoroutineScope().launch {
+      val target =
+        readAction {
+          val ktClass = graphClassAt(project, file, offset) ?: return@readAction null
+          val classId = ktClass.getClassId() ?: return@readAction null
+          GraphValidationTarget(classId, ktClass.containingFile?.virtualFile)
+        } ?: return@launch
+      withContext(Dispatchers.EDT) {
+        openAndValidate(project, target.classId, target.file, requestToken)
+      }
+    }
   }
 
   /** The graph class at the caret, detected by annotation short names without resolution. */
@@ -41,7 +60,12 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     val project = e.project ?: return null
     val editor = e.getData(CommonDataKeys.EDITOR) ?: return null
     val file = e.getData(CommonDataKeys.PSI_FILE) ?: return null
-    val element = file.findElementAt(editor.caretModel.offset) ?: return null
+    return graphClassAt(project, file, editor.caretModel.offset)
+  }
+
+  private fun graphClassAt(project: Project, file: PsiFile, offset: Int): KtClassOrObject? {
+    if (!file.isValid) return null
+    val element = file.findElementAt(offset) ?: return null
     val ktClass = element.parentOfType<KtClassOrObject>(withSelf = true) ?: return null
 
     val state = project.service<MetroIdeProjectService>().state(ktClass)
@@ -59,14 +83,21 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     const val TOOL_WINDOW_ID = "Metro"
 
     /** Activates the Metro tool window, selects [classId]'s graph, and validates it. */
-    fun openAndValidate(project: Project, classId: ClassId, file: VirtualFile?) {
+    fun openAndValidate(
+      project: Project,
+      classId: ClassId,
+      file: VirtualFile?,
+      requestToken: Long = project.service<MetroValidationRequestService>().beginRequest(),
+    ) {
       val toolWindow =
         ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
       toolWindow.activate {
         val panel =
           toolWindow.contentManager.contents.firstOrNull()?.component as? MetroToolWindowPanel
-        panel?.selectAndValidate(classId, file)
+        panel?.selectAndValidate(classId, file, requestToken)
       }
     }
   }
 }
+
+private data class GraphValidationTarget(val classId: ClassId, val file: VirtualFile?)

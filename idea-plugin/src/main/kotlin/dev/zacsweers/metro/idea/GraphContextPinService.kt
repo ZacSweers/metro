@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
@@ -13,13 +14,15 @@ import dev.zacsweers.metro.idea.model.matchingContext
 import dev.zacsweers.metro.idea.model.matchingContextEntry
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-/** Project-session presentation state for one preferred graph context. */
+/** Stores the pinned graph context for this project and refreshes presentation on changes. */
 @Service(Service.Level.PROJECT)
-internal class GraphContextPinService(private val project: com.intellij.openapi.project.Project) {
+internal class GraphContextPinService(private val project: Project) : Disposable {
   private val pinnedPathRef = AtomicReference<GraphPath?>()
   private val listeners = Collections.newSetFromMap(ConcurrentHashMap<() -> Unit, Boolean>())
+  private val disposed = AtomicBoolean()
 
   val pinnedPath: GraphPath?
     get() = pinnedPathRef.get()
@@ -54,9 +57,10 @@ internal class GraphContextPinService(private val project: com.intellij.openapi.
   }
 
   private fun notifyChanged() {
+    if (disposed.get()) return
     val notify = {
-      if (!project.isDisposed) {
-        DaemonCodeAnalyzer.getInstance(project).restart()
+      if (!disposed.get() && !project.isDisposed) {
+        project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
         listeners.forEach { it() }
       }
     }
@@ -66,5 +70,10 @@ internal class GraphContextPinService(private val project: com.intellij.openapi.
     } else {
       application.invokeLater(notify)
     }
+  }
+
+  override fun dispose() {
+    disposed.set(true)
+    listeners.clear()
   }
 }

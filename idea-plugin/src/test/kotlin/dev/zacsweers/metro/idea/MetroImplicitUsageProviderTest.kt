@@ -4,11 +4,22 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.unused.MetroImplicitUsageCache
 import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
 import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
+import java.util.concurrent.CompletableFuture
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
 import org.jetbrains.kotlin.psi.KtDeclaration
@@ -53,6 +64,134 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
 
     assertFalse(declarations.function("provideService").isMetroImplicitUsage())
     assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+  }
+
+  fun testProductionEdtWarmsColdMetroStateInBackground() {
+    val declaration = kotlinFileDeclarations().function("bindService")
+    project.clearMetroOptions()
+    project.setMetroOptions()
+
+    assertFalse(productionEdtImplicitUsage(declaration))
+    awaitCachedAnswer(declaration, expected = true)
+    assertTrue(productionEdtImplicitUsage(declaration))
+  }
+
+  fun testProductionEdtCacheUsesExactAnnotationResolutionForWholeFile() {
+    myFixture.addFileToProject(
+      "other/Inject.kt",
+      """
+      package other
+
+      annotation class Inject
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureByText(
+        "ExactAnnotations.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Provides
+        import dev.zacsweers.metro.Inject as MetroInject
+        import other.Inject
+
+        interface Module {
+          @Provides fun provideValue(): String = "value"
+        }
+
+        class AliasedInjectedType @MetroInject constructor()
+        class FullyQualifiedInjectedType @dev.zacsweers.metro.Inject constructor()
+        class UnrelatedInjectedType @Inject constructor()
+        """
+          .trimIndent(),
+      ) as KtFile
+    val declarations = file.declarationsIncludingNested()
+    val provider = declarations.function("provideValue")
+    val aliasedType = declarations.klass("AliasedInjectedType")
+    val fullyQualifiedType = declarations.klass("FullyQualifiedInjectedType")
+    val unrelatedType = declarations.klass("UnrelatedInjectedType")
+
+    assertFalse(productionEdtImplicitUsage(provider))
+    awaitCachedAnswer(provider, expected = true)
+
+    assertTrue(productionEdtImplicitUsage(provider))
+    assertTrue(productionEdtImplicitUsage(aliasedType))
+    assertTrue(productionEdtImplicitUsage(fullyQualifiedType))
+    assertEquals(false, project.service<MetroImplicitUsageCache>().cachedAnswer(unrelatedType))
+    assertFalse(productionEdtImplicitUsage(unrelatedType))
+  }
+
+  fun testProductionEdtCacheInvalidatesForPsiChanges() {
+    val file = configureMetroFile()
+    val declaration = file.declarationsIncludingNested().function("bindService")
+    val cache = project.service<MetroImplicitUsageCache>()
+    assertFalse(productionEdtImplicitUsage(declaration))
+    awaitCachedAnswer(declaration, expected = true)
+
+    myFixture.editor.caretModel.moveToOffset(file.textLength)
+    myFixture.type("\n")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val updatedDeclaration = file.declarationsIncludingNested().function("bindService")
+
+    assertNull(cache.cachedAnswer(updatedDeclaration))
+    assertFalse(productionEdtImplicitUsage(updatedDeclaration))
+    awaitCachedAnswer(updatedDeclaration, expected = true)
+    assertTrue(productionEdtImplicitUsage(updatedDeclaration))
+  }
+
+  fun testProductionEdtCacheInvalidatesForRootChanges() {
+    val declaration = kotlinFileDeclarations().function("bindService")
+    val cache = project.service<MetroImplicitUsageCache>()
+    assertFalse(productionEdtImplicitUsage(declaration))
+    awaitCachedAnswer(declaration, expected = true)
+
+    val additionalRoot = myFixture.tempDirFixture.findOrCreateDir("additional-root")
+    ModuleRootModificationUtil.updateModel(module) { model ->
+      model.contentEntries.single().addSourceFolder(additionalRoot, false)
+    }
+
+    assertNull(cache.cachedAnswer(declaration))
+    assertFalse(productionEdtImplicitUsage(declaration))
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
+    awaitCachedAnswer(declaration, expected = true)
+    assertTrue(productionEdtImplicitUsage(declaration))
+  }
+
+  fun testProductionEdtCacheInvalidatesForCompilerSettingsChanges() {
+    project.setMetroOptions("custom-inject" to "test/CustomInject")
+    val declaration = kotlinFileDeclarations().klass("CustomInjectedService")
+    val cache = project.service<MetroImplicitUsageCache>()
+    assertFalse(productionEdtImplicitUsage(declaration))
+    awaitCachedAnswer(declaration, expected = true)
+
+    project.setMetroOptions()
+
+    assertNull(cache.cachedAnswer(declaration))
+    assertFalse(productionEdtImplicitUsage(declaration))
+    awaitCachedAnswer(declaration, expected = false)
+    assertFalse(productionEdtImplicitUsage(declaration))
+  }
+
+  fun testProductionEdtCacheWaitsForSmartModeBeforePublishing() {
+    val declaration = kotlinFileDeclarations().function("bindService")
+    project.setMetroOptions()
+    val cache = project.service<MetroImplicitUsageCache>()
+    val workerStarted = CompletableFuture<Unit>()
+    cache.setComputationStartObserver { workerStarted.complete(Unit) }
+
+    try {
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        assertFalse(productionEdtImplicitUsage(declaration))
+        PlatformTestUtil.waitForFuture(workerStarted, 30_000)
+        assertNull(cache.cachedAnswer(declaration))
+      }
+
+      awaitCachedAnswer(declaration, expected = true)
+      assertTrue(productionEdtImplicitUsage(declaration))
+    } finally {
+      cache.setComputationStartObserver(null)
+    }
   }
 
   fun testMarksCustomMetroDeclarationsAsImplicitlyUsedWhenConfigured() {
@@ -471,5 +610,21 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     } else {
       project.setMetroOptions("enabled" to enabled.toString())
     }
+  }
+
+  private fun productionEdtImplicitUsage(declaration: KtDeclaration): Boolean {
+    var result = false
+    runInEdtAndWait {
+      result = declaration.isMetroImplicitUsage(allowResolutionOnEdt = false)
+    }
+    return result
+  }
+
+  private fun awaitCachedAnswer(declaration: KtDeclaration, expected: Boolean) {
+    val cache = project.service<MetroImplicitUsageCache>()
+    object : WaitFor(30_000) {
+        override fun condition(): Boolean = cache.cachedAnswer(declaration) == expected
+      }
+      .assertCompleted("The production EDT check should publish an exact background answer")
   }
 }
