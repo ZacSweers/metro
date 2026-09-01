@@ -203,6 +203,8 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
         assertNull(cache.cachedAnswer(declaration))
       }
 
+      // Returning to smart mode can change the queued inputs. The next highlighting pass retries.
+      productionEdtImplicitUsage(declaration)
       awaitCachedAnswer(declaration, expected = true)
       assertTrue(productionEdtImplicitUsage(declaration))
     } finally {

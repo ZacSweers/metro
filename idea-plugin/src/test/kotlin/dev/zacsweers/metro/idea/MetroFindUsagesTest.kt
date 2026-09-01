@@ -208,7 +208,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
       metroUsages(service).toSet(),
     )
 
-    val index = project.service<MetroResolutionService>().index(file)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
     val firstGraph = index.graphs.single { it.name == "FirstGraph" }
     project.service<GraphContextPinService>().pin(index.contextsFor(firstGraph).single().path)
     assertEquals(

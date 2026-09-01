@@ -20,6 +20,8 @@ import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
+import dev.zacsweers.metro.idea.index.IndexRequestMode
+import dev.zacsweers.metro.idea.index.IndexRequestPolicy
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
@@ -95,8 +97,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val added = presentationFile("PresentationAdded")
       assertTrue(ApplicationManager.getApplication().isDispatchThread)
-      assertSame(initial, service.index(files.first()))
-      assertSame(initial, service.index(added))
+      assertSame(BindingIndex.EMPTY, service.currentIndex(files.first()))
+      assertSame(BindingIndex.EMPTY, service.currentIndex(added))
       assertNull(service.presentationBundle(added.declarations.single()))
 
       release.countDown()
@@ -114,37 +116,6 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       serviceScope.cancel()
       serviceScope.coroutineContext.job.awaitTestCompletion()
       dispatcher.close()
-    }
-  }
-
-  fun testTemporaryProjectClosurePreservesPendingPsiClassification() {
-    val file = myFixture.configureMetroFile("@Inject class BeforeClosure")
-    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val service = MetroResolutionService(project, serviceScope)
-    val interrupted = AtomicBoolean()
-    try {
-      val initial = service.awaitIndex(file)
-      service.setPsiClassificationObserver {
-        service.setPsiClassificationObserver(null)
-        interrupted.set(true)
-        // Capture the unavailable phase without closing the platform fixture itself. The next
-        // classification attempt sees the available project and must apply the retained batch.
-        service.checkPsiClassificationActive(projectDisposed = true)
-      }
-      WriteCommandAction.runWriteCommandAction(project) {
-        val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
-        document.setText(file.text.replace("BeforeClosure", "AfterClosure"))
-        PsiDocumentManager.getInstance(project).commitAllDocuments()
-      }
-      val updated = service.awaitIndex(file)
-      assertTrue(interrupted.get())
-      assertNotSame(initial, updated)
-      assertEquals(listOf("AfterClosure"), updated.bindings.map { it.implementationName })
-    } finally {
-      service.setPsiClassificationObserver(null)
-      Disposer.dispose(service)
-      serviceScope.cancel()
-      serviceScope.coroutineContext.job.awaitTestCompletion()
     }
   }
 
@@ -175,9 +146,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       // Reapplying unchanged settings makes readers wait for classification without a rebuild.
       service.settingsChanged()
-      repeat(5) { assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module)) }
-      // The EDT test shortcut queues an explicit request, merging with the presentation misses.
-      assertSame(initial, service.index(file))
+      repeat(5) {
+        assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+        assertSame(BindingIndex.EMPTY, service.presentationIndex(file))
+      }
+      // The production EDT policy merges an explicit request with the presentation misses.
+      assertSame(BindingIndex.EMPTY, service.currentIndex(file))
 
       release.countDown()
       PlatformTestUtil.waitForFuture(notified, 30_000)
@@ -257,6 +231,95 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       serviceScope.cancel()
       serviceScope.coroutineContext.job.awaitTestCompletion()
       dispatcher.close()
+    }
+  }
+
+  fun testInjectedRequestPolicyCanScheduleCurrentQueriesWithoutWaiting() {
+    val file = configure()
+    val executor = Executors.newSingleThreadExecutor()
+    val dispatcher = executor.asCoroutineDispatcher()
+    val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
+    val selectedBackgroundCurrentMode = AtomicBoolean()
+    val selectedPresentationMode = AtomicBoolean()
+    val policy =
+      object : IndexRequestPolicy {
+        override fun currentRequestMode(isDispatchThread: Boolean): IndexRequestMode {
+          selectedBackgroundCurrentMode.set(!isDispatchThread)
+          return IndexRequestMode.BACKGROUND
+        }
+
+        override fun automaticPresentationRequestMode(): IndexRequestMode {
+          selectedPresentationMode.set(true)
+          return IndexRequestMode.AUTOMATIC_BACKGROUND
+        }
+      }
+    val service = MetroResolutionService.createForTest(project, serviceScope, policy)
+    val paused = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    val notified = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) { notified.complete(Unit) }
+
+    try {
+      executor.submit {
+        paused.complete(Unit)
+        check(release.await(30, TimeUnit.SECONDS))
+      }
+      PlatformTestUtil.waitForFuture(paused, 30_000)
+      // A production background query would wait for the paused coordinator. The injected policy
+      // returns its cache miss after queueing the same build, with no test-mode branch involved.
+      val queried = CompletableFuture.supplyAsync {
+        runBlocking {
+          smartReadAction(project) {
+            project.service<MetroIdeProjectService>().state(module)
+            service.currentIndex(file)
+          }
+        }
+      }
+      assertSame(BindingIndex.EMPTY, PlatformTestUtil.waitForFuture(queried, 30_000))
+      assertTrue(selectedBackgroundCurrentMode.get())
+      assertSame(BindingIndex.EMPTY, service.presentationIndex(file))
+      assertTrue(selectedPresentationMode.get())
+
+      release.countDown()
+      PlatformTestUtil.waitForFuture(notified, 30_000)
+      assertFalse(service.awaitIndex(file).bindings.isEmpty())
+    } finally {
+      release.countDown()
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      dispatcher.close()
+    }
+  }
+
+  fun testTemporaryProjectClosurePreservesPendingPsiClassification() {
+    val file = myFixture.configureMetroFile("@Inject class BeforeClosure")
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service = MetroResolutionService(project, serviceScope)
+    val interrupted = AtomicBoolean()
+    try {
+      val initial = service.awaitIndex(file)
+      service.setPsiClassificationObserver {
+        service.setPsiClassificationObserver(null)
+        interrupted.set(true)
+        // Capture the unavailable phase without closing the platform fixture itself. The next
+        // classification attempt sees the available project and must apply the retained batch.
+        service.checkPsiClassificationActive(projectDisposed = true)
+      }
+      WriteCommandAction.runWriteCommandAction(project) {
+        val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+        document.setText(file.text.replace("BeforeClosure", "AfterClosure"))
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+      }
+      val updated = service.awaitIndex(file)
+      assertTrue(interrupted.get())
+      assertNotSame(initial, updated)
+      assertEquals(listOf("AfterClosure"), updated.bindings.map { it.implementationName })
+    } finally {
+      service.setPsiClassificationObserver(null)
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
     }
   }
 
