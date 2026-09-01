@@ -57,10 +57,10 @@ package dev.zacsweers.metro
  * an entry to a `Map<MyMapKey, Int>` map:
  * ```
  * @MapKey(unwrapValue = false)
- * annotation class MyMapKey {
- * String someString();
- * MyEnum someEnum();
- * }
+ * annotation class MyMapKey(
+ *   val someString: String,
+ *   val someEnum: MyEnum,
+ * )
  *
  * @DependencyGraph
  * interface SomeGraph {
