@@ -1382,7 +1382,11 @@ class MetroResolutionService(
     }
   }
 
-  /** Resolves a graph in a cancellable smart read and invokes [onResult] on the EDT. */
+  /**
+   * Resolves current graph data through cancellable smart reads and invokes [onResult] on the EDT.
+   * The retry boundary releases the read lock while waiting for a build. Explicit lookups complete
+   * independently of the manual browser's refresh notifications.
+   */
   internal fun findGraphAsync(
     classId: ClassId,
     file: VirtualFile?,
@@ -1399,7 +1403,7 @@ class MetroResolutionService(
               null
             } else {
               enrollRequestedFile(sourceFile)
-              index(module, IndexRequestMode.BACKGROUND).graphs.firstOrNull {
+              currentIndex(module).graphs.firstOrNull {
                 ProgressManager.checkCanceled()
                 it.classId == classId && it.pointer.virtualFile == file
               }

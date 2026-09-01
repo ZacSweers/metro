@@ -26,6 +26,7 @@ import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -603,6 +604,56 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(refreshed.bindings.any { it.typeKey.renderedType == "test.AddedAfterRefresh" })
       assertFalse(service.isManualGraphDataRefreshRequired)
       assertEquals(1, refreshNotifications)
+    } finally {
+      settings.automaticallyRefreshGraphData = true
+      service.settingsChanged()
+    }
+  }
+
+  fun testExplicitGraphLookupWaitsForNewGraphInManualRefreshMode() {
+    val file = configure()
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    val settings = MetroSettings.getInstance(project).state
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    service.activateGraphBrowser()
+    runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    UIUtil.dispatchAllInvocationEvents()
+
+    try {
+      val staleNotification = CompletableFuture<Unit>()
+      var notifications = 0
+      service.addIndexListener(testRootDisposable) {
+        notifications++
+        staleNotification.complete(Unit)
+      }
+      val added =
+        myFixture.addFileToProject(
+          "test/AddedGraph.kt",
+          "package test\n\n@dev.zacsweers.metro.DependencyGraph interface AddedGraph",
+        ) as KtFile
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+      PlatformTestUtil.waitForFuture(staleNotification, 30_000)
+      assertTrue(service.isManualGraphDataRefreshRequired)
+      assertSame(initial, service.indexForToolWindow(module))
+
+      // A first validation action must finish even after the browser consumed its stale notice.
+      val found = CompletableFuture<KaGraphDeclaration?>()
+      val lookup =
+        service.findGraphAsync(ClassId.topLevel(FqName("test.AddedGraph")), added.virtualFile) {
+          assertTrue(ApplicationManager.getApplication().isDispatchThread)
+          found.complete(it)
+        }
+      val graph = PlatformTestUtil.waitForFuture(found, 30_000)
+      lookup.awaitTestCompletion()
+      UIUtil.dispatchAllInvocationEvents()
+
+      assertEquals("AddedGraph", checkNotNull(graph).name)
+      assertEquals(added.virtualFile, graph.pointer.virtualFile)
+      assertEquals(1, notifications)
+      assertTrue(service.isManualGraphDataRefreshRequired)
+      assertSame(initial, service.indexForToolWindow(module))
     } finally {
       settings.automaticallyRefreshGraphData = true
       service.settingsChanged()
