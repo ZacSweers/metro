@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787769639491,
+  "lastUpdate": 1788284545094,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22288,6 +22288,62 @@ window.BENCHMARK_DATA = {
             "value": 21425.223,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.14%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eabee473~1",
+          "message": "[before] Fix MapKey's kdoc (#2753)",
+          "timestamp": "2026-09-01T12:47:48-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eabee47337894bb702dc6f680d57733b946b70c9"
+        },
+        "date": 1788284545094,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18797.036,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eabee47337894bb702dc6f680d57733b946b70c9",
+          "message": "[after] Fix MapKey's kdoc (#2753)",
+          "timestamp": "2026-09-01T12:47:48-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eabee47337894bb702dc6f680d57733b946b70c9"
+        },
+        "date": 1788284545095,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18156.682,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -3.41%"
           }
         ]
       }

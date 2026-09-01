@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787769639298,
+  "lastUpdate": 1788284544958,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Startup Benchmark": [
@@ -22288,6 +22288,62 @@ window.BENCHMARK_DATA = {
             "value": 0.17287933382254914,
             "unit": "ms/op",
             "extra": "after (HEAD)\ndelta: +0.37%\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eabee473~1",
+          "message": "[before] Fix MapKey's kdoc (#2753)",
+          "timestamp": "2026-09-01T12:47:48-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eabee47337894bb702dc6f680d57733b946b70c9"
+        },
+        "date": 1788284544958,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23163878669727794,
+            "unit": "ms/op",
+            "extra": "before (HEAD~1)\niterations: 10\nforks: 2\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Kevin Chiu",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "eabee47337894bb702dc6f680d57733b946b70c9",
+          "message": "[after] Fix MapKey's kdoc (#2753)",
+          "timestamp": "2026-09-01T12:47:48-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/eabee47337894bb702dc6f680d57733b946b70c9"
+        },
+        "date": 1788284544959,
+        "tool": "jmh",
+        "benches": [
+          {
+            "name": "Startup",
+            "value": 0.23085910616167116,
+            "unit": "ms/op",
+            "extra": "after (HEAD)\ndelta: -0.34%\niterations: 10\nforks: 2\nthreads: 1"
           }
         ]
       }
