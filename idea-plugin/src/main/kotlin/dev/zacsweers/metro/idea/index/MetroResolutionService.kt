@@ -185,6 +185,8 @@ class MetroResolutionService(
   /** Only the resolution coordinator reads or changes this pending source work. */
   private val pendingDirtyFiles = linkedSetOf<VirtualFile>()
   private val pendingRequestedFiles = linkedSetOf<VirtualFile>()
+  /** Structural changes can alter captured modules without changing file modification stamps. */
+  private val pendingForceRebuildFiles = linkedSetOf<VirtualFile>()
   private var forceAllFiles = false
   private var semanticRevision = 0L
   private var sourceSnapshot: SourceSnapshot? = null
@@ -588,6 +590,12 @@ class MetroResolutionService(
       val requested = failedClassificationRequests(batch)
       recordForceAllInvalidation()
       pendingRequestedFiles += requested
+      val sourceModulesMayHaveChanged =
+        batch.directories.isNotEmpty() || batch.files.values.any { it.structuralChange }
+      if (sourceModulesMayHaveChanged) {
+        pendingForceRebuildFiles += requested
+        pendingForceRebuildFiles += sourceSnapshot?.shardOrder.orEmpty()
+      }
       evictStaleCaches(ProjectRootModificationTracker.getInstance(project).modificationCount)
       notifyListeners(restartDaemon = true)
     }
@@ -2003,7 +2011,10 @@ class MetroResolutionService(
       ProgressManager.checkCanceled()
       try {
         val virtualFile = file.virtualFile ?: continue
-        transaction.applyShard(virtualFile, shardFor(file))
+        transaction.applyShard(
+          virtualFile,
+          shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+        )
       } finally {
         completed++
         progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
@@ -2018,7 +2029,10 @@ class MetroResolutionService(
         }
         val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
         if (containsRelevantAnnotation(file, shortNames)) {
-          transaction.applyShard(virtualFile, shardFor(file))
+          transaction.applyShard(
+            virtualFile,
+            shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+          )
         }
       } finally {
         completed++
@@ -2065,7 +2079,7 @@ class MetroResolutionService(
         }
         transaction.applyShard(
           virtualFile,
-          shardFor(file, forceRebuild = pending.forceAll),
+          shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
         )
       } finally {
         completed++
@@ -2082,14 +2096,22 @@ class MetroResolutionService(
         }
         val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
         if (containsRelevantAnnotation(file, prev.shortNames)) {
-          transaction.applyShard(virtualFile, shardFor(file))
+          transaction.applyShard(
+            virtualFile,
+            shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+          )
         }
       } finally {
         completed++
         progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
       }
     }
-    return transaction.snapshot(inputs, prev.moduleFingerprints, prev.shortNames)
+    return transaction.snapshot(
+      inputs,
+      prev.moduleFingerprints,
+      prev.shortNames,
+      sourceModulesMayHaveChanged = pending.forceRebuildFiles.isNotEmpty(),
+    )
   }
 
   private fun aggregateSource(
@@ -2733,7 +2755,10 @@ class MetroResolutionService(
     checkPsiClassificationActive()
     if (!virtualFile.isValid) {
       // The removed directory cannot be traversed. Rebuild all published shards.
-      if (state != null) result.forceAll = true
+      if (state != null) {
+        result.forceAll = true
+        result.forceRebuildFiles += state.shardOrder
+      }
       return
     }
     val directory = PsiManager.getInstance(project).findDirectory(virtualFile) ?: return
@@ -2748,12 +2773,6 @@ class MetroResolutionService(
         ProgressManager.checkCanceled()
         checkPsiClassificationActive()
         val fileVirtualFile = file.virtualFile ?: continue
-        val alreadyTracked =
-          state != null &&
-            (fileVirtualFile in state.shards ||
-              !state.dependencyOwners[fileVirtualFile].isNullOrEmpty() ||
-              !state.sharedDeclarationOwners[fileVirtualFile].isNullOrEmpty())
-        if (alreadyTracked) continue
         classifyFileChange(
           fileVirtualFile,
           PendingFileChange(structuralChange = true),
@@ -2790,6 +2809,10 @@ class MetroResolutionService(
       if (change.structuralChange) result.requestedToRemove += virtualFile
       result.dirty += ownerFiles.orEmpty()
       if (alreadyIndexed || !ownerFiles.isNullOrEmpty()) result.dirty += virtualFile
+      if (change.structuralChange) {
+        result.forceRebuildFiles += ownerFiles.orEmpty()
+        if (alreadyIndexed) result.forceRebuildFiles += virtualFile
+      }
       val lostFingerprint = sharedDeclarationFingerprints.containsKey(virtualFile)
       val directlyChangesSharedDeclaration =
         change.sharedDeclarationChanges.any { it.forcesGlobalInvalidation }
@@ -2812,6 +2835,9 @@ class MetroResolutionService(
     val metadataAffectsSharedDeclarations =
       SharedDeclarationChange.FILE_METADATA in change.sharedDeclarationChanges &&
         (hasSharedDeclarations || previousFingerprint != null)
+    // Moving aliases or constants changes which modules can resolve them with identical text.
+    val movedSharedDeclarations =
+      change.structuralChange && (hasSharedDeclarations || previousFingerprint != null)
     val removedSharedDeclarationWithoutFingerprint =
       change.removedTrackedSharedDeclaration &&
         previousFingerprint == null &&
@@ -2820,6 +2846,7 @@ class MetroResolutionService(
       change.sharedDeclarationChanges.any { it.forcesGlobalInvalidation }
     val asynchronouslyDiscoveredGlobalChange =
       metadataAffectsSharedDeclarations ||
+        movedSharedDeclarations ||
         fingerprintChanged ||
         removedSharedDeclarationWithoutFingerprint
     val globalSemanticChange =
@@ -2841,6 +2868,7 @@ class MetroResolutionService(
       if (change.structuralChange || change.requestedByQuery) {
         if (relevant) {
           result.requested += virtualFile
+          if (change.structuralChange) result.forceRebuildFiles += virtualFile
         } else {
           result.requestedToRemove += virtualFile
         }
@@ -2855,6 +2883,10 @@ class MetroResolutionService(
     if (needsRebuild) {
       result.dirty += virtualFile
       result.dirty += ownerFiles.orEmpty()
+      if (change.structuralChange) {
+        result.forceRebuildFiles += virtualFile
+        result.forceRebuildFiles += ownerFiles.orEmpty()
+      }
     }
     if (change.structuralChange && !alreadyIndexed) {
       if (relevant) {
@@ -2882,6 +2914,7 @@ class MetroResolutionService(
     val forceAllInvalidationAdded = classified.forceAll && recordForceAllInvalidation()
     pendingRequestedFiles += classified.requested
     pendingRequestedFiles.removeAll(classified.requestedToRemove)
+    pendingForceRebuildFiles += classified.forceRebuildFiles
     val semanticInvalidationAdded = dirtyInvalidationAdded || forceAllInvalidationAdded
     if (classified.restartDaemon || semanticInvalidationAdded) {
       // The edit-triggered daemon pass may have finished before background classification landed.
@@ -2910,6 +2943,7 @@ class MetroResolutionService(
     return CapturedInvalidations(
       dirty = pendingDirtyFiles.toSet(),
       requested = pendingRequestedFiles.toSet(),
+      forceRebuildFiles = pendingForceRebuildFiles.toSet(),
       forceAll = forceAllFiles,
       semanticRevision = semanticRevision,
     )
@@ -2920,6 +2954,7 @@ class MetroResolutionService(
     if (semanticRevision > captured.semanticRevision) return
     pendingDirtyFiles.removeAll(captured.dirty)
     pendingRequestedFiles.removeAll(captured.requested)
+    pendingForceRebuildFiles.removeAll(captured.forceRebuildFiles)
     if (captured.forceAll) forceAllFiles = false
     semanticRevision = captured.semanticRevision
   }
@@ -3452,6 +3487,7 @@ private data class ClassifiedPsiChanges(
   val dirty: Set<VirtualFile>,
   val requested: Set<VirtualFile>,
   val requestedToRemove: Set<VirtualFile>,
+  val forceRebuildFiles: Set<VirtualFile>,
   val forceAll: Boolean,
   val restartDaemon: Boolean,
   val fingerprints: Map<VirtualFile, String?>,
@@ -3462,6 +3498,7 @@ private data class ClassifiedPsiChanges(
     val dirty = linkedSetOf<VirtualFile>()
     val requested = linkedSetOf<VirtualFile>()
     val requestedToRemove = linkedSetOf<VirtualFile>()
+    val forceRebuildFiles = linkedSetOf<VirtualFile>()
     var forceAll = false
     var restartDaemon = false
     val fingerprints = linkedMapOf<VirtualFile, String?>()
@@ -3473,6 +3510,7 @@ private data class ClassifiedPsiChanges(
         dirty = dirty.toSet(),
         requested = requested.toSet(),
         requestedToRemove = requestedToRemove.toSet(),
+        forceRebuildFiles = forceRebuildFiles.toSet(),
         forceAll = forceAll,
         restartDaemon = restartDaemon,
         fingerprints = fingerprints.toMap(),
@@ -3486,9 +3524,13 @@ private data class ClassifiedPsiChanges(
 private data class CapturedInvalidations(
   val dirty: Set<VirtualFile>,
   val requested: Set<VirtualFile>,
+  val forceRebuildFiles: Set<VirtualFile>,
   val forceAll: Boolean,
   val semanticRevision: Long,
-)
+) {
+  /** Rebuilds structurally changed files and their owners even when cached PSI stamps match. */
+  fun forcesRebuild(file: VirtualFile): Boolean = forceAll || file in forceRebuildFiles
+}
 
 /** An immutable source view. Incremental passes copy it with only the changed shards replaced. */
 private class SourceSnapshot(
@@ -3502,7 +3544,7 @@ private class SourceSnapshot(
   val dependencyOwners: PartitionedFileMap<Set<VirtualFile>>,
   /** Maps shared declaration files to the shards that reference them. */
   val sharedDeclarationOwners: PartitionedFileMap<Set<VirtualFile>>,
-  /** Reused when changed shards leave every effective binary lookup input unchanged. */
+  /** Reused while effective binary lookup inputs and source-module ownership remain unchanged. */
   val librarySummary: FinalizedSourceLibrarySummary?,
 ) {
   fun withInputs(newInputs: IndexInputs): SourceSnapshot =
@@ -3574,12 +3616,13 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
 
   /**
    * Preserves surviving file order and appends new files. Reuses the library summary when lookup
-   * inputs are unchanged.
+   * inputs and source-module ownership are unchanged.
    */
   fun snapshot(
     inputs: IndexInputs,
     moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
     shortNames: Set<String>,
+    sourceModulesMayHaveChanged: Boolean = false,
   ): SourceSnapshot {
     val previousShards = previous?.shards ?: PartitionedFileMap.empty()
     val previousOwners = previous?.dependencyOwners ?: PartitionedFileMap.empty()
@@ -3615,8 +3658,11 @@ private class SourceSnapshotTransaction(private val previous: SourceSnapshot? = 
         }
       }
     val previousSummary = previous?.librarySummary
+    // File identity and declaration signatures survive moves between modules. The summary holds
+    // captured module visibility, so a structural change also invalidates these lookup inputs.
     val libraryInputsChanged =
-      previous == null ||
+      sourceModulesMayHaveChanged ||
+        previous == null ||
         shardChanges.any { (file, updated) ->
           val before = previous.shards[file]?.librarySignature()
           val after = updated?.librarySignature()
