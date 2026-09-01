@@ -35,7 +35,6 @@ import dev.zacsweers.metro.compiler.graph.putGraphRoot
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
 import dev.zacsweers.metro.compiler.tracing.TraceScope
-import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndex.SourcePointerIdentity
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -73,10 +72,10 @@ private typealias KaSourcePointer = SmartPsiElementPointer<out PsiElement>
 /**
  * The Analysis API analog of the compiler's `IrBindingGraph`. Adapts one graph's index view to the
  * shared [MutableBindingGraph] and runs its validation via [seal]. Missing bindings, duplicates,
- * and cycles come from the shared core. One instance per seal.
+ * and cycles come from the shared core. One instance per seal. The session supplies the immutable
+ * index for every query in that seal.
  */
 internal class KaBindingGraph(
-  private val index: BindingIndex,
   private val session: BindingResolutionSession,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
@@ -88,6 +87,7 @@ internal class KaBindingGraph(
   TraceScope by TraceScope.noop(),
   ErrorReporter<KaBindingStack> {
 
+  private val index = session.index
   private val context = queryContext.graphContext
   private val graph = context.graph
   private val graphName = graph.classId?.asFqNameString() ?: graph.name ?: "<unknown>"
@@ -107,7 +107,7 @@ internal class KaBindingGraph(
 
   // Cleared once sealing completes so lookup state doesn't outlive the population phase.
   private var _bindingLookup: KaBindingLookup? =
-    KaBindingLookup(index, session, queryContext, options, resolveParentGraph)
+    KaBindingLookup(session, queryContext, options, resolveParentGraph)
     set(value) {
       if (value == null) {
         field?.clear()

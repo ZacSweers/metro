@@ -19,7 +19,8 @@ import org.jetbrains.kotlin.psi.KtElement
  * Project-wide snapshot of Metro declarations, built from stub indexes + the Analysis API.
  *
  * Resolution starts with project-wide key matches, then filters those candidates through each
- * graph's aggregation context for editor features that need graph membership.
+ * graph's aggregation context for editor features that need graph membership. Context-sensitive
+ * queries use an operation-owned [BindingResolutionSession].
  */
 internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   val generationToken = data.generationToken
@@ -42,32 +43,12 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return block(createResolutionSession())
   }
 
-  /**
-   * Bindings satisfying [consumer]: direct key matches plus, for `Set`/`Map` multibinding sites,
-   * the multibinding contributions collected into them.
-   */
-  fun bindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    return withResolutionSession { session -> session.bindingsFor(consumer) }
-  }
-
   internal fun bindingsFor(
     session: BindingResolutionSession,
     consumer: ConsumerEntry,
   ): List<KaBinding> {
     val view = session.resolutionViewFor(consumer.sourceIdentity, consumer.pointer)
     return visibleBindingsFor(consumer, view?.module, view?.resolutionScope)
-  }
-
-  /**
-   * The bindings for [consumer]'s key that are members of [queryContext]'s graph. This is a
-   * binding-membership query: it does not constrain by whether [consumer]'s own site belongs to the
-   * graph (that is [resolveConsumer]'s job), so a consumer can probe any query context.
-   */
-  fun bindingsFor(
-    consumer: ConsumerEntry,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> {
-    return withResolutionSession { session -> session.bindingsFor(consumer, queryContext) }
   }
 
   internal fun bindingsFor(
@@ -79,14 +60,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val visible =
       visibleBindingsFor(consumer, queryContext.graphModule, queryContext.resolutionScope)
     return applyReplaces(visible.filter { isBindingInContext(it, plan) })
-  }
-
-  /**
-   * Per-context resolution of [consumer]: which bindings satisfy it in each concrete graph path,
-   * plus the use-site-visible candidates as a fallback for files/projects without graphs.
-   */
-  fun resolveConsumer(consumer: ConsumerEntry): ConsumerResolution {
-    return withResolutionSession { session -> session.resolveConsumer(consumer) }
   }
 
   internal fun resolveConsumer(
@@ -177,23 +150,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return applyReplaces(visible.filter { isBindingInContext(it, plan) })
   }
 
-  /**
-   * The bindings for [key] that are members of [queryContext]'s graph. Multibinding contributions
-   * are resolved separately by [multibindingContributions].
-   */
-  fun bindingsForKey(
-    key: KaTypeKey,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> {
-    return withResolutionSession { session -> session.bindingsForKey(key, queryContext) }
-  }
-
-  internal fun bindingsForKey(
-    session: BindingResolutionSession,
-    key: KaTypeKey,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> = bindingsForKey(key, validationPlan(session, queryContext))
-
   internal fun bindingsForKey(
     key: KaTypeKey,
     plan: GraphQueryPlan,
@@ -243,23 +199,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return lookups.consumersByKey[key].orEmpty()
   }
 
-  /** Contributions collected into [multibindingId] in [queryContext]'s graph. */
-  fun multibindingContributions(
-    multibindingId: String,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> {
-    return withResolutionSession { session ->
-      session.multibindingContributions(multibindingId, queryContext)
-    }
-  }
-
-  internal fun multibindingContributions(
-    session: BindingResolutionSession,
-    multibindingId: String,
-    queryContext: GraphQueryContext,
-  ): List<KaBinding> =
-    multibindingContributions(multibindingId, validationPlan(session, queryContext))
-
   internal fun multibindingContributions(
     multibindingId: String,
     plan: GraphQueryPlan,
@@ -267,14 +206,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return lookups.contributionsByMultibindingId[multibindingId].orEmpty().filter {
       isBindingInContext(it, plan)
     }
-  }
-
-  /**
-   * Every binding that is a member of [queryContext]'s graph. Linear over all bindings, so call on
-   * demand only.
-   */
-  fun bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> {
-    return withResolutionSession { session -> session.bindingsInContext(queryContext) }
   }
 
   internal fun bindingsInContext(
@@ -300,24 +231,11 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     }
   }
 
-  /** The actual seal roots after selecting this graph's contributed interface surface. */
-  fun accessorsFor(queryContext: GraphQueryContext): List<ConsumerEntry> {
-    return withResolutionSession { session -> session.accessorsFor(queryContext) }
-  }
-
   internal fun accessorsFor(
     session: BindingResolutionSession,
     queryContext: GraphQueryContext,
   ): List<ConsumerEntry> {
     return graphComposition(session, queryContext).accessors
-  }
-
-  /** The selected surface of [graph] in this exact root module and ancestor suffix. */
-  fun graphComposition(
-    queryContext: GraphQueryContext,
-    graph: KaGraphDeclaration = queryContext.graphContext.graph,
-  ): GraphComposition {
-    return withResolutionSession { session -> session.graphComposition(queryContext, graph) }
   }
 
   internal fun graphComposition(
@@ -622,11 +540,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     }
   }
 
-  /** Child declarations created by the selected surface, excluding recursive parent paths. */
-  fun extensionsOf(queryContext: GraphQueryContext): List<KaGraphDeclaration> {
-    return withResolutionSession { session -> session.extensionsOf(queryContext) }
-  }
-
   internal fun extensionsOf(
     session: BindingResolutionSession,
     queryContext: GraphQueryContext,
@@ -667,21 +580,11 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return result.toList()
   }
 
-  /** Every valid aggregation context for [graph]. Extensions can have multiple parent paths. */
-  fun contextsFor(graph: KaGraphDeclaration): List<GraphContext> {
-    return withResolutionSession { session -> session.contextsFor(graph) }
-  }
-
   internal fun contextsFor(
     session: BindingResolutionSession,
     graph: KaGraphDeclaration,
   ): List<GraphContext> {
     return session.cachedContextsFor(graph) { buildContexts(session, graph) }
-  }
-
-  /** Builds the module-aware query view for [context], or null if its graph disappeared. */
-  fun queryContext(context: GraphContext): GraphQueryContext? {
-    return withResolutionSession { session -> session.queryContext(context) }
   }
 
   internal fun queryContext(
@@ -708,12 +611,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return session.plannedQuery(context) { planned }.queryContext
   }
 
-  /** Includes bindings with incompatible scopes so validation can report them. */
-  internal fun validationPlan(queryContext: GraphQueryContext): GraphQueryPlan {
-    return withResolutionSession { session -> session.validationPlan(queryContext) }
-  }
-
-  internal fun validationPlan(
+  /** Builds one validation plan. The owning session caches it after construction succeeds. */
+  internal fun createValidationPlan(
     session: BindingResolutionSession,
     queryContext: GraphQueryContext,
   ): GraphQueryPlan {
@@ -859,11 +758,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return NearestFactoryInputOwners(dependencyOwners.toMap(), containerOwners.toMap())
   }
 
-  /** Finds the current index's context for a path retained across an index rebuild. */
-  fun findContext(path: GraphPath): GraphContext? {
-    return withResolutionSession { session -> session.findContext(path) }
-  }
-
   internal fun findContext(
     session: BindingResolutionSession,
     path: GraphPath,
@@ -878,11 +772,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       }
     }
     return null
-  }
-
-  /** Concrete child contexts created directly from [parent]'s exact graph path. */
-  fun extensionContextsOf(parent: GraphContext): List<GraphContext> {
-    return withResolutionSession { session -> session.extensionContextsOf(parent) }
   }
 
   internal fun extensionContextsOf(
@@ -905,15 +794,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     }
   }
 
-  /**
-   * Contributions aggregated by [queryContext]'s graph itself: matched against the graph's own
-   * aggregation scopes, minus excluded. Contributions a graph extension sees through its parent
-   * chain are reported separately by [inheritedContributionsFor].
-   */
-  fun contributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
-    return withResolutionSession { session -> session.contributionsFor(queryContext) }
-  }
-
   internal fun contributionsFor(
     session: BindingResolutionSession,
     queryContext: GraphQueryContext,
@@ -926,14 +806,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         it.classId !in removedOrigins &&
         isVisibleFrom(it, queryContext)
     }
-  }
-
-  /**
-   * Contributions [queryContext]'s graph receives from its parent chain rather than aggregating
-   * itself: matched against ancestor scopes only, minus excluded. Empty for non-extension graphs.
-   */
-  fun inheritedContributionsFor(queryContext: GraphQueryContext): List<ContributionEntry> {
-    return withResolutionSession { session -> session.inheritedContributionsFor(queryContext) }
   }
 
   internal fun inheritedContributionsFor(
@@ -1122,18 +994,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return resolveContainerClosure(containerRoots, useSiteModule, resolutionScope)
   }
 
-  /**
-   * Containers [graph] itself wires: declared, factory-included, contributed into its own
-   * aggregation scopes, and everything those include transitively. Bindings from these stay local
-   * to [graph]'s context like the compiler's locally declared keys.
-   */
-  fun graphOwnContainers(
-    graph: KaGraphDeclaration,
-    queryContext: GraphQueryContext,
-  ): Set<ClassId> {
-    return withResolutionSession { session -> session.graphOwnContainers(graph, queryContext) }
-  }
-
   internal fun graphOwnContainers(
     session: BindingResolutionSession,
     graph: KaGraphDeclaration,
@@ -1186,16 +1046,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return resolveContainerClosure(roots, queryContext.graphModule, queryContext.resolutionScope)
   }
 
-  /** Whether [binding] belongs to this graph itself rather than one of its ancestors. */
-  fun isBindingOwnedByCurrentGraph(
-    binding: KaBinding,
-    queryContext: GraphQueryContext,
-  ): Boolean {
-    return withResolutionSession { session ->
-      session.isBindingOwnedByCurrentGraph(binding, queryContext)
-    }
-  }
-
   internal fun isBindingOwnedByCurrentGraph(
     session: BindingResolutionSession,
     binding: KaBinding,
@@ -1242,13 +1092,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     }
 
     return true
-  }
-
-  /** Whether an ancestor can resolve [key] through one of its private bindings. */
-  fun hasPrivateAncestorBinding(key: KaTypeKey, queryContext: GraphQueryContext): Boolean {
-    return withResolutionSession { session ->
-      session.hasPrivateAncestorBinding(key, queryContext)
-    }
   }
 
   internal fun hasPrivateAncestorBinding(
@@ -1378,15 +1221,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val contributions =
       consumer.multibindingId?.let { lookups.contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions
-  }
-
-  internal fun isConsumerInContext(
-    consumer: ConsumerEntry,
-    queryContext: GraphQueryContext,
-  ): Boolean {
-    return withResolutionSession { session ->
-      session.isConsumerInContext(consumer, queryContext)
-    }
   }
 
   internal fun isConsumerInContext(
@@ -2055,14 +1889,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return applyExcludesAndReplaces(entries, ensureActive = ProgressManager::checkCanceled)
   }
 
-  /** Sites consuming any of [bindingEntries], joining multibinding contributions by id. */
-  fun consumersFor(
-    bindingEntries: Collection<KaBinding>,
-    graphPath: GraphPath? = null,
-  ): List<ConsumerEntry> {
-    return withResolutionSession { session -> session.consumersFor(bindingEntries, graphPath) }
-  }
-
   internal fun consumersFor(
     session: BindingResolutionSession,
     bindingEntries: Collection<KaBinding>,
@@ -2109,14 +1935,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   internal fun bindingEntriesInFile(file: VirtualFile): List<KaBinding> {
     return lookups.bindingsByFile[file].orEmpty().withoutDuplicateAssistedFactories().filterNot {
       it.isValidationOnlyAssistedTarget()
-    }
-  }
-
-  fun consumerEntryAt(element: KtElement): ConsumerEntry? {
-    return withResolutionSession { session ->
-      selectConsumerEntry(consumerEntriesAt(element)) { entry ->
-        session.resolveConsumer(entry).uniformBindings?.let(::bindingResolutionIdentities)
-      }
     }
   }
 

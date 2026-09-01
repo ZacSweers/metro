@@ -18,6 +18,16 @@ import dev.zacsweers.metro.idea.index.FilePresentationBundle
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.ConsumerEntry
+import dev.zacsweers.metro.idea.model.ConsumerResolution
+import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphComposition
+import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -37,6 +47,7 @@ import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
@@ -200,6 +211,115 @@ private fun MetroResolutionService.awaitCurrentIndex(
   PlatformTestUtil.waitForFuture(barrier, 30_000)
   return requestCurrentIndex()
 }
+
+// These one-shot queries keep fixture assertions concise. Production callers own a session for
+// the complete operation so related queries share their cached contexts and plans.
+
+/** Looks up a fixture consumer's visible bindings in a fresh session. */
+internal fun BindingIndex.bindingsFor(consumer: ConsumerEntry): List<KaBinding> =
+  withResolutionSession { session ->
+    session.bindingsFor(consumer)
+  }
+
+/** Looks up a fixture consumer's bindings in one concrete graph context. */
+internal fun BindingIndex.bindingsFor(
+  consumer: ConsumerEntry,
+  queryContext: GraphQueryContext,
+): List<KaBinding> = withResolutionSession { session ->
+  session.bindingsFor(consumer, queryContext)
+}
+
+/** Resolves one fixture consumer across its graph contexts. */
+internal fun BindingIndex.resolveConsumer(consumer: ConsumerEntry): ConsumerResolution =
+  withResolutionSession { session ->
+    session.resolveConsumer(consumer)
+  }
+
+/** Looks up a fixture key with the validation plan's membership rules. */
+internal fun BindingIndex.bindingsForKey(
+  key: KaTypeKey,
+  queryContext: GraphQueryContext,
+): List<KaBinding> = withResolutionSession { session -> session.bindingsForKey(key, queryContext) }
+
+/** Resolves a fixture's collected multibinding elements. */
+internal fun BindingIndex.multibindingContributions(
+  multibindingId: String,
+  queryContext: GraphQueryContext,
+): List<KaBinding> = withResolutionSession { session ->
+  session.multibindingContributions(multibindingId, queryContext)
+}
+
+/** Collects the fixture bindings belonging to one graph context. */
+internal fun BindingIndex.bindingsInContext(queryContext: GraphQueryContext): List<KaBinding> =
+  withResolutionSession { session ->
+    session.bindingsInContext(queryContext)
+  }
+
+/** Selects the actual fixture graph roots, including contributed interfaces. */
+internal fun BindingIndex.accessorsFor(queryContext: GraphQueryContext): List<ConsumerEntry> =
+  withResolutionSession { session ->
+    session.accessorsFor(queryContext)
+  }
+
+/** Selects a fixture graph's surface for its exact parent path. */
+internal fun BindingIndex.graphComposition(
+  queryContext: GraphQueryContext,
+  graph: KaGraphDeclaration = queryContext.graphContext.graph,
+): GraphComposition = withResolutionSession { session ->
+  session.graphComposition(queryContext, graph)
+}
+
+/** Finds child declarations created by a fixture's selected graph surface. */
+internal fun BindingIndex.extensionsOf(queryContext: GraphQueryContext): List<KaGraphDeclaration> =
+  withResolutionSession { session ->
+    session.extensionsOf(queryContext)
+  }
+
+/** Expands a fixture graph's concrete parent paths. */
+internal fun BindingIndex.contextsFor(graph: KaGraphDeclaration): List<GraphContext> =
+  withResolutionSession { session ->
+    session.contextsFor(graph)
+  }
+
+/** Captures a module-aware query view for one fixture graph context. */
+internal fun BindingIndex.queryContext(context: GraphContext): GraphQueryContext? =
+  withResolutionSession { session ->
+    session.queryContext(context)
+  }
+
+/** Finds concrete fixture children of one parent path. */
+internal fun BindingIndex.extensionContextsOf(parent: GraphContext): List<GraphContext> =
+  withResolutionSession { session ->
+    session.extensionContextsOf(parent)
+  }
+
+/** Selects contributions aggregated by the fixture graph's own scopes. */
+internal fun BindingIndex.contributionsFor(
+  queryContext: GraphQueryContext
+): List<ContributionEntry> = withResolutionSession { session ->
+  session.contributionsFor(queryContext)
+}
+
+/** Selects contributions inherited through the fixture graph's ancestor scopes. */
+internal fun BindingIndex.inheritedContributionsFor(
+  queryContext: GraphQueryContext
+): List<ContributionEntry> = withResolutionSession { session ->
+  session.inheritedContributionsFor(queryContext)
+}
+
+/** Finds fixture consumers of these declarations, optionally restricted to one graph path. */
+internal fun BindingIndex.consumersFor(
+  bindingEntries: Collection<KaBinding>,
+  graphPath: GraphPath? = null,
+): List<ConsumerEntry> = withResolutionSession { session ->
+  session.consumersFor(bindingEntries, graphPath)
+}
+
+/** Selects one unambiguous fixture consumer at a declaration. */
+internal fun BindingIndex.consumerEntryAt(element: KtElement): ConsumerEntry? =
+  withResolutionSession { session ->
+    session.consumerEntryAt(element)
+  }
 
 /** Starts collecting state before returning and keeps test callbacks on the publishing thread. */
 internal fun <T> StateFlow<T>.collectInTest(onValue: (T) -> Unit): AutoCloseable {

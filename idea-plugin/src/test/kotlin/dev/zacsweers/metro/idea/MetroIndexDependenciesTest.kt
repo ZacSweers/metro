@@ -3,12 +3,16 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
+import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
@@ -344,6 +348,101 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       )
       assertFalse(session.hasComputedContextsFor(unrelatedGraph))
     }
+  }
+
+  fun testValidationPlansAreReusedOnlyWithinTheirSession() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val session = index.createResolutionSession()
+    val query = checkNotNull(session.queryContext(session.contextsFor(graph).single()))
+    var scopeChecks = 0
+    val countedQuery =
+      GraphQueryContext(
+        query.graphContext,
+        query.graphModule,
+        DeclarationResolutionScope { element ->
+          scopeChecks++
+          query.resolutionScope.contains(element)
+        },
+        query.containers,
+      )
+
+    val plan = session.validationPlan(countedQuery)
+    val initialScopeChecks = scopeChecks
+    assertTrue(initialScopeChecks > 0)
+    // Empty key buckets isolate the plan work from per-candidate membership checks.
+    val graphKey = checkNotNull(graph.graphTypeKey())
+    repeat(3) {
+      assertSame(plan, session.validationPlan(countedQuery))
+      assertTrue(session.bindingsForKey(graphKey, countedQuery).isEmpty())
+      assertTrue(session.multibindingContributions("unindexed", countedQuery).isEmpty())
+    }
+    assertEquals(initialScopeChecks, scopeChecks)
+
+    val otherSession = index.createResolutionSession()
+    val otherQuery =
+      checkNotNull(otherSession.queryContext(otherSession.contextsFor(graph).single()))
+    val otherPlan = otherSession.validationPlan(otherQuery)
+    assertNotSame(plan, otherPlan)
+    assertSame(otherPlan, otherSession.validationPlan(otherQuery))
+  }
+
+  fun testValidationPlansKeepCustomQueryScopesSeparate() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val consumerBinding = index.bindings.single { it.typeKey.renderedType == "test.Consumer" }
+    val session = index.createResolutionSession()
+    val query = checkNotNull(session.queryContext(session.contextsFor(graph).single()))
+    val hiddenQuery =
+      GraphQueryContext(
+        query.graphContext,
+        query.graphModule,
+        DeclarationResolutionScope { false },
+        query.containers,
+      )
+
+    val visiblePlan = session.validationPlan(query)
+    val hiddenPlan = session.validationPlan(hiddenQuery)
+    assertNotSame(visiblePlan, hiddenPlan)
+    assertTrue(session.bindingsForKey(consumerBinding.typeKey, query).isNotEmpty())
+    assertTrue(session.bindingsForKey(consumerBinding.typeKey, hiddenQuery).isEmpty())
+    assertSame(visiblePlan, session.validationPlan(query))
+    assertSame(hiddenPlan, session.validationPlan(hiddenQuery))
+  }
+
+  fun testCanceledValidationPlanCanRetryInTheSameSession() {
+    val file = configure()
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val consumerBinding = index.bindings.single { it.typeKey.renderedType == "test.Consumer" }
+    val session = index.createResolutionSession()
+    val query = checkNotNull(session.queryContext(session.contextsFor(graph).single()))
+    val cancellation = ProcessCanceledException()
+    var shouldCancel = true
+    val interruptibleQuery =
+      GraphQueryContext(
+        query.graphContext,
+        query.graphModule,
+        DeclarationResolutionScope { element ->
+          if (shouldCancel) throw cancellation
+          query.resolutionScope.contains(element)
+        },
+        query.containers,
+      )
+
+    try {
+      session.validationPlan(interruptibleQuery)
+      fail("Expected validation plan construction to be canceled")
+    } catch (failure: ProcessCanceledException) {
+      assertSame(cancellation, failure)
+    }
+
+    shouldCancel = false
+    val completed = session.validationPlan(interruptibleQuery)
+    assertSame(completed, session.validationPlan(interruptibleQuery))
+    assertTrue(session.bindingsForKey(consumerBinding.typeKey, interruptibleQuery).isNotEmpty())
   }
 
   fun testProvidesReceiverIsADependencyAndConsumer() {

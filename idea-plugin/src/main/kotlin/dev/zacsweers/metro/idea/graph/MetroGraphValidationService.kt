@@ -294,7 +294,7 @@ internal class MetroGraphValidationService(
     val queryContext = session.queryContext(input.context) ?: return null
     val options = moduleOptions(input.contextElement)
     val lookup =
-      KaBindingLookup(input.index, session, queryContext, options) { parentContext ->
+      KaBindingLookup(session, queryContext, options) { parentContext ->
         parentGraphLookup(input.contextElement, parentContext, resolutionRun)
       }
     return try {
@@ -363,7 +363,7 @@ internal class MetroGraphValidationService(
             checkNotNull(session.queryContext(context)) {
               "Graph declaration disappeared: $graphName"
             }
-          KaBindingGraph(index, session, queryContext, options, reservations) { parentContext ->
+          KaBindingGraph(session, queryContext, options, reservations) { parentContext ->
               parentGraphLookup(input.contextElement, parentContext, resolutionRun)
             }
             .seal()
@@ -496,7 +496,6 @@ internal class MetroGraphValidationService(
     val session = resolutionRun.session(input.index)
     val queryContext = session.queryContext(input.context) ?: return null
     return ParentGraphLookup(
-      input.index,
       session,
       queryContext,
       moduleOptions(input.contextElement),

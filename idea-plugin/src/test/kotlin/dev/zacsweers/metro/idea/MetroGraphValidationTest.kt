@@ -1200,7 +1200,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     val result = index.withResolutionSession { session ->
-      KaBindingGraph(index, session, countedContext, file.metroIdeState().options).seal()
+      KaBindingGraph(session, countedContext, file.metroIdeState().options).seal()
     }
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
     val parameters = diagnostics.map { it.stack.first().pointer?.element as? KtParameter }

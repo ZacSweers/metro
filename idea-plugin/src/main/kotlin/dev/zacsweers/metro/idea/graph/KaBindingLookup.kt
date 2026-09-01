@@ -24,29 +24,31 @@ import dev.zacsweers.metro.idea.model.multibindingId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
-/** The index and compiler options belonging to a parent graph's own declaration module. */
+/** The session and compiler options belonging to a parent graph's own declaration module. */
 internal class ParentGraphLookup(
-  val index: BindingIndex,
   val session: BindingResolutionSession,
   val queryContext: GraphQueryContext,
   val options: MetroOptions,
-)
+) {
+  val index: BindingIndex
+    get() = session.index
+}
 
 /**
  * The Analysis API analog of the compiler's `BindingLookup`. Resolves bindings for requested keys
  * on demand, so only keys reachable from the seal roots are ever looked up.
  *
- * Direct keys pull from the index's membership-gated view of [queryContext]. Its graph context
- * merges the extension parent chain, while its module gates declaration visibility. Multibinding
- * keys synthesize multibinding nodes.
+ * Direct keys pull from the session's index through [queryContext]'s membership rules. Its graph
+ * context merges the extension parent chain, while its module gates declaration visibility.
+ * Multibinding keys synthesize multibinding nodes.
  */
 internal class KaBindingLookup(
-  private val index: BindingIndex,
   private val session: BindingResolutionSession,
   private val queryContext: GraphQueryContext,
   private val options: MetroOptions,
   private val resolveParentGraph: (GraphContext) -> ParentGraphLookup? = { null },
 ) {
+  private val index = session.index
   private val graph: KaGraphDeclaration = queryContext.graphContext.graph
   internal val queryPlan = session.validationPlan(queryContext)
 
@@ -322,14 +324,13 @@ internal class KaBindingLookup(
         resolvedParent
       } else {
         val parentQueryContext = session.queryContext(parentContext) ?: return null
-        ParentGraphLookup(index, session, parentQueryContext, options)
+        ParentGraphLookup(session, parentQueryContext, options)
       }
     if (!parent.options.enableSuspendProviders) {
       return null
     }
     val lookup =
       KaBindingLookup(
-        parent.index,
         parent.session,
         parent.queryContext,
         parent.options,
