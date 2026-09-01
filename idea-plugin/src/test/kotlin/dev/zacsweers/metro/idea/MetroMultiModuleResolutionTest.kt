@@ -641,6 +641,160 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), excluded.diagnostics.map { it.id })
   }
 
+  fun testContributedChildOwnershipSurvivesLibraryRefreshAndSourceReparse() {
+    val apiFile =
+      fixture.addFileToProject(
+        "library/ownership/GraphApi.kt",
+        """
+        package ownership
+
+        import dev.zacsweers.metro.*
+
+        interface ChildScope
+
+        @GraphExtension(ChildScope::class)
+        interface SharedChild
+        """
+          .trimIndent(),
+      ) as KtFile
+    val accessorsFile =
+      fixture.addFileToProject(
+        "app/ownership/ChildAccessors.kt",
+        """
+        package ownership
+
+        import dev.zacsweers.metro.*
+        import libtest.LibRetargetedDependencyA
+
+        interface LibraryAccessors {
+          val required: LibRetargetedDependencyA
+          val implemented: LibRetargetedDependencyA
+        }
+
+        @ContributesTo(ChildScope::class)
+        interface AppChildAccessors : LibraryAccessors {
+          override val implemented: LibRetargetedDependencyA get() = error("supplied")
+
+          @Provides fun provideCount(dependency: LibRetargetedDependencyA): Int = 0
+          @Provides fun provideText(dependency: LibRetargetedDependencyA): String = ""
+        }
+
+        @ContributesTo(ChildScope::class)
+        interface ExcludedChildAccessors : LibraryAccessors
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/ownership/Parent.kt",
+        """
+        package ownership
+
+        import dev.zacsweers.metro.*
+
+        @DependencyGraph(excludes = [ExcludedChildAccessors::class])
+        interface ParentGraph {
+          val child: SharedChild
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val service = fixture.project.service<MetroResolutionService>()
+    val settings = MetroSettings.getInstance(fixture.project).state
+    val previousResolveFromLibraries = settings.resolveFromLibraries
+
+    appModule.withMetroLibFixtureLibrary {
+      PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+      IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+      service.awaitIndex(apiFile)
+      val initial = service.awaitIndex(appFile)
+      val ownership = ConsumerOwnershipBundle.build(initial)
+
+      fun assertOwnership(index: BindingIndex) {
+        val child = index.graphs.single { it.name == "SharedChild" }
+        val parent = index.graphs.single { it.name == "ParentGraph" }
+        fun consumer(name: String, contribution: String) =
+          index.consumers.single {
+            it.graphId == child.declarationId &&
+              it.graphContribution?.classId?.shortClassName?.asString() == contribution &&
+              (it.pointer.element as? KtNamedDeclaration)?.name == name
+          }
+
+        val required = consumer("required", "AppChildAccessors")
+        assertEquals(
+          listOf(parent.pointer.element),
+          ownership.owningGraphPointers(required)?.map { it.element },
+        )
+        // The same key can belong to an implemented declaration or an excluded contribution.
+        val implemented = consumer("implemented", "AppChildAccessors")
+        assertTrue(ownership.owningGraphPointers(implemented)?.isEmpty() == true)
+        val excluded = consumer("required", "ExcludedChildAccessors")
+        assertTrue(ownership.owningGraphPointers(excluded)?.isEmpty() == true)
+        val providerParameters =
+          index.consumers.filter {
+            it.graphId == child.declarationId &&
+              (it.pointer.element as? KtNamedDeclaration)?.name == "dependency"
+          }
+        assertEquals(2, providerParameters.size)
+        for (parameter in providerParameters) {
+          assertEquals(
+            listOf(parent.pointer.element),
+            ownership.owningGraphPointers(parameter)?.map { it.element },
+          )
+        }
+      }
+
+      fun assertResolved(index: BindingIndex) {
+        val child = index.graphs.single { it.name == "SharedChild" }
+        val result =
+          fixture.project
+            .service<MetroGraphValidationService>()
+            .validate(apiFile, index.contextsFor(child).single())
+            .requireCompleted()
+        assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+        assertTrue(
+          result.bindings.any { key, _ -> key.renderedType == "libtest.LibRetargetedDependencyA" }
+        )
+      }
+
+      fun rebuildLibraryIndex(): BindingIndex {
+        settings.resolveFromLibraries = false
+        service.settingsChanged()
+        service.awaitIndex(appFile)
+        settings.resolveFromLibraries = true
+        service.settingsChanged()
+        service.awaitIndex(apiFile)
+        return service.awaitIndex(appFile)
+      }
+
+      try {
+        assertOwnership(initial)
+        assertResolved(initial)
+        // Clearing the binary cache retains the source summary and recreates contributed consumers.
+        val refreshed = rebuildLibraryIndex()
+        assertOwnership(refreshed)
+        assertResolved(refreshed)
+
+        val document =
+          checkNotNull(PsiDocumentManager.getInstance(fixture.project).getDocument(accessorsFile))
+        WriteCommandAction.runWriteCommandAction(fixture.project) {
+          document.insertString(
+            0,
+            "// Move declaration offsets without changing library requests.\n",
+          )
+        }
+        PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+        val reparsed = rebuildLibraryIndex()
+        assertOwnership(reparsed)
+        assertResolved(reparsed)
+      } finally {
+        settings.resolveFromLibraries = previousResolveFromLibraries
+        service.settingsChanged()
+      }
+    }
+  }
+
   fun testConsumerResolutionUsesEachGraphModuleAsTheUseSite() {
     val libraryFile =
       fixture.addFileToProject(

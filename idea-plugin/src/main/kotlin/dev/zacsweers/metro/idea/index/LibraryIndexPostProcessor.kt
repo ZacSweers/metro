@@ -23,8 +23,10 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphQueryContext
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
@@ -599,14 +601,17 @@ internal fun sourceAssistedFactoryUseSites(
     .factoryUseSites
 }
 
-/** Graph owners captured once for dependency resolution in the owning modules. */
+/**
+ * Graph owners captured once for dependency resolution in the owning modules. Equivalent rebuilt
+ * consumers reuse these answers while the source library summary remains current.
+ */
 @OptIn(KaPlatformInterface::class)
 internal class ConsumerOwnershipBundle
 private constructor(
   private val pointersByGraphId: Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>>,
   private val pointersByIncludedContainer:
     Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>>,
-  private val graphOwnersByConsumer: Map<ConsumerEntry, FrozenConsumerOwners>,
+  private val graphOwnersByConsumer: Map<ConsumerOwnershipKey, FrozenConsumerOwners>,
 ) {
   private constructor(
     state: ConsumerOwnershipState
@@ -638,7 +643,7 @@ private constructor(
     val graphId = consumer.graphId
     if (graphId != null) {
       if (graphId !in pointersByGraphId) return emptyList()
-      return when (val owners = graphOwnersByConsumer[consumer]) {
+      return when (val owners = graphOwnersByConsumer[consumer.ownershipKey(graphId)]) {
         null -> null
         FrozenConsumerOwners.None -> emptyList()
         is FrozenConsumerOwners.GraphRoots -> owners.pointers
@@ -672,7 +677,7 @@ private class ConsumerOwnershipBuilder(
   fun build(): ConsumerOwnershipState {
     val rootPointersByGraphId = buildRootPointersByGraphId()
     val pointersByIncludedContainer = buildIncludedContainerPointers(rootPointersByGraphId)
-    val graphOwnersByConsumer = linkedMapOf<ConsumerEntry, FrozenConsumerOwners>()
+    val graphOwnersByConsumer = linkedMapOf<ConsumerOwnershipKey, FrozenConsumerOwners>()
     val consumersByGraphId = linkedMapOf<GraphDeclarationId, MutableList<ConsumerEntry>>()
     for (consumer in index.consumers) {
       ProgressManager.checkCanceled()
@@ -683,14 +688,16 @@ private class ConsumerOwnershipBuilder(
       ProgressManager.checkCanceled()
       val graph = graphsById[graphId]
       if (graph == null) {
-        for (consumer in consumers) graphOwnersByConsumer[consumer] = FrozenConsumerOwners.None
+        for (consumer in consumers) {
+          graphOwnersByConsumer[consumer.ownershipKey(graphId)] = FrozenConsumerOwners.None
+        }
         continue
       }
       val contexts = session.contextsFor(graph).mapNotNull(session::queryContext)
       for (consumer in consumers) {
         ProgressManager.checkCanceled()
         val owners = ownerPointers(consumer, graphId, contexts)
-        if (owners != null) graphOwnersByConsumer[consumer] = owners
+        if (owners != null) graphOwnersByConsumer[consumer.ownershipKey(graphId)] = owners
       }
     }
     ProgressManager.checkCanceled()
@@ -766,8 +773,56 @@ private class ConsumerOwnershipBuilder(
 private class ConsumerOwnershipState(
   val pointersByGraphId: Map<GraphDeclarationId, SmartPsiElementPointer<out KtElement>>,
   val pointersByIncludedContainer: Map<KaTypeKey, List<SmartPsiElementPointer<out KtElement>>>,
-  val graphOwnersByConsumer: Map<ConsumerEntry, FrozenConsumerOwners>,
+  val graphOwnersByConsumer: Map<ConsumerOwnershipKey, FrozenConsumerOwners>,
 )
+
+/** Keeps inherited specializations, contribution selection, and implemented requests separate. */
+private data class ConsumerOwnershipKey(
+  val graphId: GraphDeclarationId,
+  val contextKey: KaContextualTypeKey,
+  val originClassId: ClassId?,
+  val contribution: GraphReference?,
+  val requestKind: ConsumerEntry.GraphRequestKind?,
+  val isOptional: Boolean,
+  val source: ConsumerOwnershipSource,
+)
+
+/** Matches regenerated graph consumers to the ownership retained by their source summary. */
+private fun ConsumerEntry.ownershipKey(graphId: GraphDeclarationId): ConsumerOwnershipKey {
+  val sourceFile = pointer.virtualFile
+  val needsDeclarationIdentity = graphRequestKind != null && !isOptional
+  val declaration = if (needsDeclarationIdentity || sourceFile == null) pointer else null
+  return ConsumerOwnershipKey(
+    graphId,
+    contextKey,
+    originClassId,
+    graphContribution,
+    graphRequestKind,
+    isOptional,
+    ConsumerOwnershipSource(sourceFile, declaration),
+  )
+}
+
+/**
+ * Graph-owned dependency sites share their file's visibility. Required graph requests retain
+ * declaration identity so implemented accessors remain distinct across reparses and offset changes.
+ */
+private class ConsumerOwnershipSource(
+  private val file: VirtualFile?,
+  private val pointer: SmartPsiElementPointer<out KtElement>?,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is ConsumerOwnershipSource || file != other.file) return false
+    if (pointer === other.pointer) return true
+    if (pointer == null || other.pointer == null) return false
+    return SmartPointerManager.getInstance(pointer.project)
+      .pointToTheSameElement(pointer, other.pointer)
+  }
+
+  // Source offsets can change while a summary survives. The file keeps the hash stable.
+  override fun hashCode(): Int = file.hashCode()
+}
 
 private sealed interface FrozenConsumerOwners {
   data object None : FrozenConsumerOwners
