@@ -148,6 +148,118 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testCachedPresentationMissNotifiesAfterNoOpClassificationAndExplicitUpgrade() {
+    val file = configure()
+    val executor = Executors.newSingleThreadExecutor()
+    val dispatcher = executor.asCoroutineDispatcher()
+    val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
+    val service = MetroResolutionService(project, serviceScope)
+    val paused = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+
+    try {
+      val initial = service.awaitIndex(file)
+      service.activateGraphBrowser()
+      UIUtil.dispatchAllInvocationEvents()
+      val notified = CompletableFuture<Unit>()
+      var notifications = 0
+      service.addIndexListener(testRootDisposable) {
+        notifications++
+        notified.complete(Unit)
+      }
+      executor.submit {
+        paused.complete(Unit)
+        release.await()
+      }
+      PlatformTestUtil.waitForFuture(paused, 30_000)
+
+      // Reapplying unchanged settings makes readers wait for classification without a rebuild.
+      service.settingsChanged()
+      repeat(5) { assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module)) }
+      // The EDT test shortcut queues an explicit request, merging with the presentation misses.
+      assertSame(initial, service.index(file))
+
+      release.countDown()
+      PlatformTestUtil.waitForFuture(notified, 30_000)
+      assertSame(initial, service.awaitIndex(file))
+      repeat(5) { assertSame(initial, service.indexForToolWindow(module)) }
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+      UIUtil.dispatchAllInvocationEvents()
+      assertEquals(1, notifications)
+    } finally {
+      release.countDown()
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      dispatcher.close()
+    }
+  }
+
+  fun testCachedPresentationMissNotifiesAfterModuleStateWarmup() {
+    val file = configure()
+    val projectStateService = project.service<MetroIdeProjectService>()
+    val executor = Executors.newSingleThreadExecutor()
+    val dispatcher = executor.asCoroutineDispatcher()
+    val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
+    val service = MetroResolutionService(project, serviceScope)
+    val paused = CompletableFuture<Unit>()
+    val releaseCoordinator = CountDownLatch(1)
+    val warmupStarted = CompletableFuture<Unit>()
+    val releaseWarmup = CountDownLatch(1)
+
+    try {
+      val initial = service.awaitIndex(file)
+      service.activateGraphBrowser()
+      UIUtil.dispatchAllInvocationEvents()
+      val notified = CompletableFuture<Unit>()
+      var notifications = 0
+      service.addIndexListener(testRootDisposable) {
+        notifications++
+        notified.complete(Unit)
+      }
+      executor.submit {
+        paused.complete(Unit)
+        releaseCoordinator.await()
+      }
+      PlatformTestUtil.waitForFuture(paused, 30_000)
+      projectStateService.clearCurrentState(module)
+      projectStateService.setStateWarmupObserver {
+        warmupStarted.complete(Unit)
+        releaseWarmup.await()
+      }
+
+      service.settingsChanged()
+      assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+      PlatformTestUtil.waitForFuture(warmupStarted, 30_000)
+
+      // Classification restores the cached generation before the warmup callback can retry.
+      releaseCoordinator.countDown()
+      val classified = CompletableFuture.supplyAsync {
+        runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+      }
+      PlatformTestUtil.waitForFuture(classified, 30_000)
+      assertTrue(service.isCurrent(initial))
+      UIUtil.dispatchAllInvocationEvents()
+      assertEquals(0, notifications)
+      assertFalse(notified.isDone)
+      releaseWarmup.countDown()
+
+      PlatformTestUtil.waitForFuture(notified, 30_000)
+      assertSame(initial, service.indexForToolWindow(module))
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+      UIUtil.dispatchAllInvocationEvents()
+      assertEquals(1, notifications)
+    } finally {
+      releaseCoordinator.countDown()
+      releaseWarmup.countDown()
+      projectStateService.setStateWarmupObserver(null)
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      dispatcher.close()
+    }
+  }
+
   fun testQueuedIndexRequestsShareThePublishedIndex() {
     configure()
     val executor = Executors.newSingleThreadExecutor()

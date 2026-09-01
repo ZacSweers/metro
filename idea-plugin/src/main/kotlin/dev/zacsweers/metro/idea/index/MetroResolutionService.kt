@@ -173,7 +173,12 @@ class MetroResolutionService(
 
   private val retryAutomaticIndexAfterStateWarmup: (Module) -> Unit = { module ->
     if (automaticallyRefreshGraphData && !isDisposed && !project.isDisposed && !module.isDisposed) {
-      index(module, IndexRequestMode.AUTOMATIC_BACKGROUND)
+      val index = index(module, IndexRequestMode.AUTOMATIC_BACKGROUND)
+      if (index !== BindingIndex.EMPTY) {
+        // Classification may restore cached data before warmup finishes. Its caller already saw
+        // an empty index. The module-state service restarts highlighting after this callback.
+        notifyListeners(restartDaemon = false)
+      }
     }
   }
   private val retryExplicitIndexAfterStateWarmup: (Module) -> Unit = { module ->
@@ -514,9 +519,10 @@ class MetroResolutionService(
           module = event.module,
           intent = event.intent,
           waiters = event.completions.toMutableList(),
+          requiresPresentationRefresh = event.requiresPresentationRefresh,
         )
     } else {
-      existing.upgrade(event.intent)
+      existing.upgrade(event.intent, event.requiresPresentationRefresh)
       existing.waiters += event.completions
     }
   }
@@ -553,6 +559,13 @@ class MetroResolutionService(
       satisfied += request
     }
     completeBuildRequests(satisfied, IndexBuildOutcome.PUBLISHED)
+    val refreshPresentation =
+      needsCurrentPresentation && satisfied.any { it.requiresPresentationRefresh }
+    if (refreshPresentation) {
+      // A daemon pass can return empty while a no-op change is being classified. Reusing the
+      // generation still owes that reader a refresh so it can request its presentation bundle.
+      notifyListeners(restartDaemon = true)
+    }
     return satisfied.isNotEmpty()
   }
 
@@ -1166,7 +1179,7 @@ class MetroResolutionService(
       if (existing == null) {
         pendingBuilds[module] = request
       } else {
-        existing.upgrade(request.intent)
+        existing.upgrade(request.intent, request.requiresPresentationRefresh)
         existing.waiters += request.waiters
       }
     }
@@ -1523,7 +1536,11 @@ class MetroResolutionService(
 
     return when (requestMode) {
       IndexRequestMode.AUTOMATIC_BACKGROUND -> {
-        scheduleBuild(module, IndexBuildIntent.AUTOMATIC)
+        scheduleBuild(
+          module,
+          IndexBuildIntent.AUTOMATIC,
+          requiresPresentationRefresh = true,
+        )
         BindingIndex.EMPTY
       }
       IndexRequestMode.BACKGROUND -> {
@@ -1698,10 +1715,12 @@ class MetroResolutionService(
     }
   }
 
+  /** Queues an index request and retains any presentation refresh owed after its cache miss. */
   private fun scheduleBuild(
     module: Module,
     intent: IndexBuildIntent,
     completion: CompletableDeferred<IndexBuildOutcome>? = null,
+    requiresPresentationRefresh: Boolean = false,
   ) {
     if (isDisposed || project.isDisposed || module.isDisposed) {
       completion?.complete(IndexBuildOutcome.CANCELED)
@@ -1714,7 +1733,7 @@ class MetroResolutionService(
     val accepted = ingress.submit {
       val completions = mutableListOf<CompletableDeferred<IndexBuildOutcome>>()
       if (completion != null) completions += completion
-      ResolutionCoordinatorEvent.Build(module, intent, completions)
+      ResolutionCoordinatorEvent.Build(module, intent, completions, requiresPresentationRefresh)
     }
     if (accepted == null) {
       completion?.complete(IndexBuildOutcome.CANCELED)
@@ -3052,8 +3071,12 @@ private class PendingIndexBuild(
   val module: Module,
   var intent: IndexBuildIntent,
   val waiters: MutableList<CompletableDeferred<IndexBuildOutcome>>,
+  /** Retains a presentation reader's cache miss when an explicit query joins the request. */
+  var requiresPresentationRefresh: Boolean = false,
 ) {
-  fun upgrade(addedIntent: IndexBuildIntent) {
+  /** Merges execution intent while preserving refresh demand from either request. */
+  fun upgrade(addedIntent: IndexBuildIntent, requestRefresh: Boolean) {
+    requiresPresentationRefresh = requiresPresentationRefresh || requestRefresh
     if (intent == IndexBuildIntent.AUTOMATIC && addedIntent == IndexBuildIntent.EXPLICIT) {
       intent = IndexBuildIntent.EXPLICIT
     }
@@ -3151,6 +3174,7 @@ private sealed interface ResolutionCoordinatorEvent {
     val module: Module,
     var intent: IndexBuildIntent,
     val completions: MutableList<CompletableDeferred<IndexBuildOutcome>>,
+    var requiresPresentationRefresh: Boolean,
   ) : ResolutionCoordinatorEvent {
     override val coalescingKey: Any = ResolutionIngressEventKey.Build(module)
   }
@@ -3241,6 +3265,8 @@ private fun mergeResolutionCoordinatorEvents(
     is ResolutionCoordinatorEvent.Build -> {
       val previous = existing as ResolutionCoordinatorEvent.Build
       if (added.intent == IndexBuildIntent.EXPLICIT) previous.intent = IndexBuildIntent.EXPLICIT
+      previous.requiresPresentationRefresh =
+        previous.requiresPresentationRefresh || added.requiresPresentationRefresh
       previous.completions += added.completions
       previous
     }
