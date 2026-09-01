@@ -13,6 +13,7 @@ import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.renderer.types.KaExpandedTypeRenderingMode
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KaTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
@@ -23,12 +24,15 @@ import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
+// Expanded KaTypes retain alias abbreviations. Keys must expand aliases at every argument depth.
+private val KEY_TYPE_RENDERER =
+  KaTypeRendererForSource.WITH_QUALIFIED_NAMES.with {
+    expandedTypeRenderingMode = KaExpandedTypeRenderingMode.RENDER_EXPANDED_TYPE
+  }
+
 /** Renders a type as a stable, fully-qualified binding key string. */
 internal fun KaSession.renderKeyType(type: KaType): String {
-  return type.fullyExpandedType.render(
-    KaTypeRendererForSource.WITH_QUALIFIED_NAMES,
-    position = Variance.INVARIANT,
-  )
+  return type.fullyExpandedType.render(KEY_TYPE_RENDERER, position = Variance.INVARIANT)
 }
 
 /** Renders a type with short names for display purposes. */

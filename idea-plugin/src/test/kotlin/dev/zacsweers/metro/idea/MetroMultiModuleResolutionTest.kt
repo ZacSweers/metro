@@ -346,7 +346,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 
         @DependencyGraph
         interface AppGraph {
-          @Named("before") val service: Alias
+          @Named("before") val service: String
 
           @Provides @Named(SERVICE_NAME) fun provideAlias(): Alias = error("unused")
         }

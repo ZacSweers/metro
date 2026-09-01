@@ -1390,6 +1390,47 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testNestedTypeAliasesResolveWithExpandedKeysAndPreserveDisplayNames() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class Box<T>
+        typealias Text = String
+        typealias Payload<T> = Box<T?>
+
+        @DependencyGraph
+        interface Graph {
+          @Named("payload") val payload: Box<String?>?
+
+          @Provides @Named("payload") fun providePayload(): Payload<Text>? = null
+          @Provides @Named("other") fun provideOther(): Payload<Text>? = null
+          @Provides @Named("payload") fun provideNonNullableElement(): Box<String>? = null
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val consumer = index.consumers.single()
+    val binding =
+      index.bindings.single {
+        (it.pointer.element as? KtNamedDeclaration)?.name == "providePayload"
+      }
+
+    // Identity expands each alias while display text retains the declared spelling.
+    assertEquals("test.Box<kotlin.String?>?", binding.typeKey.renderedType)
+    assertEquals(consumer.key, binding.typeKey)
+    assertEquals("Payload<Text>?", binding.typeKey.type.shortType)
+    assertEquals("kotlin.String?", binding.typeKey.type.typeArguments.single().renderedType)
+    assertEquals(listOf(binding), index.resolveConsumer(consumer).uniformBindings)
+
+    val graph = index.graphs.single()
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(graph).single())
+        .requireCompleted()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
   fun testUnannotatedTypeAliasChangesRefreshDependentBindingKeys() {
     val aliases =
       myFixture.addFileToProject("test/Aliases.kt", "package test\n\ntypealias Alias = String")
@@ -1404,7 +1445,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     assertEquals(
       listOf("kotlin.String"),
-      service.awaitIndex(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+      service.awaitIndex(file).bindings.map { it.typeKey.renderedType },
     )
 
     myFixture.openFileInEditor(aliases.virtualFile)
@@ -1415,7 +1456,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     assertEquals(
       listOf("kotlin.Int"),
-      service.awaitIndex(file).bindings.map { it.typeKey.type.classId?.asFqNameString() },
+      service.awaitIndex(file).bindings.map { it.typeKey.renderedType },
     )
   }
 
