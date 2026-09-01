@@ -864,7 +864,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
         val file =
           myFixture.addFileToProject(
             "implicit/$name.kt",
-            "package test\n\n@dev.zacsweers.metro.Inject class $name",
+            "package test\n\nclass $name @dev.zacsweers.metro.Inject constructor()",
           ) as KtFile
         file.declarations.single()
       }

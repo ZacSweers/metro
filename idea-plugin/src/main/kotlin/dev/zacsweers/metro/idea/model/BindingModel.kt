@@ -89,6 +89,29 @@ internal class ConsumerEntry(
 }
 
 /**
+ * Selects the consumer represented by one editor declaration. Graph requests retain their first
+ * entry. Ordinary sites shared by graphs require matching keys and uniform binding identities.
+ * [resolutionIdentities] returns null when a consumer's graph contexts disagree.
+ */
+internal fun selectConsumerEntry(
+  entries: List<ConsumerEntry>,
+  resolutionIdentities: (ConsumerEntry) -> Set<Any>?,
+): ConsumerEntry? {
+  val first = entries.firstOrNull() ?: return null
+  if (entries.size == 1 || entries.none { it.graphRequestKind == null }) return first
+  val firstResolution = resolutionIdentities(first) ?: return null
+  // Separate graphs can inherit the same concrete parameter and the same implementation. Keep
+  // its ordinary inlay unless either the requested key or the resolved bindings really differ.
+  for (entryIndex in 1 until entries.size) {
+    val entry = entries[entryIndex]
+    if (entry.contextKey != first.contextKey) return null
+    val resolution = resolutionIdentities(entry) ?: return null
+    if (resolution != firstResolution) return null
+  }
+  return first
+}
+
+/**
  * A parameter supplied at runtime rather than injected from the graph: `@Assisted` parameters and
  * Circuit-provided types (`Screen`, `Navigator`, etc.) on `@CircuitInject` declarations.
  */

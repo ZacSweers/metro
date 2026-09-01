@@ -224,7 +224,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertNotSame(initial, updated)
     assertEquals(initialGraph.declarationId, updatedGraph.declarationId)
     assertTrue(updatedGraph.daggerAnvilInteropEnabled)
-    assertNotEquals(initialModule.module, updatedModule.module)
+    assertFalse(initialModule.module == updatedModule.module)
     assertTrue(updatedModule.resolutionScope.contains(appFile))
     // The unchanged app file cached inherited members from the moved declaration's file.
     assertNotSame(initialInherited, updatedInherited)
@@ -312,7 +312,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       assertFalse(moduleView.resolutionScope.contains(sourceClass))
       val resolved = updated.resolveConsumer(updatedConsumer).uniformBindings.orEmpty()
       assertEquals(1, resolved.size)
-      assertNotEquals(sourceClass.virtualFile, resolved.single().pointer.virtualFile)
+      assertFalse(sourceClass.virtualFile == resolved.single().pointer.virtualFile)
       val result =
         validation
           .validate(movedFile, updated.contextsFor(updatedGraph).single())
@@ -346,7 +346,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 
         @DependencyGraph
         interface AppGraph {
-          @Named("before") val service: String
+          @Named("before") val service: Alias
 
           @Provides @Named(SERVICE_NAME) fun provideAlias(): Alias = error("unused")
         }
@@ -359,7 +359,11 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val initial = service.awaitIndex(appFile)
     val initialGraph = initial.graphs.single { it.name == "AppGraph" }
     val initialConsumer = initial.consumers.single { it.graphId == initialGraph.declarationId }
-    assertEquals(1, initial.resolveConsumer(initialConsumer).uniformBindings.orEmpty().size)
+    assertEquals(
+      "Consumer ${initialConsumer.key}; bindings ${initial.bindings.map { it.typeKey }}",
+      1,
+      initial.resolveConsumer(initialConsumer).uniformBindings.orEmpty().size,
+    )
     val initialBinding =
       initial.bindings.single {
         (it.pointer.element as? KtNamedDeclaration)?.name == "provideAlias"
@@ -390,7 +394,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     WriteCommandAction.runWriteCommandAction(fixture.project) { directory.move(this, destination) }
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
-    assertSame(virtualFile, destination.findChild(directory.name)?.findChild(virtualFile.name))
+    assertEquals(virtualFile, destination.findChild(directory.name)?.findChild(virtualFile.name))
     assertEquals(modificationStamp, virtualFile.modificationStamp)
     assertEquals(rootsBeforeMove, rootTracker.modificationCount)
     return checkNotNull(PsiManager.getInstance(fixture.project).findFile(virtualFile) as? KtFile)

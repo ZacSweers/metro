@@ -37,6 +37,77 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
     service.resetGraphBrowserActivation()
   }
 
+  fun testConsumerSelectionRetainsAnInheritedUniformDependency() {
+    assertInheritedConsumerSelection(
+      """
+      class Dependency @Inject constructor()
+
+      interface Base<T> {
+        @Provides fun provideValue(value: Dependency): T = error("unused")
+      }
+
+      @DependencyGraph interface FirstGraph : Base<String>
+      @DependencyGraph interface SecondGraph : Base<Int>
+      """,
+      selected = true,
+    )
+  }
+
+  fun testConsumerSelectionRejectsDifferentInheritedKeys() {
+    assertInheritedConsumerSelection(
+      """
+      interface Base<T> {
+        @Provides fun provideText(value: T): String = value.toString()
+      }
+
+      @DependencyGraph interface FirstGraph : Base<Int> {
+        @Provides fun provideInt(): Int = 1
+      }
+
+      @DependencyGraph interface SecondGraph : Base<Boolean> {
+        @Provides fun provideBoolean(): Boolean = true
+      }
+      """,
+      selected = false,
+    )
+  }
+
+  fun testConsumerSelectionRejectsDifferentBindingsForTheSameInheritedKey() {
+    assertInheritedConsumerSelection(
+      """
+      interface Service
+      class FirstService @Inject constructor() : Service
+      class SecondService @Inject constructor() : Service
+
+      interface Base<T> {
+        @Provides fun provideValue(value: Service): T = error("unused")
+      }
+
+      @DependencyGraph interface FirstGraph : Base<String> {
+        @Binds fun bindService(first: FirstService): Service
+      }
+
+      @DependencyGraph interface SecondGraph : Base<Int> {
+        @Binds fun bindService(second: SecondService): Service
+      }
+      """,
+      selected = false,
+    )
+  }
+
+  /** Both query paths must make the same choice for a parameter inherited by two graphs. */
+  private fun assertInheritedConsumerSelection(source: String, selected: Boolean) {
+    val file = myFixture.configureMetroFile(source)
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val parameter = file.declarationsIncludingNested().parameter("value")
+    val consumers = index.consumerEntriesAt(parameter)
+    assertEquals(2, consumers.size)
+    val expected = if (selected) consumers.first() else null
+    val presentation = checkNotNull(file.awaitMetroPresentation().declaration(parameter))
+    assertSame(expected, index.consumerEntryAt(parameter))
+    assertSame(expected, presentation.inlayConsumer)
+  }
+
   fun testPresentationReverseUsageRetainsNegativePinnedContextAnswers() {
     val file =
       myFixture.configureMetroFile(

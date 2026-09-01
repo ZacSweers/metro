@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.matchingContextEntry
+import dev.zacsweers.metro.idea.model.selectConsumerEntry
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtElement
@@ -292,7 +293,12 @@ internal class FilePresentationBundleBuilder(
           reverseUsage = reverseUsage,
           consumerEntries = declaration.consumers.toList(),
           consumerResolutions = consumerResolutions.toMap(),
-          inlayConsumer = inlayConsumer(declaration.consumers, consumerResolutions),
+          inlayConsumer =
+            selectConsumerEntry(declaration.consumers) { consumer ->
+              consumerResolutions.getValue(consumer).uniformBindings?.let {
+                index.bindingResolutionIdentities(it)
+              }
+            },
           graph = graphPresentation,
           assistedSite = declaration.assistedSite,
         )
@@ -363,28 +369,6 @@ internal class FilePresentationBundleBuilder(
         )
       }
     return GraphPresentation(graph, contexts)
-  }
-
-  private fun inlayConsumer(
-    consumers: List<ConsumerEntry>,
-    consumerResolutions: Map<ConsumerEntry, ConsumerResolution>,
-  ): ConsumerEntry? {
-    if (consumers.size == 1) return consumers.single()
-    if (consumers.none { it.graphRequestKind == null }) return consumers.firstOrNull()
-    val first = consumers.firstOrNull() ?: return null
-    val firstBindings = consumerResolutions.getValue(first).uniformBindings ?: return null
-    val firstResolution = bindingResolutionIdentities(firstBindings)
-    for (entryIndex in 1 until consumers.size) {
-      val entry = consumers[entryIndex]
-      if (entry.contextKey != first.contextKey) return null
-      val bindings = consumerResolutions.getValue(entry).uniformBindings ?: return null
-      if (bindingResolutionIdentities(bindings) != firstResolution) return null
-    }
-    return first
-  }
-
-  private fun bindingResolutionIdentities(entries: Iterable<KaBinding>): Set<Any> {
-    return index.bindingResolutionIdentities(entries.toList())
   }
 
   private class MutableDeclaration(

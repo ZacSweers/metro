@@ -2113,23 +2113,11 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   fun consumerEntryAt(element: KtElement): ConsumerEntry? {
-    val entries = consumerEntriesAt(element)
-    if (entries.size == 1) return entries.single()
-    if (entries.any { it.graphRequestKind == null }) {
-      val first = entries.firstOrNull() ?: return null
-      val firstBindings = resolveConsumer(first).uniformBindings ?: return null
-      val firstResolution = bindingResolutionIdentities(firstBindings)
-      // Separate graphs can inherit the same concrete parameter and the same implementation. Keep
-      // its ordinary inlay unless either the requested key or the resolved bindings really differ.
-      for (entryIndex in 1 until entries.size) {
-        val entry = entries[entryIndex]
-        if (entry.contextKey != first.contextKey) return null
-        val bindings = resolveConsumer(entry).uniformBindings ?: return null
-        if (bindingResolutionIdentities(bindings) != firstResolution) return null
+    return withResolutionSession { session ->
+      selectConsumerEntry(consumerEntriesAt(element)) { entry ->
+        session.resolveConsumer(entry).uniformBindings?.let(::bindingResolutionIdentities)
       }
-      return first
     }
-    return entries.firstOrNull()
   }
 
   internal fun consumerEntriesInFile(file: VirtualFile): List<ConsumerEntry> {
