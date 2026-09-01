@@ -3,10 +3,13 @@
 package dev.zacsweers.metro.idea.unused
 
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
@@ -26,7 +29,13 @@ import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.metroIdeState
 import java.util.LinkedHashMap
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -94,6 +103,8 @@ private fun KtDeclaration.isMetroImplicitUsage(state: MetroIdeModuleState): Bool
 }
 
 private const val MAX_CACHED_IMPLICIT_USAGE_FILES = 32
+private const val MAX_QUEUED_IMPLICIT_USAGE_FILES = 32
+private const val MAX_CONCURRENT_IMPLICIT_USAGE_WORKERS = 2
 
 private data class ImplicitUsageInputs(
   val psi: Long,
@@ -105,6 +116,12 @@ private data class FileImplicitUsages(
   val inputs: ImplicitUsageInputs,
   val answers: Map<ImplicitUsageDeclaration, Boolean>,
 )
+
+/** One file's demand for a specific project-input snapshot. */
+private class ImplicitUsageRequest(val file: VirtualFile, val inputs: ImplicitUsageInputs)
+
+/** Retains the file's worker slot until the job completes, including cancellation before start. */
+private class ImplicitUsageWorker(val request: ImplicitUsageRequest, val job: Job)
 
 /** Source range and declaration kind, valid until the next PSI change. */
 private data class ImplicitUsageDeclaration(
@@ -123,17 +140,23 @@ private fun KtDeclaration.implicitUsageDeclaration(): ImplicitUsageDeclaration {
  *
  * An EDT cache miss queues a background read for the whole file. Resolving annotation IDs avoids
  * suppressing warnings for unrelated annotations with the same name. PSI, project root, and
- * compiler setting changes invalidate the answers.
+ * compiler setting changes invalidate the answers. Two workers share a bounded, per-file queue. The
+ * queue keeps recent demand and discards obsolete input snapshots. Capacity-evicted files need a
+ * later highlighting pass, requested when the batch finishes.
  */
 @Service(Service.Level.PROJECT)
 internal class MetroImplicitUsageCache(
   private val project: Project,
   private val scope: CoroutineScope,
-) {
+) : Disposable {
   private val lock = Any()
   private var cachedInputs: ImplicitUsageInputs? = null
-  private val pendingFiles = mutableMapOf<VirtualFile, Any>()
+  private var disposed = false
+  private var restartAfterBatch = false
+  private val queuedFiles = linkedMapOf<VirtualFile, ImplicitUsageRequest>()
+  private val activeFiles = mutableMapOf<VirtualFile, ImplicitUsageWorker>()
   private val computationStartObserver = AtomicReference<((VirtualFile) -> Unit)?>(null)
+  private val restartObserver = AtomicReference<(() -> Unit)?>(null)
   private val answersByFile =
     object : LinkedHashMap<VirtualFile, Map<ImplicitUsageDeclaration, Boolean>>(16, 0.75f, true) {
       override fun removeEldestEntry(
@@ -147,17 +170,25 @@ internal class MetroImplicitUsageCache(
     val virtualFile = file.virtualFile ?: return false
     val declarationId = declaration.implicitUsageDeclaration()
     val inputs = currentInputs()
-    var worker: Any? = null
     val answer =
       synchronized(lock) {
+        if (!canSchedule()) return false
         invalidateFor(inputs)
         answersByFile[virtualFile]?.get(declarationId).also { cachedAnswer ->
-          if (cachedAnswer == null && virtualFile !in pendingFiles) {
-            worker = Any().also { pendingFiles[virtualFile] = it }
+          if (cachedAnswer == null && activeFiles[virtualFile]?.request?.inputs != inputs) {
+            val queued = queuedFiles.remove(virtualFile)
+            queuedFiles[virtualFile] =
+              if (queued?.inputs == inputs) queued else ImplicitUsageRequest(virtualFile, inputs)
+            if (queuedFiles.size > MAX_QUEUED_IMPLICIT_USAGE_FILES) {
+              val oldest = queuedFiles.entries.iterator()
+              oldest.next()
+              oldest.remove()
+              restartAfterBatch = true
+            }
           }
         }
       }
-    worker?.let { schedule(virtualFile, it) }
+    if (answer == null) startPendingWorkers()
     return answer ?: false
   }
 
@@ -167,6 +198,7 @@ internal class MetroImplicitUsageCache(
     val declarationId = declaration.implicitUsageDeclaration()
     val inputs = currentInputs()
     return synchronized(lock) {
+      if (!canSchedule()) return@synchronized null
       invalidateFor(inputs)
       answersByFile[virtualFile]?.get(declarationId)
     }
@@ -178,72 +210,151 @@ internal class MetroImplicitUsageCache(
     computationStartObserver.set(observer)
   }
 
-  private fun schedule(virtualFile: VirtualFile, worker: Any) {
-    scope.launch {
-      computationStartObserver.get()?.invoke(virtualFile)
-      var published = false
-      try {
-        while (true) {
-          val result =
-            smartReadAction(project) {
-              if (project.isDisposed) return@smartReadAction null
-              if (!virtualFile.isValid) return@smartReadAction null
-              val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-              if (file == null || !file.isValid) return@smartReadAction null
-              val inputs = currentInputs()
-              val state = file.metroIdeState()
-              val answers = buildMap {
-                PsiTreeUtil.processElements(file) { element ->
-                  ProgressManager.checkCanceled()
-                  if (element is KtDeclaration) {
-                    put(element.implicitUsageDeclaration(), element.isMetroImplicitUsage(state))
-                  }
-                  true
-                }
-              }
-              FileImplicitUsages(inputs, answers)
-            }
-          if (result == null) return@launch
-          if (publish(virtualFile, worker, result)) {
-            published = true
-            project.service<MetroDaemonRestartService>().requestRestart()
-            return@launch
-          }
-          if (project.isDisposed) return@launch
-          if (!virtualFile.isValid) return@launch
-          // The project changed after the read. Keep this file's pending request while retrying
-          // so another EDT query cannot start duplicate work.
+  /** Observes refresh intent before the shared daemon restart service coalesces it. */
+  @TestOnly
+  internal fun setRestartObserver(observer: (() -> Unit)?) {
+    restartObserver.set(observer)
+  }
+
+  @TestOnly
+  internal fun queuedFiles(): List<VirtualFile> = synchronized(lock) { queuedFiles.keys.toList() }
+
+  @TestOnly internal fun activeWorkerCount(): Int = synchronized(lock) { activeFiles.size }
+
+  /** Reserves slots under the lock before any lazy job can execute or complete. */
+  private fun startPendingWorkers() {
+    val workers =
+      synchronized(lock) {
+        if (!canSchedule()) {
+          queuedFiles.clear()
+          return@synchronized emptyList()
         }
-      } finally {
-        if (!published) {
-          synchronized(lock) { pendingFiles.remove(virtualFile, worker) }
+        val inputs = currentInputs()
+        buildList {
+          val pending = queuedFiles.entries.iterator()
+          while (pending.hasNext() && activeFiles.size < MAX_CONCURRENT_IMPLICIT_USAGE_WORKERS) {
+            val request = pending.next().value
+            if (request.inputs != inputs || !request.file.isValid) {
+              pending.remove()
+              continue
+            }
+            if (request.file in activeFiles) continue
+            pending.remove()
+            val job = scope.launch(start = CoroutineStart.LAZY) { compute(request) }
+            val worker = ImplicitUsageWorker(request, job)
+            activeFiles[request.file] = worker
+            add(worker)
+          }
         }
       }
+    for (worker in workers) {
+      worker.job.invokeOnCompletion { complete(worker) }
+      worker.job.start()
+    }
+    restartEvictedDemandIfIdle()
+  }
+
+  /** A newer demand stays queued while this file's previous worker finishes. */
+  private fun complete(worker: ImplicitUsageWorker) {
+    val released = synchronized(lock) { activeFiles.remove(worker.request.file, worker) }
+    if (released) startPendingWorkers()
+  }
+
+  /**
+   * Attempts this snapshot once; a newer file demand starts after this worker releases its slot.
+   */
+  private suspend fun compute(request: ImplicitUsageRequest) {
+    try {
+      computationStartObserver.get()?.invoke(request.file)
+      val result =
+        smartReadAction(project) {
+          if (project.isDisposed || !request.file.isValid) return@smartReadAction null
+          val inputs = currentInputs()
+          if (inputs != request.inputs) return@smartReadAction null
+          val file = PsiManager.getInstance(project).findFile(request.file) as? KtFile
+          if (file == null || !file.isValid) return@smartReadAction null
+          val state = file.metroIdeState()
+          val answers = buildMap {
+            PsiTreeUtil.processElements(file) { element ->
+              ProgressManager.checkCanceled()
+              if (element is KtDeclaration) {
+                put(element.implicitUsageDeclaration(), element.isMetroImplicitUsage(state))
+              }
+              true
+            }
+          }
+          FileImplicitUsages(inputs, answers)
+        }
+      currentCoroutineContext().ensureActive()
+      if (result != null && publish(request, result)) requestRestart()
+    } catch (exception: CancellationException) {
+      throw exception
+    } catch (_: ProcessCanceledException) {
+      // A later highlighting pass can request the file again after platform cancellation.
+    } catch (failure: Exception) {
+      logger<MetroImplicitUsageCache>().warn("Metro implicit usage analysis failed", failure)
     }
   }
 
   private fun publish(
-    virtualFile: VirtualFile,
-    worker: Any,
+    request: ImplicitUsageRequest,
     result: FileImplicitUsages,
   ): Boolean {
-    if (project.isDisposed) return false
-    if (!virtualFile.isValid) return false
+    if (project.isDisposed || !request.file.isValid) return false
     if (result.inputs != currentInputs()) return false
     return synchronized(lock) {
+      if (!canSchedule()) return@synchronized false
       if (result.inputs != currentInputs()) return@synchronized false
-      if (pendingFiles[virtualFile] !== worker) return@synchronized false
+      val worker = activeFiles[request.file] ?: return@synchronized false
+      if (worker.request !== request || !worker.job.isActive) return@synchronized false
       invalidateFor(result.inputs)
-      answersByFile[virtualFile] = result.answers
-      pendingFiles.remove(virtualFile)
+      answersByFile[request.file] = result.answers
       true
     }
   }
 
+  /** Includes batches whose workers all abandoned their reads without publishing answers. */
+  private fun restartEvictedDemandIfIdle() {
+    val restart =
+      synchronized(lock) {
+        val idle = activeFiles.isEmpty() && queuedFiles.isEmpty()
+        if (!idle || !restartAfterBatch) return@synchronized false
+        restartAfterBatch = false
+        canSchedule()
+      }
+    if (restart) requestRestart()
+  }
+
+  private fun requestRestart() {
+    if (!synchronized(lock) { canSchedule() }) return
+    restartObserver.get()?.invoke()
+    project.service<MetroDaemonRestartService>().requestRestart()
+  }
+
+  /** Called under [lock] so disposal and queue ownership use the same boundary. */
+  private fun canSchedule(): Boolean = !disposed && !project.isDisposed && scope.isActive
+
+  /** Clears obsolete answers and queued work. Active jobs release their slots on completion. */
   private fun invalidateFor(inputs: ImplicitUsageInputs) {
     if (cachedInputs == inputs) return
     cachedInputs = inputs
     answersByFile.clear()
+    queuedFiles.entries.removeIf { it.value.inputs != inputs }
+  }
+
+  override fun dispose() {
+    val workers =
+      synchronized(lock) {
+        if (disposed) return
+        disposed = true
+        queuedFiles.clear()
+        answersByFile.clear()
+        restartAfterBatch = false
+        activeFiles.values.toList().also { activeFiles.clear() }
+      }
+    workers.forEach { it.job.cancel() }
+    computationStartObserver.set(null)
+    restartObserver.set(null)
   }
 
   private fun currentInputs(): ImplicitUsageInputs {

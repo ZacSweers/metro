@@ -4,7 +4,10 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -17,10 +20,23 @@ import dev.zacsweers.metro.idea.unused.MetroImplicitUsageCache
 import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
 import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import org.jetbrains.kotlin.idea.k2.codeinsight.inspections.UnusedSymbolInspection
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
@@ -191,6 +207,216 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       assertTrue(productionEdtImplicitUsage(declaration))
     } finally {
       cache.setComputationStartObserver(null)
+    }
+  }
+
+  fun testImplicitUsageWorkersAreBoundedAndCoalesceFileDemand() {
+    val declarations = implicitUsageDeclarations(6)
+    withImplicitUsageCache { cache, _ ->
+      val starts = AtomicInteger()
+      val startsByFile = ConcurrentHashMap<VirtualFile, AtomicInteger>()
+      val workersStarted = CompletableFuture<Unit>()
+      val releaseWorkers = CountDownLatch(1)
+      cache.setComputationStartObserver { file ->
+        startsByFile.computeIfAbsent(file) { AtomicInteger() }.incrementAndGet()
+        if (starts.incrementAndGet() == 2) workersStarted.complete(Unit)
+        check(releaseWorkers.await(30, TimeUnit.SECONDS))
+      }
+      try {
+        for (declaration in declarations) {
+          repeat(5) { assertFalse(cache.answerOrSchedule(declaration)) }
+        }
+        PlatformTestUtil.waitForFuture(workersStarted, 30_000)
+
+        assertEquals(2, cache.activeWorkerCount())
+        assertEquals(2, starts.get())
+        assertEquals(
+          declarations.drop(2).map { it.containingKtFile.virtualFile },
+          cache.queuedFiles(),
+        )
+
+        releaseWorkers.countDown()
+        for (declaration in declarations) awaitCachedAnswer(declaration, expected = true, cache)
+        awaitImplicitUsageIdle(cache)
+        assertEquals(declarations.size, starts.get())
+        assertTrue(startsByFile.values.all { it.get() == 1 })
+      } finally {
+        releaseWorkers.countDown()
+      }
+    }
+  }
+
+  fun testImplicitUsageQueueOverflowRestartsAnAbandonedBatchAndCanBeRequestedAgain() {
+    val declarations = implicitUsageDeclarations(35)
+    withImplicitUsageCache { cache, _ ->
+      val starts = AtomicInteger()
+      val workersStarted = CompletableFuture<Unit>()
+      val releaseWorkers = CountDownLatch(1)
+      val restarts = AtomicInteger()
+      val restarted = CompletableFuture<Unit>()
+      cache.setComputationStartObserver {
+        if (starts.incrementAndGet() == 2) workersStarted.complete(Unit)
+        check(releaseWorkers.await(30, TimeUnit.SECONDS))
+        throw ProcessCanceledException()
+      }
+      cache.setRestartObserver {
+        restarts.incrementAndGet()
+        restarted.complete(Unit)
+      }
+      try {
+        declarations.forEach { assertFalse(cache.answerOrSchedule(it)) }
+        PlatformTestUtil.waitForFuture(workersStarted, 30_000)
+
+        val evicted = declarations[2]
+        assertEquals(
+          declarations.drop(3).map { it.containingKtFile.virtualFile },
+          cache.queuedFiles(),
+        )
+        assertEquals(2, cache.activeWorkerCount())
+
+        releaseWorkers.countDown()
+        PlatformTestUtil.waitForFuture(restarted, 30_000)
+        awaitImplicitUsageIdle(cache)
+        assertEquals(34, starts.get())
+        assertEquals(1, restarts.get())
+        assertNull(cache.cachedAnswer(evicted))
+
+        cache.setComputationStartObserver(null)
+        assertFalse(cache.answerOrSchedule(evicted))
+        awaitCachedAnswer(evicted, expected = true, cache)
+      } finally {
+        releaseWorkers.countDown()
+      }
+    }
+  }
+
+  fun testFreshImplicitUsageDemandSurvivesThePreviousSnapshotWorker() {
+    val declaration = implicitUsageDeclarations(1).single()
+    withImplicitUsageCache { cache, _ ->
+      val starts = AtomicInteger()
+      val firstStarted = CompletableFuture<Unit>()
+      val releaseFirst = CountDownLatch(1)
+      cache.setComputationStartObserver {
+        if (starts.incrementAndGet() == 1) {
+          firstStarted.complete(Unit)
+          check(releaseFirst.await(30, TimeUnit.SECONDS))
+        }
+      }
+      try {
+        assertFalse(cache.answerOrSchedule(declaration))
+        PlatformTestUtil.waitForFuture(firstStarted, 30_000)
+        project.setMetroOptions("enabled" to "false")
+        repeat(5) { assertFalse(cache.answerOrSchedule(declaration)) }
+        assertEquals(listOf(declaration.containingKtFile.virtualFile), cache.queuedFiles())
+        assertEquals(1, cache.activeWorkerCount())
+
+        releaseFirst.countDown()
+        awaitCachedAnswer(declaration, expected = false, cache)
+        awaitImplicitUsageIdle(cache)
+        assertEquals(2, starts.get())
+      } finally {
+        releaseFirst.countDown()
+      }
+    }
+  }
+
+  fun testFailedImplicitUsageWorkerReleasesItsSlotAndAllowsRetry() {
+    val declaration = implicitUsageDeclarations(1).single()
+    withImplicitUsageCache { cache, workerScope ->
+      val failOnce = AtomicBoolean(true)
+      val failureStarted = CompletableFuture<Unit>()
+      cache.setComputationStartObserver {
+        if (failOnce.compareAndSet(true, false)) {
+          failureStarted.complete(Unit)
+          throw IllegalStateException("Expected implicit usage worker failure")
+        }
+      }
+      assertFalse(cache.answerOrSchedule(declaration))
+      PlatformTestUtil.waitForFuture(failureStarted, 30_000)
+      awaitImplicitUsageIdle(cache)
+      assertTrue(workerScope.isActive)
+      assertNull(cache.cachedAnswer(declaration))
+
+      assertFalse(cache.answerOrSchedule(declaration))
+      awaitCachedAnswer(declaration, expected = true, cache)
+    }
+  }
+
+  fun testImplicitUsageCancellationBeforeStartReleasesItsSlot() {
+    val declarations = implicitUsageDeclarations(3)
+    val executor = Executors.newSingleThreadExecutor()
+    val dispatcher = executor.asCoroutineDispatcher()
+    val workerScope = CoroutineScope(SupervisorJob() + dispatcher)
+    val dispatcherPaused = CompletableFuture<Unit>()
+    val releaseDispatcher = CountDownLatch(1)
+    executor.submit {
+      dispatcherPaused.complete(Unit)
+      check(releaseDispatcher.await(30, TimeUnit.SECONDS))
+    }
+    try {
+      PlatformTestUtil.waitForFuture(dispatcherPaused, 30_000)
+      withImplicitUsageCache(workerScope) { cache, _ ->
+        val startedFiles = ConcurrentHashMap.newKeySet<VirtualFile>()
+        cache.setComputationStartObserver { startedFiles += it }
+        try {
+          assertFalse(cache.answerOrSchedule(declarations[0]))
+          val canceledWorker = workerScope.coroutineContext.job.children.single()
+          assertFalse(cache.answerOrSchedule(declarations[1]))
+          assertFalse(cache.answerOrSchedule(declarations[2]))
+          canceledWorker.cancel()
+          releaseDispatcher.countDown()
+
+          canceledWorker.awaitTestCompletion()
+          for (declaration in declarations.drop(1)) {
+            awaitCachedAnswer(declaration, expected = true, cache)
+          }
+          awaitImplicitUsageIdle(cache)
+          val canceledFile = declarations[0].containingKtFile.virtualFile
+          assertFalse(canceledFile in startedFiles)
+          assertNull(cache.cachedAnswer(declarations[0]))
+
+          assertFalse(cache.answerOrSchedule(declarations[0]))
+          awaitCachedAnswer(declarations[0], expected = true, cache)
+        } finally {
+          releaseDispatcher.countDown()
+        }
+      }
+    } finally {
+      releaseDispatcher.countDown()
+      workerScope.cancel()
+      dispatcher.close()
+    }
+  }
+
+  fun testImplicitUsageDisposalAndScopeCancellationDropQueuedDemand() {
+    val declarations = implicitUsageDeclarations(3)
+    for (cancelScope in listOf(false, true)) {
+      withImplicitUsageCache { cache, workerScope ->
+        val starts = AtomicInteger()
+        val workersStarted = CompletableFuture<Unit>()
+        val releaseWorkers = CountDownLatch(1)
+        cache.setComputationStartObserver {
+          if (starts.incrementAndGet() == 2) workersStarted.complete(Unit)
+          check(releaseWorkers.await(30, TimeUnit.SECONDS))
+        }
+        try {
+          declarations.forEach { assertFalse(cache.answerOrSchedule(it)) }
+          PlatformTestUtil.waitForFuture(workersStarted, 30_000)
+          val workers = workerScope.coroutineContext.job.children.toList()
+          if (cancelScope) workerScope.cancel() else Disposer.dispose(cache)
+          releaseWorkers.countDown()
+          workers.forEach { it.awaitTestCompletion() }
+          awaitImplicitUsageIdle(cache)
+
+          assertEquals(2, starts.get())
+          assertFalse(cache.answerOrSchedule(declarations.last()))
+          assertNull(cache.cachedAnswer(declarations.last()))
+          assertEquals(0, cache.activeWorkerCount())
+          assertTrue(cache.queuedFiles().isEmpty())
+        } finally {
+          releaseWorkers.countDown()
+        }
+      }
     }
   }
 
@@ -620,11 +846,53 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     return result
   }
 
-  private fun awaitCachedAnswer(declaration: KtDeclaration, expected: Boolean) {
-    val cache = project.service<MetroImplicitUsageCache>()
+  private fun awaitCachedAnswer(
+    declaration: KtDeclaration,
+    expected: Boolean,
+    cache: MetroImplicitUsageCache = project.service(),
+  ) {
     object : WaitFor(30_000) {
         override fun condition(): Boolean = cache.cachedAnswer(declaration) == expected
       }
       .assertCompleted("The production EDT check should publish an exact background answer")
+  }
+
+  private fun implicitUsageDeclarations(count: Int): List<KtDeclaration> {
+    val declarations =
+      List(count) { index ->
+        val name = "ImplicitUsage$index"
+        val file =
+          myFixture.addFileToProject(
+            "implicit/$name.kt",
+            "package test\n\n@dev.zacsweers.metro.Inject class $name",
+          ) as KtFile
+        file.declarations.single()
+      }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
+    return declarations
+  }
+
+  /** Gives each scheduling test its own worker lifetime and waits for cancellation cleanup. */
+  private inline fun withImplicitUsageCache(
+    workerScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    block: (MetroImplicitUsageCache, CoroutineScope) -> Unit,
+  ) {
+    val cache = MetroImplicitUsageCache(project, workerScope)
+    try {
+      block(cache, workerScope)
+    } finally {
+      Disposer.dispose(cache)
+      workerScope.cancel()
+      workerScope.coroutineContext.job.awaitTestCompletion()
+    }
+  }
+
+  private fun awaitImplicitUsageIdle(cache: MetroImplicitUsageCache) {
+    object : WaitFor(30_000) {
+        override fun condition(): Boolean =
+          cache.activeWorkerCount() == 0 && cache.queuedFiles().isEmpty()
+      }
+      .assertCompleted("Implicit usage workers should release their slots and drain the queue")
   }
 }
