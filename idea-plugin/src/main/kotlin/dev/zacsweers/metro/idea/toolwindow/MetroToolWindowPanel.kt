@@ -19,10 +19,12 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.DoubleClickListener
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.TreeSpeedSearch
 import com.intellij.ui.components.JBScrollPane
@@ -36,6 +38,7 @@ import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
+import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -90,11 +93,14 @@ internal class MetroToolWindowPanel(
   private var pendingValidationLookupGeneration = 0L
   @Volatile private var disposed: Boolean = false
   private val treeModel = StructureTreeModel(treeStructure, this)
-  private val tree =
+  internal val tree =
     Tree(AsyncTreeModel(treeModel, this)).apply {
       isRootVisible = false
       showsRootHandles = true
     }
+  private val browserAndResults = JBSplitter(true, 0.65f)
+  private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
+
   internal val loadOrRefreshAction =
     LoadOrRefreshGraphsAction(resolutionService) {
       updateIndexBuildStatus()
@@ -107,6 +113,7 @@ internal class MetroToolWindowPanel(
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
 
   init {
+    Disposer.register(this, validationResults)
     TreeSpeedSearch.installOn(tree)
 
     // An activated window waiting on IDE indexes must retry once smart mode returns.
@@ -193,7 +200,8 @@ internal class MetroToolWindowPanel(
         add(validationStatus)
       }
     content.add(statusContainer, BorderLayout.NORTH)
-    content.add(JBScrollPane(tree), BorderLayout.CENTER)
+    browserAndResults.firstComponent = JBScrollPane(tree)
+    content.add(browserAndResults, BorderLayout.CENTER)
     setContent(content)
   }
 
@@ -314,6 +322,7 @@ internal class MetroToolWindowPanel(
     ) {
       return null
     }
+    clearValidationResults()
     latestValidationRequestToken = requestToken
     pendingValidation = null
     pendingValidationLookupGeneration++
@@ -374,21 +383,32 @@ internal class MetroToolWindowPanel(
   }
 
   private fun validateGraph(graph: KaGraphDeclaration, generation: Long) {
-    validationService.validateWithExtensionsAsync(graph) {
-      validationFinished(validationVisitor(graph), generation)
+    validationService.validateWithExtensionsAsync(graph) { results ->
+      validationFinished(results, validationVisitor(graph), generation)
     }
   }
 
   private fun validateContext(context: GraphContext) {
     val requestToken = validationRequestService.beginRequest()
     val generation = beginValidationRequest(requestToken) ?: return
-    validationService.validateWithExtensionsAsync(context) {
-      validationFinished(validationVisitor(context), generation)
+    validationService.validateWithExtensionsAsync(context) { results ->
+      validationFinished(results, validationVisitor(context), generation)
     }
   }
 
-  private fun validationFinished(visitor: TreeVisitor, generation: Long) {
+  /** Publishes the requested run independently of the browser's retained index. */
+  private fun validationFinished(
+    results: List<KaGraphValidationResult>,
+    visitor: TreeVisitor,
+    generation: Long,
+  ) {
     if (disposed || project.isDisposed) return
+    val isLatestRequest =
+      generation == pendingValidationGeneration &&
+        validationRequestService.isLatest(latestValidationRequestToken)
+    if (!isLatestRequest) return
+    browserAndResults.secondComponent = validationResults
+    validationResults.showResults(results)
     // Rerun highlighting so the gutter's validation badge picks up the new result
     project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
     // Select the validation node once the refreshed children load, so the outcome is visible even
@@ -406,6 +426,12 @@ internal class MetroToolWindowPanel(
         TreeUtil.promiseSelect(tree, visitor)
       }
     }
+  }
+
+  /** Closing the result view leaves browser selection, pinning, and refresh state unchanged. */
+  private fun clearValidationResults() {
+    validationResults.clear()
+    browserAndResults.secondComponent = null
   }
 
   private fun validationVisitor(graph: KaGraphDeclaration): TreeVisitor {
@@ -454,6 +480,7 @@ internal class MetroToolWindowPanel(
   override fun dispose() {
     disposed = true
     cancelPendingValidation()
+    browserAndResults.secondComponent = null
     indexBuildStatus.clear()
     validationStatus.clear()
   }

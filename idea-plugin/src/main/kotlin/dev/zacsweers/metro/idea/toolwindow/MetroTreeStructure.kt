@@ -288,7 +288,8 @@ private fun KaAnnotationSnapshot.renderAbbreviated(): String {
   return render(short = false).replaceFirst("@${classId.asFqNameString()}", abbreviatedPrefix)
 }
 
-private fun validationSummary(result: KaGraphValidationResult): String {
+/** Compact outcome text shared by browser and explicit-result graph rows. */
+internal fun validationSummary(result: KaGraphValidationResult): String {
   return when (result) {
     is KaGraphValidationResult.Completed ->
       when (val count = result.diagnostics.size) {
@@ -354,8 +355,8 @@ internal class MetroTreeStructure(
           ProgressManager.checkCanceled()
           bindingRow(node, it, inMultibinding = true)
         }
-      is MetroTreeNode.Validation -> validationChildren(node)
-      is MetroTreeNode.Diagnostic -> diagnosticChildren(node)
+      is MetroTreeNode.Validation -> validationTreeChildren(node)
+      is MetroTreeNode.Diagnostic -> diagnosticTreeChildren(node)
       else -> emptyList()
     }
   }
@@ -674,103 +675,105 @@ internal class MetroTreeStructure(
     }
     return children
   }
-
-  private fun bindingRow(
-    parent: MetroTreeNode,
-    binding: KaBinding,
-    inMultibinding: Boolean = false,
-    ambiguousQualifiers: Set<Name> = emptySet(),
-  ): MetroTreeNode.BindingRow {
-    val qualifier = binding.typeKey.qualifier
-    val shortKey =
-      if (qualifier != null && qualifier.classId.shortClassName in ambiguousQualifiers) {
-        "${qualifier.renderAbbreviated()} ${binding.typeKey.render(short = true, includeQualifier = false)}"
-      } else {
-        binding.typeKey.render(short = true)
-      }
-    val implementation = binding.implementationName?.takeIf { it != binding.typeKey.type.shortType }
-    val text =
-      when {
-        // The multibinding row already names the key, so contributions show just their source
-        inMultibinding -> implementation ?: shortKey
-        implementation != null -> "$shortKey -> $implementation"
-        else -> shortKey
-      }
-    return MetroTreeNode.BindingRow(
-      parent = parent,
-      binding = binding,
-      text = text,
-      grayText = binding.location(),
-    )
-  }
-
-  private fun validationChildren(node: MetroTreeNode.Validation): List<MetroTreeNode> {
-    val result =
-      when (val outcome = node.result) {
-        is KaGraphValidationResult.Incomplete -> {
-          return listOf(MetroTreeNode.Summary(node, "Validation incomplete: ${outcome.reason}"))
-        }
-        is KaGraphValidationResult.InternalError -> {
-          return listOf(
-            MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
-          )
-        }
-        is KaGraphValidationResult.Completed -> outcome
-      }
-
-    val children = mutableListOf<MetroTreeNode>()
-    val topology = result.topology
-    children +=
-      if (topology != null) {
-        // Count real bindings only: skip the seal's bookkeeping nodes (graph instances,
-        // multibinding nodes). Re-keyed multibinding elements count, one per contribution.
-        var used = 0
-        result.bindings.forEach { _, binding ->
-          ProgressManager.checkCanceled()
-          if (binding !is KaBinding.GraphInstance && binding !is KaBinding.Multibinding) used++
-        }
-        val text = buildString {
-          append(used)
-          append(if (used == 1) " binding" else " bindings")
-          if (topology.deferredTypes.isNotEmpty()) {
-            append(", ")
-            append(topology.deferredTypes.size)
-            append(" deferred to break cycles")
-          }
-        }
-        MetroTreeNode.Summary(node, text)
-      } else {
-        MetroTreeNode.Summary(node, "Validation aborted on a fatal error")
-      }
-    result.diagnostics.mapIndexedTo(children) { i, diagnostic ->
-      ProgressManager.checkCanceled()
-      MetroTreeNode.Diagnostic(node, diagnostic, i)
-    }
-    return children
-  }
-
-  private fun diagnosticChildren(node: MetroTreeNode.Diagnostic): List<MetroTreeNode> {
-    val graphFqName =
-      (node.parent?.parent as? MetroTreeNode.Graph)?.graph?.classId?.asSingleFqName()
-    val children = mutableListOf<MetroTreeNode>()
-    node.diagnostic.stack.mapIndexedTo(children) { i, entry ->
-      ProgressManager.checkCanceled()
-      val text =
-        entry.render(graphFqName ?: FqName.ROOT, short = true).lineSequence().joinToString(" ") {
-          it.trim()
-        }
-      MetroTreeNode.StackEntry(node, text, entry.pointer, i)
-    }
-    // The offending bindings themselves, such as each source of a duplicate
-    node.diagnostic.related.mapTo(children) {
-      ProgressManager.checkCanceled()
-      bindingRow(node, it)
-    }
-    return children
-  }
 }
 
-private class MetroNodeDescriptor(
+private fun bindingRow(
+  parent: MetroTreeNode,
+  binding: KaBinding,
+  inMultibinding: Boolean = false,
+  ambiguousQualifiers: Set<Name> = emptySet(),
+): MetroTreeNode.BindingRow {
+  val qualifier = binding.typeKey.qualifier
+  val shortKey =
+    if (qualifier != null && qualifier.classId.shortClassName in ambiguousQualifiers) {
+      "${qualifier.renderAbbreviated()} ${binding.typeKey.render(short = true, includeQualifier = false)}"
+    } else {
+      binding.typeKey.render(short = true)
+    }
+  val implementation = binding.implementationName?.takeIf { it != binding.typeKey.type.shortType }
+  val text =
+    when {
+      // The multibinding row already names the key, so contributions show just their source
+      inMultibinding -> implementation ?: shortKey
+      implementation != null -> "$shortKey -> $implementation"
+      else -> shortKey
+    }
+  return MetroTreeNode.BindingRow(
+    parent = parent,
+    binding = binding,
+    text = text,
+    grayText = binding.location(),
+  )
+}
+
+/** Builds the same completed-run rows for the graph browser and the last validation view. */
+internal fun validationTreeChildren(node: MetroTreeNode.Validation): List<MetroTreeNode> {
+  val result =
+    when (val outcome = node.result) {
+      is KaGraphValidationResult.Incomplete -> {
+        return listOf(MetroTreeNode.Summary(node, "Validation incomplete: ${outcome.reason}"))
+      }
+      is KaGraphValidationResult.InternalError -> {
+        return listOf(
+          MetroTreeNode.Summary(node, "Validation failed due to an internal Metro plugin error")
+        )
+      }
+      is KaGraphValidationResult.Completed -> outcome
+    }
+
+  val children = mutableListOf<MetroTreeNode>()
+  val topology = result.topology
+  children +=
+    if (topology != null) {
+      // Count real bindings only: skip the seal's bookkeeping nodes (graph instances,
+      // multibinding nodes). Re-keyed multibinding elements count, one per contribution.
+      var used = 0
+      result.bindings.forEach { _, binding ->
+        ProgressManager.checkCanceled()
+        if (binding !is KaBinding.GraphInstance && binding !is KaBinding.Multibinding) used++
+      }
+      val text = buildString {
+        append(used)
+        append(if (used == 1) " binding" else " bindings")
+        if (topology.deferredTypes.isNotEmpty()) {
+          append(", ")
+          append(topology.deferredTypes.size)
+          append(" deferred to break cycles")
+        }
+      }
+      MetroTreeNode.Summary(node, text)
+    } else {
+      MetroTreeNode.Summary(node, "Validation aborted on a fatal error")
+    }
+  result.diagnostics.mapIndexedTo(children) { i, diagnostic ->
+    ProgressManager.checkCanceled()
+    MetroTreeNode.Diagnostic(node, diagnostic, i)
+  }
+  return children
+}
+
+/** Preserves diagnostic stack and related-binding navigation in either result view. */
+internal fun diagnosticTreeChildren(node: MetroTreeNode.Diagnostic): List<MetroTreeNode> {
+  val graphFqName = (node.parent?.parent as? MetroTreeNode.Graph)?.graph?.classId?.asSingleFqName()
+  val children = mutableListOf<MetroTreeNode>()
+  node.diagnostic.stack.mapIndexedTo(children) { i, entry ->
+    ProgressManager.checkCanceled()
+    val text =
+      entry.render(graphFqName ?: FqName.ROOT, short = true).lineSequence().joinToString(" ") {
+        it.trim()
+      }
+    MetroTreeNode.StackEntry(node, text, entry.pointer, i)
+  }
+  // The offending bindings themselves, such as each source of a duplicate
+  node.diagnostic.related.mapTo(children) {
+    ProgressManager.checkCanceled()
+    bindingRow(node, it)
+  }
+  return children
+}
+
+/** Renders precomputed rows without accessing PSI on the EDT. */
+internal class MetroNodeDescriptor(
   project: Project,
   parentDescriptor: NodeDescriptor<*>?,
   private val node: MetroTreeNode,
