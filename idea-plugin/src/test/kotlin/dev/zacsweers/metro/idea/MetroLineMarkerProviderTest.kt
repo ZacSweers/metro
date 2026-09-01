@@ -3,15 +3,17 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
-import dev.zacsweers.metro.idea.index.orderNavigationTargets
 import dev.zacsweers.metro.idea.index.resolveLineMarkerTargets
 import dev.zacsweers.metro.idea.model.BindingIndex
 import java.util.concurrent.CompletableFuture
@@ -92,28 +94,51 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     return myFixture.findAllGutters().filter { it.icon in metroIcons }.mapNotNull { it.tooltipText }
   }
 
-  fun testNavigationTargetsAreOrderedDuringMarkerCollection() {
+  fun testLineMarkerNavigationOrdersTargetsInBackgroundReadAction() {
     val file =
       myFixture.configureByText(
         "Navigation.kt",
         """
-        class Zed
-        class Alpha
+        fun zed() = Unit
+        fun sameName(value: Int) = value
+        fun alpha() = Unit
+        fun sameName(value: String) = value
         """
           .trimIndent(),
       ) as KtFile
     val declarations = file.declarations.filterIsInstance<KtNamedDeclaration>()
     val pointerManager = SmartPointerManager.getInstance(project)
-    val targets = declarations.map { declaration ->
-      pointerManager.createSmartPsiElementPointer(declaration)
-    }
-
-    val orderedNames =
-      orderNavigationTargets(targets).mapNotNull { pointer ->
-        (pointer.element as? KtNamedDeclaration)?.name
+    val resolvedOnEdt = AtomicBoolean()
+    val resolvedWithoutReadAccess = AtomicBoolean()
+    // Equal declaration names retain their input order, including overloads supplied in reverse.
+    val targets =
+      listOf(declarations[0], declarations[3], declarations[2], declarations[1]).map { declaration
+        ->
+        val pointer = pointerManager.createSmartPsiElementPointer(declaration)
+        object : SmartPsiElementPointer<KtNamedDeclaration> by pointer {
+          override fun getElement(): KtNamedDeclaration? {
+            val application = ApplicationManager.getApplication()
+            if (application.isDispatchThread) resolvedOnEdt.set(true)
+            if (!application.isReadAccessAllowed) resolvedWithoutReadAccess.set(true)
+            return pointer.element
+          }
+        }
       }
+    val delivered = CompletableFuture<List<PsiElement>>()
 
-    assertEquals(listOf("Alpha", "Zed"), orderedNames)
+    val job =
+      checkNotNull(resolveLineMarkerTargets(null, project, targets) { delivered.complete(it) })
+    job.invokeOnCompletion { failure ->
+      if (failure != null) delivered.completeExceptionally(failure)
+    }
+    PlatformTestUtil.waitForFuture(delivered, 30_000)
+
+    assertEquals(
+      listOf(declarations[2], declarations[3], declarations[1], declarations[0]),
+      delivered.join(),
+    )
+    assertFalse(resolvedOnEdt.get())
+    assertFalse(resolvedWithoutReadAccess.get())
   }
 
   fun testNewEditorNavigationSupersedesPendingRequest() {

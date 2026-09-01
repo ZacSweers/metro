@@ -72,8 +72,8 @@ private val VALIDATE_OPTION =
  * Gutter Icons.
  *
  * Classification is a [dev.zacsweers.metro.idea.model.BindingIndex] lookup by PSI identity.
- * Navigation targets are captured as smart pointers at marker creation (background pass) so
- * clicking never triggers resolution on the EDT.
+ * Navigation targets remain smart pointers during marker collection. Clicking resolves and orders
+ * them in a background read action.
  */
 class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
@@ -510,7 +510,7 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
       tooltip = tooltip,
       popupTitle =
         if (graph.scopeKeys.isEmpty()) "Contributions" else "Contributions to $scopesDisplay",
-      targets = orderNavigationTargets(targets),
+      targets = targets,
       graphClassId = graph.classId,
     )
   }
@@ -603,14 +603,13 @@ class MetroLineMarkerProvider : RelatedItemLineMarkerProvider() {
     emptyText: String,
     targets: List<SmartPsiElementPointer<out PsiElement>>,
   ): RelatedItemLineMarkerInfo<*> {
-    val orderedTargets = orderNavigationTargets(targets)
     return MetroNavigationLineMarkerInfo(
       anchor,
       icon,
       tooltip,
       popupTitle,
       emptyText,
-      orderedTargets,
+      targets,
     )
   }
 }
@@ -682,14 +681,15 @@ private class GraphLineMarkerInfo(
   }
 }
 
-/** The platform invokes related-item factories from its background read action. */
+/** Related-item factories resolve and order targets in the platform's background read action. */
 private fun relatedItems(
   targets: List<SmartPsiElementPointer<out PsiElement>>
 ): List<GotoRelatedItem> {
-  return targets.mapNotNull { pointer ->
+  val elements = targets.mapNotNull { pointer ->
     ProgressManager.checkCanceled()
-    pointer.element?.let(::GotoRelatedItem)
+    pointer.element
   }
+  return orderNavigationTargets(elements).map(::GotoRelatedItem)
 }
 
 /** `@SingleIn(AppScope::class)` reads as its scope argument; marker-only scopes as themselves. */
@@ -746,9 +746,9 @@ internal fun resolveLineMarkerTargets(
       ?: FileEditorManager.getInstance(project).selectedTextEditor
   val navigation = project.service<MetroNavigationService>()
   return if (editor != null) {
-    navigation.resolveTargets(editor, targets, onResolved)
+    navigation.resolveTargets(editor, targets, ::orderNavigationTargets, onResolved)
   } else {
-    navigation.resolveTargets(project, targets, onResolved)
+    navigation.resolveTargets(project, targets, ::orderNavigationTargets, onResolved)
   }
 }
 
@@ -759,23 +759,21 @@ private fun editorForComponent(component: Component): Editor? {
 }
 
 private data class NavigationTargetOrder(
-  val pointer: SmartPsiElementPointer<out PsiElement>,
+  val element: PsiElement,
   val sourceSetDepth: Int,
   val moduleName: String,
   val declarationName: String,
   val originalIndex: Int,
 )
 
-/** Precomputes KMP source-set ordering during background marker collection. */
-internal fun orderNavigationTargets(
-  targets: List<SmartPsiElementPointer<out PsiElement>>
-): List<SmartPsiElementPointer<out PsiElement>> {
+/** Orders resolved targets under read access, retaining their input order for equal sort keys. */
+private fun orderNavigationTargets(targets: List<PsiElement>): List<PsiElement> {
+  if (targets.size < 2) return targets
   return targets
-    .mapIndexedNotNull { index, pointer ->
+    .mapIndexed { index, element ->
       ProgressManager.checkCanceled()
-      val element = pointer.element ?: return@mapIndexedNotNull null
       NavigationTargetOrder(
-        pointer = pointer,
+        element = element,
         sourceSetDepth = sourceSetDepth(element),
         moduleName = ModuleUtilCore.findModuleForPsiElement(element)?.name.orEmpty(),
         declarationName = (element as? KtNamedDeclaration)?.name.orEmpty(),
@@ -788,7 +786,7 @@ internal fun orderNavigationTargets(
         navigationTargetOrder.compare(left, right)
       }
     )
-    .map(NavigationTargetOrder::pointer)
+    .map(NavigationTargetOrder::element)
 }
 
 private val navigationTargetOrder: Comparator<NavigationTargetOrder> =

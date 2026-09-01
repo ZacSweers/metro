@@ -25,8 +25,9 @@ import org.jetbrains.annotations.TestOnly
 /**
  * Resolves navigation targets in a background read action.
  *
- * Each editor or tool window keeps only its newest request. The callback runs on the EDT if the
- * request is still current and its owner is still open.
+ * Each editor or tool window keeps only its newest request. Optional target ordering runs in the
+ * same read action after the pointers resolve. The callback runs on the EDT if the request is still
+ * current and its owner is still open.
  */
 @Service(Service.Level.PROJECT)
 internal class MetroNavigationService(
@@ -43,20 +44,23 @@ internal class MetroNavigationService(
   fun resolveTargets(
     owner: Editor,
     targets: List<SmartPsiElementPointer<*>>,
+    orderTargets: ((List<PsiElement>) -> List<PsiElement>)? = null,
     onResolved: (List<PsiElement>) -> Unit,
-  ): Job? = resolveTargets(owner, { owner.isDisposed }, targets, onResolved)
+  ): Job? = resolveTargets(owner, { owner.isDisposed }, targets, orderTargets, onResolved)
 
   /** Disposing [owner] prevents its pending navigation callback from running. */
   fun resolveTargets(
     owner: Disposable,
     targets: List<SmartPsiElementPointer<*>>,
+    orderTargets: ((List<PsiElement>) -> List<PsiElement>)? = null,
     onResolved: (List<PsiElement>) -> Unit,
-  ): Job? = resolveTargets(owner, { Disposer.isDisposed(owner) }, targets, onResolved)
+  ): Job? = resolveTargets(owner, { Disposer.isDisposed(owner) }, targets, orderTargets, onResolved)
 
   private fun resolveTargets(
     owner: Any,
     isOwnerDisposed: () -> Boolean,
     targets: List<SmartPsiElementPointer<*>>,
+    orderTargets: ((List<PsiElement>) -> List<PsiElement>)?,
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? {
     if (project.isDisposed || isOwnerDisposed()) return null
@@ -68,12 +72,13 @@ internal class MetroNavigationService(
           return@launch
         }
         val elements = readAction {
-          buildList {
+          val resolved = buildList {
             for (target in targets) {
               ProgressManager.checkCanceled()
               target.element?.let(::add)
             }
           }
+          if (orderTargets == null) resolved else orderTargets(resolved)
         }
         withContext(Dispatchers.EDT) {
           if (project.isDisposed || isOwnerDisposed()) return@withContext
