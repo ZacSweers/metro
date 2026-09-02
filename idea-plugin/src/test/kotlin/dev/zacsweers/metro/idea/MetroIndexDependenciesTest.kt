@@ -246,7 +246,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
   }
 
   fun testParallelSessionsDoNotShareStateOrExpandUnrelatedGraphs() {
-    val file = configure()
+    // Configure the editor after adding the second file so both sources are ready for indexing.
     myFixture.addFileToProject(
       "test/UnrelatedGraph.kt",
       """
@@ -263,6 +263,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       """
         .trimIndent(),
     )
+    val file = configure()
     val index = project.service<MetroResolutionService>().index(file)
     val declarations = file.declarationsIncludingNested()
     val consumer = checkNotNull(index.consumerEntryAt(declarations.property("baseUrl")))
