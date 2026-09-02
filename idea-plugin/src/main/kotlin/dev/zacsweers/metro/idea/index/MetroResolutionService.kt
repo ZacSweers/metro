@@ -200,6 +200,7 @@ class MetroResolutionService(
   /** Retains requested modules for later automatic rebuilds. */
   private val demandedModules = linkedSetOf<Module>()
   private var pendingPsiChanges = PendingPsiChanges()
+  @Volatile private var psiClassificationObserver: (() -> Unit)? = null
   private var projectInputsPending = false
   private var settingsPending = false
   private var pendingManualRefresh: ManualRefreshRequest? = null
@@ -560,24 +561,35 @@ class MetroResolutionService(
     return satisfied.isNotEmpty()
   }
 
+  /** Retains the batch when classification or its conservative fallback is interrupted. */
   private suspend fun processPendingPsiChanges() {
     val batch = pendingPsiChanges
     pendingPsiChanges = PendingPsiChanges()
+    try {
+      classifyAndApplyPsiChanges(batch)
+    } catch (_: ProcessCanceledException) {
+      mergePendingPsiChanges(batch)
+      yield()
+    } catch (exception: CancellationException) {
+      mergePendingPsiChanges(batch)
+      throw exception
+    }
+  }
+
+  /** Falls back to full invalidation when classification fails without cancellation. */
+  private suspend fun classifyAndApplyPsiChanges(batch: PendingPsiChanges) {
     try {
       val classified =
         smartReadAction(project) {
           checkPsiClassificationActive()
           classifyPsiChanges(batch)
         }
+      psiClassificationObserver?.invoke()
       checkPsiClassificationActive()
       applyClassifiedPsiChanges(classified)
-    } catch (exception: ProcessCanceledException) {
-      mergePendingPsiChanges(batch)
-      yield()
-    } catch (exception: CancellationException) {
-      mergePendingPsiChanges(batch)
-      throw exception
     } catch (failure: Throwable) {
+      if (failure is ProcessCanceledException) throw failure
+      if (failure is CancellationException) throw failure
       checkPsiClassificationActive()
       logger<MetroResolutionService>().warn("Metro PSI invalidation failed", failure)
       val requested = failedClassificationRequests(batch)
@@ -2673,14 +2685,22 @@ class MetroResolutionService(
     return requested
   }
 
-  /** Stops VFS access when JVM shutdown precedes cancellation of the project service scope. */
-  private fun checkPsiClassificationActive() {
-    val ownerDisposed = isDisposed || project.isDisposed
+  /** Keeps captured project unavailability retryable and stops VFS access during shutdown. */
+  internal fun checkPsiClassificationActive(projectDisposed: Boolean = project.isDisposed) {
     val applicationStopping =
       ShutDownTracker.isShutdownStarted() || ApplicationManager.getApplication().isDisposed
-    if (ownerDisposed || applicationStopping) {
+    if (isDisposed || applicationStopping) {
       throw CancellationException("Metro PSI classification stopped during disposal")
     }
+    // Light projects can temporarily close while their service scope stays alive. Preserve the
+    // batch until another event wakes the coordinator after the project becomes available again.
+    if (projectDisposed) throw ProcessCanceledException()
+  }
+
+  /** Lets lifecycle tests interrupt classification after its read and before applying changes. */
+  @TestOnly
+  internal fun setPsiClassificationObserver(observer: (() -> Unit)?) {
+    psiClassificationObserver = observer
   }
 
   /** Called by the coordinator inside a smart read action. */
@@ -2941,6 +2961,7 @@ class MetroResolutionService(
 
   override fun dispose() {
     publishedResolution.value = PublishedResolution.DISPOSED
+    psiClassificationObserver = null
     val abandonedEvents = ingress.close()
     for (event in abandonedEvents) {
       when (event) {

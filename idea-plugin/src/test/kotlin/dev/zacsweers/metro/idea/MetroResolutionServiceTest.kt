@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
@@ -112,6 +113,37 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       serviceScope.cancel()
       serviceScope.coroutineContext.job.awaitTestCompletion()
       dispatcher.close()
+    }
+  }
+
+  fun testTemporaryProjectClosurePreservesPendingPsiClassification() {
+    val file = myFixture.configureMetroFile("@Inject class BeforeClosure")
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service = MetroResolutionService(project, serviceScope)
+    val interrupted = AtomicBoolean()
+    try {
+      val initial = service.awaitIndex(file)
+      service.setPsiClassificationObserver {
+        service.setPsiClassificationObserver(null)
+        interrupted.set(true)
+        // Capture the unavailable phase without closing the platform fixture itself. The next
+        // classification attempt sees the available project and must apply the retained batch.
+        service.checkPsiClassificationActive(projectDisposed = true)
+      }
+      WriteCommandAction.runWriteCommandAction(project) {
+        val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+        document.setText(file.text.replace("BeforeClosure", "AfterClosure"))
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+      }
+      val updated = service.awaitIndex(file)
+      assertTrue(interrupted.get())
+      assertNotSame(initial, updated)
+      assertEquals(listOf("AfterClosure"), updated.bindings.map { it.implementationName })
+    } finally {
+      service.setPsiClassificationObserver(null)
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
     }
   }
 
