@@ -2,9 +2,8 @@
 
 IDE support for Kotlin projects that use [Metro](https://github.com/ZacSweers/metro).
 
-The plugin is K2-only and depends on the Kotlin plugin. It reads Metro compiler plugin options from
-the IDE's Kotlin compiler configuration, then uses the K2 Analysis API and Kotlin stub indexes to
-build a project-wide binding index for editor features.
+The plugin requires K2 and the Kotlin plugin. It reads Metro options from the IDE's Kotlin compiler
+configuration and uses the K2 Analysis API and Kotlin stub indexes to find bindings across the project.
 
 > TODO: Add a short GIF showing provider, consumer, and graph markers in one file.
 
@@ -39,33 +38,35 @@ The plugin adds gutter icons for the standard Metro binding relationships:
 Provider markers navigate to known consumers. Consumer markers navigate to the matching providers,
 or show an unresolved marker when the IDE index has no binding for the key.
 
-When a graph context is pinned in the Metro tool window, gutter tooltips and navigation use that
-context where it applies. This makes context-dependent bindings inspectable without changing the
-underlying project-wide index.
+Pin a graph context in the Metro tool window to see its bindings in gutter tooltips and navigation.
+The pin applies to declarations in that context and leaves the binding index unchanged.
 
-Optional dependencies are handled two ways:
+Optional dependencies have two forms:
 
 - An injection site is treated as optional when it carries `@OptionalBinding`/`@OptionalDependency`
   or when it is a parameter with a default value under the default optional-binding behavior. An
-  optional site with no binding reads as optional rather than unresolved.
+  optional site with no binding is shown as optional.
 - `@BindsOptionalOf` (Dagger interop) exposes an `Optional<T>` binding, so a site injecting
   `Optional<T>` resolves to it.
 
 Graph markers list the contributions a graph aggregates. A graph extension also reports its parent
 graph and inherited contribution count in the tooltip and code vision. An accessor that returns a
-`@GraphExtension` (or its factory) is a creation point for the child graph rather than a dependency,
-so it gets no consumer marker.
+`@GraphExtension` (or its factory) creates the child graph, so it gets no consumer marker.
 
 > TODO: Add a screenshot of a consumer marker popup resolving an interface to a concrete binding.
 
 ### Find Usages
 
-IntelliJ's Find Usages keeps its ordinary Kotlin results and adds resolved Metro relationships for declarations already represented in the binding index:
+IntelliJ's Find Usages includes its ordinary Kotlin results and adds Metro relationships for indexed
+binding sources and injection sites:
 
 - Find Usages on a binding source, such as an `@Provides`, `@Binds`, `@Inject`, or contributed declaration, lists its consumers under **Injected at**.
 - Find Usages on an injection site or graph accessor lists its selected bindings under **Provided by**.
 
-These results use the same graph membership, module visibility, and multibinding resolution as editor navigation. A graph context pinned in the Metro tool window limits the relationships to that context; with no pin, Find Usages shows the union across applicable graph contexts. Plain classes and interfaces that are not themselves indexed binding or consumer declarations continue to use Kotlin's standard Find Usages behavior.
+Find Usages and editor navigation resolve bindings the same way. A pinned graph context limits
+results to that context. With no pin, Find Usages combines results from all applicable graph contexts.
+Plain classes and interfaces that are not indexed binding sources or injection sites use Kotlin's
+standard Find Usages behavior.
 
 > TODO: Add a screenshot of Find Usages showing the Injected at and Provided by groups alongside an ordinary Kotlin usage.
 
@@ -96,8 +97,7 @@ class CheckoutFlow(
 Single resolved implementations are clickable and navigate to the provider. Multibindings show the
 number of contributed elements or map entries. Implicitly assisted parameters, such as
 Circuit-provided `Screen`/`Navigator` parameters, can show an `assisted` inlay because they are
-supplied at runtime rather than injected from the graph (explicit `@Assisted` parameters already
-read as assisted in source, so they get no inlay).
+supplied at runtime. Explicit `@Assisted` parameters already show this in source, so they get no inlay.
 
 Context-dependent implementation inlays use the graph context pinned in the Metro tool window.
 
@@ -109,18 +109,18 @@ Open `View > Tool Windows > Metro`, then click **Load** to browse every graph co
 project. The status indicator shows loading progress or waits for IDE indexing before graphs become
 available. Graph extensions with different parent chains appear as separate rows.
 
-Graph and binding data refreshes incrementally after relevant code changes by default. Large projects
-can disable automatic refresh in Metro's project settings. Editor decorations and the tool window
-then keep using the last published graph data. Decoration positions still update as declarations
-move, and decorations disappear when their declarations can no longer be identified safely. The tool
-window reports that graph data may be stale until **Refresh** or reenabling automatic refresh brings
-it up to date. Validation, Find Usages, and graph debug export still request current data directly.
+Graph and binding data updates incrementally after relevant code changes by default. For large
+projects, automatic refresh can be disabled in Metro's project settings. Editor decorations and the
+tool window then keep using the last loaded graph data. Decorations follow declarations as they move
+and disappear when their declarations can no longer be identified safely.
+
+The tool window shows a stale-data warning until you click **Refresh** or reenable automatic refresh
+to bring it up to date. Validation, Find Usages, and graph debug export still request current data.
 
 Calls to `createDynamicGraph` and `createDynamicGraphFactory` appear as separate graph contexts at
-their call sites. The browser applies each concrete binding-container type as an override, carries
-those bindings into graph extensions, and keeps multibinding contributions additive. Equivalent
-calls in one file share a context, matching the compiler, while calls from different files remain
-distinct.
+their call sites. Each context uses the call's concrete binding containers to override bindings,
+including in graph extensions. Multibinding contributions are combined. Equivalent calls in one
+file share a context, matching the compiler. Calls from different files have separate contexts.
 
 Use the graph selector to focus the tree on one concrete context and its reachable graph
 extensions. The pin button applies that context to editor navigation and implementation inlays for
@@ -133,33 +133,39 @@ binding navigates to its declaration. After validation, an Unused category lists
 `@Provides` and `@Binds` bindings that were not reached by that graph or its validated extensions.
 
 Select a graph and use **More > Export Graph Debug Info** to write a local report to the IDE log
-directory. Reports omit source bodies, absolute paths, and annotation literal values, but still
-contain project and type identifiers. Review the file before sharing it.
+directory. Reports omit source bodies, absolute paths, and annotation literal values. They contain
+project and type identifiers, so review the file before sharing it.
 
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
 ### On-Demand Graph Validation
 
 Graphs can be validated from their gutter icon, the editor context menu, or the Validate action in
-the Metro tool window. Validation runs in the background and seals every concrete extension context
+the Metro tool window. Validation runs in the background and checks every concrete extension context
 before its parent graph.
 
-The IDE adapter uses Metro's shared binding-graph implementation to report:
+The IDE and compiler share graph validation code. The plugin reports:
 
 - Missing bindings with navigable request traces.
 - Dependency cycles.
 - Duplicate bindings and duplicate map keys.
 - Empty multibindings that do not allow emptiness.
 - Bindings used from incompatible graph scopes.
-- Suspend-provider errors, including non-suspend accessors, synchronous `Provider`/`Lazy`
-  boundaries, unsupported suspend multibindings, member injection, assisted factories, and a
-  missing optional `runtime-coroutines` artifact.
+- Suspend-provider errors.
 
-Suspend validation uses the same validator as the compiler, including transitive propagation, accessor boundaries, multibindings, wrapper restrictions, member injection, assisted factories, and runtime requirements. It recognizes `suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` boundaries, and preserves exact wrapper pass-through from factory-included graph dependencies. Differential tests compare successful and failing suspend graphs with compiler reports.
+Suspend validation follows chains of dependencies, including calls from non-suspend accessors and
+through synchronous `Provider` or `Lazy` wrappers. It reports unsupported suspend multibindings, member
+injection, assisted factories, and a missing `runtime-coroutines` dependency when required. It recognizes
+`suspend () -> T`, `SuspendProvider<T>`, and `SuspendLazy<T>` boundaries. Wrappers supplied by
+factory-included graph dependencies pass through unchanged.
 
-The last result remains visible in the tool window and on the graph's gutter badge. Results are
-marked stale after relevant code changes until validation runs again. Unexpected plugin failures
-are reported as internal plugin errors rather than Metro graph diagnostics.
+The tool window's **Last validation** pane shows your validation results, including graphs added while
+automatic refresh is disabled. Closing the pane leaves the graph browser's selection and displayed
+data unchanged.
+
+The graph's gutter badge and its Validation row in the browser retain the cached result. They mark
+it stale after relevant code changes until validation runs again. Unexpected plugin failures are
+reported as internal plugin errors.
 
 > TODO: Add a GIF showing a graph validation run and navigation through a missing-binding trace.
 
@@ -181,26 +187,27 @@ Gutter marker categories are also toggleable under IntelliJ's gutter icon settin
 
 ### Library Resolution
 
-Project _source_ is indexed from Metro-relevant annotations. _Compiled_ dependencies are covered where
-the compiler exposes enough metadata:
+The plugin finds source bindings through Metro annotations. It can also resolve compiled dependencies
+when the compiler provides enough metadata:
 
-- Constructor-injected classes resolve on demand from library metadata.
-- Contributions are discovered from generated Metro hint functions (matching how metroc discovers them).
-- Contribution-provider container objects are attributed through `@Origin`.
-- `internal` contribution hints respect the compiler's formal friend/associated compilation
-  visibility and are filtered from non-friend external libraries.
+- Constructor-injected classes resolve from library metadata when requested.
+- Contributions are found through generated Metro hint functions, as they are in `metroc`.
+- Contribution-provider container objects identify their source through `@Origin`.
+- `internal` contribution hints are visible only from friend/associated compilations, as defined by
+  the compiler. Internal hints from other libraries are ignored.
 
 > TODO: Add a screenshot from a sample project showing navigation into a library contribution.
 
 ## Current Limits
 
-Resolution starts from a project-wide, key-based index and then applies per-graph membership on
-top: each graph's context aggregates its scopes (following `@GraphExtension` parent chains), wired
-binding containers (including transitive `includes`), factory `@Includes` dependencies,
-contribution merging (`excludes` on graphs, `replaces` on contributions), and scope matching for
-scoped bindings (a graph's declared scopes include the `@SingleIn(X::class)` implicitly conveyed
-by `@DependencyGraph(X::class)`). Popups and inlays use the per-graph view when graphs exist and
-fall back to the global view otherwise.
+Bindings are first indexed by key across the project, then filtered for each graph. A graph includes
+bindings from its scopes and `@GraphExtension` parents, binding containers (including transitive
+`includes`), and factory `@Includes` dependencies. Contribution merging honors `excludes` on graphs
+and `replaces` on contributions.
+
+Scoped bindings must match the graph's scopes. `@DependencyGraph(X::class)` also supplies the
+`@SingleIn(X::class)` scope. Popups and inlays use the per-graph view when graphs exist and fall back
+to the project-wide view otherwise.
 
 Not yet modeled:
 
@@ -217,6 +224,9 @@ Not yet modeled:
   Studio has not picked up the fix yet.
 
 ## Development
+
+See [How IDE binding resolution works](docs/resolution.md) for how Metro builds binding data in the
+background and uses it to answer IDE requests.
 
 The IDE plugin is a standalone Gradle build. Run these commands from the repository root.
 
