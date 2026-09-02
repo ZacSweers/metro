@@ -17,7 +17,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
 import dev.zacsweers.metro.idea.MetroIdeProjectService
-import dev.zacsweers.metro.idea.index.annotationShortNamesIncludingAliases
+import dev.zacsweers.metro.idea.index.snapshot.annotationShortNamesIncludingAliases
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

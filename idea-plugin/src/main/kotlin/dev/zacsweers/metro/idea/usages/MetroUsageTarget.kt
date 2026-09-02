@@ -11,8 +11,8 @@ import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.MetroIdeModuleState
 import dev.zacsweers.metro.idea.MetroIdeProjectService
-import dev.zacsweers.metro.idea.index.annotationShortNamesIncludingAliases
-import dev.zacsweers.metro.idea.index.sweepAnnotationIds
+import dev.zacsweers.metro.idea.index.snapshot.annotationShortNamesIncludingAliases
+import dev.zacsweers.metro.idea.index.snapshot.sweepAnnotationIds
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtClassOrObject

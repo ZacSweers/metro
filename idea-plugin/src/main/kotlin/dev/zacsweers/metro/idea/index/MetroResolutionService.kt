@@ -38,6 +38,13 @@ import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.checkCanceledEvery
+import dev.zacsweers.metro.idea.index.snapshot.IndexInputs
+import dev.zacsweers.metro.idea.index.snapshot.PreparedResolutionSnapshot
+import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotBuilder
+import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotTarget
+import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
+import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshot
+import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexBuilder
