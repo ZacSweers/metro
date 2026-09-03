@@ -261,8 +261,8 @@ internal class DynamicGraphCall(
     get() = id.containerKeys
 }
 
-/** One concrete assisted-factory declaration, including its exact source or binary file. */
-internal data class SourceAssistedFactoryIdentity(
+/** One concrete class binding, including its exact source or binary declaration file. */
+internal data class ClassBindingIdentity(
   val key: KaTypeKey,
   val originClassId: ClassId?,
   val virtualFile: VirtualFile,

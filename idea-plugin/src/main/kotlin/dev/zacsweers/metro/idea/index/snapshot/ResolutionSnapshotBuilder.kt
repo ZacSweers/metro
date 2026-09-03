@@ -33,10 +33,10 @@ import dev.zacsweers.metro.idea.index.LibraryIndexPostProcessor
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexBuilder
+import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
-import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
@@ -135,9 +135,9 @@ internal class ResolutionSnapshotBuilder(
           contributions += source.contributions + library.contributions
           assistedSites += source.assistedSites
           bindingContainers += source.bindingContainers
-          incompleteAssistedFactories +=
-            if (key.resolveFromLibraries) library.incompleteFactories
-            else summary.sourceFactories.incompleteFactories
+          incompleteClassBindings +=
+            if (key.resolveFromLibraries) library.incompleteBindings
+            else summary.sourceFactories.incompleteBindings
           dynamicGraphs += source.dynamicGraphs
         }
       captureResolutionInputs(indexBuilder, declarationSignatureFiles)
@@ -303,7 +303,7 @@ internal class ResolutionSnapshotBuilder(
 
     val bindings = source.bindings.toMutableList()
     val contributions = source.contributions.toMutableList()
-    val incompleteFactories =
+    val incompleteBindings =
       LibraryIndexPostProcessor(
           project,
           fingerprint.options,
@@ -320,7 +320,7 @@ internal class ResolutionSnapshotBuilder(
       LibraryShard(
         bindings.drop(source.bindings.size),
         contributions.drop(source.contributions.size),
-        incompleteFactories,
+        incompleteBindings,
       )
     libraryShards[key] = shard
     return shard
@@ -551,7 +551,7 @@ private data class LibraryCacheKey(
 private data class LibraryShard(
   val bindings: List<KaBinding>,
   val contributions: List<ContributionEntry>,
-  val incompleteFactories: Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> = emptyMap(),
+  val incompleteBindings: Map<KaModule, Map<ClassBindingIdentity, String>> = emptyMap(),
 ) {
   companion object {
     val EMPTY = LibraryShard(emptyList(), emptyList())

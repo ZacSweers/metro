@@ -136,10 +136,9 @@ internal class KaBindingGraph(
           }
         for (binding in resolved) {
           ProgressManager.checkCanceled()
-          // Explicit providers can terminate a growing factory chain. Only stop after the normal
-          // graph lookup actually chooses the implicit factory whose expansion was bounded.
-          if (binding is KaBinding.AssistedFactory) {
-            val incompleteReason = index.incompleteAssistedFactoryReason(binding, queryContext)
+          // Check limits after selection so an explicit provider can terminate a growing chain.
+          if (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) {
+            val incompleteReason = index.incompleteClassBindingReason(binding, queryContext)
             if (incompleteReason != null) throw IncompleteGraphAnalysis(incompleteReason)
           }
           validateLazyAssistedDependencies(binding, stack)

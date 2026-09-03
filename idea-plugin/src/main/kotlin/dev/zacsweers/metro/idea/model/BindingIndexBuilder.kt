@@ -34,8 +34,7 @@ internal class BindingIndexBuilder(
   val contributions = mutableListOf<ContributionEntry>()
   val assistedSites = mutableListOf<AssistedSite>()
   val bindingContainers = mutableListOf<BindingContainerEntry>()
-  val incompleteAssistedFactories =
-    linkedMapOf<KaModule, Map<SourceAssistedFactoryIdentity, String>>()
+  val incompleteClassBindings = linkedMapOf<KaModule, Map<ClassBindingIdentity, String>>()
   val dynamicGraphs = mutableListOf<DynamicGraphCall>()
 
   /** Module ownership and visibility captured under a read action before building the index. */
@@ -53,9 +52,9 @@ internal class BindingIndexBuilder(
     val frozenContributions = contributions.toList()
     val frozenAssistedSites = assistedSites.toList()
     val frozenBindingContainers = bindingContainers.toList()
-    val frozenIncompleteAssistedFactories =
-      buildMap(incompleteAssistedFactories.size) {
-        for ((module, boundaries) in incompleteAssistedFactories) {
+    val frozenIncompleteClassBindings =
+      buildMap(incompleteClassBindings.size) {
+        for ((module, boundaries) in incompleteClassBindings) {
           put(module, boundaries.toMap())
         }
       }
@@ -90,7 +89,7 @@ internal class BindingIndexBuilder(
       frozenContributions,
       frozenAssistedSites,
       frozenBindingContainers,
-      frozenIncompleteAssistedFactories,
+      frozenIncompleteClassBindings,
       frozenDynamicGraphs,
       frozenResolutionInputs,
       lookups,
@@ -106,7 +105,7 @@ internal class FrozenBindingIndexData(
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
-  val incompleteAssistedFactories: Map<KaModule, Map<SourceAssistedFactoryIdentity, String>>,
+  val incompleteClassBindings: Map<KaModule, Map<ClassBindingIdentity, String>>,
   val dynamicGraphs: List<DynamicGraphCall>,
   val resolutionInputs: BindingIndexResolutionInputs,
   val lookups: BindingIndexLookups,

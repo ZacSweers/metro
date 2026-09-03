@@ -3512,6 +3512,48 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.bindings.asMap().values.none { it is KaBinding.AssistedFactory })
   }
 
+  fun testGrowingBinaryConstructorReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validateResult(
+          """
+        import libtest.LibGrowingNode
+
+        @DependencyGraph interface AppGraph {
+          val node: LibGrowingNode<Int>
+        }
+        """
+        )
+
+      assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+      result as KaGraphValidationResult.Incomplete
+      assertTrue(result.reason.contains("LibGrowingNode"))
+    }
+  }
+
+  fun testExplicitProviderTerminatesGrowingBinaryConstructor() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibGrowingNode
+
+        @DependencyGraph interface AppGraph {
+          val node: LibGrowingNode<Int>
+
+          @Provides fun terminal(): LibGrowingNode<List<List<Int>>> = error("unused")
+        }
+        """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val nodes = result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>()
+      assertEquals(2, nodes.size)
+    }
+  }
+
   fun testExpandingGenericAssistedFactoryReportsIncompleteAnalysis() {
     module.addKotlinStdlibLibrary()
     val result =

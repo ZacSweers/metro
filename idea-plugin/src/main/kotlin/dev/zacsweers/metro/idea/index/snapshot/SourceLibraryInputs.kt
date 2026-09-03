@@ -9,11 +9,11 @@ import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.SourceAssistedFactoryPostProcessor
 import dev.zacsweers.metro.idea.index.SourceFactoryResolution
-import dev.zacsweers.metro.idea.index.sourceFactoryIdentity
+import dev.zacsweers.metro.idea.index.classBindingIdentity
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -136,10 +136,10 @@ private fun SourceAggregate.libraryInputs(
       injectRequests += LibraryInjectInput(module, key, classId)
     }
   }
-  val definitions = linkedMapOf<SourceAssistedFactoryIdentity, AssistedFactoryDefinitionSignature>()
+  val definitions = linkedMapOf<ClassBindingIdentity, AssistedFactoryDefinitionSignature>()
   for (binding in bindings) {
     if (binding !is KaBinding.AssistedFactory) continue
-    val identity = binding.sourceFactoryIdentity() ?: continue
+    val identity = binding.classBindingIdentity() ?: continue
     definitions.putIfAbsent(identity, assistedFactoryDefinitionSignature(binding))
   }
   val budget = sourceFactories.budget
@@ -148,7 +148,7 @@ private fun SourceAggregate.libraryInputs(
     participatingModules,
     injectRequests,
     definitions.values.toList(),
-    FactoryBudgetCacheInput(budget.writtenDepth, budget.writtenNodes, budget.writtenFactoryKeys),
+    FactoryBudgetCacheInput(budget.writtenDepth, budget.writtenNodes, budget.writtenClassKeys),
   )
 }
 

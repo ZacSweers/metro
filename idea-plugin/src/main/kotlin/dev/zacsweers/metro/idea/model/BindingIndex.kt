@@ -30,7 +30,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   val contributions = data.contributions
   val assistedSites = data.assistedSites
   val bindingContainers = data.bindingContainers
-  private val incompleteAssistedFactories = data.incompleteAssistedFactories
+  private val incompleteClassBindings = data.incompleteClassBindings
   val dynamicGraphs = data.dynamicGraphs
   internal val resolutionInputs = data.resolutionInputs
   private val lookups = data.lookups
@@ -183,15 +183,15 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     return lookups.assistedFactoriesByTarget[key].orEmpty().withoutDuplicateAssistedFactories()
   }
 
-  /** Why this exact factory's dependency expansion stopped in the graph's compilation module. */
-  fun incompleteAssistedFactoryReason(
-    binding: KaBinding.AssistedFactory,
+  /** Why dependency discovery stopped for this binding in the graph's compilation module. */
+  fun incompleteClassBindingReason(
+    binding: KaBinding,
     queryContext: GraphQueryContext,
   ): String? {
-    if (incompleteAssistedFactories.isEmpty()) return null
-    val boundaries = incompleteAssistedFactories[queryContext.graphModule] ?: return null
+    if (incompleteClassBindings.isEmpty()) return null
+    val boundaries = incompleteClassBindings[queryContext.graphModule] ?: return null
     val file = binding.pointer.virtualFile ?: return null
-    return boundaries[SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, file)]
+    return boundaries[ClassBindingIdentity(binding.typeKey, binding.originClassId, file)]
   }
 
   /** Indexed source sites for [key], used when a graph diagnostic needs its real declaration. */

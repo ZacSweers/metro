@@ -18,6 +18,7 @@ import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
+import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
@@ -29,7 +30,6 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import java.util.Collections
@@ -73,7 +73,7 @@ internal class LibraryIndexPostProcessor(
 
   private lateinit var sourceFactories: SourceAssistedFactoryPostProcessor
 
-  fun postProcess(): Map<KaModule, Map<SourceAssistedFactoryIdentity, String>> {
+  fun postProcess(): Map<KaModule, Map<ClassBindingIdentity, String>> {
     scanLibraryContributionHints()
     sourceFactories =
       SourceAssistedFactoryPostProcessor(
@@ -86,7 +86,7 @@ internal class LibraryIndexPostProcessor(
     val resumed = sourceFactories.resumeBoundaries()
     bindings += resumed.addedBindings
     resolveLibraryInjectBindings(resumed.libraryRequests)
-    return sourceFactories.snapshot().incompleteFactories
+    return sourceFactories.snapshot().incompleteBindings
   }
 
   /**
@@ -467,14 +467,11 @@ internal class LibraryIndexPostProcessor(
         }
       if (resolved == null) continue
       if (bindingIds.add(resolved.id)) bindings += resolved.binding
-      val factory = resolved.binding as? KaBinding.AssistedFactory
-      if (
-        factory != null &&
-          !sourceFactories.expandBinaryFactory(factory, request.context, request.direct)
-      ) {
+      if (!sourceFactories.expandClassBinding(resolved.binding, request.context, request.direct)) {
         continue
       }
       for (dependency in resolved.binding.dependencies) {
+        ProgressManager.checkCanceled()
         val key = dependency.typeKey
         val classId = key.type.classId ?: continue
         queue += LibraryInjectRequest(key, classId, request.context)
@@ -833,14 +830,13 @@ private sealed interface FrozenConsumerOwners {
 /** Session-free source factory groups that remain reusable when equivalent shards are rebuilt. */
 internal class SourceAssistedFactoryUseSites(
   private val groups:
-    Map<SourceAssistedFactoryIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>
+    Map<ClassBindingIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>
 ) {
   operator fun get(
     binding: KaBinding.AssistedFactory
   ): Map<KaModule, SmartPsiElementPointer<out KtElement>>? {
     val virtualFile = binding.pointer.virtualFile ?: return null
-    return groups[
-      SourceAssistedFactoryIdentity(binding.typeKey, binding.originClassId, virtualFile)]
+    return groups[ClassBindingIdentity(binding.typeKey, binding.originClassId, virtualFile)]
   }
 
   fun isEmpty(): Boolean = groups.isEmpty()

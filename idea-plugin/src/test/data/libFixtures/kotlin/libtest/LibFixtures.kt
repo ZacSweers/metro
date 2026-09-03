@@ -48,6 +48,9 @@ interface LibAnalytics
 /** Resolvable on demand as a constructor-injected library class. */
 @Inject @SingleIn(AppScope::class) class LibHttpClient
 
+/** Each dependency adds a type argument layer during implicit construction. */
+@Inject class LibGrowingNode<T>(val next: LibGrowingNode<List<T>>)
+
 /** Carries constructor dependencies, for binary dependency-key extraction. */
 @Inject class LibClientWithDeps(val client: LibHttpClient)
 
