@@ -1536,6 +1536,12 @@ private constructor(
     return current.contains(index) && generationIsCurrent(current)
   }
 
+  /** Checks retained results without requesting an index or a presentation build. */
+  internal fun isCurrentGeneration(token: IndexGenerationToken): Boolean {
+    val current = publishedResolution.value.current
+    return token in current.indexGenerationTokens && generationIsCurrent(current)
+  }
+
   /** Notifies a tool window when a fresh background index is ready; callbacks run on the EDT. */
   internal fun addIndexListener(parentDisposable: Disposable, listener: () -> Unit) {
     collectForDisposable(indexChanges, parentDisposable) { listener() }

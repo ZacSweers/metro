@@ -17,6 +17,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportRawProgress
 import com.intellij.psi.PsiElement
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -26,6 +27,7 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import java.util.IdentityHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -72,12 +74,15 @@ internal class MetroGraphValidationService(
       if (bundle.clearVersion != clearVersion || bundle.entries.isEmpty()) return this
 
       val updated = LinkedHashMap(entries)
+      var changed = false
       for ((path, entry) in bundle.entries) {
         val current = updated[path]
         if (current != null && current.runVersion > entry.runVersion) continue
         updated.remove(path)
         updated[path] = entry
+        changed = true
       }
+      if (!changed) return this
       val iterator = updated.entries.iterator()
       while (updated.size > MAX_CACHED_RESULTS && iterator.hasNext()) {
         iterator.next()
@@ -193,12 +198,43 @@ internal class MetroGraphValidationService(
   private val validationProgressNotificationPending = AtomicBoolean()
   private val validationProgressListeners =
     CopyOnWriteArrayList<(List<GraphValidationProgress>) -> Unit>()
+  private val resultListeners = CopyOnWriteArrayList<() -> Unit>()
+  private val resultNotificationPending = AtomicBoolean()
   private val beforeValidationPublicationObserver =
     AtomicReference<((GraphPath, Long) -> Unit)?>(null)
+  private val beforeGraphSealObserver = AtomicReference<((GraphPath) -> Unit)?>(null)
 
   /** Drops all retained results. */
   fun clearResults() {
     publishedResults.updateAndGet(PublishedResults::cleared)
+    resultsChanged()
+  }
+
+  /** Reads retained results and their freshness without scheduling index or presentation work. */
+  internal fun retainedResults(): List<CachedValidation> {
+    val entries = publishedResults.get().entries.values
+    if (entries.isEmpty()) return emptyList()
+    val resolution = project.service<MetroResolutionService>()
+    val staleByGeneration = IdentityHashMap<IndexGenerationToken, Boolean>()
+    return entries.map { entry ->
+      val stale =
+        staleByGeneration.getOrPut(entry.generationToken) {
+          !resolution.isCurrentGeneration(entry.generationToken)
+        }
+      CachedValidation(entry.result, stale)
+    }
+  }
+
+  /** Delivers coalesced result publication and clear events on the EDT. */
+  internal fun addResultListener(parentDisposable: Disposable, listener: () -> Unit) {
+    resultListeners += listener
+    Disposer.register(parentDisposable) { resultListeners -= listener }
+  }
+
+  private fun resultsChanged() {
+    project.service<MetroDaemonRestartService>().requestRestart()
+    resultNotificationPending.set(true)
+    scheduleValidationProgressNotification()
   }
 
   internal fun addValidationProgressListener(
@@ -218,6 +254,14 @@ internal class MetroGraphValidationService(
   @TestOnly
   internal fun setBeforeValidationPublicationObserver(observer: ((GraphPath, Long) -> Unit)?) {
     beforeValidationPublicationObserver.set(observer)
+  }
+
+  /**
+   * Lets tests pause after input capture to inspect write access and cancellation during a seal.
+   */
+  @TestOnly
+  internal fun setBeforeGraphSealObserver(observer: ((GraphPath) -> Unit)?) {
+    beforeGraphSealObserver.set(observer)
   }
 
   /**
@@ -355,6 +399,9 @@ internal class MetroGraphValidationService(
         )
       } else {
         runGraphValidation(context, graphName) {
+          ProgressManager.checkCanceled()
+          beforeGraphSealObserver.get()?.invoke(context.path)
+          ProgressManager.checkCanceled()
           KaBindingGraph(
               input.session,
               input.queryContext,
@@ -438,8 +485,7 @@ internal class MetroGraphValidationService(
   }
 
   /**
-   * Validates under a cancellable read action. Results enter the cache after the read ends, and
-   * [onDone] runs on the EDT.
+   * Captures under a cancellable read action, seals outside it, and delivers results on the EDT.
    */
   fun validateAsync(
     element: PsiElement,
@@ -450,7 +496,7 @@ internal class MetroGraphValidationService(
       val completed =
         withBackgroundProgress(project, progressTitle(context.graph)) {
           reportRawProgress { reporter ->
-            retryCancelledIndexBuild {
+            val captured = retryCancelledIndexBuild {
               smartReadAction(project) {
                 request.publishProgress(
                   GraphValidationProgress(
@@ -462,9 +508,10 @@ internal class MetroGraphValidationService(
                 )
                 reporter.details("Validating ${graphDisplayName(context.graph)}")
                 reporter.fraction(0.0)
-                computeValidation(captureValidation(element, context))
+                captureValidation(element, context)
               }
             }
+            withContext(Dispatchers.Default) { computeValidation(captured) }
           }
         }
       if (publishCompletedValidationIfCurrent(request, completed)) {
@@ -476,8 +523,8 @@ internal class MetroGraphValidationService(
   }
 
   /**
-   * Validates the graph and its extensions asynchronously. Results are cached after the read ends,
-   * and [onDone] runs on the EDT.
+   * Captures the graph and its extensions together, then seals their immutable inputs outside read
+   * access. Results are cached after computation, and [onDone] runs on the EDT.
    */
   fun validateWithExtensionsAsync(
     graph: KaGraphDeclaration,
@@ -489,16 +536,19 @@ internal class MetroGraphValidationService(
       val completed =
         withBackgroundProgress(project, progressTitle(graph)) {
           reportRawProgress { reporter ->
-            retryCancelledIndexBuild {
+            val captured = retryCancelledIndexBuild {
               smartReadAction(project) {
                 val element =
                   graph.pointer.element
                     ?: throw CancellationException("Metro graph is no longer available")
-                computeValidationWithExtensions(captureValidation(element, graph)) { progress ->
-                  request.publishProgress(progress)
-                  reporter.details(progress.message)
-                  reporter.fraction(progress.fraction)
-                }
+                captureValidation(element, graph)
+              }
+            }
+            withContext(Dispatchers.Default) {
+              computeValidationWithExtensions(captured) { progress ->
+                request.publishProgress(progress)
+                reporter.details(progress.message)
+                reporter.fraction(progress.fraction)
               }
             }
           }
@@ -512,8 +562,8 @@ internal class MetroGraphValidationService(
   }
 
   /**
-   * Validates this graph path and its extensions asynchronously. Results are cached after the read
-   * ends, and [onDone] runs on the EDT.
+   * Captures this concrete path and its extensions together, then seals outside read access.
+   * Results are cached after computation, and [onDone] runs on the EDT.
    */
   fun validateWithExtensionsAsync(
     context: GraphContext,
@@ -523,18 +573,19 @@ internal class MetroGraphValidationService(
       val completed =
         withBackgroundProgress(project, progressTitle(context.graph)) {
           reportRawProgress { reporter ->
-            retryCancelledIndexBuild {
+            val captured = retryCancelledIndexBuild {
               smartReadAction(project) {
                 val element =
                   context.contextPointer.element
                     ?: throw CancellationException("Metro graph context is no longer available")
-                computeValidationWithExtensions(
-                  captureValidation(element, context, includeExtensions = true)
-                ) { progress ->
-                  request.publishProgress(progress)
-                  reporter.details(progress.message)
-                  reporter.fraction(progress.fraction)
-                }
+                captureValidation(element, context, includeExtensions = true)
+              }
+            }
+            withContext(Dispatchers.Default) {
+              computeValidationWithExtensions(captured) { progress ->
+                request.publishProgress(progress)
+                reporter.details(progress.message)
+                reporter.fraction(progress.fraction)
               }
             }
           }
@@ -659,7 +710,15 @@ internal class MetroGraphValidationService(
 
   private fun publish(bundle: ValidationResultBundle) {
     if (bundle.entries.isEmpty()) return
-    publishedResults.updateAndGet { it.with(bundle) }
+    while (true) {
+      val previous = publishedResults.get()
+      val updated = previous.with(bundle)
+      if (updated === previous) return
+      if (publishedResults.compareAndSet(previous, updated)) {
+        resultsChanged()
+        return
+      }
+    }
   }
 
   private fun validationWorkspace(): ValidationWorkspace {
@@ -668,12 +727,15 @@ internal class MetroGraphValidationService(
 
   /** Queues one EDT update for the latest progress, even when a traversal reports many graphs. */
   private fun scheduleValidationProgressNotification() {
-    if (validationProgressListeners.isEmpty()) return
+    if (validationProgressListeners.isEmpty() && resultListeners.isEmpty()) return
     if (!validationProgressNotificationPending.compareAndSet(false, true)) return
     ApplicationManager.getApplication().invokeLater {
       // Clear first so completion during listener callbacks can still queue an update.
       validationProgressNotificationPending.set(false)
       if (project.isDisposed) return@invokeLater
+      if (resultNotificationPending.getAndSet(false)) {
+        for (listener in resultListeners.toList()) listener()
+      }
       val snapshot = validationProgressSnapshot()
       for (listener in validationProgressListeners.toList()) {
         listener(snapshot)
