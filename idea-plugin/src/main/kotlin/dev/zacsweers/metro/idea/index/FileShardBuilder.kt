@@ -171,6 +171,14 @@ internal class FileShardBuilder(
     val assistedFactoryNames = annotationNames(options.assistedFactoryAnnotations)
     val containerNames = annotationNames(options.bindingContainerAnnotations)
     val circuitNames = annotationNames(setOf(CircuitClassIds.CircuitInject))
+    val knownAnnotationNames =
+      bindingCallableNames +
+        injectNames +
+        contributesNames +
+        graphNames +
+        assistedFactoryNames +
+        containerNames +
+        circuitNames
     val dynamicGraphNames = buildSet {
       for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
         add(callableId.callableName.asString())
@@ -181,7 +189,17 @@ internal class FileShardBuilder(
     PsiTreeUtil.processElements(file) { element ->
       checkCanceled()
       val entry = element as? KtAnnotationEntry ?: return@processElements true
-      val shortName = entry.shortName?.asString() ?: return@processElements true
+      val writtenName = entry.shortName?.asString() ?: return@processElements true
+      // Typealiases can introduce other spellings whose meaning depends on the current scope.
+      val shortName =
+        if (writtenName in knownAnnotationNames) writtenName
+        else {
+          val typeReference = entry.typeReference ?: return@processElements true
+          analyze(typeReference) {
+            val type = typeReference.type.fullyExpandedType as? KaClassType
+            type?.classId?.shortClassName?.asString() ?: writtenName
+          }
+        }
       val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: return@processElements true
       if (shortName in bindingCallableNames) processBindingCallable(declaration)
       if (shortName in injectNames) processInjectAnnotated(declaration)

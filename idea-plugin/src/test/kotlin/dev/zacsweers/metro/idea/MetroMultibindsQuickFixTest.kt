@@ -36,7 +36,9 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
     val action = myFixture.findSingleIntention(FIX_NAME)
     assertEquals(after, myFixture.getIntentionPreviewText(action))
     assertEquals(before, file.text)
+    assertFalse(project.service<MetroGraphValidationService>().retainedResults().single().stale)
 
+    // The fixture also checks the platform's read-only-file handling during application.
     myFixture.checkPreviewAndLaunchAction(action)
     assertEquals(after, file.text)
     val service = project.service<MetroGraphValidationService>()
@@ -45,6 +47,7 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
     assertEmpty(validate(file).diagnostics)
 
     myFixture.performEditorAction(IdeActions.ACTION_UNDO)
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
     assertEquals(before, file.text)
     assertEmptyMultibinding(validate(file))
   }
@@ -199,7 +202,8 @@ class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
       """
     $prelude
     interface Declarations {
-      $annotation $declaration
+      $annotation
+      $declaration
     }
     @DependencyGraph(bindingContainers = [Declarations::class])
     interface AppGraph { val values: Set<String> }

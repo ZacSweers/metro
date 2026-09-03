@@ -1835,6 +1835,10 @@ private constructor(
     structuralChange: Boolean = false,
     oldTreeMayDisappear: Boolean = false,
   ) {
+    // Intention previews edit nonphysical copies that can still have a virtual file.
+    if (event.file?.isPhysical == false) return
+    // Write access changes leave declaration metadata unchanged.
+    if (event.propertyName == PsiTreeChangeEvent.PROP_WRITABLE) return
     val virtualFile = changedVirtualFile(event)
     if (virtualFile == null) {
       val directory = changedDirectoryVirtualFile(event)

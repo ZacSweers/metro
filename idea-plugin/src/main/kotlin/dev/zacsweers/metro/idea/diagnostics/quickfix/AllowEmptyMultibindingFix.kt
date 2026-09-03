@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea.diagnostics.quickfix
 
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.modcommand.ActionContext
 import com.intellij.modcommand.ModCommand
 import com.intellij.modcommand.ModCommandQuickFix
 import com.intellij.openapi.components.service
@@ -54,7 +55,9 @@ private class AllowEmptyMultibindingFix(
     if (!current) return ModCommand.nop()
     val annotation = editableAnnotation(pointer) ?: return ModCommand.nop()
     if (annotation.text != expectedText) return ModCommand.nop()
-    return ModCommand.psiUpdate(annotation) { writable ->
+    // The descriptor supplies the preview file when the platform asks for an intention preview.
+    return ModCommand.psiUpdate(ActionContext.from(descriptor)) { updater ->
+      val writable = updater.getWritable(annotation)
       val factory = KtPsiFactory(project)
       val arguments = writable.valueArgumentList
       when {
@@ -79,7 +82,8 @@ private fun editableAnnotation(
   pointer: SmartPsiElementPointer<KtAnnotationEntry>
 ): KtAnnotationEntry? {
   val annotation = pointer.element ?: return null
-  if (!annotation.isValid || !annotation.isWritable) return null
+  // ModCommand requests write access when the user applies the fix.
+  if (!annotation.isValid) return null
   val file = annotation.containingFile as? KtFile ?: return null
   if (file.isCompiled) return null
   val virtualFile = file.virtualFile ?: return null
