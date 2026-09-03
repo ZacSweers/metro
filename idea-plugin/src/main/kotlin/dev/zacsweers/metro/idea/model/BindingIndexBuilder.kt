@@ -161,18 +161,24 @@ internal class BindingIndexModuleView(
   }
 }
 
-/** Module ownership, visibility, and source ranges captured under a read action. */
+/** Display text captured with the declaration's index generation. */
+internal class DeclarationDisplay(val name: String?, val location: String?)
+
+/** Module ownership, visibility, source ranges, and display text captured under a read action. */
 internal class BindingIndexResolutionInputs(
   internal val fileOrdinalTable: FileOrdinalTable,
   moduleByFile: Map<VirtualFile, ModuleViewId>,
   moduleViews: Map<ModuleViewId, BindingIndexModuleView>,
   pointerSourceIdentities: Map<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity> =
     emptyMap(),
+  declarationDisplays: Map<SmartPsiElementPointer<*>, DeclarationDisplay> = emptyMap(),
 ) {
   private val moduleByFile = moduleByFile.toMap()
   private val moduleViews = moduleViews.toMap()
   private val pointerSourceIdentities =
     Collections.unmodifiableMap(IdentityHashMap(pointerSourceIdentities))
+  private val declarationDisplays =
+    Collections.unmodifiableMap(IdentityHashMap(declarationDisplays))
 
   init {
     require(this.moduleViews.values.all { it.fileOrdinalTable === fileOrdinalTable }) {
@@ -189,6 +195,9 @@ internal class BindingIndexResolutionInputs(
 
   fun sourceIdentity(pointer: SmartPsiElementPointer<*>): BindingIndex.SourcePointerIdentity? =
     pointerSourceIdentities[pointer]
+
+  fun declarationDisplay(pointer: SmartPsiElementPointer<*>): DeclarationDisplay? =
+    declarationDisplays[pointer]
 }
 
 private class FrozenFileResolutionScope(

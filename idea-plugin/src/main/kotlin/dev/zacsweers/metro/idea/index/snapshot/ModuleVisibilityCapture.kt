@@ -12,6 +12,7 @@ import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexModuleView
 import dev.zacsweers.metro.idea.model.BindingIndexResolutionInputs
+import dev.zacsweers.metro.idea.model.DeclarationDisplay
 import dev.zacsweers.metro.idea.model.FileOrdinal
 import dev.zacsweers.metro.idea.model.FileOrdinalTable
 import dev.zacsweers.metro.idea.model.ModuleViewId
@@ -39,6 +40,7 @@ internal class ModuleVisibilityCapture(private val project: Project) {
   fun capture(
     representatives: Map<VirtualFile, PsiElement>,
     pointerSourceIdentities: Map<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>,
+    declarationDisplays: Map<SmartPsiElementPointer<*>, DeclarationDisplay>,
   ): BindingIndexResolutionInputs {
     val inputs =
       IndexInputs(
@@ -76,6 +78,7 @@ internal class ModuleVisibilityCapture(private val project: Project) {
       topology.moduleByFile,
       topology.moduleViews,
       pointerSourceIdentities,
+      declarationDisplays,
     )
   }
 

@@ -10,12 +10,14 @@ import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.index.DeclarationAnchorSignature
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexBuilder
+import dev.zacsweers.metro.idea.model.DeclarationDisplay
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /**
  * Captures source ranges and anchors for a new index inside the coordinator's read action.
@@ -27,7 +29,8 @@ internal class ResolutionInputCapture(
   project: Project,
   private val onDeclarationSignatures:
     (
-      IndexGenerationToken, Map<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>,
+      IndexGenerationToken,
+      Map<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>,
     ) -> Unit,
 ) {
   private val visibility = ModuleVisibilityCapture(project)
@@ -38,6 +41,7 @@ internal class ResolutionInputCapture(
       val representatives = linkedMapOf<VirtualFile, PsiElement>()
       val pointerSourceIdentities =
         IdentityHashMap<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>()
+      val declarationDisplays = IdentityHashMap<SmartPsiElementPointer<*>, DeclarationDisplay>()
       val capturedDeclarationSignatures =
         linkedMapOf<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>()
       val ambiguousDeclarationSignatures = mutableSetOf<BindingIndex.SourcePointerIdentity>()
@@ -53,9 +57,18 @@ internal class ResolutionInputCapture(
         if (identity != null) pointerSourceIdentities[pointer] = identity
         val file = pointer.virtualFile ?: return
         val needsAnchorSignature = captureAnchorSignature && file in declarationSignatureFiles
-        if (!needsAnchorSignature && file in representatives) return
+        val needsDisplay = pointer !in declarationDisplays
+        if (!needsAnchorSignature && !needsDisplay && file in representatives) return
         val element = pointer.element ?: return
         representatives.putIfAbsent(file, element)
+        if (needsDisplay) {
+          val containingFile = element.containingFile
+          val document = containingFile?.viewProvider?.document
+          val line = document?.getLineNumber(element.textOffset)?.plus(1)
+          val location = if (line == null) containingFile?.name else "${containingFile?.name}:$line"
+          declarationDisplays[pointer] =
+            DeclarationDisplay((element as? KtNamedDeclaration)?.name, location)
+        }
         if (!needsAnchorSignature || identity == null) return
         val ktElement = element as? KtElement ?: return
         val currentIdentity =
@@ -123,7 +136,8 @@ internal class ResolutionInputCapture(
         onDeclarationSignatures(generationToken, capturedDeclarationSignatures)
       }
 
-      resolutionInputs = visibility.capture(representatives, pointerSourceIdentities)
+      resolutionInputs =
+        visibility.capture(representatives, pointerSourceIdentities, declarationDisplays)
     }
   }
 

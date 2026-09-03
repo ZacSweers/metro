@@ -17,6 +17,8 @@ import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaBindingGraph
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.ValidationInput
+import dev.zacsweers.metro.idea.graph.ValidationInputCapture
 import dev.zacsweers.metro.idea.graph.ValidationSourceSnapshot
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -4469,6 +4471,95 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibClientWithDeps" })
       assertTrue(result.bindings.any { key, _ -> key.renderedType == "libtest.LibHttpClient" })
     }
+  }
+
+  fun testCapturedValidationKeepsSourceNamesAndLocations() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Missing
+      @Inject class NeedsMissing(val missing: Missing)
+
+      @DependencyGraph
+      interface AppGraph {
+        val value: NeedsMissing
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val captured =
+      ValidationInputCapture(project)
+        .capture(file, context, includeExtensions = false)
+        .inputs
+        .last() as ValidationInput.Unsealed
+    val binding = index.bindings.single { it is KaBinding.ConstructorInjected }
+    val location = captured.sources.location(binding)
+    assertNotNull(location)
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val document = myFixture.editor.document
+      document.insertString(0, "\n\n")
+      val nameStart = document.text.indexOf("val value:") + "val ".length
+      document.replaceString(nameStart, nameStart + "value".length, "renamed")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    val result =
+      KaBindingGraph(captured.session, captured.queryContext, captured.options, captured.sources)
+        .seal()
+    val stack = result.diagnostics.single { it.id == MetroDiagnosticId.MISSING_BINDING }.stack
+    assertTrue(stack.any { it.graphContext == "test.AppGraph.value" })
+    assertTrue(stack.any { it.graphContext == location })
+
+    val updatedIndex = refreshedIndex(file)
+    val updatedGraph = updatedIndex.graphs.single()
+    val updatedContext = updatedIndex.contextsFor(updatedGraph).single()
+    val updated =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, updatedContext)
+        .requireCompleted()
+    val updatedStack =
+      updated.diagnostics.single { it.id == MetroDiagnosticId.MISSING_BINDING }.stack
+    assertTrue(updatedStack.any { it.graphContext == "test.AppGraph.renamed" })
+    assertFalse(updatedStack.any { it.graphContext == location })
+  }
+
+  fun testCapturedDuplicateLocationsSurviveSourceEdits() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph
+      interface AppGraph {
+        val value: String
+        @Provides fun first(): String = "first"
+        @Provides fun second(): String = "second"
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val captured =
+      ValidationInputCapture(project)
+        .capture(file, context, includeExtensions = false)
+        .inputs
+        .last() as ValidationInput.Unsealed
+    val locations =
+      index.bindings.filterIsInstance<KaBinding.Provided>().map { captured.sources.location(it)!! }
+    assertEquals(2, locations.size)
+    WriteCommandAction.runWriteCommandAction(project) {
+      myFixture.editor.document.insertString(0, "\n\n\n")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    val result =
+      KaBindingGraph(captured.session, captured.queryContext, captured.options, captured.sources)
+        .seal()
+    val diagnostic =
+      result.diagnostics.single { it.id == MetroDiagnosticId.DUPLICATE_BINDING }.render()
+    for (location in locations) assertTrue(diagnostic, location in diagnostic)
   }
 
   fun testResultsAreCachedPerIndex() {

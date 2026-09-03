@@ -175,12 +175,9 @@ internal class ValidationInputCapture(
       if (input.cached != null) continue
       contextsByIndex.getOrPut(input.session.index, ::mutableListOf) += input.queryContext
     }
-    val reservedBindings = ordered.flatMap { pending ->
-      ProgressManager.checkCanceled()
-      val completed = pending.cached as? KaGraphValidationResult.Completed
-      completed?.parentReservations?.values.orEmpty()
-    }
-    val sourcesByIndex = ValidationSourceSnapshot.capture(contextsByIndex, reservedBindings)
+    val displayIndexes = ordered.mapTo(linkedSetOf()) { it.session.index }
+    parents.values.mapTo(displayIndexes) { it.index }
+    val sourcesByIndex = ValidationSourceSnapshot.capture(contextsByIndex, displayIndexes)
 
     val captured = IdentityHashMap<PendingInput, ValidationInput>()
     val capturedParents = parents.toMap()
