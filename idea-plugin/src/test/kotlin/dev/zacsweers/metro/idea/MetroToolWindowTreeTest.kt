@@ -26,8 +26,14 @@ import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.WaitFor
 import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
+import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
@@ -41,6 +47,7 @@ import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.GraphContextSelectorAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
+import dev.zacsweers.metro.idea.toolwindow.MetroDiagnosticDetailsPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
@@ -1812,6 +1819,128 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val stackEntry = structure.children(diagnostic).single() as MetroTreeNode.StackEntry
     assertTrue(stackEntry.text, "is requested at" in stackEntry.text)
     assertNotNull(stackEntry.pointer?.element)
+  }
+
+  fun testDiagnosticDetailsShowFullTextAndActionsWithoutReadAccess() {
+    val model =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.MISSING_BINDING,
+        severity = MetroSeverity.ERROR,
+        title = textOf("Missing a binding for Thing"),
+        sections =
+          listOf(
+            DiagnosticSection.Generic(textOf("Thing is requested by AppGraph")),
+            DiagnosticSection.CodeBlock("@Provides fun provideThing(): Thing"),
+          ),
+        notes =
+          listOf(
+            Note.help("Provide <Thing> & keep its qualifier"),
+            Note.note("This request belongs to AppGraph"),
+          ),
+      )
+    val row =
+      MetroTreeNode.Diagnostic(MetroTreeNode.Root(), KaGraphDiagnostic(model, emptyList()), 0)
+    val copied = mutableListOf<String>()
+    val opened = mutableListOf<String>()
+    val details =
+      MetroDiagnosticDetailsPanel(copyText = { copied += it }, openDocumentation = { opened += it })
+    val copyEvent =
+      AnActionEvent.createFromAnAction(details.copyAction, null, ActionPlaces.UNKNOWN) { null }
+    val documentationEvent =
+      AnActionEvent.createFromAnAction(details.documentationAction, null, ActionPlaces.UNKNOWN) {
+        null
+      }
+
+    TestOnlyThreading.releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+      assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+      details.showDiagnostic(row)
+      val text = details.textArea.text
+      assertTrue(text, "Thing is requested by AppGraph" in text)
+      assertTrue(text, "@Provides fun provideThing(): Thing" in text)
+      assertTrue(text, "help: Provide <Thing> & keep its qualifier" in text)
+      assertTrue(text, "note: This request belongs to AppGraph" in text)
+      assertTrue(text, model.id.docsUrl in text)
+      details.copyAction.update(copyEvent)
+      details.documentationAction.update(documentationEvent)
+      assertTrue(copyEvent.presentation.isEnabled)
+      assertTrue(documentationEvent.presentation.isEnabled)
+      details.copyAction.actionPerformed(copyEvent)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(listOf(text), copied)
+      assertEquals(listOf(model.id.docsUrl), opened)
+
+      val withoutDocumentation =
+        MetroTreeNode.Diagnostic(
+          MetroTreeNode.Root(),
+          KaGraphDiagnostic(model.copy(includeDocsUrl = false), emptyList()),
+          0,
+        )
+      details.showDiagnostic(withoutDocumentation)
+      details.documentationAction.update(documentationEvent)
+      assertFalse(documentationEvent.presentation.isEnabled)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(1, opened.size)
+
+      details.showDiagnostic(null)
+      assertFalse(details.isVisible)
+      assertEquals("", details.textArea.text)
+      details.copyAction.update(copyEvent)
+      details.documentationAction.update(documentationEvent)
+      assertFalse(copyEvent.presentation.isEnabled)
+      assertFalse(documentationEvent.presentation.isEnabled)
+      details.copyAction.actionPerformed(copyEvent)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(1, copied.size)
+      assertEquals(1, opened.size)
+    }
+  }
+
+  fun testResultDiagnosticDetailsFollowStackSelectionAndRejectPreviousRows() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+        @DependencyGraph interface AppGraph { val missing: MissingThing }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val result = project.service<MetroGraphValidationService>().validate(file, context)
+    val panel = MetroValidationResultPanel(project) {}
+    try {
+      panel.showResults(listOf(result))
+      val rows = treeNodes(panel.tree)
+      val diagnosticRow = rows.indexOfFirst { it is MetroTreeNode.Diagnostic }
+      val stackRow = rows.indexOfFirst { it is MetroTreeNode.StackEntry }
+      assertTrue(diagnosticRow >= 0)
+      assertTrue(stackRow >= 0)
+      val diagnosticPath = checkNotNull(panel.tree.getPathForRow(diagnosticRow))
+      panel.tree.selectionPath = diagnosticPath
+      val text = panel.diagnosticDetails.textArea.text
+      assertTrue(text, "MissingThing" in text)
+
+      panel.tree.setSelectionRow(stackRow)
+      assertEquals(text, panel.diagnosticDetails.textArea.text)
+      assertNotNull((selectedTreeNode(panel.tree) as MetroTreeNode.StackEntry).pointer?.element)
+      panel.tree.setSelectionRow(0)
+      assertFalse(panel.diagnosticDetails.isVisible)
+
+      panel.tree.selectionPath = diagnosticPath
+      panel.showResults(emptyList())
+      assertEquals("", panel.diagnosticDetails.textArea.text)
+      // The async model can briefly retain rows from the previous result.
+      panel.tree.selectionPath = diagnosticPath
+      assertFalse(panel.diagnosticDetails.isVisible)
+
+      panel.showResults(listOf(result))
+      val refreshedRows = treeNodes(panel.tree)
+      panel.tree.setSelectionRow(refreshedRows.indexOfFirst { it is MetroTreeNode.Diagnostic })
+      assertTrue(panel.diagnosticDetails.isVisible)
+      panel.clear()
+      assertEquals("", panel.diagnosticDetails.textArea.text)
+    } finally {
+      Disposer.dispose(panel)
+    }
   }
 
   fun testSameKeyLazyFactoryDiagnosticsNavigateToDistinctParameters() {

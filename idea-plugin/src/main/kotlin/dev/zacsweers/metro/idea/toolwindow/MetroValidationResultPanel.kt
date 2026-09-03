@@ -17,6 +17,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
 import com.intellij.ui.DoubleClickListener
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.TreeSpeedSearch
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -49,6 +50,8 @@ internal class MetroValidationResultPanel(
       isRootVisible = false
       showsRootHandles = true
     }
+  internal val diagnosticDetails = MetroDiagnosticDetailsPanel()
+  private val treeAndDetails = JBSplitter(true, 0.45f)
   private var generation = 0L
   private var disposed = false
   internal val closeAction: AnAction =
@@ -65,6 +68,7 @@ internal class MetroValidationResultPanel(
   init {
     isVisible = false
     TreeSpeedSearch.installOn(tree)
+    tree.addTreeSelectionListener { showSelectedDiagnostic() }
     object : DoubleClickListener() {
         override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected() != null
       }
@@ -80,24 +84,28 @@ internal class MetroValidationResultPanel(
         add(toolbar.component, BorderLayout.EAST)
       }
     add(header, BorderLayout.NORTH)
-    add(JBScrollPane(tree), BorderLayout.CENTER)
+    treeAndDetails.firstComponent = JBScrollPane(tree)
+    add(treeAndDetails, BorderLayout.CENTER)
   }
 
   /** Accepts completed callback data; row rendering stays on the tree model's background read. */
   fun showResults(results: List<KaGraphValidationResult>) {
     if (disposed || project.isDisposed) return
     val currentGeneration = ++generation
+    clearDiagnosticSelection()
     structure.showResults(results)
     isVisible = true
     val firstProblem = results.firstOrNull { result ->
       result !is KaGraphValidationResult.Completed || result.diagnostics.isNotEmpty()
     }
     val selectedPath = (firstProblem ?: results.firstOrNull())?.context?.path
+    val selectDiagnostic =
+      firstProblem is KaGraphValidationResult.Completed && firstProblem.diagnostics.isNotEmpty()
     model.invalidateAsync().thenRun {
       SwingUtilities.invokeLater {
         if (disposed || project.isDisposed || generation != currentGeneration) return@invokeLater
-        // Expand one result to its summary and diagnostic rows. Stacks remain collapsed.
-        TreeUtil.promiseSelect(tree, resultVisitor(selectedPath))
+        // Select the first problem so its detail is visible. Navigable stacks remain collapsed.
+        TreeUtil.promiseSelect(tree, resultVisitor(selectedPath, selectDiagnostic))
       }
     }
   }
@@ -107,11 +115,12 @@ internal class MetroValidationResultPanel(
     if (disposed) return
     generation++
     structure.clear()
+    clearDiagnosticSelection()
     isVisible = false
     model.invalidateAsync()
   }
 
-  private fun resultVisitor(selectedPath: GraphPath?): TreeVisitor {
+  private fun resultVisitor(selectedPath: GraphPath?, selectDiagnostic: Boolean): TreeVisitor {
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
@@ -119,7 +128,10 @@ internal class MetroValidationResultPanel(
           if (node.context.path == selectedPath) TreeVisitor.Action.CONTINUE
           else TreeVisitor.Action.SKIP_CHILDREN
         is MetroTreeNode.Validation -> TreeVisitor.Action.CONTINUE
-        is MetroTreeNode.Summary -> TreeVisitor.Action.INTERRUPT
+        is MetroTreeNode.Summary ->
+          if (selectDiagnostic) TreeVisitor.Action.SKIP_CHILDREN else TreeVisitor.Action.INTERRUPT
+        is MetroTreeNode.Diagnostic ->
+          if (selectDiagnostic) TreeVisitor.Action.INTERRUPT else TreeVisitor.Action.SKIP_CHILDREN
         else -> TreeVisitor.Action.SKIP_CHILDREN
       }
     }
@@ -128,6 +140,21 @@ internal class MetroValidationResultPanel(
   private fun nodeAt(path: TreePath): MetroTreeNode? {
     return TreeUtil.getLastUserObject(MetroTreeNode::class.java, path)
       ?: TreeUtil.getLastUserObject(NodeDescriptor::class.java, path)?.element as? MetroTreeNode
+  }
+
+  /** Stack and related-binding rows keep their parent diagnostic visible while navigating. */
+  private fun showSelectedDiagnostic() {
+    var node = tree.selectionPath?.let(::nodeAt)
+    while (node != null && node !is MetroTreeNode.Diagnostic) node = node.parent
+    val diagnostic = (node as? MetroTreeNode.Diagnostic)?.takeIf { structure.contains(it) }
+    diagnosticDetails.showDiagnostic(diagnostic)
+    treeAndDetails.secondComponent = diagnosticDetails.takeIf { diagnostic != null }
+  }
+
+  private fun clearDiagnosticSelection() {
+    tree.clearSelection()
+    diagnosticDetails.showDiagnostic(null)
+    treeAndDetails.secondComponent = null
   }
 
   /** Resolves the selected row while this result snapshot remains visible. */
@@ -148,6 +175,7 @@ internal class MetroValidationResultPanel(
     disposed = true
     generation++
     structure.clear()
+    clearDiagnosticSelection()
   }
 }
 
@@ -165,6 +193,12 @@ internal class MetroValidationResultTreeStructure(private val project: Project) 
   /** Drops result ownership when the view closes or its owner is disposed. */
   fun clear() {
     resultsByPath = null
+  }
+
+  /** Rejects rows retained by the async tree while a replacement run is loading. */
+  fun contains(diagnostic: MetroTreeNode.Diagnostic): Boolean {
+    val result = (diagnostic.parent as? MetroTreeNode.Validation)?.result ?: return false
+    return resultsByPath?.get(result.context.path) === result
   }
 
   override fun getRootElement(): Any = root

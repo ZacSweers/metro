@@ -162,6 +162,10 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
   class Diagnostic(parent: MetroTreeNode, val diagnostic: KaGraphDiagnostic, index: Int) :
     MetroTreeNode(parent) {
     override val text: String = "[${diagnostic.id.fullId}] ${diagnostic.diagnostic.title}"
+    /** Full compiler-rendered text captured while the background tree builds this row. */
+    val details: String = diagnostic.render()
+    val documentationUrl: String? =
+      diagnostic.id.docsUrl.takeIf { diagnostic.diagnostic.includeDocsUrl }
     override val icon: Icon =
       when (diagnostic.severity) {
         MetroSeverity.ERROR -> AllIcons.General.Error
