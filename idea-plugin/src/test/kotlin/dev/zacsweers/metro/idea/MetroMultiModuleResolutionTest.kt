@@ -235,7 +235,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         """
         package app
         import dev.zacsweers.metro.DependencyGraph
-        @DependencyGraph interface AppGraph
+        @DependencyGraph interface AppGraph { val service: lib.LibraryService }
         """
           .trimIndent(),
       ) as KtFile
@@ -260,7 +260,25 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertTrue(addedView.resolutionScope.contains(libraryFile))
 
     val libraryVirtualFile = libraryFile.virtualFile
-    WriteCommandAction.runWriteCommandAction(fixture.project) { libraryFile.delete() }
+    val libraryDirectory = libraryVirtualFile.parent
+    val outside = fixture.tempDirFixture.findOrCreateDir("outside")
+    // Moving outside content keeps the file alive while removing it from module visibility.
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      libraryVirtualFile.move(this, outside)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val moved = service.awaitIndex(appFile)
+    assertNull(moved.resolutionInputs.moduleViewFor(libraryVirtualFile))
+    assertNull(moved.resolutionInputs.fileOrdinal(libraryVirtualFile))
+
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      libraryVirtualFile.move(this, libraryDirectory)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val restored = service.awaitIndex(appFile)
+    assertNotNull(restored.resolutionInputs.moduleViewFor(libraryVirtualFile))
+
+    WriteCommandAction.runWriteCommandAction(fixture.project) { libraryVirtualFile.delete(this) }
     val removed = service.awaitIndex(appFile)
     assertNull(removed.resolutionInputs.moduleViewFor(libraryVirtualFile))
     assertNull(removed.resolutionInputs.fileOrdinal(libraryVirtualFile))
@@ -1747,6 +1765,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     )
 
     // The editor action must carry both the caret's compilation and the graph's source identity.
+    val explanationContextIds = mutableSetOf<String>()
     val editorChoices =
       listOf(appFile to "appValue", bridgeFile to "bridgeValue").map { (file, accessor) ->
         val fileIndex = fixture.project.service<MetroResolutionService>().awaitIndex(file)
@@ -1756,6 +1775,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         assertEquals(file.virtualFile, choice.bindings.single().pointer.virtualFile)
         assertEquals(file.virtualFile, targets.reveal.single().path.segments.single().file)
         val explanation = metroBindingExplanations(fileIndex, file, offset, null).single()
+        explanationContextIds += explanation.snapshot.context.id
         assertEquals(choice.path, explanation.path)
         assertEquals(
           file.virtualFile,
@@ -1765,6 +1785,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       }
     assertEquals(2, editorChoices.map { it.path }.distinct().size)
     assertEquals(2, editorChoices.map { it.text }.distinct().size)
+    assertEquals(2, explanationContextIds.size)
 
     val validationService = fixture.project.service<MetroGraphValidationService>()
     val appResult =

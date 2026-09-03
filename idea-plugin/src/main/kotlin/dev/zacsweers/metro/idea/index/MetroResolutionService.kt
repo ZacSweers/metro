@@ -26,6 +26,7 @@ import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.ShutDownTracker
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
@@ -259,6 +260,17 @@ private constructor(
         this,
       )
     val connection = project.messageBus.connect(this)
+    connection.subscribe(
+      VirtualFileManager.VFS_CHANGES,
+      SourceFileArrivalListener(project) { files, directories ->
+        enqueuePsiChange(
+          PendingPsiChanges(
+            files = files.associateWith { PendingFileChange(structuralChange = true) },
+            directories = directories,
+          )
+        )
+      },
+    )
     connection.subscribe(
       ModuleRootListener.TOPIC,
       object : ModuleRootListener {
@@ -2050,11 +2062,18 @@ private constructor(
   private fun classifyPsiChanges(batch: PendingPsiChanges): ClassifiedPsiChanges {
     val result = ClassifiedPsiChanges.Builder()
     val state = sourceSnapshot
-    for (directory in batch.directories) {
-      ProgressManager.checkCanceled()
-      classifyDirectoryChange(directory, state, result)
-    }
-    for ((virtualFile, change) in batch.files) {
+    val files =
+      if (batch.directories.isEmpty()) batch.files
+      else {
+        val expandedFiles = LinkedHashMap(batch.files)
+        val visitedDirectories = hashSetOf<VirtualFile>()
+        for (directory in batch.directories) {
+          ProgressManager.checkCanceled()
+          collectDirectoryChanges(directory, state, result, expandedFiles, visitedDirectories)
+        }
+        expandedFiles
+      }
+    for ((virtualFile, change) in files) {
       ProgressManager.checkCanceled()
       classifyFileChange(virtualFile, change, state, result)
     }
@@ -2062,13 +2081,17 @@ private constructor(
   }
 
   /** Directory moves can replace several Kotlin files without reporting individual PSI children. */
-  private fun classifyDirectoryChange(
+  private fun collectDirectoryChanges(
     virtualFile: VirtualFile,
     state: SourceSnapshot?,
     result: ClassifiedPsiChanges.Builder,
+    files: MutableMap<VirtualFile, PendingFileChange>,
+    visitedDirectories: MutableSet<VirtualFile>,
   ) {
     checkPsiClassificationActive()
+    if (virtualFile in visitedDirectories) return
     if (!virtualFile.isValid) {
+      visitedDirectories += virtualFile
       // The removed directory cannot be traversed. Rebuild all published shards.
       if (state != null) {
         result.forceAll = true
@@ -2084,17 +2107,15 @@ private constructor(
       checkPsiClassificationActive()
       val current = remaining.removeFirst()
       if (!current.isValid || !current.virtualFile.isValid) continue
+      if (!visitedDirectories.add(current.virtualFile)) continue
       for (file in current.files.filterIsInstance<KtFile>()) {
         ProgressManager.checkCanceled()
         checkPsiClassificationActive()
         val fileVirtualFile = file.virtualFile ?: continue
-        classifyFileChange(
-          fileVirtualFile,
-          PendingFileChange(structuralChange = true),
-          state,
-          result,
-          file,
-        )
+        val structuralChange = PendingFileChange(structuralChange = true)
+        // PSI can report removed declarations while VFS reports their containing directory.
+        // Keep that metadata and classify each resulting file once after traversal finishes.
+        files[fileVirtualFile] = files[fileVirtualFile]?.merge(structuralChange) ?: structuralChange
       }
       remaining += current.subdirectories
     }
@@ -2106,18 +2127,16 @@ private constructor(
     change: PendingFileChange,
     state: SourceSnapshot?,
     result: ClassifiedPsiChanges.Builder,
-    knownFile: KtFile? = null,
   ) {
     checkPsiClassificationActive()
     var ownerFiles = state?.dependencyOwnersFor(virtualFile)
     val alreadyIndexed = state != null && virtualFile in state.shards
     val file =
-      knownFile
-        ?: virtualFile
-          .takeIf { it.isValid }
-          ?.let {
-            PsiManager.getInstance(project).findFile(it) as? KtFile
-          }
+      virtualFile
+        .takeIf { it.isValid }
+        ?.let {
+          PsiManager.getInstance(project).findFile(it) as? KtFile
+        }
     if (file == null || !file.isValid) {
       result.fingerprints[virtualFile] = null
       result.irrelevantFilesToRemove += virtualFile
