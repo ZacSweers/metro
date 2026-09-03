@@ -31,15 +31,14 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeAdapter
 import com.intellij.psi.PsiTreeChangeEvent
-import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
-import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.index.snapshot.IndexInputs
 import dev.zacsweers.metro.idea.index.snapshot.PreparedResolutionSnapshot
+import dev.zacsweers.metro.idea.index.snapshot.ResolutionInputCapture
 import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotBuilder
 import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotTarget
 import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
@@ -47,18 +46,8 @@ import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshot
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
-import dev.zacsweers.metro.idea.model.BindingIndexBuilder
-import dev.zacsweers.metro.idea.model.BindingIndexModuleView
-import dev.zacsweers.metro.idea.model.BindingIndexResolutionInputs
-import dev.zacsweers.metro.idea.model.FileOrdinal
-import dev.zacsweers.metro.idea.model.FileOrdinalTable
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
-import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
-import dev.zacsweers.metro.idea.model.ModuleViewId
-import dev.zacsweers.metro.idea.model.sourcePointerIdentity
-import java.util.Collections
-import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -85,10 +74,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.jetbrains.annotations.TestOnly
-import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
-import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsListener
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.lexer.KtTokens
@@ -126,11 +111,13 @@ private constructor(
     scope: CoroutineScope,
   ) : this(project, scope, IndexRequestPolicy.Production)
 
+  private val resolutionInputCapture =
+    ResolutionInputCapture(project, ::mergeDeclarationAnchorSignatures)
   private val snapshotBuilder =
     ResolutionSnapshotBuilder(
       project,
       onShardRead = ::seedSharedDeclarationFingerprints,
-      captureResolutionInputs = { builder, files -> builder.captureResolutionInputs(files) },
+      captureResolutionInputs = resolutionInputCapture::capture,
     )
 
   /** Latest progress of the coordinator's current index build. */
@@ -939,6 +926,7 @@ private constructor(
   }
 
   private fun cancelCoordinatorWork() {
+    resolutionInputCapture.clear()
     completeBuildRequests(pendingBuilds.values, IndexBuildOutcome.CANCELED)
     pendingBuilds.clear()
     pendingFilePresentationRequests.clear()
@@ -1724,154 +1712,22 @@ private constructor(
     return CollectedResolutionCandidate(prepared, candidateInvalidations)
   }
 
-  /** Captures module visibility and source declaration identities inside the generation read. */
-  @OptIn(KaPlatformInterface::class)
-  private fun BindingIndexBuilder.captureResolutionInputs(
-    declarationSignatureFiles: Set<VirtualFile>
+  /** Merges source anchors from the option-specific indexes in one generation. */
+  private fun mergeDeclarationAnchorSignatures(
+    generationToken: IndexGenerationToken,
+    captured: Map<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>,
   ) {
-    val representatives = linkedMapOf<VirtualFile, PsiElement>()
-    val pointerSourceIdentities =
-      IdentityHashMap<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity>()
-    val capturedDeclarationSignatures =
-      linkedMapOf<BindingIndex.SourcePointerIdentity, DeclarationAnchorSignature>()
-    val ambiguousDeclarationSignatures = mutableSetOf<BindingIndex.SourcePointerIdentity>()
-    val capturedBindings = Collections.newSetFromMap(IdentityHashMap<KaBinding, Boolean>())
-    var pointerCaptureWorkIndex = 0
-
-    fun capture(
-      pointer: SmartPsiElementPointer<*>,
-      captureAnchorSignature: Boolean = false,
-    ) {
-      checkCanceledEvery(pointerCaptureWorkIndex++)
-      val identity = sourcePointerIdentity(pointer)
-      if (identity != null) pointerSourceIdentities[pointer] = identity
-      val file = pointer.virtualFile ?: return
-      val needsAnchorSignature = captureAnchorSignature && file in declarationSignatureFiles
-      if (!needsAnchorSignature && file in representatives) return
-      val element = pointer.element ?: return
-      representatives.putIfAbsent(file, element)
-      if (!needsAnchorSignature || identity == null) return
-      val ktElement = element as? KtElement ?: return
-      val currentIdentity =
-        BindingIndex.SourcePointerIdentity(
-          file,
-          ktElement.textRange.startOffset,
-          ktElement.textRange.endOffset,
-        )
-      if (currentIdentity != identity) return
-      val signature = DeclarationAnchorSignature.capture(ktElement)
-      val existing = capturedDeclarationSignatures.putIfAbsent(identity, signature)
-      if (existing != null && existing != signature) {
-        ambiguousDeclarationSignatures += identity
-      }
-    }
-
-    fun captureBinding(binding: KaBinding) {
-      capturedBindings += binding
-      capture(binding.pointer, captureAnchorSignature = true)
-    }
-
-    for (binding in bindings) captureBinding(binding)
-    for (consumer in consumers) {
-      capture(consumer.pointer, captureAnchorSignature = true)
-      consumer.injectedMemberPointer?.let { pointer -> capture(pointer) }
-    }
-    for (graph in graphs) {
-      capture(graph.pointer, captureAnchorSignature = true)
-      for (factory in graph.extensionFactories) capture(factory.pointer)
-      for (implementation in graph.defaultImplementations) {
-        capture(implementation.declaration.pointer)
-        for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
-      }
-      for (contribution in graph.contributedInterfaces) {
-        capture(contribution.contribution.pointer)
-        for (binding in contribution.bindings) captureBinding(binding)
-        for (consumer in contribution.consumers) {
-          capture(consumer.pointer, captureAnchorSignature = true)
-        }
-        for (factory in contribution.extensionFactories) capture(factory.pointer)
-        for (implementation in contribution.defaultImplementations) {
-          capture(implementation.declaration.pointer)
-          for (overridden in implementation.overriddenDeclarations) capture(overridden.pointer)
-        }
-      }
-    }
-    for (contribution in contributions) capture(contribution.pointer)
-    for (site in assistedSites) {
-      capture(site.pointer, captureAnchorSignature = true)
-    }
-    for (container in bindingContainers) capture(container.pointer)
-    for (dynamicGraph in dynamicGraphs) {
-      capture(dynamicGraph.pointer)
-      for (input in dynamicGraph.containerInputs) captureBinding(input)
-    }
-    capturedBindingSourceIdentities =
-      IdentityHashMap<KaBinding, BindingIndex.SourcePointerIdentity>().apply {
-        for (binding in capturedBindings) {
-          checkCanceledEvery(pointerCaptureWorkIndex++)
-          pointerSourceIdentities[binding.pointer]?.let { identity -> put(binding, identity) }
-        }
-      }
-    if (declarationSignatureFiles.isNotEmpty()) {
-      ambiguousDeclarationSignatures.forEach(capturedDeclarationSignatures::remove)
-      declarationAnchorSignatures.compute(generationToken) { _, existing ->
-        val merged = existing.orEmpty().toMutableMap()
-        val conflicts = mutableSetOf<BindingIndex.SourcePointerIdentity>()
-        for ((identity, signature) in capturedDeclarationSignatures) {
-          val previous = merged.putIfAbsent(identity, signature)
-          if (previous != null && previous != signature) conflicts += identity
-        }
-        conflicts.forEach(merged::remove)
-        merged.toMap()
-      }
-    }
-
-    val fileOrdinalTable =
-      FileOrdinalTable.freeze(
-        representatives.keys.withIndex().associate { (ordinal, file) ->
-          file to FileOrdinal(ordinal)
-        }
-      )
-    val moduleByFile = linkedMapOf<VirtualFile, ModuleViewId>()
-    val moduleIds = linkedMapOf<KaModule, ModuleViewId>()
-    val moduleRepresentatives = linkedMapOf<KaModule, PsiElement>()
-    for ((file, element) in representatives) {
-      ProgressManager.checkCanceled()
-      val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
-      val moduleId = moduleIds.getOrPut(module) { ModuleViewId(moduleIds.size) }
-      moduleByFile[file] = moduleId
-      moduleRepresentatives.putIfAbsent(module, element)
-    }
-
-    val moduleViews = linkedMapOf<ModuleViewId, BindingIndexModuleView>()
-    for ((module, moduleId) in moduleIds) {
-      ProgressManager.checkCanceled()
-      val scope = KaResolutionScope.forModule(module)
-      val visibleFiles = BooleanArray(fileOrdinalTable.size)
-      for ((file, element) in representatives) {
+    declarationAnchorSignatures.compute(generationToken) { _, existing ->
+      val merged = existing.orEmpty().toMutableMap()
+      val conflicts = mutableSetOf<BindingIndex.SourcePointerIdentity>()
+      for ((identity, signature) in captured) {
         ProgressManager.checkCanceled()
-        if (scope.contains(element)) {
-          visibleFiles[fileOrdinalTable.getValue(file).value] = true
-        }
+        val previous = merged.putIfAbsent(identity, signature)
+        if (previous != null && previous != signature) conflicts += identity
       }
-      val moduleElement = checkNotNull(moduleRepresentatives[module])
-      moduleViews[moduleId] =
-        BindingIndexModuleView(
-          id = moduleId,
-          module = module,
-          visibleFileOrdinals = visibleFiles,
-          fileOrdinalTable = fileOrdinalTable,
-          daggerAnvilInteropEnabled =
-            moduleElement.metroIdeState().options.enableDaggerAnvilInterop,
-        )
+      conflicts.forEach(merged::remove)
+      merged.toMap()
     }
-    resolutionInputs =
-      BindingIndexResolutionInputs(
-        fileOrdinalTable,
-        moduleByFile,
-        moduleViews,
-        pointerSourceIdentities,
-      )
   }
 
   /** Records shared declaration fingerprints during the shard's background read. */

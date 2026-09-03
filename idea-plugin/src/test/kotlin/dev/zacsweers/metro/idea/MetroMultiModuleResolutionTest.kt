@@ -9,6 +9,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.ModuleOrderEntry
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiDocumentManager
@@ -102,7 +103,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     }
   }
 
-  fun testResolutionInputsShareFileOrdinalsAcrossIsolatedModuleViews() {
+  fun testResolutionInputsReuseModuleViewsAcrossOptionTargetsAndEdits() {
     val libraryFile =
       fixture.addFileToProject(
         "library/lib/LibraryService.kt",
@@ -131,10 +132,17 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         """
           .trimIndent(),
       ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    appModule.setModuleMetroOptions("enable-dagger-anvil-interop" to "true")
+    libraryModule.setModuleMetroOptions("enable-dagger-anvil-interop" to "false")
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
+    val service = fixture.project.service<MetroResolutionService>()
+    service.awaitIndex(appFile)
+    val libraryIndex = service.awaitIndex(libraryFile)
+    val index = service.awaitIndex(appFile)
     val inputs = index.resolutionInputs
     val appView = checkNotNull(inputs.moduleViewFor(appFile.virtualFile))
     val libraryView = checkNotNull(inputs.moduleViewFor(libraryFile.virtualFile))
@@ -144,6 +152,140 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertFalse(appView.sharesVisibilityArrayWith(libraryView))
     assertTrue(appView.resolutionScope.contains(libraryFile))
     assertFalse(libraryView.resolutionScope.contains(appFile))
+    assertTrue(appView.daggerAnvilInteropEnabled)
+    assertFalse(libraryView.daggerAnvilInteropEnabled)
+    assertNotSame(index, libraryIndex)
+    assertSame(index.generationToken, libraryIndex.generationToken)
+    assertSame(appView, libraryIndex.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertSame(libraryView, libraryIndex.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
+
+    val documents = PsiDocumentManager.getInstance(fixture.project)
+    val document = checkNotNull(documents.getDocument(appFile))
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      document.insertString(document.text.lastIndexOf('}'), "  val otherService: LibraryService\n")
+    }
+    documents.commitAllDocuments()
+    val updated = service.awaitIndex(appFile)
+    assertNotSame(index.generationToken, updated.generationToken)
+    assertNotSame(inputs, updated.resolutionInputs)
+    assertSame(inputs.fileOrdinalTable, updated.resolutionInputs.fileOrdinalTable)
+    assertSame(appView, updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertSame(libraryView, updated.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
+    val accessor = appFile.declarationsIncludingNested().property("otherService")
+    val consumer = updated.consumerEntryAt(accessor)!!
+    assertNull(inputs.sourceIdentity(consumer.pointer))
+    assertEquals(
+      checkNotNull(sourcePointerIdentity(consumer.pointer)),
+      updated.resolutionInputs.sourceIdentity(consumer.pointer),
+    )
+  }
+
+  fun testModuleVisibilityRefreshesWhenDependenciesChange() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryService.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.Inject
+        @Inject class LibraryService
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertTrue(initialView.resolutionScope.contains(libraryFile))
+
+    ModuleRootModificationUtil.updateModel(appModule) { model ->
+      val dependency =
+        model.orderEntries.filterIsInstance<ModuleOrderEntry>().single {
+          it.module == libraryModule
+        }
+      model.removeOrderEntry(dependency)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val updated = service.awaitIndex(appFile)
+    val updatedView = checkNotNull(updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, updatedView)
+    assertFalse(updatedView.resolutionScope.contains(libraryFile))
+    assertTrue(initialView.resolutionScope.contains(libraryFile))
+  }
+
+  fun testModuleVisibilityTracksAddedAndRemovedFiles() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryService.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.Inject
+        @Inject class LibraryService
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val added = service.awaitIndex(appFile)
+    val addedView = checkNotNull(added.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, addedView)
+    assertTrue(addedView.resolutionScope.contains(libraryFile))
+
+    val libraryVirtualFile = libraryFile.virtualFile
+    WriteCommandAction.runWriteCommandAction(fixture.project) { libraryFile.delete() }
+    val removed = service.awaitIndex(appFile)
+    assertNull(removed.resolutionInputs.moduleViewFor(libraryVirtualFile))
+    assertNull(removed.resolutionInputs.fileOrdinal(libraryVirtualFile))
+  }
+
+  fun testModuleVisibilityRefreshesInteropSettings() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertFalse(initialView.daggerAnvilInteropEnabled)
+
+    fixture.project.setMetroOptions("enable-dagger-anvil-interop" to "true")
+    val updated = service.awaitIndex(appFile)
+    val updatedView = checkNotNull(updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, updatedView)
+    assertTrue(updatedView.daggerAnvilInteropEnabled)
+    assertFalse(initialView.daggerAnvilInteropEnabled)
   }
 
   fun testTrackedDirectoryMoveRefreshesModuleOptionsAndDependentShards() {
@@ -203,6 +345,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val initialModule =
       checkNotNull(initial.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
     assertFalse(initialGraph.daggerAnvilInteropEnabled)
+    assertFalse(initialModule.daggerAnvilInteropEnabled)
     assertFalse(initialModule.resolutionScope.contains(appFile))
     val validation = fixture.project.service<MetroGraphValidationService>()
     val initialResult =
@@ -224,6 +367,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertNotSame(initial, updated)
     assertEquals(initialGraph.declarationId, updatedGraph.declarationId)
     assertTrue(updatedGraph.daggerAnvilInteropEnabled)
+    assertTrue(updatedModule.daggerAnvilInteropEnabled)
     assertFalse(initialModule.module == updatedModule.module)
     assertTrue(updatedModule.resolutionScope.contains(appFile))
     // The unchanged app file cached inherited members from the moved declaration's file.
