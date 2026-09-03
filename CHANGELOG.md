@@ -18,6 +18,7 @@ Changelog
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
+- **[IR/interop]** Fix a runtime `ClassCastException` when a `Class`-keyed map is injected into a provider-created class across modules with `KClass`/`Class` interop enabled.
 - **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
 - **[IR/interop]** Preserve Kotlin nullability in member-injection metadata when Dagger interop is enabled.
 

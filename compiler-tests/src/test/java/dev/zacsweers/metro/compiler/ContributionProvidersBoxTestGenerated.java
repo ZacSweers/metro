@@ -3250,6 +3250,12 @@ public class ContributionProvidersBoxTestGenerated extends AbstractContributionP
       }
 
       @Test
+      @TestMetadata("ClassMapKeyInjectedClassProviderAcrossModules.kt")
+      public void testClassMapKeyInjectedClassProviderAcrossModules() {
+        run("ClassMapKeyInjectedClassProviderAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("ClassMapKeyInterop.kt")
       public void testClassMapKeyInterop() {
         run("ClassMapKeyInterop.kt");

@@ -377,11 +377,18 @@ internal fun IrContextualTypeKey.asCanonicalProviderKey(
   usesSuspendProvider: Boolean
 ): IrContextualTypeKey {
   val canonicalKey = canonicalize()
-  return if (usesSuspendProvider) {
-    canonicalKey.wrapInSuspendProvider()
-  } else {
-    canonicalKey.wrapInProvider()
-  }
+  val providerKey =
+    if (usesSuspendProvider) {
+      canonicalKey.wrapInSuspendProvider()
+    } else {
+      canonicalKey.wrapInProvider()
+    }
+  // Drop the consumer's raw type so toIrType() reconstructs canonical provider storage.
+  return IrContextualTypeKey(
+    typeKey = providerKey.typeKey,
+    wrappedType = providerKey.wrappedType,
+    hasDefault = providerKey.hasDefault,
+  )
 }
 
 context(context: IrMetroContext)
