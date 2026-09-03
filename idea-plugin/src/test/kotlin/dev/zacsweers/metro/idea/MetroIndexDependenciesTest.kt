@@ -562,6 +562,27 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test.Service", serviceParam.key.renderedType)
   }
 
+  fun testLowercaseInjectedFunctionUsesCapitalizedClassName() {
+    project.setMetroOptions("enable-top-level-function-injection" to "true")
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject fun render(service: Service) {}
+        """,
+        fileName = "Render.kt",
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val binding = index.bindingEntriesAt(declarations.function("render")).single()
+    val consumer = index.consumerEntryAt(declarations.parameter("service"))!!
+
+    assertEquals("test.Render", binding.typeKey.renderedType)
+    assertEquals("Render", binding.implementationName)
+    assertEquals(binding.typeKey.type.classId, consumer.originClassId)
+  }
+
   fun testTopLevelFunctionInjectionIsInertWhenDisabled() {
     // With default options the compiler generates nothing for top-level inject functions, so the
     // index must not surface a binding or consumers for them.

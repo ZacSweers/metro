@@ -10,6 +10,7 @@ import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
@@ -432,15 +433,15 @@ internal class FileShardBuilder(
   }
 
   /**
-   * Top-level function injection: `@Inject fun App(...)` generates an injectable class named after
-   * the function. Non-assisted parameters are the class's constructor dependencies; assisted
-   * parameters move to the generated class's `invoke`.
+   * Top-level function injection generates an injectable class with the function's capitalized
+   * name. Non-assisted parameters are the class's constructor dependencies; assisted parameters
+   * move to the generated class's `invoke`.
    */
   private fun KaSession.processInjectFunction(
     function: KtNamedFunction,
     symbol: KaNamedFunctionSymbol,
   ) {
-    val name = function.name ?: return
+    val name = function.name?.capitalizeUS() ?: return
     val classId = ClassId(function.containingKtFile.packageFqName, Name.identifier(name))
     val typeKey = KaTypeKey(KaTypeSnapshot(classId.asSingleFqName().asString(), name, classId))
     val dependencies =
