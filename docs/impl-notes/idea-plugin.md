@@ -129,12 +129,17 @@ their owning graph declaration and module.
   Computes type keys, dependency keys, map key info, contribution priorities, and multibinding ids.
   Generated contribution providers depend only on constructor parameters, matching the actual
   compiler-generated provider; an exposed injectable implementation retains its injected members.
-- `index/LibraryIndexPostProcessor.kt`: cross-file pass for compiled dependencies. Resolves
-  binary inject classes and assisted factories on demand, specializing factory methods and target
-  dependencies to their requested generic arguments. This includes transitive dependencies of
-  generated contribution providers and discoveries from generated hint functions, the same way
-  the compiler does. Generated aliases inherit their origin's contribution priority. Public
-  hints only need classpath visibility; nonpublic hints still use Kotlin's friend-module rules.
+- `index/SourceClassBindingPostProcessor.kt` and `index/LibraryIndexPostProcessor.kt`: resolve
+  concrete constructor, object, and assisted-factory requests across source and libraries. They
+  share class extraction and a bounded expansion state. Declaration dependencies include source
+  files reached through library requests and owners waiting for unresolved source types.
+- `index/LibraryContributionScanner.kt`: reads generated hint functions and their binding or graph
+  interface surfaces. Generated aliases inherit their origin's contribution priority. Public hints
+  need classpath visibility; nonpublic hints use Kotlin's friend-module rules. Source and binary
+  graph members share the extractors in `index/graph/`.
+- `index/LibraryGraphDiscovery.kt`: follows referenced binary child graphs and scans newly reached
+  contribution scopes. Requests retain their source use-site modules. Cached child metadata is
+  combined with current source members and factory-input owners before graph indexing.
 
 ### Model
 
@@ -184,9 +189,10 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   qualifier, matching the compiler's key swap. Parent-owned scoped bindings, including
   multibinding contributions from included binding containers, resolve through the owning graph
   and its module options.
-- `graph/MetroGraphValidationService.kt`: computes validation in cancellable background smart
-  reads, sharing one resolution session per index throughout a traversal. Each attempt collects
-  results locally. Asynchronous requests publish only after the read succeeds and the request is
+- `graph/MetroGraphValidationService.kt`: captures immutable validation inputs in cancellable smart
+  reads, then seals outside read access. `ValidationInputCapture` owns one resolution session per
+  index throughout a traversal. `ValidationSourceSnapshot` supplies captured source details.
+  Each attempt collects results locally. Asynchronous requests publish after computation when the request is
   still current. Cancellation and replaced requests leave retained results unchanged. Publication
   also checks whether results were cleared and which run produced each entry, so an older run
   cannot overwrite newer results.
@@ -199,7 +205,9 @@ The compiler's core graph logic lives in `metro-common` (`dev.zacsweers.metro.co
   requests. The adapter contains no suspend validation policy. Suspend parity fixtures cover valid
   transitive/deferred paths and representative failures.
 
-Validation is strictly on demand. Nothing seals during index builds or highlighting passes.
+Explicit actions and opt-in pinned-graph validation submit requests to the same service. Index builds
+and highlighting passes perform no sealing. The pinned-graph service owns its debounce and running
+job, cancels superseded requests, and pauses while indexing or automatic graph refresh is disabled.
 
 ### Editor features
 
