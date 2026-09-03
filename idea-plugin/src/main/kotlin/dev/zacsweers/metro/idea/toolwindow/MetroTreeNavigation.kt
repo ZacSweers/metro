@@ -20,7 +20,7 @@ import java.awt.event.MouseEvent
 import javax.swing.event.TreeSelectionListener
 import kotlinx.coroutines.Job
 
-/** Shares keyboard and optional preview navigation between graph-browser and validation trees. */
+/** Shares keyboard and optional preview navigation across Metro's source-backed trees. */
 internal class MetroTreeNavigation(
   project: Project,
   private val tree: Tree,

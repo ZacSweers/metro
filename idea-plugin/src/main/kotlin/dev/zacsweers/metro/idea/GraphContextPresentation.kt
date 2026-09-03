@@ -5,14 +5,26 @@ package dev.zacsweers.metro.idea
 import com.intellij.openapi.module.ModuleUtilCore
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
+import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 
-internal fun GraphContext.presentableName(includeFile: Boolean = false): String {
+/** Explicit choosers can qualify each declaration to distinguish equal short graph names. */
+internal fun GraphContext.presentableName(
+  includeFile: Boolean = false,
+  qualifiedNames: Boolean = false,
+): String {
+  fun declarationName(graph: KaGraphDeclaration): String {
+    if (qualifiedNames)
+      graph.classId?.asSingleFqName()?.asString()?.let {
+        return it
+      }
+    return graph.name ?: "<unknown>"
+  }
   return buildString {
-    append(graph.name ?: "<unknown>")
+    append(declarationName(graph))
     val parents = chain.drop(1)
     if (parents.isNotEmpty()) {
       append(" via ")
-      append(parents.joinToString(" > ") { it.name ?: "<unknown>" })
+      append(parents.joinToString(" > ", transform = ::declarationName))
     }
     val dynamic = dynamicGraph
     when {

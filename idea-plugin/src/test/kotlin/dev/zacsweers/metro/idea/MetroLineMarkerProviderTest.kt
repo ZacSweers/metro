@@ -294,6 +294,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     val action = checkNotNull(ActionManager.getInstance().getAction("Metro.GoToBinding"))
     val selectAction =
       checkNotNull(ActionManager.getInstance().getAction("Metro.SelectInToolWindow"))
+    val explainAction = checkNotNull(ActionManager.getInstance().getAction("Metro.ExplainBinding"))
     val dataContext = DataContext { dataId ->
       when {
         CommonDataKeys.PROJECT.`is`(dataId) -> project
@@ -305,10 +306,14 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext)
     val selectEvent =
       AnActionEvent.createFromAnAction(selectAction, null, ActionPlaces.UNKNOWN, dataContext)
+    val explainEvent =
+      AnActionEvent.createFromAnAction(explainAction, null, ActionPlaces.UNKNOWN, dataContext)
     action.update(event)
     selectAction.update(selectEvent)
+    explainAction.update(explainEvent)
     assertTrue(event.presentation.isEnabledAndVisible)
     assertTrue(selectEvent.presentation.isEnabledAndVisible)
+    assertTrue(explainEvent.presentation.isEnabledAndVisible)
 
     action.actionPerformed(event)
 

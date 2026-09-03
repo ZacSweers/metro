@@ -34,6 +34,8 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.idea.explanation.MetroBindingExplanationPanel
+import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -382,6 +384,13 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           as org.jetbrains.kotlin.psi.KtNamedDeclaration)
         .name,
     )
+
+    val explanations = metroBindingExplanations(index, file, offset, null)
+    assertEquals(contexts.map { it.path }.toSet(), explanations.map { it.path }.toSet())
+    val pinnedExplanation = metroBindingExplanations(index, file, offset, leftContext.path).single()
+    assertEquals(leftContext.path, pinnedExplanation.path)
+    val selected = pinnedExplanation.candidates.single { it.selected }
+    assertEquals(pinned.navigation.single().bindings.single().pointer, selected.target.pointer)
   }
 
   fun testEditorBindingChoicePreservesAnEmptyPinnedAnswer() {
@@ -413,6 +422,98 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertTrue(pinned.navigation.single().bindings.isEmpty())
     assertEquals(missingContext.path, pinned.reveal.single().path)
     assertNull(pinned.reveal.single().binding)
+
+    val explanation = metroBindingExplanations(index, file, offset, missingContext.path).single()
+    assertEquals(missingContext.path, explanation.path)
+    assertTrue(explanation.candidates.none { it.selected })
+    assertTrue(explanation.copyText, "No binding was selected." in explanation.copyText)
+  }
+
+  fun testEditorContextLabelsDistinguishNestedGraphsInOneFile() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Consumer(val value: String)
+
+      object Left {
+        @DependencyGraph interface Graph {
+          val consumer: Consumer
+          @Provides fun value(): String = "left"
+        }
+      }
+
+      object Right {
+        @DependencyGraph interface Graph {
+          val consumer: Consumer
+          @Provides fun value(): String = "right"
+        }
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val offset = file.declarationsIncludingNested().parameter("value").textOffset
+    val navigation = metroEditorTargets(index, file, offset, null).navigation
+    val explanations = metroBindingExplanations(index, file, offset, null)
+
+    assertEquals(2, navigation.map { it.text }.distinct().size)
+    assertEquals(2, explanations.map { it.text }.distinct().size)
+    for (qualifiedName in listOf("test.Left.Graph", "test.Right.Graph")) {
+      assertTrue(navigation.any { qualifiedName in it.text })
+      assertTrue(explanations.any { qualifiedName in it.text })
+    }
+  }
+
+  fun testBindingExplanationPanelCopiesEveryDecisionAndNavigatesCandidates() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Service
+      @DependencyGraph interface AppGraph {
+        val service: Service
+        @Provides fun explicitService(): Service = Service()
+        @Provides @Named("other") fun qualifiedService(): Service = Service()
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val offset = declarations.property("service").textOffset
+    val explanation = metroBindingExplanations(index, file, offset, null).single()
+    val copied = mutableListOf<String>()
+    val panel = MetroBindingExplanationPanel(project, explanation) { copied += it }
+    val copyEvent =
+      AnActionEvent.createFromAnAction(panel.copyAction, null, ActionPlaces.UNKNOWN) { null }
+    try {
+      TestOnlyThreading
+        .releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+          assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+          assertTrue(panel.summaryArea.text, "Request: test.Service" in panel.summaryArea.text)
+          assertTrue(panel.summaryArea.text, "AppGraph" in panel.summaryArea.text)
+          assertTrue(panel.detailArea.text, "Selected explicit binding." in panel.detailArea.text)
+          val qualifiedRow =
+            explanation.candidates.indexOfFirst { "different qualifier" in it.details }
+          assertTrue(qualifiedRow >= 0)
+          panel.tree.setSelectionRow(qualifiedRow)
+          assertTrue(panel.detailArea.text, "different qualifier" in panel.detailArea.text)
+          panel.copyAction.actionPerformed(copyEvent)
+          assertEquals(listOf(explanation.copyText), copied)
+          assertTrue(copied.single(), "higher precedence" in copied.single())
+          assertTrue(copied.single(), "different qualifier" in copied.single())
+        }
+
+      panel.tree.setSelectionRow(explanation.candidates.indexOfFirst { it.selected })
+      checkNotNull(panel.treeNavigation.navigate(requestFocus = true)).awaitTestCompletion()
+      val provider = declarations.function("explicitService")
+      val editor = checkNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+      assertEquals(checkNotNull(provider.nameIdentifier).textOffset, editor.caretModel.offset)
+    } finally {
+      Disposer.dispose(panel)
+    }
+    panel.copyAction.update(copyEvent)
+    assertFalse(copyEvent.presentation.isEnabled)
+    panel.copyAction.actionPerformed(copyEvent)
+    assertEquals(1, copied.size)
+    assertNull(panel.treeNavigation.navigate(requestFocus = true))
   }
 
   fun testEditorRevealSelectsBindingOutsideThePinnedGraph() {

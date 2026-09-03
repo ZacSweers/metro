@@ -23,6 +23,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
@@ -34,6 +35,7 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
+import dev.zacsweers.metro.idea.navigation.editorContextName
 import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
@@ -1355,6 +1357,9 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       )
 
     assertEquals(appKaModule, index.queryContext(dynamicContext)!!.graphModule)
+    val callerModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val dynamicLabel = dynamicContext.editorContextName()
+    assertTrue(dynamicLabel, "${callerModule.name}: DynamicGraph.kt" in dynamicLabel)
     assertEquals(
       listOf("provideReal"),
       index.bindingsFor(consumer, index.queryContext(staticContext)!!).mapNotNull {
@@ -1748,6 +1753,12 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         val choice = targets.navigation.single()
         assertEquals(file.virtualFile, choice.bindings.single().pointer.virtualFile)
         assertEquals(file.virtualFile, targets.reveal.single().path.segments.single().file)
+        val explanation = metroBindingExplanations(fileIndex, file, offset, null).single()
+        assertEquals(choice.path, explanation.path)
+        assertEquals(
+          file.virtualFile,
+          explanation.candidates.single { it.selected }.target.pointer.virtualFile,
+        )
         choice
       }
     assertEquals(2, editorChoices.map { it.path }.distinct().size)

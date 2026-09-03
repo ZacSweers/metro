@@ -102,7 +102,8 @@ internal class SelectInMetroAction : AnAction(), DumbAware {
   }
 }
 
-private fun metroEditorActionAvailable(e: AnActionEvent): Boolean {
+/** Action updates only check project configuration and the presence of a Kotlin editor. */
+internal fun metroEditorActionAvailable(e: AnActionEvent): Boolean {
   val project = e.project ?: return false
   val file = e.getData(CommonDataKeys.PSI_FILE) as? KtFile ?: return false
   if (e.getData(CommonDataKeys.EDITOR) == null) return false
@@ -112,7 +113,7 @@ private fun metroEditorActionAvailable(e: AnActionEvent): Boolean {
 /**
  * The chooser renders captured strings and opens one concrete context before binding navigation.
  */
-private fun <T> chooseTarget(
+internal fun <T> chooseTarget(
   editor: Editor,
   request: MetroEditorRequest,
   title: String,

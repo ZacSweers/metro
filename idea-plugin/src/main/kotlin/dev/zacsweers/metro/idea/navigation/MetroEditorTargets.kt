@@ -5,7 +5,6 @@ package dev.zacsweers.metro.idea.navigation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.SmartPsiElementPointer
-import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -15,7 +14,6 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.matchingContext
 import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /**
  * One binding's navigation pointer and exact key, captured during the editor query's read action.
@@ -63,14 +61,8 @@ internal fun metroEditorTargets(
   offset: Int,
   pinnedPath: GraphPath?,
 ): MetroEditorTargets {
-  val element =
-    file.findElementAt(offset.coerceAtMost((file.textLength - 1).coerceAtLeast(0)))
-      ?: return MetroEditorTargets.EMPTY
   return index.withResolutionSession { session ->
-    var declaration = PsiTreeUtil.getParentOfType(element, KtNamedDeclaration::class.java, false)
-    while (declaration != null) {
-      ProgressManager.checkCanceled()
-      val current = declaration
+    for (current in metroEditorDeclarations(file, offset)) {
       val graph = index.graphEntryAt(current)
       if (graph != null) {
         val contexts = selectContexts(session.contextsFor(graph), pinnedPath)
@@ -103,7 +95,6 @@ internal fun metroEditorTargets(
         val groups = bindingContexts(session, bindings)
         return@withResolutionSession actionTargets(index, groups, bindings, pinnedPath)
       }
-      declaration = PsiTreeUtil.getParentOfType(current, KtNamedDeclaration::class.java, true)
     }
     MetroEditorTargets.EMPTY
   }
@@ -175,7 +166,8 @@ private fun actionTargets(
   return MetroEditorTargets(choices, reveal.sortedBy { it.text })
 }
 
-private fun bindingTarget(binding: KaBinding): MetroBindingTarget {
+/** Captures a pointer and a source/module label shared by navigation and explanations. */
+internal fun bindingTarget(binding: KaBinding): MetroBindingTarget {
   val module = binding.pointer.element?.let(ModuleUtilCore::findModuleForPsiElement)
   val text = buildString {
     append(binding.typeKey.render(short = true))
@@ -186,7 +178,8 @@ private fun bindingTarget(binding: KaBinding): MetroBindingTarget {
   return MetroBindingTarget(binding.pointer, binding.typeKey, text)
 }
 
-private fun selectContexts(
+/** Applies editor pin matching, retaining context choices when the pin belongs to another graph. */
+internal fun selectContexts(
   contexts: List<GraphContext>,
   pinnedPath: GraphPath?,
 ): List<GraphContext> {
@@ -196,11 +189,12 @@ private fun selectContexts(
 }
 
 /** The root compilation distinguishes equal graph names declared in separate modules. */
-private fun GraphContext.editorContextName(): String {
-  val rootFile = rootGraph.pointer.virtualFile
-  val module = rootGraph.pointer.element?.let(ModuleUtilCore::findModuleForPsiElement)
+internal fun GraphContext.editorContextName(): String {
+  val compilationPointer = dynamicGraph?.pointer ?: rootGraph.pointer
+  val rootFile = compilationPointer.virtualFile
+  val module = compilationPointer.element?.let(ModuleUtilCore::findModuleForPsiElement)
   return buildString {
-    append(presentableName())
+    append(presentableName(qualifiedNames = true))
     if (module != null || rootFile != null) {
       append(" (")
       module?.name?.let { append(it).append(": ") }

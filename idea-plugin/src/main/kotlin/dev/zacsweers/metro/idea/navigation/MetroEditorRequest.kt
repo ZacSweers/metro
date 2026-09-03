@@ -9,6 +9,7 @@ import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroNavigationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.model.BindingIndex
 import kotlinx.coroutines.Job
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -40,6 +41,23 @@ internal fun requestMetroEditorTargets(
   file: KtFile,
   onResolved: (MetroEditorTargets, MetroEditorRequest) -> Unit,
 ): Job? {
+  return requestMetroEditorData(
+    editor,
+    file,
+    query = { index, request ->
+      metroEditorTargets(index, file, request.offset, request.pinnedPath)
+    },
+    onResolved = onResolved,
+  )
+}
+
+/** Shares cold-index retry and stale-editor guards across explicit editor queries. */
+internal fun <T : Any> requestMetroEditorData(
+  editor: Editor,
+  file: KtFile,
+  query: (BindingIndex, MetroEditorRequest) -> T,
+  onResolved: (T, MetroEditorRequest) -> Unit,
+): Job? {
   val project = editor.project ?: return null
   val request = MetroEditorRequest(editor)
   return project
@@ -49,14 +67,14 @@ internal fun requestMetroEditorTargets(
       resolve = {
         retryCancelledIndexBuild {
           smartReadAction(project) {
-            if (!file.isValid) return@smartReadAction MetroEditorTargets.EMPTY
+            if (!file.isValid) return@smartReadAction null
             val index = project.service<MetroResolutionService>().currentIndex(file)
-            metroEditorTargets(index, file, request.offset, request.pinnedPath)
+            query(index, request)
           }
         }
       },
-      onResolved = { targets ->
-        if (request.isCurrent()) onResolved(targets, request)
+      onResolved = { result ->
+        if (result != null && request.isCurrent()) onResolved(result, request)
       },
     )
 }
