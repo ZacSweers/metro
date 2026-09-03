@@ -273,6 +273,12 @@ The IDE keeps its binding categories and assisted-request checks alongside its s
 Contribution rules such as `computeMergePlan` also live in `metro-common`. Request scheduling,
 captured module visibility, navigation pointers, and editor updates live in `idea-plugin`.
 
+Binding explanation snapshots, decision codes, and plain-text rendering live in
+`metro-common`'s `graph.explanation` package. The IDE captures those snapshots beside its navigation
+targets. The compiler records decisions during registration, merging, and lookup when reports are
+enabled, then writes the shared model to JSON. Capturing an explanation never evaluates an unused
+compiler lookup branch.
+
 Code: [binding index](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingIndex.kt),
 [resolution session](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingResolutionSession.kt),
 [IDE graph adapter](../src/main/kotlin/dev/zacsweers/metro/idea/graph/KaBindingGraph.kt),

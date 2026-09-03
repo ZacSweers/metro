@@ -54,6 +54,11 @@ and source navigation. **Copy Explanation** copies the complete result for shari
 
 Explanations use a snapshot of graph data. Run the action again after editing code.
 
+Compiler graph reports use the same structured reasons. Enable `reportsDestination` to include
+binding explanations in exported graph metadata and `analysis.json`. Compiler reports describe
+the candidates reached during compilation; the IDE can also show alternatives from its project
+index. See [graph analysis](../docs/graph-analysis.md#binding-explanations).
+
 ### Optional Dependencies and Graph Extensions
 
 Optional dependencies have two forms:
