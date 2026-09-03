@@ -7867,6 +7867,7 @@
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
 <li><strong>[IR/interop]</strong> Fix <code>Class</code>-keyed maps wrapped in providers or lazy values when <code>KClass</code>/<code>Class</code> interop is enabled.</li>
+<li><strong>[IR/interop]</strong> Fix a runtime <code>ClassCastException</code> when a <code>Class</code>-keyed map is injected into a provider-created class across modules with <code>KClass</code>/<code>Class</code> interop enabled.</li>
 <li><strong>[IR/interop]</strong> Respect <code>@GraphPrivate</code> on Dagger <code>@BindsOptionalOf</code> declarations inherited by graph extensions, while preserving public declarations for the same key.</li>
 <li><strong>[IR/interop]</strong> Preserve Kotlin nullability in member-injection metadata when Dagger interop is enabled.</li>
 </ul>
