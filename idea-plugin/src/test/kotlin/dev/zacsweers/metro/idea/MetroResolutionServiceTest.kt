@@ -5145,6 +5145,97 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     )
   }
 
+  fun testInheritedMemberEditsRebuildInjectedSubclass() {
+    val base =
+      myFixture.addFileToProject(
+        "test/BaseScreen.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.HasMemberInjections
+        import dev.zacsweers.metro.Inject
+
+        @HasMemberInjections
+        abstract class BaseScreen {
+          @Inject lateinit var service: OldService
+        }
+        """
+          .trimIndent(),
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface OldService
+        interface NewService
+
+        @Inject class Screen : BaseScreen()
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial =
+      service.awaitIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+    assertEquals(listOf("test.OldService"), initial.dependencies.map { it.typeKey.renderedType })
+
+    myFixture.openFileInEditor(base.virtualFile)
+    val typeOffset = base.text.indexOf("OldService")
+    myFixture.editor.selectionModel.setSelection(typeOffset, typeOffset + "OldService".length)
+    myFixture.type("NewService")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.awaitIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+    assertEquals(listOf("test.NewService"), updated.dependencies.map { it.typeKey.renderedType })
+
+    val memberText = "@Inject lateinit var service: NewService"
+    val memberOffset = base.text.indexOf(memberText)
+    WriteCommandAction.runWriteCommandAction(project) {
+      myFixture.editor.document.deleteString(memberOffset, memberOffset + memberText.length)
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val removed =
+      service.awaitIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+    assertTrue(removed.dependencies.isEmpty())
+  }
+
+  fun testAddingMemberInjectionMarkerRebuildsInjectedSubclass() {
+    val base =
+      myFixture.addFileToProject(
+        "test/BaseScreen.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        abstract class BaseScreen {
+          @Inject lateinit var service: Service
+        }
+        """
+          .trimIndent(),
+      )
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject class Screen : BaseScreen()
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial =
+      service.awaitIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+    assertTrue(initial.dependencies.isEmpty())
+
+    myFixture.openFileInEditor(base.virtualFile)
+    myFixture.editor.caretModel.moveToOffset(base.text.indexOf("abstract class"))
+    myFixture.type("@dev.zacsweers.metro.HasMemberInjections\n")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.awaitIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+    assertEquals(listOf("test.Service"), updated.dependencies.map { it.typeKey.renderedType })
+  }
+
   fun testQualifierDefaultsMatchExplicitValues() {
     val file =
       myFixture.configureMetroFile(

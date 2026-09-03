@@ -293,18 +293,21 @@ private fun KaAnnotationSnapshot.resolveImplicitClassKey(
 /**
  * Computes the bindings originated by this declaration: `@Provides`/`@Binds`/`@Multibinds`
  * callables, injected classes, contributed bindings, and instance-binding factory parameters.
+ * [onDeclarationFile] records files read for inherited member injection metadata.
  */
 internal fun KtDeclaration.bindingData(
   session: KaSession,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<BindingData> {
   return when (this) {
     is KtPropertyAccessor -> property.bindingData(session, options)
     is KtNamedFunction,
     is KtProperty -> (this as KtCallableDeclaration).callableBindingData(session, options)
     is KtParameter -> instanceBindingData(session, options)
-    is KtClassOrObject -> classBindingData(session, options)
-    is KtConstructor<*> -> getContainingClassOrObject().classBindingData(session, options)
+    is KtClassOrObject -> classBindingData(session, options, onDeclarationFile)
+    is KtConstructor<*> ->
+      getContainingClassOrObject().classBindingData(session, options, onDeclarationFile)
     else -> emptyList()
   }
 }
@@ -495,6 +498,7 @@ private fun KtParameter.instanceBindingData(
 private fun KtClassOrObject.classBindingData(
   session: KaSession,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)?,
 ): List<BindingData> =
   with(session) {
     val ktClass = this@classBindingData
@@ -543,7 +547,11 @@ private fun KtClassOrObject.classBindingData(
         emptyList()
       }
     val memberDependencies =
-      if (ownsInjectBinding) memberInjectDependencyKeys(classSymbol, options) else emptyList()
+      if (ownsInjectBinding) {
+        memberInjectDependencyKeys(classSymbol, options, onDeclarationFile)
+      } else {
+        emptyList()
+      }
     val memberInjectionOwnerIds =
       if (ownsInjectBinding) memberInjectOwnerClassIds(classSymbol) else emptySet()
     if (ownsInjectBinding) {
@@ -845,7 +853,9 @@ internal fun KaSession.assistedFactoryBinding(
     targetConstructorDependencies =
       targetType?.let { injectConstructorDependencyKeys(it, options, onDependencyType) }.orEmpty(),
     targetMemberDependencies =
-      targetType?.let { memberInjectDependencyKeys(it, options, onDependencyType) }.orEmpty(),
+      targetType
+        ?.let { memberInjectDependencyKeys(it, options, onDeclarationFile, onDependencyType) }
+        .orEmpty(),
     memberInjectionOwnerIds = targetSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
     factoryFunctionName = samFunction?.name?.asString(),
     factoryFunctionIsSuspend = samFunction?.isSuspend == true,
@@ -901,27 +911,30 @@ internal class MemberInjectSite(
 internal fun KaSession.memberInjectDependencyKeys(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
-  return memberInjectSites(classSymbol, options).map { it.key }
+  return memberInjectSites(classSymbol, options, onDeclarationFile).map { it.key }
 }
 
 /** Resolves direct and inherited member injections through the target's specialized type scope. */
 internal fun KaSession.memberInjectDependencyKeys(
   classType: KaClassType,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
   onDependencyType: ((KaType) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
-  return memberInjectSites(classType, options, onDependencyType).map { it.key }
+  return memberInjectSites(classType, options, onDeclarationFile, onDependencyType).map { it.key }
 }
 
 /** Preserves member source locations while specializing direct and inherited injection sites. */
 internal fun KaSession.memberInjectSites(
   classType: KaClassType,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
   onDependencyType: ((KaType) -> Unit)? = null,
 ): List<MemberInjectSite> {
   val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
-  val owners = memberInjectOwners(classSymbol)
+  val owners = memberInjectOwners(classSymbol, onDeclarationFile)
   if (
     classSymbol.typeParameters.isEmpty() &&
       classType.typeArguments.isEmpty() &&
@@ -979,9 +992,10 @@ internal fun KaSession.memberInjectSites(
 internal fun KaSession.memberInjectSites(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<MemberInjectSite> {
   val result = mutableListOf<MemberInjectSite>()
-  for ((index, owner) in memberInjectOwners(classSymbol).withIndex()) {
+  for ((index, owner) in memberInjectOwners(classSymbol, onDeclarationFile).withIndex()) {
     checkCanceledEvery(index)
     collectDeclaredMemberInjectKeys(owner, options, result)
   }
@@ -993,19 +1007,29 @@ internal fun KaSession.memberInjectOwnerClassIds(classSymbol: KaNamedClassSymbol
   return memberInjectOwners(classSymbol).mapNotNullTo(linkedSetOf()) { it.classId }
 }
 
+/**
+ * Reports files whose members or inheritance marker are read. The first unmarked superclass is a
+ * dependency too, because adding its marker changes the inherited injection sites.
+ */
 internal fun KaSession.memberInjectOwners(
-  classSymbol: KaNamedClassSymbol
+  classSymbol: KaNamedClassSymbol,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<KaNamedClassSymbol> {
   val result = mutableListOf<KaNamedClassSymbol>()
   var current: KaNamedClassSymbol? = classSymbol
   var depth = 0
+  if (onDeclarationFile != null) {
+    classSymbol.psi?.containingFile?.let(onDeclarationFile)
+  }
   while (current != null) {
     checkCanceledEvery(depth++)
     result += current
-    current =
-      superClassSymbol(current)?.takeIf {
-        it.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))
-      }
+    val superclass = superClassSymbol(current) ?: break
+    if (onDeclarationFile != null) {
+      superclass.psi?.containingFile?.let(onDeclarationFile)
+    }
+    if (!superclass.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))) break
+    current = superclass
   }
   return result
 }

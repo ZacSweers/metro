@@ -471,7 +471,7 @@ internal class FileShardBuilder(
       recordAnnotationDependencies(classSymbol, ktClass)
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
-      val dataEntries = ktClass.bindingData(this, options)
+      val dataEntries = ktClass.bindingData(this, options, cacheDependencies::add)
       val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
       for (data in dataEntries) {
         checkCanceled()
@@ -1050,10 +1050,9 @@ internal class FileShardBuilder(
         ?: symbol.valueParameters.single().returnType
     val targetType = targetParameterType.fullyExpandedType as? KaClassType ?: return
     val targetSymbol = targetType.symbol as? KaNamedClassSymbol ?: return
-    for (owner in memberInjectOwners(targetSymbol)) {
+    for (owner in memberInjectOwners(targetSymbol, cacheDependencies::add)) {
       checkCanceled()
       owner.classId?.let(injectedMemberOwnerIds::add)
-      owner.psi?.containingFile?.let(cacheDependencies::add)
     }
     for (site in
       memberInjectSites(targetType, options) { dependencyType ->
