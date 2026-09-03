@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityCheck
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaEnumEntrySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
@@ -32,6 +33,7 @@ import org.jetbrains.kotlin.renderer.render
 
 /** Detached annotation text and named arguments that the caller can turn into template fields. */
 internal data class ContributionMapKeyChoice(
+  val classId: ClassId,
   val label: String,
   val annotationText: String,
   val editableArguments: List<String>,
@@ -40,7 +42,7 @@ internal data class ContributionMapKeyChoice(
 private val STRING_KEY = ClassId.fromString("dev/zacsweers/metro/StringKey")
 private val CLASS_KEY = ClassId.fromString("dev/zacsweers/metro/ClassKey")
 private val INT_KEY = ClassId.fromString("dev/zacsweers/metro/IntKey")
-private val BUILT_IN_KEYS = listOf(STRING_KEY, CLASS_KEY, INT_KEY)
+private val BUILT_IN_KEYS = listOf(CLASS_KEY, STRING_KEY, INT_KEY)
 
 /**
  * Runs on an explicit contribution action. Kotlin annotation indexes supply source and binary
@@ -53,14 +55,8 @@ internal fun KaSession.contributionMapKeyChoices(
   options: MetroOptions,
 ): List<ContributionMapKeyChoice> {
   val ownerSymbol = owner.symbol as? KaNamedClassSymbol ?: return emptyList()
-  val existing =
-    ownerSymbol.annotations.firstOrNull { annotation ->
-      val annotationClass = annotation.classId?.let(::findClass)
-      annotationClass?.annotations?.any { it.classId in options.mapKeyAnnotations } == true
-    }
-  if (existing != null) {
-    val name = existing.classId?.shortClassName?.asString().orEmpty()
-    return listOf(ContributionMapKeyChoice("Use existing @$name", "", emptyList()))
+  existingMapKeyChoice(ownerSymbol, options)?.let {
+    return listOf(it)
   }
 
   val visibility =
@@ -93,6 +89,35 @@ internal fun KaSession.contributionMapKeyChoices(
       )
     )
   return sortedChoices.map { it.second }
+}
+
+/** Revalidates one selected annotation without repeating project-wide key discovery. */
+internal fun KaSession.contributionMapKeyChoice(
+  owner: KtClassOrObject,
+  options: MetroOptions,
+  classId: ClassId,
+): ContributionMapKeyChoice? {
+  val ownerSymbol = owner.symbol as? KaNamedClassSymbol ?: return null
+  val existing = existingMapKeyChoice(ownerSymbol, options)
+  if (existing != null) return existing.takeIf { it.classId == classId }
+  val annotationClass = findClass(classId) as? KaNamedClassSymbol ?: return null
+  val visibility = createUseSiteVisibilityChecker(owner.containingKtFile.symbol, null, owner)
+  if (!visibility.isVisible(annotationClass)) return null
+  return mapKeyChoice(annotationClass, ownerSymbol, options)
+}
+
+private fun KaSession.existingMapKeyChoice(
+  owner: KaNamedClassSymbol,
+  options: MetroOptions,
+): ContributionMapKeyChoice? {
+  val existing =
+    owner.annotations.firstOrNull { annotation ->
+      val annotationClass = annotation.classId?.let(::findClass)
+      annotationClass?.annotations?.any { it.classId in options.mapKeyAnnotations } == true
+    } ?: return null
+  val classId = existing.classId ?: return null
+  val name = classId.shortClassName.asString()
+  return ContributionMapKeyChoice(classId, "Use existing @$name", "", emptyList())
 }
 
 /** Import and type aliases are followed through source files containing their indexed names. */
@@ -182,22 +207,29 @@ private fun KaSession.mapKeyChoice(
     if (isArray) return null
   }
   val classId = annotationClass.classId ?: return null
-  if (meta.booleanArgument("implicitClassKey") == true && classId != CLASS_KEY) {
+  if (meta.booleanArgument("implicitClassKey") == true) {
     val parameter = parameters.singleOrNull() ?: return null
     val typeId = (parameter.returnType.fullyExpandedType as? KaClassType)?.classId
     if (typeId != StandardClassIds.KClass || !parameter.hasDefaultValue) return null
-    val default =
-      (parameter.psi as? KtParameter)?.defaultValue as? KtClassLiteralExpression ?: return null
-    val defaultType = default.receiverExpression?.expressionType?.fullyExpandedType as? KaClassType
-    if (defaultType?.classId != StandardClassIds.Nothing) return null
+    // Compiled annotations retain the implicit-key contract and the presence of a default.
+    // Their default expression is absent from Kotlin metadata. Source declarations can be
+    // checked directly while they are being authored.
+    if (annotationClass.origin != KaSymbolOrigin.LIBRARY) {
+      val default =
+        (parameter.psi as? KtParameter)?.defaultValue as? KtClassLiteralExpression ?: return null
+      val defaultType =
+        default.receiverExpression?.expressionType?.fullyExpandedType as? KaClassType
+      if (defaultType?.classId != StandardClassIds.Nothing) return null
+    }
   }
 
   val arguments = mutableListOf<String>()
   val editable = mutableListOf<String>()
   for (parameter in parameters) {
     ProgressManager.checkCanceled()
-    // ClassKey's explicit value also works with runtimes predating its implicit class default.
-    if (parameter.hasDefaultValue && classId != CLASS_KEY) continue
+    // An implicit class key keeps its default. Older runtimes with a required ClassKey value
+    // still receive an explicit class literal from the ordinary required-argument path.
+    if (parameter.hasDefaultValue) continue
     val value = mapKeyArgument(parameter.returnType, owner) ?: return null
     arguments += "${parameter.name.render()} = $value"
     editable += parameter.name.asString()
@@ -205,6 +237,7 @@ private fun KaSession.mapKeyChoice(
   val suffix = if (arguments.isEmpty()) "" else arguments.joinToString(", ", "(", ")")
   val name = classId.asSingleFqName().pathSegments().joinToString(".") { it.render() }
   return ContributionMapKeyChoice(
+    classId = classId,
     label = "@${classId.relativeClassName.asString()} (${classId.packageFqName.asString()})",
     annotationText = "@$name$suffix",
     editableArguments = editable,

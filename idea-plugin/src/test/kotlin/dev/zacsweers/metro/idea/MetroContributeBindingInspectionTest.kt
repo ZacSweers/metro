@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.codeInsight.template.impl.TemplateManagerImpl
 import com.intellij.modcommand.ActionContext
 import com.intellij.modcommand.ModChooseAction
@@ -14,6 +15,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.intentions.contributions.ContributeBindingAction
+import dev.zacsweers.metro.idea.intentions.contributions.ContributionPickerStep
 import dev.zacsweers.metro.idea.intentions.contributions.MetroContributeBindingInspection
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -43,19 +45,53 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     val file = configure()
     val before = file.text
     val intention = myFixture.findSingleIntention("Contribute Metro binding")
+    myFixture.checkIntentionPreviewHtml(intention, PICKER_PREVIEW)
+    assertEquals(before, file.text)
+
+    val scopes = choose(start(file), "ContributesBinding") as ModChooseAction
+    val selectedScope = scopes.actions().single { it.familyName == "test.AppScope" }
     assertTrue(
-      checkNotNull(myFixture.getIntentionPreviewText(intention))
+      checkNotNull(myFixture.getIntentionPreviewText(selectedScope.asIntention()))
         .contains("@ContributesBinding(AppScope::class)")
     )
     assertEquals(before, file.text)
-
-    val command = choose(choose(start(file), "ContributesBinding"), "test.AppScope")
+    val command = choose(scopes, "test.AppScope")
     execute(command)
     assertTrue(file.text.contains("@ContributesBinding(AppScope::class)"))
     assertEmpty(myFixture.filterAvailableIntentions("Contribute Metro binding"))
     myFixture.performEditorAction(IdeActions.ACTION_UNDO)
     PsiDocumentManager.getInstance(project).commitAllDocuments()
     assertEquals(before, file.text)
+  }
+
+  fun testUnresolvedKindAndMapKeyPreviewsDoNotSelectFirstScopeOrKey() {
+    val file =
+      configure(
+        supertypes =
+          """
+      interface Service
+      abstract class AccountUserScope
+      @DependencyGraph(AccountUserScope::class) interface AccountGraph
+    """
+      )
+    val before = file.text
+    val kinds = start(file) as ModChooseAction
+    val binding = kinds.actions().single { it.familyName == "ContributesBinding" }
+    myFixture.checkIntentionPreviewHtml(binding.asIntention(), PICKER_PREVIEW)
+    val scopes = choose(kinds, "ContributesIntoMap") as ModChooseAction
+    val scope = scopes.actions().single { it.familyName == "test.AccountUserScope" }
+    myFixture.checkIntentionPreviewHtml(scope.asIntention(), PICKER_PREVIEW)
+    assertEquals(before, file.text)
+  }
+
+  fun testUnresolvedPreviewDoesNotEvaluateItsNextStep() {
+    val file = configure()
+    val owner = implementation(file)
+    val step =
+      ContributionPickerStep(owner, owner.text, "Next choice", hasRemainingChoices = true) { _, _ ->
+        error("The next chooser must wait for an explicit selection")
+      }
+    assertTrue(step.generatePreview(context()) is IntentionPreviewInfo.Html)
   }
 
   fun testBoundTypePickerPreservesConcreteTypeArguments() {
@@ -124,6 +160,10 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
   fun testMapKeyValueIsAnEditorTemplateField() {
     val file = configure()
     val keys = choose(choose(start(file), "ContributesIntoMap"), "test.AppScope")
+    val selectedKey = (keys as ModChooseAction).actions().single { "StringKey" in it.familyName }
+    val preview = checkNotNull(myFixture.getIntentionPreviewText(selectedKey.asIntention()))
+    assertTrue(preview, preview.contains("@StringKey(value = \"key\")"))
+    assertTrue(preview, preview.contains("@ContributesIntoMap(AppScope::class)"))
     val command = chooseContaining(keys, "StringKey")
     val template = command.unpack().filterIsInstance<ModStartTemplate>().single()
     assertTrue(
@@ -134,6 +174,19 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     execute(command)
     assertTrue(file.text, file.text.contains("@ContributesIntoMap(AppScope::class)"))
     assertTrue(file.text, file.text.contains("@StringKey(value = \"key\")"))
+  }
+
+  fun testImplicitBinaryClassKeyHasNoValueTemplate() {
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions("custom-map-key" to "libtest/LibMapKeyContract")
+      val file = configure()
+      val keys = choose(choose(start(file), "ContributesIntoMap"), "test.AppScope")
+      val command = chooseContaining(keys, "LibImplicitClassKey")
+      assertEmpty(command.unpack().filterIsInstance<ModStartTemplate>())
+      execute(command)
+      assertTrue(file.text, file.text.contains("@LibImplicitClassKey"))
+      assertFalse(file.text, file.text.contains("@LibImplicitClassKey("))
+    }
   }
 
   fun testExistingMapKeyIsPreserved() {
@@ -229,6 +282,41 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     assertEquals(afterRename, file.text)
   }
 
+  fun testChangedSelectedScopeIsRejected() {
+    val file = configure()
+    val scopes = choose(start(file), "ContributesBinding")
+    WriteCommandAction.runWriteCommandAction(project) {
+      file.declarations
+        .filterIsInstance<KtClassOrObject>()
+        .single { it.name == "AppScope" }
+        .setName("OtherScope")
+    }
+    val before = file.text
+    assertTrue(choose(scopes, "test.AppScope").isEmpty)
+    assertEquals(before, file.text)
+  }
+
+  fun testChangedSelectedKeyIsRejected() {
+    val keyFile =
+      myFixture.addFileToProject(
+        "keys/EntryKey.kt",
+        "package keys\n@dev.zacsweers.metro.MapKey annotation class EntryKey(val value: String)",
+      ) as KtFile
+    val file = configure()
+    val keys = choose(choose(start(file), "ContributesIntoMap"), "test.AppScope")
+    WriteCommandAction.runWriteCommandAction(project) {
+      keyFile.declarations
+        .filterIsInstance<KtClassOrObject>()
+        .single()
+        .annotationEntries
+        .single()
+        .delete()
+    }
+    val before = file.text
+    assertTrue(chooseContaining(keys, "EntryKey").isEmpty)
+    assertEquals(before, file.text)
+  }
+
   fun testDisabledModuleDoesNotOfferContribution() {
     configure()
     project.setMetroOptions("enabled" to "false")
@@ -277,5 +365,11 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
         null,
       )
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+  }
+
+  companion object {
+    private const val PICKER_PREVIEW =
+      "<p>Choose a contribution kind and scope. Metro also asks for a bound type or map key when required. " +
+        "The final choice previews the annotation change.</p>"
   }
 }

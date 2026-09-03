@@ -33,15 +33,17 @@ internal fun applyContribution(
   if (edit.boundType !in candidate.boundTypes) return ModCommand.nop()
   val existingKey = candidate.existingMapKey || edit.boundType.hasMapKey
   if (edit.kind != ContributionKind.MAP && existingKey) return ModCommand.nop()
-  if (!edit.scope.editable && edit.scope !in contributionScopes(owner, candidate.existingScope))
-    return ModCommand.nop()
+  if (!edit.scope.editable) {
+    val scopeId = edit.scope.classId ?: return ModCommand.nop()
+    if (edit.scope != contributionScope(owner, scopeId)) return ModCommand.nop()
+  }
   val key = edit.mapKey
   val hasMapKey = existingKey || key != null
   if (edit.kind == ContributionKind.MAP && !hasMapKey) return ModCommand.nop()
   if (key != null) {
     val options = owner.metroIdeState().options
-    val currentKeys = analyze(owner) { contributionMapKeyChoices(owner, options) }
-    if (key !in currentKeys) return ModCommand.nop()
+    val currentKey = analyze(owner) { contributionMapKeyChoice(owner, options, key.classId) }
+    if (key != currentKey) return ModCommand.nop()
   }
   val annotationText = buildString {
     append("@dev.zacsweers.metro.").append(edit.kind.annotationName)

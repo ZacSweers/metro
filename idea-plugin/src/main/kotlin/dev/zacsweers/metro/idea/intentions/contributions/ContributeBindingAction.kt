@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.intentions.contributions
 
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.modcommand.ActionContext
 import com.intellij.modcommand.ModCommand
 import com.intellij.modcommand.Presentation
@@ -27,6 +28,13 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
     return Presentation.of(familyName)
   }
 
+  override fun generatePreview(
+    context: ActionContext,
+    element: KtClassOrObject,
+  ): IntentionPreviewInfo {
+    return contributionPickerPreview()
+  }
+
   override fun perform(context: ActionContext, element: KtClassOrObject): ModCommand {
     val candidate = contributionCandidate(element) ?: return ModCommand.nop()
     val expectedText = element.text
@@ -39,8 +47,10 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
           kind == ContributionKind.MAP || candidate.boundTypes.any { !it.hasMapKey }
         }
         .map { kind ->
-          step(element, expectedText, kind.annotationName) { current ->
-            chooseBoundType(context, current, candidate, kind, expectedText)
+          step(element, expectedText, kind.annotationName, hasRemainingChoices = true) {
+            nextContext,
+            current ->
+            chooseBoundType(nextContext, current, candidate, kind, expectedText)
           }
         },
     )
@@ -65,8 +75,8 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
       "Bound type",
       types.map { type ->
         val label = if (labelCounts.getValue(type.label) > 1) type.renderedType else type.label
-        step(owner, expectedText, label) { current ->
-          chooseScope(context, current, candidate, kind, type, expectedText)
+        step(owner, expectedText, label, hasRemainingChoices = true) { nextContext, current ->
+          chooseScope(nextContext, current, candidate, kind, type, expectedText)
         }
       },
     )
@@ -81,12 +91,15 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
     expectedText: String,
   ): ModCommand {
     val scopes = contributionScopes(owner, candidate.existingScope)
+    val requiresKey = kind == ContributionKind.MAP && !candidate.existingMapKey && !type.hasMapKey
     return ModCommand.chooseAction(
       "Contribution scope",
       scopes.map { scope ->
-        step(owner, expectedText, scope.label) { current ->
+        step(owner, expectedText, scope.label, hasRemainingChoices = requiresKey) {
+          nextContext,
+          current ->
           chooseMapKey(
-            context,
+            nextContext,
             current,
             candidate,
             ContributionEdit(kind, type, scope),
@@ -112,8 +125,8 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
     return ModCommand.chooseAction(
       "Map key",
       keys.map { key ->
-        step(owner, expectedText, key.label) { current ->
-          applyContribution(context, current, edit.copy(mapKey = key))
+        step(owner, expectedText, key.label, hasRemainingChoices = false) { nextContext, current ->
+          applyContribution(nextContext, current, edit.copy(mapKey = key))
         }
       },
     )
@@ -123,15 +136,14 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
     owner: KtClassOrObject,
     expectedText: String,
     title: String,
-    next: (KtClassOrObject) -> ModCommand,
+    hasRemainingChoices: Boolean,
+    next: (ActionContext, KtClassOrObject) -> ModCommand,
   ) =
-    ModCommand.psiBasedStep(
+    ContributionPickerStep(
       owner,
+      expectedText,
       title,
-      { current ->
-        if (current.text != expectedText || contributionCandidate(current) == null) ModCommand.nop()
-        else next(current)
-      },
-      { it.nameIdentifier?.textRange ?: it.textRange },
+      hasRemainingChoices,
+      next,
     )
 }

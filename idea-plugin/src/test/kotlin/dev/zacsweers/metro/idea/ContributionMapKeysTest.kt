@@ -7,6 +7,7 @@ import dev.zacsweers.metro.idea.intentions.contributions.ContributionMapKeyChoic
 import dev.zacsweers.metro.idea.intentions.contributions.contributionMapKeyChoices
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -19,17 +20,41 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
     module.addKotlinStdlibLibrary()
   }
 
-  fun testBuiltInKeysHaveNamedEditableArguments() {
+  fun testBuiltInKeysComeFirstAndRespectDefaults() {
     val choices = choices("class Implementation")
     assertEquals(
       listOf(
+        "@dev.zacsweers.metro.ClassKey",
         "@dev.zacsweers.metro.StringKey(value = \"key\")",
-        "@dev.zacsweers.metro.ClassKey(value = test.Implementation::class)",
         "@dev.zacsweers.metro.IntKey(value = 0)",
       ),
       choices.take(3).map { it.annotationText },
     )
-    for (choice in choices.take(3)) assertEquals(listOf("value"), choice.editableArguments)
+    assertEmpty(choices.first().editableArguments)
+    for (choice in choices.drop(1).take(2)) {
+      assertEquals(listOf("value"), choice.editableArguments)
+    }
+  }
+
+  fun testLegacyClassKeyKeepsItsRequiredArgument() {
+    // Older runtimes require an explicit value and have no implicit-key default contract.
+    myFixture.addFileToProject(
+      "dev/zacsweers/metro/ClassKey.kt",
+      """
+      package dev.zacsweers.metro
+      @MapKey
+      @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+      annotation class ClassKey(val value: kotlin.reflect.KClass<*>)
+      """
+        .trimIndent(),
+    )
+    val key = choices("class Implementation").first()
+    assertEquals(ClassId.fromString("dev/zacsweers/metro/ClassKey"), key.classId)
+    assertEquals(
+      "@dev.zacsweers.metro.ClassKey(value = test.Implementation::class)",
+      key.annotationText,
+    )
+    assertEquals(listOf("value"), key.editableArguments)
   }
 
   fun testCustomRequiredArgumentsKeepDefaultsOmitted() {
@@ -135,6 +160,72 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
     }
   }
 
+  fun testModernClassKeyUsesItsImplicitDefaultAndIsFirst() {
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions("custom-map-key" to "libtest/LibMapKeyContract")
+      myFixture.addFileToProject(
+        "dev/zacsweers/metro/ClassKey.kt",
+        """
+        package dev.zacsweers.metro
+        @libtest.LibMapKeyContract(implicitClassKey = true)
+        @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+        annotation class ClassKey(val value: kotlin.reflect.KClass<*> = Nothing::class)
+        """
+          .trimIndent(),
+      )
+      val key = choices("class Implementation").first()
+      assertEquals(ClassId.fromString("dev/zacsweers/metro/ClassKey"), key.classId)
+      assertEquals("@dev.zacsweers.metro.ClassKey", key.annotationText)
+      assertEmpty(key.editableArguments)
+    }
+  }
+
+  fun testSourceImplicitCustomKeyUsesItsDefault() {
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions("custom-map-key" to "libtest/LibMapKeyContract")
+      val key =
+        choices(
+            """
+        @libtest.LibMapKeyContract(implicitClassKey = true)
+        annotation class ImplicitKey(val value: kotlin.reflect.KClass<*> = Nothing::class)
+        class Implementation
+        """
+          )
+          .single { it.classId == ClassId.fromString("test/ImplicitKey") }
+      assertEquals("@test.ImplicitKey", key.annotationText)
+      assertEmpty(key.editableArguments)
+    }
+  }
+
+  fun testBinaryImplicitCustomKeyUsesMetadataContract() {
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions("custom-map-key" to "libtest/LibMapKeyContract")
+      val key =
+        choices("class Implementation").single {
+          it.classId == ClassId.fromString("libtest/LibImplicitClassKey")
+        }
+      assertEquals("@libtest.LibImplicitClassKey", key.annotationText)
+      assertEmpty(key.editableArguments)
+    }
+  }
+
+  fun testInvalidSourceImplicitDefaultsAreOmitted() {
+    module.withMetroLibFixtureLibrary {
+      project.setMetroOptions("custom-map-key" to "libtest/LibMapKeyContract")
+      val keys =
+        choices(
+          """
+        @libtest.LibMapKeyContract(implicitClassKey = true)
+        annotation class WrongDefault(val value: kotlin.reflect.KClass<*> = String::class)
+        @libtest.LibMapKeyContract(implicitClassKey = true)
+        annotation class MissingDefault(val value: kotlin.reflect.KClass<*>)
+        class Implementation
+        """
+        )
+      assertFalse(keys.any { it.classId.packageFqName.asString() == "test" })
+    }
+  }
+
   fun testNestedMapKeysHaveDistinctLabels() {
     val keys =
       choices(
@@ -156,7 +247,14 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
       """
       )
     assertEquals(
-      listOf(ContributionMapKeyChoice("Use existing @EntryKey", "", emptyList())),
+      listOf(
+        ContributionMapKeyChoice(
+          ClassId.fromString("test/EntryKey"),
+          "Use existing @EntryKey",
+          "",
+          emptyList(),
+        )
+      ),
       choices,
     )
   }
