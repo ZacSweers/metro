@@ -48,7 +48,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     consumer: ConsumerEntry,
   ): List<KaBinding> {
     val view = session.resolutionViewFor(consumer.sourceIdentity, consumer.pointer)
-    return visibleBindingsFor(consumer, view?.module, view?.resolutionScope)
+    return visibleBindingsFor(consumer, view?.module, view?.resolutionScope).filterNot {
+      it.isValidationOnlyAssistedTarget()
+    }
   }
 
   internal fun bindingsFor(
@@ -59,7 +61,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     val plan = editorPlan(session, queryContext)
     val visible =
       visibleBindingsFor(consumer, queryContext.graphModule, queryContext.resolutionScope)
-    return applyReplaces(visible.filter { isBindingInContext(it, plan) })
+    return filterBindingsInContext(consumer.contextKey, visible, plan)
   }
 
   internal fun resolveConsumer(
@@ -76,7 +78,10 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     consumer: ConsumerEntry,
   ): ConsumerResolution {
     val consumerView = session.resolutionViewFor(consumer.sourceIdentity, consumer.pointer)
-    val global = visibleBindingsFor(consumer, consumerView?.module, consumerView?.resolutionScope)
+    val global =
+      visibleBindingsFor(consumer, consumerView?.module, consumerView?.resolutionScope).filterNot {
+        it.isValidationOnlyAssistedTarget()
+      }
     if (graphs.isEmpty()) {
       return ConsumerResolution(global, emptyMap(), hasGraphs = false, index = this)
     }
@@ -96,7 +101,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
             queryContext.resolutionScope,
           )
         }
-      perContext[context] = filterBindingsInContext(visible, plan)
+      perContext[context] = filterBindingsInContext(consumer.contextKey, visible, plan)
     }
     return ConsumerResolution(global, perContext, hasGraphs = true, index = this)
   }
@@ -146,15 +151,18 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   /**
-   * Filters precomputed [visible] candidates to those live in [queryContext]'s graph. Consumer-site
-   * membership is checked separately so applicable contexts remain represented when this returns an
-   * empty binding list.
+   * Filters [visible] candidates through graph membership and selects their binding tier.
+   * Consumer-site membership is checked separately so applicable contexts remain represented when
+   * this returns an empty binding list.
    */
   private fun filterBindingsInContext(
+    contextKey: KaContextualTypeKey,
     visible: List<KaBinding>,
     plan: GraphQueryPlan,
   ): List<KaBinding> {
-    return applyReplaces(visible.filter { isBindingInContext(it, plan) })
+    val candidates = applyReplaces(visible.filter { isBindingInContext(it, plan) })
+    val selection = selectBindingsForKey(contextKey, plan, candidates) ?: return emptyList()
+    return selection.bindings.filterNot { it.isValidationOnlyAssistedTarget() }
   }
 
   internal fun bindingsForKey(
@@ -1216,15 +1224,8 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   }
 
   private fun candidateBindingsFor(consumer: ConsumerEntry): List<KaBinding> {
-    // Assisted targets are kept in the index for graph diagnostics, but are never ordinary
-    // injectable bindings for editor resolution or navigation.
     val direct =
-      lookups.bindingsByKey[consumer.key]
-        .orEmpty()
-        .withoutDuplicateAssistedFactories(consumer.key)
-        .filterNot {
-          it.isValidationOnlyAssistedTarget()
-        }
+      lookups.bindingsByKey[consumer.key].orEmpty().withoutDuplicateAssistedFactories(consumer.key)
     val contributions =
       consumer.multibindingId?.let { lookups.contributionsByMultibindingId[it] }.orEmpty()
     return direct + contributions

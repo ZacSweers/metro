@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.graph
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.graph.BindingTier
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -19,6 +20,7 @@ import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
+import dev.zacsweers.metro.idea.model.selectBindingsForKey
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -114,82 +116,24 @@ internal class KaBindingLookup(
     syntheticElements[typeKey]?.let {
       return setOf(delegateToParentIfScoped(it))
     }
-    queryPlan.generatedBindings.instance(typeKey)?.let {
-      return setOf(it)
-    }
-
-    val candidates = index.bindingsForKey(typeKey, queryPlan)
-    val explicit = mutableListOf<KaBinding>()
-    val implicit = mutableListOf<KaBinding>()
-    val optional = mutableListOf<KaBinding>()
-    val multibindingDeclarations = mutableListOf<KaBinding.Multibinding>()
-    for (candidate in candidates) {
-      when (candidate) {
-        is KaBinding.Multibinding -> multibindingDeclarations += candidate
-        // Class-derived bindings the compiler discovers through class-based lookup.
-        is KaBinding.ConstructorInjected,
-        is KaBinding.AssistedFactory -> implicit += candidate
-        // @BindsOptionalOf declarations resolve on their own tier in the compiler.
-        is KaBinding.CustomWrapper -> optional += candidate
-        // Everything else maps to the compiler's explicit binding cache, like provides,
-        // aliases, graph factory inputs, includes, and extensions.
-        else -> explicit += candidate
-      }
-    }
-
-    // An unqualified assisted type can only be created through its factory. The compiler rejects
-    // direct requests even when an explicit provider exists, so resolve to the assisted class
-    // first and let validation report it.
-    if (typeKey.qualifier == null) {
-      implicit
-        .filterIsInstance<KaBinding.ConstructorInjected>()
-        .firstOrNull { it.isAssisted }
-        ?.let {
-          return setOf(it)
-        }
-    }
-
-    // Explicit bindings win over ordinary inject constructors and multibinding synthesis,
-    // matching the compiler's cache-first lookup. Only same-tier collisions are duplicates.
-    if (explicit.isNotEmpty()) {
-      if (explicit.size > 1) {
-        onDuplicate(typeKey, explicit)
-      }
-      return setOf(delegateToParentIfScoped(explicit.first()))
-    }
-
-    // The compiler inserts graph-supertype aliases and extension factories only after explicit
-    // bindings. Keep them on the same tier here so an authored provider or @Binds can override one.
-    queryPlan.generatedBindings.forKey(typeKey)?.let {
-      return setOf(it)
-    }
-
-    val multibindingId = contextKey.multibindingId()
-    if (multibindingId != null) {
-      val contributions = index.multibindingContributions(multibindingId, queryPlan)
-      if (contributions.isNotEmpty() || multibindingDeclarations.isNotEmpty()) {
-        return synthesizeMultibinding(
+    val selection = index.selectBindingsForKey(contextKey, queryPlan) ?: return emptySet()
+    return when (selection.tier) {
+      BindingTier.MULTIBINDING ->
+        synthesizeMultibinding(
           contextKey,
-          multibindingId,
-          contributions,
-          multibindingDeclarations,
+          checkNotNull(contextKey.multibindingId()),
+          selection.multibindingContributions,
+          selection.multibindingDeclarations,
         )
+      BindingTier.EXPLICIT,
+      BindingTier.IMPLICIT -> {
+        // Only collisions within the selected tier are duplicates.
+        if (selection.bindings.size > 1) onDuplicate(typeKey, selection.bindings)
+        setOf(delegateToParentIfScoped(selection.bindings.first()))
       }
-    }
-
-    // The compiler consumes the first optional declaration and never treats repeats as
-    // duplicates, so they resolve after multibindings on their own tier.
-    optional.firstOrNull()?.let {
-      return setOf(it)
-    }
-
-    return when {
-      implicit.isEmpty() -> emptySet()
-      implicit.size == 1 -> setOf(delegateToParentIfScoped(implicit.single()))
-      else -> {
-        onDuplicate(typeKey, implicit)
-        setOf(delegateToParentIfScoped(implicit.first()))
-      }
+      BindingTier.ASSISTED_TARGET,
+      BindingTier.GENERATED_GRAPH,
+      BindingTier.OPTIONAL -> setOf(selection.bindings.first())
     }
   }
 

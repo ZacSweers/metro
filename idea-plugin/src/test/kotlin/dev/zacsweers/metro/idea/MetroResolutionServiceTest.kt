@@ -14,6 +14,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.WaitFor
 import com.intellij.util.ui.UIUtil
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
@@ -4170,6 +4171,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         @BindingContainer
         interface ServiceBindings {
           @BindsOptionalOf fun optionalService(): Service
+          @BindsOptionalOf fun anotherOptionalService(): Service
         }
 
         @DependencyGraph(bindingContainers = [ServiceBindings::class])
@@ -4192,13 +4194,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     val consumer = index.consumerEntryAt(declarations.property("service"))!!
     assertEquals("java.util.Optional<test.Service>", consumer.key.renderedType)
-    assertEquals(listOf("optional binding"), index.bindingsFor(consumer).map { it.label })
+    assertEquals(
+      listOf("optional binding", "optional binding"),
+      index.bindingsFor(consumer).map { it.label },
+    )
     val context = index.contextsFor(index.graphEntryAt(declarations.klass("AppGraph"))!!).single()
     val queryContext = index.queryContext(context)!!
-    assertEquals(
-      listOf("optional binding"),
-      index.bindingsFor(consumer, queryContext).map { it.label },
-    )
+    assertEquals(listOf(optionalBinding), index.bindingsFor(consumer, queryContext))
   }
 
   fun testBindsOptionalOfIgnoredWithoutDaggerInterop() {
@@ -4685,6 +4687,168 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         validationService.validate(file, index.contextsFor(graph).single()).requireCompleted()
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
     }
+  }
+
+  fun testExplicitProviderIsTheOnlyEditorTargetForAnInjectedClass() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Service
+
+        @DependencyGraph
+        interface AppGraph {
+          val service: Service
+          @Provides fun provideService(): Service = Service()
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.property("service"))!!
+    val provider = index.bindingEntriesAt(declarations.function("provideService")).single()
+    val constructor = index.bindingEntriesAt(declarations.klass("Service")).single()
+    val context = index.contextsFor(index.graphs.single()).single()
+
+    assertEquals(listOf(provider), index.resolveConsumer(consumer).uniformBindings)
+    assertEquals(listOf(provider), index.bindingsFor(consumer, index.queryContext(context)!!))
+    assertTrue(index.consumersFor(listOf(constructor)).isEmpty())
+    assertEquals(listOf(consumer), index.consumersFor(listOf(provider)))
+  }
+
+  fun testExplicitProviderDoesNotMakeAssistedTargetNavigable() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @AssistedInject class Widget(@Assisted val name: String)
+
+        @DependencyGraph
+        interface AppGraph {
+          val widget: Widget
+          @Provides fun provideWidget(): Widget = Widget("manual")
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("widget"))!!
+
+    assertTrue(index.resolveConsumer(consumer).uniformBindings.orEmpty().isEmpty())
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(index.graphs.single()).single())
+        .requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.INVALID_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testExplicitCollectionProviderHidesUnusedContributorsFromEditorQueries() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val names: Set<String>
+          @Provides fun provideNames(): Set<String> = setOf("explicit")
+          @Provides @IntoSet fun contributeName(): String = "contributed"
+          @Multibinds fun declareNames(): Set<String>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.property("names"))!!
+    val provider = index.bindingEntriesAt(declarations.function("provideNames")).single()
+    val contribution = index.bindingEntriesAt(declarations.function("contributeName")).single()
+    val declaration = index.bindingEntriesAt(declarations.function("declareNames")).single()
+
+    assertEquals(listOf(provider), index.resolveConsumer(consumer).uniformBindings)
+    assertTrue(index.consumersFor(listOf(contribution, declaration)).isEmpty())
+    assertEquals(listOf(consumer), index.consumersFor(listOf(provider)))
+
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(index.graphs.single()).single())
+        .requireCompleted()
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+  }
+
+  fun testCollectionNavigationShowsContributorsWithoutItsDeclaration() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val names: Set<String>
+          @Provides @IntoSet fun contributeName(): String = "contributed"
+          @Multibinds fun declareNames(): Set<String>
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.property("names"))!!
+    val contribution = index.bindingEntriesAt(declarations.function("contributeName")).single()
+
+    assertEquals(listOf(contribution), index.resolveConsumer(consumer).uniformBindings)
+  }
+
+  fun testConflictingExplicitProvidersRemainVisibleToEditorAndValidation() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Service
+
+        @DependencyGraph
+        interface AppGraph {
+          val service: Service
+          @Provides fun firstService(): Service = Service()
+          @Provides fun secondService(): Service = Service()
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.property("service"))!!
+
+    assertEquals(
+      setOf("firstService", "secondService"),
+      index
+        .resolveConsumer(consumer)
+        .uniformBindings
+        .orEmpty()
+        .map {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        }
+        .toSet(),
+    )
+    val result =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, index.contextsFor(index.graphs.single()).single())
+        .requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.DUPLICATE_BINDING), result.diagnostics.map { it.id })
+  }
+
+  fun testGeneratedGraphAliasIsAnEditorTarget() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface EntryPoint
+        @Inject class Client(val entryPoint: EntryPoint)
+
+        @DependencyGraph
+        interface AppGraph : EntryPoint {
+          val client: Client
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val consumer = index.consumerEntryAt(declarations.parameter("entryPoint"))!!
+    val selected = index.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+
+    assertTrue(selected is KaBinding.Alias)
+    assertSame(declarations.klass("AppGraph"), selected.pointer.element)
   }
 
   fun testBindingContainersGateBindingsPerGraph() {
