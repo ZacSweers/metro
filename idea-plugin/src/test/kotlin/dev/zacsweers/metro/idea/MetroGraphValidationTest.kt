@@ -4977,7 +4977,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       PlatformTestUtil.waitForFuture(completed, 30_000)
       UIUtil.dispatchAllInvocationEvents()
 
-      assertEquals(2, snapshots.size)
+      // Finishing the child may publish another update before the removal reaches the EDT.
+      assertEquals(1, snapshots.count { it.isEmpty() })
       assertTrue(snapshots.last().isEmpty())
     } finally {
       releasePublication.countDown()
@@ -5092,7 +5093,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       validationService.validate(file, context)
       fail("Expected stale graph context validation to be cancelled")
     } catch (e: CancellationException) {
-      assertEquals("Metro graph context is no longer current", e.message)
+      assertEquals("Metro graph context is no longer available", e.message)
     }
 
     try {

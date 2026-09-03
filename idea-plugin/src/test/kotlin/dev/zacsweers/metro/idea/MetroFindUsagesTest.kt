@@ -5,6 +5,8 @@ package dev.zacsweers.metro.idea
 import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
@@ -254,14 +256,20 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
     val collected = mutableListOf<Usage>()
 
     val search = CompletableFuture.runAsync {
-      MetroUsageSearcher()
-        .processElementUsages(
-          target,
-          Processor { usage ->
-            collected += usage
-            true
+      ProgressManager.getInstance()
+        .runProcess(
+          {
+            MetroUsageSearcher()
+              .processElementUsages(
+                target,
+                Processor { usage ->
+                  collected += usage
+                  true
+                },
+                options,
+              )
           },
-          options,
+          EmptyProgressIndicator(),
         )
     }
     PlatformTestUtil.waitForFuture(search, 30_000)

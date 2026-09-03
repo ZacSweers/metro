@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.types.Variance
@@ -275,7 +276,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test.Analytics", setDep.multibindingId())
   }
 
-  fun testTypeSnapshotsRestoreStarsVarianceAndNullability() {
+  fun testTypeSnapshotsRestoreStarsVarianceAndNullability() = allowAnalysisOnEdt {
     module.addKotlinStdlibLibrary()
     val file =
       myFixture.configureMetroFile(
