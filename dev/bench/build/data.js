@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788414507087,
+  "lastUpdate": 1788415004300,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22456,6 +22456,62 @@ window.BENCHMARK_DATA = {
             "value": 19322.644,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -7.15%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fac15209~1",
+          "message": "[before] Small doc fixes (#2760)",
+          "timestamp": "2026-09-03T04:57:13Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fac152097a6fc53a2d31b66068df4060e1e460b1"
+        },
+        "date": 1788415004300,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19322.682,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "fac152097a6fc53a2d31b66068df4060e1e460b1",
+          "message": "[after] Small doc fixes (#2760)",
+          "timestamp": "2026-09-03T04:57:13Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/fac152097a6fc53a2d31b66068df4060e1e460b1"
+        },
+        "date": 1788415004301,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19498.552,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +0.91%"
           }
         ]
       }
