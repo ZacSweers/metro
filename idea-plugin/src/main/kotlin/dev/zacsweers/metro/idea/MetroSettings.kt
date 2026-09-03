@@ -27,8 +27,8 @@ class MetroSettingsState : BaseState() {
   /** Shows binding navigation in the editor without disabling graph browsing or validation. */
   var enableBindingResolution by property(true)
 
-  /** Keeps graph and binding data current as project code changes. */
-  var automaticallyRefreshGraphData by property(true)
+  /** Opts into refreshing graph and binding data as project code changes. */
+  var automaticallyRefreshGraphData by property(false)
 
   /** Validates the pinned graph after edits while automatic graph refresh is enabled. */
   var automaticallyValidatePinnedGraph by property(false)
@@ -108,10 +108,14 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
 
   override fun apply() {
     super.apply()
-    // Apply changes to library resolution and automatic graph refresh.
-    project.service<MetroResolutionService>().settingsChanged()
-    project.service<MetroPinnedGraphValidationService>().requestValidation()
-    // Apply editor display settings without waiting for a source edit.
-    project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
+    applyMetroSettings(project)
   }
+}
+
+/** Applies settings from the preferences panel and the tool-window refresh selector. */
+internal fun applyMetroSettings(project: Project) {
+  project.service<MetroResolutionService>().settingsChanged()
+  project.service<MetroPinnedGraphValidationService>().requestValidation()
+  // Apply editor display settings without waiting for a source edit.
+  project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
 }

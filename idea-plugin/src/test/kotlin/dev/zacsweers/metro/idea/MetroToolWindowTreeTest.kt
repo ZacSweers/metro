@@ -45,6 +45,8 @@ import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -55,6 +57,7 @@ import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.GraphContextSelectorAction
+import dev.zacsweers.metro.idea.toolwindow.GraphRefreshModeAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
 import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
 import dev.zacsweers.metro.idea.toolwindow.MetroDiagnosticDetailsPanel
@@ -84,6 +87,7 @@ import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.concurrency.AsyncPromise
@@ -99,6 +103,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    project.enableImmediateAutomaticRefresh()
     project.service<MetroResolutionService>().resetGraphBrowserActivation()
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
@@ -902,7 +907,17 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
   }
 
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
-    val panel = IndexBuildStatusPanel()
+    var refreshes = 0
+    val panel = IndexBuildStatusPanel { refreshes++ }
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.QUEUED), showingPreviousData = true)
+    assertTrue(panel.isVisible)
+    assertFalse(panel.progressBar.isVisible)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals("Metro graph data may be stale. Refresh is queued", panel.messageLabel.text)
+    assertTrue(panel.refreshLink.isVisible)
+    panel.refreshLink.doClick()
+    assertEquals(1, refreshes)
 
     panel.show(
       IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10, reused = 2, rebuilt = 1)
@@ -916,6 +931,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertFalse(panel.progressBar.isIndeterminate)
     assertEquals(4, panel.progressBar.value)
     assertEquals(10, panel.progressBar.maximum)
+    assertFalse(panel.refreshLink.isVisible)
 
     panel.show(
       IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA),
@@ -927,7 +943,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals("Showing previous graph data", panel.retainedDataLabel.text)
 
     panel.showWaitingForIdeIndexing(showingPreviousData = true)
-    assertTrue(panel.progressBar.isIndeterminate)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertFalse(panel.progressBar.isVisible)
     assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
     assertTrue(panel.retainedDataLabel.isVisible)
 
@@ -941,13 +958,16 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertTrue(panel.isVisible)
     assertFalse(panel.progressBar.isVisible)
     assertEquals(
-      "Metro graph data may be stale. Click Refresh to update",
+      "Metro graph data may be stale",
       panel.messageLabel.text,
     )
+    assertEquals("Refresh", panel.refreshLink.text)
+    assertTrue(panel.refreshLink.isVisible)
 
     panel.clear()
     assertFalse(panel.isVisible)
     assertFalse(panel.retainedDataLabel.isVisible)
+    assertFalse(panel.refreshLink.isVisible)
   }
 
   fun testGraphBrowserKeepsRowsWhileAutomaticRefreshIsPending() {
@@ -1102,17 +1122,152 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals("Refresh graphs and bindings", event.presentation.description)
   }
 
-  fun testToolWindowWaitsForInitialGraphLoad() {
-    configure()
+  fun testRefreshModeSelectorPersistsChoicesAndCancelsPinnedValidation() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     val service = project.service<MetroResolutionService>()
+    val index = service.awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val settings = MetroSettings.getInstance(project).state
+    val previousValidation = settings.automaticallyValidatePinnedGraph
+    val pinService = project.service<GraphContextPinService>()
+    val automaticValidation = project.service<MetroPinnedGraphValidationService>()
+    var changes = 0
+    val action = GraphRefreshModeAction(project) { changes++ }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+    val options = action.createPopupActionGroup(JPanel()) { null }.getChildren(null)
+    assertEquals(listOf("Manual", "Automatic"), options.map { it.templatePresentation.text })
+    val manual = options[0] as ToggleAction
+    val automatic = options[1] as ToggleAction
+    try {
+      settings.automaticallyValidatePinnedGraph = true
+      pinService.pin(context.path)
+      val pending = checkNotNull(automaticValidation.requestValidation())
+
+      manual.setSelected(event, true)
+      assertFalse(settings.automaticallyRefreshGraphData)
+      assertTrue(pending.isCancelled)
+      assertTrue(manual.isSelected(event))
+      assertFalse(automatic.isSelected(event))
+      action.update(event)
+      assertEquals("Manual", event.presentation.text)
+      assertEquals(1, changes)
+      manual.setSelected(event, true)
+      assertEquals(1, changes)
+
+      automatic.setSelected(event, true)
+      assertTrue(settings.automaticallyRefreshGraphData)
+      action.update(event)
+      assertEquals("Automatic", event.presentation.text)
+      assertEquals(2, changes)
+    } finally {
+      pinService.clear()
+      settings.automaticallyValidatePinnedGraph = previousValidation
+      project.enableImmediateAutomaticRefresh()
+      automaticValidation.requestValidation()
+    }
+  }
+
+  fun testManualIdleToolWindowDoesNotShowMetroIndexingInDumbMode() {
+    configure()
+    val settings = MetroSettings.getInstance(project).state
+    settings.automaticallyRefreshGraphData = false
+    project.service<MetroResolutionService>().settingsChanged()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        val status = toolWindowStatus(panel)
+        assertEquals("Metro graphs have not been loaded", status.messageLabel.text)
+        assertFalse(status.progressBar.isVisible)
+        assertFalse(status.progressBar.isIndeterminate)
+        assertTrue(status.refreshLink.isVisible)
+      }
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
+
+  fun testQueuedAutomaticRefreshRetainsGraphsAndCanBeRefreshedImmediately() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(file)
+    service.activateGraphBrowser()
+    service.setAutomaticRefreshWindowForTest(
+      AutomaticRefreshWindow(idleMillis = 60_000, intervalMillis = 0, nowMillis = { 0 })
+    )
+    val panel = MetroToolWindowPanel(project)
+    try {
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val documentManager = PsiDocumentManager.getInstance(project)
+      val document = checkNotNull(documentManager.getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      }
+      documentManager.commitAllDocuments()
+      val status = toolWindowStatus(panel)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text == "Metro graph data may be stale. Refresh is queued"
+          }
+        }
+        .assertCompleted("Queued refresh should mark the retained graph data as possibly stale")
+      assertFalse(status.progressBar.isVisible)
+      assertFalse(status.progressBar.isIndeterminate)
+      assertTrue(status.refreshLink.isVisible)
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+
+      val refreshed = CompletableFuture<Unit>()
+      service.addIndexListener(panel) {
+        if (
+          !service.isGraphDataRefreshRequired &&
+            service.indexForToolWindow(module).graphs.any { it.name == "AddedGraph" }
+        ) {
+          refreshed.complete(Unit)
+        }
+      }
+      status.refreshLink.doClick()
+      PlatformTestUtil.waitForFuture(refreshed, 30_000)
+      assertEquals(
+        listOf("AddedGraph", "AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
+
+  fun testToolWindowWaitsForInitialGraphLoad() {
+    val service = project.service<MetroResolutionService>()
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    configure()
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
     val panel = MetroToolWindowPanel(project)
     try {
       val status = toolWindowStatus(panel)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text == "Metro graphs have not been loaded"
+          }
+        }
+        .assertCompleted("Manual mode should settle without loading the graph browser")
       assertFalse(service.isGraphBrowserActivated)
       assertTrue(status.isVisible)
       assertEquals("Metro graphs have not been loaded", status.messageLabel.text)
+      assertFalse(status.progressBar.isVisible)
     } finally {
       Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
     }
   }
 
@@ -1627,9 +1782,18 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       panel = MetroToolWindowPanel(project)
       assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+      checkNotNull(panel).loadOrRefreshAction.refresh()
       val status = toolWindowStatus(checkNotNull(panel))
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text == "Waiting for IDE indexing to finish"
+          }
+        }
+        .assertCompleted("The requested refresh should wait for smart mode")
       assertTrue(status.isVisible)
       assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
+      assertFalse(status.progressBar.isVisible)
     }
 
     val tree = toolWindowTree(checkNotNull(panel))

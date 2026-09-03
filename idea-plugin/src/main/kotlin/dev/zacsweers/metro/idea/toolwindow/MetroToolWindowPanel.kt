@@ -79,7 +79,9 @@ internal class MetroToolWindowPanel(
   private val validationService = project.service<MetroGraphValidationService>()
   private val validationRequestService = project.service<MetroValidationRequestService>()
   private val pinService = project.service<GraphContextPinService>()
-  private val indexBuildStatus = IndexBuildStatusPanel()
+  private val indexBuildStatus = IndexBuildStatusPanel {
+    if (!disposed && !project.isDisposed) loadOrRefreshAction.refresh()
+  }
   private val validationStatus = ValidationStatusPanel()
   private var indexBuildProgress: IndexBuildProgress? = null
   private var validationProgress: List<GraphValidationProgress> = emptyList()
@@ -114,6 +116,11 @@ internal class MetroToolWindowPanel(
     }
   internal val graphContextSelectorAction =
     GraphContextSelectorAction(pinService, treeStructure::contextOptions)
+  internal val graphRefreshModeAction =
+    GraphRefreshModeAction(project) {
+      updateIndexBuildStatus()
+      actionToolbar.updateActionsImmediately()
+    }
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
   internal val treeNavigation =
@@ -188,8 +195,8 @@ internal class MetroToolWindowPanel(
       }
     val actionGroup =
       DefaultActionGroup(
-        // Loading needs stub indexes, so the action waits for smart mode.
         loadOrRefreshAction,
+        graphRefreshModeAction,
         graphContextSelectorAction,
         pinSelectedGraphAction,
         ValidateSelectedGraphAction(
@@ -224,16 +231,20 @@ internal class MetroToolWindowPanel(
   private fun updateIndexBuildStatus() {
     if (disposed || project.isDisposed) return
     val showingPreviousData = resolutionService.hasGraphBrowserData
-    if (DumbService.isDumb(project)) {
-      indexBuildStatus.showWaitingForIdeIndexing(showingPreviousData)
-    } else {
-      val progress = indexBuildProgress
-      when {
-        progress != null -> indexBuildStatus.show(progress, showingPreviousData)
-        !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
-        resolutionService.isManualGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
-        else -> indexBuildStatus.clear()
+    val progress = indexBuildProgress
+    when {
+      progress != null -> {
+        if (DumbService.isDumb(project)) {
+          indexBuildStatus.showWaitingForIdeIndexing(showingPreviousData)
+        } else {
+          indexBuildStatus.show(progress, showingPreviousData)
+        }
       }
+      !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
+      resolutionService.isAutomaticGraphDataRefreshPending ->
+        indexBuildStatus.showRefreshQueued(showingPreviousData)
+      resolutionService.isGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
+      else -> indexBuildStatus.clear()
     }
   }
 
@@ -653,8 +664,8 @@ internal class PinSelectedGraphAction(
 
 internal class LoadOrRefreshGraphsAction(
   private val resolutionService: MetroResolutionService,
-  private val refresh: () -> Unit,
-) : AnAction("Load", "Load graphs and bindings", AllIcons.Actions.Refresh) {
+  private val onRefresh: () -> Unit,
+) : AnAction("Load", "Load graphs and bindings", AllIcons.Actions.Refresh), DumbAware {
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
   override fun update(e: AnActionEvent) {
@@ -665,7 +676,12 @@ internal class LoadOrRefreshGraphsAction(
   }
 
   override fun actionPerformed(e: AnActionEvent) {
-    resolutionService.refreshGraphData()
     refresh()
+  }
+
+  /** Both toolbar and status links enqueue the same smart-mode refresh request. */
+  fun refresh() {
+    resolutionService.refreshGraphData()
+    onRefresh()
   }
 }

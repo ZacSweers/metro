@@ -2,16 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.toolwindow
 
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import java.awt.BorderLayout
 import javax.swing.JPanel
 import javax.swing.JProgressBar
 
-/** Keeps the previous graph data's status visible while a background refresh is running. */
-internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
+/** Distinguishes retained, queued, and actively rebuilding graph data without hiding the tree. */
+internal class IndexBuildStatusPanel(onRefresh: () -> Unit) :
+  JPanel(BorderLayout(0, JBUI.scale(4))) {
   internal val messageLabel = JBLabel()
   internal val retainedDataLabel =
     JBLabel("Showing previous graph data").apply {
@@ -19,20 +22,32 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
       isVisible = false
     }
   internal val progressBar = JProgressBar()
+  internal val refreshLink = ActionLink("Refresh") { onRefresh() }
 
   init {
     isOpaque = false
     isVisible = false
     border = JBUI.Borders.empty(6, 8)
     progressBar.isStringPainted = false
-    add(messageLabel, BorderLayout.NORTH)
+    val header =
+      JPanel(BorderLayout(JBUI.scale(8), 0)).apply {
+        isOpaque = false
+        add(messageLabel, BorderLayout.CENTER)
+        add(refreshLink, BorderLayout.EAST)
+      }
+    add(header, BorderLayout.NORTH)
     add(retainedDataLabel, BorderLayout.CENTER)
     add(progressBar, BorderLayout.SOUTH)
   }
 
   fun show(progress: IndexBuildProgress, showingPreviousData: Boolean = false) {
+    if (progress.phase == IndexBuildPhase.QUEUED) {
+      showRefreshQueued(showingPreviousData)
+      return
+    }
     messageLabel.text = progress.message
     retainedDataLabel.isVisible = showingPreviousData
+    refreshLink.isVisible = false
     progressBar.isVisible = true
     val total = progress.total
     if (total != null && total > 0) {
@@ -47,24 +62,33 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
   }
 
   fun showWaitingForIdeIndexing(showingPreviousData: Boolean = false) {
-    messageLabel.text = "Waiting for IDE indexing to finish"
-    retainedDataLabel.isVisible = showingPreviousData
-    progressBar.isVisible = true
-    progressBar.isIndeterminate = true
-    isVisible = true
+    showIdle("Waiting for IDE indexing to finish", showingPreviousData)
+  }
+
+  fun showRefreshQueued(showingPreviousData: Boolean = false) {
+    val message =
+      if (showingPreviousData) "Metro graph data may be stale. Refresh is queued"
+      else "Metro graph refresh is queued"
+    showIdle(message, showingPreviousData)
   }
 
   fun showNotLoaded() {
-    messageLabel.text = "Metro graphs have not been loaded"
-    retainedDataLabel.isVisible = false
-    progressBar.isVisible = false
-    progressBar.isIndeterminate = false
-    isVisible = true
+    showIdle("Metro graphs have not been loaded", actionText = "Load")
   }
 
   fun showRefreshRequired() {
-    messageLabel.text = "Metro graph data may be stale. Click Refresh to update"
-    retainedDataLabel.isVisible = false
+    showIdle("Metro graph data may be stale")
+  }
+
+  private fun showIdle(
+    message: String,
+    showingPreviousData: Boolean = false,
+    actionText: String = "Refresh",
+  ) {
+    messageLabel.text = message
+    retainedDataLabel.isVisible = showingPreviousData
+    refreshLink.text = actionText
+    refreshLink.isVisible = true
     progressBar.isVisible = false
     progressBar.isIndeterminate = false
     isVisible = true
@@ -73,6 +97,8 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
   fun clear() {
     isVisible = false
     retainedDataLabel.isVisible = false
+    refreshLink.isVisible = false
+    progressBar.isVisible = false
     progressBar.isIndeterminate = false
   }
 }
