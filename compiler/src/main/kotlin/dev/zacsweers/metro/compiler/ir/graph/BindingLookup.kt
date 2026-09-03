@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.getOrInit
 import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.compiler.graph.selectBinding
 import dev.zacsweers.metro.compiler.graph.toText
 import dev.zacsweers.metro.compiler.graph.toTraceSection
@@ -31,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.declarationMirrorFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.graph.expressions.IrOptionalExpressionGenerator
 import dev.zacsweers.metro.compiler.ir.graph.expressions.optionalType
+import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.mapKeyType
 import dev.zacsweers.metro.compiler.ir.padForConsole
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
@@ -72,6 +74,7 @@ internal class BindingLookup(
   private val findMemberInjectors: (IrClass) -> List<MemberInjectClass>,
   private val parentContext: ParentContextReader?,
   private val bindingLookupCache: BindingLookupCache,
+  private val decisionCapture: BindingDecisionCapture? = null,
 ) {
 
   // Single cache for all bindings, storing lists to track duplicates naturally
@@ -649,6 +652,12 @@ internal class BindingLookup(
                   }
                 if (!originallyWrapped) {
                   skippedDirectMapRequests[key] = contextKey
+                  decisionCapture?.rejected(
+                    contextKey,
+                    stack,
+                    binding,
+                    BindingReason.INCOMPATIBLE_MAP_VALUE,
+                  )
                   return@let // Fall through to missing binding
                 }
               }
@@ -667,30 +676,47 @@ internal class BindingLookup(
                 scope != null && key !in locallyDeclaredKeys && parentContext?.contains(key) == true
               ) {
                 val token = parentContext.mark(key, scope)
+                decisionCapture?.selected(
+                  contextKey,
+                  stack,
+                  binding,
+                  conflicts = duplicateBindings[key],
+                  ownerGraph = token!!.ownerGraphKey,
+                )
                 return@registered setOf(createParentGraphDependency(key, token!!))
               }
+              decisionCapture?.selected(contextKey, stack, binding, duplicateBindings[key])
               return@registered setOf(binding)
             }
 
             // Check for lazy parent keys
             lazyParentKeys[key]?.let { lazyBinding ->
-              return@registered setOf(lazyBinding.value)
+              val binding = lazyBinding.value
+              decisionCapture?.selected(contextKey, stack, binding)
+              return@registered setOf(binding)
             }
             null
           },
         multibinding = {
           // Check for multibindings (Set<T> or Map<K, V> with contributions)
-          getOrCreateMultibindingIfNeeded(key)?.let { multibinding -> setOf(multibinding) }
+          getOrCreateMultibindingIfNeeded(key)?.let { multibinding ->
+            decisionCapture?.selected(contextKey, stack, multibinding)
+            setOf(multibinding)
+          }
         },
         optional = {
           // Check for optional bindings (Optional<T>)
-          getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding -> setOf(optionalBinding) }
+          getOrCreateOptionalBindingIfNeeded(key)?.let { optionalBinding ->
+            decisionCapture?.selected(contextKey, stack, optionalBinding)
+            setOf(optionalBinding)
+          }
         },
         implicit = implicit@{
             if (contextKey.typeKey.type.isNullable()) {
               // If we reach here, do not try to proceed to class lookups. We don't implicitly make
               // an
               // injected class satisfy a nullable binding of it
+              decisionCapture?.missing(contextKey, stack)
               return@implicit emptySet()
             }
 
@@ -723,9 +749,11 @@ internal class BindingLookup(
                 }
                 remappedBindings += binding
               }
+              decisionCapture?.selected(contextKey, stack, remappedBindings, classBindings)
               return@implicit remappedBindings
             }
 
+            decisionCapture?.selected(contextKey, stack, classBindings)
             classBindings
           },
       ) ?: emptySet()

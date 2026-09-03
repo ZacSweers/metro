@@ -12,6 +12,9 @@ import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.fir.resolveClassId
 import dev.zacsweers.metro.compiler.getAndAdd
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
+import dev.zacsweers.metro.compiler.ir.graph.reporting.ContributionDecisionCapture
+import dev.zacsweers.metro.compiler.ir.graph.reporting.bindingExplanationDeclaration
 import dev.zacsweers.metro.compiler.safePathString
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
@@ -25,6 +28,7 @@ import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.defaultType
@@ -63,6 +67,7 @@ internal class IrContributionMerger(
     val bindingContainers: Map<ClassId, IrClass>,
     val externalSupertypes: Map<ClassId, IrClass>,
     val originToContributions: Map<ClassId, Set<ClassId>>,
+    val contributionSources: Map<ClassId, ClassId>,
   )
 
   private data class ScopedContributionsCacheKey(val allScopes: Set<ClassId>, val caller: ClassId?)
@@ -224,6 +229,9 @@ internal class IrContributionMerger(
             // This maps from an origin class to all contributions that have an @Origin pointing to
             // it
             val originToContributions = mutableMapOf<ClassId, MutableSet<ClassId>>()
+            // Reuse the resolved origin chains to name authored declarations in reports.
+            val contributionSources =
+              if (reportsDir != null) mutableMapOf<ClassId, ClassId>() else null
 
             // Check regular contributions (with nested `MetroContribution` classes)
             for ((contributionClassId, contributions) in allContributions) {
@@ -241,23 +249,34 @@ internal class IrContributionMerger(
                 for (originClassId in originChain) {
                   originToContributions.getAndAdd(originClassId, contributionClassId)
                 }
+                contributionSources?.put(
+                  contributionClassId,
+                  originChain.lastOrNull() ?: contributionClassId,
+                )
               }
             }
 
             // Also check binding containers (e.g., @ContributesTo classes)
             for ((containerClassId, containerClass) in bindingContainers) {
-              for (originClassId in containerClass.originClassIdChain(callingDeclaration)) {
+              val originChain = containerClass.originClassIdChain(callingDeclaration)
+              for (originClassId in originChain) {
                 originToContributions.getAndAdd(originClassId, containerClassId)
               }
+              contributionSources?.put(
+                containerClassId,
+                originChain.lastOrNull() ?: containerClassId,
+              )
             }
 
             // Also check direct supertype contributions. In IR-only mode, @ContributesTo
             // interfaces can be added both as direct graph supertypes and as binding containers.
             // Replacements/exclusions need to prune both views of the same source interface.
             for ((externalClassId, externalClass) in externalSupertypes) {
-              for (originClassId in externalClass.originClassIdChain(callingDeclaration)) {
+              val originChain = externalClass.originClassIdChain(callingDeclaration)
+              for (originClassId in originChain) {
                 originToContributions.getAndAdd(originClassId, externalClassId)
               }
+              contributionSources?.put(externalClassId, originChain.lastOrNull() ?: externalClassId)
             }
 
             ScopedContributions(
@@ -265,6 +284,7 @@ internal class IrContributionMerger(
               bindingContainers,
               externalSupertypes,
               originToContributions,
+              contributionSources.orEmpty(),
             )
           }
         }
@@ -275,6 +295,19 @@ internal class IrContributionMerger(
       val mutableAllContributions = scopedContributions.allContributions.toMutableMap()
       val mutableContributedBindingContainers = scopedContributions.bindingContainers.toMutableMap()
       val mutableExternalSupertypes = scopedContributions.externalSupertypes.toMutableMap()
+
+      val decisionCapture =
+        if (reportsDir != null) {
+          ContributionDecisionCapture(
+            scopedContributions.allContributions.keys +
+              scopedContributions.bindingContainers.keys +
+              scopedContributions.externalSupertypes.keys,
+            (callingDeclaration as? IrDeclarationWithName)?.bindingExplanationDeclaration(),
+            scopedContributions.contributionSources,
+          )
+        } else {
+          null
+        }
 
       // Process excludes FIRST - excluded classes should not have their `replaces` effect applied
       if (excluded.isNotEmpty()) {
@@ -310,6 +343,11 @@ internal class IrContributionMerger(
               mutableContributedBindingContainers.remove(contributionId)
               mutableExternalSupertypes.remove(contributionId)
             }
+            decisionCapture?.excluded(
+              excludedClassId,
+              originContributions.orEmpty(),
+              nestedContributions,
+            )
 
             val removedDirectContribution =
               removedContainer != null ||
@@ -376,7 +414,12 @@ internal class IrContributionMerger(
                   }
               },
             )
-          classesToReplace.addAll(replacedClasses)
+          val replacingDeclaration =
+            if (decisionCapture == null) null else irClass.bindingExplanationDeclaration()
+          for (replacedClassId in replacedClasses) {
+            classesToReplace += replacedClassId
+            decisionCapture?.replaces(checkNotNull(replacingDeclaration), replacedClassId)
+          }
         }
 
         // Process replacements
@@ -395,6 +438,7 @@ internal class IrContributionMerger(
               mutableContributedBindingContainers.remove(contributionId)
               mutableExternalSupertypes.remove(contributionId)
             }
+            decisionCapture?.replaced(replacedClassId, originContributions.orEmpty())
 
             val removedDirectContribution =
               removedContribution != null ||
@@ -432,6 +476,7 @@ internal class IrContributionMerger(
           allScopes,
           combinedSupertypes.toSortedSet(compareBy { it.rawType().classIdOrFail.toString() }),
           mutableContributedBindingContainers.toSortedMap(compareBy { it.toString() }),
+          decisionCapture?.snapshot().orEmpty(),
         )
 
       mergedContributionsCache[cacheKey] = result
@@ -451,6 +496,8 @@ internal data class IrContributions(
   val supertypes: SortedSet<IrType>,
   // Deterministic sort
   val bindingContainers: SortedMap<ClassId, IrClass>,
+  /** Removals captured during this merge when graph reports are enabled. */
+  val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
 )
 
 /**

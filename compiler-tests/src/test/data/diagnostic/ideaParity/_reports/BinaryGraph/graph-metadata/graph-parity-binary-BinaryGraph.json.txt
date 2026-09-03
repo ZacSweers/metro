@@ -275,5 +275,336 @@
       "isSynthetic": false,
       "declaration": "LibServiceImpl"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "107:@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics|24:libtest.LibAnalyticsImpl",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "libtest.LibAnalyticsImpl",
+            "label": "libtest.LibAnalyticsImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"libtest.LibAnalytics\", \"483501658\") libtest.LibAnalytics",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "44:kotlin.collections.Set<libtest.LibAnalytics>|9:generated",
+          "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<libtest.LibAnalytics>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "24:libtest.LibAnalyticsImpl|24:libtest.LibAnalyticsImpl",
+          "key": "libtest.LibAnalyticsImpl",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "libtest.LibAnalyticsImpl",
+            "label": "libtest.LibAnalyticsImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibAnalyticsImpl",
+        "declaration": {
+          "id": "libtest.LibAnalyticsImpl.MetroContributionToAppScope.bindIntoSetAsLibAnalytics(libtest.LibAnalyticsImpl.MetroContributionToAppScope,libtest.LibAnalyticsImpl): libtest.LibAnalytics#instance",
+          "label": "libtest.LibAnalyticsImpl.MetroContributionToAppScope.bindIntoSetAsLibAnalytics.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:libtest.LibClientWithDeps|25:libtest.LibClientWithDeps",
+          "key": "libtest.LibClientWithDeps",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "libtest.LibClientWithDeps",
+            "label": "libtest.LibClientWithDeps"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibClientWithDeps",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "20:libtest.LibContained|24:libtest.LibContainedImpl",
+          "key": "libtest.LibContained",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "libtest.LibContainedImpl",
+            "label": "libtest.LibContainedImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibContained",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "19:libtest.LibExplicit|23:libtest.LibExplicitImpl",
+          "key": "libtest.LibExplicit",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "libtest.LibExplicitImpl",
+            "label": "libtest.LibExplicitImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibExplicit",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:libtest.LibExplicitImpl|23:libtest.LibExplicitImpl",
+          "key": "libtest.LibExplicitImpl",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "libtest.LibExplicitImpl",
+            "label": "libtest.LibExplicitImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibExplicitImpl",
+        "declaration": {
+          "id": "libtest.LibExplicitImpl.MetroContributionToAppScope.bindsAsLibExplicit(libtest.LibExplicitImpl.MetroContributionToAppScope,libtest.LibExplicitImpl): libtest.LibExplicit#instance",
+          "label": "libtest.LibExplicitImpl.MetroContributionToAppScope.bindsAsLibExplicit.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "missing",
+      "candidates": [],
+      "request": {
+        "key": "libtest.LibHidden? = ...",
+        "hasDefault": true,
+        "isOptional": true
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "21:libtest.LibHttpClient|21:libtest.LibHttpClient",
+          "key": "libtest.LibHttpClient",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "libtest.LibHttpClient",
+            "label": "libtest.LibHttpClient"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibHttpClient",
+        "declaration": {
+          "id": "libtest.LibClientWithDeps.MetroFactory.declarationMirror(libtest.LibClientWithDeps.MetroFactory,libtest.LibHttpClient): libtest.LibClientWithDeps#client",
+          "label": "libtest.LibClientWithDeps.MetroFactory.declarationMirror.client"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:libtest.LibService|22:libtest.LibServiceImpl",
+          "key": "libtest.LibService",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "libtest.LibServiceImpl",
+            "label": "libtest.LibServiceImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibService",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.binary.BinaryGraph",
+        "label": "parity.binary.BinaryGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "22:libtest.LibServiceImpl|22:libtest.LibServiceImpl",
+          "key": "libtest.LibServiceImpl",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "libtest.LibServiceImpl",
+            "label": "libtest.LibServiceImpl"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "libtest.LibServiceImpl",
+        "declaration": {
+          "id": "libtest.LibServiceImpl.MetroContributionToAppScope.bindsAsLibService(libtest.LibServiceImpl.MetroContributionToAppScope,libtest.LibServiceImpl): libtest.LibService#instance",
+          "label": "libtest.LibServiceImpl.MetroContributionToAppScope.bindsAsLibService.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

@@ -32,6 +32,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.finalizeFakeOverride
 import dev.zacsweers.metro.compiler.ir.generateDefaultConstructorBody
+import dev.zacsweers.metro.compiler.ir.graph.reporting.contributionDecisions
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.irExprBodySafe
 import dev.zacsweers.metro.compiler.ir.kClassReference
@@ -274,6 +275,7 @@ internal class SyntheticGraphGenerator(
     }
 
     val graphAnno = buildDependencyGraphAnnotation(targetClass = graphImpl)
+    graphImpl.contributionDecisions = contributions?.contributionDecisions
 
     graphImpl.apply {
       createThisReceiverParameter()

@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
 import dev.zacsweers.metro.compiler.ir.excludedClasses
 import dev.zacsweers.metro.compiler.ir.findInjectableConstructor
+import dev.zacsweers.metro.compiler.ir.graph.reporting.contributionDecisions
 import dev.zacsweers.metro.compiler.ir.isAccessorCandidate
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
@@ -1242,6 +1243,8 @@ internal class GraphNodes(
       resolvedBindingContainers += resolvedContainers
       resolvedContainers.forEach(::manageBindingContainer)
 
+      var contributionDecisions = graphDeclaration.contributionDecisions.orEmpty()
+
       // For regular graphs (not generated extensions/dynamic), aggregate binding containers
       // from scopes using IrContributionMerger to handle merging. This can't be done in FIR
       // since we can't modify the annotation there
@@ -1255,22 +1258,20 @@ internal class GraphNodes(
           // TODO it kinda sucks that we compute this in both FIR and IR? Maybe we can do this in
           // FIR
           //  and generate a hint/holder annotation on the graph impl
-          nodeCache.contributionMerger
-            .computeContributions(
+          val contributions =
+            nodeCache.contributionMerger.computeContributions(
               primaryScope = aggregationScopes.first(),
               allScopes = aggregationScopes,
               excluded = excludes,
               callingDeclaration = graphDeclaration,
             )
-            ?.bindingContainers
-            ?.values
-            ?.let { containers ->
-              // Add binding containers from merged contributions (already filtered)
-              bindingContainers +=
-                containers
-                  .mapNotNull { metroDeclarations.findBindingContainer(it) }
-                  .onEach(::manageBindingContainer)
-            }
+          contributionDecisions = contributions?.contributionDecisions.orEmpty()
+          val containers = contributions?.bindingContainers?.values.orEmpty()
+          // Add binding containers from merged contributions (already filtered)
+          bindingContainers +=
+            containers
+              .mapNotNull { metroDeclarations.findBindingContainer(it) }
+              .onEach(::manageBindingContainer)
         }
       } else {
         // For generated graphs (extensions/dynamic), just resolve transitive containers
@@ -1369,6 +1370,7 @@ internal class GraphNodes(
             bindingContainers = managedBindingContainers,
             annotationDeclaredBindingContainers = annotationDeclaredBindingContainers,
             dynamicTypeKeys = dynamicTypeKeys,
+            contributionDecisions = contributionDecisions,
             typeKey = graphTypeKey,
             graphPrivateKeys = graphPrivateKeys,
             publishedBindsKeys =

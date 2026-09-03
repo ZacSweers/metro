@@ -394,12 +394,6 @@ internal class IrGraphGenerator(
               ownProviderFactories = ownProviderFactories,
               generateClassesInIr = options.generateClassesInIr,
             )
-          graphMetadataReporter.write(
-            node,
-            bindingGraph,
-            sealResult,
-            codegenStats,
-          )
           val metroMetadata = createMetroMetadata(dependency_graph = graphProto)
 
           writeDiagnostic(
@@ -417,6 +411,7 @@ internal class IrGraphGenerator(
           }
         }
       }
+      graphMetadataReporter.write(node, bindingGraph, sealResult, codegenStats)
     }
     return bindingPropertyContext
   }

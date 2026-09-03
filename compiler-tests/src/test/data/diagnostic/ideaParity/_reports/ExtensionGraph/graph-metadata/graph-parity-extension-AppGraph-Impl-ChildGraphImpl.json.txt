@@ -1,20 +1,12 @@
 {
-  "graph": "parity.suspend.AppGraph",
+  "graph": "parity.extension.AppGraph.Impl.ChildGraphImpl",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "parity.suspend.Repository",
+        "key": "parity.extension.ChildValue",
         "isDeferrable": false
-      },
-      {
-        "key": "parity.suspend.DeferredRepository",
-        "isDeferrable": false
-      },
-      {
-        "key": "SuspendProvider<parity.suspend.Database>",
-        "isDeferrable": true
       }
     ],
     "injectors": []
@@ -87,7 +79,7 @@
     "omitRedundantMirrors": false,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
-    "enableSuspendProviders": true,
+    "enableSuspendProviders": false,
     "desugaredProviderSeverity": "WARN",
     "enableKClassToClassInterop": false,
     "generateContributionProviders": false,
@@ -100,11 +92,11 @@
     "maxGeneratedClassNameLength": 233
   },
   "stats": {
-    "providerFactories": 1,
+    "providerFactories": 0,
     "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 3,
+    "accessors": 1,
     "injectors": 0,
     "graphExtensionAccessors": 0,
     "graphExtensionFactories": 0,
@@ -113,17 +105,17 @@
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 4,
-    "validatedKeys": 4,
-    "reachableKeys": 4,
+    "populatedKeys": 3,
+    "validatedKeys": 3,
+    "reachableKeys": 3,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 1,
+    "providerProperties": 0,
     "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
-      "classConstructorDirectInvocations": 2,
+      "classConstructorDirectInvocations": 1,
       "classConstructorNewInstanceCalls": 0,
       "providerDirectInvocations": 1,
       "providerNewInstanceCalls": 0,
@@ -135,115 +127,71 @@
   },
   "bindings": [
     {
-      "key": "parity.suspend.AppGraph",
+      "key": "parity.extension.AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
-      "nameHint": "AppGraphProvider",
+      "nameHint": "parent",
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
     },
     {
-      "key": "parity.suspend.Database",
+      "key": "parity.extension.ChildValue",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "ChildValue",
+      "dependencies": [
+        {
+          "key": "parity.extension.ParentApi",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "ChildValue"
+    },
+    {
+      "key": "parity.extension.ParentApi",
       "bindingKind": "Provided",
       "isScoped": false,
-      "nameHint": "provideDatabase",
+      "nameHint": "parentApi",
       "dependencies": [
         {
-          "key": "parity.suspend.AppGraph",
+          "key": "parity.extension.AppGraph",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
-      "declaration": "provideDatabase"
-    },
-    {
-      "key": "parity.suspend.DeferredRepository",
-      "bindingKind": "ConstructorInjected",
-      "isScoped": false,
-      "nameHint": "DeferredRepository",
-      "dependencies": [
-        {
-          "key": "SuspendProvider<parity.suspend.Database>",
-          "hasDefault": false,
-          "wrapperType": "SuspendProvider"
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "DeferredRepository"
-    },
-    {
-      "key": "parity.suspend.Repository",
-      "bindingKind": "ConstructorInjected",
-      "isScoped": false,
-      "nameHint": "Repository",
-      "dependencies": [
-        {
-          "key": "parity.suspend.Database",
-          "hasDefault": false
-        }
-      ],
-      "isSynthetic": false,
-      "declaration": "Repository"
+      "declaration": "parentApi"
     }
   ],
   "bindingExplanations": [
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-          "key": "parity.suspend.Database",
+          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
+          "key": "parity.extension.AppGraph",
           "status": "selected",
-          "reason": "selected_explicit",
+          "reason": "selected_parent",
           "declaration": {
-            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-            "label": "parity.suspend.AppGraph.provideDatabase"
+            "id": "parity.extension.AppGraph",
+            "label": "parity.extension.AppGraph"
           },
+          "ownerGraphId": "25:parity.extension.AppGraph",
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "SuspendProvider<parity.suspend.Database>",
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "23:parity.suspend.AppGraph|23:parity.suspend.AppGraph",
-          "key": "parity.suspend.AppGraph",
-          "status": "selected",
-          "reason": "selected_generated",
-          "declaration": {
-            "id": "parity.suspend.AppGraph",
-            "label": "parity.suspend.AppGraph"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.suspend.AppGraph",
+        "key": "parity.extension.AppGraph",
         "declaration": {
-          "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database#<this>",
-          "label": "parity.suspend.AppGraph.provideDatabase.<this>"
+          "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi#<this>",
+          "label": "parity.extension.AppGraph.parentApi.<this>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -254,27 +202,27 @@
     },
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "33:parity.suspend.DeferredRepository|33:parity.suspend.DeferredRepository",
-          "key": "parity.suspend.DeferredRepository",
+          "id": "27:parity.extension.ChildValue|27:parity.extension.ChildValue",
+          "key": "parity.extension.ChildValue",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.suspend.DeferredRepository",
-            "label": "parity.suspend.DeferredRepository"
+            "id": "parity.extension.ChildValue",
+            "label": "parity.extension.ChildValue"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.suspend.DeferredRepository",
+        "key": "parity.extension.ChildValue",
         "hasDefault": false,
         "isOptional": false
       },
@@ -284,27 +232,31 @@
     },
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "25:parity.suspend.Repository|25:parity.suspend.Repository",
-          "key": "parity.suspend.Repository",
+          "id": "26:parity.extension.ParentApi|90:parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
+          "key": "parity.extension.ParentApi",
           "status": "selected",
-          "reason": "selected_implicit",
+          "reason": "selected_explicit",
           "declaration": {
-            "id": "parity.suspend.Repository",
-            "label": "parity.suspend.Repository"
+            "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
+            "label": "parity.extension.AppGraph.parentApi"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.suspend.Repository",
+        "key": "parity.extension.ParentApi",
+        "declaration": {
+          "id": "parity.extension.ChildValue.MetroFactory.declarationMirror(parity.extension.ChildValue.MetroFactory,parity.extension.ParentApi): parity.extension.ChildValue#api",
+          "label": "parity.extension.ChildValue.MetroFactory.declarationMirror.api"
+        },
         "hasDefault": false,
         "isOptional": false
       },

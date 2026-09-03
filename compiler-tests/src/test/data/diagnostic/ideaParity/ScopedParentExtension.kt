@@ -1,5 +1,6 @@
 // RUN_PIPELINE_TILL: BACKEND
 // CHECK_REPORTS: graph-metadata/graph-parity-extension-scoped-AppGraph.json
+// CHECK_REPORTS: graph-metadata/graph-parity-extension-scoped-AppGraph-Impl-ChildGraphImpl.json
 // NORMALIZE_REPORT_SOURCE_LOCATIONS
 // CHECK_REPORTS: keys-populated/parity/extension/scoped/AppGraph/Impl
 // CHECK_REPORTS: keys-populated/parity/extension/scoped/AppGraph/Impl/ChildGraphImpl

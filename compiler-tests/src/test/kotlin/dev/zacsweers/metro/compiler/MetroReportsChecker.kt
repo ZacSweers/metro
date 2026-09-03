@@ -158,7 +158,8 @@ class MetroReportsChecker(testServices: TestServices) : MetroReportsCheckerCompa
     when (this) {
       is JsonObject ->
         JsonObject(
-          filterKeys { it != "origin" }.mapValues { (_, value) -> value.withoutSourceLocations() }
+          filterKeys { it != "origin" && it != "source" }
+            .mapValues { (_, value) -> value.withoutSourceLocations() }
         )
       is JsonArray -> JsonArray(map { it.withoutSourceLocations() })
       else -> this

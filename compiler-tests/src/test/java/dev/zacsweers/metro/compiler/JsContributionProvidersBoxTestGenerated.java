@@ -2799,6 +2799,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("BindingExplanationsPreserveBindings.kt")
+    public void testBindingExplanationsPreserveBindings() {
+      run("BindingExplanationsPreserveBindings.kt");
+    }
+
+    @Test
     @TestMetadata("DeeplyNestedGraphsAreHandledWhenGeneratingReports.kt")
     public void testDeeplyNestedGraphsAreHandledWhenGeneratingReports() {
       run("DeeplyNestedGraphsAreHandledWhenGeneratingReports.kt");
