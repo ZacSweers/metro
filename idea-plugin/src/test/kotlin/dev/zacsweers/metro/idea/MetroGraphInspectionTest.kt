@@ -89,6 +89,22 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
     assertTrue(problem.descriptionTemplate, "AppGraph" in problem.descriptionTemplate)
   }
 
+  fun testCompiledChildDiagnosticHighlightsItsSourceParent() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          "@DependencyGraph interface AppGraph { val child: libtest.LibDirectChildGraph }"
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val parent = index.graphs.single { it.name == "AppGraph" }
+      project.service<MetroGraphValidationService>().validateWithExtensions(file, parent)
+
+      val problem = inspect(file).single()
+      assertEquals("AppGraph", problem.psiElement.text)
+      assertTrue(problem.descriptionTemplate, "LibDirectChildGraph" in problem.descriptionTemplate)
+    }
+  }
+
   fun testNativeHighlightUsesTheInspectionProfileSeverity() {
     val file =
       myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val value: String }")

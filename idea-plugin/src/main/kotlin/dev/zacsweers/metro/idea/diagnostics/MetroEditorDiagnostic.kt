@@ -42,6 +42,9 @@ internal fun metroDiagnosticsForFile(
     ProgressManager.checkCanceled()
     if (cached.stale) continue
     val result = cached.result as? KaGraphValidationResult.Completed ?: continue
+    val sourceGraph = result.context.chain.firstOrNull { isProjectSource(it.pointer) }?.pointer
+    val caller = result.context.dynamicGraph?.pointer?.takeIf(::isProjectSource)
+    val fallback = caller ?: sourceGraph
     var contextName: String? = null
     for (diagnostic in result.diagnostics) {
       ProgressManager.checkCanceled()
@@ -52,7 +55,8 @@ internal fun metroDiagnosticsForFile(
           related
         } else {
           val request = diagnostic.stack.firstOrNull { isProjectSource(it.pointer) }?.pointer
-          listOf(request ?: result.graph.pointer)
+          // Binary child diagnostics remain visible at the source compilation that creates them.
+          listOfNotNull(request ?: fallback)
         }
       for (pointer in pointers) {
         // Each file's inspection resolves only its own diagnostic anchors.
