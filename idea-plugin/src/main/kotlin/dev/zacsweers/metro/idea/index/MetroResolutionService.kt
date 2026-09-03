@@ -1892,40 +1892,6 @@ private constructor(
     }
   }
 
-  /** Names and declaration text catch value, alias, containing-object, and import changes. */
-  private fun sharedDeclarationFingerprint(file: KtFile): String {
-    return buildString {
-      append(file.packageFqName.asString())
-      append('\n')
-      append(file.importList?.text.orEmpty())
-
-      fun appendDeclarations(declarations: List<KtDeclaration>, owner: String) {
-        for (declaration in declarations) {
-          ProgressManager.checkCanceled()
-          when (declaration) {
-            is KtTypeAlias -> {
-              append('\n')
-              append(owner)
-              append(declaration.text)
-            }
-
-            is KtProperty if declaration.hasModifier(KtTokens.CONST_KEYWORD) -> {
-              append('\n')
-              append(owner)
-              append(declaration.text)
-            }
-
-            is KtClassOrObject -> {
-              appendDeclarations(declaration.declarations, "$owner${declaration.name}.")
-            }
-          }
-        }
-      }
-
-      appendDeclarations(file.declarations, owner = "")
-    }
-  }
-
   /** Records the change type before removed PSI becomes unavailable. */
   private fun sharedDeclarationChange(
     event: PsiTreeChangeEvent,
@@ -2176,7 +2142,8 @@ private constructor(
       previousFingerprint != null && previousFingerprint != currentFingerprint
     val metadataAffectsSharedDeclarations =
       SharedDeclarationChange.FILE_METADATA in change.sharedDeclarationChanges &&
-        (hasSharedDeclarations || previousFingerprint != null)
+        hasSharedDeclarations &&
+        previousFingerprint == null
     // Moving aliases or constants changes which modules can resolve them with identical text.
     val movedSharedDeclarations =
       change.structuralChange && (hasSharedDeclarations || previousFingerprint != null)

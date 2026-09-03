@@ -25,6 +25,7 @@ import dev.zacsweers.metro.idea.index.IndexRequestMode
 import dev.zacsweers.metro.idea.index.IndexRequestPolicy
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
+import dev.zacsweers.metro.idea.index.sharedDeclarationFingerprint
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingRejection
@@ -52,6 +53,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPsiFactory
 
 class MetroResolutionServiceTest : BasePlatformTestCase() {
 
@@ -1573,6 +1575,55 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(updated.toString().contains("after"))
   }
 
+  fun testConstantImportAliasChangesRefreshDependentBindingQualifiers() {
+    checkConstantImportChangesRefreshDependentBindingQualifiers(alias = true)
+  }
+
+  fun testConstantStarImportChangesRefreshDependentBindingQualifiers() {
+    checkConstantImportChangesRefreshDependentBindingQualifiers(alias = false)
+  }
+
+  private fun checkConstantImportChangesRefreshDependentBindingQualifiers(alias: Boolean) {
+    myFixture.addFileToProject(
+      "values/first/Constants.kt",
+      "package values.first\nconst val SERVICE_NAME = \"before\"",
+    )
+    myFixture.addFileToProject(
+      "values/second/Constants.kt",
+      "package values.second\nconst val SERVICE_NAME = \"after\"",
+    )
+    val imported = if (alias) "SERVICE_NAME as IMPORTED_NAME" else "*"
+    val referenced = if (alias) "IMPORTED_NAME" else "SERVICE_NAME"
+    val constants =
+      myFixture.addFileToProject(
+        "test/Constants.kt",
+        "package test\nimport values.first.$imported\nconst val PUBLIC_NAME = $referenced",
+      )
+    val providers =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides @Named(PUBLIC_NAME) fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(providers).bindings.single().typeKey.qualifier
+    assertTrue(initial.toString(), initial.toString().contains("before"))
+
+    myFixture.openFileInEditor(constants.virtualFile)
+    val importedPackageOffset = constants.text.indexOf("values.first")
+    myFixture.editor.selectionModel.setSelection(
+      importedPackageOffset,
+      importedPackageOffset + "values.first".length,
+    )
+    myFixture.type("values.second")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated = service.awaitIndex(providers).bindings.single().typeKey.qualifier
+    assertTrue(updated.toString(), updated.toString().contains("after"))
+  }
+
   fun testUnannotatedNestedConstantChangesRefreshDependentBindingQualifiers() {
     val constants =
       myFixture.addFileToProject(
@@ -1782,6 +1833,106 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
       }
     assertSame("An unrelated class edit must not force every shard to rebuild", original, updated)
+  }
+
+  fun testUnrelatedImportsInConstantFilesDoNotRebuildOtherShards() {
+    checkUnrelatedImportsDoNotRebuildOtherShards("const val SERVICE_NAME = \"unchanged\"")
+  }
+
+  fun testUnrelatedImportsInTypeAliasFilesDoNotRebuildOtherShards() {
+    checkUnrelatedImportsDoNotRebuildOtherShards("typealias Alias = String")
+  }
+
+  private fun checkUnrelatedImportsDoNotRebuildOtherShards(sharedDeclaration: String) {
+    val mixed =
+      myFixture.addFileToProject(
+        "test/Mixed.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class Marker\n\n$sharedDeclaration",
+      )
+    val providers =
+      myFixture.configureMetroFile(
+        """
+        interface Providers {
+          @Provides fun provideService(): String = "service"
+        }
+        """
+      )
+    val service = project.service<MetroResolutionService>()
+    val original =
+      service.awaitIndex(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+
+    myFixture.openFileInEditor(mixed.virtualFile)
+    // Auto-import inserts a complete directive. Partially typed imports keep conservative
+    // invalidation.
+    WriteCommandAction.runWriteCommandAction(project) {
+      myFixture.editor.document.insertString(
+        mixed.text.indexOf("@dev.zacsweers.metro.Inject"),
+        "import dev.zacsweers.metro.ContributesBinding\n\n",
+      )
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+    val updated =
+      service.awaitIndex(providers).bindings.single {
+        it.typeKey.type.classId?.asFqNameString() == "kotlin.String"
+      }
+    assertSame("An unused import must preserve bindings from unrelated shards", original, updated)
+  }
+
+  fun testSharedDeclarationFingerprintKeepsEnclosingHeaderImports() {
+    val source =
+      """
+      package test
+      import first.Parent
+      object Owner : Parent() {
+        const val NAME = "unchanged"
+      }
+      """
+        .trimIndent()
+    val factory = KtPsiFactory(project)
+    val original = sharedDeclarationFingerprint(factory.createFile(source))
+    val changed =
+      sharedDeclarationFingerprint(
+        factory.createFile(source.replace("first.Parent", "second.Parent"))
+      )
+    assertFalse(original == changed)
+  }
+
+  fun testSharedDeclarationFingerprintKeepsMalformedImports() {
+    val source = "package test\nimport first.Missing as\nconst val NAME = \"unchanged\""
+    val factory = KtPsiFactory(project)
+    val original = sharedDeclarationFingerprint(factory.createFile(source))
+    val changed =
+      sharedDeclarationFingerprint(
+        factory.createFile(source.replace("first.Missing", "second.Missing"))
+      )
+    assertFalse(original == changed)
+  }
+
+  fun testSharedDeclarationFingerprintIgnoresImportOrderAndWhitespace() {
+    val original =
+      """
+      package test
+      import kotlin.String as Value
+      import kotlin.Int as Number
+      typealias Alias = Pair<Value, Number>
+      """
+        .trimIndent()
+    val reordered =
+      """
+      package test
+      import kotlin.Int as Number
+      import kotlin.String  as  Value
+      typealias Alias = Pair<Value, Number>
+      """
+        .trimIndent()
+    val factory = KtPsiFactory(project)
+    assertEquals(
+      sharedDeclarationFingerprint(factory.createFile(original)),
+      sharedDeclarationFingerprint(factory.createFile(reordered)),
+    )
   }
 
   fun testIncrementalShardReplacementPreservesDeclarationOrder() {
