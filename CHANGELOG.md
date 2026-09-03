@@ -21,6 +21,11 @@ Changelog
 - **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
 - **[IR/interop]** Preserve Kotlin nullability in member-injection metadata when Dagger interop is enabled.
 
+### Changes
+
+- Test Kotlin `2.4.20-RC2`.
+- Test Kotlin `2.4.20-RC3`.
+
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
