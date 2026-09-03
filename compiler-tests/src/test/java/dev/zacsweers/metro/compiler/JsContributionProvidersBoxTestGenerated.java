@@ -2519,6 +2519,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DirectMapAndMultibindingValues.kt")
+    public void testDirectMapAndMultibindingValues() {
+      run("DirectMapAndMultibindingValues.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetProperty.kt")
     public void testElementsIntoSetProperty() {
       run("ElementsIntoSetProperty.kt");

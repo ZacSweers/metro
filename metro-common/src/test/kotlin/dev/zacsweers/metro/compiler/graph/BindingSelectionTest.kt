@@ -7,43 +7,59 @@ import org.junit.Test
 
 class BindingSelectionTest {
   @Test
-  fun `explicit bindings stop generated and implicit lookups`() {
-    val visited = mutableListOf<BindingTier>()
-    val selected = selectBindingTier { tier ->
-      visited += tier
-      when (tier) {
-        BindingTier.ASSISTED_TARGET -> false
-        BindingTier.EXPLICIT -> true
-        else -> error("Lower tiers should stay unevaluated")
+  fun `first result wins without evaluating later lookups`() {
+    for (winner in 0..3) {
+      val binding = Any()
+      val visited = mutableListOf<Int>()
+      fun lookup(stage: Int): Any? {
+        visited += stage
+        return if (stage == winner) binding else null
       }
-    }
 
-    assertThat(selected).isEqualTo(BindingTier.EXPLICIT)
-    assertThat(visited).containsExactly(BindingTier.ASSISTED_TARGET, BindingTier.EXPLICIT).inOrder()
+      val selected =
+        selectBinding(
+          registered = { lookup(0) },
+          multibinding = { lookup(1) },
+          optional = { lookup(2) },
+          implicit = { lookup(3) },
+        )
+
+      assertThat(selected).isSameInstanceAs(binding)
+      assertThat(visited).containsExactlyElementsIn(0..winner).inOrder()
+    }
   }
 
   @Test
-  fun `assisted targets take precedence over explicit providers`() {
-    assertThat(
-        selectBindingTier { it == BindingTier.ASSISTED_TARGET || it == BindingTier.EXPLICIT }
+  fun `missing results try every lookup once`() {
+    val visited = mutableListOf<Int>()
+    fun missing(stage: Int): Any? {
+      visited += stage
+      return null
+    }
+
+    val selected =
+      selectBinding(
+        registered = { missing(0) },
+        multibinding = { missing(1) },
+        optional = { missing(2) },
+        implicit = { missing(3) },
       )
-      .isEqualTo(BindingTier.ASSISTED_TARGET)
+
+    assertThat(selected).isNull()
+    assertThat(visited).containsExactly(0, 1, 2, 3).inOrder()
   }
 
   @Test
-  fun `fallback tiers keep their lookup order`() {
-    val available =
-      linkedSetOf(
-        BindingTier.GENERATED_GRAPH,
-        BindingTier.MULTIBINDING,
-        BindingTier.OPTIONAL,
-        BindingTier.IMPLICIT,
+  fun `an empty binding result is final`() {
+    val bindings = emptySet<Any>()
+    val selected =
+      selectBinding(
+        registered = { bindings },
+        multibinding = { error("Registered lookup already completed") },
+        optional = { error("Registered lookup already completed") },
+        implicit = { error("Registered lookup already completed") },
       )
-    while (available.isNotEmpty()) {
-      val expected = available.first()
-      assertThat(selectBindingTier(available::contains)).isEqualTo(expected)
-      available -= expected
-    }
-    assertThat(selectBindingTier(available::contains)).isNull()
+
+    assertThat(selected).isSameInstanceAs(bindings)
   }
 }

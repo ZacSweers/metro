@@ -5,9 +5,9 @@ package dev.zacsweers.metro.idea.graph
 import com.intellij.openapi.progress.ProgressManager
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.graph.BindingTier
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
+import dev.zacsweers.metro.idea.model.BindingTier
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.GraphQueryContext

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
-import dev.zacsweers.metro.compiler.graph.BindingTier
 import dev.zacsweers.metro.idea.checkCanceledEvery
 
 /** The selection for one request and concrete graph path, captured without sealing the graph. */

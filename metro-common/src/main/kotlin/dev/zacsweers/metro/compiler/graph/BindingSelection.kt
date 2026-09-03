@@ -3,23 +3,21 @@
 package dev.zacsweers.metro.compiler.graph
 
 /**
- * Selection order after graph instances and synthetic collection element keys are checked.
- * Unqualified assisted targets come first so validation can report their invalid direct use.
- * Authored bindings precede generated graph aliases, collection synthesis, and class injection.
+ * Tries registered bindings before collection synthesis, optional declarations, and class lookup. A
+ * null result continues lookup. Any non-null result is final, including an empty collection.
+ * Callers own their caches, request checks, and binding creation.
  */
-public enum class BindingTier {
-  ASSISTED_TARGET,
-  EXPLICIT,
-  GENERATED_GRAPH,
-  MULTIBINDING,
-  OPTIONAL,
-  IMPLICIT,
-}
-
-/** Stops at the first populated tier, leaving lower-priority lookups unevaluated. */
-public inline fun selectBindingTier(hasBindings: (BindingTier) -> Boolean): BindingTier? {
-  for (tier in BindingTier.entries) {
-    if (hasBindings(tier)) return tier
-  }
-  return null
+public inline fun <T : Any> selectBinding(
+  registered: () -> T?,
+  multibinding: () -> T?,
+  optional: () -> T?,
+  implicit: () -> T?,
+): T? {
+  val registeredBinding = registered()
+  if (registeredBinding != null) return registeredBinding
+  val collectionBinding = multibinding()
+  if (collectionBinding != null) return collectionBinding
+  val optionalBinding = optional()
+  if (optionalBinding != null) return optionalBinding
+  return implicit()
 }

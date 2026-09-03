@@ -266,10 +266,12 @@ Editor inspections read completed, current results. They perform no binding reso
 sealing. The optional pinned-graph service debounces index changes, cancels superseded work, and
 submits quiet validation requests through the same service as explicit actions.
 
-The IDE and compiler use their own types, binding lookups, and diagnostic reporting. Both call
-`MutableBindingGraph.seal()` and the validation rules in `metro-common`. The IDE also uses shared
-contribution rules such as `computeMergePlan` and lazy binding-tier selection. Request scheduling, captured module visibility,
-navigation pointers, and editor updates live in `idea-plugin`.
+The IDE and compiler use their own types, caches, and diagnostic reporting. Both call
+`MutableBindingGraph.seal()` and the validation rules in `metro-common`. They also share the lazy
+lookup order: registered bindings, multibindings, optional declarations, then implicit injection.
+The IDE keeps its binding categories and assisted-request checks alongside its selection adapter.
+Contribution rules such as `computeMergePlan` also live in `metro-common`. Request scheduling,
+captured module visibility, navigation pointers, and editor updates live in `idea-plugin`.
 
 Code: [binding index](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingIndex.kt),
 [resolution session](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingResolutionSession.kt),

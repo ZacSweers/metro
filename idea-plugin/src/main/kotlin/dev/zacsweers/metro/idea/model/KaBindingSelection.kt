@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
-import dev.zacsweers.metro.compiler.graph.BindingTier
-import dev.zacsweers.metro.compiler.graph.selectBindingTier
+import dev.zacsweers.metro.compiler.graph.selectBinding
 import dev.zacsweers.metro.idea.checkCanceledEvery
 
 /** Selected declarations, with collection inputs retained for graph validation. */
@@ -42,50 +41,52 @@ internal fun BindingIndex.selectBindingsForKey(
     if (previousTier == null || candidateTier < previousTier) indexedTier = candidateTier
   }
 
-  var generated: KaBinding? = null
-  var contributions: List<KaBinding> = emptyList()
-  val tier =
-    selectBindingTier { candidateTier ->
-      when (candidateTier) {
-        BindingTier.GENERATED_GRAPH -> {
-          generated = plan.generatedBindings.forKey(typeKey)
-          generated != null
-        }
-        BindingTier.MULTIBINDING -> {
-          if (collectionId == null) {
-            false
-          } else {
-            contributions =
-              if (visibleCandidates == null) {
-                multibindingContributions(collectionId, plan)
-              } else {
-                visibleCandidates.filter { it.multibindingId != null }
-              }
-            contributions.isNotEmpty() || indexedTier == BindingTier.MULTIBINDING
-          }
-        }
-        else -> candidateTier == indexedTier
-      }
-    } ?: return null
+  // The compiler rejects these requests during FIR injection-site checks, before graph lookup.
+  if (indexedTier == BindingTier.ASSISTED_TARGET) {
+    val target = candidates.first { it.selectionTier(unqualified) == BindingTier.ASSISTED_TARGET }
+    return KaBindingSelection(BindingTier.ASSISTED_TARGET, listOf(target))
+  }
 
-  val declarations =
-    if (tier == BindingTier.MULTIBINDING) {
-      candidates.filterIsInstance<KaBinding.Multibinding>()
-    } else {
-      emptyList()
-    }
-  val selected =
-    when (tier) {
-      BindingTier.GENERATED_GRAPH -> listOf(checkNotNull(generated))
-      BindingTier.MULTIBINDING -> contributions.ifEmpty { declarations }
-      // The compiler uses the first optional declaration without reporting duplicates.
-      BindingTier.OPTIONAL,
-      BindingTier.ASSISTED_TARGET ->
-        listOf(candidates.first { it.selectionTier(unqualified) == tier })
-      BindingTier.EXPLICIT,
-      BindingTier.IMPLICIT -> candidates.filter { it.selectionTier(unqualified) == tier }
-    }
-  return KaBindingSelection(tier, selected, contributions, declarations)
+  return selectBinding(
+    registered = registered@{
+        if (indexedTier == BindingTier.EXPLICIT) {
+          val explicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.EXPLICIT }
+          return@registered KaBindingSelection(BindingTier.EXPLICIT, explicit)
+        }
+        val generated = plan.generatedBindings.forKey(typeKey) ?: return@registered null
+        KaBindingSelection(BindingTier.GENERATED_GRAPH, listOf(generated))
+      },
+    multibinding = multibinding@{
+        if (collectionId == null) return@multibinding null
+        val contributions =
+          if (visibleCandidates == null) {
+            multibindingContributions(collectionId, plan)
+          } else {
+            visibleCandidates.filter { it.multibindingId != null }
+          }
+        if (contributions.isEmpty() && indexedTier != BindingTier.MULTIBINDING) {
+          return@multibinding null
+        }
+        val declarations = candidates.filterIsInstance<KaBinding.Multibinding>()
+        KaBindingSelection(
+          BindingTier.MULTIBINDING,
+          contributions.ifEmpty { declarations },
+          contributions,
+          declarations,
+        )
+      },
+    optional = optional@{
+        if (indexedTier != BindingTier.OPTIONAL) return@optional null
+        // The compiler uses the first optional declaration without reporting duplicates.
+        val declaration = candidates.first { it.selectionTier(unqualified) == BindingTier.OPTIONAL }
+        KaBindingSelection(BindingTier.OPTIONAL, listOf(declaration))
+      },
+    implicit = implicit@{
+        if (indexedTier != BindingTier.IMPLICIT) return@implicit null
+        val implicit = candidates.filter { it.selectionTier(unqualified) == BindingTier.IMPLICIT }
+        KaBindingSelection(BindingTier.IMPLICIT, implicit)
+      },
+  )
 }
 
 private fun KaBinding.selectionTier(unqualified: Boolean): BindingTier {

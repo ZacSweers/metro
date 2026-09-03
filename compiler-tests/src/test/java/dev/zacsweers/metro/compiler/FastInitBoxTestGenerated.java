@@ -3437,6 +3437,12 @@ public class FastInitBoxTestGenerated extends AbstractFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("DirectMapAndMultibindingValues.kt")
+    public void testDirectMapAndMultibindingValues() {
+      run("DirectMapAndMultibindingValues.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetProperty.kt")
     public void testElementsIntoSetProperty() {
       run("ElementsIntoSetProperty.kt");
