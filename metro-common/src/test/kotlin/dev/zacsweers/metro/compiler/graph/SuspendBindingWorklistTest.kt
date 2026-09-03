@@ -220,6 +220,103 @@ class SuspendBindingWorklistTest {
   }
 
   @Test
+  fun `root collection observes cancellation`() {
+    var rootsVisited = 0
+    val fixture =
+      AnalysisFixture(
+        checkCanceled = {
+          if (rootsVisited == 8) throw AnalysisCancellationException()
+        }
+      )
+    val roots = sequence {
+      repeat(300) { index ->
+        rootsVisited++
+        yield(key("Root$index"))
+      }
+    }
+      .asIterable()
+
+    assertFailsWith<AnalysisCancellationException> { fixture.analysis.analyze(roots) }
+
+    assertThat(rootsVisited).isEqualTo(8)
+    assertThat(fixture.lookupCount("Root0")).isEqualTo(0)
+  }
+
+  @Test
+  fun `nonsuspend dependency discovery observes cancellation`() {
+    lateinit var fixture: AnalysisFixture
+    fixture =
+      AnalysisFixture(
+        checkCanceled = {
+          if (fixture.lookupCount("Node8") > 0) throw AnalysisCancellationException()
+        }
+      )
+    fixture.put(*List(300) { index -> binding("Node$index", "Node${index + 1}") }.toTypedArray())
+
+    assertFailsWith<AnalysisCancellationException> { fixture.analysis.analyze(keys("Node0")) }
+
+    assertThat(fixture.lookupCount("Node8")).isEqualTo(1)
+    assertThat(fixture.lookupCount("Node9")).isEqualTo(0)
+  }
+
+  @Test
+  fun `large dependency lists observe cancellation`() {
+    lateinit var fixture: AnalysisFixture
+    fixture =
+      AnalysisFixture(
+        checkCanceled = {
+          if (fixture.lookupCount("Dependency8") > 0) throw AnalysisCancellationException()
+        }
+      )
+    val dependencies = List(300) { "Dependency$it" }
+    fixture.put(binding("Root", *dependencies.toTypedArray()))
+    fixture.put(*dependencies.map { binding(it) }.toTypedArray())
+
+    assertFailsWith<AnalysisCancellationException> { fixture.analysis.analyze(keys("Root")) }
+
+    assertThat(fixture.lookupCount("Dependency8")).isEqualTo(1)
+    assertThat(fixture.lookupCount("Dependency9")).isEqualTo(0)
+  }
+
+  @Test
+  fun `pending edge classification observes cancellation`() {
+    lateinit var fixture: AnalysisFixture
+    fixture =
+      AnalysisFixture(
+        checkCanceled = {
+          if (fixture.passThroughCheckCount > 0) throw AnalysisCancellationException()
+        }
+      )
+    val consumers = List(300) { binding("Consumer$it", "Missing") }
+    fixture.put(*consumers.toTypedArray())
+    assertThat(fixture.analysis.analyze(consumers.map { it.typeKey })).isEmpty()
+    fixture.put(binding("Missing", isSuspend = true))
+
+    assertFailsWith<AnalysisCancellationException> { fixture.analysis.analyze(keys("Missing")) }
+
+    assertThat(fixture.passThroughCheckCount).isEqualTo(1)
+  }
+
+  @Test
+  fun `propagation observes cancellation after discovery completes`() {
+    var canceled = false
+    val fixture =
+      AnalysisFixture(
+        checkCanceled = { if (canceled) throw AnalysisCancellationException() },
+        onExpand = { if (it.typeKey == key("Source")) canceled = true },
+      )
+    fixture.put(
+      binding("Root", "Middle"),
+      binding("Middle", "Source"),
+      binding("Source", isSuspend = true),
+    )
+
+    assertFailsWith<AnalysisCancellationException> { fixture.analysis.analyze(keys("Root")) }
+
+    assertThat(fixture.lookupCount("Source")).isEqualTo(1)
+  }
+
+  @Test
   fun `cycle walks pick the adjacent suspend witness over the cycle edge`() {
     val fixture = AnalysisFixture()
     fixture.put(binding("A", "B"), binding("B", "A", "Source"), binding("Source", isSuspend = true))
@@ -366,17 +463,26 @@ class SuspendBindingWorklistTest {
 private typealias TestAnalysis =
   SuspendBindingWorklist<String, StringTypeKey, StringContextualTypeKey, TestBinding>
 
-private class AnalysisFixture(private val checkCanceled: () -> Unit = {}) {
+private class AnalysisFixture(
+  private val checkCanceled: () -> Unit = {},
+  private val onExpand: (TestBinding) -> Unit = {},
+) {
   private val bindings = mutableMapOf<StringTypeKey, TestBinding>()
   private val lookupCounts = mutableMapOf<StringTypeKey, Int>()
   private var generation = 0
   var suspendCheckCount = 0
     private set
 
+  var passThroughCheckCount = 0
+    private set
+
   private val rules =
     SuspendBindingRules<String, StringTypeKey, StringContextualTypeKey, TestBinding>(
       findBinding = bindings::get,
-      bindingCanPassThrough = { binding, _ -> binding.passesThrough },
+      bindingCanPassThrough = { binding, _ ->
+        passThroughCheckCount++
+        binding.passesThrough
+      },
     )
 
   val analysis: TestAnalysis =
@@ -389,7 +495,10 @@ private class AnalysisFixture(private val checkCanceled: () -> Unit = {}) {
         suspendCheckCount++
         it.isSuspend
       },
-      skipDependencyTraversal = { it.skipDependencies },
+      skipDependencyTraversal = {
+        onExpand(it)
+        it.skipDependencies
+      },
       rules = rules,
       currentGraphGeneration = { generation },
       checkCanceled = checkCanceled,
@@ -404,6 +513,8 @@ private class AnalysisFixture(private val checkCanceled: () -> Unit = {}) {
 
   fun lookupCount(name: String): Int = lookupCounts.getOrDefault(key(name), 0)
 }
+
+private class AnalysisCancellationException : RuntimeException()
 
 private class TestBinding(
   override val contextualTypeKey: StringContextualTypeKey,

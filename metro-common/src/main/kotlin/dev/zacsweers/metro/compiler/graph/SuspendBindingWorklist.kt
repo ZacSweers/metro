@@ -24,6 +24,9 @@ package dev.zacsweers.metro.compiler.graph
  * Each binding's dependencies are expanded once. A missing binding is retried only after the graph
  * generation changes, and each key enters the propagation queue only the first time it is marked
  * suspend. These properties also make cycles terminate without a separate fixpoint pass.
+ *
+ * @param checkCanceled cancellation callback polled during analysis and witness construction. If it
+ *   throws, discard this worklist because its incremental state may be incomplete.
  */
 public class SuspendBindingWorklist<
   Type : Any,
@@ -88,6 +91,7 @@ public class SuspendBindingWorklist<
   public fun analyze(keys: Iterable<TypeKey>): Set<TypeKey> {
     val pending = ArrayDeque<TypeKey>()
     for (key in keys) {
+      checkCanceled()
       if (key !in expandedKeys) {
         pending += key
       }
@@ -95,7 +99,10 @@ public class SuspendBindingWorklist<
     val graphGeneration = currentGraphGeneration()
     if (graphGeneration != analyzedGraphGeneration) {
       analyzedGraphGeneration = graphGeneration
-      pending += unresolvedGenerations.keys
+      for (key in unresolvedGenerations.keys) {
+        checkCanceled()
+        pending += key
+      }
     }
     if (pending.isNotEmpty()) {
       expand(pending)
@@ -140,6 +147,7 @@ public class SuspendBindingWorklist<
 
   private fun expand(pending: ArrayDeque<TypeKey>) {
     while (pending.isNotEmpty()) {
+      checkCanceled()
       val key = pending.removeFirst()
       if (key in expandedKeys) continue
       val binding = resolve(key) ?: continue
@@ -147,6 +155,7 @@ public class SuspendBindingWorklist<
       if (skipDependencyTraversal(binding)) continue
 
       for (dependency in binding.dependencies) {
+        checkCanceled()
         if (dependency.isDeferrable) continue
         val depKey = dependency.typeKey
         val depBinding = resolve(depKey)
@@ -186,6 +195,7 @@ public class SuspendBindingWorklist<
     // Classify edges that were waiting on this key's binding.
     pendingEdges.remove(key)?.let { edges ->
       for (edge in edges) {
+        checkCanceled()
         if (rules.canPassThrough(binding, edge.dependency)) {
           continue
         }
@@ -215,8 +225,10 @@ public class SuspendBindingWorklist<
 
   private fun propagate() {
     while (newlySuspend.isNotEmpty()) {
+      checkCanceled()
       val key = newlySuspend.removeFirst()
       for (consumer in reverseEdges[key].orEmpty()) {
+        checkCanceled()
         markSuspend(consumer)
       }
     }
