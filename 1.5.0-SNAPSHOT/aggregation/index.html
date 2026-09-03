@@ -2210,21 +2210,21 @@
 
 <span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">TestNetworkProviders</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">TestHttpClient</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TestHttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="contributesto">@ContributesTo<a class="headerlink" href="#contributesto" title="Permanent link">&para;</a></h2>
 <p>This annotation is used to contribute graph interfaces to the target scope to be merged in at graph-processing time to the final merged graph class as another supertype.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">NetworkProviders</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>This annotation is <em>repeatable</em> and can be used to contribute to multiple scopes.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">LoggedInScope</span><span class="o">::</span><span class="n">class</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">NetworkProviders</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>Similar to <a href="https://github.com/amzn/kotlin-inject-anvil">kotlin-inject-anvil</a>, <code>@ContributesBinding</code> (as well as the other <code>@Contributes*</code> annotations) supports replacing other contributions by class. This is useful for cases like tests, where you may want to contribute a test/fake implementation that supersedes the “real” graph.</p>
@@ -2233,7 +2233,7 @@
 
 <span class="nd">@ContributesTo</span><span class="p">(</span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span><span class="w"> </span><span class="n">replaces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span><span class="n">RealNetworkProviders</span><span class="o">::</span><span class="n">class</span><span class="o">]</span><span class="p">)</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">TestNetworkProviders</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">TestHttpClient</span>
+<span class="w">  </span><span class="nd">@Provides</span><span class="w"> </span><span class="kd">fun</span><span class="w"> </span><span class="nf">provideHttpClient</span><span class="p">():</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TestHttpClient</span><span class="p">()</span>
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="contributesbinding">@ContributesBinding<a class="headerlink" href="#contributesbinding" title="Permanent link">&para;</a></h2>
@@ -2271,7 +2271,7 @@
 <span class="nd">@Inject</span>
 <span class="kd">class</span><span class="w"> </span><span class="nc">CacheImpl</span><span class="p">(...)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">Cache</span><span class="p">,</span><span class="w"> </span><span class="n">AnotherType</span>
 </code></pre></div>
-<p>This annotation is <em>repeatable</em> and can be used to contribute to multiple scopes.</p>
+<p>This annotation is <em>repeatable</em>, allowing the annotated type to contribute to multiple scopes, as multiple bound types, or both.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@ContributesBinding</span><span class="p">(</span>
 <span class="w">  </span><span class="n">scope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AppScope</span><span class="o">::</span><span class="n">class</span><span class="p">,</span>
 <span class="w">  </span><span class="n">binding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">binding</span><span class="o">&lt;</span><span class="n">Cache</span><span class="o">&gt;</span><span class="p">()</span>

@@ -2091,7 +2091,7 @@
 <p><code>@Binds</code> declarations can also declare multibinding annotations.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@DependencyGraph</span>
 <span class="kd">interface</span><span class="w"> </span><span class="nc">AppGraph</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">messages</span><span class="p">:</span><span class="w"> </span><span class="n">Message</span>
+<span class="w">  </span><span class="kd">val</span><span class="w"> </span><span class="nv">messages</span><span class="p">:</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">Message</span><span class="o">&gt;</span>
 
 <span class="w">  </span><span class="nd">@Binds</span><span class="w"> </span><span class="nd">@IntoSet</span><span class="w"> </span><span class="kd">val</span><span class="w"> </span><span class="nv">MessageImpl</span><span class="p">.</span><span class="na">bind</span><span class="p">:</span><span class="w"> </span><span class="n">Message</span>
 <span class="p">}</span>
