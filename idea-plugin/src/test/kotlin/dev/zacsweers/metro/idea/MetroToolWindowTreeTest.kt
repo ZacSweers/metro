@@ -35,6 +35,9 @@ import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationRenderer
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.explanation.MetroBindingExplanationPanel
 import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
 import dev.zacsweers.metro.idea.graph.CachedValidation
@@ -81,6 +84,8 @@ import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -393,6 +398,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     val explanations = metroBindingExplanations(index, file, offset, null)
     assertEquals(contexts.map { it.path }.toSet(), explanations.map { it.path }.toSet())
+    assertEquals(2, explanations.map { it.snapshot.context.id }.distinct().size)
     val pinnedExplanation = metroBindingExplanations(index, file, offset, leftContext.path).single()
     assertEquals(leftContext.path, pinnedExplanation.path)
     val selected = pinnedExplanation.candidates.single { it.selected }
@@ -480,6 +486,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     assertEquals(2, navigation.map { it.text }.distinct().size)
     assertEquals(2, explanations.map { it.text }.distinct().size)
+    assertEquals(2, explanations.map { it.snapshot.context.id }.distinct().size)
     for (qualifiedName in listOf("test.Left.Graph", "test.Right.Graph")) {
       assertTrue(navigation.any { qualifiedName in it.text })
       assertTrue(explanations.any { qualifiedName in it.text })
@@ -512,6 +519,14 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
           assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
           assertTrue(panel.summaryArea.text, "Request: test.Service" in panel.summaryArea.text)
           assertTrue(panel.summaryArea.text, "AppGraph" in panel.summaryArea.text)
+          val snapshot = explanation.snapshot
+          val roundTrip = Json.decodeFromString<BindingExplanation>(Json.encodeToString(snapshot))
+          assertEquals(snapshot, roundTrip)
+          assertEquals(BindingExplanationRenderer.summary(snapshot), panel.summaryArea.text)
+          val implicit = snapshot.candidates.single { it.reason == BindingReason.HIGHER_PRECEDENCE }
+          val explicit = snapshot.candidates.single { it.reason == BindingReason.SELECTED_EXPLICIT }
+          assertEquals(listOf(explicit.declaration), implicit.relatedDeclarations)
+          assertTrue(explanation.copyText.startsWith(BindingExplanationRenderer.render(roundTrip)))
           assertTrue(panel.detailArea.text, "Selected explicit binding." in panel.detailArea.text)
           val qualifiedRow =
             explanation.candidates.indexOfFirst { "different qualifier" in it.details }

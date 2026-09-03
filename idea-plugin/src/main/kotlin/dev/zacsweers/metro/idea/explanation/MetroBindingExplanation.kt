@@ -3,11 +3,19 @@
 package dev.zacsweers.metro.idea.explanation
 
 import com.intellij.openapi.progress.ProgressManager
+import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation as ExplanationSnapshot
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationContext
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationOutcome
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationPhase
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationRenderer
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationRequest
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.compilationContextName
 import dev.zacsweers.metro.idea.model.BindingExplanation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphPath
-import dev.zacsweers.metro.idea.model.selectionDescription
 import dev.zacsweers.metro.idea.navigation.MetroBindingTarget
 import dev.zacsweers.metro.idea.navigation.bindingTarget
 import dev.zacsweers.metro.idea.navigation.metroEditorDeclarations
@@ -22,6 +30,7 @@ internal class MetroBindingExplanation(
   val summary: String,
   val candidates: List<MetroBindingCandidate>,
   val copyText: String,
+  val snapshot: ExplanationSnapshot,
 ) {
   override fun toString(): String = text
 }
@@ -32,6 +41,7 @@ internal class MetroBindingCandidate(
   val selected: Boolean,
   val text: String,
   val details: String,
+  val snapshot: BindingExplanationCandidate,
 ) {
   override fun toString(): String = text
 }
@@ -74,46 +84,74 @@ private fun captureExplanation(explanation: BindingExplanation): MetroBindingExp
   val declaration = consumer.pointer.element
   val requestName = (declaration as? KtNamedDeclaration)?.name ?: "dependency"
   val contextName = explanation.context.compilationContextName()
-  val summary = buildString {
-    appendLine("Request: ${consumer.contextKey.render(short = false)}")
-    append("Requested by: ").append(requestName)
-    consumer.pointer.virtualFile?.name?.let { append(" (").append(it).append(')') }
-    appendLine()
-    appendLine("Graph: $contextName")
-    append(explanation.tier?.selectionDescription() ?: "No binding was selected.")
-  }
+  val sources = BindingExplanationSources(consumer.pointer.project)
   val candidates =
     explanation.candidates
       .map { candidate ->
         ProgressManager.checkCanceled()
         val target = bindingTarget(candidate.binding)
-        val status = if (candidate.selected) "Selected" else "Alternative"
-        val text = "$status: ${target.text}"
-        val details = buildString {
-          appendLine(text)
-          appendLine(candidate.binding.typeKey.render(short = false))
-          appendLine()
-          append(candidate.reason)
-        }
-        MetroBindingCandidate(target, candidate.selected, text, details)
+        val source = sources.declaration(candidate.binding.pointer, target.text)
+        val status =
+          when {
+            candidate.reasonCode == BindingReason.CONFLICT -> BindingCandidateStatus.CONFLICT
+            candidate.selected -> BindingCandidateStatus.SELECTED
+            else -> BindingCandidateStatus.REJECTED
+          }
+        val snapshot =
+          BindingExplanationCandidate(
+            id = sources.candidateId(candidate.binding, source),
+            key = candidate.binding.typeKey.render(short = false),
+            status = status,
+            reason = candidate.reasonCode,
+            declaration = source,
+            ownerGraphId = candidate.binding.ownerGraphId?.let(sources::graphId),
+            relatedDeclarations =
+              candidate.relatedBindings.map { related ->
+                sources.declaration(related.pointer, bindingTarget(related).text)
+              },
+          )
+        MetroBindingCandidate(
+          target,
+          candidate.selected,
+          BindingExplanationRenderer.candidateLabel(snapshot),
+          BindingExplanationRenderer.candidateDetails(snapshot),
+          snapshot,
+        )
       }
       .sortedWith(compareByDescending<MetroBindingCandidate> { it.selected }.thenBy { it.text })
-  val copyText = buildString {
-    appendLine(summary)
-    appendLine()
-    appendLine("Candidates:")
-    if (candidates.isEmpty()) appendLine("No candidates for this dependency.")
-    for (candidate in candidates) {
-      appendLine(candidate.details)
-      appendLine()
+  val outcome =
+    when {
+      candidates.any { it.snapshot.status == BindingCandidateStatus.CONFLICT } ->
+        BindingExplanationOutcome.CONFLICT
+      candidates.any { it.selected } -> BindingExplanationOutcome.SELECTED
+      candidates.any { it.snapshot.reason == BindingReason.ASSISTED_TARGET } ->
+        BindingExplanationOutcome.INVALID_REQUEST
+      else -> BindingExplanationOutcome.MISSING
     }
-    append("This explanation is a snapshot. Run the action again after code changes.")
-  }
+  val snapshot =
+    ExplanationSnapshot(
+      context = BindingExplanationContext(sources.contextId(explanation.context.path), contextName),
+      phase = BindingExplanationPhase.LOOKUP,
+      outcome = outcome,
+      candidates = candidates.map { it.snapshot },
+      request =
+        BindingExplanationRequest(
+          key = consumer.contextKey.render(short = false),
+          declaration = sources.declaration(consumer.pointer, requestName),
+          hasDefault = consumer.contextKey.hasDefault,
+          isOptional = consumer.isOptional,
+        ),
+    )
+  val summary = BindingExplanationRenderer.summary(snapshot)
+  val copyText =
+    BindingExplanationRenderer.render(snapshot) +
+      "\n\nThis explanation is a snapshot. Run the action again after code changes."
   return MetroBindingExplanation(
     explanation.context.path,
     "$requestName: ${consumer.contextKey.render(short = true)} in $contextName",
     summary,
     candidates,
     copyText,
+    snapshot,
   )
 }

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationRenderer
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.checkCanceledEvery
 
 /** The selection for one request and concrete graph path, captured without sealing the graph. */
@@ -19,35 +21,25 @@ internal class BindingExplanation(
 internal class BindingCandidateExplanation(
   val binding: KaBinding,
   val selected: Boolean,
-  val reason: String,
+  val reasonCode: BindingReason,
   val rejection: BindingRejection?,
-)
-
-/** Membership decisions shared by graph queries and the binding explanation. */
-internal enum class BindingRejection(val description: String) {
-  NOT_VISIBLE("This declaration is outside the graph's module dependencies."),
-  CONTRIBUTION_UNAVAILABLE("This graph does not include the contributed interface."),
-  OVERRIDDEN("A nearer graph declaration overrides this binding."),
-  PRIVATE_TO_GRAPH("This binding is private to another graph."),
-  DYNAMIC_REPLACEMENT("A dynamic graph input replaces this binding."),
-  OTHER_GRAPH("This binding belongs to another graph."),
-  NEARER_INPUT("A nearer graph factory supplies this input."),
-  EXCLUDED("This graph excludes the contribution."),
-  INCOMPATIBLE_SCOPE("The binding's scope is unavailable in this graph."),
-  CONTRIBUTION_SCOPE("The contribution targets a different scope."),
-  CONTAINER_UNAVAILABLE("This graph does not include the binding's container or dependency."),
-  REPLACED("Another contribution replaces this declaration."),
-  LOWER_PRIORITY("A surviving contribution has a higher priority."),
+  val relatedBindings: List<KaBinding> = emptyList(),
+) {
+  val reason: String
+    get() = BindingExplanationRenderer.reason(reasonCode)
 }
 
-internal fun BindingTier.selectionDescription(): String =
+/** Membership decisions shared by graph queries and the binding explanation. */
+internal typealias BindingRejection = BindingReason
+
+internal fun BindingTier.selectionReason(): BindingReason =
   when (this) {
-    BindingTier.ASSISTED_TARGET -> "This assisted type requires an assisted factory."
-    BindingTier.EXPLICIT -> "Selected explicit binding."
-    BindingTier.GENERATED_GRAPH -> "Supplied by the graph or an extension factory."
-    BindingTier.MULTIBINDING -> "Included in the collection binding."
-    BindingTier.OPTIONAL -> "Selected optional binding declaration."
-    BindingTier.IMPLICIT -> "Selected class binding after explicit and generated bindings."
+    BindingTier.ASSISTED_TARGET -> BindingReason.ASSISTED_TARGET
+    BindingTier.EXPLICIT -> BindingReason.SELECTED_EXPLICIT
+    BindingTier.GENERATED_GRAPH -> BindingReason.SELECTED_GENERATED
+    BindingTier.MULTIBINDING -> BindingReason.SELECTED_MULTIBINDING
+    BindingTier.OPTIONAL -> BindingReason.SELECTED_OPTIONAL
+    BindingTier.IMPLICIT -> BindingReason.SELECTED_IMPLICIT
   }
 
 /** Formats captured selection decisions without reading declaration PSI. */
@@ -70,17 +62,23 @@ internal fun explainBindingSelection(
     val rejection = rejectionFor(binding)
     val reason =
       when {
-        binding.typeKey.qualifier != consumer.key.qualifier ->
-          "The binding has a different qualifier."
-        assistedTarget && binding in selected -> "This assisted type requires an assisted factory."
-        isSelected && conflicts -> "Conflicts with another binding at the same precedence."
-        isSelected -> checkNotNull(selection).tier.selectionDescription()
-        rejection != null -> rejection.description
+        binding.typeKey.qualifier != consumer.key.qualifier -> BindingReason.QUALIFIER_MISMATCH
+        assistedTarget && binding in selected -> BindingReason.ASSISTED_TARGET
+        isSelected && conflicts -> BindingReason.CONFLICT
+        isSelected -> checkNotNull(selection).tier.selectionReason()
+        rejection != null -> rejection
         selection?.tier == BindingTier.OPTIONAL && binding is KaBinding.CustomWrapper ->
-          "An earlier optional declaration supplies this binding."
-        else -> "A binding with higher precedence supplies this request."
+          BindingReason.EARLIER_OPTIONAL
+        else -> BindingReason.HIGHER_PRECEDENCE
       }
-    BindingCandidateExplanation(binding, isSelected, reason, rejection)
+    val related =
+      when (reason) {
+        BindingReason.CONFLICT -> selected.filter { it !== binding }
+        BindingReason.HIGHER_PRECEDENCE,
+        BindingReason.EARLIER_OPTIONAL -> selected.toList()
+        else -> emptyList()
+      }
+    BindingCandidateExplanation(binding, isSelected, reason, rejection, related)
   }
   return BindingExplanation(context, consumer, selection?.tier, explanations)
 }
