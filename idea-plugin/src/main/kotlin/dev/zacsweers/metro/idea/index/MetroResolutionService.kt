@@ -164,8 +164,11 @@ private constructor(
   private val pendingRequestedFiles = linkedSetOf<VirtualFile>()
   /** Structural changes can alter captured modules without changing file modification stamps. */
   private val pendingForceRebuildFiles = linkedSetOf<VirtualFile>()
+  private var pendingSourceModulesMayHaveChanged = false
   private var forceAllFiles = false
   private var semanticRevision = 0L
+  /** Distinguishes accepted forced rebuilds while an earlier forced rebuild is still pending. */
+  private var sourceInvalidationRevision = 0L
   private var sourceSnapshot: SourceSnapshot? = null
   /** Accepts callbacks from any thread and wakes the coordinator with coalesced requests. */
   private val ingress =
@@ -584,11 +587,13 @@ private constructor(
       checkPsiClassificationActive()
       logger<MetroResolutionService>().warn("Metro PSI invalidation failed", failure)
       val requested = failedClassificationRequests(batch)
+      sourceInvalidationRevision++
       recordForceAllInvalidation()
       pendingRequestedFiles += requested
       val sourceModulesMayHaveChanged =
         batch.directories.isNotEmpty() || batch.files.values.any { it.structuralChange }
       if (sourceModulesMayHaveChanged) {
+        pendingSourceModulesMayHaveChanged = true
         pendingForceRebuildFiles += requested
         pendingForceRebuildFiles += sourceSnapshot?.shardOrder.orEmpty()
       }
@@ -1459,6 +1464,13 @@ private constructor(
     }
   }
 
+  /** Tests inspect the captured force revision after classification with index requests idle. */
+  @TestOnly
+  internal suspend fun pendingSourceInvalidationRevision(): Long {
+    awaitCoordinatorBarrier()
+    return capturePendingInvalidations().sourceChanges.invalidationRevision
+  }
+
   private val automaticallyRefreshGraphData: Boolean
     get() = MetroSettings.getInstance(project).state.automaticallyRefreshGraphData
 
@@ -2062,6 +2074,7 @@ private constructor(
       if (state != null) {
         result.forceAll = true
         result.forceRebuildFiles += state.shardOrder
+        result.sourceModulesMayHaveChanged = true
       }
       return
     }
@@ -2112,6 +2125,9 @@ private constructor(
       if (change.structuralChange) {
         result.forceRebuildFiles += ownerFiles.orEmpty()
         if (alreadyIndexed) result.forceRebuildFiles += virtualFile
+        if (alreadyIndexed || !ownerFiles.isNullOrEmpty()) {
+          result.sourceModulesMayHaveChanged = true
+        }
       }
       val lostFingerprint = sharedDeclarationFingerprints.containsKey(virtualFile)
       val directlyChangesSharedDeclaration =
@@ -2126,12 +2142,12 @@ private constructor(
       return
     }
 
-    val newlySatisfiedOwners =
+    val recoverableOwners =
       state?.classBindingDependencies?.ownersForAvailableDeclarations(file).orEmpty()
-    if (newlySatisfiedOwners.isNotEmpty()) {
-      ownerFiles = ownerFiles.orEmpty() + newlySatisfiedOwners
+    if (recoverableOwners.isNotEmpty()) {
+      ownerFiles = ownerFiles.orEmpty() + recoverableOwners
       // The requesting shard can be textually unchanged while a missing class becomes available.
-      result.forceRebuildFiles += newlySatisfiedOwners
+      result.forceRebuildFiles += recoverableOwners
     }
 
     val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)
@@ -2140,6 +2156,7 @@ private constructor(
     result.fingerprints[virtualFile] = currentFingerprint
     val fingerprintChanged =
       previousFingerprint != null && previousFingerprint != currentFingerprint
+    // Files without a baseline keep the conservative metadata-change fallback.
     val metadataAffectsSharedDeclarations =
       SharedDeclarationChange.FILE_METADATA in change.sharedDeclarationChanges &&
         hasSharedDeclarations &&
@@ -2177,7 +2194,10 @@ private constructor(
       if (change.structuralChange || change.requestedByQuery) {
         if (relevant) {
           result.requested += virtualFile
-          if (change.structuralChange) result.forceRebuildFiles += virtualFile
+          if (change.structuralChange) {
+            result.forceRebuildFiles += virtualFile
+            result.sourceModulesMayHaveChanged = true
+          }
         } else {
           result.requestedToRemove += virtualFile
         }
@@ -2195,6 +2215,7 @@ private constructor(
       if (change.structuralChange) {
         result.forceRebuildFiles += virtualFile
         result.forceRebuildFiles += ownerFiles.orEmpty()
+        result.sourceModulesMayHaveChanged = true
       }
     }
     if (change.structuralChange && !alreadyIndexed) {
@@ -2221,9 +2242,13 @@ private constructor(
 
     val dirtyInvalidationAdded = recordDirtyInvalidations(classified.dirty)
     val forceAllInvalidationAdded = classified.forceAll && recordForceAllInvalidation()
+    val forcesSourceRebuild = classified.forceAll || classified.forceRebuildFiles.isNotEmpty()
+    if (forcesSourceRebuild) sourceInvalidationRevision++
     pendingRequestedFiles += classified.requested
     pendingRequestedFiles.removeAll(classified.requestedToRemove)
     pendingForceRebuildFiles += classified.forceRebuildFiles
+    pendingSourceModulesMayHaveChanged =
+      pendingSourceModulesMayHaveChanged || classified.sourceModulesMayHaveChanged
     val semanticInvalidationAdded = dirtyInvalidationAdded || forceAllInvalidationAdded
     if (classified.restartDaemon || semanticInvalidationAdded) {
       // The edit-triggered daemon pass may have finished before background classification landed.
@@ -2256,6 +2281,8 @@ private constructor(
           requested = pendingRequestedFiles.toSet(),
           forceRebuildFiles = pendingForceRebuildFiles.toSet(),
           forceAll = forceAllFiles,
+          sourceModulesMayHaveChanged = pendingSourceModulesMayHaveChanged,
+          invalidationRevision = sourceInvalidationRevision,
         ),
       semanticRevision = semanticRevision,
     )
@@ -2267,6 +2294,9 @@ private constructor(
     pendingDirtyFiles.removeAll(captured.sourceChanges.dirty)
     pendingRequestedFiles.removeAll(captured.sourceChanges.requested)
     pendingForceRebuildFiles.removeAll(captured.sourceChanges.forceRebuildFiles)
+    if (captured.sourceChanges.sourceModulesMayHaveChanged) {
+      pendingSourceModulesMayHaveChanged = false
+    }
     if (captured.sourceChanges.forceAll) forceAllFiles = false
     semanticRevision = captured.semanticRevision
   }
@@ -2714,6 +2744,7 @@ private data class ClassifiedPsiChanges(
   val requested: Set<VirtualFile>,
   val requestedToRemove: Set<VirtualFile>,
   val forceRebuildFiles: Set<VirtualFile>,
+  val sourceModulesMayHaveChanged: Boolean,
   val forceAll: Boolean,
   val restartDaemon: Boolean,
   val fingerprints: Map<VirtualFile, String?>,
@@ -2725,6 +2756,7 @@ private data class ClassifiedPsiChanges(
     val requested = linkedSetOf<VirtualFile>()
     val requestedToRemove = linkedSetOf<VirtualFile>()
     val forceRebuildFiles = linkedSetOf<VirtualFile>()
+    var sourceModulesMayHaveChanged = false
     var forceAll = false
     var restartDaemon = false
     val fingerprints = linkedMapOf<VirtualFile, String?>()
@@ -2737,6 +2769,7 @@ private data class ClassifiedPsiChanges(
         requested = requested.toSet(),
         requestedToRemove = requestedToRemove.toSet(),
         forceRebuildFiles = forceRebuildFiles.toSet(),
+        sourceModulesMayHaveChanged = sourceModulesMayHaveChanged,
         forceAll = forceAll,
         restartDaemon = restartDaemon,
         fingerprints = fingerprints.toMap(),

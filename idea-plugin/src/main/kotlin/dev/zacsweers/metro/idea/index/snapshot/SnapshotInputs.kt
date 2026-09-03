@@ -23,6 +23,12 @@ internal data class SourceSnapshotChanges(
   val requested: Set<VirtualFile>,
   val forceRebuildFiles: Set<VirtualFile>,
   val forceAll: Boolean,
+  /** File moves and arrivals can change the requesting module without changing declaration text. */
+  val sourceModulesMayHaveChanged: Boolean = false,
+  /**
+   * Retries share this revision so a forced shard invalidates its cache once per accepted change.
+   */
+  val invalidationRevision: Long = 0,
 ) {
   /** Rebuilds structurally changed files and their owners even when cached PSI stamps match. */
   fun forcesRebuild(file: VirtualFile): Boolean = forceAll || file in forceRebuildFiles

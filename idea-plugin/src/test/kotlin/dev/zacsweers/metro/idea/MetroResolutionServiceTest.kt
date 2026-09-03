@@ -64,6 +64,108 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     project.service<MetroResolutionService>().resetGraphBrowserActivation()
   }
 
+  fun testRepeatedGlobalChangesAdvanceForceRevisionBeforeFirstSnapshot() {
+    val file =
+      myFixture.addFileToProject(
+        "test/SharedConstant.kt",
+        "package test\n\nconst val VALUE = 1",
+      ) as KtFile
+    withUnpublishedResolutionService { service ->
+      var revision = service.awaitSourceInvalidationRevision()
+      for (value in listOf(2, 3)) {
+        WriteCommandAction.runWriteCommandAction(project) {
+          val property = file.declarations.single() as KtProperty
+          checkNotNull(property.initializer)
+            .replace(KtPsiFactory(project).createExpression("$value"))
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val nextRevision = service.awaitSourceInvalidationRevision()
+        assertTrue(
+          "Each constant edit must invalidate previously forced shards",
+          nextRevision > revision,
+        )
+        assertEquals(nextRevision, service.awaitSourceInvalidationRevision())
+        assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+        revision = nextRevision
+      }
+    }
+  }
+
+  fun testRepeatedStructuralChangesAdvanceForceRevisionBeforeFirstSnapshot() {
+    val file =
+      myFixture.addFileToProject(
+        "test/BeforeRename.kt",
+        "package test\n\n@dev.zacsweers.metro.Inject class RenamedFileBinding",
+      ) as KtFile
+    withUnpublishedResolutionService { service ->
+      var revision = service.awaitSourceInvalidationRevision()
+      for (name in listOf("FirstRename.kt", "SecondRename.kt")) {
+        WriteCommandAction.runWriteCommandAction(project) { file.setName(name) }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val nextRevision = service.awaitSourceInvalidationRevision()
+        assertTrue(
+          "Each structural edit must invalidate previously forced shards",
+          nextRevision > revision,
+        )
+        assertEquals(nextRevision, service.awaitSourceInvalidationRevision())
+        assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+        revision = nextRevision
+      }
+    }
+  }
+
+  fun testRepeatedClassificationFailuresAdvanceForceRevisionBeforeFirstSnapshot() {
+    val file =
+      myFixture.addFileToProject("test/ClassificationFailure.kt", "package test\n\nclass Before")
+        as KtFile
+    withUnpublishedResolutionService { service ->
+      var revision = service.awaitSourceInvalidationRevision()
+      for (name in listOf("FirstChange", "SecondChange")) {
+        service.setPsiClassificationObserver {
+          service.setPsiClassificationObserver(null)
+          error("Test classification failure")
+        }
+        WriteCommandAction.runWriteCommandAction(project) {
+          (file.declarations.single() as KtNamedDeclaration).setName(name)
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val nextRevision = service.awaitSourceInvalidationRevision()
+        assertTrue(
+          "Each classification fallback must invalidate previously forced shards",
+          nextRevision > revision,
+        )
+        assertEquals(nextRevision, service.awaitSourceInvalidationRevision())
+        assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+        revision = nextRevision
+      }
+    }
+  }
+
+  /** Keeps accepted changes pending so revision checks cover edits before the first publication. */
+  private fun withUnpublishedResolutionService(block: (MetroResolutionService) -> Unit) {
+    val settings = MetroSettings.getInstance(project).state
+    val automaticallyRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service = MetroResolutionService(project, serviceScope)
+    try {
+      block(service)
+    } finally {
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      settings.automaticallyRefreshGraphData = automaticallyRefresh
+    }
+  }
+
+  /** Reads the revision after all PSI events from the preceding write have been classified. */
+  private fun MetroResolutionService.awaitSourceInvalidationRevision(): Long {
+    return runBlocking { withTimeout(30_000) { pendingSourceInvalidationRevision() } }
+  }
+
   fun testQueuedPresentationRequestsUseLatestBindingsAndReusePublishedBundles() {
     fun presentationFile(name: String): KtFile {
       return myFixture.addFileToProject(

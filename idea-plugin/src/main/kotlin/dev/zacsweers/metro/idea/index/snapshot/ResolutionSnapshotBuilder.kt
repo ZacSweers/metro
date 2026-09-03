@@ -8,18 +8,12 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootModificationTracker
-import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.SimpleModificationTracker
-import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.mapToSet
@@ -28,7 +22,6 @@ import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.DYNAMIC_GRAPH_CALLABLES
 import dev.zacsweers.metro.idea.index.FileShard
-import dev.zacsweers.metro.idea.index.FileShardBuilder
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.index.LibraryGraphDeclarations
@@ -44,7 +37,6 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -65,6 +57,8 @@ internal class ResolutionSnapshotBuilder(
   private val onShardRead: (KtFile, FileShard) -> Unit,
   private val captureResolutionInputs: (BindingIndexBuilder, Set<VirtualFile>) -> Unit,
 ) {
+  private val fileShards = SourceFileShardCache()
+  private var cachedSourceSummary: CachedSourceLibrarySummary? = null
   private val libraryShards =
     object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
       override fun removeEldestEntry(
@@ -109,14 +103,7 @@ internal class ResolutionSnapshotBuilder(
 
     progress.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
     val rawSource = aggregateSource(collectedSource, progress)
-    progress.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
-    val summary =
-      collectedSource.librarySummary
-        ?: buildFinalizedSourceLibrarySummary(
-          project,
-          rawSource,
-          buildSourceOwnershipIndex(rawSource),
-        )
+    val summary = sourceLibrarySummary(collectedSource, rawSource, pending, progress)
     val finalizedSource = collectedSource.withLibrarySummary(summary)
     val classDependencies =
       SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
@@ -130,8 +117,7 @@ internal class ResolutionSnapshotBuilder(
       checkCurrent()
       val library =
         if (key.resolveFromLibraries) {
-          progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
-          libraryShardFor(key.fingerprint, inputs.roots, source, summary)
+          libraryShardFor(key.fingerprint, inputs.roots, source, summary, progress)
         } else {
           LibraryShard.EMPTY
         }
@@ -168,6 +154,28 @@ internal class ResolutionSnapshotBuilder(
     )
   }
 
+  /** Saves only completed immutable class results; each attempt still owns fresh index builders. */
+  private fun sourceLibrarySummary(
+    collected: SourceSnapshot,
+    source: SourceAggregate,
+    pending: SourceSnapshotChanges,
+    progress: IndexBuildProgressReporter,
+  ): FinalizedSourceLibrarySummary {
+    collected.librarySummary?.let {
+      return it
+    }
+    val cached = cachedSourceSummary
+    if (cached != null && cached.matches(collected, pending.invalidationRevision)) {
+      return cached.summary
+    }
+    progress.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
+    val summary =
+      buildFinalizedSourceLibrarySummary(project, source, buildSourceOwnershipIndex(source))
+    cachedSourceSummary =
+      CachedSourceLibrarySummary(collected, pending.invalidationRevision, summary)
+    return summary
+  }
+
   private fun buildSourceOwnershipIndex(source: SourceAggregate): BindingIndex {
     val builder =
       BindingIndexBuilder().apply {
@@ -195,19 +203,17 @@ internal class ResolutionSnapshotBuilder(
     val transaction = SourceSnapshotTransaction()
     val candidates = candidateFiles(annotationIds, shortNames)
     val total = candidates.size + pending.requested.size
-    var completed = 0
-    progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+    val scan = SourceScanProgress(progress, total)
     for (file in candidates) {
       ProgressManager.checkCanceled()
       try {
         val virtualFile = file.virtualFile ?: continue
         transaction.applyShard(
           virtualFile,
-          shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+          readShard(file, pending, scan),
         )
       } finally {
-        completed++
-        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+        scan.advance()
       }
     }
     // Stub loading can surface requested files before their annotations reach the stub index.
@@ -221,12 +227,11 @@ internal class ResolutionSnapshotBuilder(
         if (containsRelevantAnnotation(file, shortNames)) {
           transaction.applyShard(
             virtualFile,
-            shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+            readShard(file, pending, scan),
           )
         }
       } finally {
-        completed++
-        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+        scan.advance()
       }
     }
     return transaction.snapshot(inputs, moduleFingerprints(), shortNames)
@@ -253,8 +258,7 @@ internal class ResolutionSnapshotBuilder(
     }
     val transaction = SourceSnapshotTransaction(prev)
     val total = dirty.size + pending.requested.size
-    var completed = 0
-    progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+    val scan = SourceScanProgress(progress, total)
     for (virtualFile in dirty) {
       ProgressManager.checkCanceled()
       try {
@@ -269,11 +273,10 @@ internal class ResolutionSnapshotBuilder(
         }
         transaction.applyShard(
           virtualFile,
-          shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+          readShard(file, pending, scan),
         )
       } finally {
-        completed++
-        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+        scan.advance()
       }
     }
     // Requested files were enqueued before their stubs or directory events settled. Draining
@@ -288,19 +291,18 @@ internal class ResolutionSnapshotBuilder(
         if (containsRelevantAnnotation(file, prev.shortNames)) {
           transaction.applyShard(
             virtualFile,
-            shardFor(file, forceRebuild = pending.forcesRebuild(virtualFile)),
+            readShard(file, pending, scan),
           )
         }
       } finally {
-        completed++
-        progress?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total)
+        scan.advance()
       }
     }
     return transaction.snapshot(
       inputs,
       prev.moduleFingerprints,
       prev.shortNames,
-      sourceModulesMayHaveChanged = pending.forceRebuildFiles.isNotEmpty(),
+      sourceModulesMayHaveChanged = pending.sourceModulesMayHaveChanged,
     )
   }
 
@@ -309,6 +311,7 @@ internal class ResolutionSnapshotBuilder(
     rootsGeneration: Long,
     source: SourceAggregate,
     summary: FinalizedSourceLibrarySummary,
+    progress: IndexBuildProgressReporter,
   ): LibraryShard {
     val key =
       LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs, summary.consumerOwnership)
@@ -316,6 +319,7 @@ internal class ResolutionSnapshotBuilder(
       if (it.sourceDependencies.isCurrent()) return it
     }
 
+    progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
     val metadata =
       LibraryGraphDiscovery(
           project,
@@ -533,53 +537,17 @@ internal class ResolutionSnapshotBuilder(
     return hasDynamicGraphCall
   }
 
-  private fun shardFor(file: KtFile, forceRebuild: Boolean = false): FileShard {
-    // Forced rebuilds go through the same cached value so later non-force lookups can never
-    // revert to a stale pre-force shard. The per-file tracker invalidates the stored value.
-    if (forceRebuild) {
-      forceTracker(file).incModificationCount()
-    }
-    val cached =
-      CachedValuesManager.getCachedValue(file) {
-        // Shards use their owning module's options. Explicit dependency files cover inherited graph
-        // members and factory includes even when those files contain no Metro annotations
-        // themselves.
-        val state = file.metroIdeState()
-        val builder = if (state.isEnabled) FileShardBuilder(file.project, state.options) else null
-        val shard = builder?.buildShard(file) ?: FileShard.EMPTY
-        // Register dependency PSI with the platform cache. The shard and service store virtual
-        // files so they do not keep those PSI trees alive.
-        CachedValueProvider.Result.create(
-          shard,
-          file,
-          forceTracker(file),
-          KotlinCompilerSettingsTracker.getInstance(file.project),
-          ProjectRootModificationTracker.getInstance(file.project),
-          *(builder?.psiDependencies ?: emptySet()).toTypedArray(),
-        )
-      }
-    if (!forceRebuild && cached === FileShard.EMPTY && file.textLength > 0) {
-      val state = file.metroIdeState()
-      if (state.isEnabled) {
-        // The cached value was computed while the module read as disabled, usually a stub-loading
-        // race. Recompute through the force tracker so the fresh result is stored and later
-        // passes stop re-analyzing.
-        return shardFor(file, forceRebuild = true)
-      }
-    }
-    onShardRead(file, cached)
-    return cached
-  }
-
-  /** Stored on the file so the tracker and the cached value share one lifetime. */
-  private fun forceTracker(file: KtFile): SimpleModificationTracker {
-    file.getUserData(FORCE_TRACKER_KEY)?.let {
-      return it
-    }
-    return (file as UserDataHolderEx).putUserDataIfAbsent(
-      FORCE_TRACKER_KEY,
-      SimpleModificationTracker(),
-    )
+  private fun readShard(
+    file: KtFile,
+    pending: SourceSnapshotChanges,
+    scan: SourceScanProgress,
+  ): FileShard {
+    val revision =
+      if (pending.forcesRebuild(file.virtualFile)) pending.invalidationRevision else null
+    val result = fileShards.read(file, revision)
+    scan.recordRead(result.rebuilt)
+    onShardRead(file, result.shard)
+    return result.shard
   }
 
   /** Drops stale library data without changing the published presentation generation. */
@@ -587,6 +555,7 @@ internal class ResolutionSnapshotBuilder(
     currentRoots: Long,
     activeFingerprints: Set<IndexOptionsFingerprint>? = null,
   ) {
+    cachedSourceSummary = null
     libraryShards.keys.removeIf { key ->
       key.rootsGeneration != currentRoots ||
         (activeFingerprints != null && key.fingerprint !in activeFingerprints)
@@ -595,6 +564,7 @@ internal class ResolutionSnapshotBuilder(
 
   /** Disabling dependency resolution discards its reusable binary shards. */
   fun clearLibraryShards() {
+    cachedSourceSummary = null
     libraryShards.clear()
   }
 
@@ -603,7 +573,32 @@ internal class ResolutionSnapshotBuilder(
   }
 }
 
-private val FORCE_TRACKER_KEY = Key.create<SimpleModificationTracker>("metro.shard.force.tracker")
+/** Counts completed reads separately from visited files, including skipped or removed files. */
+private class SourceScanProgress(
+  private val reporter: IndexBuildProgressReporter?,
+  private val total: Int,
+) {
+  private var completed = 0
+  private var reused = 0
+  private var rebuilt = 0
+
+  init {
+    report()
+  }
+
+  fun recordRead(wasRebuilt: Boolean) {
+    if (wasRebuilt) rebuilt++ else reused++
+  }
+
+  fun advance() {
+    completed++
+    report()
+  }
+
+  private fun report() {
+    reporter?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total, reused, rebuilt)
+  }
+}
 
 private data class LibraryCacheKey(
   val fingerprint: IndexOptionsFingerprint,
