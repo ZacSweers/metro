@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 
 /**
  * A declaration that originates a binding for [typeKey]. The Analysis API analog of the compiler's
@@ -240,6 +241,8 @@ internal sealed interface KaBinding :
     override val contributionScopes: Set<ClassId> = emptySet(),
     /** Whether the declaration permits an empty multibinding. */
     val allowEmpty: Boolean = false,
+    /** A unique resolved Metro source annotation that can safely offer an `allowEmpty` edit. */
+    val metroMultibindsAnnotation: SmartPsiElementPointer<KtAnnotationEntry>? = null,
     val sourceBindings: List<KaTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
     override val isGraphPrivate: Boolean = false,

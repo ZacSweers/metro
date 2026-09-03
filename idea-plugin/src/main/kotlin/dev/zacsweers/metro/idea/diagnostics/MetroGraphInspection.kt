@@ -10,6 +10,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.idea.diagnostics.quickfix.allowEmptyMultibindingFix
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.metroIdeState
 import java.util.IdentityHashMap
@@ -35,7 +36,8 @@ internal class MetroGraphInspection : LocalInspectionTool() {
               MetroSeverity.ERROR -> ProblemHighlightType.ERROR
               MetroSeverity.WARNING -> ProblemHighlightType.WARNING
             }
-          holder.registerProblem(element, diagnostic.description, highlight)
+          val fixes = listOfNotNull(allowEmptyMultibindingFix(diagnostic)).toTypedArray()
+          holder.registerProblem(element, diagnostic.description, highlight, *fixes)
         }
       }
     }

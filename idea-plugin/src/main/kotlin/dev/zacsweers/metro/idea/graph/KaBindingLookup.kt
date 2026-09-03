@@ -325,6 +325,7 @@ internal class KaBindingLookup(
         typeKey = contextKey.typeKey,
         contextualTypeKey = contextKey,
         allowEmpty = declarations.any { it.allowEmpty },
+        metroMultibindsAnnotation = declarations.singleOrNull()?.metroMultibindsAnnotation,
         sourceBindings = elementKeys,
         isGraphPrivate = declarations.any { it.isGraphPrivate },
       )

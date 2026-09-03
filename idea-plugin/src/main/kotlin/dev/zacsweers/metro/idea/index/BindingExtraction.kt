@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
@@ -53,6 +55,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -419,9 +422,13 @@ internal fun CallableBindingView.bindingData(
         )
       }
       has(options.multibindsAnnotations) -> {
+        val annotations =
+          (symbol.annotations + listOfNotNull(getterSymbol).flatMap { it.annotations }).filter {
+            it.classId in options.multibindsAnnotations
+          }
         val allowEmpty =
-          (symbol.annotations + listOfNotNull(getterSymbol).flatMap { it.annotations })
-            .firstOrNull { it.classId in options.multibindsAnnotations }
+          annotations
+            .firstOrNull()
             ?.arguments
             ?.firstOrNull { it.name.asString() == "allowEmpty" }
             ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value } == true
@@ -432,6 +439,7 @@ internal fun CallableBindingView.bindingData(
             scope,
             null,
             allowEmpty = allowEmpty,
+            metroMultibindsAnnotation = sourceMetroMultibindsAnnotation(annotations),
             isGraphPrivate = isGraphPrivate,
           )
         )
@@ -737,6 +745,20 @@ private fun KaSession.contributedBoundType(
     is BoundTypeResolution.Resolved -> resolution.type
     else -> null
   }
+}
+
+/** Retains an edit target only when the declaration has one resolved Metro source annotation. */
+private fun sourceMetroMultibindsAnnotation(
+  annotations: List<KaAnnotation>
+): SmartPsiElementPointer<KtAnnotationEntry>? {
+  val annotation = annotations.distinctBy { it.psi ?: it }.singleOrNull() ?: return null
+  if (annotation.classId != MetroClassIds.multibinds) return null
+  val entry = annotation.psi as? KtAnnotationEntry ?: return null
+  val file = entry.containingFile as? KtFile ?: return null
+  if (file.isCompiled) return null
+  val virtualFile = file.virtualFile ?: return null
+  if (!ProjectFileIndex.getInstance(entry.project).isInSourceContent(virtualFile)) return null
+  return SmartPointerManager.createPointer(entry)
 }
 
 /** Removes outer type annotations without replacing the declared projections or nullability. */

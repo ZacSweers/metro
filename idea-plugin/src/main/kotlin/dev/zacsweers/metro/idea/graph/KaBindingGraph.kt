@@ -302,7 +302,12 @@ internal class KaBindingGraph(
   private fun reportEmptyMultibindings() {
     for (multibinding in pendingEmptyMultibindings) {
       ProgressManager.checkCanceled()
-      report(emptyMultibindingDiagnostic(multibinding.typeKey), KaBindingStack(graph))
+      pendingRelated = listOf(multibinding)
+      try {
+        report(emptyMultibindingDiagnostic(multibinding.typeKey), KaBindingStack(graph))
+      } finally {
+        pendingRelated = emptyList()
+      }
     }
   }
 

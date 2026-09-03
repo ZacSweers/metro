@@ -125,6 +125,7 @@ internal fun BindingData.toKaBinding(
         replaces = replaces,
         contributionScopes = contributionScopes,
         allowEmpty = allowEmpty,
+        metroMultibindsAnnotation = metroMultibindsAnnotation,
         hintAvailability = hintAvailability,
         isGraphPrivate = isGraphPrivate,
       )
