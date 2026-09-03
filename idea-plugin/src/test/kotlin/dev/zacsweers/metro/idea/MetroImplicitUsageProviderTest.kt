@@ -3,7 +3,9 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.unused.MetroUnusedDeclarationInspectionSuppressor
 import dev.zacsweers.metro.idea.unused.isMetroImplicitUsage
 import kotlin.test.assertFalse
@@ -292,6 +294,8 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     myFixture.enableInspections(UnusedSymbolInspection())
     configureMetroFile()
 
+    // The highlighting fixture rejects the cancellation used to wait for a cold index.
+    project.service<MetroResolutionService>().awaitIndex(myFixture.file)
     val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
     val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
     val warningDescriptions = warnings.map { it.description }.toSet()
@@ -335,6 +339,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
         .trimIndent(),
     )
 
+    project.service<MetroResolutionService>().awaitIndex(myFixture.file)
     val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
     val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
     assertFalse("Secondary @Inject constructor should not be reported as unused:\n$warningText") {
@@ -348,6 +353,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     val declarations = circuitFileDeclarations()
     myFixture.configureFromExistingVirtualFile(declarations.first().containingFile.virtualFile)
 
+    project.service<MetroResolutionService>().awaitIndex(myFixture.file)
     val warnings = myFixture.doHighlighting(HighlightSeverity.WARNING)
     val warningText = warnings.joinToString("\n") { "${it.text}: ${it.description}" }
     val descriptions = warnings.map { it.description }.toSet()
