@@ -36,7 +36,8 @@ internal fun injectionAnnotationTargets(klass: KtClass): List<KtModifierListOwne
     if (hasClassLevelInject(symbol, options)) return@analyze emptyList()
     if (symbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return@analyze emptyList()
 
-    val constructors = listOfNotNull(klass.primaryConstructor) + klass.secondaryConstructors
+    val primary = klass.primaryConstructor
+    val constructors = listOfNotNull(primary) + klass.secondaryConstructors
     for (constructor in constructors) {
       val constructorSymbol = constructor.symbol
       if (constructorSymbol.hasAnyAnnotation(options.allInjectAnnotations)) {
@@ -49,13 +50,13 @@ internal fun injectionAnnotationTargets(klass: KtClass): List<KtModifierListOwne
       }
     }
 
-    val primary = klass.primaryConstructor
-    if (primary != null) {
+    // A class without any declared constructors has an implicit primary constructor.
+    if (constructors.isEmpty()) return@analyze listOf(klass)
+    // Keep the selection explicit when other constructors exist, even if they are hidden.
+    if (primary != null && constructors.size == 1) {
       return@analyze if (primary.isVisibleForInjection()) listOf(klass) else emptyList()
     }
-    // A class without any declared constructors has an implicit primary constructor.
-    if (klass.secondaryConstructors.isEmpty()) return@analyze listOf(klass)
-    klass.secondaryConstructors.filter { it.isVisibleForInjection() }
+    constructors.filter { it.isVisibleForInjection() }
   }
 }
 

@@ -57,7 +57,7 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
     assertEquals(expected, file.text)
   }
 
-  fun testPrimaryConstructorWinsWhenSecondaryConstructorsExist() {
+  fun testPrimaryConstructorChoicePreviewsAppliesAndUndoes() {
     val file =
       myFixture.configureMetroFile(
         """
@@ -66,10 +66,84 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
         }
         """
       )
-    myFixture.checkPreviewAndLaunchAction(intention())
+    val before = file.text
+    myFixture.checkIntentionPreviewHtml(
+      intention(),
+      "<p>Choose the constructor Metro should call.</p>",
+    )
+    assertEquals(before, file.text)
+    val choice = constructorChoice(file)
+    assertEquals(
+      listOf("primary constructor(val value: String)", "constructor()"),
+      choice.actions.map { it.familyName },
+    )
+    val action = choice.actions.first().asIntention()
+    val expected = before.replace("class Service(", "class Service @Inject constructor(")
+    assertEquals(expected, myFixture.getIntentionPreviewText(action))
+    assertEquals(before, file.text)
+    myFixture.checkPreviewAndLaunchAction(action)
+    assertEquals(expected, file.text)
+    assertUnavailable()
+
+    myFixture.performEditorAction(IdeActions.ACTION_UNDO)
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    assertEquals(before, file.text)
+    intention()
+  }
+
+  fun testSecondaryConstructorChoiceWithPrimaryConstructor() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class <caret>Service(val value: String) {
+          constructor() : this("default")
+        }
+        """
+      )
+    val action = constructorChoice(file).actions[1].asIntention()
+    myFixture.checkPreviewAndLaunchAction(action)
     val klass = file.declarations.single() as KtClass
-    assertEquals("Inject", klass.annotationEntries.single().shortName?.asString())
-    assertEmpty(klass.secondaryConstructors.single().annotationEntries)
+    assertEmpty(klass.annotationEntries)
+    assertEmpty(klass.primaryConstructor!!.annotationEntries)
+    assertEquals(
+      "Inject",
+      klass.secondaryConstructors.single().annotationEntries.single().shortName?.asString(),
+    )
+  }
+
+  fun testVisibleSecondaryConstructorWithHiddenPrimaryConstructor() {
+    for (visibility in listOf("private", "protected")) {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          class <caret>Service $visibility constructor(val value: String) {
+            constructor() : this("default")
+          }
+          """
+        )
+      myFixture.checkPreviewAndLaunchAction(intention())
+      val klass = file.declarations.single() as KtClass
+      assertEmpty(klass.annotationEntries)
+      assertEmpty(klass.primaryConstructor!!.annotationEntries)
+      assertEquals(
+        "Inject",
+        klass.secondaryConstructors.single().annotationEntries.single().shortName?.asString(),
+      )
+    }
+  }
+
+  fun testSoleVisiblePrimaryConstructorIsAnnotatedExplicitly() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class <caret>Service(val value: String) {
+          private constructor() : this("default")
+        }
+        """
+      )
+    val expected = file.text.replace("class Service(", "class Service @Inject constructor(")
+    myFixture.checkPreviewAndLaunchAction(intention())
+    assertEquals(expected, file.text)
   }
 
   fun testSecondaryConstructorPickerAppliesTheSelectedConstructor() {
@@ -240,13 +314,12 @@ class MetroMakeInjectableIntentionTest : BasePlatformTestCase() {
     val file =
       myFixture.configureMetroFile(
         """
-        class <caret>Service {
-          constructor(value: String) {}
-          constructor(value: Int) {}
+        class <caret>Service(val value: String) {
+          constructor() : this("default")
         }
         """
       )
-    val choice = constructorChoice(file).actions[1]
+    val choice = constructorChoice(file).actions.first()
     WriteCommandAction.runWriteCommandAction(project) {
       val document = myFixture.editor.document
       document.insertString(document.text.indexOf("class Service"), "@Inject\n")
