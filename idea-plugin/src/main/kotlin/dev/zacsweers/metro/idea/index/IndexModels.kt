@@ -138,6 +138,7 @@ internal class GraphInterfaceSurface(
         ownerGraphId = graph.declarationId,
         originClassId = contribution.classId,
         contributionScopes = contribution.scopeKeys,
+        hintAvailability = contribution.hintAvailability,
       )
     }
     return GraphInterfaceContribution(

@@ -6,15 +6,9 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
-import com.intellij.psi.search.GlobalSearchScope
-import dev.zacsweers.metro.compiler.MetroHints
 import dev.zacsweers.metro.compiler.MetroOptions
-import dev.zacsweers.metro.compiler.flatMapToSet
-import dev.zacsweers.metro.idea.annotationScopeKeys
-import dev.zacsweers.metro.idea.classLiteralClassId
 import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
@@ -25,34 +19,24 @@ import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.GraphReference
-import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import java.util.Collections
 import java.util.IdentityHashMap
-import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityChecker
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
-import org.jetbrains.kotlin.analysis.api.types.KaClassType
-import org.jetbrains.kotlin.idea.stubindex.KotlinTopLevelFunctionFqnNameIndex
-import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.psi.KtCallableDeclaration
-import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.psi.KtNamedFunction
 
 /**
- * Cross-file passes that need the merged project shard: compiled contribution hints and
- * demand-driven library constructor-injection bindings.
+ * Resolves concrete class dependencies after source and binary graph members have been composed.
+ * Source and library declarations share the same demand-driven expansion state.
  */
 internal class LibraryIndexPostProcessor(
   private val project: Project,
@@ -60,18 +44,16 @@ internal class LibraryIndexPostProcessor(
   private val bindings: MutableList<KaBinding>,
   private val consumers: List<ConsumerEntry>,
   private val graphs: List<KaGraphDeclaration>,
-  private val contributions: MutableList<ContributionEntry>,
+  private val contributions: List<ContributionEntry>,
   private val sourceClassUseSites: SourceClassUseSites,
   private val consumerOwnership: ConsumerOwnershipBundle,
   private val initialSourceClasses: SourceClassResolution,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
-  private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
 
   private lateinit var sourceClasses: SourceClassBindingPostProcessor
 
   fun postProcess(): SourceClassResolution {
-    scanLibraryContributionHints()
     sourceClasses =
       SourceClassBindingPostProcessor(
         project,
@@ -84,258 +66,6 @@ internal class LibraryIndexPostProcessor(
     bindings += resumed.addedBindings
     resolveLibraryInjectBindings(resumed.libraryRequests)
     return sourceClasses.snapshot()
-  }
-
-  /**
-   * Discovers contributions from compiled dependencies the way the compiler does for classpath
-   * merging (`ContributionHintFirGenerator` / `ContributedInterfaceSupertypeGenerator`): scanning
-   * top-level hint functions in the `metro.hints` package, named after the scope class, whose
-   * single parameter type is the contributing class.
-   */
-  private fun scanLibraryContributionHints() {
-    val scopeIds = buildSet {
-      graphs.forEach { addAll(it.scopeKeys) }
-      contributions.forEach { addAll(it.scopeKeys) }
-    }
-    if (scopeIds.isEmpty()) return
-    val useSites = useSitesByModule()
-    val fileIndex = ProjectFileIndex.getInstance(project)
-    val allScope = GlobalSearchScope.allScope(project)
-    val hints = mutableListOf<LibraryHint>()
-    for (scopeId in scopeIds) {
-      ProgressManager.checkCanceled()
-      val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
-      for (hintFunction in KotlinTopLevelFunctionFqnNameIndex[hintFqName, project, allScope]) {
-        ProgressManager.checkCanceled()
-        val virtualFile = hintFunction.containingFile.virtualFile ?: continue
-        // Project-source contributions are already covered by the annotation sweeps; hints only
-        // exist as generated declarations in binaries.
-        if (fileIndex.isInContent(virtualFile)) continue
-        hints += LibraryHint(scopeId, hintFunction)
-      }
-    }
-    if (hints.isEmpty()) return
-
-    val visibleModulesByHint = visibleModulesByHint(hints, useSites)
-    for (hint in hints) {
-      ProgressManager.checkCanceled()
-      val visibleModules = visibleModulesByHint.getValue(hint.function)
-      if (visibleModules.isEmpty()) continue
-      val hintAvailability = if (hint.isNonPublic) HintAvailability(visibleModules) else null
-      val context = useSites.getValue(visibleModules.first())
-      processLibraryHint(hint.function, hint.scopeId, context, hintAvailability)
-    }
-  }
-
-  private fun useSitesByModule(): Map<KaModule, KtElement> {
-    val result = linkedMapOf<KaModule, KtElement>()
-    val fileIndex = ProjectFileIndex.getInstance(project)
-
-    fun addUseSite(element: PsiElement?) {
-      if (element !is KtElement) return
-      val virtualFile = element.containingFile?.virtualFile ?: return
-      if (!fileIndex.isInContent(virtualFile)) return
-      val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
-      result.putIfAbsent(module, element)
-    }
-
-    graphs.forEach { addUseSite(it.pointer.element) }
-    contributions.forEach { addUseSite(it.pointer.element) }
-    consumers.forEach { addUseSite(it.pointer.element) }
-    return result
-  }
-
-  private fun processLibraryHint(
-    hintFunction: KtNamedFunction,
-    scopeId: ClassId,
-    context: KtElement,
-    hintAvailability: HintAvailability?,
-  ) {
-    analyze(context) {
-      val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze
-      val contributedType =
-        symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze
-      val classSymbol = (contributedType as? KaClassType)?.symbol as? KaNamedClassSymbol
-      val ktClass = classSymbol?.psi as? KtClassOrObject ?: return@analyze
-      val processedScopes = processedLibraryContributionScopes.getOrPut(ktClass) { mutableSetOf() }
-      if (!processedScopes.add(scopeId)) return@analyze
-
-      // Contribution-provider containers carry @Origin pointing back at the real contributing
-      // class; prefer it for presentation and as the contribution anchor.
-      val originClassId =
-        classSymbol.annotations
-          .firstOrNull { it.classId in options.originAnnotations }
-          ?.arguments
-          ?.firstOrNull { it.name.asString() == "value" }
-          ?.let { classLiteralClassId(it.expression) }
-      val originPsi = originClassId?.let { findClass(it)?.psi as? KtClassOrObject }
-      val contributionAnchor = originPsi ?: ktClass
-
-      val contributedClassId = originClassId ?: ktClass.getClassId()
-      val classReplaces =
-        classSymbol.annotations
-          .filter { it.classId in options.allContributesAnnotations }
-          .flatMapToSet { classListArgument(it, "replaces") }
-      val originSymbol =
-        if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
-        else classSymbol
-      val contributionReplaces =
-        originSymbol
-          ?.annotations
-          ?.filter { it.classId in options.allContributesAnnotations }
-          ?.flatMapToSet { classListArgument(it, "replaces") }
-          .orEmpty() + classReplaces
-      contributions +=
-        ContributionEntry(
-          pointerManager.createSmartPsiElementPointer(contributionAnchor),
-          setOf(scopeId),
-          contributedClassId,
-          hintAvailability,
-          kind = (originSymbol ?: classSymbol).contributionKind(options),
-          replaces = contributionReplaces,
-        )
-      val classBindings = ktClass.bindingData(this, options)
-      val originBindings =
-        if (originPsi != null && originPsi != ktClass) originPsi.bindingData(this, options)
-        else emptyList()
-      val mapContributionAnnotations =
-        options.contributesIntoMapAnnotations + options.customContributesIntoSetAnnotations
-      val priorityAnnotations = options.contributesBindingAnnotations + mapContributionAnnotations
-      val scopedPriorityAnnotations =
-        originSymbol
-          ?.annotations
-          ?.filter { it.classId in priorityAnnotations }
-          ?.filter { scopeId in annotationScopeKeys(it) }
-          .orEmpty()
-      // Explicit generated @Binds members are authoritative when a binary origin has multiple
-      // supertypes and its contribution annotation's bound-type argument cannot be recovered.
-      // A single scope-matched priority still belongs to those aliases without class BindingData.
-      val classContributions =
-        (classBindings + originBindings).filter { contribution ->
-          (contribution.kind == BindingData.Kind.ALIAS ||
-            contribution.kind == BindingData.Kind.PROVIDED) && contribution.isClassContribution
-        }
-      for (data in classBindings) {
-        bindings +=
-          data.toKaBinding(
-            ptr(ktClass),
-            originClassId = data.originClassId ?: contributedClassId,
-            replaces = data.replaces + classReplaces,
-            contributionScopes = data.contributionScopes.ifEmpty { setOf(scopeId) },
-            hintAvailability = hintAvailability,
-          )
-      }
-      // Generated members hold the machine-readable binding declarations that annotation
-      // arguments in binaries can't carry, like binding<T>() type args. Contribution-provider
-      // containers hold @Provides members directly, and contributed classes hold nested
-      // MetroContribution interfaces with @Binds members.
-      val memberHolders = listOf(ktClass) + ktClass.declarations.filterIsInstance<KtClassOrObject>()
-      for (holder in memberHolders) {
-        ProgressManager.checkCanceled()
-        for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
-          for (data in member.bindingData(this, options)) {
-            val matchingContribution = classContributions.firstOrNull { contribution ->
-              contribution.key == data.key &&
-                contribution.multibindingId == data.multibindingId &&
-                contribution.mapKeyValue == data.mapKeyValue &&
-                scopeId in contribution.contributionScopes
-            }
-            val fallbackPriority =
-              scopedPriorityAnnotations
-                .filter { annotation ->
-                  val annotationClassId = annotation.classId
-                  val isBindingAnnotation =
-                    annotationClassId in options.contributesBindingAnnotations
-                  when {
-                    data.multibindingId == null ->
-                      isBindingAnnotation && !annotation.isMultibindingContribution()
-                    data.mapKeyValue != null -> annotationClassId in mapContributionAnnotations
-                    else -> false
-                  }
-                }
-                .map { it.priority() }
-                .singleOrNull()
-            val inheritedPriority =
-              when {
-                matchingContribution != null ->
-                  ExtractedPriority(
-                    matchingContribution.priority,
-                    matchingContribution.priorityFromAnvilRank,
-                  )
-                fallbackPriority != null -> fallbackPriority
-                else ->
-                  ExtractedPriority(
-                    data.priority,
-                    data.priorityFromAnvilRank,
-                  )
-              }
-            val isMatchedClassContribution =
-              matchingContribution != null || fallbackPriority != null
-            bindings +=
-              data.toKaBinding(
-                ptr(member),
-                originClassId = contributedClassId,
-                implementationName =
-                  data.implementationName ?: originClassId?.shortClassName?.asString(),
-                replaces = classReplaces,
-                contributionScopes = setOf(scopeId),
-                priority = inheritedPriority.value,
-                priorityFromAnvilRank = inheritedPriority.fromAnvilRank,
-                isClassContribution = isMatchedClassContribution || data.isClassContribution,
-                hintAvailability = hintAvailability,
-              )
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Modules from which Kotlin considers each [LibraryHint] visible.
-   *
-   * Public hints need only one module whose classpath contains the declaration. Internal/private
-   * hints retain their complete use-site visibility sets so friend and source-set rules remain
-   * authoritative, but unrelated module/hint pairs never enter an Analysis API session.
-   */
-  @OptIn(KaExperimentalApi::class, KaPlatformInterface::class)
-  private fun visibleModulesByHint(
-    hints: List<LibraryHint>,
-    useSites: Map<KaModule, KtElement>,
-  ): Map<KtNamedFunction, Set<KaModule>> {
-    val result = hints.associateTo(linkedMapOf()) { it.function to linkedSetOf<KaModule>() }
-    val pendingPublic = hints.filterTo(linkedSetOf()) { !it.isNonPublic }
-    val nonPublic = hints.filter { it.isNonPublic }
-    for ((module, useSite) in useSites) {
-      ProgressManager.checkCanceled()
-      val resolutionScope = KaResolutionScope.forModule(module)
-      val publicIterator = pendingPublic.iterator()
-      while (publicIterator.hasNext()) {
-        ProgressManager.checkCanceled()
-        val hint = publicIterator.next()
-        if (!resolutionScope.contains(hint.function)) continue
-        result.getValue(hint.function) += module
-        publicIterator.remove()
-      }
-
-      val candidates = nonPublic.filter { resolutionScope.contains(it.function) }
-      if (candidates.isEmpty()) continue
-      analyze(useSite) {
-        val checker =
-          createUseSiteVisibilityChecker(
-            useSiteFile = useSite.containingKtFile.symbol,
-            receiverExpression = null,
-            position = useSite,
-          )
-        for (hint in candidates) {
-          ProgressManager.checkCanceled()
-          val hintSymbol = hint.function.symbol as? KaNamedFunctionSymbol ?: continue
-          if (checker.isVisible(hintSymbol)) {
-            result.getValue(hint.function) += module
-          }
-        }
-      }
-    }
-    return result
   }
 
   /**
@@ -434,7 +164,7 @@ internal class LibraryIndexPostProcessor(
   @OptIn(KaPlatformInterface::class)
   private fun enqueueBindingDependencies(queue: ArrayDeque<LibraryInjectRequest>) {
     val fileIndex = ProjectFileIndex.getInstance(project)
-    val useSites = useSitesByModule()
+    val useSites = sourceUseSitesByModule(project, graphs, contributions, consumers)
     val seededFactoryUseSites =
       if (sourceClassUseSites.isEmpty()) null
       else {
@@ -446,6 +176,8 @@ internal class LibraryIndexPostProcessor(
     for (binding in bindings) {
       ProgressManager.checkCanceled()
       if (binding.dependencies.isEmpty()) continue
+      // Graph member parameters already have consumers with their selected graph owners.
+      if (binding.ownerGraphId != null) continue
       val declaration = binding.pointer.element ?: continue
       val virtualFile = binding.pointer.virtualFile ?: continue
       if (fileIndex.isInContent(virtualFile)) {
@@ -528,12 +260,6 @@ internal class LibraryIndexPostProcessor(
     val id: LibraryInjectBindingId,
     val binding: KaBinding,
   )
-
-  private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction) {
-    val isNonPublic: Boolean =
-      function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
-        function.hasModifier(KtTokens.PRIVATE_KEYWORD)
-  }
 }
 
 /** Source generic factories resolve dependencies from the modules that request their exact type. */

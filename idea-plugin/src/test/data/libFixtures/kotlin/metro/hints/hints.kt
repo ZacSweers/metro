@@ -26,6 +26,15 @@ import libtest.LibLowerRankedService
 import libtest.LibMixedMultibindingServiceImpl
 import libtest.LibServiceImpl
 import libtest.LibTransitiveServiceImpl
+import libtest.LibContributedGraph
+import libtest.LibDefaultGraph
+import libtest.LibHiddenGraph
+
+fun libtest_LibInterfaceScope(contributed: LibContributedGraph) {}
+
+fun libtest_LibInterfaceScope(contributed: LibDefaultGraph) {}
+
+internal fun libtest_LibInterfaceScope(contributed: LibHiddenGraph) {}
 
 fun dev_zacsweers_metro_AppScope(contributed: LibServiceImpl) {}
 

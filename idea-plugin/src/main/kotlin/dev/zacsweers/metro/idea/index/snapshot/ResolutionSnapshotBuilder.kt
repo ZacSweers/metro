@@ -25,12 +25,15 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.idea.MetroIdeModuleState
 import dev.zacsweers.metro.idea.MetroIdeProjectService
+import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.DYNAMIC_GRAPH_CALLABLES
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.FileShardBuilder
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
+import dev.zacsweers.metro.idea.index.LibraryContributionScanner
 import dev.zacsweers.metro.idea.index.LibraryIndexPostProcessor
+import dev.zacsweers.metro.idea.index.SourceClassBindingPostProcessor
 import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -132,12 +135,13 @@ internal class ResolutionSnapshotBuilder(
           LibraryShard.EMPTY
         }
       classDependencies.include(library.sourceDependencies)
+      val composedSource = source.withGraphInterfaces(library.graphInterfaces)
       progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
         BindingIndexBuilder(generationToken).apply {
-          bindings += source.bindings + library.bindings
-          consumers += source.consumers
-          graphs += source.graphs
+          bindings += composedSource.bindings + library.bindings
+          consumers += composedSource.consumers
+          graphs += composedSource.graphs
           contributions += source.contributions + library.contributions
           assistedSites += source.assistedSites
           bindingContainers += source.bindingContainers
@@ -302,30 +306,67 @@ internal class ResolutionSnapshotBuilder(
     source: SourceAggregate,
     summary: FinalizedSourceLibrarySummary,
   ): LibraryShard {
-    val key = LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs)
+    val key =
+      LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs, summary.consumerOwnership)
     libraryShards[key]?.let {
       if (it.sourceDependencies.isCurrent()) return it
     }
 
-    val bindings = source.bindings.toMutableList()
-    val contributions = source.contributions.toMutableList()
+    val hints =
+      LibraryContributionScanner(
+          project,
+          fingerprint.options,
+          source.graphs,
+          source.contributions,
+          source.consumers,
+        )
+        .scan()
+    val interfaces = graphInterfaceOverlay(hints.graphInterfaces, source.graphs)
+    val sourceWithInterfaces = source.withGraphInterfaces(interfaces)
+    val contributions = source.contributions + hints.contributions
+    val composed =
+      sourceWithInterfaces.copy(
+        bindings = sourceWithInterfaces.bindings + hints.bindings,
+        contributions = contributions,
+      )
+    val ownership =
+      if (interfaces.isEmpty) summary.consumerOwnership
+      else ConsumerOwnershipBundle.build(buildSourceOwnershipIndex(composed))
+    // New interface requests must have their exact source graph owner before class lookup.
+    // Existing source requests stay memoized in the previous expansion state.
+    val initialClasses =
+      if (interfaces.isEmpty) summary.sourceClasses
+      else {
+        SourceClassBindingPostProcessor(
+            project,
+            sourceWithInterfaces.bindings,
+            sourceWithInterfaces.consumers,
+            ownership,
+            summary.sourceClasses,
+          )
+          .resolveInitial()
+      }
+    val bindings = composed.bindings.toMutableList()
+    val baseBindingCount = bindings.size
+    bindings += initialClasses.addedBindings.drop(summary.sourceClasses.addedBindings.size)
     val classResolution =
       LibraryIndexPostProcessor(
           project,
           fingerprint.options,
           bindings,
-          source.consumers,
-          source.graphs,
+          composed.consumers,
+          composed.graphs,
           contributions,
-          summary.sourceClasses.classUseSites,
-          summary.consumerOwnership,
-          summary.sourceClasses,
+          initialClasses.classUseSites,
+          ownership,
+          initialClasses,
         )
         .postProcess()
     val shard =
       LibraryShard(
-        bindings.drop(source.bindings.size),
-        contributions.drop(source.contributions.size),
+        hints.bindings + bindings.drop(baseBindingCount),
+        hints.contributions,
+        interfaces,
         classResolution.incompleteBindings,
         classResolution.dependencies,
       )
@@ -553,11 +594,14 @@ private data class LibraryCacheKey(
   val fingerprint: IndexOptionsFingerprint,
   val rootsGeneration: Long,
   val inputs: LibraryInputs,
+  /** Reused with equal source signatures, including graph excludes and default overrides. */
+  val sourceOwnership: ConsumerOwnershipBundle,
 )
 
 private data class LibraryShard(
   val bindings: List<KaBinding>,
   val contributions: List<ContributionEntry>,
+  val graphInterfaces: GraphInterfaceOverlay = GraphInterfaceOverlay.EMPTY,
   val incompleteBindings: Map<KaModule, Map<ClassBindingIdentity, String>> = emptyMap(),
   val sourceDependencies: SourceClassDependencies = SourceClassDependencies.EMPTY,
 ) {

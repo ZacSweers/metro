@@ -15,6 +15,7 @@ import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
 import dev.zacsweers.metro.idea.model.DynamicGraphId
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
+import dev.zacsweers.metro.idea.model.GraphInterfaceContribution
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
@@ -93,7 +94,13 @@ internal fun aggregateSource(
     }
     consumers += input.consumers
   }
-  attachGraphInterfaces(graphInterfaces, graphs, bindings, consumers)
+  val interfaces = graphInterfaceOverlay(graphInterfaces, graphs)
+  bindings += interfaces.bindings
+  consumers += interfaces.consumers
+  for (index in graphs.indices) {
+    ProgressManager.checkCanceled()
+    graphs[index] = interfaces.attachTo(graphs[index])
+  }
   return SourceAggregate(
     bindings,
     consumers,
@@ -105,14 +112,15 @@ internal fun aggregateSource(
   )
 }
 
-/** Attaches interfaces with matching scopes. BindingIndex selects them for each graph path. */
-private fun attachGraphInterfaces(
+/** Captures interfaces with matching scopes. BindingIndex selects them for each graph path. */
+internal fun graphInterfaceOverlay(
   surfaces: List<GraphInterfaceSurface>,
-  graphs: MutableList<KaGraphDeclaration>,
-  bindings: MutableList<KaBinding>,
-  consumers: MutableList<ConsumerEntry>,
-) {
-  if (surfaces.isEmpty()) return
+  graphs: List<KaGraphDeclaration>,
+): GraphInterfaceOverlay {
+  if (surfaces.isEmpty()) return GraphInterfaceOverlay.EMPTY
+  val interfacesByGraph = linkedMapOf<GraphDeclarationId, List<GraphInterfaceContribution>>()
+  val bindings = mutableListOf<KaBinding>()
+  val consumers = mutableListOf<ConsumerEntry>()
   val surfacesByScope = linkedMapOf<ClassId, MutableList<GraphInterfaceSurface>>()
   for (surface in surfaces) {
     ProgressManager.checkCanceled()
@@ -120,9 +128,8 @@ private fun attachGraphInterfaces(
       surfacesByScope.getOrPut(scope) { mutableListOf() } += surface
     }
   }
-  for (graphIndex in graphs.indices) {
+  for (graph in graphs) {
     ProgressManager.checkCanceled()
-    val graph = graphs[graphIndex]
     val candidates = linkedSetOf<GraphInterfaceSurface>()
     for (scope in graph.scopeKeys) candidates += surfacesByScope[scope].orEmpty()
     if (candidates.isEmpty()) continue
@@ -130,11 +137,33 @@ private fun attachGraphInterfaces(
       ProgressManager.checkCanceled()
       surface.forGraph(graph)
     }
-    graphs[graphIndex] = graph.withContributedInterfaces(interfaces)
+    interfacesByGraph[graph.declarationId] = interfaces
     for (contribution in interfaces) {
       bindings += contribution.bindings
       consumers += contribution.consumers
     }
+  }
+  return GraphInterfaceOverlay(interfacesByGraph, bindings, consumers)
+}
+
+/** Keeps candidate members together so graph metadata and lookup indexes share their instances. */
+internal class GraphInterfaceOverlay(
+  val interfacesByGraph: Map<GraphDeclarationId, List<GraphInterfaceContribution>>,
+  val bindings: List<KaBinding>,
+  val consumers: List<ConsumerEntry>,
+) {
+  val isEmpty: Boolean
+    get() = interfacesByGraph.isEmpty()
+
+  /** Keeps already-attached source contributions when adding cached binary members. */
+  fun attachTo(graph: KaGraphDeclaration): KaGraphDeclaration {
+    val additional = interfacesByGraph[graph.declarationId].orEmpty()
+    if (additional.isEmpty()) return graph
+    return graph.withContributedInterfaces(graph.contributedInterfaces + additional)
+  }
+
+  companion object {
+    val EMPTY = GraphInterfaceOverlay(emptyMap(), emptyList(), emptyList())
   }
 }
 
@@ -229,6 +258,20 @@ internal data class SourceAggregate(
   val bindingContainers: List<BindingContainerEntry>,
   val dynamicGraphs: List<DynamicGraphCall>,
 ) {
+  /** Reuses binary candidates while retaining the current source graph's own member instances. */
+  fun withGraphInterfaces(overlay: GraphInterfaceOverlay): SourceAggregate {
+    if (overlay.isEmpty) return this
+    val composedGraphs = graphs.map { graph ->
+      ProgressManager.checkCanceled()
+      overlay.attachTo(graph)
+    }
+    return copy(
+      bindings = bindings + overlay.bindings,
+      consumers = consumers + overlay.consumers,
+      graphs = composedGraphs,
+    )
+  }
+
   fun withAddedClassBindings(classBindings: List<KaBinding>): SourceAggregate {
     if (classBindings.isEmpty()) return this
     return copy(bindings = bindings + classBindings)

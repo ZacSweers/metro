@@ -2716,6 +2716,201 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testBinaryContributedInterfaceMembersResolveInTheirOwningGraph() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibInterfaceScope
+
+          @ContributesTo(LibInterfaceScope::class)
+          interface LocalPart {
+            val local: Int
+            @Provides fun provideLocal(): Int = 1
+          }
+
+          @DependencyGraph(LibInterfaceScope::class)
+          interface AppGraph
+
+          @DependencyGraph
+          interface OtherGraph
+          """,
+          fileName = "BinaryInterfaceGraph.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val index = service.awaitIndex(file)
+      val graph = index.graphs.single { it.name == "AppGraph" }
+      val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+      val composition = index.graphComposition(query)
+      assertEquals(
+        setOf("kotlin.String", "kotlin.Int", "libtest.LibInterfaceClient"),
+        composition.accessors.map { it.key.renderedType }.toSet(),
+      )
+      assertTrue(composition.accessors.any { it.injectedMemberPointer != null })
+      assertFalse(
+        index.contributions.any { it.classId?.shortClassName?.asString() == "LibHiddenGraph" }
+      )
+      val value =
+        composition.accessors.single {
+          (it.pointer.element as? KtNamedDeclaration)?.name == "value"
+        }
+      val provider = index.bindingsFor(value).single()
+      assertEquals("provideValue", (provider.pointer.element as? KtNamedDeclaration)?.name)
+      assertEquals(graph.declarationId, provider.ownerGraphId)
+      assertEquals(
+        listOf("libtest.LibInterfaceDependency"),
+        provider.dependencies.map { it.typeKey.renderedType },
+      )
+      assertTrue(index.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
+      assertTrue(index.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" })
+
+      val otherGraph = index.graphs.single { it.name == "OtherGraph" }
+      val otherQuery = checkNotNull(index.queryContext(index.contextsFor(otherGraph).single()))
+      assertTrue(index.graphComposition(otherQuery).accessors.isEmpty())
+      val result =
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, query.graphContext)
+          .requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val updated = service.awaitIndex(file)
+      val updatedGraph = updated.graphs.single { it.name == "AppGraph" }
+      val updatedQuery =
+        checkNotNull(updated.queryContext(updated.contextsFor(updatedGraph).single()))
+      val updatedAccessors = updated.graphComposition(updatedQuery).accessors
+      val updatedValue = updatedAccessors.single {
+        (it.pointer.element as? KtNamedDeclaration)?.name == "value"
+      }
+      assertSame(provider, updated.bindingsFor(updatedValue).single())
+      val local = updatedAccessors.single { it.key.renderedType == "kotlin.Int" }
+      assertEquals(
+        "provideLocal",
+        (updated.bindingsFor(local).single().pointer.element as? KtNamedDeclaration)?.name,
+      )
+    }
+  }
+
+  fun testBinaryContributedInterfaceExclusionEditsRefreshItsDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibContributedGraph
+          import libtest.LibInterfaceScope
+
+          @DependencyGraph(LibInterfaceScope::class, excludes = [LibContributedGraph::class])
+          interface AppGraph
+          """,
+          fileName = "ExcludedBinaryInterface.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.awaitIndex(file)
+      val initialQuery =
+        checkNotNull(initial.queryContext(initial.contextsFor(initial.graphs.single()).single()))
+      assertTrue(initial.graphComposition(initialQuery).accessors.isEmpty())
+      assertFalse(initial.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
+      assertFalse(
+        initial.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" }
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      val exclusion = ", excludes = [LibContributedGraph::class]"
+      val offset = document.text.indexOf(exclusion)
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.deleteString(offset, offset + exclusion.length)
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val updated = service.awaitIndex(file)
+      val query =
+        checkNotNull(updated.queryContext(updated.contextsFor(updated.graphs.single()).single()))
+      assertEquals(
+        setOf("kotlin.String", "libtest.LibInterfaceClient"),
+        updated.graphComposition(query).accessors.map { it.key.renderedType }.toSet(),
+      )
+      assertTrue(updated.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
+      assertTrue(
+        updated.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" }
+      )
+      val result =
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, query.graphContext)
+          .requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testSourceReplacementRemovesBinaryContributedMembers() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibContributedGraph
+          import libtest.LibInterfaceScope
+
+          @ContributesTo(LibInterfaceScope::class, replaces = [LibContributedGraph::class])
+          interface Replacement {
+            val enabled: Boolean
+            @Provides fun provideEnabled(): Boolean = true
+          }
+
+          @DependencyGraph(LibInterfaceScope::class)
+          interface AppGraph
+          """,
+          fileName = "ReplacedBinaryInterface.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val query =
+        checkNotNull(index.queryContext(index.contextsFor(index.graphs.single()).single()))
+      val accessors = index.graphComposition(query).accessors
+      assertEquals(listOf("kotlin.Boolean"), accessors.map { it.key.renderedType })
+      assertEquals(
+        "provideEnabled",
+        (index.bindingsFor(accessors.single()).single().pointer.element as? KtNamedDeclaration)
+          ?.name,
+      )
+      assertFalse(index.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
+      val result =
+        project
+          .service<MetroGraphValidationService>()
+          .validate(file, query.graphContext)
+          .requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBinaryContributedInterfacesRespectLibraryResolutionSetting() {
+    val settings = MetroSettings.getInstance(project).state
+    settings.resolveFromLibraries = false
+    try {
+      module.withMetroLibFixtureLibrary {
+        val file =
+          myFixture.configureMetroFile(
+            """
+            import libtest.LibInterfaceScope
+
+            @DependencyGraph(LibInterfaceScope::class)
+            interface AppGraph
+            """,
+            fileName = "DisabledBinaryInterfaces.kt",
+          )
+        val index = project.service<MetroResolutionService>().awaitIndex(file)
+        val query =
+          checkNotNull(index.queryContext(index.contextsFor(index.graphs.single()).single()))
+        assertTrue(index.graphComposition(query).accessors.isEmpty())
+        assertTrue(index.graphs.single().contributedInterfaces.isEmpty())
+      }
+    } finally {
+      settings.resolveFromLibraries = true
+    }
+  }
+
   fun testBinaryGenericAssistedFactoriesKeepConcreteTargetsAndGraphDependencies() {
     module.withMetroLibFixtureLibrary {
       val file =

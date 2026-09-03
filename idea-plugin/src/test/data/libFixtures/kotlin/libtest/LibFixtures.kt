@@ -14,6 +14,7 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.IntoSet
+import dev.zacsweers.metro.HasMemberInjections
 import dev.zacsweers.metro.Origin
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
@@ -39,6 +40,51 @@ interface LibBaseGraph {
 /** Specializes inherited binary providers separately for every concrete graph declaration. */
 interface LibGenericBase<T> {
   @Provides fun provideValue(): T = error("unused")
+}
+
+/** Isolates contributed interface members from unrelated fixture graphs. */
+abstract class LibInterfaceScope
+
+@Inject class LibInterfaceDependency
+
+@Inject class LibInterfaceClient(val dependency: LibInterfaceDependency)
+
+@HasMemberInjections
+class LibInterfaceMembers {
+  @Inject lateinit var client: LibInterfaceClient
+}
+
+/** Inherited members use the concrete type supplied by the contributed interface. */
+interface LibContributedGeneric<T> {
+  val value: T
+
+  @Provides fun provideValue(dependency: LibInterfaceDependency): T = error("unused")
+
+  fun inject(target: LibInterfaceMembers)
+}
+
+@ContributesTo(LibInterfaceScope::class)
+interface LibContributedGraph : LibContributedGeneric<String> {
+  val client: LibInterfaceClient
+}
+
+interface LibDefaultValue
+
+interface LibDefaultGraphBase {
+  val defaultValue: LibDefaultValue
+}
+
+/** A contributed default implementation satisfies its inherited abstract accessor. */
+@ContributesTo(LibInterfaceScope::class)
+interface LibDefaultGraph : LibDefaultGraphBase {
+  override val defaultValue: LibDefaultValue
+    get() = error("unused")
+}
+
+/** Only an internal contribution hint exposes this interface. */
+@ContributesTo(LibInterfaceScope::class)
+interface LibHiddenGraph {
+  val hidden: LibDefaultValue
 }
 
 interface LibService
