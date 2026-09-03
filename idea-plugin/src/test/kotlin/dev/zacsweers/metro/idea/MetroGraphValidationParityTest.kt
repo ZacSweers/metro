@@ -4,6 +4,7 @@ package dev.zacsweers.metro.idea
 
 import com.intellij.openapi.components.service
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import org.jetbrains.kotlin.psi.KtFile
@@ -61,6 +62,8 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         populatedReport = "AggregationGraph/keys-populated/parity/aggregation/AppGraph/Impl.txt",
         validatedReport = "AggregationGraph/keys-validated/parity/aggregation/AppGraph/Impl.txt",
         deferredReport = "AggregationGraph/keys-deferred/parity/aggregation/AppGraph/Impl.txt",
+        explanationKeys = setOf("parity.aggregation.Repo"),
+        explanationRejections = setOf(BindingReason.EXCLUDED, BindingReason.REPLACED),
       )
     )
   }
@@ -86,6 +89,9 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
         validatedReport =
           "$fixture/keys-validated/parity/extension/AppGraph/Impl/ChildGraphImpl.txt",
         deferredReport = "$fixture/keys-deferred/parity/extension/AppGraph/Impl/ChildGraphImpl.txt",
+        explanationReport =
+          "$fixture/graph-metadata/graph-parity-extension-AppGraph-Impl-ChildGraphImpl.json.txt",
+        explanationKeys = setOf("parity.extension.ChildValue", "parity.extension.ParentApi"),
       )
     )
   }
@@ -156,6 +162,7 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
           "$fixture/keys-validated/parity/precedence/explicitinject/AppGraph/Impl.txt",
         deferredReport =
           "$fixture/keys-deferred/parity/precedence/explicitinject/AppGraph/Impl.txt",
+        explanationKeys = setOf("parity.precedence.explicitinject.Thing"),
       )
     )
   }
@@ -265,6 +272,13 @@ class MetroGraphValidationParityTest : BasePlatformTestCase() {
       val expected = compilerContracts.contract(case)
       val actual = ValidationContract.fromIdea(context, index, result)
       expected.assertMatches(actual, case.fixtureName)
+      if (case.explanationKeys.isNotEmpty() || case.explanationRejections.isNotEmpty()) {
+        assertEquals(
+          "${case.fixtureName} binding explanations for ${case.graphPath}",
+          compilerContracts.explanations(case),
+          ideaExplanationContract(case, context, index),
+        )
+      }
     }
     if (case.withLibrary) {
       module.withMetroLibFixtureLibrary { runComparison() }

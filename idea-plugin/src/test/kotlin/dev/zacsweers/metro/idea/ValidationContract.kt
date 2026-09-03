@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import dev.zacsweers.metro.compiler.graph.explanation.BindingCandidateStatus
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -16,6 +19,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -34,6 +38,9 @@ internal data class ParityCase(
   val sourceFile: String? = null,
   val withLibrary: Boolean = false,
   val metroOptions: Map<String, String> = emptyMap(),
+  val explanationReport: String? = metadataReport,
+  val explanationKeys: Set<String> = emptySet(),
+  val explanationRejections: Set<BindingReason> = emptySet(),
 )
 
 internal data class ValidationContract(
@@ -85,6 +92,23 @@ internal data class MultibindingContract(
 
 internal data class DiagnosticContract(val id: String, val title: String)
 
+/**
+ * Compares observed decisions while keeping frontend-specific candidate enumeration outside the
+ * contract.
+ */
+internal data class ExplanationContract(
+  val selected: Set<ExplanationSelection>,
+  val rejected: Set<ExplanationRejection>,
+)
+
+internal data class ExplanationSelection(
+  val key: String,
+  val declaration: String?,
+  val reason: BindingReason,
+)
+
+internal data class ExplanationRejection(val declaration: String, val reason: BindingReason)
+
 internal class CompilerContractReader(
   private val root: Path = compilerParityDataRoot(),
   private val json: Json = Json,
@@ -108,18 +132,7 @@ internal class CompilerContractReader(
     // Generated implementation names are outside the parity contract. Child reports key the
     // parent dependency by its generated graph class, so fold those onto the source graph key.
     // Nested extension impls are named Root.Impl.<Child>Impl, so walk the chain root-first.
-    val implKeyMap = buildMap {
-      var implName = ""
-      for ((index, graphFqName) in case.graphPath.asReversed().withIndex()) {
-        implName =
-          if (index == 0) {
-            "$graphFqName.Impl"
-          } else {
-            "$implName.${graphFqName.substringAfterLast('.')}Impl"
-          }
-        put(implName, graphFqName)
-      }
-    }
+    val implKeyMap = generatedGraphKeys(case.graphPath)
     return ValidationContract(
       graphPath = case.graphPath,
       roots = metadata?.roots,
@@ -130,6 +143,63 @@ internal class CompilerContractReader(
         case.deferredReport?.let { readKeys(it, keyMap, implKeyMap, sort = true).toSet() },
       diagnostics = case.diagnosticReport?.let(::readDiagnostics).orEmpty(),
     )
+  }
+
+  fun explanations(case: ParityCase): ExplanationContract {
+    val report =
+      checkNotNull(case.explanationReport) { "${case.fixtureName} needs an explanation report" }
+    val metadata = json.parseToJsonElement(reportsRoot.resolve(report).readText()).jsonObject
+    val snapshots =
+      metadata.getValue("bindingExplanations").jsonArray.map {
+        json.decodeFromJsonElement<BindingExplanation>(it)
+      }
+    check(snapshots.isNotEmpty()) { "No compiler binding explanations in $report" }
+    val expectedContext = case.graphPath.asReversed()
+    val implKeyMap = generatedGraphKeys(case.graphPath)
+    val contexts =
+      snapshots
+        .map { snapshot ->
+          snapshot.context.label.split(" -> ").map { implKeyMap[it] ?: it }
+        }
+        .toSet()
+    assertEquals(setOf(expectedContext), contexts, "$report explanation context")
+    val candidates = snapshots.flatMap { it.candidates }
+    val selected =
+      candidates
+        .filter { candidate ->
+          candidate.status == BindingCandidateStatus.SELECTED &&
+            normalizeRender(candidate.key) in case.explanationKeys
+        }
+        .mapTo(mutableSetOf()) { candidate ->
+          ExplanationSelection(
+            normalizeRender(candidate.key),
+            candidate.declaration?.label?.substringAfterLast('.'),
+            candidate.reason,
+          )
+        }
+    assertEquals(
+      case.explanationKeys,
+      selected.map { it.key }.toSet(),
+      "$report selected explanation coverage",
+    )
+    val rejected =
+      candidates
+        .filter { candidate ->
+          candidate.status == BindingCandidateStatus.REJECTED &&
+            candidate.reason in case.explanationRejections
+        }
+        .mapTo(mutableSetOf()) { candidate ->
+          ExplanationRejection(
+            checkNotNull(candidate.declaration).label.substringAfterLast('.'),
+            candidate.reason,
+          )
+        }
+    assertEquals(
+      case.explanationRejections,
+      rejected.map { it.reason }.toSet(),
+      "$report rejected explanation coverage",
+    )
+    return ExplanationContract(selected, rejected)
   }
 
   private fun readMetadata(report: String): MetadataContract {
@@ -230,6 +300,42 @@ internal class CompilerContractReader(
       }
       .sortedWith(diagnosticComparator)
   }
+}
+
+/** Reads the same request decisions used by editor navigation without sealing another graph. */
+internal fun ideaExplanationContract(
+  case: ParityCase,
+  context: GraphContext,
+  index: BindingIndex,
+): ExplanationContract {
+  val selected = mutableSetOf<ExplanationSelection>()
+  val rejected = mutableSetOf<ExplanationRejection>()
+  index.withResolutionSession { session ->
+    val query = checkNotNull(session.queryContext(context))
+    for (consumer in index.consumers) {
+      if (!session.isConsumerInContext(consumer, query)) continue
+      val explanation = index.explainBindings(session, consumer, query)
+      for (candidate in explanation.candidates) {
+        val binding = candidate.binding
+        val key = normalizeRender(binding.typeKey.render(short = false))
+        val declaration =
+          binding.originClassId?.shortClassName?.asString()
+            ?: (binding.pointer.element as? KtNamedDeclaration)?.name
+        if (candidate.selected && key in case.explanationKeys) {
+          selected += ExplanationSelection(key, declaration, candidate.reasonCode)
+        }
+        if (!candidate.selected && candidate.reasonCode in case.explanationRejections) {
+          rejected += ExplanationRejection(checkNotNull(declaration), candidate.reasonCode)
+        }
+      }
+    }
+  }
+  assertEquals(
+    case.explanationKeys,
+    selected.map { it.key }.toSet(),
+    "${case.fixtureName} IDE explanation coverage",
+  )
+  return ExplanationContract(selected, rejected)
 }
 
 internal fun ValidationContract.Companion.fromIdea(
@@ -376,6 +482,17 @@ private class RawIdeaBinding(val key: KaTypeKey, val binding: KaBinding) {
 }
 
 private data class KeyEntry(val raw: String, val declaration: String?)
+
+/** Maps generated nested implementation names onto the source graph path used by the IDE. */
+private fun generatedGraphKeys(graphPath: List<String>): Map<String, String> = buildMap {
+  var implName = ""
+  for ((index, graphFqName) in graphPath.asReversed().withIndex()) {
+    implName =
+      if (index == 0) "$graphFqName.Impl"
+      else "$implName.${graphFqName.substringAfterLast('.')}Impl"
+    put(implName, graphFqName)
+  }
+}
 
 private fun canonicalKeyMap(entries: List<KeyEntry>): Map<String, String> {
   val direct = mutableMapOf<String, String>()
