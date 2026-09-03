@@ -375,17 +375,11 @@ internal fun CallableBindingView.bindingData(
 
     when {
       has(options.bindsAnnotations) -> {
-        val sourceType =
-          callable.receiver?.returnType
-            ?: callable.valueParameters.singleOrNull()?.returnType
-            ?: return@with emptyList()
-        val sourceParam = callable.valueParameters.singleOrNull()
+        val source = callable.receiver ?: callable.valueParameters.singleOrNull()
+        if (source == null) return@with emptyList()
+        val sourceType = source.returnType
         val consumedKey =
-          contextualTypeKey(
-            sourceType,
-            sourceParam?.let { qualifierAnnotation(it.symbol, options) },
-            options,
-          )
+          contextualTypeKey(sourceType, qualifierAnnotation(source.symbol, options), options)
         val implementationName =
           (sourceType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
         val elementKey = typeKey(returnType, qualifier)

@@ -157,6 +157,37 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test.Analytics", setDep.multibindingId(MetroOptions()))
   }
 
+  fun testBindsReceiverKeepsItsQualifier() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+        class ServiceImpl : Service
+
+        interface ServiceBindings {
+          @Binds fun @receiver:Named("function") ServiceImpl.bindFunction(): Service
+          @Binds val @receiver:Named("property") ServiceImpl.bindProperty: Service
+          @Binds fun bindParameter(@Named("parameter") impl: ServiceImpl): Service
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+
+    for ((declaration, qualifier) in
+      listOf(
+        declarations.function("bindFunction") to "function",
+        declarations.property("bindProperty") to "property",
+        declarations.function("bindParameter") to "parameter",
+      )) {
+      val binding = index.bindingEntriesAt(declaration).single()
+      assertEquals(
+        "@Named(name = \"$qualifier\") ServiceImpl",
+        binding.dependencies.single().typeKey.render(short = true),
+      )
+    }
+  }
+
   fun testContributedBindingAliasesItsOwnInjectBinding() {
     val file = configure()
     val index = project.service<MetroResolutionService>().awaitIndex(file)
