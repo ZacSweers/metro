@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788413358525,
+  "lastUpdate": 1788414507087,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22400,6 +22400,62 @@ window.BENCHMARK_DATA = {
             "value": 15005.504,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +1.94%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6536f3d6~1",
+          "message": "[before] Fix class map key interop across modules (#2759)",
+          "timestamp": "2026-09-03T04:49:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6536f3d642fc01ece88ee834874302acbd01bd30"
+        },
+        "date": 1788414507087,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 20811.716,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "6536f3d642fc01ece88ee834874302acbd01bd30",
+          "message": "[after] Fix class map key interop across modules (#2759)",
+          "timestamp": "2026-09-03T04:49:41Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/6536f3d642fc01ece88ee834874302acbd01bd30"
+        },
+        "date": 1788414507088,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19322.644,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -7.15%"
           }
         ]
       }
