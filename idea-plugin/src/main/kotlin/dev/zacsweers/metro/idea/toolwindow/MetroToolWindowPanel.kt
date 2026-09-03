@@ -223,12 +223,13 @@ internal class MetroToolWindowPanel(
 
   private fun updateIndexBuildStatus() {
     if (disposed || project.isDisposed) return
+    val showingPreviousData = resolutionService.hasGraphBrowserData
     if (DumbService.isDumb(project)) {
-      indexBuildStatus.showWaitingForIdeIndexing()
+      indexBuildStatus.showWaitingForIdeIndexing(showingPreviousData)
     } else {
       val progress = indexBuildProgress
       when {
-        progress != null -> indexBuildStatus.show(progress)
+        progress != null -> indexBuildStatus.show(progress, showingPreviousData)
         !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
         resolutionService.isManualGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
         else -> indexBuildStatus.clear()

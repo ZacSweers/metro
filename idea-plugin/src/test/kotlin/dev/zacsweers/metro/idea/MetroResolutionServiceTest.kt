@@ -253,7 +253,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       // Reapplying unchanged settings makes readers wait for classification without a rebuild.
       service.settingsChanged()
       repeat(5) {
-        assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+        assertSame(initial, service.indexForToolWindow(module))
         assertSame(BindingIndex.EMPTY, service.presentationIndex(file))
       }
       // The production EDT policy merges an explicit request with the presentation misses.
@@ -309,7 +309,10 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       }
 
       service.settingsChanged()
-      assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(service.hasGraphBrowserData)
+      assertFalse(service.isCurrent(initial))
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
       PlatformTestUtil.waitForFuture(warmupStarted, 30_000)
 
       // Classification restores the cached generation before the warmup callback can retry.
@@ -652,6 +655,9 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val file = configure()
     val service = project.service<MetroResolutionService>()
     assertFalse(service.awaitIndex(file).bindings.isEmpty())
+    service.activateGraphBrowser()
+    assertFalse(service.indexForToolWindow(module).graphs.isEmpty())
+    assertTrue(service.hasGraphBrowserData)
     runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
     UIUtil.dispatchAllInvocationEvents()
     var notifications = 0
@@ -665,6 +671,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     project.setMetroOptions("enabled" to "false")
     PlatformTestUtil.waitForFuture(notified, 30_000)
     assertTrue(service.awaitIndex(file).bindings.isEmpty())
+    assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+    assertFalse(service.hasGraphBrowserData)
     runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
     UIUtil.dispatchAllInvocationEvents()
     val disabledNotifications = notifications
@@ -682,6 +690,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       notifications > disabledNotifications,
     )
     assertFalse(service.awaitIndex(file).bindings.isEmpty())
+    assertFalse(service.indexForToolWindow(module).graphs.isEmpty())
+    assertTrue(service.hasGraphBrowserData)
   }
 
   fun testRemovingMetroCompilerSettingsNotifiesExistingIndexListenersWithoutRootChanges() {
@@ -775,9 +785,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   }
 
   fun testToolWindowIndexWaitsForActivationThenBuildsInBackgroundAndReportsProgress() {
-    val service = project.service<MetroResolutionService>()
     val projectStateService = project.service<MetroIdeProjectService>()
     configure()
+    val executor = Executors.newSingleThreadExecutor()
+    val dispatcher = executor.asCoroutineDispatcher()
+    val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
+    val service = MetroResolutionService(project, serviceScope)
+    val paused = CompletableFuture<Unit>()
+    val releaseCoordinator = CountDownLatch(1)
     projectStateService.clearCurrentState(module)
     val progress = mutableListOf<IndexBuildProgress?>()
     val completed = CompletableFuture<Unit>()
@@ -801,6 +816,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     try {
       assertNull(projectStateService.currentStateOrNull(module))
       assertFalse(service.isGraphBrowserActivated)
+      assertFalse(service.hasGraphBrowserData)
       assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
       PlatformTestUtil.waitForFuture(warmupStarted, 30_000)
       val warmupContext = warmupStarted.join()
@@ -813,13 +829,22 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         }
         .assertCompleted("Compiler settings should finish warming in the background")
 
+      // Keep the first build queued so its publication cannot race the cold-browser assertion.
+      executor.submit {
+        paused.complete(Unit)
+        releaseCoordinator.await()
+      }
+      PlatformTestUtil.waitForFuture(paused, 30_000)
       service.activateGraphBrowser()
       assertTrue(service.isGraphBrowserActivated)
       assertSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+      assertFalse(service.hasGraphBrowserData)
+      releaseCoordinator.countDown()
       PlatformTestUtil.waitForFuture(completed, 30_000)
       progressUpdates.close()
 
       assertNotSame(BindingIndex.EMPTY, service.indexForToolWindow(module))
+      assertTrue(service.hasGraphBrowserData)
       val phases = progress.mapNotNull { it?.phase }.toSet()
       assertTrue(IndexBuildPhase.DISCOVERING_SOURCE_FILES in phases)
       assertTrue(IndexBuildPhase.ANALYZING_DECLARATIONS in phases)
@@ -827,8 +852,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(IndexBuildPhase.BUILDING_GRAPH_INDEX in phases)
       assertNull(progress.last())
     } finally {
+      releaseCoordinator.countDown()
       progressUpdates.close()
       projectStateService.setStateWarmupObserver(null)
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      dispatcher.close()
     }
   }
 

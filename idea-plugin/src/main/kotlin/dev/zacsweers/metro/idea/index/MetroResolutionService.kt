@@ -1322,8 +1322,11 @@ private constructor(
 
   @TestOnly internal fun index(module: Module): BindingIndex = currentIndex(module)
 
-  /** Returns a cached graph-browser index, building in the background only after first use. */
+  /**
+   * Schedules browser updates after first use and keeps its previous graph data visible meanwhile.
+   */
   internal fun indexForToolWindow(module: Module): BindingIndex {
+    if (isDisposed || project.isDisposed || module.isDisposed) return BindingIndex.EMPTY
     val requestMode =
       if (!isGraphBrowserActivated) {
         if (automaticallyRefreshGraphData) IndexRequestMode.CACHE_ONLY
@@ -1332,7 +1335,19 @@ private constructor(
         automaticPresentationRequestMode()
       }
     ingress.submit { ResolutionCoordinatorEvent.PresentationDemand(module) }
-    val index = index(module, requestMode)
+    val requestedIndex = index(module, requestMode)
+    val moduleState = project.service<MetroIdeProjectService>().currentStateOrNull(module)
+    // Unknown options can finish warming while the browser shows its previous data.
+    if (moduleState?.isEnabled == false) return BindingIndex.EMPTY
+    val index =
+      if (
+        requestedIndex === BindingIndex.EMPTY &&
+          requestMode == IndexRequestMode.AUTOMATIC_BACKGROUND
+      ) {
+        publishedResolution.value.presentation.index(module)
+      } else {
+        requestedIndex
+      }
     if (index !== BindingIndex.EMPTY) {
       val indexIsCurrent = isCurrent(index)
       val previous = publishedResolution.getAndUpdate { publication ->
@@ -1357,6 +1372,19 @@ private constructor(
     }
     return index
   }
+
+  /** Reads the retained browser generation without scheduling index or presentation work. */
+  internal val hasGraphBrowserData: Boolean
+    get() {
+      val publication = publishedResolution.value
+      if (publication.isDisposed || project.isDisposed) return false
+      val moduleStates = project.service<MetroIdeProjectService>()
+      return publication.presentation.keysByModule.keys.any { module ->
+        if (module.isDisposed) return@any false
+        if (moduleStates.currentStateOrNull(module)?.isEnabled == false) return@any false
+        publication.presentation.index(module).graphs.isNotEmpty()
+      }
+    }
 
   internal val isGraphBrowserActivated: Boolean
     get() = publishedResolution.value.graphBrowserActivated

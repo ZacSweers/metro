@@ -15,6 +15,8 @@ Changelog
 
 ### Fixes
 
+- **[IDE]** Reduce graph refreshes after unrelated edits and reuse completed analysis when a refresh is interrupted. Keep previous graph data visible while updating it.
+- **[IDE]** Clarify contribution picker previews and respect implicit class keys.
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.

@@ -904,24 +904,37 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
     val panel = IndexBuildStatusPanel()
 
-    panel.show(IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10))
+    panel.show(
+      IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10, reused = 2, rebuilt = 1)
+    )
     assertTrue(panel.isVisible)
-    assertEquals("Analyzing Metro declarations (4 of 10 files)", panel.messageLabel.text)
+    assertEquals(
+      "Checking Metro source files (4 of 10 files, 2 reused, 1 rebuilt)",
+      panel.messageLabel.text,
+    )
+    assertFalse(panel.retainedDataLabel.isVisible)
     assertFalse(panel.progressBar.isIndeterminate)
     assertEquals(4, panel.progressBar.value)
     assertEquals(10, panel.progressBar.maximum)
 
-    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    panel.show(
+      IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA),
+      showingPreviousData = true,
+    )
     assertTrue(panel.progressBar.isIndeterminate)
     assertEquals("Reading dependency metadata", panel.messageLabel.text)
+    assertTrue(panel.retainedDataLabel.isVisible)
+    assertEquals("Showing previous graph data", panel.retainedDataLabel.text)
 
-    panel.showWaitingForIdeIndexing()
+    panel.showWaitingForIdeIndexing(showingPreviousData = true)
     assertTrue(panel.progressBar.isIndeterminate)
     assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
+    assertTrue(panel.retainedDataLabel.isVisible)
 
     panel.showNotLoaded()
     assertTrue(panel.isVisible)
     assertFalse(panel.progressBar.isVisible)
+    assertFalse(panel.retainedDataLabel.isVisible)
     assertEquals("Metro graphs have not been loaded", panel.messageLabel.text)
 
     panel.showRefreshRequired()
@@ -934,6 +947,82 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     panel.clear()
     assertFalse(panel.isVisible)
+    assertFalse(panel.retainedDataLabel.isVisible)
+  }
+
+  fun testGraphBrowserKeepsRowsWhileAutomaticRefreshIsPending() {
+    assertGraphBrowserRetainsRows(pinned = false)
+  }
+
+  fun testPinnedGraphBrowserKeepsRowsWhileAutomaticRefreshIsPending() {
+    assertGraphBrowserRetainsRows(pinned = true)
+  }
+
+  /**
+   * Holding the edit's write lock keeps a background rebuild from racing the retained-row checks.
+   */
+  private fun assertGraphBrowserRetainsRows(pinned: Boolean) {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph interface AppGraph {
+        @Provides fun value(): String = "value"
+      }
+      @DependencyGraph interface OtherGraph
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    service.activateGraphBrowser()
+    val pinService = project.service<GraphContextPinService>()
+    val appGraph = initial.graphs.single { it.name == "AppGraph" }
+    val appPath = initial.contextsFor(appGraph).single().path
+    if (pinned) pinService.pin(appPath)
+    val structure = MetroTreeStructure(project, service::indexForToolWindow, pinService) { "" }
+    val root = structure.rootElement as MetroTreeNode
+    val beforeGraphs = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    val expectedNames = if (pinned) listOf("AppGraph") else listOf("AppGraph", "OtherGraph")
+    assertEquals(expectedNames, beforeGraphs.map { it.graph.name })
+    val appNode = beforeGraphs.single { it.graph.name == "AppGraph" }
+    val beforeCategories = structure.children(appNode).filterIsInstance<MetroTreeNode.Category>()
+    val beforeBindings = beforeCategories.flatMap { structure.children(it) }.map { it.text }
+    assertContainsElements(beforeBindings, "String")
+
+    val documentManager = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documentManager.getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      documentManager.commitDocument(document)
+      assertFalse(service.isCurrent(initial))
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(service.hasGraphBrowserData)
+
+      val retainedGraphs = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+      assertEquals(expectedNames, retainedGraphs.map { it.graph.name })
+      val retainedApp = retainedGraphs.single { it.graph.name == "AppGraph" }
+      val retainedCategories =
+        structure.children(retainedApp).filterIsInstance<MetroTreeNode.Category>()
+      assertEquals(
+        beforeBindings,
+        retainedCategories.flatMap { structure.children(it) }.map { it.text },
+      )
+      assertEquals(if (pinned) appPath else null, pinService.pinnedPath)
+    }
+
+    val updated = service.awaitIndex(file)
+    assertNotSame(initial, updated)
+    assertEquals(
+      setOf("AppGraph", "OtherGraph", "AddedGraph"),
+      updated.graphs.map { it.name }.toSet(),
+    )
+    val updatedNames =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }
+    assertEquals(
+      if (pinned) listOf("AppGraph") else listOf("AddedGraph", "AppGraph", "OtherGraph"),
+      updatedNames,
+    )
+    assertEquals(if (pinned) appPath else null, pinService.pinnedPath)
   }
 
   fun testValidationStatusPanelShowsPreparingAndCountedProgress() {
