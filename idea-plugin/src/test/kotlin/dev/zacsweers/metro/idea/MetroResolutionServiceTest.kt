@@ -27,6 +27,7 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sourceAssistedFactoryUseSites
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.BindingRejection
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -4686,6 +4687,66 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val result =
         validationService.validate(file, index.contextsFor(graph).single()).requireCompleted()
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBindingExplanationUsesContributionSelectionReasons() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Service
+      @ContributesBinding(AppScope::class, priority = 1) class Slow : Service
+      @ContributesBinding(AppScope::class, priority = 2) class Fast : Service
+      @ContributesBinding(AppScope::class) class Retired : Service
+      @ContributesBinding(AppScope::class, replaces = [Retired::class], priority = 1) class Backup : Service
+      @ContributesBinding(AppScope::class, priority = 3) class Excluded : Service
+      @DependencyGraph(AppScope::class, excludes = [Excluded::class])
+      interface AppGraph { val service: Service }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+    index.withResolutionSession { session ->
+      val context = session.contextsFor(index.graphs.single()).single()
+      val query = session.queryContext(context)!!
+      val explanation = index.explainBindings(session, consumer, query)
+      assertEquals(context.path, explanation.context.path)
+      assertEquals(session.bindingsFor(consumer, query), explanation.selected)
+      val candidates =
+        explanation.candidates.associateBy { it.binding.originClassId?.shortClassName?.asString() }
+      assertTrue(candidates.getValue("Fast").selected)
+      assertEquals(BindingRejection.LOWER_PRIORITY, candidates.getValue("Slow").rejection)
+      assertEquals(BindingRejection.LOWER_PRIORITY, candidates.getValue("Backup").rejection)
+      assertEquals(BindingRejection.REPLACED, candidates.getValue("Retired").rejection)
+      assertEquals(BindingRejection.EXCLUDED, candidates.getValue("Excluded").rejection)
+    }
+  }
+
+  fun testBindingExplanationShowsExplicitPrecedenceAndQualifierAlternatives() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Service
+      @DependencyGraph interface AppGraph {
+        val service: Service
+        @Provides fun service(): Service = Service()
+        @Provides @Named("other") fun other(): Service = Service()
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property("service"))!!
+    index.withResolutionSession { session ->
+      val query = session.queryContext(session.contextsFor(index.graphs.single()).single())!!
+      val explanation = index.explainBindings(session, consumer, query)
+      assertEquals(session.bindingsFor(consumer, query), explanation.selected)
+      assertEquals(1, explanation.selected.size)
+      val implicit = explanation.candidates.single { it.binding is KaBinding.ConstructorInjected }
+      assertFalse(implicit.selected)
+      assertTrue(implicit.reason.contains("higher precedence"))
+      val qualified = explanation.candidates.single { it.binding.typeKey.qualifier != null }
+      assertFalse(qualified.selected)
+      assertTrue(qualified.reason.contains("different qualifier"))
     }
   }
 

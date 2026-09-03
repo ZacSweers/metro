@@ -160,9 +160,38 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
     visible: List<KaBinding>,
     plan: GraphQueryPlan,
   ): List<KaBinding> {
-    val candidates = applyReplaces(visible.filter { isBindingInContext(it, plan) })
-    val selection = selectBindingsForKey(contextKey, plan, candidates) ?: return emptyList()
+    val selection = editorBindingSelection(contextKey, visible, plan) ?: return emptyList()
     return selection.bindings.filterNot { it.isValidationOnlyAssistedTarget() }
+  }
+
+  private fun editorBindingSelection(
+    contextKey: KaContextualTypeKey,
+    candidates: List<KaBinding>,
+    plan: GraphQueryPlan,
+  ): KaBindingSelection? {
+    val available = applyReplaces(candidates.filter { isBindingInContext(it, plan) })
+    return selectBindingsForKey(contextKey, plan, available)
+  }
+
+  /** Explains one exact graph path using the same membership and precedence as editor queries. */
+  internal fun explainBindings(
+    session: BindingResolutionSession,
+    consumer: ConsumerEntry,
+    queryContext: GraphQueryContext,
+  ): BindingExplanation {
+    val plan = editorPlan(session, queryContext)
+    val candidates = candidateBindingsFor(consumer)
+    val selection = editorBindingSelection(consumer.contextKey, candidates, plan)
+    val alternatives =
+      bindingsWithType(consumer.key).filter { it.typeKey.qualifier != consumer.key.qualifier }
+    return explainBindingSelection(
+      queryContext.graphContext,
+      consumer,
+      selection,
+      candidates + alternatives,
+    ) {
+      bindingRejection(it, plan)
+    }
   }
 
   internal fun bindingsForKey(
@@ -1326,32 +1355,36 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   private fun isBindingInContext(
     entry: KaBinding,
     plan: GraphQueryPlan,
-  ): Boolean {
-    if (
-      !isBindingCandidateInContext(
-        entry,
-        plan.structure,
-        plan.includeIncompatibleScopes,
-      )
-    ) {
-      return false
-    }
+  ): Boolean = bindingRejection(entry, plan) == null
+
+  private fun bindingRejection(entry: KaBinding, plan: GraphQueryPlan): BindingRejection? {
+    val contextRejection =
+      bindingCandidateRejection(entry, plan.structure, plan.includeIncompatibleScopes)
+    if (contextRejection != null) return contextRejection
     // Replaces removes the origin's contributions only; its own injectable type stays available
     // (a replacing stub can inject the replaced implementation directly).
-    if (entry.contributionScopes.isEmpty()) return true
-    val originClassId = entry.originClassId ?: return true
-    if (originClassId in plan.pruning.replacedOrigins) return false
-    return entry !in plan.pruning.lowerPriorityBindings
+    if (entry.contributionScopes.isEmpty()) return null
+    val originClassId = entry.originClassId ?: return null
+    if (originClassId in plan.pruning.replacedOrigins) return BindingRejection.REPLACED
+    return BindingRejection.LOWER_PRIORITY.takeIf { entry in plan.pruning.lowerPriorityBindings }
   }
 
   private fun isBindingCandidateInContext(
     entry: KaBinding,
     structure: GraphQueryStructure,
     includeIncompatibleScopes: Boolean,
-  ): Boolean {
+  ): Boolean = bindingCandidateRejection(entry, structure, includeIncompatibleScopes) == null
+
+  /** Supplies both membership filtering and the reason displayed for an unavailable binding. */
+  private fun bindingCandidateRejection(
+    entry: KaBinding,
+    structure: GraphQueryStructure,
+    includeIncompatibleScopes: Boolean,
+  ): BindingRejection? {
     val queryContext = structure.queryContext
-    if (!isVisibleFrom(entry, queryContext)) return false
-    if (!isContributedBindingActive(entry, structure)) return false
+    if (!isVisibleFrom(entry, queryContext)) return BindingRejection.NOT_VISIBLE
+    if (!isContributedBindingActive(entry, structure))
+      return BindingRejection.CONTRIBUTION_UNAVAILABLE
     val isUnspecializedContainerCallable =
       entry.ownerGraphId == null &&
         entry.containerId != null &&
@@ -1363,27 +1396,29 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
           else -> false
         }
     if (isUnspecializedContainerCallable) {
-      if (isSupersededInheritedBinding(entry, structure)) return false
+      if (isSupersededInheritedBinding(entry, structure)) return BindingRejection.OVERRIDDEN
     }
-    if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, structure)) return false
+    if (entry.isGraphPrivate && !isBindingOwnedByCurrentGraph(entry, structure))
+      return BindingRejection.PRIVATE_TO_GRAPH
     val context = queryContext.graphContext
-    if (isSupersededByDynamicBinding(entry, context)) return false
+    if (isSupersededByDynamicBinding(entry, context)) return BindingRejection.DYNAMIC_REPLACEMENT
     val ownerGraphId = entry.ownerGraphId
     if (ownerGraphId != null) {
       if (entry is KaBinding.BoundInstance) {
         val ownedByContext =
           ownerGraphId in context.graphIds ||
             context.graphIds.any { it in entry.additionalOwnerGraphIds }
-        if (!ownedByContext) return false
-        if (isSupersededByNearerFactoryInput(entry, structure)) return false
+        if (!ownedByContext) return BindingRejection.OTHER_GRAPH
+        if (isSupersededByNearerFactoryInput(entry, structure)) return BindingRejection.NEARER_INPUT
       } else {
-        if (ownerGraphId !in context.graphIds) return false
-        if (isSupersededByNearerInheritedBinding(entry, structure)) return false
+        if (ownerGraphId !in context.graphIds) return BindingRejection.OTHER_GRAPH
+        if (isSupersededByNearerInheritedBinding(entry, structure))
+          return BindingRejection.OVERRIDDEN
       }
     }
     val excludedContribution =
       entry.contributionScopes.isNotEmpty() && entry.originClassId in context.excludes
-    if (excludedContribution) return false
+    if (excludedContribution) return BindingRejection.EXCLUDED
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
     if (
@@ -1391,47 +1426,49 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         entry.scope != null &&
         entry.scope !in context.scopingAnnotations
     ) {
-      return false
+      return BindingRejection.INCOMPATIBLE_SCOPE
     }
     if (
       entry.contributionScopes.isNotEmpty() &&
         entry.contributionScopes.none { it in context.scopes }
     ) {
-      return false
+      return BindingRejection.CONTRIBUTION_SCOPE
     }
-    return when (entry) {
-      // Container callables are only live in graphs that wire their container in (or that
-      // declare them directly on the graph). Contributed bindings pass via their scopes.
-      is KaBinding.Provided,
-      is KaBinding.Alias,
-      is KaBinding.Multibinding,
-      is KaBinding.CustomWrapper -> {
-        val includedContainerKey = entry.includedContainerKey
-        val containerId = entry.containerId
-        if (includedContainerKey != null) {
-          includedContainerKey in context.includedBindingContainers
-        } else {
-          entry.contributionScopes.isNotEmpty() ||
-            containerId == null ||
-            isGraphMemberContainer(containerId, entry.pointer.virtualFile, structure) ||
-            containerId in queryContext.containers
+    val included =
+      when (entry) {
+        // Container callables are only live in graphs that wire their container in (or that
+        // declare them directly on the graph). Contributed bindings pass via their scopes.
+        is KaBinding.Provided,
+        is KaBinding.Alias,
+        is KaBinding.Multibinding,
+        is KaBinding.CustomWrapper -> {
+          val includedContainerKey = entry.includedContainerKey
+          val containerId = entry.containerId
+          if (includedContainerKey != null) {
+            includedContainerKey in context.includedBindingContainers
+          } else {
+            entry.contributionScopes.isNotEmpty() ||
+              containerId == null ||
+              isGraphMemberContainer(containerId, entry.pointer.virtualFile, structure) ||
+              containerId in queryContext.containers
+          }
         }
-      }
-      is KaBinding.BoundInstance -> {
-        when {
-          entry.isGraphInput -> entry.typeKey in context.includedDependencies
-          entry.isBindingContainerInput -> entry.typeKey in context.includedBindingContainers
-          else -> entry.containerId in context.graphClassIds
+        is KaBinding.BoundInstance -> {
+          when {
+            entry.isGraphInput -> entry.typeKey in context.includedDependencies
+            entry.isBindingContainerInput -> entry.typeKey in context.includedBindingContainers
+            else -> entry.containerId in context.graphClassIds
+          }
         }
+        is KaBinding.GraphDependency -> entry.ownerKey in context.includedDependencies
+        // Injected classes and assisted factories are implicit bindings. Graph instances are
+        // seal-time nodes that never appear in the index.
+        is KaBinding.ConstructorInjected,
+        is KaBinding.AssistedFactory,
+        is KaBinding.GraphInstance,
+        is KaBinding.GraphExtension -> true
       }
-      is KaBinding.GraphDependency -> entry.ownerKey in context.includedDependencies
-      // Injected classes and assisted factories are implicit bindings. Graph instances are
-      // seal-time nodes that never appear in the index.
-      is KaBinding.ConstructorInjected,
-      is KaBinding.AssistedFactory,
-      is KaBinding.GraphInstance,
-      is KaBinding.GraphExtension -> true
-    }
+    return BindingRejection.CONTAINER_UNAVAILABLE.takeUnless { included }
   }
 
   private fun isSupersededByDynamicBinding(
