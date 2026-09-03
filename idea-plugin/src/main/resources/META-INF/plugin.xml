@@ -53,6 +53,14 @@ Metro IDE support for Kotlin dependency injection projects.
       <className>dev.zacsweers.metro.idea.intentions.injection.MakeClassInjectableIntention</className>
       <category>Metro</category>
     </intentionAction>
+    <localInspection
+        language="kotlin"
+        shortName="MetroContributeBinding"
+        displayName="Class can contribute a Metro binding"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="INFORMATION"
+        implementationClass="dev.zacsweers.metro.idea.intentions.contributions.MetroContributeBindingInspection"/>
     <codeInsight.lineMarkerProvider
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.index.MetroLineMarkerProvider"/>

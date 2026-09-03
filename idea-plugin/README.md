@@ -9,6 +9,32 @@ configuration and uses the K2 Analysis API and Kotlin stub indexes to find bindi
 
 ## Features
 
+### Create Injectable Classes and Contributions
+
+Use **Make class injectable** from Alt+Enter on a class header to add `@Inject`. Classes with only
+secondary constructors get a constructor picker when there is a choice.
+
+An injectable class with a supertype also offers **Contribute Metro binding**. Objects can use the
+same action. Choose `ContributesBinding`, `ContributesIntoSet`, or `ContributesIntoMap`, then choose
+an aggregation scope. For example, an injected `RealHttpApi : HttpApi` can become:
+
+```kotlin
+@Inject
+@ContributesBinding(AppScope::class)
+class RealHttpApi : HttpApi
+```
+
+The action respects `@DefaultBinding` and asks for a bound type when several choices remain. Concrete
+generic arguments are preserved. Scope choices come from known graphs and contributions, with an
+editor field for entering another scope.
+
+Map contributions reuse an existing map key or offer built-in and compatible custom key annotations.
+Required key arguments become editor template fields. Type a value and press Tab to move to the next
+field. Custom keys with required array or nested-annotation arguments can be added by hand.
+
+Both actions support preview and undo. Closing a picker leaves the source unchanged. The contribution
+suggestion is informational and can be disabled under `Settings > Editor > Inspections > Metro`.
+
 ### Unused Declaration Suppression
 
 Metro-generated code can be the only caller of providers, injected classes, etc. The plugin marks those

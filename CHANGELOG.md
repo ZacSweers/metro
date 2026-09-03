@@ -11,6 +11,7 @@ Changelog
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
 - **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
+- **[IDE]** Add actions to make classes injectable and contribute bindings, sets, or maps. Includes constructor, bound-type, scope, and map-key pickers, with editor templates for scope and key values.
 
 ### Fixes
 
