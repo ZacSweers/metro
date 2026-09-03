@@ -6,6 +6,7 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.BindingIndex
@@ -118,6 +119,9 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
       setOf(firstCalls.virtualFile, secondCalls.virtualFile),
       dynamicContexts.mapTo(mutableSetOf()) { it.dynamicGraph!!.id.callerFile },
     )
+    val progress = GraphValidationProgress(dynamicContexts.first().path)
+    assertTrue(progress.covers(dynamicContexts.first().path))
+    assertFalse(progress.covers(dynamicContexts.last().path))
   }
 
   fun testDynamicGraphFactoryUsesReturnedGraphAndConcreteContainerTypes() {
@@ -207,6 +211,10 @@ class MetroDynamicGraphTest : BasePlatformTestCase() {
       checkNotNull(index.consumerEntryAt(file.declarationsIncludingNested().property("value")))
 
     assertSame(parentContext.dynamicGraph, childContext.dynamicGraph)
+    val progress = GraphValidationProgress(parentContext.path)
+    assertTrue(progress.covers(childContext.path))
+    val staticChild = index.contextsFor(child).single { it.dynamicGraph == null }
+    assertFalse(progress.covers(staticChild.path))
     assertEquals(
       listOf(childContext.path),
       index.extensionContextsOf(parentContext).map { it.path },

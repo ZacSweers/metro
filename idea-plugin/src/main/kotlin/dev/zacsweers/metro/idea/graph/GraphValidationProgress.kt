@@ -33,7 +33,9 @@ internal data class GraphValidationProgress(
       return completed.toDouble() / total
     }
 
+  /** Progress belongs to one static or dynamic compilation and its extension descendants. */
   fun covers(path: GraphPath): Boolean {
+    if (requestPath.dynamicGraphId != path.dynamicGraphId) return false
     if (requestPath.segments.size > path.segments.size) return false
     return path.segments.takeLast(requestPath.segments.size) == requestPath.segments
   }
