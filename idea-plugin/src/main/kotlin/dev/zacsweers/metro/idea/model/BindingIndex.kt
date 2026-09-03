@@ -121,7 +121,14 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
       }
     }
 
-    if (consumer.contributionScopes.isNotEmpty()) {
+    // A contributed class can still be injected in graphs outside its contribution scopes.
+    val originClassId = consumer.originClassId
+    val hasImplicitOrigin =
+      originClassId != null &&
+        lookups.bindingsByOrigin[originClassId].orEmpty().any {
+          it is KaBinding.ConstructorInjected || it is KaBinding.AssistedFactory
+        }
+    if (consumer.contributionScopes.isNotEmpty() && !hasImplicitOrigin) {
       val candidateGraphs = linkedSetOf<KaGraphDeclaration>()
       for ((index, scope) in consumer.contributionScopes.withIndex()) {
         checkCanceledEvery(index)
@@ -1256,12 +1263,11 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
 
     val originClassId = consumer.originClassId
     if (originClassId != null) {
-      if (originClassId in context.excludes) return false
-      // A replaced origin's consumers stay live only while it still has surviving bindings
-      if (
-        originClassId in plan.pruning.replacedOrigins &&
-          !hasOriginBindingInContext(originClassId, plan)
-      ) {
+      // Exclusions and replacements remove contributions. Their constructor dependencies remain
+      // available while the implementation has a surviving binding.
+      val removedContribution =
+        originClassId in context.excludes || originClassId in plan.pruning.replacedOrigins
+      if (removedContribution && !hasOriginBindingInContext(originClassId, plan)) {
         return false
       }
     }
@@ -1276,7 +1282,6 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
 
     val memberOwnerClassId = consumer.memberOwnerClassId
     if (memberOwnerClassId != null) {
-      if (memberOwnerClassId in context.excludes) return false
       return memberOwnerClassId in context.injectedMemberOwnerIds ||
         context.chain.any { graph ->
           memberOwnerClassId in graphComposition(plan, graph).injectedMemberOwnerIds
@@ -1297,12 +1302,12 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         containerId in queryContext.containers
     }
 
-    if (consumer.contributionScopes.isNotEmpty()) {
-      return consumer.contributionScopes.any { it in context.scopes }
-    }
-
     if (originClassId != null) {
       return hasOriginBindingInContext(originClassId, plan)
+    }
+
+    if (consumer.contributionScopes.isNotEmpty()) {
+      return consumer.contributionScopes.any { it in context.scopes }
     }
 
     return true
@@ -1375,7 +1380,9 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
         if (isSupersededByNearerInheritedBinding(entry, structure)) return false
       }
     }
-    if (entry.originClassId != null && entry.originClassId in context.excludes) return false
+    val excludedContribution =
+      entry.contributionScopes.isNotEmpty() && entry.originClassId in context.excludes
+    if (excludedContribution) return false
     // Scoped bindings only live in graphs declaring a matching scope (explicitly or implicitly
     // via the aggregation scope's conveyed @SingleIn)
     if (

@@ -4610,6 +4610,83 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(1, index.resolveConsumer(accessor).global.size)
   }
 
+  fun testExcludedContributionKeepsItsConcreteBindingAndConsumers() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Api
+        interface Client
+        interface Monitor
+        interface Tracker
+
+        @HasMemberInjections
+        abstract class BaseApi {
+          @Inject lateinit var monitor: Monitor
+        }
+
+        @Inject @ContributesBinding(AppScope::class)
+        class RealApi(val client: Client) : BaseApi(), Api {
+          @Inject lateinit var tracker: Tracker
+        }
+
+        interface Providers {
+          @Provides fun provideClient(): Client = object : Client {}
+          @Provides fun provideMonitor(): Monitor = object : Monitor {}
+          @Provides fun provideTracker(): Tracker = object : Tracker {}
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [RealApi::class])
+        interface AppGraph : Providers {
+          val api: RealApi
+        }
+
+        @DependencyGraph
+        interface OtherGraph : Providers {
+          val otherApi: RealApi
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val concreteBinding =
+      index.bindingEntriesAt(declarations.klass("RealApi")).single {
+        it is KaBinding.ConstructorInjected
+      }
+    val accessor = index.consumerEntryAt(declarations.property("api"))!!
+    assertEquals(listOf(concreteBinding), index.resolveConsumer(accessor).uniformBindings)
+
+    val dependencySites =
+      listOf(
+        declarations.parameter("client") to "provideClient",
+        declarations.property("monitor") to "provideMonitor",
+        declarations.property("tracker") to "provideTracker",
+      )
+    for ((declaration, providerName) in dependencySites) {
+      val consumer = index.consumerEntryAt(declaration)!!
+      val resolution = index.resolveConsumer(consumer)
+      assertEquals(
+        setOf("AppGraph", "OtherGraph"),
+        resolution.perContext.keys.map { it.graph.name }.toSet(),
+      )
+      for (bindings in resolution.perContext.values) {
+        assertEquals(
+          listOf(providerName),
+          bindings.map { (it.pointer.element as? KtNamedDeclaration)?.name },
+        )
+      }
+      val providers =
+        index.bindings.filter { (it.pointer.element as? KtNamedDeclaration)?.name == providerName }
+      assertTrue(index.consumersFor(providers).contains(consumer))
+    }
+
+    val validationService = project.service<MetroGraphValidationService>()
+    for (graph in index.graphs) {
+      val result =
+        validationService.validate(file, index.contextsFor(graph).single()).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
   fun testBindingContainersGateBindingsPerGraph() {
     val file =
       myFixture.configureByText(
