@@ -541,6 +541,8 @@ private constructor(
   /** A mode switch cancels the child read while leaving the coordinator available for Refresh. */
   private suspend fun runGraphWork(work: suspend () -> Unit) {
     if (hasExplicitGraphRequest()) {
+      // Pending PSI and module changes can wait for smart mode before the build begins.
+      IndexBuildProgressReporter(::publishIndexBuildProgress).phase(IndexBuildPhase.QUEUED)
       work()
       return
     }

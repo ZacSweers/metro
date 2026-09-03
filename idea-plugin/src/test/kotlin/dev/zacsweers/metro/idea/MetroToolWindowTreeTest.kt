@@ -1777,35 +1777,54 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testToolWindowPanelRecoversAfterDumbMode() {
     val file = configure()
-    project.service<MetroResolutionService>().awaitIndex(file)
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(file)
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
     var panel: MetroToolWindowPanel? = null
-    DumbModeTestUtils.runInDumbModeSynchronously(project) {
-      panel = MetroToolWindowPanel(project)
-      assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
-      checkNotNull(panel).loadOrRefreshAction.refresh()
-      val status = toolWindowStatus(checkNotNull(panel))
+    try {
+      // Manual mode keeps this edit unclassified until Refresh supplies explicit demand.
+      val documentManager = PsiDocumentManager.getInstance(project)
+      val document = checkNotNull(documentManager.getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      }
+      documentManager.commitAllDocuments()
+      assertTrue(service.isGraphDataRefreshRequired)
+
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        panel = MetroToolWindowPanel(project)
+        assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+        checkNotNull(panel).loadOrRefreshAction.refresh()
+        val status = toolWindowStatus(checkNotNull(panel))
+        object : WaitFor(30_000) {
+            override fun condition(): Boolean {
+              PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+              return status.messageLabel.text == "Waiting for IDE indexing to finish"
+            }
+          }
+          .assertCompleted("The requested refresh should wait for smart mode")
+        assertTrue(status.isVisible)
+        assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
+        assertFalse(status.progressBar.isVisible)
+      }
+
+      val tree = toolWindowTree(checkNotNull(panel))
       object : WaitFor(30_000) {
           override fun condition(): Boolean {
-            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-            return status.messageLabel.text == "Waiting for IDE indexing to finish"
+            val graphNames =
+              treeNodes(tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }
+            return "AddedGraph" in graphNames && !toolWindowStatus(checkNotNull(panel)).isVisible
           }
         }
-        .assertCompleted("The requested refresh should wait for smart mode")
-      assertTrue(status.isVisible)
-      assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
-      assertFalse(status.progressBar.isVisible)
+        .assertCompleted("The Metro tree should include the pending edit when smart mode resumes")
+      assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
+    } finally {
+      panel?.let(Disposer::dispose)
+      project.enableImmediateAutomaticRefresh()
     }
-
-    val tree = toolWindowTree(checkNotNull(panel))
-    object : WaitFor(30_000) {
-        override fun condition(): Boolean {
-          PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
-          return tree.rowCount > 0
-        }
-      }
-      .assertCompleted("The Metro tree should populate when smart mode resumes")
-    assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
-    com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
   }
 
   fun testDisposedToolWindowPanelIgnoresValidationRequests() {
