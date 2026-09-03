@@ -712,7 +712,7 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   ): GraphQueryPlan {
     val pruning = contributionPruning(structure, includeIncompatibleScopes)
     ProgressManager.checkCanceled()
-    return GraphQueryPlan(structure, pruning, includeIncompatibleScopes)
+    return GraphQueryPlan(this, structure, pruning, includeIncompatibleScopes)
   }
 
   private fun createGraphQueryStructure(
@@ -1740,10 +1740,13 @@ internal class BindingIndex private constructor(data: FrozenBindingIndexData) {
   )
 
   internal class GraphQueryPlan(
+    index: BindingIndex,
     val structure: GraphQueryStructure,
     val pruning: ContributionPruning,
     val includeIncompatibleScopes: Boolean,
-  )
+  ) {
+    val generatedBindings = GeneratedGraphBindings(index, this)
+  }
 
   private data class GraphAccessorIdentity(
     val pointer: SourcePointerIdentity,
