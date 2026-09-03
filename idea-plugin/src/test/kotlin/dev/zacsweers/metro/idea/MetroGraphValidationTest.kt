@@ -17,6 +17,7 @@ import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaBindingGraph
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.ValidationSourceSnapshot
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
@@ -1200,7 +1201,13 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     val result = index.withResolutionSession { session ->
-      KaBindingGraph(session, countedContext, file.metroIdeState().options).seal()
+      KaBindingGraph(
+          session,
+          countedContext,
+          file.metroIdeState().options,
+          ValidationSourceSnapshot.capture(index, countedContext),
+        )
+        .seal()
     }
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
     val parameters = diagnostics.map { it.stack.first().pointer?.element as? KtParameter }

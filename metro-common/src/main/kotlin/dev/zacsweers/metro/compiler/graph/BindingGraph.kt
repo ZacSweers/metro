@@ -94,6 +94,10 @@ public open class MutableBindingGraph<
     { _, _ ->
       null
     },
+  /** Renders duplicate-binding locations from the caller's captured source information. */
+  private val bindingLocationDiagnostic: (Binding) -> LocationDiagnostic = {
+    it.renderLocationDiagnostic(short = true)
+  },
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
@@ -562,7 +566,7 @@ public open class MutableBindingGraph<
     bindings: List<Binding>,
     bindingStack: BindingStack,
   ) {
-    val locations = bindings.map { it.renderLocationDiagnostic(short = true) }
+    val locations = bindings.map(bindingLocationDiagnostic)
     val notes = buildList {
       addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
       addAll(locations.flatMap { it.notes }.distinct())
