@@ -92,6 +92,7 @@ public abstract class AnalyzeGraphTask : DefaultTask() {
           centrality = analyzer.computeBetweennessCentrality(),
           fanAnalysis = analyzer.computeFanAnalysis(topFanCount.get()),
           pathsToRoot = analyzer.computePathsToRoot(),
+          bindingExplanations = graphMetadata.bindingExplanations,
         )
       )
     }

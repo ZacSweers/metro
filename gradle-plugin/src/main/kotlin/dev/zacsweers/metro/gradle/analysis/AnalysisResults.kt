@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import kotlinx.serialization.Serializable
 
@@ -106,6 +107,8 @@ public data class GraphAnalysis(
   val centrality: CentralityResult,
   val fanAnalysis: FanAnalysisResult,
   val pathsToRoot: PathsToRootResult = PathsToRootResult("", emptyMap()),
+  /** Compiler decisions retained unchanged from the graph metadata. */
+  val bindingExplanations: List<BindingExplanation> = emptyList(),
 )
 
 /** Combined analysis report for all graphs in a project. */

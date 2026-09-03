@@ -146,6 +146,7 @@ dependencies {
   functionalTestImplementation(libs.truth)
   functionalTestImplementation(libs.kotlin.stdlib)
   functionalTestImplementation(libs.kotlin.test)
+  functionalTestImplementation(libs.kotlinx.serialization.json)
   functionalTestImplementation(project(":metro-common"))
   functionalTestImplementation(libs.testkit.support)
   functionalTestImplementation(libs.testkit.truth)

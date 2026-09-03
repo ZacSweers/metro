@@ -11,15 +11,50 @@ import com.autonomousapps.kit.GradleProject.DslKind
 import com.google.common.truth.Truth.assertThat
 import dev.zacsweers.metro.compiler.DEFAULT_MAX_GENERATED_CLASS_NAME_LENGTH
 import dev.zacsweers.metro.compiler.MIN_GENERATED_CLASS_NAME_LENGTH
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import java.io.File
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class MetroArtifactsTest {
+  @OptIn(ExperimentalSerializationApi::class)
+  private val reportJson = Json {
+    ignoreUnknownKeys = true
+    prettyPrint = true
+    prettyPrintIndent = "  "
+  }
+
+  /** Keeps the existing report snapshots focused while the tests check explanations separately. */
+  private fun withoutBindingExplanations(content: String): String {
+    val report = reportJson.parseToJsonElement(content).jsonObject
+    val graphs =
+      report.getValue("graphs").jsonArray.map { graph ->
+        JsonObject(graph.jsonObject - "bindingExplanations")
+      }
+    return reportJson.encodeToString(
+      JsonObject.serializer(),
+      JsonObject(report + ("graphs" to JsonArray(graphs))),
+    )
+  }
+
+  /** Reads the shared explanation schema from each graph in an exported report. */
+  private fun bindingExplanations(content: String): List<List<BindingExplanation>> =
+    reportJson.parseToJsonElement(content).jsonObject.getValue("graphs").jsonArray.map { graph ->
+      reportJson.decodeFromJsonElement(graph.jsonObject.getValue("bindingExplanations"))
+    }
+
   @Test
   fun `metroEnv task creates human-readable output`() {
     val fixture =
@@ -345,7 +380,9 @@ class MetroArtifactsTest {
 
     // TODO add more example outputs here. This'll probably churn a bit
     val content = metadataFile.readText()
-    assertThat(content)
+    val candidates = bindingExplanations(content).single().flatMap { it.candidates }
+    assertTrue(candidates.any { it.reason == BindingReason.SELECTED_EXPLICIT })
+    assertThat(withoutBindingExplanations(content))
       .isEqualTo(
         // language=JSON
         """
@@ -561,8 +598,11 @@ class MetroArtifactsTest {
     assertTrue(analysisFile.exists(), "Graph analysis file should exist")
 
     val content = analysisFile.readText()
+    val explanations = bindingExplanations(reports.graphMetadataFile.readText())
+    assertTrue(explanations.single().isNotEmpty())
+    assertThat(bindingExplanations(content)).isEqualTo(explanations)
 
-    assertThat(content)
+    assertThat(withoutBindingExplanations(content))
       .isEqualTo(
         // language=JSON
         """
