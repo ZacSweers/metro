@@ -16,14 +16,16 @@ import dev.zacsweers.metro.idea.metroIdeState
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.psi.KtFile
 
-/** Publishes completed Metro diagnostics through the editor and the platform's Problems view. */
-internal class MetroGraphInspection : LocalInspectionTool() {
+/** Publishes retained Metro errors with the user's configured inspection severity. */
+internal open class MetroGraphInspection : LocalInspectionTool() {
+  protected open val severity: MetroSeverity = MetroSeverity.ERROR
+
   override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
     val file = holder.file as? KtFile ?: return PsiElementVisitor.EMPTY_VISITOR
     if (file.isCompiled || DumbService.isDumb(file.project)) return PsiElementVisitor.EMPTY_VISITOR
     if (!file.metroIdeState().isEnabled) return PsiElementVisitor.EMPTY_VISITOR
     val results = file.project.service<MetroGraphValidationService>().retainedResults()
-    val diagnostics = metroDiagnosticsForFile(file, results)
+    val diagnostics = metroDiagnosticsForFile(file, results, severity)
     if (diagnostics.isEmpty()) return PsiElementVisitor.EMPTY_VISITOR
     val byAnchor = IdentityHashMap<PsiElement, MutableList<MetroEditorDiagnostic>>()
     for (diagnostic in diagnostics) byAnchor.getOrPut(diagnostic.anchor) { mutableListOf() } +=
@@ -31,15 +33,20 @@ internal class MetroGraphInspection : LocalInspectionTool() {
     return object : PsiElementVisitor() {
       override fun visitElement(element: PsiElement) {
         for (diagnostic in byAnchor[element].orEmpty()) {
-          val highlight =
-            when (diagnostic.diagnostic.severity) {
-              MetroSeverity.ERROR -> ProblemHighlightType.ERROR
-              MetroSeverity.WARNING -> ProblemHighlightType.WARNING
-            }
           val fixes = listOfNotNull(allowEmptyMultibindingFix(diagnostic)).toTypedArray()
-          holder.registerProblem(element, diagnostic.description, highlight, *fixes)
+          holder.registerProblem(
+            element,
+            diagnostic.description,
+            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+            *fixes,
+          )
         }
       }
     }
   }
+}
+
+/** Gives Metro warnings a separate native profile entry with a warning default. */
+internal class MetroGraphWarningInspection : MetroGraphInspection() {
+  override val severity: MetroSeverity = MetroSeverity.WARNING
 }

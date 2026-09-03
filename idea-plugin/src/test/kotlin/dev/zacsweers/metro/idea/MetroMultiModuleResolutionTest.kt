@@ -35,7 +35,6 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
-import dev.zacsweers.metro.idea.navigation.editorContextName
 import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
@@ -1301,6 +1300,9 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val extensionContext = extensionResolution.perContext.keys.single()
     assertEquals(listOf("LibExtension", "AppGraph"), extensionContext.chain.map { it.name })
     assertEquals(appContext.graphModule, index.queryContext(extensionContext)!!.graphModule)
+    val rootModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val extensionLabel = extensionContext.compilationContextName()
+    assertTrue(extensionLabel, "${rootModule.name}: ${appFile.name}" in extensionLabel)
   }
 
   fun testDynamicGraphUsesTheCallSiteModuleAndReplacesLibraryGraphBindings() {
@@ -1358,7 +1360,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
 
     assertEquals(appKaModule, index.queryContext(dynamicContext)!!.graphModule)
     val callerModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
-    val dynamicLabel = dynamicContext.editorContextName()
+    val dynamicLabel = dynamicContext.compilationContextName()
     assertTrue(dynamicLabel, "${callerModule.name}: DynamicGraph.kt" in dynamicLabel)
     assertEquals(
       listOf("provideReal"),

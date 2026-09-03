@@ -3,13 +3,13 @@
 package dev.zacsweers.metro.idea.explanation
 
 import com.intellij.openapi.progress.ProgressManager
+import dev.zacsweers.metro.idea.compilationContextName
 import dev.zacsweers.metro.idea.model.BindingExplanation
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.selectionDescription
 import dev.zacsweers.metro.idea.navigation.MetroBindingTarget
 import dev.zacsweers.metro.idea.navigation.bindingTarget
-import dev.zacsweers.metro.idea.navigation.editorContextName
 import dev.zacsweers.metro.idea.navigation.metroEditorDeclarations
 import dev.zacsweers.metro.idea.navigation.selectContexts
 import org.jetbrains.kotlin.psi.KtFile
@@ -73,7 +73,7 @@ private fun captureExplanation(explanation: BindingExplanation): MetroBindingExp
   val consumer = explanation.consumer
   val declaration = consumer.pointer.element
   val requestName = (declaration as? KtNamedDeclaration)?.name ?: "dependency"
-  val contextName = explanation.context.editorContextName()
+  val contextName = explanation.context.compilationContextName()
   val summary = buildString {
     appendLine("Request: ${consumer.contextKey.render(short = false)}")
     append("Requested by: ").append(requestName)

@@ -2,16 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.codeHighlighting.HighlightDisplayLevel
+import com.intellij.codeInsight.daemon.HighlightDisplayKey
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.profile.codeInspection.InspectionProjectProfileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
 import dev.zacsweers.metro.idea.diagnostics.MetroGraphInspection
+import dev.zacsweers.metro.idea.diagnostics.MetroGraphWarningInspection
+import dev.zacsweers.metro.idea.diagnostics.metroDiagnosticsForFile
+import dev.zacsweers.metro.idea.graph.CachedValidation
+import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -50,6 +59,89 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
 
     project.service<MetroGraphValidationService>().clearResults()
     assertEmpty(inspect(file))
+  }
+
+  fun testNestedMissingBindingHighlightsItsNearestCrossFileRequest() {
+    val dependencies =
+      myFixture.addFileToProject(
+        "Dependencies.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.Inject
+
+        interface Missing
+        @Inject class Inner(val missing: Missing)
+        @Inject class Outer(val inner: Inner)
+        """
+          .trimIndent(),
+      ) as KtFile
+    val graph =
+      myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val outer: Outer }")
+    validate(graph)
+
+    assertEmpty(inspect(graph))
+    val problem = inspect(dependencies).single()
+    assertSame(
+      dependencies.declarationsIncludingNested().klass("Inner").nameIdentifier,
+      problem.psiElement,
+    )
+    assertTrue(problem.descriptionTemplate, "AppGraph" in problem.descriptionTemplate)
+  }
+
+  fun testNativeHighlightUsesTheInspectionProfileSeverity() {
+    val file =
+      myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val value: String }")
+    myFixture.enableInspections(MetroGraphInspection())
+    validate(file)
+    val description = inspect(file).single().descriptionTemplate
+    val key = checkNotNull(HighlightDisplayKey.find("MetroGraph"))
+    val profile = InspectionProjectProfileManager.getInstance(project).currentProfile
+    val previousLevel = profile.getErrorLevel(key, file)
+    try {
+      profile.setErrorLevel(key, HighlightDisplayLevel.WEAK_WARNING, project)
+      val highlight = myFixture.doHighlighting().single { it.description == description }
+      assertEquals(HighlightDisplayLevel.WEAK_WARNING.severity, highlight.severity)
+    } finally {
+      profile.setErrorLevel(key, previousLevel, project)
+    }
+  }
+
+  fun testSeverityAdaptersKeepErrorsAndWarningsSeparate() {
+    val file =
+      myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val value: String }")
+    val result = validate(file) as KaGraphValidationResult.Completed
+    val error = result.diagnostics.single()
+    val warning =
+      KaGraphDiagnostic(
+        error.diagnostic.copy(severity = MetroSeverity.WARNING),
+        error.stack,
+        error.related,
+      )
+    val mixed =
+      KaGraphValidationResult.Completed(
+        result.context,
+        listOf(error, warning),
+        result.topology,
+        result.bindings,
+        result.suspendKeys,
+        result.parentReservations,
+      )
+    val cached = listOf(CachedValidation(mixed, stale = false))
+
+    assertSame(
+      error,
+      metroDiagnosticsForFile(file, cached, MetroSeverity.ERROR).single().diagnostic,
+    )
+    assertSame(
+      warning,
+      metroDiagnosticsForFile(file, cached, MetroSeverity.WARNING).single().diagnostic,
+    )
+    val holder = ProblemsHolder(InspectionManager.getInstance(project), file, true)
+    assertSame(
+      PsiElementVisitor.EMPTY_VISITOR,
+      MetroGraphWarningInspection().buildVisitor(holder, true),
+    )
   }
 
   fun testDuplicateBindingsHighlightEachProvider() {
@@ -112,6 +204,19 @@ class MetroGraphInspectionTest : BasePlatformTestCase() {
     validate(file)
     project.setMetroOptions("enabled" to "false")
     assertEmpty(inspect(file))
+  }
+
+  fun testDumbModeDoesNotShowRetainedDiagnostics() {
+    val file =
+      myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val value: String }")
+    validate(file)
+    assertNotEmpty(inspect(file))
+
+    DumbModeTestUtils.runInDumbModeSynchronously(project) {
+      val holder = ProblemsHolder(InspectionManager.getInstance(project), file, true)
+      assertSame(PsiElementVisitor.EMPTY_VISITOR, MetroGraphInspection().buildVisitor(holder, true))
+    }
+    assertNotEmpty(inspect(file))
   }
 
   private fun validate(file: KtFile): KaGraphValidationResult {

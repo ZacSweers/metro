@@ -7,10 +7,11 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.idea.compilationContextName
 import dev.zacsweers.metro.idea.graph.CachedValidation
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
-import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
@@ -28,6 +29,7 @@ internal class MetroEditorDiagnostic(
 internal fun metroDiagnosticsForFile(
   file: KtFile,
   cachedResults: List<CachedValidation>,
+  severity: MetroSeverity,
 ): List<MetroEditorDiagnostic> {
   val diagnostics = mutableListOf<MetroEditorDiagnostic>()
   val fileIndex = ProjectFileIndex.getInstance(file.project)
@@ -43,6 +45,7 @@ internal fun metroDiagnosticsForFile(
     var contextName: String? = null
     for (diagnostic in result.diagnostics) {
       ProgressManager.checkCanceled()
+      if (diagnostic.severity != severity) continue
       val related = diagnostic.related.map { it.pointer }.filter(::isProjectSource).distinct()
       val pointers =
         if (related.isNotEmpty()) {
@@ -55,14 +58,7 @@ internal fun metroDiagnosticsForFile(
         // Each file's inspection resolves only its own diagnostic anchors.
         if (pointer.virtualFile != file.virtualFile) continue
         val anchor = sourceAnchor(pointer.element) ?: continue
-        val name =
-          contextName
-            ?: result.context
-              .presentableName(
-                includeFile = true,
-                qualifiedNames = true,
-              )
-              .also { contextName = it }
+        val name = contextName ?: result.context.compilationContextName().also { contextName = it }
         diagnostics += MetroEditorDiagnostic(anchor, result, diagnostic, name)
       }
     }

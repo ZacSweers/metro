@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.navigation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.idea.compilationContextName
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.GraphContext
@@ -12,7 +13,6 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.matchingContext
-import dev.zacsweers.metro.idea.presentableName
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -68,7 +68,7 @@ internal fun metroEditorTargets(
         val contexts = selectContexts(session.contextsFor(graph), pinnedPath)
         return@withResolutionSession MetroEditorTargets(
           emptyList(),
-          contexts.map { MetroRevealTarget(it.path, it.editorContextName()) },
+          contexts.map { MetroRevealTarget(it.path, it.compilationContextName()) },
         )
       }
       val consumers = index.consumerEntriesAt(current)
@@ -141,7 +141,7 @@ private fun actionTargets(
   val identities = mutableListOf<Set<Any>>()
   for (group in selected) {
     ProgressManager.checkCanceled()
-    val name = group.context.editorContextName()
+    val name = group.context.compilationContextName()
     val bindings = index.distinctBindingDeclarations(group.bindings).map(::bindingTarget)
     val choiceName = if (bindings.isEmpty()) "$name (no binding)" else name
     choices += MetroBindingNavigationChoice(group.context.path, choiceName, bindings)
@@ -186,20 +186,4 @@ internal fun selectContexts(
   if (pinnedPath == null) return contexts
   val matching = contexts.matchingContext(pinnedPath) ?: return contexts
   return listOf(matching)
-}
-
-/** The root compilation distinguishes equal graph names declared in separate modules. */
-internal fun GraphContext.editorContextName(): String {
-  val compilationPointer = dynamicGraph?.pointer ?: rootGraph.pointer
-  val rootFile = compilationPointer.virtualFile
-  val module = compilationPointer.element?.let(ModuleUtilCore::findModuleForPsiElement)
-  return buildString {
-    append(presentableName(qualifiedNames = true))
-    if (module != null || rootFile != null) {
-      append(" (")
-      module?.name?.let { append(it).append(": ") }
-      append(rootFile?.name ?: "<unknown>")
-      append(')')
-    }
-  }
 }
