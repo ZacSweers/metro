@@ -60,6 +60,38 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertTrue(binding is KaBinding.ConstructorInjected && binding.isObject)
   }
 
+  fun testNewObjectRefreshesAnUnresolvedGenericArgument() {
+    val graph =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Box<T>(val value: T)
+      @DependencyGraph interface AppGraph { val box: Box<NewRegistry> }
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("box")
+    val missing = initial.consumerEntryAt(accessor)!!
+    assertFalse(missing.key.type.isError)
+    assertTrue(missing.key.type.typeArguments.single().type!!.isError)
+    assertTrue(initial.resolveConsumer(missing).uniformBindings.orEmpty().isEmpty())
+
+    myFixture.addFileToProject("test/NewRegistry.kt", "package test; object NewRegistry")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val updated = service.awaitIndex(graph)
+    val consumer = updated.consumerEntryAt(accessor)!!
+    val binding =
+      updated.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+        as KaBinding.ConstructorInjected
+    assertEquals("test.Box<test.NewRegistry>", binding.typeKey.renderedType)
+    assertEquals("test.NewRegistry", binding.constructorDependencies.single().typeKey.renderedType)
+    assertTrue(
+      updated.bindings.filterIsInstance<KaBinding.ConstructorInjected>().any {
+        it.isObject && it.typeKey.renderedType == "test.NewRegistry"
+      }
+    )
+  }
+
   fun testUnannotatedObjectChangesRefreshClassBindings() {
     checkUnannotatedClassChanges(resolveFromLibraries = true)
   }

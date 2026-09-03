@@ -13,6 +13,7 @@ import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -239,7 +240,7 @@ internal class SourceClassBindingPostProcessor(
     pointer: SmartPsiElementPointer<out KtElement>,
     direct: Boolean,
   ): SourceClassRequestId? {
-    if (key.type.isError) {
+    if (containsErrorType(key.type)) {
       dependencies.recordErrorType(pointer.virtualFile)
       return null
     }
@@ -251,6 +252,23 @@ internal class SourceClassBindingPostProcessor(
     val request = SourceClassRequest(key, module, pointer, direct)
     queue += request
     return request.id
+  }
+
+  /** Missing generic arguments also need a retry when their source declaration appears. */
+  private fun containsErrorType(type: KaTypeSnapshot): Boolean {
+    if (type.isError) return true
+    if (type.typeArguments.isEmpty()) return false
+    val pending = ArrayDeque<KaTypeSnapshot>()
+    pending += type
+    while (pending.isNotEmpty()) {
+      ProgressManager.checkCanceled()
+      val current = pending.removeLast()
+      if (current.isError) return true
+      for (argument in current.typeArguments) {
+        argument.type?.let(pending::addLast)
+      }
+    }
+    return false
   }
 
   private fun drain() {
