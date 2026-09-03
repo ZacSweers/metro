@@ -491,16 +491,7 @@ private fun KtParameter.instanceBindingData(
   with(session) {
     val symbol =
       this@instanceBindingData.symbol as? KaValueParameterSymbol ?: return@with emptyList()
-    if (!symbol.hasAnyAnnotation(options.providesAnnotations)) return@with emptyList()
-    listOf(
-      BindingData(
-        typeKey(symbol.returnType, qualifierAnnotation(symbol, options)),
-        BindingData.Kind.BOUND_INSTANCE,
-        null,
-        null,
-        isGraphPrivate = symbol.annotations.any { it.classId == MetroClassIds.graphPrivate },
-      )
-    )
+    CallableParameterView(symbol, symbol.returnType).instanceBindingData(this, options)
   }
 
 private fun KtClassOrObject.classBindingData(
