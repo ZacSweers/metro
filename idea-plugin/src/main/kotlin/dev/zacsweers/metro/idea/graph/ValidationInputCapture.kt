@@ -62,6 +62,7 @@ internal class ValidationInputCapture(
     { _, _ ->
       null
     },
+  private val allowIndexBuild: Boolean = true,
 ) {
   private val sessions = IdentityHashMap<BindingIndex, BindingResolutionSession>()
 
@@ -92,7 +93,7 @@ internal class ValidationInputCapture(
   /** Captures every concrete context and extension of a declaration. */
   fun capture(element: PsiElement, graph: KaGraphDeclaration): ValidationTraversal {
     val declarationElement = sourceElement(graph.pointer.element) ?: element
-    val index = project.service<MetroResolutionService>().currentIndex(declarationElement)
+    val index = indexFor(declarationElement)
     val currentGraph =
       index.graphFor(graph)
         ?: throw CancellationException("Metro graph declaration is no longer current")
@@ -211,11 +212,22 @@ internal class ValidationInputCapture(
 
   private fun resolve(declarationFallback: PsiElement, context: GraphContext): ResolvedInput? {
     val element = compilationElement(context) ?: declarationFallback
-    val index = project.service<MetroResolutionService>().currentIndex(element)
+    val index = indexFor(element)
     val session = session(index)
     val current = session.findContext(context.path) ?: return null
     val currentElement = compilationElement(current) ?: element
     return ResolvedInput(currentElement, session, current)
+  }
+
+  /** Automatic capture waits for publication when an edit invalidates its cached generation. */
+  private fun indexFor(element: PsiElement): BindingIndex {
+    val resolution = project.service<MetroResolutionService>()
+    if (allowIndexBuild) return resolution.currentIndex(element)
+    val index = resolution.cachedIndex(element)
+    if (index === BindingIndex.EMPTY) {
+      throw CancellationException("Metro graph data needs a refresh")
+    }
+    return index
   }
 
   /** Compiled extensions are validated in the source compilation that creates their path. */

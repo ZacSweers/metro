@@ -10,14 +10,20 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /**
  * Covers opt-in scheduling, pin ownership, and cancellation through the real validation service.
@@ -34,7 +40,7 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
     previousAutomaticRefresh = settings.automaticallyRefreshGraphData
     previousAutomaticValidation = settings.automaticallyValidatePinnedGraph
     settings.automaticallyValidatePinnedGraph = false
-    settings.automaticallyRefreshGraphData = true
+    project.enableImmediateAutomaticRefresh()
     project.service<MetroGraphValidationService>().clearResults()
     project.service<GraphContextPinService>().clear()
   }
@@ -64,6 +70,118 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
     settings.automaticallyRefreshGraphData = false
     assertNull(automatic.requestValidation())
     assertEmpty(project.service<MetroGraphValidationService>().retainedResults())
+  }
+
+  fun testAutomaticValidationWaitsForPublishedGraphRefresh() {
+    val (file, context) = configureGraph()
+    val resolution = project.service<MetroResolutionService>()
+    val automatic = project.service<MetroPinnedGraphValidationService>()
+    MetroSettings.getInstance(project).state.automaticallyValidatePinnedGraph = true
+    project.service<GraphContextPinService>().pin(context.path)
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      addMissingStringProvider(file)
+      assertTrue(resolution.isGraphDataRefreshRequired)
+      assertNull(automatic.requestValidation())
+    }
+    assertEmpty(project.service<MetroGraphValidationService>().retainedResults())
+
+    val result = awaitCurrentResult(context.path) { resolution.refreshGraphData() }
+    assertEmpty(result.diagnostics)
+    assertFalse(resolution.isGraphDataRefreshRequired)
+  }
+
+  fun testIrrelevantEditResumesAutomaticValidationWithTheSameIndex() {
+    val unrelated =
+      myFixture.addFileToProject("test/Unrelated.kt", "package test\n\nclass Unrelated") as KtFile
+    val (file, context) = configureGraph()
+    val resolution = project.service<MetroResolutionService>()
+    val initialIndex = resolution.cachedIndex(file)
+    val clock = AtomicLong()
+    resolution.setAutomaticRefreshWindowForTest(AutomaticRefreshWindow(1_000, 0, clock::get))
+    val validation = project.service<MetroGraphValidationService>()
+    val seals = AtomicInteger()
+    val ready = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    validation.setBeforeGraphSealObserver {
+      if (seals.incrementAndGet() == 1) {
+        ready.complete(Unit)
+        release.await()
+      }
+    }
+    MetroSettings.getInstance(project).state.automaticallyValidatePinnedGraph = true
+    project.service<GraphContextPinService>().pin(context.path)
+
+    try {
+      PlatformTestUtil.waitForFuture(ready, 30_000)
+      val stale = CompletableFuture<Unit>()
+      resolution.addIndexListener(testRootDisposable) {
+        if (resolution.isGraphDataRefreshRequired) stale.complete(Unit)
+      }
+      awaitValidationStops(context.path) {
+        WriteCommandAction.runWriteCommandAction(project) {
+          (unrelated.declarations.single() as KtNamedDeclaration).setName("StillUnrelated")
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        PlatformTestUtil.waitForFuture(stale, 30_000)
+        release.countDown()
+      }
+      assertTrue(resolution.isGraphDataRefreshRequired)
+      assertEmpty(validation.retainedResults())
+
+      val result =
+        awaitCurrentResult(context.path) {
+          clock.set(1_000)
+          resolution.wakeAutomaticRefreshForTest()
+        }
+      assertEquals(context.path, result.context.path)
+      assertSame(initialIndex, resolution.cachedIndex(file))
+      assertEquals(2, seals.get())
+      assertFalse(resolution.isGraphDataRefreshRequired)
+    } finally {
+      release.countDown()
+      project.service<GraphContextPinService>().clear()
+      resolution.setAutomaticRefreshWindowForTest(AutomaticRefreshWindow(0, 0))
+    }
+  }
+
+  fun testCachedOnlyCaptureCancelsWhileExplicitValidationCanRefresh() {
+    val (file, context) = configureGraph()
+    val resolution = project.service<MetroResolutionService>()
+    val validation = project.service<MetroGraphValidationService>()
+    val seals = AtomicInteger()
+    validation.setBeforeGraphSealObserver { seals.incrementAndGet() }
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    resolution.settingsChanged()
+    WriteCommandAction.runWriteCommandAction(project) { addMissingStringProvider(file) }
+    runBlocking { withTimeout(30_000) { resolution.awaitCoordinatorBarrier() } }
+    assertSame(BindingIndex.EMPTY, resolution.cachedIndex(file))
+
+    var delivered = false
+    val automatic =
+      validation.validateWithExtensionsAsync(
+        context,
+        showProgress = false,
+        allowIndexBuild = false,
+      ) {
+        delivered = true
+      }
+    awaitCompletion(automatic)
+    assertTrue(automatic.isCancelled)
+    assertFalse(delivered)
+    assertEquals(0, seals.get())
+    assertEmpty(validation.retainedResults())
+    assertSame(BindingIndex.EMPTY, resolution.cachedIndex(file))
+
+    lateinit var explicit: Job
+    val result =
+      awaitCurrentResult(context.path) {
+        explicit = validation.validateWithExtensionsAsync(context, showProgress = false) {}
+      }
+    awaitCompletion(explicit)
+    assertEmpty(result.diagnostics)
+    assertEquals(1, seals.get())
+    assertTrue(resolution.isCurrent(resolution.cachedIndex(file)))
   }
 
   fun testUnpinCancelsThePendingDebounce() {
@@ -208,6 +326,20 @@ class MetroPinnedGraphValidationTest : BasePlatformTestCase() {
       myFixture.configureMetroFile("@DependencyGraph interface AppGraph { val value: String }")
     val index = project.service<MetroResolutionService>().awaitIndex(file)
     return file to index.contextsFor(index.graphs.single()).single()
+  }
+
+  /**
+   * Makes the edited graph valid so a successful result proves capture used its refreshed inputs.
+   */
+  private fun addMissingStringProvider(file: KtFile) {
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    document.setText(
+      document.text.replace(
+        "val value: String",
+        "val value: String\n@Provides fun provideString(): String = \"ready\"",
+      )
+    )
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
   }
 
   /** Index publication can replace a debounce job, so success is tied to the accepted result. */

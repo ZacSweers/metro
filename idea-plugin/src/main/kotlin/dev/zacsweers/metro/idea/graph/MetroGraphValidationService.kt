@@ -300,10 +300,11 @@ internal class MetroGraphValidationService(
     element: PsiElement,
     context: GraphContext,
     includeExtensions: Boolean = false,
+    allowIndexBuild: Boolean = true,
   ): CapturedValidation {
     val workspace = validationWorkspace()
     val traversal =
-      ValidationInputCapture(project, workspace::cached)
+      ValidationInputCapture(project, workspace::cached, allowIndexBuild)
         .capture(element, context, includeExtensions)
     return CapturedValidation(traversal, workspace)
   }
@@ -563,11 +564,13 @@ internal class MetroGraphValidationService(
   /**
    * Captures this concrete path and its extensions together, then seals outside read access.
    * Results are cached after computation, and [onDone] runs on the EDT. When [showProgress] is
-   * false, progress remains available to Metro listeners.
+   * false, progress remains available to Metro listeners. Automatic requests set [allowIndexBuild]
+   * to false so an intervening edit cancels capture until refreshed graph data is published.
    */
   fun validateWithExtensionsAsync(
     context: GraphContext,
     showProgress: Boolean = true,
+    allowIndexBuild: Boolean = true,
     onDone: Consumer<List<KaGraphValidationResult>>,
   ): Job {
     return launchLatestValidation(context.path, context.graph) { request ->
@@ -575,7 +578,7 @@ internal class MetroGraphValidationService(
         if (showProgress) {
           withBackgroundProgress(project, progressTitle(context.graph)) {
             reportRawProgress { reporter ->
-              computeContextWithExtensions(context) { progress ->
+              computeContextWithExtensions(context, allowIndexBuild) { progress ->
                 request.publishProgress(progress)
                 reporter.details(progress.message)
                 reporter.fraction(progress.fraction)
@@ -583,7 +586,7 @@ internal class MetroGraphValidationService(
             }
           }
         } else {
-          computeContextWithExtensions(context, request.publishProgress)
+          computeContextWithExtensions(context, allowIndexBuild, request.publishProgress)
         }
       if (publishCompletedValidationIfCurrent(request, completed)) {
         withContext(Dispatchers.EDT) {
@@ -596,6 +599,7 @@ internal class MetroGraphValidationService(
   /** Shares the capture and seal sequence with quiet, automatic validation requests. */
   private suspend fun computeContextWithExtensions(
     context: GraphContext,
+    allowIndexBuild: Boolean,
     onProgress: (GraphValidationProgress) -> Unit,
   ): CompletedValidation<List<KaGraphValidationResult>> {
     val captured = retryCancelledIndexBuild {
@@ -603,7 +607,12 @@ internal class MetroGraphValidationService(
         val element =
           context.contextPointer.element
             ?: throw CancellationException("Metro graph context is no longer available")
-        captureValidation(element, context, includeExtensions = true)
+        captureValidation(
+          element,
+          context,
+          includeExtensions = true,
+          allowIndexBuild = allowIndexBuild,
+        )
       }
     }
     return withContext(Dispatchers.Default) {
