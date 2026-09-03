@@ -38,6 +38,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
   }

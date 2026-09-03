@@ -64,6 +64,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val bridgeBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     val indirectAppBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     fixture.setUp()
+    fixture.project.enableImmediateAutomaticRefresh()
 
     val appModule = appBuilder.fixture.module
     val libraryModule = libraryBuilder.fixture.module

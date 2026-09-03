@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.psi.KtFile
 class MetroMultibindsQuickFixTest : BasePlatformTestCase() {
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     module.addKotlinStdlibLibrary()

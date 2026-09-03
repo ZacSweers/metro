@@ -14,6 +14,7 @@ class MetroInlayProviderTest : DeclarativeInlayHintsProviderTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions("enable-circuit-codegen" to "true")
     module.addMetroRuntimeLibrary()
     myFixture.addCircuitStubs()

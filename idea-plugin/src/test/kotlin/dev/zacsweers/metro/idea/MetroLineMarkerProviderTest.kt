@@ -39,6 +39,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<MetroGraphValidationService>().clearResults()

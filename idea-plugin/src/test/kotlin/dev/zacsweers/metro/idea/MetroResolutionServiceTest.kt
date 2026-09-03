@@ -17,6 +17,7 @@ import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
@@ -38,6 +39,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +61,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<MetroResolutionService>().resetGraphBrowserActivation()
@@ -148,9 +151,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   private fun withUnpublishedResolutionService(block: (MetroResolutionService) -> Unit) {
     val settings = MetroSettings.getInstance(project).state
     val automaticallyRefresh = settings.automaticallyRefreshGraphData
-    settings.automaticallyRefreshGraphData = false
+    settings.automaticallyRefreshGraphData = true
     val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     try {
       block(service)
     } finally {
@@ -185,7 +194,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val executor = Executors.newSingleThreadExecutor()
     val dispatcher = executor.asCoroutineDispatcher()
     val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val paused = CompletableFuture<Unit>()
     val release = CountDownLatch(1)
 
@@ -230,7 +245,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val executor = Executors.newSingleThreadExecutor()
     val dispatcher = executor.asCoroutineDispatcher()
     val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val paused = CompletableFuture<Unit>()
     val release = CountDownLatch(1)
 
@@ -281,7 +302,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val executor = Executors.newSingleThreadExecutor()
     val dispatcher = executor.asCoroutineDispatcher()
     val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val paused = CompletableFuture<Unit>()
     val releaseCoordinator = CountDownLatch(1)
     val warmupStarted = CompletableFuture<Unit>()
@@ -362,7 +389,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
           return IndexRequestMode.AUTOMATIC_BACKGROUND
         }
       }
-    val service = MetroResolutionService.createForTest(project, serviceScope, policy)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        policy,
+        AutomaticRefreshWindow(0, 0),
+      )
     val paused = CompletableFuture<Unit>()
     val release = CountDownLatch(1)
     val notified = CompletableFuture<Unit>()
@@ -404,7 +437,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   fun testTemporaryProjectClosurePreservesPendingPsiClassification() {
     val file = myFixture.configureMetroFile("@Inject class BeforeClosure")
     val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val interrupted = AtomicBoolean()
     try {
       val initial = service.awaitIndex(file)
@@ -443,7 +482,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       paused.complete(Unit)
       release.await()
     }
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val scheduledRequests = CountDownLatch(6)
     val requestExecutor = Executors.newFixedThreadPool(6)
 
@@ -748,13 +793,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertSame(latest, service.awaitIndex(file))
   }
 
-  fun testBatchedOutputOnlyCompilerSettingsDoNotNotifyOrReplaceTheIndex() {
+  fun testBatchedOutputOnlyCompilerSettingsRestoreTheExistingIndex() {
     val file = configure()
     val service = project.service<MetroResolutionService>()
     val initial = service.awaitIndex(file)
     UIUtil.dispatchAllInvocationEvents()
-    var notifications = 0
-    service.addIndexListener(testRootDisposable) { notifications++ }
 
     project.setMetroOptions("reports-destination" to "/tmp/metro-first")
     project.setMetroOptions("reports-destination" to "/tmp/metro-second")
@@ -765,7 +808,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     UIUtil.dispatchAllInvocationEvents()
     runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
     UIUtil.dispatchAllInvocationEvents()
-    assertEquals(0, notifications)
+    assertFalse(service.isGraphDataRefreshRequired)
     assertSame(initial, service.awaitIndex(file))
   }
 
@@ -790,7 +833,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     val executor = Executors.newSingleThreadExecutor()
     val dispatcher = executor.asCoroutineDispatcher()
     val serviceScope = CoroutineScope(SupervisorJob() + dispatcher)
-    val service = MetroResolutionService(project, serviceScope)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
     val paused = CompletableFuture<Unit>()
     val releaseCoordinator = CountDownLatch(1)
     projectStateService.clearCurrentState(module)
@@ -872,6 +921,183 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertTrue(service.isGraphBrowserActivated)
   }
 
+  fun testManualModeDefersClassificationUntilRefresh() {
+    val file = configure()
+    withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+      val initial = service.awaitIndex(file)
+      service.activateGraphBrowser()
+      MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+      service.settingsChanged()
+      awaitCoordinator(service)
+      val classifications = AtomicInteger()
+      service.setPsiClassificationObserver { classifications.incrementAndGet() }
+
+      appendBinding(file, "ManualAddition")
+      awaitCoordinator(service)
+      repeat(3) {
+        assertSame(initial, service.presentationIndex(file))
+        assertSame(initial, service.indexForToolWindow(module))
+      }
+      awaitCoordinator(service)
+      assertEquals(0, classifications.get())
+      assertNull(service.indexBuildProgress.value)
+      assertTrue(service.isGraphDataRefreshRequired)
+      assertFalse(service.isAutomaticGraphDataRefreshPending)
+
+      awaitRefreshedBinding(service, file, "ManualAddition") { service.refreshGraphData() }
+      assertEquals(1, classifications.get())
+      assertFalse(service.isGraphDataRefreshRequired)
+    }
+  }
+
+  fun testAutomaticEditsWaitForIdleAndRefreshBypassesTheInterval() {
+    val now = AtomicLong()
+    val window = AutomaticRefreshWindow(nowMillis = now::get)
+    val file = configure()
+    withTimedResolutionService(window) { service ->
+      service.awaitIndex(file)
+      service.activateGraphBrowser()
+      val classifications = AtomicInteger()
+      service.setPsiClassificationObserver { classifications.incrementAndGet() }
+
+      appendBinding(file, "FirstBatchedAddition")
+      awaitCoordinator(service)
+      assertTrue(service.isAutomaticGraphDataRefreshPending)
+      assertEquals(0, classifications.get())
+      now.set(1_000)
+      appendBinding(file, "SecondBatchedAddition")
+      repeat(3) { service.presentationIndex(file) }
+      now.set(2_000)
+      service.wakeAutomaticRefreshForTest()
+      awaitCoordinator(service)
+      assertEquals(0, classifications.get())
+      assertNull(service.indexBuildProgress.value)
+
+      now.set(3_000)
+      awaitRefreshedBinding(service, file, "SecondBatchedAddition") {
+        service.wakeAutomaticRefreshForTest()
+      }
+      assertEquals(1, classifications.get())
+      now.set(4_000)
+      appendBinding(file, "ThirdBatchedAddition")
+      now.set(6_000)
+      service.wakeAutomaticRefreshForTest()
+      awaitCoordinator(service)
+      assertEquals(1, classifications.get())
+      assertTrue(service.isAutomaticGraphDataRefreshPending)
+
+      awaitRefreshedBinding(service, file, "ThirdBatchedAddition") { service.refreshGraphData() }
+      assertEquals(2, classifications.get())
+      assertFalse(service.isGraphDataRefreshRequired)
+      now.set(7_000)
+      appendBinding(file, "ExplicitLookupAddition")
+      val current = service.awaitIndex(file)
+      assertTrue(current.bindings.any { it.typeKey.renderedType == "test.ExplicitLookupAddition" })
+      assertEquals(3, classifications.get())
+    }
+  }
+
+  fun testAutomaticWindowExpiryWhileSchedulingStillWakesTheCoordinator() {
+    // The gate sees one millisecond remaining; scheduling sees the deadline has just passed.
+    val now = AtomicLong()
+    val window =
+      AutomaticRefreshWindow(idleMillis = 2, intervalMillis = 0, nowMillis = now::incrementAndGet)
+    val file = configure()
+    withTimedResolutionService(window) { service ->
+      service.awaitIndex(file)
+      awaitRefreshedBinding(service, file, "DeadlineAddition") {
+        appendBinding(file, "DeadlineAddition")
+      }
+      assertFalse(service.isGraphDataRefreshRequired)
+    }
+  }
+
+  fun testSwitchingToManualCancelsAutomaticClassificationAndRefreshStillWorks() {
+    val file = configure()
+    withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+      val initial = service.awaitIndex(file)
+      service.activateGraphBrowser()
+      val reachedClassification = CompletableFuture<Unit>()
+      val release = CountDownLatch(1)
+      service.setPsiClassificationObserver {
+        reachedClassification.complete(Unit)
+        check(release.await(30, TimeUnit.SECONDS))
+      }
+      try {
+        appendBinding(file, "AfterCancellation")
+        PlatformTestUtil.waitForFuture(reachedClassification, 30_000)
+        MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+        service.settingsChanged()
+      } finally {
+        service.setPsiClassificationObserver(null)
+        release.countDown()
+      }
+      awaitCoordinator(service)
+      assertSame(initial, service.presentationIndex(file))
+      assertNull(service.indexBuildProgress.value)
+      assertTrue(service.isGraphDataRefreshRequired)
+      awaitRefreshedBinding(service, file, "AfterCancellation") { service.refreshGraphData() }
+      assertFalse(service.isGraphDataRefreshRequired)
+    }
+  }
+
+  /** Isolated services keep timing assertions independent of retained fixture generations. */
+  private fun withTimedResolutionService(
+    window: AutomaticRefreshWindow,
+    block: (MetroResolutionService) -> Unit,
+  ) {
+    val settings = MetroSettings.getInstance(project).state
+    val previousMode = settings.automaticallyRefreshGraphData
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        window,
+      )
+    try {
+      block(service)
+    } finally {
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      settings.automaticallyRefreshGraphData = previousMode
+    }
+  }
+
+  private fun awaitCoordinator(service: MetroResolutionService) {
+    val completion = CompletableFuture.runAsync {
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    }
+    PlatformTestUtil.waitForFuture(completion, 30_000)
+  }
+
+  private fun appendBinding(file: KtFile, name: String) {
+    val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n\n@Inject class $name")
+    }
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+  }
+
+  /** Observes publication through cache-only reads, so waiting cannot bypass the refresh window. */
+  private fun awaitRefreshedBinding(
+    service: MetroResolutionService,
+    file: KtFile,
+    name: String,
+    request: () -> Unit,
+  ) {
+    val finished = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      if (service.cachedIndex(file).bindings.any { it.typeKey.renderedType == "test.$name" }) {
+        finished.complete(Unit)
+      }
+    }
+    request()
+    PlatformTestUtil.waitForFuture(finished, 30_000)
+  }
+
   fun testDisabledAutomaticRefreshKeepsPresentationSnapshotUntilManualRefresh() {
     val file = configure()
     val service = project.service<MetroResolutionService>()
@@ -898,12 +1124,12 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val refreshFinished = CompletableFuture<Unit>()
       var refreshNotifications = 0
       service.addIndexListener(testRootDisposable) {
-        refreshNotifications++
         val refreshed = service.cachedIndex(file)
         if (
           !service.isManualGraphDataRefreshRequired &&
             refreshed.bindings.any { it.typeKey.renderedType == "test.AddedAfterRefresh" }
         ) {
+          refreshNotifications++
           refreshFinished.complete(Unit)
         }
       }
@@ -1481,24 +1707,15 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertSame(initial, service.awaitIndex(file))
   }
 
-  fun testRemovedNewFilesAreRemovedFromPendingRequestsAfterClassification() {
+  fun testManualRefreshCoalescesCreatedAndDeletedFiles() {
     val file = configure()
     val service = project.service<MetroResolutionService>()
-    service.awaitIndex(file)
+    val initial = service.awaitIndex(file)
     val settings = MetroSettings.getInstance(project).state
     settings.automaticallyRefreshGraphData = false
     service.settingsChanged()
     service.activateGraphBrowser()
     runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
-    val analyzingTotal = CompletableFuture<Int>()
-
-    val progressUpdates =
-      service.indexBuildProgress.collectInTest { progress ->
-        if (progress?.phase == IndexBuildPhase.ANALYZING_DECLARATIONS && progress.completed == 0) {
-          progress.total?.let(analyzingTotal::complete)
-        }
-      }
-
     try {
       val newFile =
         myFixture.addFileToProject(
@@ -1514,14 +1731,14 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       service.refreshGraphData()
       runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
 
-      assertEquals(1, PlatformTestUtil.waitForFuture(analyzingTotal, 30_000))
+      val refreshed = service.presentationIndex(file)
+      assertSame(initial.bindings.first(), refreshed.bindings.first())
       assertFalse(
         service.presentationIndex(file).bindings.any {
           it.typeKey.renderedType == "test.NewIrrelevant"
         }
       )
     } finally {
-      progressUpdates.close()
       settings.automaticallyRefreshGraphData = true
       service.settingsChanged()
     }

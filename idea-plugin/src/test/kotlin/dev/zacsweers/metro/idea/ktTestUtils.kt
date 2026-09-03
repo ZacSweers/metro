@@ -14,6 +14,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.FilePresentationBundle
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
@@ -143,6 +144,15 @@ internal fun Module.withMetroLibFixtureLibrary(
       table.libraries.filter { it.name == LIB_FIXTURE_NAME }.forEach(table::removeLibrary)
     }
   }
+}
+
+/**
+ * Resolution feature tests opt into automatic presentation without waiting for production timers.
+ */
+internal fun Project.enableImmediateAutomaticRefresh() {
+  MetroSettings.getInstance(this).state.automaticallyRefreshGraphData = true
+  service<MetroResolutionService>().setAutomaticRefreshWindowForTest(AutomaticRefreshWindow(0, 0))
+  service<MetroResolutionService>().settingsChanged()
 }
 
 internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {

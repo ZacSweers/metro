@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.psi.KtFile
 class MetroGraphInspectionTest : BasePlatformTestCase() {
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<MetroGraphValidationService>().clearResults()
