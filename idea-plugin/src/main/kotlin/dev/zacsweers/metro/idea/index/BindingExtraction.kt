@@ -720,21 +720,26 @@ private fun KaSession.contributedBoundType(
   if (explicitTypeRef != null) {
     return explicitTypeRef.type
   }
-  // The implicit bound type (supertype @DefaultBinding, else sole supertype) is resolved by the
-  // shared decision so the IDE and compiler agree on ambiguity. Ambiguous/multiple → unresolved.
+  return when (val resolution = implicitContributedBoundType(classSymbol)) {
+    is BoundTypeResolution.Resolved -> resolution.type
+    else -> null
+  }
+}
+
+/** Keeps contribution indexing and source actions on the same implicit bound-type decision. */
+internal fun KaSession.implicitContributedBoundType(
+  classSymbol: KaNamedClassSymbol
+): BoundTypeResolution<KaType> {
+  // The implicit bound type comes from a supertype's @DefaultBinding or the sole supertype.
+  // The shared decision preserves ambiguous choices for the caller to handle.
   val superTypes =
     classSymbol.superTypes.filterIndexed { index, type ->
       checkCanceledEvery(index)
       !type.isAnyType
     }
-  val resolution =
-    resolveImplicitBoundType(superTypes) { superType ->
-      val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
-      supertypeSymbol?.let { resolveDefaultBindingType(it) }
-    }
-  return when (resolution) {
-    is BoundTypeResolution.Resolved -> resolution.type
-    else -> null
+  return resolveImplicitBoundType(superTypes) { superType ->
+    val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
+    supertypeSymbol?.let { resolveDefaultBindingType(it) }
   }
 }
 
