@@ -33,6 +33,14 @@ Metro IDE support for Kotlin dependency injection projects.
         implementation="dev.zacsweers.metro.idea.usages.MetroUsageTypeProvider"
         order="first"/>
     <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
+    <localInspection
+        language="kotlin"
+        shortName="MetroGraph"
+        displayName="Metro graph validation"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="ERROR"
+        implementationClass="dev.zacsweers.metro.idea.diagnostics.MetroGraphInspection"/>
     <codeInsight.lineMarkerProvider
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.index.MetroLineMarkerProvider"/>
