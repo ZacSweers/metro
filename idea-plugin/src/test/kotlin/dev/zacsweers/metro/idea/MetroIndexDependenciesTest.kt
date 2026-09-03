@@ -8,15 +8,21 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.restoreClassType
+import dev.zacsweers.metro.idea.index.typeSnapshot
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
 import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.types.Variance
 
 /**
  * Covers the seal-facing index enrichment: dependency keys on bindings, contextual keys on
@@ -154,6 +160,55 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     val setDep = entry.dependencies[1]
     assertEquals("kotlin.collections.Set<test.Analytics>", setDep.typeKey.renderedType)
     assertEquals("test.Analytics", setDep.multibindingId())
+  }
+
+  fun testTypeSnapshotsRestoreStarsVarianceAndNullability() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+      class Holder<T>
+      typealias Text = String
+      interface Types {
+        val stars: Map<*, Text?>?
+        val nested: Holder<Map<*, Text?>>
+        val producer: Holder<out Text>
+        val consumer: Holder<in Text>
+      }
+      """
+      )
+    val declarations = file.declarationsIncludingNested()
+    for (name in listOf("stars", "nested", "producer", "consumer")) {
+      val property = declarations.property(name)
+      val snapshot =
+        analyze(property) {
+          typeSnapshot((property.symbol as KaCallableSymbol).returnType)
+        }
+      analyze(property) {
+        val restored = restoreClassType(snapshot)
+        assertNotNull(name, restored)
+        val roundTrip = typeSnapshot(restored!!)
+        assertEquals(name, snapshot.renderedType, roundTrip.renderedType)
+        assertEquals(name, snapshot.isMarkedNullable, roundTrip.isMarkedNullable)
+      }
+      when (name) {
+        "stars" -> {
+          assertTrue(snapshot.isMarkedNullable)
+          assertSame(KaTypeArgumentSnapshot.Star, snapshot.typeArguments[0])
+          assertTrue(snapshot.typeArguments[1].type!!.isMarkedNullable)
+        }
+        "producer" ->
+          assertEquals(
+            Variance.OUT_VARIANCE,
+            (snapshot.typeArguments.single() as KaTypeArgumentSnapshot.Typed).variance,
+          )
+        "consumer" ->
+          assertEquals(
+            Variance.IN_VARIANCE,
+            (snapshot.typeArguments.single() as KaTypeArgumentSnapshot.Typed).variance,
+          )
+      }
+    }
   }
 
   fun testBindsReceiverKeepsItsQualifier() {

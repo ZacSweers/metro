@@ -141,8 +141,8 @@ internal class KaSuspendBindingValidator(
         val isSet = binding.typeKey.type.classId == StandardClassIds.Set
         SuspendMultibindingMetadata(
           isSet = isSet,
-          mapKeyType = binding.typeKey.type.typeArguments.getOrNull(0)?.shortType,
-          mapValueType = binding.typeKey.type.typeArguments.getOrNull(1)?.shortType,
+          mapKeyType = binding.typeKey.type.typeArguments.getOrNull(0)?.type?.shortType,
+          mapValueType = binding.typeKey.type.typeArguments.getOrNull(1)?.type?.shortType,
         )
       }
     val assistedFactory =

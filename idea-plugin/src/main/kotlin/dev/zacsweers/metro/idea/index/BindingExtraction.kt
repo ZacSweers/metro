@@ -369,7 +369,7 @@ internal fun CallableBindingView.bindingData(
         }
         isElementsIntoSet -> {
           // `@ElementsIntoSet fun x(): Collection<X>` contributes X elements
-          val elementType = canonicalKey.type.typeArguments.singleOrNull() ?: return null
+          val elementType = canonicalKey.type.typeArguments.singleOrNull()?.type ?: return null
           canonicalKey.copy(type = elementType).computeMultibindingId()
         }
         else -> canonicalKey.computeMultibindingId()

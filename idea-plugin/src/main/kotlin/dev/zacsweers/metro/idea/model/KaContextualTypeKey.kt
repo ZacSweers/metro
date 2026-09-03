@@ -61,6 +61,6 @@ internal fun KaContextualTypeKey.multibindingId(): String? {
   }
   if (typeKey.type.classId != StandardClassIds.Set) return null
   // Set contributions keep their declared element type, including provider and lazy wrappers.
-  val elementType = typeKey.type.typeArguments.singleOrNull() ?: return null
+  val elementType = typeKey.type.typeArguments.singleOrNull()?.type ?: return null
   return typeKey.copy(type = elementType).computeMultibindingId()
 }

@@ -1419,7 +1419,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals("test.Box<kotlin.String?>?", binding.typeKey.renderedType)
     assertEquals(consumer.key, binding.typeKey)
     assertEquals("Payload<Text>?", binding.typeKey.type.shortType)
-    assertEquals("kotlin.String?", binding.typeKey.type.typeArguments.single().renderedType)
+    assertEquals("kotlin.String?", binding.typeKey.type.typeArguments.single().type!!.renderedType)
     assertEquals(listOf(binding), index.resolveConsumer(consumer).uniformBindings)
 
     val graph = index.graphs.single()

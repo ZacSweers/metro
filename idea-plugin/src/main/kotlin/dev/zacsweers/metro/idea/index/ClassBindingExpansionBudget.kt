@@ -122,7 +122,11 @@ internal class ClassBindingExpansionBudget(
         nodes++
         depth = maxOf(depth, currentDepth)
         if (current.classId == null) concrete = false
-        for (argument in current.typeArguments) pending += argument to currentDepth + 1
+        for (argument in current.typeArguments) {
+          val argumentType = argument.type
+          if (argumentType == null) concrete = false
+          else pending += argumentType to currentDepth + 1
+        }
       }
       TypeComplexity(nodes, depth, concrete)
     }
