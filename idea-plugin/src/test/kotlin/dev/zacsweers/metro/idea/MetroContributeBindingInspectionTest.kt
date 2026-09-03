@@ -95,6 +95,17 @@ class MetroContributeBindingInspectionTest : BasePlatformTestCase() {
     assertTrue(file.text, file.text.contains("@Named(\"service\")"))
   }
 
+  fun testMatchingBoundTypeNamesAreQualifiedInPicker() {
+    myFixture.addFileToProject("one/Service.kt", "package one\ninterface Service")
+    myFixture.addFileToProject("two/Service.kt", "package two\ninterface Service")
+    val file = configure("@Inject class <caret>Impl : one.Service, two.Service", "")
+    val types = choose(start(file), "ContributesBinding") as ModChooseAction
+    assertEquals(setOf("one.Service", "two.Service"), types.actions().map { it.familyName }.toSet())
+    execute(choose(choose(types, "two.Service"), "test.AppScope"))
+    assertTrue(file.text, file.text.contains("import two.Service"))
+    assertTrue(file.text, file.text.contains("binding = binding<Service>()"))
+  }
+
   fun testAbandonedPickerDoesNotEditSource() {
     val file = configure()
     val before = file.text

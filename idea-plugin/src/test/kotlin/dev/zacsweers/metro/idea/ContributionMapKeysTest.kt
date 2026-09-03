@@ -135,6 +135,18 @@ class ContributionMapKeysTest : BasePlatformTestCase() {
     }
   }
 
+  fun testNestedMapKeysHaveDistinctLabels() {
+    val keys =
+      choices(
+        """
+      object First { @MapKey annotation class Key(val value: String) }
+      object Second { @MapKey annotation class Key(val value: String) }
+      class Implementation
+      """
+      )
+    assertContainsElements(keys.map { it.label }, "@First.Key (test)", "@Second.Key (test)")
+  }
+
   fun testExistingMapKeyIsReused() {
     val choices =
       choices(

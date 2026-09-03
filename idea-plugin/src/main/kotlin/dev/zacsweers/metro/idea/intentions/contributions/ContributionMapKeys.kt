@@ -205,7 +205,7 @@ private fun KaSession.mapKeyChoice(
   val suffix = if (arguments.isEmpty()) "" else arguments.joinToString(", ", "(", ")")
   val name = classId.asSingleFqName().pathSegments().joinToString(".") { it.render() }
   return ContributionMapKeyChoice(
-    label = "@${classId.shortClassName.asString()} (${classId.packageFqName.asString()})",
+    label = "@${classId.relativeClassName.asString()} (${classId.packageFqName.asString()})",
     annotationText = "@$name$suffix",
     editableArguments = editable,
   )

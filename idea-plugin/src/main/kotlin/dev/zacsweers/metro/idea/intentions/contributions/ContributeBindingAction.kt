@@ -60,10 +60,12 @@ internal class ContributeBindingAction(owner: KtClassOrObject) :
       return chooseScope(context, owner, candidate, kind, defaultType, expectedText)
     if (types.size == 1)
       return chooseScope(context, owner, candidate, kind, types.single(), expectedText)
+    val labelCounts = types.groupingBy { it.label }.eachCount()
     return ModCommand.chooseAction(
       "Bound type",
       types.map { type ->
-        step(owner, expectedText, type.label) { current ->
+        val label = if (labelCounts.getValue(type.label) > 1) type.renderedType else type.label
+        step(owner, expectedText, label) { current ->
           chooseScope(context, current, candidate, kind, type, expectedText)
         }
       },
