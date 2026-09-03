@@ -7,7 +7,9 @@ import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.CommonShortcuts
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.TestOnlyThreading
 import com.intellij.openapi.command.WriteCommandAction
@@ -50,6 +52,7 @@ import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
 import dev.zacsweers.metro.idea.toolwindow.MetroDiagnosticDetailsPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeNavigation
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationRequestService
@@ -65,6 +68,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JPanel
+import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.DefaultTreeModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import org.jetbrains.kotlin.name.ClassId
@@ -1915,6 +1920,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertTrue(diagnosticRow >= 0)
       assertTrue(stackRow >= 0)
       val diagnosticPath = checkNotNull(panel.tree.getPathForRow(diagnosticRow))
+      val stackPath = checkNotNull(panel.tree.getPathForRow(stackRow))
       panel.tree.selectionPath = diagnosticPath
       val text = panel.diagnosticDetails.textArea.text
       assertTrue(text, "MissingThing" in text)
@@ -1931,6 +1937,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       // The async model can briefly retain rows from the previous result.
       panel.tree.selectionPath = diagnosticPath
       assertFalse(panel.diagnosticDetails.isVisible)
+      panel.tree.selectionPath = stackPath
+      assertNull(panel.navigateSelected())
 
       panel.showResults(listOf(result))
       val refreshedRows = treeNodes(panel.tree)
@@ -1940,6 +1948,63 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertEquals("", panel.diagnosticDetails.textArea.text)
     } finally {
       Disposer.dispose(panel)
+    }
+  }
+
+  fun testTreeNavigationUsesNativeShortcutsAndCancelsObsoletePreviews() {
+    val root =
+      DefaultMutableTreeNode("Root").apply {
+        add(DefaultMutableTreeNode("First"))
+        add(DefaultMutableTreeNode("Second"))
+      }
+    val tree = Tree(DefaultTreeModel(root)).apply { isRootVisible = false }
+    val requestedFocus = mutableListOf<Boolean>()
+    val jobs = mutableListOf<Job>()
+    val navigation =
+      MetroTreeNavigation(
+        project,
+        tree,
+        testRootDisposable,
+        canNavigate = { tree.selectionCount > 0 },
+        resolveAndNavigate = { focus ->
+          requestedFocus += focus
+          Job().also { jobs += it }
+        },
+      )
+    val autoScrollAction = navigation.autoscrollAction as ToggleAction
+    val autoScrollEvent =
+      AnActionEvent.createFromAnAction(autoScrollAction, null, ActionPlaces.UNKNOWN) { null }
+    val wasAutoScrollEnabled = autoScrollAction.isSelected(autoScrollEvent)
+    val sourceEvent =
+      AnActionEvent.createFromAnAction(navigation.openSourceAction, null, ActionPlaces.UNKNOWN) {
+        null
+      }
+    try {
+      autoScrollAction.setSelected(autoScrollEvent, false)
+      tree.setSelectionRow(0)
+      assertTrue(jobs.isEmpty())
+      val shortcuts = navigation.openSourceAction.shortcutSet.shortcuts.toSet()
+      assertTrue(shortcuts.containsAll(CommonShortcuts.getEditSource().shortcuts.toList()))
+      assertTrue(shortcuts.containsAll(CommonShortcuts.ENTER.shortcuts.toList()))
+
+      navigation.openSourceAction.update(sourceEvent)
+      assertTrue(sourceEvent.presentation.isEnabled)
+      navigation.openSourceAction.actionPerformed(sourceEvent)
+      assertEquals(listOf(true), requestedFocus)
+      tree.setSelectionRow(1)
+      assertTrue(jobs.single().isCancelled)
+
+      autoScrollAction.setSelected(autoScrollEvent, true)
+      assertEquals(listOf(true, false), requestedFocus)
+      tree.clearSelection()
+      assertTrue(jobs.last().isCancelled)
+      navigation.openSourceAction.update(sourceEvent)
+      assertFalse(sourceEvent.presentation.isEnabled)
+      navigation.openSourceAction.actionPerformed(sourceEvent)
+      assertEquals(2, jobs.size)
+    } finally {
+      autoScrollAction.setSelected(autoScrollEvent, wasAutoScrollEnabled)
+      Disposer.dispose(navigation)
     }
   }
 

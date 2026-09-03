@@ -16,7 +16,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
-import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.TreeSpeedSearch
 import com.intellij.ui.components.JBLabel
@@ -32,7 +31,6 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
-import java.awt.event.MouseEvent
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.tree.TreePath
@@ -54,6 +52,14 @@ internal class MetroValidationResultPanel(
   private val treeAndDetails = JBSplitter(true, 0.45f)
   private var generation = 0L
   private var disposed = false
+  internal val treeNavigation =
+    MetroTreeNavigation(
+      project,
+      tree,
+      this,
+      canNavigate = { selectedNavigationNode()?.pointer != null },
+      resolveAndNavigate = ::resolveSelected,
+    )
   internal val closeAction: AnAction =
     object :
       AnAction("Close results", "Close the last validation result", AllIcons.Actions.Close),
@@ -69,13 +75,13 @@ internal class MetroValidationResultPanel(
     isVisible = false
     TreeSpeedSearch.installOn(tree)
     tree.addTreeSelectionListener { showSelectedDiagnostic() }
-    object : DoubleClickListener() {
-        override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected() != null
-      }
-      .installOn(tree)
     val toolbar =
       ActionManager.getInstance()
-        .createActionToolbar("MetroValidationResults", DefaultActionGroup(closeAction), true)
+        .createActionToolbar(
+          "MetroValidationResults",
+          DefaultActionGroup(treeNavigation.autoscrollAction, closeAction),
+          true,
+        )
     toolbar.targetComponent = tree
     val header =
       JPanel(BorderLayout()).apply {
@@ -152,23 +158,33 @@ internal class MetroValidationResultPanel(
   }
 
   private fun clearDiagnosticSelection() {
+    treeNavigation.cancelPendingNavigation()
     tree.clearSelection()
     diagnosticDetails.showDiagnostic(null)
     treeAndDetails.secondComponent = null
   }
 
+  /** Requests explicit navigation through the tree's keyboard and preview cancellation boundary. */
+  internal fun navigateSelected(): Job? = treeNavigation.navigate(requestFocus = true)
+
   /** Resolves the selected row while this result snapshot remains visible. */
-  internal fun navigateSelected(): Job? {
-    if (disposed || !isVisible) return null
-    val pointer = tree.selectionPath?.let(::nodeAt)?.pointer ?: return null
+  private fun resolveSelected(requestFocus: Boolean): Job? {
+    val pointer = selectedNavigationNode()?.pointer ?: return null
     val currentGeneration = generation
     return project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets
       ->
       val isCurrentResult = isVisible && generation == currentGeneration
       if (disposed || !isCurrentResult) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(true)
+      if (target.canNavigate()) target.navigate(requestFocus)
     }
+  }
+
+  /** Old async rows cannot start a new navigation request during result replacement. */
+  private fun selectedNavigationNode(): MetroTreeNode? {
+    if (disposed || !isVisible) return null
+    val node = tree.selectionPath?.let(::nodeAt) ?: return null
+    return node.takeIf { structure.contains(it) }
   }
 
   override fun dispose() {
@@ -196,9 +212,20 @@ internal class MetroValidationResultTreeStructure(private val project: Project) 
   }
 
   /** Rejects rows retained by the async tree while a replacement run is loading. */
-  fun contains(diagnostic: MetroTreeNode.Diagnostic): Boolean {
-    val result = (diagnostic.parent as? MetroTreeNode.Validation)?.result ?: return false
-    return resultsByPath?.get(result.context.path) === result
+  fun contains(node: MetroTreeNode): Boolean {
+    var current: MetroTreeNode? = node
+    while (current != null) {
+      when (current) {
+        is MetroTreeNode.Validation -> {
+          val result = current.result
+          return resultsByPath?.get(result.context.path) === result
+        }
+        is MetroTreeNode.Graph ->
+          return resultsByPath?.get(current.context.path)?.context === current.context
+        else -> current = current.parent
+      }
+    }
+    return false
   }
 
   override fun getRootElement(): Any = root

@@ -23,7 +23,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.TreeSpeedSearch
@@ -47,7 +46,6 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
-import java.awt.event.MouseEvent
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -111,6 +109,14 @@ internal class MetroToolWindowPanel(
     GraphContextSelectorAction(pinService, treeStructure::contextOptions)
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
+  internal val treeNavigation =
+    MetroTreeNavigation(
+      project,
+      tree,
+      this,
+      canNavigate = { !disposed && selectedNode()?.pointer != null },
+      resolveAndNavigate = ::resolveSelected,
+    )
 
   init {
     Disposer.register(this, validationResults)
@@ -150,11 +156,6 @@ internal class MetroToolWindowPanel(
       updateValidationStatus()
     }
 
-    object : DoubleClickListener() {
-        override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected()
-      }
-      .installOn(tree)
-
     searchField.addDocumentListener(
       object : DocumentAdapter() {
         override fun textChanged(e: DocumentEvent) {
@@ -168,6 +169,7 @@ internal class MetroToolWindowPanel(
     val overflowGroup =
       DefaultActionGroup("More", true).apply {
         templatePresentation.icon = AllIcons.Actions.More
+        add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
       }
     val actionGroup =
@@ -467,14 +469,15 @@ internal class MetroToolWindowPanel(
     }
   }
 
-  private fun navigateSelected(): Boolean {
-    val pointer = selectedNode()?.pointer ?: return false
-    project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets ->
+  /** Pointer resolution stays in the shared navigation service's background read. */
+  private fun resolveSelected(requestFocus: Boolean): Job? {
+    val pointer = selectedNode()?.pointer ?: return null
+    return project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets
+      ->
       if (disposed) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(true)
+      if (target.canNavigate()) target.navigate(requestFocus)
     }
-    return true
   }
 
   override fun dispose() {
