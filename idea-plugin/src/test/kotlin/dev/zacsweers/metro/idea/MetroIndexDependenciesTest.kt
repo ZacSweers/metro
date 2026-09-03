@@ -6,7 +6,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
@@ -154,7 +153,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     // Multibinding ids are deduced from the requested key itself
     val setDep = entry.dependencies[1]
     assertEquals("kotlin.collections.Set<test.Analytics>", setDep.typeKey.renderedType)
-    assertEquals("test.Analytics", setDep.multibindingId(MetroOptions()))
+    assertEquals("test.Analytics", setDep.multibindingId())
   }
 
   fun testBindsReceiverKeepsItsQualifier() {
@@ -244,7 +243,7 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     assertEquals("test.Analytics", setParam.multibindingId)
     assertEquals(
       setParam.multibindingId,
-      setParam.contextKey.multibindingId(MetroOptions()),
+      setParam.contextKey.multibindingId(),
     )
   }
 
@@ -643,6 +642,89 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
       "provideMainActivity",
       (contributions.single().pointer.element as? org.jetbrains.kotlin.psi.KtNamedFunction)?.name,
     )
+  }
+
+  fun testWrappedSetAccessorsMatchElementsContributions() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val providers: Set<Provider<String>>
+          val lazies: Set<Lazy<String>>
+
+          @Provides @ElementsIntoSet
+          fun provideProviders(): Set<Provider<String>> = emptySet()
+
+          @Provides @ElementsIntoSet
+          fun provideLazies(): Set<Lazy<String>> = emptySet()
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+
+    for ((accessor, provider) in
+      listOf("providers" to "provideProviders", "lazies" to "provideLazies")) {
+      val consumer = index.consumerEntryAt(declarations.property(accessor))!!
+      val contribution = index.bindingEntriesAt(declarations.function(provider)).single()
+      assertEquals(contribution.multibindingId, consumer.multibindingId)
+      assertEquals(listOf(contribution), index.bindingsFor(consumer))
+    }
+  }
+
+  fun testPlainSetContributionsStaySeparateFromWrappedSets() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val strings: Set<String>
+          val providers: Set<Provider<String>>
+          val lazies: Set<Lazy<String>>
+
+          @Provides @IntoSet fun provideString(): String = "value"
+          @Provides fun provideProviders(): Set<Provider<String>> = emptySet()
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val stringContribution = index.bindingEntriesAt(declarations.function("provideString")).single()
+    val explicitProviders =
+      index.bindingEntriesAt(declarations.function("provideProviders")).single()
+
+    val strings = index.consumerEntryAt(declarations.property("strings"))!!
+    val providers = index.consumerEntryAt(declarations.property("providers"))!!
+    val lazies = index.consumerEntryAt(declarations.property("lazies"))!!
+    assertEquals(listOf(stringContribution), index.bindingsFor(strings))
+    assertEquals(listOf(explicitProviders), index.bindingsFor(providers))
+    assertTrue(index.bindingsFor(lazies).isEmpty())
+  }
+
+  fun testMapValueWrappersShareContributions() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph
+        interface AppGraph {
+          val values: Map<String, Int>
+          val providers: Map<String, Provider<Int>>
+          val lazies: Map<String, Lazy<Int>>
+
+          @Provides @IntoMap @StringKey("key") fun provideValue(): Int = 1
+        }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val contribution = index.bindingEntriesAt(declarations.function("provideValue")).single()
+
+    for (accessor in listOf("values", "providers", "lazies")) {
+      val consumer = index.consumerEntryAt(declarations.property(accessor))!!
+      assertEquals(contribution.multibindingId, consumer.multibindingId)
+      assertEquals(listOf(contribution), index.bindingsFor(consumer))
+    }
   }
 
   fun testLibraryInjectBindingsCarryConstructorDependencies() {

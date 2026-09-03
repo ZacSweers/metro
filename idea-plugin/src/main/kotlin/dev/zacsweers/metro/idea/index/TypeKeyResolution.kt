@@ -186,7 +186,7 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
-    contextKey.multibindingId(options),
+    contextKey.multibindingId(),
     contextKey.typeKey.type.classId,
   )
 }

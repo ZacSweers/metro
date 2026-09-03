@@ -174,7 +174,7 @@ internal class KaBindingLookup(
       return setOf(it)
     }
 
-    val multibindingId = contextKey.multibindingId(options)
+    val multibindingId = contextKey.multibindingId()
     if (multibindingId != null) {
       val contributions = index.multibindingContributions(multibindingId, queryPlan)
       if (contributions.isNotEmpty() || multibindingDeclarations.isNotEmpty()) {

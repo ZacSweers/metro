@@ -1065,7 +1065,7 @@ internal class FileShardBuilder(
         ConsumerEntry(
           ptr(member),
           contextKey,
-          multibindingId = contextKey.multibindingId(options),
+          multibindingId = contextKey.multibindingId(),
           typeClassId = contextKey.typeKey.type.classId,
           graphId = graphId,
           injectedMemberPointer = site.declaration?.let(::ptr),
