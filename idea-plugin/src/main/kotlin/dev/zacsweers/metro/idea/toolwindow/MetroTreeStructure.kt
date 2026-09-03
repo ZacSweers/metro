@@ -323,6 +323,12 @@ internal class MetroTreeStructure(
   private val contextOptionSnapshotLock = Any()
   private var contextOptionSnapshotGeneration = 0L
   @Volatile private var contextOptionSnapshot: List<GraphContextOption> = emptyList()
+  @Volatile private var revealedPath: GraphPath? = null
+
+  /** Keeps an explicitly requested row visible alongside the pinned editor context. */
+  internal fun revealPath(path: GraphPath?) {
+    revealedPath = path
+  }
 
   override fun getRootElement(): Any = root
 
@@ -481,9 +487,10 @@ internal class MetroTreeStructure(
       ) {
         if (indexes.isNotEmpty()) pinService.clearIf(pinnedPath)
       } else {
+        val reveal = revealedPath
         contexts = contexts.filter {
           ProgressManager.checkCanceled()
-          it.path.isAtOrBelow(pinnedPath)
+          it.path.isAtOrBelow(pinnedPath) || it.path == reveal
         }
       }
     }

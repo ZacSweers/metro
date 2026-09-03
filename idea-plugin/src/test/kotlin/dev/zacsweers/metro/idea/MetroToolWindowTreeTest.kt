@@ -45,6 +45,7 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.GraphContextSelectorAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
@@ -62,6 +63,7 @@ import dev.zacsweers.metro.idea.toolwindow.PinSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
+import dev.zacsweers.metro.idea.toolwindow.matchesRevealTarget
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
@@ -331,6 +333,179 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     pinService.pin(otherContext.path)
     action.setSelected(event, false)
     assertSame(otherContext.path, pinService.pinnedPath)
+  }
+
+  fun testEditorBindingChoicesKeepConcreteExtensionPaths() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @GraphExtension interface ChildGraph {
+        val value: String
+      }
+
+      @DependencyGraph interface LeftGraph {
+        val child: ChildGraph
+        @Provides fun leftValue(): String = "left"
+      }
+
+      @DependencyGraph interface RightGraph {
+        val child: ChildGraph
+        @Provides fun rightValue(): String = "right"
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child)
+    val offset = file.declarationsIncludingNested().property("value").textOffset
+    val targets = metroEditorTargets(index, file, offset, null)
+
+    assertEquals(contexts.map { it.path }.toSet(), targets.navigation.map { it.path }.toSet())
+    assertEquals(
+      setOf("leftValue", "rightValue"),
+      targets.navigation
+        .map { choice ->
+          (choice.bindings.single().pointer.element as org.jetbrains.kotlin.psi.KtNamedDeclaration)
+            .name
+        }
+        .toSet(),
+    )
+    assertEquals(contexts.map { it.path }.toSet(), targets.reveal.map { it.path }.toSet())
+
+    val leftContext = contexts.single { it.rootGraph.name == "LeftGraph" }
+    val pinned = metroEditorTargets(index, file, offset, leftContext.path)
+    assertEquals(leftContext.path, pinned.navigation.single().path)
+    assertEquals(leftContext.path, pinned.reveal.single().path)
+    assertEquals(
+      "leftValue",
+      (pinned.navigation.single().bindings.single().pointer.element
+          as org.jetbrains.kotlin.psi.KtNamedDeclaration)
+        .name,
+    )
+  }
+
+  fun testEditorBindingChoicePreservesAnEmptyPinnedAnswer() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Consumer(val value: String)
+
+      @DependencyGraph interface ProvidingGraph {
+        val consumer: Consumer
+        @Provides fun value(): String = "provided"
+      }
+
+      @DependencyGraph interface MissingGraph {
+        val consumer: Consumer
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val offset = file.declarationsIncludingNested().parameter("value").textOffset
+    val allTargets = metroEditorTargets(index, file, offset, null)
+    assertEquals(2, allTargets.navigation.size)
+    val missingContext =
+      index.contextsFor(index.graphs.single { it.name == "MissingGraph" }).single()
+
+    val pinned = metroEditorTargets(index, file, offset, missingContext.path)
+
+    assertEquals(missingContext.path, pinned.navigation.single().path)
+    assertTrue(pinned.navigation.single().bindings.isEmpty())
+    assertEquals(missingContext.path, pinned.reveal.single().path)
+    assertNull(pinned.reveal.single().binding)
+  }
+
+  fun testEditorRevealSelectsBindingOutsideThePinnedGraph() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph interface PinnedGraph
+
+      @DependencyGraph interface OtherGraph {
+        val value: String
+        @Provides fun otherValue(): String = "other"
+      }
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val index = service.awaitIndex(file)
+    service.activateGraphBrowser()
+    val pinned = index.contextsFor(index.graphs.single { it.name == "PinnedGraph" }).single()
+    val pinService = project.service<GraphContextPinService>()
+    pinService.pin(pinned.path)
+    val targets =
+      metroEditorTargets(
+        index,
+        file,
+        file.declarationsIncludingNested().property("value").textOffset,
+        pinned.path,
+      )
+    val target = targets.reveal.single()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      assertEquals(
+        listOf("PinnedGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val revealed = CompletableFuture<Boolean>()
+      panel.reveal(target) { revealed.complete(it) }
+      PlatformTestUtil.waitForFuture(revealed, 30_000)
+
+      assertTrue(revealed.join())
+      assertTrue(checkNotNull(selectedTreeNode(panel.tree)).matchesRevealTarget(target))
+      assertEquals(pinned.path, pinService.pinnedPath)
+      assertEquals(
+        setOf("PinnedGraph", "OtherGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }.toSet(),
+      )
+
+      pinService.clear()
+      pinService.pin(pinned.path)
+      assertEquals(
+        listOf("PinnedGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testEditorRevealKeepsManuallyRetainedBrowserData() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface OriginalGraph")
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    service.activateGraphBrowser()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      treeNodes(panel.tree)
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val current = service.awaitIndex(file)
+      val offset = file.declarationsIncludingNested().klass("AddedGraph").textOffset
+      val target = metroEditorTargets(current, file, offset, null).reveal.single()
+      val revealed = CompletableFuture<Boolean>()
+      panel.reveal(target) { revealed.complete(it) }
+      PlatformTestUtil.waitForFuture(revealed, 30_000)
+
+      assertFalse(revealed.join())
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(service.isManualGraphDataRefreshRequired)
+      assertEquals(
+        listOf("OriginalGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
   }
 
   fun testGraphContextSelectorUsesPrecomputedSnapshotWithoutReadAccess() {

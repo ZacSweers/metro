@@ -70,6 +70,22 @@ Metro IDE support for Kotlin dependency injection projects.
 
   <actions>
     <action
+        id="Metro.GoToBinding"
+        class="dev.zacsweers.metro.idea.navigation.GoToMetroBindingAction"
+        text="Go to Metro Binding"
+        description="Opens the binding supplying the Metro dependency at the caret"
+        icon="dev.zacsweers.metro.idea.MetroIcons.PROVIDER">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+    <action
+        id="Metro.SelectInToolWindow"
+        class="dev.zacsweers.metro.idea.navigation.SelectInMetroAction"
+        text="Select in Metro"
+        description="Reveals the graph or binding at the caret in the Metro tool window"
+        icon="dev.zacsweers.metro.idea.MetroIcons.GRAPH">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+    <action
         id="Metro.ValidateGraph"
         class="dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction"
         text="Validate Metro Graph"

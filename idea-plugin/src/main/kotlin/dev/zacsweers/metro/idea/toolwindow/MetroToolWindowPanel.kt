@@ -44,6 +44,7 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.navigation.MetroRevealTarget
 import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
@@ -89,6 +90,7 @@ internal class MetroToolWindowPanel(
   private var latestValidationRequestToken = 0L
   private var pendingValidationLookup: Job? = null
   private var pendingValidationLookupGeneration = 0L
+  private var revealGeneration = 0L
   @Volatile private var disposed: Boolean = false
   private val treeModel = StructureTreeModel(treeStructure, this)
   internal val tree =
@@ -146,7 +148,11 @@ internal class MetroToolWindowPanel(
       // Retry until a published index contains the requested graph.
       resolvePendingValidation()
     }
-    pinService.addListener(this) { treeModel.invalidateAsync() }
+    pinService.addListener(this) {
+      revealGeneration++
+      treeStructure.revealPath(null)
+      treeModel.invalidateAsync()
+    }
     resolutionService.addIndexBuildProgressListener(this) { progress ->
       indexBuildProgress = progress
       updateIndexBuildStatus()
@@ -271,6 +277,26 @@ internal class MetroToolWindowPanel(
         // Resolve the source file in a background read before updating the EDT.
         pendingValidation = classId to file
         resolvePendingValidation()
+      }
+    }
+  }
+
+  /**
+   * Reveals a captured graph/binding row while preserving manual refresh state and editor pinning.
+   */
+  internal fun reveal(target: MetroRevealTarget, onResult: (Boolean) -> Unit) {
+    if (disposed || project.isDisposed) return
+    val generation = ++revealGeneration
+    resolutionService.activateGraphBrowser()
+    searchField.text = ""
+    treeStructure.revealPath(target.path)
+    treeModel.invalidateAsync().thenRun {
+      SwingUtilities.invokeLater {
+        if (disposed || generation != revealGeneration) return@invokeLater
+        TreeUtil.promiseSelect(tree, metroRevealVisitor(target, ::nodeAt)).onProcessed {
+          if (disposed || generation != revealGeneration) return@onProcessed
+          onResult(selectedNode()?.matchesRevealTarget(target) == true)
+        }
       }
     }
   }
@@ -482,6 +508,7 @@ internal class MetroToolWindowPanel(
 
   override fun dispose() {
     disposed = true
+    revealGeneration++
     cancelPendingValidation()
     browserAndResults.secondComponent = null
     indexBuildStatus.clear()
