@@ -8,6 +8,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.matchingContext
@@ -64,6 +65,7 @@ internal class GraphContextPinService(private val project: Project) : Disposable
     val notify = {
       if (!disposed.get() && !project.isDisposed) {
         project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
+        project.service<MetroPinnedGraphValidationService>().requestValidation()
         listeners.forEach { it() }
       }
     }

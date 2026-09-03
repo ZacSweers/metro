@@ -14,6 +14,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
 import com.intellij.ui.layout.ComponentPredicate
+import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 
 class MetroSettingsState : BaseState() {
@@ -28,6 +29,9 @@ class MetroSettingsState : BaseState() {
 
   /** Keeps graph and binding data current as project code changes. */
   var automaticallyRefreshGraphData by property(true)
+
+  /** Validates the pinned graph after edits while automatic graph refresh is enabled. */
+  var automaticallyValidatePinnedGraph by property(false)
 
   /** Also resolve bindings from compiled dependencies (inject classes, contribution hints). */
   var resolveFromLibraries by property(true)
@@ -74,10 +78,21 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         .bindSelected(state::resolveFromLibraries)
         .comment("Includes bindings contributed by compiled project dependencies")
     }
+    lateinit var automaticRefreshSelected: ComponentPredicate
     row {
-      checkBox("Automatically refresh graphs and bindings after code changes")
-        .bindSelected(state::automaticallyRefreshGraphData)
-        .comment("When disabled, use Refresh in the Metro tool window to update graph data")
+      val cell =
+        checkBox("Automatically refresh graphs and bindings after code changes")
+          .bindSelected(state::automaticallyRefreshGraphData)
+          .comment("When disabled, use Refresh in the Metro tool window to update graph data")
+      automaticRefreshSelected = cell.selected
+    }
+    row {
+      checkBox("Automatically validate the pinned graph after code changes")
+        .bindSelected(state::automaticallyValidatePinnedGraph)
+        .enabledIf(automaticRefreshSelected)
+        .comment(
+          "Checks the pinned graph and its children after a short pause; requires automatic graph refresh"
+        )
     }
     indent {
       row {
@@ -95,6 +110,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
     super.apply()
     // Apply changes to library resolution and automatic graph refresh.
     project.service<MetroResolutionService>().settingsChanged()
+    project.service<MetroPinnedGraphValidationService>().requestValidation()
     // Apply editor display settings without waiting for a source edit.
     project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
   }

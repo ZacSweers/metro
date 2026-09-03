@@ -48,9 +48,8 @@ import org.jetbrains.annotations.TestOnly
 internal class CachedValidation(val result: KaGraphValidationResult, val stale: Boolean)
 
 /**
- * On-demand graph validation. Seals one graph context at a time via [KaBindingGraph]. Results are
- * retained per concrete parent path and marked stale when the index they were sealed against is
- * invalidated. Sealing never happens eagerly.
+ * Validates explicit and opt-in automatic requests through [KaBindingGraph]. Results are retained
+ * per concrete parent path and marked stale when the index they were sealed against is invalidated.
  */
 @Service(Service.Level.PROJECT)
 internal class MetroGraphValidationService(
@@ -563,38 +562,52 @@ internal class MetroGraphValidationService(
 
   /**
    * Captures this concrete path and its extensions together, then seals outside read access.
-   * Results are cached after computation, and [onDone] runs on the EDT.
+   * Results are cached after computation, and [onDone] runs on the EDT. When [showProgress] is
+   * false, progress remains available to Metro listeners.
    */
   fun validateWithExtensionsAsync(
     context: GraphContext,
+    showProgress: Boolean = true,
     onDone: Consumer<List<KaGraphValidationResult>>,
   ): Job {
     return launchLatestValidation(context.path, context.graph) { request ->
       val completed =
-        withBackgroundProgress(project, progressTitle(context.graph)) {
-          reportRawProgress { reporter ->
-            val captured = retryCancelledIndexBuild {
-              smartReadAction(project) {
-                val element =
-                  context.contextPointer.element
-                    ?: throw CancellationException("Metro graph context is no longer available")
-                captureValidation(element, context, includeExtensions = true)
-              }
-            }
-            withContext(Dispatchers.Default) {
-              computeValidationWithExtensions(captured) { progress ->
+        if (showProgress) {
+          withBackgroundProgress(project, progressTitle(context.graph)) {
+            reportRawProgress { reporter ->
+              computeContextWithExtensions(context) { progress ->
                 request.publishProgress(progress)
                 reporter.details(progress.message)
                 reporter.fraction(progress.fraction)
               }
             }
           }
+        } else {
+          computeContextWithExtensions(context, request.publishProgress)
         }
       if (publishCompletedValidationIfCurrent(request, completed)) {
         withContext(Dispatchers.EDT) {
           if (isCurrentValidation(request)) onDone.accept(completed.result)
         }
       }
+    }
+  }
+
+  /** Shares the capture and seal sequence with quiet, automatic validation requests. */
+  private suspend fun computeContextWithExtensions(
+    context: GraphContext,
+    onProgress: (GraphValidationProgress) -> Unit,
+  ): CompletedValidation<List<KaGraphValidationResult>> {
+    val captured = retryCancelledIndexBuild {
+      smartReadAction(project) {
+        val element =
+          context.contextPointer.element
+            ?: throw CancellationException("Metro graph context is no longer available")
+        captureValidation(element, context, includeExtensions = true)
+      }
+    }
+    return withContext(Dispatchers.Default) {
+      computeValidationWithExtensions(captured, onProgress)
     }
   }
 
