@@ -30,7 +30,7 @@ interface TestAppGraph
 
 @ContributesTo(AppScope::class)
 interface TestNetworkProviders {
-  @Provides fun provideHttpClient(): TestHttpClient
+  @Provides fun provideHttpClient(): HttpClient = TestHttpClient()
 }
 ```
 
@@ -41,7 +41,7 @@ This annotation is used to contribute graph interfaces to the target scope to be
 ```kotlin
 @ContributesTo(AppScope::class)
 interface NetworkProviders {
-  @Provides fun provideHttpClient(): HttpClient
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
 }
 ```
 
@@ -51,7 +51,7 @@ This annotation is *repeatable* and can be used to contribute to multiple scopes
 @ContributesTo(AppScope::class)
 @ContributesTo(LoggedInScope::class)
 interface NetworkProviders {
-  @Provides fun provideHttpClient(): HttpClient
+  @Provides fun provideHttpClient(): HttpClient = HttpClient()
 }
 ```
 
@@ -63,7 +63,7 @@ interface TestAppGraph
 
 @ContributesTo(AppScope::class, replaces = [RealNetworkProviders::class])
 interface TestNetworkProviders {
-  @Provides fun provideHttpClient(): TestHttpClient
+  @Provides fun provideHttpClient(): HttpClient = TestHttpClient()
 }
 ```
 
@@ -116,7 +116,7 @@ Qualifier annotations can also be specified on the `binding` type parameter and 
 class CacheImpl(...) : Cache, AnotherType
 ```
 
-This annotation is *repeatable* and can be used to contribute to multiple scopes.
+This annotation is *repeatable*, allowing the annotated type to contribute to multiple scopes, as multiple bound types, or both.
 
 ```kotlin
 @ContributesBinding(

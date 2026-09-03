@@ -58,7 +58,7 @@ If you want to limit access to these from your API, you can make these declarati
 ```kotlin
 @DependencyGraph
 interface AppGraph {
-  val messages: Message
+  val messages: Set<Message>
 
   @Binds @IntoSet val MessageImpl.bind: Message
 }

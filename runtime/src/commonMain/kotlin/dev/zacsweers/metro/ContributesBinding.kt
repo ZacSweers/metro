@@ -25,8 +25,8 @@ import kotlin.reflect.KClass
  * class Impl : Base, AnotherBase
  * ```
  *
- * This annotation is _repeatable_, allowing for contributions as multiple bound types. Note that
- * all repeated annotations must use the same [scope].
+ * This annotation is _repeatable_, allowing the annotated type to contribute to multiple scopes, as
+ * multiple bound types, or both.
  *
  * If this declaration is scoped, the [Scope] annotation will be propagated to the generated [Binds]
  * declaration.
