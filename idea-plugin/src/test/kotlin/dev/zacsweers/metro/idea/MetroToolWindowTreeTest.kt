@@ -65,6 +65,7 @@ import dev.zacsweers.metro.idea.toolwindow.PinSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
+import dev.zacsweers.metro.idea.toolwindow.graphValidationPath
 import dev.zacsweers.metro.idea.toolwindow.matchesRevealTarget
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
@@ -391,6 +392,23 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertEquals(leftContext.path, pinnedExplanation.path)
     val selected = pinnedExplanation.candidates.single { it.selected }
     assertEquals(pinned.navigation.single().bindings.single().pointer, selected.target.pointer)
+    assertEquals(
+      leftContext.path,
+      graphValidationPath(checkNotNull(child.classId), file.virtualFile, leftContext.path),
+    )
+    val rootContext = index.contextsFor(leftContext.rootGraph).single()
+    assertEquals(
+      rootContext.path,
+      graphValidationPath(
+        checkNotNull(leftContext.rootGraph.classId),
+        file.virtualFile,
+        leftContext.path,
+      ),
+    )
+    val rightGraph = index.graphs.single { it.name == "RightGraph" }
+    assertNull(
+      graphValidationPath(checkNotNull(rightGraph.classId), file.virtualFile, leftContext.path)
+    )
   }
 
   fun testEditorBindingChoicePreservesAnEmptyPinnedAnswer() {
@@ -995,6 +1013,190 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testManualValidationShowsRenamedGraphResultsWithoutRefreshingBrowser() {
     assertManualValidationResult(rename = true)
+  }
+
+  fun testExactExtensionValidationDoesNotWidenToOtherParentPaths() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @GraphExtension interface ChildGraph { val value: String }
+      @DependencyGraph interface LeftGraph {
+        val child: ChildGraph
+        @Provides fun value(): String = "left"
+      }
+      @DependencyGraph interface RightGraph { val child: ChildGraph }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child)
+    val left = contexts.single { it.rootGraph.name == "LeftGraph" }
+    val right = contexts.single { it.rootGraph.name == "RightGraph" }
+    val rightRoot = index.contextsFor(right.rootGraph).single()
+    val pinService = project.service<GraphContextPinService>()
+    pinService.pin(rightRoot.path)
+    val panel = MetroToolWindowPanel(project)
+    try {
+      panel.selectAndValidate(checkNotNull(child.classId), file.virtualFile, path = left.path)
+      val resultPanel = waitForValidationResults(panel)
+      val rows = treeNodes(resultPanel.tree)
+      assertEquals(
+        listOf(left.path),
+        rows.filterIsInstance<MetroTreeNode.Graph>().map { it.context.path },
+      )
+      assertTrue(rows.none { it is MetroTreeNode.Diagnostic })
+      val validation = project.service<MetroGraphValidationService>()
+      assertNotNull(validation.cachedResult(file, left))
+      assertNull(validation.cachedResult(file, right))
+      assertEquals(rightRoot.path, pinService.pinnedPath)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testExactDynamicValidationUsesCallerOutsideManuallyRetainedBrowser() {
+    val graphFile =
+      myFixture.configureMetroFile(
+        """
+      @BindingContainer object RealBindings {
+        @Provides fun realValue(): String = "real"
+      }
+      @DependencyGraph(bindingContainers = [RealBindings::class])
+      interface AppGraph { val value: String }
+      """,
+        fileName = "AppGraph.kt",
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graphFile)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    service.activateGraphBrowser()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      treeNodes(panel.tree)
+      val caller =
+        myFixture.addFileToProject(
+          "test/Caller.kt",
+          """
+          package test
+          import dev.zacsweers.metro.*
+          @BindingContainer object FakeBindings {
+            @Provides fun fakeValue(): String = "fake"
+          }
+          val graph = createDynamicGraph<AppGraph>(FakeBindings)
+          """
+            .trimIndent(),
+        ) as KtFile
+      val current = service.awaitIndex(caller)
+      val graph = current.graphs.single { it.name == "AppGraph" }
+      val dynamic = current.contextsFor(graph).single { it.dynamicGraph != null }
+      val path =
+        graphValidationPath(checkNotNull(graph.classId), graphFile.virtualFile, dynamic.path)
+      assertEquals(dynamic.path, path)
+
+      panel.selectAndValidate(
+        checkNotNull(graph.classId),
+        graphFile.virtualFile,
+        path = checkNotNull(path),
+      )
+
+      val rows = treeNodes(waitForValidationResults(panel).tree)
+      val result =
+        rows.filterIsInstance<MetroTreeNode.Validation>().single().result.requireCompleted()
+      assertEquals(dynamic.path, result.context.path)
+      assertTrue(result.diagnostics.isEmpty())
+      val providedNames = mutableListOf<String>()
+      result.bindings.forEach { _, binding ->
+        (binding.pointer.element as? org.jetbrains.kotlin.psi.KtNamedDeclaration)
+          ?.name
+          ?.let(providedNames::add)
+      }
+      assertTrue(providedNames.toString(), "fakeValue" in providedNames)
+      assertFalse(providedNames.toString(), "realValue" in providedNames)
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().all {
+          it.context.dynamicGraph == null
+        }
+      )
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
+  }
+
+  fun testLastValidationTurnsStaleWithoutReplacingItsRunOrReopeningAfterClose() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Missing
+      @DependencyGraph interface AppGraph { val missing: Missing }
+      @DependencyGraph interface OtherGraph
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val validation = project.service<MetroGraphValidationService>()
+    service.activateGraphBrowser()
+    val graph = initial.graphs.single { it.name == "AppGraph" }
+    val panel = MetroToolWindowPanel(project)
+    try {
+      panel.selectAndValidate(checkNotNull(graph.classId), file.virtualFile)
+      val results = waitForValidationResults(panel)
+      val original =
+        treeNodes(results.tree).filterIsInstance<MetroTreeNode.Validation>().single().result
+      val other = initial.contextsFor(initial.graphs.single { it.name == "OtherGraph" }).single()
+      validation.validate(file, other).requireCompleted()
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(
+        listOf(original.context.path),
+        treeNodes(results.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.context.path },
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@Inject class NewDependency\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return treeNodes(results.tree)
+              .filterIsInstance<MetroTreeNode.Validation>()
+              .singleOrNull()
+              ?.grayText
+              ?.contains("code changed since this run") == true
+          }
+        }
+        .assertCompleted("The visible last result should become stale after source changes")
+
+      val rows = treeNodes(results.tree)
+      assertSame(original, rows.filterIsInstance<MetroTreeNode.Validation>().single().result)
+      assertTrue(
+        rows.filterIsInstance<MetroTreeNode.Graph>().single().grayText.orEmpty().contains("stale")
+      )
+      assertSame(initial, service.indexForToolWindow(module))
+      assertFalse(validation.isValidationRunning(original.context.path))
+
+      val close =
+        AnActionEvent.createFromAnAction(results.closeAction, null, ActionPlaces.UNKNOWN) { null }
+      results.closeAction.actionPerformed(close)
+      validation.clearResults()
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertFalse(results.isVisible)
+      assertTrue(treeNodes(results.tree).isEmpty())
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
   }
 
   /** A requested graph can be absent from the browser's retained generation. */

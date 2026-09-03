@@ -27,6 +27,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.MetroNavigationService
+import dev.zacsweers.metro.idea.graph.CachedValidation
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.presentableName
@@ -116,6 +117,12 @@ internal class MetroValidationResultPanel(
     }
   }
 
+  /** Updates the displayed run's stale flags while retaining its selection and ownership. */
+  fun refreshStaleness(retainedResults: List<CachedValidation>) {
+    if (disposed || !isVisible) return
+    if (structure.refreshStaleness(retainedResults)) model.invalidateAsync()
+  }
+
   /** Releases the previous run when the pane closes or another explicit request starts. */
   fun clear() {
     if (disposed) return
@@ -199,11 +206,33 @@ internal class MetroValidationResultPanel(
 internal class MetroValidationResultTreeStructure(private val project: Project) :
   AbstractTreeStructure() {
   private val root = MetroTreeNode.Root()
-  @Volatile private var resultsByPath: Map<GraphPath, KaGraphValidationResult>? = null
+  @Volatile private var resultsByPath: Map<GraphPath, CachedValidation>? = null
 
   /** Publishes one snapshot for subsequent background children requests. */
   fun showResults(results: List<KaGraphValidationResult>) {
-    resultsByPath = results.associateBy { it.context.path }
+    resultsByPath = results.associate { it.context.path to CachedValidation(it, stale = false) }
+  }
+
+  /**
+   * A replaced or evicted result remains historical; unrelated retained runs never enter this view.
+   */
+  fun refreshStaleness(retainedResults: List<CachedValidation>): Boolean {
+    val displayed = resultsByPath ?: return false
+    val retainedByPath = retainedResults.associateBy { it.result.context.path }
+    var changed = false
+    val updated = displayed.mapValues { (path, cached) ->
+      val retained = retainedByPath[path]
+      val isSameResult = retained?.result === cached.result
+      val stale = !isSameResult || retained?.stale == true
+      if (stale == cached.stale) {
+        cached
+      } else {
+        changed = true
+        CachedValidation(cached.result, stale)
+      }
+    }
+    if (changed) resultsByPath = updated
+    return changed
   }
 
   /** Drops result ownership when the view closes or its owner is disposed. */
@@ -218,10 +247,10 @@ internal class MetroValidationResultTreeStructure(private val project: Project) 
       when (current) {
         is MetroTreeNode.Validation -> {
           val result = current.result
-          return resultsByPath?.get(result.context.path) === result
+          return resultsByPath?.get(result.context.path)?.result === result
         }
         is MetroTreeNode.Graph ->
-          return resultsByPath?.get(current.context.path)?.context === current.context
+          return resultsByPath?.get(current.context.path)?.result?.context === current.context
         else -> current = current.parent
       }
     }
@@ -239,21 +268,23 @@ internal class MetroValidationResultTreeStructure(private val project: Project) 
             listOf(MetroTreeNode.Summary(root, "No graph contexts were available for validation"))
           } else {
             results.values
-              .map { result ->
+              .map { cached ->
                 ProgressManager.checkCanceled()
+                val result = cached.result
+                val summary = validationSummary(result) + if (cached.stale) " · stale" else ""
                 MetroTreeNode.Graph(
                   root,
                   result.context,
                   result.context.presentableName(includeFile = true),
-                  validationSummary(result),
+                  summary,
                 )
               }
               .sortedWith(compareBy({ it.context.path.segments.size }, { it.text }))
           }
         }
         is MetroTreeNode.Graph -> {
-          val result = results[element.context.path] ?: return emptyArray()
-          listOf(MetroTreeNode.Validation(element, result, stale = false))
+          val cached = results[element.context.path] ?: return emptyArray()
+          listOf(MetroTreeNode.Validation(element, cached.result, stale = cached.stale))
         }
         is MetroTreeNode.Validation -> validationTreeChildren(element)
         is MetroTreeNode.Diagnostic -> diagnosticTreeChildren(element)

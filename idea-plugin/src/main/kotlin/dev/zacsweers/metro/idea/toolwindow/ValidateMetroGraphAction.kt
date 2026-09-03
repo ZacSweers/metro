@@ -16,8 +16,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
+import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.index.snapshot.annotationShortNamesIncludingAliases
+import dev.zacsweers.metro.idea.model.GraphPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,16 +43,22 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
     val editor = e.getData(CommonDataKeys.EDITOR) ?: return
     val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
     val offset = editor.caretModel.offset
+    val pinnedPath = project.service<GraphContextPinService>().pinnedPath
     val requestToken = project.service<MetroValidationRequestService>().beginRequest()
     currentThreadCoroutineScope().launch {
       val target =
         readAction {
           val ktClass = graphClassAt(project, file, offset) ?: return@readAction null
           val classId = ktClass.getClassId() ?: return@readAction null
-          GraphValidationTarget(classId, ktClass.containingFile?.virtualFile)
+          val graphFile = ktClass.containingFile?.virtualFile
+          GraphValidationTarget(
+            classId,
+            graphFile,
+            graphValidationPath(classId, graphFile, pinnedPath),
+          )
         } ?: return@launch
       withContext(Dispatchers.EDT) {
-        openAndValidate(project, target.classId, target.file, requestToken)
+        openAndValidate(project, target.classId, target.file, requestToken, target.path)
       }
     }
   }
@@ -88,16 +96,16 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
       classId: ClassId,
       file: VirtualFile?,
       requestToken: Long = project.service<MetroValidationRequestService>().beginRequest(),
+      path: GraphPath? =
+        graphValidationPath(classId, file, project.service<GraphContextPinService>().pinnedPath),
     ) {
       val toolWindow =
         ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID) ?: return
       toolWindow.activate {
         val panel =
           toolWindow.contentManager.contents.firstOrNull()?.component as? MetroToolWindowPanel
-        panel?.selectAndValidate(classId, file, requestToken)
+        panel?.selectAndValidate(classId, file, requestToken, path)
       }
     }
   }
 }
-
-private data class GraphValidationTarget(val classId: ClassId, val file: VirtualFile?)

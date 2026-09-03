@@ -46,6 +46,8 @@ import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshot
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.GraphContext
+import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.concurrent.ConcurrentHashMap
@@ -1404,6 +1406,35 @@ private constructor(
       withContext(Dispatchers.EDT) {
         if (!project.isDisposed) onResult(graph)
       }
+    }
+  }
+
+  /** Resolves one path in its root compilation, retaining the caller's coroutine cancellation. */
+  internal suspend fun findGraphContext(path: GraphPath): GraphContext? {
+    if (project.isDisposed) return null
+    val compilationFile =
+      path.dynamicGraphId?.callerFile ?: path.segments.lastOrNull()?.file ?: return null
+    return retryCancelledIndexBuild {
+      smartReadAction(project) {
+        val file =
+          PsiManager.getInstance(project).findFile(compilationFile) as? KtFile
+            ?: return@smartReadAction null
+        val index = currentIndex(file)
+        index.withResolutionSession { it.findContext(path) }
+      }
+    }
+  }
+
+  /**
+   * Delivers exact-path lookup on the EDT; missing paths remain missing without a wider fallback.
+   */
+  internal fun findGraphContextAsync(
+    path: GraphPath,
+    onResult: (GraphContext?) -> Unit,
+  ): Job = scope.launch {
+    val context = findGraphContext(path)
+    withContext(Dispatchers.EDT) {
+      if (!project.isDisposed) onResult(context)
     }
   }
 

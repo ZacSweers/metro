@@ -60,6 +60,9 @@ import org.jetbrains.kotlin.name.ClassId
 /** The Metro tool window: browse graphs and their bindings, and run on-demand validation. */
 internal class MetroToolWindowPanel(
   private val project: Project,
+  private val contextLookup: (GraphPath, (GraphContext?) -> Unit) -> Job = { path, onResult ->
+    project.service<MetroResolutionService>().findGraphContextAsync(path, onResult)
+  },
   private val graphLookup: (ClassId, VirtualFile?, (KaGraphDeclaration?) -> Unit) -> Job =
     { classId, file, onResult ->
       project.service<MetroResolutionService>().findGraphAsync(classId, file, onResult)
@@ -85,7 +88,7 @@ internal class MetroToolWindowPanel(
     MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
   /** Validation waiting for its graph to become available in a published index. */
-  private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
+  private var pendingValidation: GraphValidationTarget? = null
   private var pendingValidationGeneration = 0L
   private var latestValidationRequestToken = 0L
   private var pendingValidationLookup: Job? = null
@@ -143,6 +146,7 @@ internal class MetroToolWindowPanel(
       )
     resolutionService.addIndexListener(this) {
       updateIndexBuildStatus()
+      refreshValidationStaleness()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
       // Retry until a published index contains the requested graph.
@@ -161,6 +165,7 @@ internal class MetroToolWindowPanel(
       validationProgress = progress
       updateValidationStatus()
     }
+    validationService.addResultListener(this, ::refreshValidationStaleness)
 
     searchField.addDocumentListener(
       object : DocumentAdapter() {
@@ -245,14 +250,16 @@ internal class MetroToolWindowPanel(
     }
   }
 
-  /** Expands to [classId]'s graph node, selects it, and runs validation. */
+  /** Selects the declaration or exact path requested by an explicit validation action. */
   fun selectAndValidate(
     classId: ClassId,
     file: VirtualFile?,
     requestToken: Long = validationRequestService.beginRequest(),
+    path: GraphPath? = null,
   ) {
+    val target = GraphValidationTarget(classId, file, path)
     val generation = beginValidationRequest(requestToken) ?: return
-    TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
+    TreeUtil.promiseSelect(tree, graphVisitor(target)).onProcessed {
       if (
         generation == pendingValidationGeneration &&
           !validationRequestService.isLatest(requestToken)
@@ -269,13 +276,14 @@ internal class MetroToolWindowPanel(
       }
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
-      val selectedGraph = selectedGraphNode()?.takeIf { it.matches(classId, file) }?.graph
+      val selectedGraph = selectedGraphNode()?.takeIf { target.matches(it.context) }
       if (selectedGraph != null) {
         pendingValidation = null
-        validateGraph(selectedGraph, generation)
+        if (path == null) validateGraph(selectedGraph.graph, generation)
+        else validateContext(selectedGraph.context, generation)
       } else {
         // Resolve the source file in a background read before updating the EDT.
-        pendingValidation = classId to file
+        pendingValidation = target
         resolvePendingValidation()
       }
     }
@@ -311,35 +319,41 @@ internal class MetroToolWindowPanel(
     }
     val lookupGeneration = ++pendingValidationLookupGeneration
     pendingValidationLookup?.cancel()
+    val onResult: (KaGraphDeclaration?, GraphContext?) -> Unit = onResult@{ graph, context ->
+      if (lookupGeneration != pendingValidationLookupGeneration) {
+        return@onResult
+      }
+      if (
+        generation == pendingValidationGeneration &&
+          !validationRequestService.isLatest(requestToken)
+      ) {
+        cancelPendingValidation()
+        return@onResult
+      }
+      val isCurrentLookup =
+        generation == pendingValidationGeneration &&
+          pendingValidation == target &&
+          validationRequestService.isLatest(requestToken)
+      if (disposed || !isCurrentLookup) {
+        return@onResult
+      }
+      pendingValidationLookup = null
+      if (graph != null) {
+        pendingValidation = null
+        if (context == null) validateGraph(graph, generation)
+        else validateContext(context, generation)
+      }
+    }
+    val path = target.path
     pendingValidationLookup =
-      graphLookup(
-        target.first,
-        target.second,
-        onResult@{ graph ->
-          if (lookupGeneration != pendingValidationLookupGeneration) {
-            return@onResult
-          }
-          if (
-            generation == pendingValidationGeneration &&
-              !validationRequestService.isLatest(requestToken)
-          ) {
-            cancelPendingValidation()
-            return@onResult
-          }
-          val isCurrentLookup =
-            generation == pendingValidationGeneration &&
-              pendingValidation == target &&
-              validationRequestService.isLatest(requestToken)
-          if (disposed || !isCurrentLookup) {
-            return@onResult
-          }
-          pendingValidationLookup = null
-          if (graph != null) {
-            pendingValidation = null
-            validateGraph(graph, generation)
-          }
-        },
-      )
+      if (path == null) {
+        graphLookup(target.classId, target.file) { graph -> onResult(graph, null) }
+      } else {
+        contextLookup(path) { context ->
+          val matching = context?.takeIf(target::matches)
+          onResult(matching?.graph, matching)
+        }
+      }
   }
 
   private fun beginValidationRequest(requestToken: Long): Long? {
@@ -379,12 +393,12 @@ internal class MetroToolWindowPanel(
     return graph.classId == classId && (file == null || graph.pointer.virtualFile == file)
   }
 
-  private fun graphVisitor(classId: ClassId, file: VirtualFile?): TreeVisitor {
+  private fun graphVisitor(target: GraphValidationTarget): TreeVisitor {
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
         is MetroTreeNode.Graph ->
-          if (node.matches(classId, file)) {
+          if (target.matches(node.context)) {
             TreeVisitor.Action.INTERRUPT
           } else {
             TreeVisitor.Action.SKIP_CHILDREN
@@ -419,6 +433,11 @@ internal class MetroToolWindowPanel(
   private fun validateContext(context: GraphContext) {
     val requestToken = validationRequestService.beginRequest()
     val generation = beginValidationRequest(requestToken) ?: return
+    validateContext(context, generation)
+  }
+
+  /** Exact-path requests retain their original UI generation through a cold context lookup. */
+  private fun validateContext(context: GraphContext, generation: Long) {
     validationService.validateWithExtensionsAsync(context) { results ->
       validationFinished(results, validationVisitor(context), generation)
     }
@@ -437,6 +456,7 @@ internal class MetroToolWindowPanel(
     if (!isLatestRequest) return
     browserAndResults.secondComponent = validationResults
     validationResults.showResults(results)
+    refreshValidationStaleness()
     // Rerun highlighting so the gutter's validation badge picks up the new result
     project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
     // Select the validation node once the refreshed children load, so the outcome is visible even
@@ -460,6 +480,12 @@ internal class MetroToolWindowPanel(
   private fun clearValidationResults() {
     validationResults.clear()
     browserAndResults.secondComponent = null
+  }
+
+  /** Reading retained flags never schedules validation or replaces the displayed run. */
+  private fun refreshValidationStaleness() {
+    if (disposed || !validationResults.isVisible) return
+    validationResults.refreshStaleness(validationService.retainedResults())
   }
 
   private fun validationVisitor(graph: KaGraphDeclaration): TreeVisitor {
