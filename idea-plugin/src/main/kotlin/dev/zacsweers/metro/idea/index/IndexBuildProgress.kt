@@ -7,7 +7,7 @@ internal enum class IndexBuildPhase(val message: String) {
   DISCOVERING_SOURCE_FILES("Finding Metro source files"),
   ANALYZING_DECLARATIONS("Analyzing Metro declarations"),
   COMBINING_DECLARATIONS("Combining Metro declarations"),
-  RESOLVING_ASSISTED_FACTORIES("Resolving assisted factories"),
+  RESOLVING_CLASS_BINDINGS("Resolving injected classes and objects"),
   READING_DEPENDENCY_METADATA("Reading dependency metadata"),
   BUILDING_GRAPH_INDEX("Building the Metro graph index"),
 }

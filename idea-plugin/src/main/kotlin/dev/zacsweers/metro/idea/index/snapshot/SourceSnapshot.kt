@@ -5,6 +5,7 @@ package dev.zacsweers.metro.idea.index.snapshot
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import dev.zacsweers.metro.idea.index.FileShard
+import dev.zacsweers.metro.idea.index.SourceClassDependencies
 
 /** An immutable source view. Incremental passes copy it with only the changed shards replaced. */
 internal class SourceSnapshot(
@@ -20,7 +21,17 @@ internal class SourceSnapshot(
   val sharedDeclarationOwners: PartitionedFileMap<Set<VirtualFile>>,
   /** Reused while effective binary lookup inputs and source-module ownership remain unchanged. */
   val librarySummary: FinalizedSourceLibrarySummary?,
+  /** Includes unannotated source classes reached through dependency requests. */
+  val classBindingDependencies: SourceClassDependencies = SourceClassDependencies.EMPTY,
 ) {
+  fun dependencyOwnersFor(file: VirtualFile): Set<VirtualFile> {
+    val shardOwners = dependencyOwners[file].orEmpty()
+    val classOwners = classBindingDependencies.owners[file].orEmpty()
+    if (classOwners.isEmpty()) return shardOwners
+    if (shardOwners.isEmpty()) return classOwners
+    return shardOwners + classOwners
+  }
+
   fun withInputs(newInputs: IndexInputs): SourceSnapshot =
     SourceSnapshot(
       newInputs,
@@ -31,6 +42,7 @@ internal class SourceSnapshot(
       dependencyOwners,
       sharedDeclarationOwners,
       librarySummary,
+      classBindingDependencies,
     )
 
   fun withLibrarySummary(summary: FinalizedSourceLibrarySummary): SourceSnapshot {
@@ -44,8 +56,22 @@ internal class SourceSnapshot(
       dependencyOwners,
       sharedDeclarationOwners,
       summary,
+      classBindingDependencies,
     )
   }
+
+  fun withClassBindingDependencies(dependencies: SourceClassDependencies): SourceSnapshot =
+    SourceSnapshot(
+      inputs,
+      moduleFingerprints,
+      shortNames,
+      shards,
+      shardOrder,
+      dependencyOwners,
+      sharedDeclarationOwners,
+      librarySummary,
+      dependencies,
+    )
 }
 
 /** Collects changed shards and dependency owners, then builds a snapshot sharing unchanged data. */
@@ -137,6 +163,7 @@ internal class SourceSnapshotTransaction(private val previous: SourceSnapshot? =
     val libraryInputsChanged =
       sourceModulesMayHaveChanged ||
         previous == null ||
+        !previous.classBindingDependencies.isCurrent() ||
         shardChanges.any { (file, updated) ->
           sourceLibraryInputsChanged(previous.shards[file], updated)
         }
@@ -150,6 +177,7 @@ internal class SourceSnapshotTransaction(private val previous: SourceSnapshot? =
       owners,
       sharedOwners,
       librarySummary,
+      previous?.classBindingDependencies ?: SourceClassDependencies.EMPTY,
     )
   }
 

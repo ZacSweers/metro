@@ -229,8 +229,8 @@ internal data class SourceAggregate(
   val bindingContainers: List<BindingContainerEntry>,
   val dynamicGraphs: List<DynamicGraphCall>,
 ) {
-  fun withAddedFactories(factories: List<KaBinding.AssistedFactory>): SourceAggregate {
-    if (factories.isEmpty()) return this
-    return copy(bindings = bindings + factories)
+  fun withAddedClassBindings(classBindings: List<KaBinding>): SourceAggregate {
+    if (classBindings.isEmpty()) return this
+    return copy(bindings = bindings + classBindings)
   }
 }

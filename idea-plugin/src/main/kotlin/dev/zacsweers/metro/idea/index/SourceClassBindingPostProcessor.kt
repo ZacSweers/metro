@@ -19,59 +19,61 @@ import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
 
 /** A concrete request retains its compilation module without retaining an analysis session. */
-internal data class SourceFactoryRequestId(val key: KaTypeKey, val module: KaModule)
+internal data class SourceClassRequestId(val key: KaTypeKey, val module: KaModule)
 
-internal class SourceFactoryRequest(
+internal class SourceClassRequest(
   val key: KaTypeKey,
   val module: KaModule,
   val context: SmartPsiElementPointer<out KtElement>,
   val direct: Boolean = false,
 ) {
-  val id: SourceFactoryRequestId = SourceFactoryRequestId(key, module)
+  val id: SourceClassRequestId = SourceClassRequestId(key, module)
 }
 
 /** Immutable state that a binary-resolution pass can continue without repeating source work. */
-internal class SourceFactoryResolution(
-  val addedBindings: List<KaBinding.AssistedFactory>,
+internal class SourceClassResolution(
+  val addedBindings: List<KaBinding>,
   val useSites: Map<ClassBindingIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>,
-  val processedRequests: Set<SourceFactoryRequestId>,
-  val resolvedRequests: Set<SourceFactoryRequestId>,
-  val boundaryRequests: List<SourceFactoryRequest>,
+  val processedRequests: Set<SourceClassRequestId>,
+  val resolvedRequests: Set<SourceClassRequestId>,
+  val boundaryRequests: List<SourceClassRequest>,
   val budget: ClassBindingExpansionBudgetState,
+  val dependencies: SourceClassDependencies,
 ) {
-  val factoryUseSites: SourceAssistedFactoryUseSites = SourceAssistedFactoryUseSites(useSites)
+  val classUseSites: SourceClassUseSites = SourceClassUseSites(useSites)
   val incompleteBindings: Map<KaModule, Map<ClassBindingIdentity, String>>
     get() = budget.incompleteBindings
 }
 
-internal class SourceFactoryExpansion(
-  val addedBindings: List<KaBinding.AssistedFactory>,
-  val libraryRequests: List<SourceFactoryRequest>,
+internal class SourceClassExpansion(
+  val addedBindings: List<KaBinding>,
+  val libraryRequests: List<SourceClassRequest>,
   val handled: Boolean = true,
 )
 
 /**
- * Owns the transitive source-factory closure after file shards have been merged. A declaration is
- * materialized once per concrete key, while module-qualified requests still propagate every actual
- * use site's classpath. Binary lookup continues this same state when it discovers a source factory.
+ * Follows source class requests after file shards have been merged. Each concrete key is resolved
+ * once per declaration, while each requesting module keeps its own dependency traversal. Binary
+ * lookup continues the same state when a dependency leads back to source.
  */
 @OptIn(KaPlatformInterface::class)
-internal class SourceAssistedFactoryPostProcessor(
+internal class SourceClassBindingPostProcessor(
   private val project: Project,
   bindings: List<KaBinding>,
   private val consumers: List<ConsumerEntry>,
   private val consumerOwnership: ConsumerOwnershipBundle,
-  previous: SourceFactoryResolution? = null,
+  previous: SourceClassResolution? = null,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
   private val fileIndex = ProjectFileIndex.getInstance(project)
-  private val factories = linkedMapOf<ClassBindingIdentity, KaBinding.AssistedFactory>()
-  private val sourceFactoryClassIds = hashSetOf<ClassId>()
+  private val classBindings = linkedMapOf<ClassBindingIdentity, KaBinding>()
+  private val sourceClassIds = hashSetOf<ClassId>()
   private val sourceDeclarations = hashSetOf<Pair<ClassId, VirtualFile>>()
   private val addedBindings = previous?.addedBindings?.toMutableList() ?: mutableListOf()
   private val useSites =
@@ -85,49 +87,56 @@ internal class SourceAssistedFactoryPostProcessor(
     it is KaBinding.Provided && it.isClassContribution ||
       it is KaBinding.Alias && it.isClassContribution
   }
-  private val boundaries = linkedMapOf<SourceFactoryRequestId, SourceFactoryRequest>()
-  private val queue = ArrayDeque<SourceFactoryRequest>()
-  private val libraryRequests = mutableListOf<SourceFactoryRequest>()
+  private val boundaries = linkedMapOf<SourceClassRequestId, SourceClassRequest>()
+  private val queue = ArrayDeque<SourceClassRequest>()
+  private val libraryRequests = mutableListOf<SourceClassRequest>()
+  private val dependencies =
+    SourceClassDependencies.Builder(
+      pointerManager,
+      previous?.dependencies ?: SourceClassDependencies.EMPTY,
+    )
   private val budget: ClassBindingExpansionBudget
 
   init {
     for (binding in bindings) {
       ProgressManager.checkCanceled()
-      if (binding !is KaBinding.AssistedFactory) continue
+      if (binding !is KaBinding.AssistedFactory && binding !is KaBinding.ConstructorInjected)
+        continue
       val identity = binding.classBindingIdentity() ?: continue
       if (!fileIndex.isInContent(identity.virtualFile)) continue
-      factories.putIfAbsent(identity, binding)
+      classBindings.putIfAbsent(identity, binding)
       identity.originClassId?.let {
-        sourceFactoryClassIds += it
+        sourceClassIds += it
         sourceDeclarations += it to identity.virtualFile
       }
     }
     for (binding in addedBindings) {
       ProgressManager.checkCanceled()
       val identity = binding.classBindingIdentity() ?: continue
-      factories.putIfAbsent(identity, binding)
+      classBindings.putIfAbsent(identity, binding)
       identity.originClassId?.let {
-        sourceFactoryClassIds += it
+        sourceClassIds += it
         sourceDeclarations += it to identity.virtualFile
       }
     }
     previous?.useSites?.forEach { (identity, sites) -> useSites[identity] = LinkedHashMap(sites) }
     previous?.boundaryRequests?.forEach { boundaries[it.id] = it }
-    budget = ClassBindingExpansionBudget(factories.keys, sourceDeclarations.size, previous?.budget)
+    budget =
+      ClassBindingExpansionBudget(classBindings.keys, sourceDeclarations.size, previous?.budget)
     // Derived bindings from a previous pass are not newly written inputs. Explicit hint bindings
     // are, and can raise the boundary when binary resolution resumes a source-only snapshot.
     for (binding in bindings) {
       ProgressManager.checkCanceled()
       val writtenKey = binding.writtenClassBudgetKey() ?: continue
-      budget.includeWrittenKey(writtenKey, writtenKey.type.classId in sourceFactoryClassIds)
+      budget.includeWrittenKey(writtenKey, writtenKey.type.classId in sourceClassIds)
     }
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
-      budget.includeWrittenKey(consumer.key, consumer.typeClassId in sourceFactoryClassIds)
+      budget.includeWrittenKey(consumer.key, consumer.typeClassId in sourceClassIds)
     }
   }
 
-  fun resolveInitial(): SourceFactoryResolution {
+  fun resolveInitial(): SourceClassResolution {
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
       if (consumer.multibindingId != null) continue
@@ -149,7 +158,7 @@ internal class SourceAssistedFactoryPostProcessor(
   }
 
   /** Retry only previous boundaries; already-expanded source keys remain memoized. */
-  fun resumeBoundaries(): SourceFactoryExpansion {
+  fun resumeBoundaries(): SourceClassExpansion {
     val bindingStart = addedBindings.size
     val requestStart = libraryRequests.size
     for (request in boundaries.values.toList()) {
@@ -160,18 +169,16 @@ internal class SourceAssistedFactoryPostProcessor(
     return expansionSince(bindingStart, requestStart)
   }
 
-  fun canResolve(classId: ClassId): Boolean = classId in sourceFactoryClassIds
-
   fun resolveFromBinary(
     key: KaTypeKey,
     context: KtElement,
     direct: Boolean,
-  ): SourceFactoryExpansion {
+  ): SourceClassExpansion {
     val bindingStart = addedBindings.size
     val requestStart = libraryRequests.size
     val id = enqueue(key, pointerManager.createSmartPsiElementPointer(context), direct)
     drain()
-    return SourceFactoryExpansion(
+    return SourceClassExpansion(
       addedBindings.subList(bindingStart, addedBindings.size).toList(),
       libraryRequests.subList(requestStart, libraryRequests.size).toList(),
       id != null && id in resolved,
@@ -190,16 +197,16 @@ internal class SourceAssistedFactoryPostProcessor(
     return budget.allowExpansion(binding, module, direct)
   }
 
-  fun mayExpandSourceFactory(binding: KaBinding.AssistedFactory, context: KtElement): Boolean {
+  fun mayExpandSourceBinding(binding: KaBinding, context: KtElement): Boolean {
     val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
     val allowed = budget.allowExpansion(binding, module, direct = false)
-    if (allowed) boundaries.remove(SourceFactoryRequestId(binding.typeKey, module))
+    if (allowed) boundaries.remove(SourceClassRequestId(binding.typeKey, module))
     return allowed
   }
 
   fun isConcrete(key: KaTypeKey): Boolean = budget.isConcrete(key.type)
 
-  fun snapshot(): SourceFactoryResolution {
+  fun snapshot(): SourceClassResolution {
     val sites =
       linkedMapOf<
         ClassBindingIdentity,
@@ -210,18 +217,19 @@ internal class SourceAssistedFactoryPostProcessor(
       sites[identity] = Collections.unmodifiableMap(LinkedHashMap(modules))
     }
     ProgressManager.checkCanceled()
-    return SourceFactoryResolution(
+    return SourceClassResolution(
       addedBindings.toList(),
       Collections.unmodifiableMap(sites),
       processed.toSet(),
       resolved.toSet(),
       boundaries.values.toList(),
       budget.snapshot(),
+      dependencies.build(),
     )
   }
 
-  private fun expansionSince(bindingStart: Int, requestStart: Int): SourceFactoryExpansion =
-    SourceFactoryExpansion(
+  private fun expansionSince(bindingStart: Int, requestStart: Int): SourceClassExpansion =
+    SourceClassExpansion(
       addedBindings.subList(bindingStart, addedBindings.size).toList(),
       libraryRequests.subList(requestStart, libraryRequests.size).toList(),
     )
@@ -230,13 +238,17 @@ internal class SourceAssistedFactoryPostProcessor(
     key: KaTypeKey,
     pointer: SmartPsiElementPointer<out KtElement>,
     direct: Boolean,
-  ): SourceFactoryRequestId? {
-    if (key.type.classId !in sourceFactoryClassIds) return null
+  ): SourceClassRequestId? {
+    if (key.type.isError) {
+      dependencies.recordErrorType(pointer.virtualFile)
+      return null
+    }
+    if (key.type.classId == null) return null
     if (!budget.isConcrete(key.type)) return null
     val context = pointer.element ?: return null
     val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
     if (direct) budget.includeWrittenKey(key, isClass = true)
-    val request = SourceFactoryRequest(key, module, pointer, direct)
+    val request = SourceClassRequest(key, module, pointer, direct)
     queue += request
     return request.id
   }
@@ -247,7 +259,7 @@ internal class SourceAssistedFactoryPostProcessor(
       val request = queue.removeFirst()
       if (!processed.add(request.id)) continue
       val context = request.context.element ?: continue
-      val binding = resolveFactory(request, context)
+      val binding = resolveClass(request, context)
       if (binding == null) {
         // The same class ID can name source in one module and a binary in another. Preserve the
         // request's original module when handing that unresolved candidate to library lookup.
@@ -258,49 +270,60 @@ internal class SourceAssistedFactoryPostProcessor(
       val identity = binding.classBindingIdentity() ?: continue
       useSites.getOrPut(identity) { linkedMapOf() }.putIfAbsent(request.module, request.context)
       if (!budget.allowExpansion(binding, request.module, request.direct)) {
-        val boundary = SourceFactoryRequest(binding.typeKey, request.module, request.context)
+        val boundary = SourceClassRequest(binding.typeKey, request.module, request.context)
         boundaries[boundary.id] = boundary
         continue
       }
       boundaries.remove(request.id)
-      boundaries.remove(SourceFactoryRequestId(binding.typeKey, request.module))
+      boundaries.remove(SourceClassRequestId(binding.typeKey, request.module))
       for (dependency in binding.dependencies) {
         ProgressManager.checkCanceled()
         val key = dependency.typeKey
         if (key.type.classId == null || !budget.isConcrete(key.type)) continue
-        if (key.type.classId in sourceFactoryClassIds) {
-          queue += SourceFactoryRequest(key, request.module, request.context)
-        } else {
-          libraryRequests += SourceFactoryRequest(key, request.module, request.context)
-        }
+        queue += SourceClassRequest(key, request.module, request.context)
       }
     }
   }
 
-  private fun resolveFactory(
-    request: SourceFactoryRequest,
+  private fun resolveClass(
+    request: SourceClassRequest,
     context: KtElement,
-  ): KaBinding.AssistedFactory? {
+  ): KaBinding? {
     val classId = request.key.type.classId ?: return null
     return analyze(context) {
-      val symbol = findClass(classId) as? KaNamedClassSymbol ?: return@analyze null
+      val owner = context.containingFile?.virtualFile
+      val symbol = findClass(classId) as? KaNamedClassSymbol
+      if (symbol == null) {
+        dependencies.recordUnresolved(classId, owner)
+        return@analyze null
+      }
       val declaration = symbol.psi ?: return@analyze null
       val file = declaration.containingFile?.virtualFile ?: return@analyze null
       if (!fileIndex.isInContent(file)) return@analyze null
-      if ((classId to file) !in sourceDeclarations) return@analyze null
+      val onDeclarationFile: (com.intellij.psi.PsiFile) -> Unit = {
+        val dependencyFile = it.virtualFile
+        if (dependencyFile != null && fileIndex.isInContent(dependencyFile)) {
+          dependencies.record(it, owner)
+        }
+      }
+      declaration.containingFile?.let(onDeclarationFile)
+      val isObject =
+        symbol.classKind == KaClassKind.OBJECT || symbol.classKind == KaClassKind.COMPANION_OBJECT
+      if (!isObject && (classId to file) !in sourceDeclarations) return@analyze null
+      if (request.key.type.isMarkedNullable) return@analyze null
       // Source metadata is interpreted with its owning module's configured annotations, never with
       // whichever module happened to request the shared project snapshot first.
       val options = declaration.metroIdeState().options
       val key = KaTypeKey(request.key.type, qualifierAnnotation(symbol, options))
       val identity = ClassBindingIdentity(key, symbol.classId, file)
-      factories[identity]?.let {
+      classBindings[identity]?.let {
+        if (key != request.key && it !is KaBinding.AssistedFactory) return@analyze null
         return@analyze it
       }
-      val factoryType = restoreClassType(request.key.type) ?: return@analyze null
       val binding =
-        assistedFactoryBinding(symbol, factoryType, options, pointerManager, key)
+        resolveClassBinding(symbol, request.key, options, pointerManager, onDeclarationFile)
           ?: return@analyze null
-      factories[identity] = binding
+      classBindings[identity] = binding
       addedBindings += binding
       binding
     }

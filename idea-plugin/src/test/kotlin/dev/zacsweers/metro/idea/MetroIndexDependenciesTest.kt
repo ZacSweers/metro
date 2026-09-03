@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.graph.WrappedType
@@ -34,6 +36,85 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+  }
+
+  fun testNewObjectRefreshesAnUnresolvedGraphAccessor() {
+    val graph =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph interface AppGraph { val registry: NewRegistry }
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    val missing = initial.consumerEntryAt(accessor)!!
+    assertTrue(missing.key.type.isError)
+    assertTrue(initial.resolveConsumer(missing).uniformBindings.orEmpty().isEmpty())
+
+    myFixture.addFileToProject("test/NewRegistry.kt", "package test; object NewRegistry")
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val updated = service.awaitIndex(graph)
+    val consumer = updated.consumerEntryAt(accessor)!!
+    val binding = updated.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+    assertTrue(binding is KaBinding.ConstructorInjected && binding.isObject)
+  }
+
+  fun testUnannotatedObjectChangesRefreshClassBindings() {
+    checkUnannotatedClassChanges(resolveFromLibraries = true)
+  }
+
+  fun testUnannotatedObjectChangesRefreshClassBindingsWithoutLibraries() {
+    checkUnannotatedClassChanges(resolveFromLibraries = false)
+  }
+
+  private fun checkUnannotatedClassChanges(resolveFromLibraries: Boolean) {
+    val settings = MetroSettings.getInstance(project).state
+    val previous = settings.resolveFromLibraries
+    settings.resolveFromLibraries = resolveFromLibraries
+    try {
+      val registry =
+        myFixture.addFileToProject("test/Registry.kt", "package test; object Registry") as KtFile
+      val graph =
+        myFixture.configureMetroFile(
+          """
+        @DependencyGraph interface AppGraph { val registry: Registry }
+        """
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.awaitIndex(graph)
+      fun bindings(index: dev.zacsweers.metro.idea.model.BindingIndex): List<KaBinding> {
+        val accessor = graph.declarationsIncludingNested().property("registry")
+        return index.resolveConsumer(index.consumerEntryAt(accessor)!!).uniformBindings.orEmpty()
+      }
+      assertTrue(
+        bindings(initial).single().let { it is KaBinding.ConstructorInjected && it.isObject }
+      )
+      val documents = PsiDocumentManager.getInstance(project)
+      val document = checkNotNull(documents.getDocument(registry))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.setText("package test; class Registry")
+      }
+      documents.commitAllDocuments()
+      val removedObject = service.awaitIndex(graph)
+      assertNotSame(initial, removedObject)
+      assertTrue(bindings(removedObject).isEmpty())
+
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.setText("package test; object Registry")
+      }
+      documents.commitAllDocuments()
+      val restored = service.awaitIndex(graph)
+      assertTrue(
+        bindings(restored).single().let { it is KaBinding.ConstructorInjected && it.isObject }
+      )
+
+      WriteCommandAction.runWriteCommandAction(project) { registry.delete() }
+      val deleted = service.awaitIndex(graph)
+      assertTrue(bindings(deleted).isEmpty())
+    } finally {
+      settings.resolveFromLibraries = previous
+    }
   }
 
   private fun configure(): KtFile {

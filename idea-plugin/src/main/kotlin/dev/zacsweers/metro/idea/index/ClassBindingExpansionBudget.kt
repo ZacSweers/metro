@@ -124,8 +124,13 @@ internal class ClassBindingExpansionBudget(
         if (current.classId == null) concrete = false
         for (argument in current.typeArguments) {
           val argumentType = argument.type
-          if (argumentType == null) concrete = false
-          else pending += argumentType to currentDepth + 1
+          if (argumentType == null) {
+            // A star is a complete projection and still counts toward the expansion limit.
+            nodes++
+            depth = maxOf(depth, currentDepth + 1)
+          } else {
+            pending += argumentType to currentDepth + 1
+          }
         }
       }
       TypeComplexity(nodes, depth, concrete)

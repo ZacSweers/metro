@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeArgumentWithVariance
 import org.jetbrains.kotlin.analysis.api.types.KaTypeProjection
@@ -89,6 +90,7 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
       }
     },
     isMarkedNullable = classType?.isMarkedNullable == true,
+    isError = expanded is KaErrorType,
   )
 }
 

@@ -3512,6 +3512,107 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.bindings.asMap().values.none { it is KaBinding.AssistedFactory })
   }
 
+  fun testSourceGenericConstructorUsesConcreteDependenciesWithoutLibraries() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Payload
+      @HasMemberInjections abstract class Base<T : Any> {
+        @Inject lateinit var inherited: T
+      }
+      @Inject class Box<T : Any>(val value: T) : Base<T>()
+      @DependencyGraph interface AppGraph { val box: Box<Payload> }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val box =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single {
+        it.implementationName == "Box"
+      }
+    assertEquals("test.Box<test.Payload>", box.typeKey.renderedType)
+    assertEquals(
+      listOf("test.Payload"),
+      box.constructorDependencies.map { it.typeKey.renderedType },
+    )
+    assertEquals(listOf("test.Payload"), box.memberDependencies.map { it.typeKey.renderedType })
+  }
+
+  fun testSourceGenericConstructorKeepsNestedStarProjection() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Box<T>(val value: T)
+      @DependencyGraph interface AppGraph {
+        val box: Box<List<*>>
+        @Provides fun values(): List<*> = emptyList<Any>()
+      }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val box =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertEquals(
+      "kotlin.collections.List<*>",
+      box.constructorDependencies.single().typeKey.renderedType,
+    )
+  }
+
+  fun testSourceGenericConstructorReachesBinaryDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibRegistry
+        @Inject class Box<T>(val value: T)
+        @DependencyGraph interface AppGraph { val box: Box<LibRegistry> }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(
+        result.bindings.asMap().values.any { it is KaBinding.ConstructorInjected && it.isObject }
+      )
+    }
+  }
+
+  fun testSourceObjectProvidesItsInstanceWithoutLibraries() {
+    myFixture.addFileToProject("test/Registry.kt", "package test; object Registry")
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @DependencyGraph interface AppGraph { val registry: Registry }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val binding =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertTrue(binding.isObject)
+    assertTrue(binding.dependencies.isEmpty())
+  }
+
+  fun testSourceClassDoesNotSatisfyNullableRequest() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Client
+      @DependencyGraph interface AppGraph { val client: Client? }
+      """
+      )
+    assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
+  }
+
+  fun testGrowingSourceConstructorReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateResult(
+        """
+      @Inject class Growing<T>(val next: Growing<List<T>>)
+      @DependencyGraph interface AppGraph { val node: Growing<Int> }
+      """
+      )
+    assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+  }
+
   fun testBinaryImplicitClassDoesNotSatisfyNullableRequest() {
     module.withMetroLibFixtureLibrary {
       val result =

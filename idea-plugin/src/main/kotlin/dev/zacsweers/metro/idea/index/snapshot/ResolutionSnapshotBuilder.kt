@@ -14,6 +14,7 @@ import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
@@ -30,6 +31,7 @@ import dev.zacsweers.metro.idea.index.FileShardBuilder
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.index.LibraryIndexPostProcessor
+import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexBuilder
@@ -103,7 +105,7 @@ internal class ResolutionSnapshotBuilder(
 
     progress.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
     val rawSource = aggregateSource(collectedSource, progress)
-    progress.phase(IndexBuildPhase.RESOLVING_ASSISTED_FACTORIES)
+    progress.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
     val summary =
       collectedSource.librarySummary
         ?: buildFinalizedSourceLibrarySummary(
@@ -112,7 +114,10 @@ internal class ResolutionSnapshotBuilder(
           buildSourceOwnershipIndex(rawSource),
         )
     val finalizedSource = collectedSource.withLibrarySummary(summary)
-    val source = rawSource.withAddedFactories(summary.sourceFactories.addedBindings)
+    val classDependencies =
+      SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
+    classDependencies.include(summary.sourceClasses.dependencies)
+    val source = rawSource.withAddedClassBindings(summary.sourceClasses.addedBindings)
     val buildersByKey = linkedMapOf<SnapshotKey, BindingIndexBuilder>()
     val keysByModule = linkedMapOf<Module, SnapshotKey>()
     val declarationSignatureFiles = finalizedSource.shardOrder.toSet()
@@ -126,6 +131,7 @@ internal class ResolutionSnapshotBuilder(
         } else {
           LibraryShard.EMPTY
         }
+      classDependencies.include(library.sourceDependencies)
       progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
         BindingIndexBuilder(generationToken).apply {
@@ -137,7 +143,7 @@ internal class ResolutionSnapshotBuilder(
           bindingContainers += source.bindingContainers
           incompleteClassBindings +=
             if (key.resolveFromLibraries) library.incompleteBindings
-            else summary.sourceFactories.incompleteBindings
+            else summary.sourceClasses.incompleteBindings
           dynamicGraphs += source.dynamicGraphs
         }
       captureResolutionInputs(indexBuilder, declarationSignatureFiles)
@@ -147,7 +153,7 @@ internal class ResolutionSnapshotBuilder(
       }
     }
     return PreparedResolutionSnapshot(
-      source = finalizedSource,
+      source = finalizedSource.withClassBindingDependencies(classDependencies.build()),
       inputs = inputs,
       buildersByKey = buildersByKey,
       keysByModule = keysByModule,
@@ -298,12 +304,12 @@ internal class ResolutionSnapshotBuilder(
   ): LibraryShard {
     val key = LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs)
     libraryShards[key]?.let {
-      return it
+      if (it.sourceDependencies.isCurrent()) return it
     }
 
     val bindings = source.bindings.toMutableList()
     val contributions = source.contributions.toMutableList()
-    val incompleteBindings =
+    val classResolution =
       LibraryIndexPostProcessor(
           project,
           fingerprint.options,
@@ -311,16 +317,17 @@ internal class ResolutionSnapshotBuilder(
           source.consumers,
           source.graphs,
           contributions,
-          summary.sourceFactories.factoryUseSites,
+          summary.sourceClasses.classUseSites,
           summary.consumerOwnership,
-          summary.sourceFactories,
+          summary.sourceClasses,
         )
         .postProcess()
     val shard =
       LibraryShard(
         bindings.drop(source.bindings.size),
         contributions.drop(source.contributions.size),
-        incompleteBindings,
+        classResolution.incompleteBindings,
+        classResolution.dependencies,
       )
     libraryShards[key] = shard
     return shard
@@ -552,6 +559,7 @@ private data class LibraryShard(
   val bindings: List<KaBinding>,
   val contributions: List<ContributionEntry>,
   val incompleteBindings: Map<KaModule, Map<ClassBindingIdentity, String>> = emptyMap(),
+  val sourceDependencies: SourceClassDependencies = SourceClassDependencies.EMPTY,
 ) {
   companion object {
     val EMPTY = LibraryShard(emptyList(), emptyList())

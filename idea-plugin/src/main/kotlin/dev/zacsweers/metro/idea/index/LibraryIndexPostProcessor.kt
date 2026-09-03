@@ -61,29 +61,29 @@ internal class LibraryIndexPostProcessor(
   private val consumers: List<ConsumerEntry>,
   private val graphs: List<KaGraphDeclaration>,
   private val contributions: MutableList<ContributionEntry>,
-  private val sourceFactoryUseSites: SourceAssistedFactoryUseSites,
+  private val sourceClassUseSites: SourceClassUseSites,
   private val consumerOwnership: ConsumerOwnershipBundle,
-  private val initialSourceFactories: SourceFactoryResolution,
+  private val initialSourceClasses: SourceClassResolution,
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
   private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
 
-  private lateinit var sourceFactories: SourceAssistedFactoryPostProcessor
+  private lateinit var sourceClasses: SourceClassBindingPostProcessor
 
-  fun postProcess(): Map<KaModule, Map<ClassBindingIdentity, String>> {
+  fun postProcess(): SourceClassResolution {
     scanLibraryContributionHints()
-    sourceFactories =
-      SourceAssistedFactoryPostProcessor(
+    sourceClasses =
+      SourceClassBindingPostProcessor(
         project,
         bindings,
         consumers,
         consumerOwnership,
-        initialSourceFactories,
+        initialSourceClasses,
       )
-    val resumed = sourceFactories.resumeBoundaries()
+    val resumed = sourceClasses.resumeBoundaries()
     bindings += resumed.addedBindings
     resolveLibraryInjectBindings(resumed.libraryRequests)
-    return sourceFactories.snapshot().incompleteBindings
+    return sourceClasses.snapshot()
   }
 
   /**
@@ -344,7 +344,7 @@ internal class LibraryIndexPostProcessor(
    * so generated providers also discover library dependencies without their own source consumers.
    */
   @OptIn(KaPlatformInterface::class)
-  private fun resolveLibraryInjectBindings(resumedRequests: List<SourceFactoryRequest>) {
+  private fun resolveLibraryInjectBindings(resumedRequests: List<SourceClassRequest>) {
     val queue = ArrayDeque<LibraryInjectRequest>()
     for (consumer in consumers) {
       ProgressManager.checkCanceled()
@@ -383,21 +383,19 @@ internal class LibraryIndexPostProcessor(
       val request = queue.removeFirst()
       val module = KaModuleProvider.getModule(project, request.context, useSiteModule = null)
       if (!visited.add(LibraryInjectRequestId(request.key, module))) continue
-      if (sourceFactories.canResolve(request.classId)) {
-        val source = sourceFactories.resolveFromBinary(request.key, request.context, request.direct)
-        for (binding in source.addedBindings) {
-          val file = binding.pointer.virtualFile ?: continue
-          if (bindingIds.add(LibraryInjectBindingId(binding.typeKey, file))) bindings += binding
-        }
-        for (dependency in source.libraryRequests) {
-          val context = dependency.context.element ?: continue
-          val classId = dependency.key.type.classId ?: continue
-          queue += LibraryInjectRequest(dependency.key, classId, context)
-        }
-        // A same-FQN source factory in another module does not make this module's binary class
-        // a source declaration. Fall through unless the exact request was actually handled.
-        if (source.handled) continue
+      val source = sourceClasses.resolveFromBinary(request.key, request.context, request.direct)
+      for (binding in source.addedBindings) {
+        val file = binding.pointer.virtualFile ?: continue
+        if (bindingIds.add(LibraryInjectBindingId(binding.typeKey, file))) bindings += binding
       }
+      for (dependency in source.libraryRequests) {
+        val context = dependency.context.element ?: continue
+        val classId = dependency.key.type.classId ?: continue
+        queue += LibraryInjectRequest(dependency.key, classId, context)
+      }
+      // A same-FQN source class in another module does not make this module's binary class
+      // a source declaration. Fall through unless the exact request was actually handled.
+      if (source.handled) continue
       val resolved =
         analyze(request.context) {
           val classSymbol = findClass(request.classId) as? KaNamedClassSymbol ?: return@analyze null
@@ -407,7 +405,7 @@ internal class LibraryIndexPostProcessor(
           if (fileIndex.isInContent(virtualFile)) return@analyze null
 
           val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
-          if (isAssistedFactory && !sourceFactories.isConcrete(request.key)) return@analyze null
+          if (isAssistedFactory && !sourceClasses.isConcrete(request.key)) return@analyze null
           val binding =
             resolveClassBinding(classSymbol, request.key, options, pointerManager)
               ?: return@analyze null
@@ -418,7 +416,7 @@ internal class LibraryIndexPostProcessor(
         }
       if (resolved == null) continue
       if (bindingIds.add(resolved.id)) bindings += resolved.binding
-      if (!sourceFactories.expandClassBinding(resolved.binding, request.context, request.direct)) {
+      if (!sourceClasses.expandClassBinding(resolved.binding, request.context, request.direct)) {
         continue
       }
       for (dependency in resolved.binding.dependencies) {
@@ -438,7 +436,7 @@ internal class LibraryIndexPostProcessor(
     val fileIndex = ProjectFileIndex.getInstance(project)
     val useSites = useSitesByModule()
     val seededFactoryUseSites =
-      if (sourceFactoryUseSites.isEmpty()) null
+      if (sourceClassUseSites.isEmpty()) null
       else {
         Collections.newSetFromMap(
           IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
@@ -452,22 +450,23 @@ internal class LibraryIndexPostProcessor(
       val virtualFile = binding.pointer.virtualFile ?: continue
       if (fileIndex.isInContent(virtualFile)) {
         // Ordinary source providers/injectables already contributed their parameter consumers.
-        // Generated class providers and assisted factories can own dependencies without such a
-        // matching source declaration, so only those need an extra source seed.
+        // Generated providers and concrete generic classes can own specialized dependencies.
+        // Their requests retain the module where those concrete types are used.
         val needsSourceSeed =
           binding is KaBinding.AssistedFactory ||
+            binding is KaBinding.ConstructorInjected ||
             binding is KaBinding.Provided && binding.isClassContribution ||
             binding is KaBinding.Alias && binding.isClassContribution
         if (!needsSourceSeed) continue
-        if (binding is KaBinding.AssistedFactory) {
-          val requestingModules = sourceFactoryUseSites[binding]
+        if (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) {
+          val requestingModules = sourceClassUseSites[binding]
           if (requestingModules != null && seededFactoryUseSites?.add(requestingModules) == false) {
             continue
           }
           if (!requestingModules.isNullOrEmpty()) {
             for (pointer in requestingModules.values) {
               val context = pointer.element ?: continue
-              if (!sourceFactories.mayExpandSourceFactory(binding, context)) continue
+              if (!sourceClasses.mayExpandSourceBinding(binding, context)) continue
               enqueueDependencies(binding, context, queue)
             }
             continue
@@ -475,8 +474,8 @@ internal class LibraryIndexPostProcessor(
         }
         val context = declaration as? KtElement ?: continue
         if (
-          binding is KaBinding.AssistedFactory &&
-            !sourceFactories.mayExpandSourceFactory(binding, context)
+          (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) &&
+            !sourceClasses.mayExpandSourceBinding(binding, context)
         )
           continue
         enqueueDependencies(binding, context, queue)
@@ -543,10 +542,10 @@ internal fun sourceAssistedFactoryUseSites(
   bindings: List<KaBinding>,
   consumers: List<ConsumerEntry>,
   consumerOwnership: ConsumerOwnershipBundle,
-): SourceAssistedFactoryUseSites {
-  return SourceAssistedFactoryPostProcessor(project, bindings, consumers, consumerOwnership)
+): SourceClassUseSites {
+  return SourceClassBindingPostProcessor(project, bindings, consumers, consumerOwnership)
     .resolveInitial()
-    .factoryUseSites
+    .classUseSites
 }
 
 /**
@@ -778,14 +777,12 @@ private sealed interface FrozenConsumerOwners {
   class GraphRoots(val pointers: List<SmartPsiElementPointer<out KtElement>>) : FrozenConsumerOwners
 }
 
-/** Session-free source factory groups that remain reusable when equivalent shards are rebuilt. */
-internal class SourceAssistedFactoryUseSites(
+/** Session-free source class groups that remain reusable when equivalent shards are rebuilt. */
+internal class SourceClassUseSites(
   private val groups:
     Map<ClassBindingIdentity, Map<KaModule, SmartPsiElementPointer<out KtElement>>>
 ) {
-  operator fun get(
-    binding: KaBinding.AssistedFactory
-  ): Map<KaModule, SmartPsiElementPointer<out KtElement>>? {
+  operator fun get(binding: KaBinding): Map<KaModule, SmartPsiElementPointer<out KtElement>>? {
     val virtualFile = binding.pointer.virtualFile ?: return null
     return groups[ClassBindingIdentity(binding.typeKey, binding.originClassId, virtualFile)]
   }
@@ -793,6 +790,6 @@ internal class SourceAssistedFactoryUseSites(
   fun isEmpty(): Boolean = groups.isEmpty()
 
   companion object {
-    val EMPTY = SourceAssistedFactoryUseSites(emptyMap())
+    val EMPTY = SourceClassUseSites(emptyMap())
   }
 }

@@ -22,6 +22,7 @@ internal class KaTypeSnapshot(
   val classId: ClassId?,
   val typeArguments: List<KaTypeArgumentSnapshot> = emptyList(),
   val isMarkedNullable: Boolean = false,
+  val isError: Boolean = false,
 ) {
   // Renders repeat heavily across entries, so intern them to keep the index's retained size flat.
   val renderedType: String = RENDER_INTERNER.intern(renderedType)

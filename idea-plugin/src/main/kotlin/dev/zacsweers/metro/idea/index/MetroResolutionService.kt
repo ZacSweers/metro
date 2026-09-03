@@ -2068,7 +2068,7 @@ private constructor(
     knownFile: KtFile? = null,
   ) {
     checkPsiClassificationActive()
-    val ownerFiles = state?.dependencyOwners?.get(virtualFile)
+    var ownerFiles = state?.dependencyOwnersFor(virtualFile)
     val alreadyIndexed = state != null && virtualFile in state.shards
     val file =
       knownFile
@@ -2098,6 +2098,14 @@ private constructor(
         result.forceAll = true
       }
       return
+    }
+
+    val newlySatisfiedOwners =
+      state?.classBindingDependencies?.ownersForNewDeclarations(file).orEmpty()
+    if (newlySatisfiedOwners.isNotEmpty()) {
+      ownerFiles = ownerFiles.orEmpty() + newlySatisfiedOwners
+      // The requesting shard can be textually unchanged while a missing class becomes available.
+      result.forceRebuildFiles += newlySatisfiedOwners
     }
 
     val hasSharedDeclarations = fileHasSharedDeclarationsCached(file)
