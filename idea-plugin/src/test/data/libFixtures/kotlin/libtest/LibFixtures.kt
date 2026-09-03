@@ -24,6 +24,9 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.internal.MetroContribution
 import kotlin.reflect.KClass
 
+/** An ordinary object is an implicit class binding. */
+object LibRegistry
+
 interface LibJson
 
 /** A binary graph supertype: its accessors and providers merge into graphs extending it. */

@@ -30,8 +30,6 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.qualifierAnnotation
-import dev.zacsweers.metro.idea.scopeAnnotation
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -41,7 +39,6 @@ import org.jetbrains.kotlin.analysis.api.components.createUseSiteVisibilityCheck
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
-import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
@@ -409,60 +406,14 @@ internal class LibraryIndexPostProcessor(
           val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
           if (fileIndex.isInContent(virtualFile)) return@analyze null
 
-          val actualQualifier = qualifierAnnotation(classSymbol, options)
           val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
           if (isAssistedFactory && !sourceFactories.isConcrete(request.key)) return@analyze null
-          // Keep a factory under its actual key even when the request has the wrong qualifier:
-          // lazy-factory validation still needs its declaration, but normal lookup must not match.
-          if (actualQualifier != request.key.qualifier && !isAssistedFactory) {
-            return@analyze null
-          }
-          val factoryKey =
-            if (actualQualifier == request.key.qualifier) request.key
-            else KaTypeKey(request.key.type, actualQualifier)
-          val defaultType = classSymbol.defaultType as? KaClassType ?: return@analyze null
-          val requestedType =
-            if (request.key.type.typeArguments.isEmpty()) defaultType
-            else restoreClassType(request.key.type) ?: defaultType
-          if (isAssistedFactory) {
-            val binding =
-              assistedFactoryBinding(
-                classSymbol,
-                requestedType,
-                options,
-                pointerManager,
-                factoryKey,
-              ) ?: return@analyze null
-            return@analyze ResolvedLibraryBinding(
-              LibraryInjectBindingId(factoryKey, virtualFile),
-              binding,
-            )
-          }
-          if (classSymbol.classKind != KaClassKind.CLASS) return@analyze null
-
-          val constructors = classSymbol.memberScope.constructors.toList()
-          val hasInject =
-            classSymbol.hasAnyAnnotation(options.injectAnnotations) ||
-              constructors.any { it.hasAnyAnnotation(options.injectAnnotations) }
-          val isAssisted =
-            classSymbol.hasAnyAnnotation(options.assistedInjectAnnotations) ||
-              constructors.any { it.hasAnyAnnotation(options.assistedInjectAnnotations) }
-          if (!hasInject && !isAssisted) return@analyze null
-          val constructorDependencies = injectConstructorDependencyKeys(requestedType, options)
-          val memberDependencies = memberInjectDependencyKeys(requestedType, options)
+          val binding =
+            resolveClassBinding(classSymbol, request.key, options, pointerManager)
+              ?: return@analyze null
           ResolvedLibraryBinding(
-            LibraryInjectBindingId(request.key, virtualFile),
-            KaBinding.ConstructorInjected(
-              pointerManager.createSmartPsiElementPointer(psi),
-              request.key,
-              scopeAnnotation(classSymbol, options),
-              classSymbol.name.asString(),
-              originClassId = classSymbol.classId,
-              constructorDependencies = constructorDependencies,
-              memberDependencies = memberDependencies,
-              memberInjectionOwnerIds = memberInjectOwnerClassIds(classSymbol),
-              isAssisted = isAssisted,
-            ),
+            LibraryInjectBindingId(binding.typeKey, virtualFile),
+            binding,
           )
         }
       if (resolved == null) continue

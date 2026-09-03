@@ -3512,6 +3512,58 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.bindings.asMap().values.none { it is KaBinding.AssistedFactory })
   }
 
+  fun testBinaryImplicitClassDoesNotSatisfyNullableRequest() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class) interface AppGraph {
+          val client: LibClientWithDeps?
+        }
+        """
+        )
+      assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
+    }
+  }
+
+  fun testExplicitNullableBinaryClassBindingStillResolves() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph interface AppGraph {
+          val client: LibClientWithDeps?
+          @Provides fun client(): LibClientWithDeps? = null
+        }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBinaryObjectProvidesItsOwnInstance() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibRegistry
+
+        @DependencyGraph interface AppGraph { val registry: LibRegistry }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val objectBinding =
+        result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+      assertTrue(objectBinding.isObject)
+      assertTrue(objectBinding.dependencies.isEmpty())
+      assertNull(objectBinding.scope)
+    }
+  }
+
   fun testGrowingBinaryConstructorReportsIncompleteAnalysis() {
     module.addKotlinStdlibLibrary()
     module.withMetroLibFixtureLibrary {
