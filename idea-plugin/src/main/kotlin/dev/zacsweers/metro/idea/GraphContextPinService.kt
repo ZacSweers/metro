@@ -35,8 +35,11 @@ internal class GraphContextPinService(private val project: Project) : Disposable
     if (pinnedPathRef.getAndSet(null) != null) notifyChanged()
   }
 
+  /** Clears an equal path while the captured pin remains current. */
   fun clearIf(path: GraphPath): Boolean {
-    if (!pinnedPathRef.compareAndSet(path, null)) return false
+    val currentPath = pinnedPathRef.get()
+    if (currentPath != path) return false
+    if (!pinnedPathRef.compareAndSet(currentPath, null)) return false
     notifyChanged()
     return true
   }

@@ -48,6 +48,7 @@ import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationRequestService
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationResultPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationResultTreeStructure
+import dev.zacsweers.metro.idea.toolwindow.PinSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
@@ -289,6 +290,35 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     assertEquals(listOf("ReplacementGraph"), structure.children(root).map { it.text })
     assertNull(pinService.pinnedPath)
+  }
+
+  fun testPinActionClearsAnEqualPathAndPreservesADifferentPin() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph interface AppGraph
+        @DependencyGraph interface OtherGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val context = index.contextsFor(graph).single()
+    val otherGraph = index.graphs.single { it.name == "OtherGraph" }
+    val otherContext = index.contextsFor(otherGraph).single()
+    val pinService = project.service<GraphContextPinService>()
+    val action = PinSelectedGraphAction(pinService) { context }
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    // A refreshed graph context recreates the same path in a different object.
+    pinService.pin(context.path.copy())
+    assertTrue(action.isSelected(event))
+    action.setSelected(event, false)
+    assertNull(pinService.pinnedPath)
+
+    pinService.pin(otherContext.path)
+    action.setSelected(event, false)
+    assertSame(otherContext.path, pinService.pinnedPath)
   }
 
   fun testGraphContextSelectorUsesPrecomputedSnapshotWithoutReadAccess() {
