@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788284545094,
+  "lastUpdate": 1788413358525,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22344,6 +22344,62 @@ window.BENCHMARK_DATA = {
             "value": 18156.682,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -3.41%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b88575f1~1",
+          "message": "[before] Use background snapshots for IDE presentation and ",
+          "timestamp": "2026-09-03T00:32:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b88575f19121d52ad6917dea72a0b3523cf07cec"
+        },
+        "date": 1788413358525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 14720.454000000002,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b88575f19121d52ad6917dea72a0b3523cf07cec",
+          "message": "[after] Use background snapshots for IDE presentation and ",
+          "timestamp": "2026-09-03T00:32:52-04:00",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b88575f19121d52ad6917dea72a0b3523cf07cec"
+        },
+        "date": 1788413358526,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 15005.504,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +1.94%"
           }
         ]
       }
