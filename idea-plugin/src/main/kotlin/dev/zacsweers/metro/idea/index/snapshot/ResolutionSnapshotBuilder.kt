@@ -31,7 +31,8 @@ import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.FileShardBuilder
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
-import dev.zacsweers.metro.idea.index.LibraryContributionScanner
+import dev.zacsweers.metro.idea.index.LibraryGraphDeclarations
+import dev.zacsweers.metro.idea.index.LibraryGraphDiscovery
 import dev.zacsweers.metro.idea.index.LibraryIndexPostProcessor
 import dev.zacsweers.metro.idea.index.SourceClassBindingPostProcessor
 import dev.zacsweers.metro.idea.index.SourceClassDependencies
@@ -135,7 +136,10 @@ internal class ResolutionSnapshotBuilder(
           LibraryShard.EMPTY
         }
       classDependencies.include(library.sourceDependencies)
-      val composedSource = source.withGraphInterfaces(library.graphInterfaces)
+      val composedSource =
+        source
+          .withLibraryGraphs(library.graphDeclarations)
+          .withGraphInterfaces(library.graphInterfaces)
       progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
         BindingIndexBuilder(generationToken).apply {
@@ -312,17 +316,24 @@ internal class ResolutionSnapshotBuilder(
       if (it.sourceDependencies.isCurrent()) return it
     }
 
-    val hints =
-      LibraryContributionScanner(
+    val metadata =
+      LibraryGraphDiscovery(
           project,
           fingerprint.options,
           source.graphs,
           source.contributions,
           source.consumers,
+          source.graphInterfaceSurfaces,
         )
-        .scan()
-    val interfaces = graphInterfaceOverlay(hints.graphInterfaces, source.graphs)
-    val sourceWithInterfaces = source.withGraphInterfaces(interfaces)
+        .discover()
+    val hints = metadata.contributions
+    val sourceWithGraphs = source.withLibraryGraphs(metadata.declarations)
+    val interfaces =
+      combineGraphInterfaceOverlays(
+        graphInterfaceOverlay(source.graphInterfaceSurfaces, metadata.declarations.graphs),
+        graphInterfaceOverlay(hints.graphInterfaces, sourceWithGraphs.graphs),
+      )
+    val sourceWithInterfaces = sourceWithGraphs.withGraphInterfaces(interfaces)
     val contributions = source.contributions + hints.contributions
     val composed =
       sourceWithInterfaces.copy(
@@ -330,12 +341,12 @@ internal class ResolutionSnapshotBuilder(
         contributions = contributions,
       )
     val ownership =
-      if (interfaces.isEmpty) summary.consumerOwnership
+      if (interfaces.isEmpty && metadata.declarations.isEmpty) summary.consumerOwnership
       else ConsumerOwnershipBundle.build(buildSourceOwnershipIndex(composed))
     // New interface requests must have their exact source graph owner before class lookup.
     // Existing source requests stay memoized in the previous expansion state.
     val initialClasses =
-      if (interfaces.isEmpty) summary.sourceClasses
+      if (interfaces.isEmpty && metadata.declarations.isEmpty) summary.sourceClasses
       else {
         SourceClassBindingPostProcessor(
             project,
@@ -362,13 +373,17 @@ internal class ResolutionSnapshotBuilder(
           initialClasses,
         )
         .postProcess()
+    val dependencies = SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
+    dependencies.include(metadata.sourceDependencies)
+    dependencies.include(classResolution.dependencies)
     val shard =
       LibraryShard(
         hints.bindings + bindings.drop(baseBindingCount),
         hints.contributions,
         interfaces,
+        metadata.declarations,
         classResolution.incompleteBindings,
-        classResolution.dependencies,
+        dependencies.build(),
       )
     libraryShards[key] = shard
     return shard
@@ -602,6 +617,7 @@ private data class LibraryShard(
   val bindings: List<KaBinding>,
   val contributions: List<ContributionEntry>,
   val graphInterfaces: GraphInterfaceOverlay = GraphInterfaceOverlay.EMPTY,
+  val graphDeclarations: LibraryGraphDeclarations = LibraryGraphDeclarations.EMPTY,
   val incompleteBindings: Map<KaModule, Map<ClassBindingIdentity, String>> = emptyMap(),
   val sourceDependencies: SourceClassDependencies = SourceClassDependencies.EMPTY,
 ) {

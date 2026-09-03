@@ -21,14 +21,17 @@ import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
+import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.scopeAnnotations
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -45,6 +48,8 @@ internal class GraphDeclarationExtractor(
   private val onFactoryInput: (FactoryInputEntry) -> Unit,
   private val onDeclarationFile: (PsiFile) -> Unit,
   private val recordAnnotations: KaSession.(KaAnnotated, PsiElement?) -> Unit,
+  /** Source annotation sweeps already capture these parameters; binary callers supply a sink. */
+  private val onInstanceBinding: ((KaBinding.BoundInstance) -> Unit)? = null,
 ) {
   private var cancellationWorkIndex = 0
 
@@ -94,9 +99,23 @@ internal class GraphDeclarationExtractor(
             val memberClassId = member.getClassId() ?: continue
             nestedClassIds += memberClassId
             val memberSymbol = member.symbol as? KaClassSymbol ?: continue
+            val isBinaryCompanion =
+              memberSymbol.classKind == KaClassKind.COMPANION_OBJECT &&
+                memberSymbol.origin == KaSymbolOrigin.LIBRARY
+            if (isBinaryCompanion) {
+              graphMembers.indexCompanionBindings(this, memberSymbol, memberTarget)
+              continue
+            }
             if (!memberSymbol.hasAnyAnnotation(factoryAnnotations)) continue
             val graphInputs =
-              memberSymbol.graphFactoryInputs(this, options, pointerManager, graphId)
+              memberSymbol.graphFactoryInputs(
+                this,
+                options,
+                pointerManager,
+                graphId,
+                includeInstanceBindings = onInstanceBinding != null,
+              )
+            for (binding in graphInputs.instanceBindings) onInstanceBinding?.invoke(binding)
             graphInputs.cacheDependencies.forEach(onDeclarationFile)
             includedBindingContainers += graphInputs.bindingContainers
             includedDependencies += graphInputs.graphDependencies

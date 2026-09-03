@@ -134,6 +134,7 @@ internal fun BindingData.toKaBinding(
         pointer = pointer,
         typeKey = key,
         containerId = containerId,
+        ownerGraphId = ownerGraphId,
         isGraphPrivate = isGraphPrivate,
       )
     BindingData.Kind.CUSTOM_WRAPPER ->

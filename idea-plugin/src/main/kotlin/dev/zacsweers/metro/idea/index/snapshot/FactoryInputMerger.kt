@@ -95,13 +95,17 @@ private class CanonicalFactoryInputBindings(private val bindings: MutableList<Ka
     if (ownerGraphId != null && ownerGraphId != existing.binding.ownerGraphId) {
       val owners =
         existing.additionalOwners
-          ?: linkedSetOf<GraphDeclarationId>().also { existing.additionalOwners = it }
+          ?: LinkedHashSet(existing.binding.additionalOwnerGraphIds).also {
+            existing.additionalOwners = it
+          }
       owners += ownerGraphId
     }
     if (binding.additionalOwnerGraphIds.isNotEmpty()) {
       val owners =
         existing.additionalOwners
-          ?: linkedSetOf<GraphDeclarationId>().also { existing.additionalOwners = it }
+          ?: LinkedHashSet(existing.binding.additionalOwnerGraphIds).also {
+            existing.additionalOwners = it
+          }
       owners += binding.additionalOwnerGraphIds
       existing.binding.ownerGraphId?.let(owners::remove)
     }

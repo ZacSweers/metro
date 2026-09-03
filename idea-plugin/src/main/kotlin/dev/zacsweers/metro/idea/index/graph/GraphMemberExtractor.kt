@@ -33,12 +33,15 @@ import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
 import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.model.canonicalContextKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
@@ -85,7 +88,35 @@ internal class GraphMemberExtractor(
   ) =
     with(session) {
       recordGraphDefaultImplementation(view, psi, target)
+      // Binary graph declarations have no project-source annotation sweep for their providers.
+      if (view.symbol.origin == KaSymbolOrigin.LIBRARY && psi is KtDeclaration) {
+        val ownerDependency = target.factoryContext?.let { typeKey(it, null).canonicalContextKey() }
+        processInheritedBindingCallable(psi, view, target, ownerDependency)
+      }
       indexGraphCallable(view, psi, target)
+    }
+
+  /** Companion providers belong to the graph and use Kotlin's existing companion instance. */
+  fun indexCompanionBindings(
+    session: KaSession,
+    companion: KaClassSymbol,
+    target: GraphMemberTarget,
+  ) =
+    with(session) {
+      val graphClassId = target.graphId?.classId
+      // Compiler provider collection skips companions implementing the graph.
+      if (graphClassId != null) {
+        for (superType in companion.defaultType.allSupertypes) {
+          checkCanceled()
+          if ((superType as? KaClassType)?.classId == graphClassId) return@with
+        }
+      }
+      for (callable in companion.declaredMemberScope.callables) {
+        checkCanceled()
+        val declaration = callable.psi as? KtDeclaration ?: continue
+        declaration.containingFile?.let(onDeclarationFile)
+        processInheritedBindingCallable(declaration, callableBindingView(callable), target)
+      }
     }
 
   /** Extract once; the merged index assigns owners and selects survivors for each graph path. */
@@ -315,6 +346,7 @@ internal class GraphMemberExtractor(
     declaration: KtDeclaration,
     callable: CallableBindingView,
     target: GraphMemberTarget,
+    ownerDependency: KaContextualTypeKey? = null,
   ) {
     recordAnnotations(this, callable.symbol, declaration)
     val graphId = target.graphId
@@ -344,7 +376,12 @@ internal class GraphMemberExtractor(
         )
       if (!processedInheritedBindingCallables.add(identity)) continue
       bindings +=
-        data.toKaBinding(ptr(declaration), containerId = containerId, ownerGraphId = ownerGraphId)
+        data.toKaBinding(
+          ptr(declaration),
+          containerId = containerId,
+          ownerGraphId = ownerGraphId,
+          ownerDependency = ownerDependency,
+        )
       addedBinding = true
     }
     if (!addedBinding) return

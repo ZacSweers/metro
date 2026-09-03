@@ -2911,6 +2911,340 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testBinaryContributedExtensionsResolveNestedGraphsAndFactoryInputs() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibChildGraph
+          import libtest.LibChildScope
+          import libtest.LibParentScope
+          import libtest.LibParentService
+
+          @Inject class SourceBox<T>(val value: T)
+
+          @ContributesTo(LibChildScope::class)
+          interface ChildMembers {
+            val box: SourceBox<String>
+          }
+
+          @DependencyGraph(LibParentScope::class)
+          interface AppGraph {
+            val factory: LibChildGraph.Factory
+            @Provides fun parent(): LibParentService = object : LibParentService {}
+          }
+          """,
+          fileName = "BinaryChildGraphs.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      assertFalse(index.graphs.any { it.name == "LibHiddenChildGraph" })
+      val child = index.graphs.single { it.name == "LibChildGraph" }
+      val childContext = index.contextsFor(child).single()
+      assertEquals(listOf("LibChildGraph", "AppGraph"), childContext.chain.map { it.name })
+      val childQuery = checkNotNull(index.queryContext(childContext))
+      val accessors = index.graphComposition(childQuery).accessors
+      val value = accessors.single { (it.pointer.element as? KtNamedDeclaration)?.name == "value" }
+      val input = index.bindingsFor(value).single() as KaBinding.BoundInstance
+      assertEquals(child.declarationId, input.ownerGraphId)
+      val decorated = accessors.single {
+        (it.pointer.element as? KtNamedDeclaration)?.name == "decorated"
+      }
+      assertEquals(
+        "decorate",
+        (index.bindingsFor(decorated).single().pointer.element as? KtNamedDeclaration)?.name,
+      )
+      val box = accessors.single { (it.pointer.element as? KtNamedDeclaration)?.name == "box" }
+      assertEquals(
+        "test.SourceBox<kotlin.String>",
+        index.bindingsFor(box).single().typeKey.renderedType,
+      )
+      assertTrue(index.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceDependency" })
+
+      val grandchild = index.graphs.single { it.name == "LibGrandchildGraph" }
+      assertEquals(
+        listOf("LibGrandchildGraph", "LibChildGraph", "AppGraph"),
+        index.contextsFor(grandchild).single().chain.map { it.name },
+      )
+      for (graph in index.graphs) {
+        val context = index.contextsFor(graph).single()
+        val result =
+          project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+        assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      }
+    }
+  }
+
+  fun testSourceContributedFactoryFindsItsBinaryChild() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibSharedInputChild
+
+          abstract class LocalScope
+
+          @ContributesTo(LocalScope::class)
+          interface ChildFactory : LibSharedInputChild.Factory
+
+          @DependencyGraph(LocalScope::class)
+          interface AppGraph
+          """,
+          fileName = "SourceFactoryBinaryChild.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val child = index.graphs.single { it.name == "LibSharedInputChild" }
+      val context = index.contextsFor(child).single()
+      assertEquals(listOf("LibSharedInputChild", "AppGraph"), context.chain.map { it.name })
+      val query = checkNotNull(index.queryContext(context))
+      val number = index.graphComposition(query).accessors.single()
+      assertEquals(
+        "number",
+        (index.bindingsFor(number).single().pointer.element as? KtNamedDeclaration)?.name,
+      )
+      val result =
+        project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testDirectBinaryChildInheritsSourceParentBindings() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibDirectChildGraph
+          import libtest.LibParentService
+
+          @DependencyGraph
+          interface AppGraph {
+            fun child(): LibDirectChildGraph
+            @Provides fun parent(): LibParentService = object : LibParentService {}
+          }
+          """,
+          fileName = "DirectBinaryChild.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val child = index.graphs.single { it.name == "LibDirectChildGraph" }
+      val context = index.contextsFor(child).single()
+      assertEquals(listOf("LibDirectChildGraph", "AppGraph"), context.chain.map { it.name })
+      val query = checkNotNull(index.queryContext(context))
+      val parent =
+        index.graphComposition(query).accessors.single {
+          it.key.renderedType == "libtest.LibParentService"
+        }
+      assertEquals(file.virtualFile, index.bindingsFor(parent).single().pointer.virtualFile)
+      val result =
+        project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBinaryChildCompanionProvidersStayInTheirGraph() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibCompanionChildGraph
+          import libtest.LibCompanionValue
+          import libtest.LibParentService
+          import libtest.LibSelfCompanionChildGraph
+
+          @DependencyGraph
+          interface AppGraph {
+            fun child(): LibCompanionChildGraph
+            @Provides fun parent(): LibParentService = object : LibParentService {}
+          }
+
+          @DependencyGraph
+          interface OtherGraph {
+            val other: LibCompanionValue
+            fun selfChild(): LibSelfCompanionChildGraph
+          }
+          """,
+          fileName = "BinaryCompanionProviders.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val child = index.graphs.single { it.name == "LibCompanionChildGraph" }
+      val context = index.contextsFor(child).single()
+      val query = checkNotNull(index.queryContext(context))
+      val accessors = index.graphComposition(query).accessors
+      assertEquals(2, accessors.size)
+      val value = accessors.single { it.key.renderedType == "libtest.LibCompanionValue" }
+      val provider = index.bindingsFor(value).single()
+      assertEquals(child.declarationId, provider.ownerGraphId)
+      assertEquals("provideValue", (provider.pointer.element as? KtNamedDeclaration)?.name)
+      assertEquals(
+        listOf("libtest.LibParentService"),
+        provider.dependencies.map { it.typeKey.renderedType },
+      )
+      val enabled = accessors.single { it.key.renderedType == "kotlin.Boolean" }
+      assertTrue(index.bindingsFor(enabled).single().dependencies.isEmpty())
+      val other = index.consumerEntryAt(file.declarationsIncludingNested().property("other"))!!
+      assertTrue(index.bindingsFor(other).isEmpty())
+      val selfChild = index.graphs.single { it.name == "LibSelfCompanionChildGraph" }
+      val selfQuery = checkNotNull(index.queryContext(index.contextsFor(selfChild).single()))
+      val selfValue = index.graphComposition(selfQuery).accessors.single()
+      assertTrue(index.bindingsFor(selfValue).isEmpty())
+      val result =
+        project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBinaryExtensionExclusionsAndReplacementsRemoveParentEdges() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibChildGraph
+          import libtest.LibParentScope
+
+          @DependencyGraph(LibParentScope::class, excludes = [LibChildGraph::class])
+          interface ExcludedGraph {
+            val excludedValue: String
+          }
+
+          @DependencyGraph(LibParentScope::class)
+          interface ReplacedGraph {
+            val replacedValue: String
+          }
+          """,
+          fileName = "RemovedBinaryChildren.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      val initial = service.awaitIndex(file)
+      val initialChild = initial.graphs.single { it.name == "LibChildGraph" }
+      assertEquals(
+        listOf("LibChildGraph", "ReplacedGraph"),
+        initial.contextsFor(initialChild).single().chain.map { it.name },
+      )
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(
+          document.textLength,
+          "\n" +
+            """
+            @ContributesTo(LibParentScope::class, replaces = [LibChildGraph.Factory::class])
+            interface Replacement
+            """
+              .trimIndent(),
+        )
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val index = service.awaitIndex(file)
+      val child = index.graphs.single { it.name == "LibChildGraph" }
+      assertTrue(index.contextsFor(child).all { it.chain.size == 1 })
+      for (name in listOf("excludedValue", "replacedValue")) {
+        val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property(name))!!
+        assertTrue(index.bindingsFor(consumer).isEmpty())
+      }
+      val factory =
+        index.contributions.single {
+          it.classId?.asFqNameString() == "libtest.LibChildGraph.Factory"
+        }
+      assertEquals(child.classId, factory.graphExtension?.classId)
+    }
+  }
+
+  fun testInheritedSourceContributionEditsRefreshBinaryChildMembers() {
+    module.withMetroLibFixtureLibrary {
+      val inheritedFile =
+        myFixture.addFileToProject(
+          "test/ChildBase.kt",
+          """
+          package test
+
+          import libtest.LibRegistry
+
+          interface ChildBase {
+            val contributed: LibRegistry
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibChildGraph
+          import libtest.LibChildScope
+
+          @ContributesTo(LibChildScope::class)
+          interface ChildMembers : ChildBase
+
+          @DependencyGraph
+          interface AppGraph {
+            val factory: LibChildGraph.Factory
+          }
+          """,
+          fileName = "InheritedSourceChildMembers.kt",
+        )
+      val service = project.service<MetroResolutionService>()
+      fun contributedBinding(index: BindingIndex): KaBinding {
+        val graph = index.graphs.single { it.name == "LibChildGraph" }
+        val query = checkNotNull(index.queryContext(index.contextsFor(graph).single()))
+        val accessor =
+          index.graphComposition(query).accessors.single {
+            (it.pointer.element as? KtNamedDeclaration)?.name == "contributed"
+          }
+        return index.bindingsFor(accessor).single()
+      }
+      val initial = service.awaitIndex(file)
+      assertEquals("libtest.LibRegistry", contributedBinding(initial).typeKey.renderedType)
+      val document =
+        checkNotNull(PsiDocumentManager.getInstance(project).getDocument(inheritedFile))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.setText(document.text.replace("LibRegistry", "LibInterfaceClient"))
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val updated = service.awaitIndex(file)
+      assertEquals("libtest.LibInterfaceClient", contributedBinding(updated).typeKey.renderedType)
+    }
+  }
+
+  fun testBinaryFactoryMergePreservesEverySourceInputOwner() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibSharedInputFactory
+          import libtest.LibSharedInputScope
+
+          @DependencyGraph
+          interface FirstGraph {
+            val first: Int
+            @DependencyGraph.Factory
+            interface Factory : LibSharedInputFactory<FirstGraph>
+          }
+
+          @DependencyGraph
+          interface SecondGraph {
+            val second: Int
+            @DependencyGraph.Factory
+            interface Factory : LibSharedInputFactory<SecondGraph>
+          }
+
+          @DependencyGraph(LibSharedInputScope::class)
+          interface ParentGraph
+          """,
+          fileName = "SharedSourceAndBinaryInputs.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val owners = index.graphs.filter { it.name != "ParentGraph" }.map { it.declarationId }.toSet()
+      assertEquals(3, owners.size)
+      val instance =
+        index.bindings.filterIsInstance<KaBinding.BoundInstance>().single {
+          it.isBindingContainerInput && it.typeKey.renderedType == "libtest.LibFactoryExtras"
+        }
+      assertEquals(owners, setOfNotNull(instance.ownerGraphId) + instance.additionalOwnerGraphIds)
+      for (graph in index.graphs) {
+        val context = index.contextsFor(graph).single()
+        val result =
+          project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
+        assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      }
+    }
+  }
+
   fun testBinaryGenericAssistedFactoriesKeepConcreteTargetsAndGraphDependencies() {
     module.withMetroLibFixtureLibrary {
       val file =

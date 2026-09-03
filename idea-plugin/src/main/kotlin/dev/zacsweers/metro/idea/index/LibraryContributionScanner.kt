@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.search.GlobalSearchScope
@@ -14,9 +15,13 @@ import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.classLiteralClassId
+import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.graph.GraphMemberExtractor
+import dev.zacsweers.metro.idea.index.graph.graphExtensionFactoryTarget
+import dev.zacsweers.metro.idea.index.graph.graphReference
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -45,20 +50,32 @@ internal class LibraryContributionScanner(
   private val graphs: List<KaGraphDeclaration>,
   private val sourceContributions: List<ContributionEntry>,
   private val consumers: List<ConsumerEntry>,
+  private val onGraphReference: (GraphReference, KtElement) -> Unit = { _, _ -> },
+  private val onDeclarationFile: (PsiFile, KtElement) -> Unit = { _, _ -> },
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
   private val bindings = mutableListOf<KaBinding>()
   private val contributions = mutableListOf<ContributionEntry>()
   private val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
   private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
-  // Binary declarations are invalidated with the classpath. The composed graph members seed
-  // concrete class lookup after each consumer has its source graph owner.
-  private val graphMembers =
-    GraphMemberExtractor(options, pointerManager, bindings, {}, { _, _ -> }, {})
+  private val scannedScopes = hashSetOf<ClassId>()
+  // Every scope batch uses the same source snapshot inside one read action.
+  private val useSites by
+    lazy(LazyThreadSafetyMode.NONE) {
+      sourceUseSitesByModule(project, graphs, sourceContributions, consumers)
+    }
 
-  fun scan(): LibraryContributions {
-    scanLibraryContributionHints()
-    return LibraryContributions(bindings, contributions, graphInterfaces)
+  /** Returns only metadata added by this scope batch; prior scopes stay memoized. */
+  fun scan(scopeIds: Set<ClassId>): LibraryContributions {
+    val bindingStart = bindings.size
+    val contributionStart = contributions.size
+    val interfaceStart = graphInterfaces.size
+    scanLibraryContributionHints(scopeIds)
+    return LibraryContributions(
+      bindings.drop(bindingStart),
+      contributions.drop(contributionStart),
+      graphInterfaces.drop(interfaceStart),
+    )
   }
 
   /**
@@ -67,18 +84,14 @@ internal class LibraryContributionScanner(
    * top-level hint functions in the `metro.hints` package, named after the scope class, whose
    * single parameter type is the contributing class.
    */
-  private fun scanLibraryContributionHints() {
-    val scopeIds = buildSet {
-      graphs.forEach { addAll(it.scopeKeys) }
-      sourceContributions.forEach { addAll(it.scopeKeys) }
-    }
+  private fun scanLibraryContributionHints(scopeIds: Set<ClassId>) {
     if (scopeIds.isEmpty()) return
-    val useSites = sourceUseSitesByModule(project, graphs, sourceContributions, consumers)
     val fileIndex = ProjectFileIndex.getInstance(project)
     val allScope = GlobalSearchScope.allScope(project)
     val hints = mutableListOf<LibraryHint>()
     for (scopeId in scopeIds) {
       ProgressManager.checkCanceled()
+      if (!scannedScopes.add(scopeId)) continue
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
       for (hintFunction in KotlinTopLevelFunctionFqnNameIndex[hintFqName, project, allScope]) {
         ProgressManager.checkCanceled()
@@ -109,6 +122,7 @@ internal class LibraryContributionScanner(
     hintAvailability: HintAvailability?,
   ) {
     analyze(context) {
+      val recordFile: (PsiFile) -> Unit = { onDeclarationFile(it, context) }
       val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze
       val contributedType =
         symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze
@@ -142,6 +156,14 @@ internal class LibraryContributionScanner(
           ?.filter { it.classId in options.allContributesAnnotations }
           ?.flatMapToSet { classListArgument(it, "replaces") }
           .orEmpty() + classReplaces
+      val childType =
+        if (classSymbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
+          val factoryType = contributedType as? KaClassType
+          factoryType?.let { graphExtensionFactoryTarget(it, options, recordFile) }
+        } else {
+          null
+        }
+      val childReference = childType?.graphReference()
       val contribution =
         ContributionEntry(
           pointerManager.createSmartPsiElementPointer(contributionAnchor),
@@ -150,16 +172,23 @@ internal class LibraryContributionScanner(
           hintAvailability,
           kind = (originSymbol ?: classSymbol).contributionKind(options),
           replaces = contributionReplaces,
+          graphExtension = childReference,
         )
       contributions += contribution
+      if (childReference != null) onGraphReference(childReference, context)
       if (contribution.kind == ContributionEntry.Kind.GRAPH_INTERFACE) {
         val interfaceType = contributedType as? KaClassType ?: return@analyze
-        graphInterfaces += graphMembers.interfaceSurface(this, contribution, interfaceType)
+        val graphMembers =
+          GraphMemberExtractor(options, pointerManager, bindings, recordFile, { _, _ -> }, {})
+        val surface = graphMembers.interfaceSurface(this, contribution, interfaceType)
+        graphInterfaces += surface
+        for (reference in surface.extensionCreations) onGraphReference(reference, context)
         return@analyze
       }
-      val classBindings = ktClass.bindingData(this, options)
+      val classBindings = ktClass.bindingData(this, options, recordFile)
       val originBindings =
-        if (originPsi != null && originPsi != ktClass) originPsi.bindingData(this, options)
+        if (originPsi != null && originPsi != ktClass)
+          originPsi.bindingData(this, options, recordFile)
         else emptyList()
       val mapContributionAnnotations =
         options.contributesIntoMapAnnotations + options.customContributesIntoSetAnnotations
@@ -196,7 +225,7 @@ internal class LibraryContributionScanner(
       for (holder in memberHolders) {
         ProgressManager.checkCanceled()
         for (member in holder.declarations.filterIsInstance<KtCallableDeclaration>()) {
-          for (data in member.bindingData(this, options)) {
+          for (data in member.bindingData(this, options, recordFile)) {
             val matchingContribution = classContributions.firstOrNull { contribution ->
               contribution.key == data.key &&
                 contribution.multibindingId == data.multibindingId &&
