@@ -1312,6 +1312,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         "package test\n\nclass First\nclass Second",
       ) as KtFile
     runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    assertSame(initial, service.awaitIndex(file))
 
     val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(unrelated))
     WriteCommandAction.runWriteCommandAction(project) {
@@ -2791,7 +2792,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val local = updatedAccessors.single { it.key.renderedType == "kotlin.Int" }
       assertEquals(
         "provideLocal",
-        (updated.bindingsFor(local).single().pointer.element as? KtNamedDeclaration)?.name,
+        (updated.bindingsFor(local, updatedQuery).single().pointer.element as? KtNamedDeclaration)
+          ?.name,
       )
     }
   }
@@ -2872,7 +2874,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals(listOf("kotlin.Boolean"), accessors.map { it.key.renderedType })
       assertEquals(
         "provideEnabled",
-        (index.bindingsFor(accessors.single()).single().pointer.element as? KtNamedDeclaration)
+        (index.bindingsFor(accessors.single(), query).single().pointer.element
+            as? KtNamedDeclaration)
           ?.name,
       )
       assertFalse(index.bindings.any { it.typeKey.renderedType == "libtest.LibInterfaceClient" })
@@ -3032,7 +3035,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         index.graphComposition(query).accessors.single {
           it.key.renderedType == "libtest.LibParentService"
         }
-      assertEquals(file.virtualFile, index.bindingsFor(parent).single().pointer.virtualFile)
+      assertEquals(file.virtualFile, index.bindingsFor(parent, query).single().pointer.virtualFile)
       val result =
         project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3080,11 +3083,11 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val enabled = accessors.single { it.key.renderedType == "kotlin.Boolean" }
       assertTrue(index.bindingsFor(enabled).single().dependencies.isEmpty())
       val other = index.consumerEntryAt(file.declarationsIncludingNested().property("other"))!!
-      assertTrue(index.bindingsFor(other).isEmpty())
+      assertEquals(emptyList<KaBinding>(), index.resolveConsumer(other).uniformBindings)
       val selfChild = index.graphs.single { it.name == "LibSelfCompanionChildGraph" }
       val selfQuery = checkNotNull(index.queryContext(index.contextsFor(selfChild).single()))
       val selfValue = index.graphComposition(selfQuery).accessors.single()
-      assertTrue(index.bindingsFor(selfValue).isEmpty())
+      assertTrue(index.bindingsFor(selfValue, selfQuery).isEmpty())
       val result =
         project.service<MetroGraphValidationService>().validate(file, context).requireCompleted()
       assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
@@ -3136,7 +3139,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(index.contextsFor(child).all { it.chain.size == 1 })
       for (name in listOf("excludedValue", "replacedValue")) {
         val consumer = index.consumerEntryAt(file.declarationsIncludingNested().property(name))!!
-        assertTrue(index.bindingsFor(consumer).isEmpty())
+        assertEquals(emptyList<KaBinding>(), index.resolveConsumer(consumer).uniformBindings)
       }
       val factory =
         index.contributions.single {
@@ -3461,7 +3464,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
-  fun testUnrelatedFactoryFileEditsReuseItsExistingBinaryDependencyOverlay() {
+  fun testFactoryDependencyFileEditsRefreshItsBinaryDependencyOverlay() {
     module.withMetroLibFixtureLibrary {
       val factoryFile =
         myFixture.addFileToProject(
@@ -3521,11 +3524,16 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         }
       assertNotSame(initial, updated)
       assertNotSame(initialFactory, updatedFactory)
-      assertSame(
+      assertEquals(
+        initialFactory.targetConstructorDependencies,
+        updatedFactory.targetConstructorDependencies,
+      )
+      // Class discovery reads this source file, so its new stamp refreshes the derived overlay.
+      assertNotSame(
         initialClient,
         updated.bindings.single { it.typeKey.renderedType == "libtest.LibClientWithDeps" },
       )
-      assertSame(
+      assertNotSame(
         initialHttpClient,
         updated.bindings.single { it.typeKey.renderedType == "libtest.LibHttpClient" },
       )
@@ -3665,13 +3673,16 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
       val unchanged = service.awaitIndex(graphFile)
       assertNotSame(initial, unchanged)
-      assertSame(
-        initialInner,
+      val refreshedInner =
         unchanged.bindings.filterIsInstance<KaBinding.AssistedFactory>().single {
           it.typeKey.renderedType == innerKey
-        },
+        }
+      assertNotSame(initialInner, refreshedInner)
+      assertEquals(
+        initialInner.targetConstructorDependencies,
+        refreshedInner.targetConstructorDependencies,
       )
-      assertSame(
+      assertNotSame(
         initialDependency,
         unchanged.bindings.single {
           it.typeKey.renderedType == "libtest.LibRetargetedDependencyA"
@@ -5220,15 +5231,25 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
   }
 
   fun testBindingExplanationUsesContributionSelectionReasons() {
+    // The bootstrap runtime predates native contribution priorities, so declare the test shape.
+    project.setMetroOptions("custom-contributes-binding" to "test/PrioritizedBinding")
     val file =
       myFixture.configureMetroFile(
         """
+      import kotlin.reflect.KClass
+
+      annotation class PrioritizedBinding(
+        val scope: KClass<*>,
+        val priority: Int = Int.MIN_VALUE,
+        val replaces: Array<KClass<*>> = [],
+      )
+
       interface Service
-      @ContributesBinding(AppScope::class, priority = 1) class Slow : Service
-      @ContributesBinding(AppScope::class, priority = 2) class Fast : Service
-      @ContributesBinding(AppScope::class) class Retired : Service
-      @ContributesBinding(AppScope::class, replaces = [Retired::class], priority = 1) class Backup : Service
-      @ContributesBinding(AppScope::class, priority = 3) class Excluded : Service
+      @Inject @PrioritizedBinding(AppScope::class, priority = 1) class Slow : Service
+      @Inject @PrioritizedBinding(AppScope::class, priority = 2) class Fast : Service
+      @Inject @PrioritizedBinding(AppScope::class) class Retired : Service
+      @Inject @PrioritizedBinding(AppScope::class, replaces = [Retired::class], priority = 1) class Backup : Service
+      @Inject @PrioritizedBinding(AppScope::class, priority = 3) class Excluded : Service
       @DependencyGraph(AppScope::class, excludes = [Excluded::class])
       interface AppGraph { val service: Service }
       """
@@ -5241,6 +5262,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       val explanation = index.explainBindings(session, consumer, query)
       assertEquals(context.path, explanation.context.path)
       assertEquals(session.bindingsFor(consumer, query), explanation.selected)
+      assertEquals(listOf("Fast"), explanation.selected.map { it.implementationName })
       val candidates =
         explanation.candidates.associateBy { it.binding.originClassId?.shortClassName?.asString() }
       assertTrue(candidates.getValue("Fast").selected)
@@ -5352,7 +5374,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
     assertEquals(listOf(provider), index.resolveConsumer(consumer).uniformBindings)
     assertTrue(index.consumersFor(listOf(contribution, declaration)).isEmpty())
-    assertEquals(listOf(consumer), index.consumersFor(listOf(provider)))
+    val declarationConsumer = index.consumerEntryAt(declarations.function("declareNames"))!!
+    assertEquals(setOf(consumer, declarationConsumer), index.consumersFor(listOf(provider)).toSet())
 
     val result =
       project

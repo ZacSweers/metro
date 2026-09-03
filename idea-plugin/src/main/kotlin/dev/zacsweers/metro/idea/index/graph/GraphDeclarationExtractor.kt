@@ -91,6 +91,7 @@ internal class GraphDeclarationExtractor(
           injectedMemberOwnerIds,
           factoryContext = classSymbol.defaultType as? KaClassType,
         )
+      indexClassLiteralContainers(this, containerIds, memberTarget)
 
       for (member in ktClass.declarations) {
         checkCanceled()
@@ -187,5 +188,31 @@ internal class GraphDeclarationExtractor(
         extensionFactories = extensionFactories,
         defaultImplementations = memberTarget.defaultImplementations,
       )
+    }
+
+  /** Source containers are swept separately; their includes can still lead to binary providers. */
+  private fun indexClassLiteralContainers(
+    session: KaSession,
+    containers: Set<ClassId>,
+    target: GraphMemberTarget,
+  ) =
+    with(session) {
+      val pending = ArrayDeque(containers)
+      val visited = hashSetOf<ClassId>()
+      while (pending.isNotEmpty()) {
+        checkCanceled()
+        val classId = pending.removeFirst()
+        if (!visited.add(classId)) continue
+        val symbol = findClass(classId) as? KaNamedClassSymbol ?: continue
+        symbol.psi?.containingFile?.let(onDeclarationFile)
+        recordAnnotations(this, symbol, symbol.psi)
+        for (annotation in symbol.annotations) {
+          if (annotation.classId in options.bindingContainerAnnotations) {
+            pending.addAll(classListArgument(annotation, "includes"))
+          }
+        }
+        val type = symbol.defaultType as? KaClassType ?: continue
+        graphMembers.indexContainerBindings(this, type, target)
+      }
     }
 }

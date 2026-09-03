@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.IdentityHashMap
 import kotlinx.coroutines.CancellationException
+import org.jetbrains.kotlin.psi.KtFile
 
 /** One captured graph or a reusable result from the same index generation. */
 internal sealed interface ValidationInput {
@@ -90,7 +91,7 @@ internal class ValidationInputCapture(
 
   /** Captures every concrete context and extension of a declaration. */
   fun capture(element: PsiElement, graph: KaGraphDeclaration): ValidationTraversal {
-    val declarationElement = graph.pointer.element ?: element
+    val declarationElement = sourceElement(graph.pointer.element) ?: element
     val index = project.service<MetroResolutionService>().currentIndex(declarationElement)
     val currentGraph =
       index.graphFor(graph)
@@ -209,12 +210,30 @@ internal class ValidationInputCapture(
   }
 
   private fun resolve(declarationFallback: PsiElement, context: GraphContext): ResolvedInput? {
-    val element = context.contextPointer.element ?: declarationFallback
+    val element = compilationElement(context) ?: declarationFallback
     val index = project.service<MetroResolutionService>().currentIndex(element)
     val session = session(index)
     val current = session.findContext(context.path) ?: return null
-    val currentElement = current.contextPointer.element ?: return null
+    val currentElement = compilationElement(current) ?: element
     return ResolvedInput(currentElement, session, current)
+  }
+
+  /** Compiled extensions are validated in the source compilation that creates their path. */
+  private fun compilationElement(context: GraphContext): PsiElement? {
+    sourceElement(context.dynamicGraph?.pointer?.element)?.let {
+      return it
+    }
+    for (graph in context.chain) {
+      sourceElement(graph.pointer.element)?.let {
+        return it
+      }
+    }
+    return null
+  }
+
+  private fun sourceElement(element: PsiElement?): PsiElement? {
+    val file = element?.containingFile as? KtFile ?: return null
+    return element.takeUnless { file.isCompiled }
   }
 
   private fun moduleOptions(element: PsiElement): MetroOptions {

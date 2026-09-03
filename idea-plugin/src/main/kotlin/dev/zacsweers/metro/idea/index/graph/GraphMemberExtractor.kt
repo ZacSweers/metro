@@ -51,9 +51,11 @@ import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 
 /**
@@ -116,6 +118,34 @@ internal class GraphMemberExtractor(
         val declaration = callable.psi as? KtDeclaration ?: continue
         declaration.containingFile?.let(onDeclarationFile)
         processInheritedBindingCallable(declaration, callableBindingView(callable), target)
+      }
+    }
+
+  /** Class-literal containers contribute binary providers without adding graph accessors. */
+  fun indexContainerBindings(
+    session: KaSession,
+    containerType: KaClassType,
+    target: GraphMemberTarget,
+  ) =
+    with(session) {
+      val scope = containerType.scope
+      if (scope != null) {
+        for (signature in scope.getCallableSignatures()) {
+          checkCanceled()
+          val view = callableBindingView(signature) ?: continue
+          val declaration = view.symbol.psi as? KtDeclaration ?: continue
+          declaration.containingFile?.let(onDeclarationFile)
+          if (view.symbol.origin != KaSymbolOrigin.LIBRARY) continue
+          processInheritedBindingCallable(declaration, view, target)
+        }
+      }
+      val declaration = containerType.symbol.psi as? KtClassOrObject ?: return@with
+      for (companion in declaration.declarations.filterIsInstance<KtObjectDeclaration>()) {
+        checkCanceled()
+        if (!companion.isCompanion()) continue
+        val symbol = companion.symbol
+        if (symbol.origin != KaSymbolOrigin.LIBRARY) continue
+        indexCompanionBindings(this, symbol, target)
       }
     }
 
