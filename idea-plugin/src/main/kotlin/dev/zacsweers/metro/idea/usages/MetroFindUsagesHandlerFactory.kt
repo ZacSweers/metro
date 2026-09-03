@@ -16,7 +16,7 @@ import com.intellij.psi.search.SearchScope
 import com.intellij.usageView.UsageInfo
 import com.intellij.util.Processor
 
-/** Warms Metro usage relationships before delegating ordinary Kotlin usage discovery. */
+/** Prepares Metro's usage results before ordinary Kotlin usages are grouped. */
 class MetroFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
   override fun canFindUsages(element: PsiElement): Boolean {
     val declaration = element.metroSourceDeclaration() ?: return false
