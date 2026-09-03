@@ -178,7 +178,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     parent: MetroTreeNode,
     override val text: String,
     override val pointer: SmartPsiElementPointer<*>?,
-    index: Int,
+    val index: Int,
   ) : MetroTreeNode(parent) {
     override val icon: Icon = MetroIcons.CONSUMER
     override val identity: Any = index to text

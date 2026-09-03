@@ -25,6 +25,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.WaitFor
 import com.intellij.util.ui.tree.TreeUtil
@@ -36,6 +37,7 @@ import dev.zacsweers.metro.compiler.diagnostics.Note
 import dev.zacsweers.metro.compiler.diagnostics.textOf
 import dev.zacsweers.metro.idea.explanation.MetroBindingExplanationPanel
 import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
+import dev.zacsweers.metro.idea.graph.CachedValidation
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
@@ -57,6 +59,7 @@ import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNavigation
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeSelection
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationRequestService
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationResultPanel
@@ -75,8 +78,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JPanel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
+import javax.swing.tree.TreePath
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -1152,6 +1157,12 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       val results = waitForValidationResults(panel)
       val original =
         treeNodes(results.tree).filterIsInstance<MetroTreeNode.Validation>().single().result
+      val initialRows = treeNodes(results.tree)
+      val stackRow = initialRows.indexOfFirst { it is MetroTreeNode.StackEntry }
+      assertTrue(stackRow >= 0)
+      results.tree.setSelectionRow(stackRow)
+      val selectedStackText = checkNotNull(selectedTreeNode(results.tree)).text
+      val selectedDetails = results.diagnosticDetails.textArea.text
       val other = initial.contextsFor(initial.graphs.single { it.name == "OtherGraph" }).single()
       validation.validate(file, other).requireCompleted()
       PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
@@ -1168,17 +1179,23 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       object : WaitFor(30_000) {
           override fun condition(): Boolean {
             PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-            return treeNodes(results.tree)
-              .filterIsInstance<MetroTreeNode.Validation>()
-              .singleOrNull()
-              ?.grayText
-              ?.contains("code changed since this run") == true
+            val stale =
+              treeNodes(results.tree)
+                .filterIsInstance<MetroTreeNode.Validation>()
+                .singleOrNull()
+                ?.grayText
+                ?.contains("code changed since this run") == true
+            val selected = selectedTreeNode(results.tree)
+            return stale &&
+              selected is MetroTreeNode.StackEntry &&
+              selected.text == selectedStackText
           }
         }
         .assertCompleted("The visible last result should become stale after source changes")
 
       val rows = treeNodes(results.tree)
       assertSame(original, rows.filterIsInstance<MetroTreeNode.Validation>().single().result)
+      assertEquals(selectedDetails, results.diagnosticDetails.textArea.text)
       assertTrue(
         rows.filterIsInstance<MetroTreeNode.Graph>().single().grayText.orEmpty().contains("stale")
       )
@@ -2426,6 +2443,122 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertEquals("", panel.diagnosticDetails.textArea.text)
     } finally {
       Disposer.dispose(panel)
+    }
+  }
+
+  fun testStaleResultRefreshKeepsANewerUserSelection() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+        @DependencyGraph interface AppGraph { val missing: MissingThing }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val result = project.service<MetroGraphValidationService>().validate(file, context)
+    val panel = MetroValidationResultPanel(project) {}
+    try {
+      panel.showResults(listOf(result))
+      val rows = treeNodes(panel.tree)
+      panel.tree.setSelectionRow(rows.indexOfFirst { it is MetroTreeNode.StackEntry })
+      assertTrue(panel.diagnosticDetails.isVisible)
+
+      panel.refreshStaleness(listOf(CachedValidation(result, stale = true)))
+      panel.tree.setSelectionRow(0)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return treeNodes(panel.tree)
+              .filterIsInstance<MetroTreeNode.Validation>()
+              .singleOrNull()
+              ?.grayText
+              ?.contains("code changed since this run") == true
+          }
+        }
+        .assertCompleted("The refreshed result should show its stale label")
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertTrue(selectedTreeNode(panel.tree) is MetroTreeNode.Graph)
+      assertFalse(panel.diagnosticDetails.isVisible)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testTreeSelectionRejectsLateTraversalAndDisposedOwner() {
+    val first = DefaultMutableTreeNode("First")
+    val second = DefaultMutableTreeNode("Second")
+    val root =
+      DefaultMutableTreeNode("Root").apply {
+        add(first)
+        add(second)
+      }
+    val tree = Tree(DefaultTreeModel(root)).apply { isRootVisible = false }
+    val traversals = mutableListOf<AsyncPromise<TreePath?>>()
+    val selection =
+      MetroTreeSelection(tree, testRootDisposable) {
+        AsyncPromise<TreePath?>().also { traversals += it }
+      }
+    val visitor = TreeVisitor { TreeVisitor.Action.INTERRUPT }
+    val firstPath = TreePath(arrayOf(root, first))
+    val secondPath = TreePath(arrayOf(root, second))
+    try {
+      selection.request().select(visitor)
+      selection.request().select(visitor)
+      traversals[1].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      traversals[0].setResult(firstPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(secondPath, tree.selectionPath)
+
+      var resolvedPath: TreePath? = null
+      selection.request().select(visitor) { resolvedPath = it }
+      tree.selectionPath = firstPath
+      traversals[2].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(firstPath, tree.selectionPath)
+      assertEquals(secondPath, resolvedPath)
+
+      selection.request().select(visitor)
+      Disposer.dispose(selection)
+      traversals[3].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(firstPath, tree.selectionPath)
+    } finally {
+      if (!Disposer.isDisposed(selection)) Disposer.dispose(selection)
+    }
+  }
+
+  fun testTreeSelectionRestoresModelRemovalAndRespectsDeliberateClearing() {
+    val before = DefaultMutableTreeNode("Before")
+    val root = DefaultMutableTreeNode("Root").apply { add(before) }
+    val model = DefaultTreeModel(root)
+    val tree = Tree(model).apply { isRootVisible = false }
+    val traversals = mutableListOf<AsyncPromise<TreePath?>>()
+    val selection =
+      MetroTreeSelection(tree, testRootDisposable) {
+        AsyncPromise<TreePath?>().also { traversals += it }
+      }
+    val visitor = TreeVisitor { TreeVisitor.Action.INTERRUPT }
+    try {
+      tree.selectionPath = TreePath(arrayOf(root, before))
+      selection.request().select(visitor)
+      model.removeNodeFromParent(before)
+      assertNull(tree.selectionPath)
+      val after = DefaultMutableTreeNode("After")
+      model.insertNodeInto(after, root, 0)
+      val afterPath = TreePath(arrayOf(root, after))
+      traversals[0].setResult(afterPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(afterPath, tree.selectionPath)
+
+      selection.request().select(visitor)
+      tree.clearSelection()
+      traversals[1].setResult(afterPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertNull(tree.selectionPath)
+    } finally {
+      Disposer.dispose(selection)
     }
   }
 

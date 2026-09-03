@@ -101,6 +101,8 @@ internal class MetroToolWindowPanel(
       isRootVisible = false
       showsRootHandles = true
     }
+  private val treeSelection = MetroTreeSelection(tree, this)
+  private var validationSelection: MetroTreeSelection.Request? = null
   private val browserAndResults = JBSplitter(true, 0.65f)
   private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
 
@@ -154,6 +156,7 @@ internal class MetroToolWindowPanel(
     }
     pinService.addListener(this) {
       revealGeneration++
+      treeSelection.cancelPendingSelection()
       treeStructure.revealPath(null)
       treeModel.invalidateAsync()
     }
@@ -259,24 +262,27 @@ internal class MetroToolWindowPanel(
   ) {
     val target = GraphValidationTarget(classId, file, path)
     val generation = beginValidationRequest(requestToken) ?: return
-    TreeUtil.promiseSelect(tree, graphVisitor(target)).onProcessed {
+    checkNotNull(validationSelection).select(graphVisitor(target)) { selectedPath ->
       if (
         generation == pendingValidationGeneration &&
           !validationRequestService.isLatest(requestToken)
       ) {
         cancelPendingValidation()
-        return@onProcessed
+        return@select
       }
       if (
         disposed ||
           generation != pendingValidationGeneration ||
           !validationRequestService.isLatest(requestToken)
       ) {
-        return@onProcessed
+        return@select
       }
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
-      val selectedGraph = selectedGraphNode()?.takeIf { target.matches(it.context) }
+      val selectedGraph =
+        (selectedPath?.let(::nodeAt) as? MetroTreeNode.Graph)?.takeIf {
+          target.matches(it.context)
+        }
       if (selectedGraph != null) {
         pendingValidation = null
         if (path == null) validateGraph(selectedGraph.graph, generation)
@@ -298,12 +304,12 @@ internal class MetroToolWindowPanel(
     resolutionService.activateGraphBrowser()
     searchField.text = ""
     treeStructure.revealPath(target.path)
+    val selection = treeSelection.request { !project.isDisposed && generation == revealGeneration }
     treeModel.invalidateAsync().thenRun {
       SwingUtilities.invokeLater {
         if (disposed || generation != revealGeneration) return@invokeLater
-        TreeUtil.promiseSelect(tree, metroRevealVisitor(target, ::nodeAt)).onProcessed {
-          if (disposed || generation != revealGeneration) return@onProcessed
-          onResult(selectedNode()?.matchesRevealTarget(target) == true)
+        selection.select(metroRevealVisitor(target, ::nodeAt)) { selectedPath ->
+          onResult(selectedPath?.let(::nodeAt)?.matchesRevealTarget(target) == true)
         }
       }
     }
@@ -370,7 +376,13 @@ internal class MetroToolWindowPanel(
     pendingValidationLookupGeneration++
     pendingValidationLookup?.cancel()
     pendingValidationLookup = null
-    return ++pendingValidationGeneration
+    val generation = ++pendingValidationGeneration
+    validationSelection = treeSelection.request {
+      !project.isDisposed &&
+        generation == pendingValidationGeneration &&
+        validationRequestService.isLatest(requestToken)
+    }
+    return generation
   }
 
   private fun cancelPendingValidation() {
@@ -379,6 +391,7 @@ internal class MetroToolWindowPanel(
     pendingValidationLookupGeneration++
     pendingValidationLookup?.cancel()
     pendingValidationLookup = null
+    validationSelection = null
   }
 
   @TestOnly
@@ -454,6 +467,7 @@ internal class MetroToolWindowPanel(
       generation == pendingValidationGeneration &&
         validationRequestService.isLatest(latestValidationRequestToken)
     if (!isLatestRequest) return
+    val selection = validationSelection ?: return
     browserAndResults.secondComponent = validationResults
     validationResults.showResults(results)
     refreshValidationStaleness()
@@ -471,7 +485,7 @@ internal class MetroToolWindowPanel(
         ) {
           return@invokeLater
         }
-        TreeUtil.promiseSelect(tree, visitor)
+        selection.select(visitor)
       }
     }
   }

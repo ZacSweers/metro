@@ -49,6 +49,7 @@ internal class MetroValidationResultPanel(
       isRootVisible = false
       showsRootHandles = true
     }
+  private val treeSelection = MetroTreeSelection(tree, this)
   internal val diagnosticDetails = MetroDiagnosticDetailsPanel()
   private val treeAndDetails = JBSplitter(true, 0.45f)
   private var generation = 0L
@@ -108,11 +109,14 @@ internal class MetroValidationResultPanel(
     val selectedPath = (firstProblem ?: results.firstOrNull())?.context?.path
     val selectDiagnostic =
       firstProblem is KaGraphValidationResult.Completed && firstProblem.diagnostics.isNotEmpty()
+    val selection = treeSelection.request {
+      !project.isDisposed && isVisible && generation == currentGeneration
+    }
     model.invalidateAsync().thenRun {
       SwingUtilities.invokeLater {
         if (disposed || project.isDisposed || generation != currentGeneration) return@invokeLater
         // Select the first problem so its detail is visible. Navigable stacks remain collapsed.
-        TreeUtil.promiseSelect(tree, resultVisitor(selectedPath, selectDiagnostic))
+        selection.select(resultVisitor(selectedPath, selectDiagnostic))
       }
     }
   }
@@ -120,13 +124,27 @@ internal class MetroValidationResultPanel(
   /** Updates the displayed run's stale flags while retaining its selection and ownership. */
   fun refreshStaleness(retainedResults: List<CachedValidation>) {
     if (disposed || !isVisible) return
-    if (structure.refreshStaleness(retainedResults)) model.invalidateAsync()
+    val selected = tree.selectionPath?.let(::nodeAt)?.takeIf(structure::contains)
+    val visitor = selected?.let { validationSelectionVisitor(it, ::nodeAt) }
+    if (!structure.refreshStaleness(retainedResults)) return
+    if (visitor == null) {
+      model.invalidateAsync()
+      return
+    }
+    val currentGeneration = generation
+    val selection = treeSelection.request {
+      !project.isDisposed && isVisible && generation == currentGeneration
+    }
+    model.invalidateAsync().thenRun {
+      SwingUtilities.invokeLater { selection.select(visitor) }
+    }
   }
 
   /** Releases the previous run when the pane closes or another explicit request starts. */
   fun clear() {
     if (disposed) return
     generation++
+    treeSelection.cancelPendingSelection()
     structure.clear()
     clearDiagnosticSelection()
     isVisible = false
