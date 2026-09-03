@@ -449,7 +449,7 @@ private fun KtAnnotated?.hasAnyMetroAnnotation(classIds: Set<ClassId>): Boolean 
 private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Boolean {
   val annotationClassId =
     when (val annotationClass = typeReference?.mainReference?.resolve()) {
-      is KtClassOrObject -> annotationClass.fqName?.let(ClassId::topLevel)
+      is KtClassOrObject -> annotationClass.getClassId()
       is PsiClass -> annotationClass.classId
       is PsiMember -> annotationClass.containingClass?.classId
       else -> null

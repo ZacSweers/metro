@@ -473,6 +473,34 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.klass("CustomContributedBindingService").isMetroImplicitUsage())
   }
 
+  fun testNestedCustomAnnotationsKeepTheirClassIdentity() {
+    project.setMetroOptions("custom-inject" to "test/Di.Inject")
+    val file =
+      myFixture.configureByText(
+        "NestedAnnotations.kt",
+        """
+        package test
+
+        class Di {
+          annotation class Inject
+        }
+
+        class Other {
+          annotation class Inject
+        }
+
+        class InjectedService @Di.Inject constructor()
+        class UnrelatedService @Other.Inject constructor()
+        """
+          .trimIndent(),
+      ) as KtFile
+    val declarations = file.declarationsIncludingNested()
+
+    assertTrue(declarations.klass("InjectedService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("InjectedService").primaryConstructor!!.isMetroImplicitUsage())
+    assertFalse(declarations.klass("UnrelatedService").isMetroImplicitUsage())
+  }
+
   fun testMarksContributionProviderDeclarationsAsImplicitlyUsedWhenConfigured() {
     project.setMetroOptions(
       "contributes-as-inject" to "false",
