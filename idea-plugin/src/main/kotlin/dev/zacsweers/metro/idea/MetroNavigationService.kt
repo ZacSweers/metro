@@ -7,6 +7,9 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.EditorFactoryEvent
+import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -33,12 +36,29 @@ import org.jetbrains.annotations.TestOnly
 internal class MetroNavigationService(
   private val project: Project,
   private val scope: CoroutineScope,
-) {
+) : Disposable {
   private data class NavigationRequest(val identity: Any, val job: Job)
 
   private val lock = Any()
+  private var disposed = false
   private val requestsByOwner = IdentityHashMap<Any, NavigationRequest>()
   private val targetResolutionObserver = AtomicReference<(suspend () -> Unit)?>(null)
+
+  init {
+    // Editor release can happen while a cold query is suspended waiting for project indexes.
+    EditorFactory.getInstance()
+      .addEditorFactoryListener(
+        object : EditorFactoryListener {
+          override fun editorReleased(event: EditorFactoryEvent) {
+            val editor = event.editor
+            if (editor.project !== project) return
+            val request = synchronized(lock) { requestsByOwner.remove(editor) }
+            request?.job?.cancel()
+          }
+        },
+        this,
+      )
+  }
 
   /** A newer request from [owner] cancels and supersedes its previous request. */
   fun resolveTargets(
@@ -113,6 +133,10 @@ internal class MetroNavigationService(
 
     val previous =
       synchronized(lock) {
+        if (disposed) {
+          job.cancel()
+          return null
+        }
         requestsByOwner.put(owner, NavigationRequest(requestIdentity, job))
       }
     previous?.job?.cancel()
@@ -134,5 +158,17 @@ internal class MetroNavigationService(
 
   private fun isCurrent(owner: Any, requestIdentity: Any): Boolean {
     return synchronized(lock) { requestsByOwner[owner]?.identity === requestIdentity }
+  }
+
+  /** Service disposal removes the application listener and releases pending owner references. */
+  override fun dispose() {
+    val jobs =
+      synchronized(lock) {
+        disposed = true
+        val pending = requestsByOwner.values.map { it.job }
+        requestsByOwner.clear()
+        pending
+      }
+    for (job in jobs) job.cancel()
   }
 }

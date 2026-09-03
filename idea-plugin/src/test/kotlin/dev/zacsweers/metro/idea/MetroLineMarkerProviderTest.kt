@@ -11,6 +11,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
@@ -264,6 +265,39 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     } finally {
       release.complete(Unit)
       query.awaitTestCompletion()
+    }
+  }
+
+  fun testReleasingEditorCancelsItsSuspendedColdQuery() {
+    val factory = EditorFactory.getInstance()
+    val editor = factory.createEditor(factory.createDocument("class Target"), project)
+    val service = project.service<MetroNavigationService>()
+    val started = CompletableFuture<Unit>()
+    val suspended = CompletableDeferred<Unit>()
+    val delivered = AtomicBoolean()
+    val query =
+      service.runEditorRequest(
+        editor,
+        resolve = {
+          started.complete(Unit)
+          suspended.await()
+          "result"
+        },
+        onResolved = { delivered.set(true) },
+      )
+    try {
+      val running = checkNotNull(query)
+      PlatformTestUtil.waitForFuture(started, 30_000)
+      factory.releaseEditor(editor)
+
+      assertTrue(running.isCancelled)
+      running.awaitTestCompletion()
+      assertFalse(suspended.isCompleted)
+      assertFalse(delivered.get())
+    } finally {
+      query?.cancel()
+      query?.awaitTestCompletion()
+      if (!editor.isDisposed) factory.releaseEditor(editor)
     }
   }
 
