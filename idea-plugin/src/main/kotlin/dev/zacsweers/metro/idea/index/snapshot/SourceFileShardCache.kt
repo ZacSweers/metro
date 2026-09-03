@@ -2,16 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index.snapshot
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import dev.zacsweers.metro.idea.MetroCompilerSettingsTracker
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.FileShardBuilder
 import dev.zacsweers.metro.idea.metroIdeState
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Keeps completed file analysis reusable when the coordinator retries a canceled source pass. */
@@ -52,7 +53,7 @@ internal class SourceFileShardCache {
         shard,
         file,
         cacheState.tracker,
-        KotlinCompilerSettingsTracker.getInstance(file.project),
+        file.project.service<MetroCompilerSettingsTracker>(),
         ProjectRootModificationTracker.getInstance(file.project),
         *(builder?.psiDependencies ?: emptySet()).toTypedArray(),
       )

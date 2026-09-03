@@ -23,6 +23,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
@@ -340,6 +341,57 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertFalse(initialView.daggerAnvilInteropEnabled)
   }
 
+  fun testFacetOptionsInvalidateCachedGraphDataBeforeDeferredCallbacks() {
+    val file =
+      fixture.addFileToProject(
+        "library/lib/LibraryGraph.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        @Inject class Value
+
+        @DependencyGraph interface LibraryGraph {
+          val provider: () -> Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    val initial = service.awaitIndex(file)
+    val initialGraph = initial.graphs.single { it.name == "LibraryGraph" }
+    assertTrue(
+      initial.accessorsFor(initialGraph).single().contextKey.wrappedType is WrappedType.Provider
+    )
+    val initialResult =
+      validation.validate(file, initial.contextsFor(initialGraph).single()).requireCompleted()
+    assertTrue(
+      initialResult.diagnostics.joinToString { it.render() },
+      initialResult.diagnostics.isEmpty(),
+    )
+    val module = checkNotNull(ModuleUtilCore.findModuleForPsiElement(file))
+
+    runInEdtAndWait {
+      runWriteAction {
+        module.setModuleMetroOptions("enable-function-providers" to "false")
+        // Keep deferred callbacks and background reads behind the facet-change assertion.
+        assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      }
+    }
+
+    val updated = service.awaitIndex(file)
+    val updatedGraph = updated.graphs.single { it.name == "LibraryGraph" }
+    assertNotSame(initial, updated)
+    assertTrue(
+      updated.accessorsFor(updatedGraph).single().contextKey.wrappedType is WrappedType.Canonical
+    )
+    val updatedResult =
+      validation.validate(file, updated.contextsFor(updatedGraph).single()).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), updatedResult.diagnostics.map { it.id })
+  }
+
   fun testTrackedDirectoryMoveRefreshesModuleOptionsAndDependentShards() {
     val libraryFile =
       fixture.addFileToProject(
@@ -399,6 +451,18 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertFalse(initialGraph.daggerAnvilInteropEnabled)
     assertFalse(initialModule.daggerAnvilInteropEnabled)
     assertFalse(initialModule.resolutionScope.contains(appFile))
+    assertFalse(
+      fixture.project
+        .service<MetroIdeProjectService>()
+        .state(libraryModule)
+        .options
+        .enableFunctionProviders
+    )
+    val initialAccessor = initial.accessorsFor(initialGraph).single()
+    assertTrue(
+      "The library graph must retain the function request when function providers are disabled",
+      initialAccessor.contextKey.wrappedType is WrappedType.Canonical,
+    )
     val validation = fixture.project.service<MetroGraphValidationService>()
     val initialResult =
       validation

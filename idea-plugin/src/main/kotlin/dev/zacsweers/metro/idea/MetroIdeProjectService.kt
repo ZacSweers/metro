@@ -19,7 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
 import org.jetbrains.kotlin.name.ClassId
 
@@ -107,7 +106,7 @@ internal class MetroIdeAnnotationClassIds(private val options: MetroOptions) {
  * highlighting.
  *
  * @see org.jetbrains.kotlin.idea.facet.getMergedCompilerArguments
- * @see org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
+ * @see MetroCompilerSettingsTracker
  */
 @Service(Service.Level.PROJECT)
 class MetroIdeProjectService(
@@ -124,7 +123,7 @@ class MetroIdeProjectService(
   }
 
   internal fun state(module: Module): MetroIdeModuleState {
-    val settingsTracker = KotlinCompilerSettingsTracker.getInstance(project)
+    val settingsTracker = project.service<MetroCompilerSettingsTracker>()
     val modificationCountBefore = settingsTracker.modificationCount
     val state =
       CachedValuesManager.getManager(project).getCachedValue(module) {
@@ -166,7 +165,7 @@ class MetroIdeProjectService(
   }
 
   internal fun currentStateOrNull(module: Module): MetroIdeModuleState? {
-    val settingsTracker = KotlinCompilerSettingsTracker.getInstance(project)
+    val settingsTracker = project.service<MetroCompilerSettingsTracker>()
     val modificationCount = settingsTracker.modificationCount
     val current = module.getUserData(CURRENT_MODULE_STATE_KEY) ?: return null
     if (current.compilerSettingsModificationCount != modificationCount) return null

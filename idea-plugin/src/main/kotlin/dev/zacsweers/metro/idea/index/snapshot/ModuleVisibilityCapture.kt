@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index.snapshot
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.idea.MetroCompilerSettingsTracker
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingIndexModuleView
@@ -20,7 +22,6 @@ import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KaResolutionScope
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 
 /**
  * Reuses immutable module visibility across coordinator builds with the same file membership. Calls
@@ -45,7 +46,7 @@ internal class ModuleVisibilityCapture(private val project: Project) {
     val inputs =
       IndexInputs(
         roots = ProjectRootModificationTracker.getInstance(project).modificationCount,
-        compilerSettings = KotlinCompilerSettingsTracker.getInstance(project).modificationCount,
+        compilerSettings = project.service<MetroCompilerSettingsTracker>().modificationCount,
       )
     if (inputs != projectInputs) {
       topologies.clear()

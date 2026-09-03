@@ -34,6 +34,7 @@ import com.intellij.psi.PsiTreeChangeAdapter
 import com.intellij.psi.PsiTreeChangeEvent
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import dev.zacsweers.metro.idea.MetroCompilerSettingsTracker
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIdeProjectService
 import dev.zacsweers.metro.idea.MetroSettings
@@ -78,7 +79,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsListener
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -1672,13 +1672,13 @@ private constructor(
     }
   }
 
-  /** Roots/facet changes should refresh open windows even when no editor asks for the index. */
+  /**
+   * Invalidates cached reads as soon as roots or facets change. Reconciliation runs later under
+   * read access; queuing this callback itself would leave old module options temporarily current.
+   */
   private fun projectInputsChanged() {
-    ApplicationManager.getApplication().invokeLater {
-      if (!isDisposed && !project.isDisposed) {
-        ingress.submit(semanticChange = true) { ResolutionCoordinatorEvent.ProjectInputs }
-      }
-    }
+    if (isDisposed || project.isDisposed) return
+    ingress.submit(semanticChange = true) { ResolutionCoordinatorEvent.ProjectInputs }
   }
 
   /** A sync can change many modules together; compare their semantic options once per batch. */
@@ -1842,7 +1842,7 @@ private constructor(
   private fun currentInputs(): IndexInputs =
     IndexInputs(
       roots = ProjectRootModificationTracker.getInstance(project).modificationCount,
-      compilerSettings = KotlinCompilerSettingsTracker.getInstance(project).modificationCount,
+      compilerSettings = project.service<MetroCompilerSettingsTracker>().modificationCount,
     )
 
   private fun isFileStructureChange(event: PsiTreeChangeEvent): Boolean =
@@ -1877,7 +1877,7 @@ private constructor(
       CachedValueProvider.Result.create(
         snapshotBuilder.containsRelevantAnnotation(file, shortNames),
         file,
-        KotlinCompilerSettingsTracker.getInstance(file.project),
+        file.project.service<MetroCompilerSettingsTracker>(),
       )
     }
   }
