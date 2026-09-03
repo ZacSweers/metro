@@ -34,6 +34,7 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
@@ -1737,6 +1738,20 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       listOf("bridgeValue"),
       index.accessorsFor(bridgeGraph).map { (it.pointer.element as KtNamedDeclaration).name },
     )
+
+    // The editor action must carry both the caret's compilation and the graph's source identity.
+    val editorChoices =
+      listOf(appFile to "appValue", bridgeFile to "bridgeValue").map { (file, accessor) ->
+        val fileIndex = fixture.project.service<MetroResolutionService>().awaitIndex(file)
+        val offset = file.declarationsIncludingNested().property(accessor).textOffset
+        val targets = metroEditorTargets(fileIndex, file, offset, null)
+        val choice = targets.navigation.single()
+        assertEquals(file.virtualFile, choice.bindings.single().pointer.virtualFile)
+        assertEquals(file.virtualFile, targets.reveal.single().path.segments.single().file)
+        choice
+      }
+    assertEquals(2, editorChoices.map { it.path }.distinct().size)
+    assertEquals(2, editorChoices.map { it.text }.distinct().size)
 
     val validationService = fixture.project.service<MetroGraphValidationService>()
     val appResult =

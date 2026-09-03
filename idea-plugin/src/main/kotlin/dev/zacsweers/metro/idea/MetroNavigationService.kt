@@ -56,6 +56,13 @@ internal class MetroNavigationService(
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? = resolveTargets(owner, { Disposer.isDisposed(owner) }, targets, orderTargets, onResolved)
 
+  /** Cold editor queries share pointer navigation's latest-request and editor-lifetime guards. */
+  fun <T> runEditorRequest(
+    owner: Editor,
+    resolve: suspend () -> T,
+    onResolved: (T) -> Unit,
+  ): Job? = runRequest(owner, { owner.isDisposed }, resolve, onResolved)
+
   private fun resolveTargets(
     owner: Any,
     isOwnerDisposed: () -> Boolean,
@@ -63,15 +70,12 @@ internal class MetroNavigationService(
     orderTargets: ((List<PsiElement>) -> List<PsiElement>)?,
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? {
-    if (project.isDisposed || isOwnerDisposed()) return null
-    val requestIdentity = Any()
-    val job =
-      scope.launch(start = CoroutineStart.LAZY) {
+    return runRequest(
+      owner,
+      isOwnerDisposed,
+      resolve = {
         targetResolutionObserver.get()?.invoke()
-        if (project.isDisposed || !isCurrent(owner, requestIdentity) || isOwnerDisposed()) {
-          return@launch
-        }
-        val elements = readAction {
+        readAction {
           val resolved = buildList {
             for (target in targets) {
               ProgressManager.checkCanceled()
@@ -80,10 +84,30 @@ internal class MetroNavigationService(
           }
           if (orderTargets == null) resolved else orderTargets(resolved)
         }
+      },
+      onResolved = { onResolved(it.filter(PsiElement::isValid)) },
+    )
+  }
+
+  /** Publishes on the EDT only while this request still owns its editor or tool-window slot. */
+  private fun <T> runRequest(
+    owner: Any,
+    isOwnerDisposed: () -> Boolean,
+    resolve: suspend () -> T,
+    onResolved: (T) -> Unit,
+  ): Job? {
+    if (project.isDisposed || isOwnerDisposed()) return null
+    val requestIdentity = Any()
+    val job =
+      scope.launch(start = CoroutineStart.LAZY) {
+        if (project.isDisposed || !isCurrent(owner, requestIdentity) || isOwnerDisposed()) {
+          return@launch
+        }
+        val result = resolve()
         withContext(Dispatchers.EDT) {
           if (project.isDisposed || isOwnerDisposed()) return@withContext
           if (!isCurrent(owner, requestIdentity)) return@withContext
-          onResolved(elements.filter(PsiElement::isValid))
+          onResolved(result)
         }
       }
 
