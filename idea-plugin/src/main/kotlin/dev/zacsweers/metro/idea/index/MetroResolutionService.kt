@@ -2161,7 +2161,7 @@ private constructor(
     }
 
     val newlySatisfiedOwners =
-      state?.classBindingDependencies?.ownersForNewDeclarations(file).orEmpty()
+      state?.classBindingDependencies?.ownersForAvailableDeclarations(file).orEmpty()
     if (newlySatisfiedOwners.isNotEmpty()) {
       ownerFiles = ownerFiles.orEmpty() + newlySatisfiedOwners
       // The requesting shard can be textually unchanged while a missing class becomes available.

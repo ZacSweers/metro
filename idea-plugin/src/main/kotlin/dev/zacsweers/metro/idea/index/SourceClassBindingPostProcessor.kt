@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.metroIdeState
@@ -13,7 +14,6 @@ import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -143,9 +143,16 @@ internal class SourceClassBindingPostProcessor(
       if (consumer.multibindingId != null) continue
       val owners = consumerOwnership.owningGraphPointers(consumer)
       if (owners == null) {
-        enqueue(consumer.key, consumerOwnership.pointer(consumer), direct = true)
+        enqueue(
+          consumer.key,
+          consumerOwnership.pointer(consumer),
+          direct = true,
+          source = consumer.pointer,
+        )
       } else {
-        for (owner in owners) enqueue(consumer.key, owner, direct = true)
+        for (owner in owners) {
+          enqueue(consumer.key, owner, direct = true, source = consumer.pointer)
+        }
       }
     }
     for (binding in bindingOnlySeeds) {
@@ -239,36 +246,17 @@ internal class SourceClassBindingPostProcessor(
     key: KaTypeKey,
     pointer: SmartPsiElementPointer<out KtElement>,
     direct: Boolean,
+    source: SmartPsiElementPointer<out PsiElement> = pointer,
   ): SourceClassRequestId? {
-    if (containsErrorType(key.type)) {
-      dependencies.recordErrorType(pointer.virtualFile)
-      return null
-    }
+    val context = pointer.element ?: return null
+    if (dependencies.recordErrorTypes(key.type, context, source)) return null
     if (key.type.classId == null) return null
     if (!budget.isConcrete(key.type)) return null
-    val context = pointer.element ?: return null
     val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
     if (direct) budget.includeWrittenKey(key, isClass = true)
     val request = SourceClassRequest(key, module, pointer, direct)
     queue += request
     return request.id
-  }
-
-  /** Missing generic arguments also need a retry when their source declaration appears. */
-  private fun containsErrorType(type: KaTypeSnapshot): Boolean {
-    if (type.isError) return true
-    if (type.typeArguments.isEmpty()) return false
-    val pending = ArrayDeque<KaTypeSnapshot>()
-    pending += type
-    while (pending.isNotEmpty()) {
-      ProgressManager.checkCanceled()
-      val current = pending.removeLast()
-      if (current.isError) return true
-      for (argument in current.typeArguments) {
-        argument.type?.let(pending::addLast)
-      }
-    }
-    return false
   }
 
   private fun drain() {
@@ -297,6 +285,9 @@ internal class SourceClassBindingPostProcessor(
       for (dependency in binding.dependencies) {
         ProgressManager.checkCanceled()
         val key = dependency.typeKey
+        if (dependencies.recordErrorTypes(key.type, context, binding.pointer)) {
+          continue
+        }
         if (key.type.classId == null || !budget.isConcrete(key.type)) continue
         queue += SourceClassRequest(key, request.module, request.context)
       }
@@ -312,7 +303,7 @@ internal class SourceClassBindingPostProcessor(
       val owner = context.containingFile?.virtualFile
       val symbol = findClass(classId) as? KaNamedClassSymbol
       if (symbol == null) {
-        dependencies.recordUnresolved(classId, owner)
+        dependencies.recordUnresolved(classId, owner, request.module)
         return@analyze null
       }
       val declaration = symbol.psi ?: return@analyze null

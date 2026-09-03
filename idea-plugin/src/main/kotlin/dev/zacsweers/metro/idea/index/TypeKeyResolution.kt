@@ -20,11 +20,13 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.types.KaClassErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeArgumentWithVariance
 import org.jetbrains.kotlin.analysis.api.types.KaTypeProjection
+import org.jetbrains.kotlin.analysis.api.types.KaUnresolvedClassTypeQualifier
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
@@ -91,6 +93,12 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
     },
     isMarkedNullable = classType?.isMarkedNullable == true,
     isError = expanded is KaErrorType,
+    unresolvedClassName =
+      (expanded as? KaClassErrorType)
+        ?.qualifiers
+        ?.lastOrNull { it is KaUnresolvedClassTypeQualifier }
+        ?.name
+        ?.takeUnless { it.isSpecial },
   )
 }
 

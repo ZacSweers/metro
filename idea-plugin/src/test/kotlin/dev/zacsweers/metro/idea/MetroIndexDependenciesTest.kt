@@ -6,16 +6,19 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.index.SourceClassDependencies
 import dev.zacsweers.metro.idea.index.restoreClassType
 import dev.zacsweers.metro.idea.index.typeSnapshot
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
+import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.graphTypeKey
 import dev.zacsweers.metro.idea.model.multibindingId
 import java.util.concurrent.CompletableFuture
@@ -91,6 +94,127 @@ class MetroIndexDependenciesTest : BasePlatformTestCase() {
         it.isObject && it.typeKey.renderedType == "test.NewRegistry"
       }
     )
+  }
+
+  fun testUnrelatedClassEditsPreserveAnUnresolvedGraphSnapshot() {
+    val unrelated =
+      myFixture.addFileToProject(
+        "test/Unrelated.kt",
+        "package test; class Unrelated { fun value() = 1 }",
+      ) as KtFile
+    val graph =
+      myFixture.configureMetroFile(
+        "@DependencyGraph interface AppGraph { val registry: NewRegistry }"
+      )
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(graph)
+    service.awaitIndex(unrelated)
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    assertTrue(initial.consumerEntryAt(accessor)!!.key.type.isError)
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(unrelated))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n// An unrelated comment")
+    }
+    documents.commitAllDocuments()
+    assertSame(initial, service.awaitIndex(graph))
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val valueOffset = document.text.indexOf("= 1") + 2
+      document.replaceString(valueOffset, valueOffset + 1, "2")
+    }
+    documents.commitAllDocuments()
+    assertSame(initial, service.awaitIndex(graph))
+  }
+
+  fun testDifferentClassArrivalPreservesAnUnresolvedGraphSnapshot() {
+    val unrelated =
+      myFixture.addFileToProject("test/Unrelated.kt", "package test; class Unrelated") as KtFile
+    val graph =
+      myFixture.configureMetroFile(
+        "@DependencyGraph interface AppGraph { val registry: NewRegistry }"
+      )
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(graph)
+    service.awaitIndex(unrelated)
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    assertTrue(initial.consumerEntryAt(accessor)!!.key.type.isError)
+
+    val documents = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documents.getDocument(unrelated))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\nclass DifferentRegistry")
+    }
+    documents.commitAllDocuments()
+    assertSame(initial, service.awaitIndex(graph))
+  }
+
+  fun testImportedAliasArrivalRefreshesAnUnresolvedGraphAccessor() {
+    checkQualifiedClassArrival(
+      """
+      import test.generated.NewRegistry as Registry
+      @DependencyGraph interface AppGraph { val registry: Registry }
+      """
+    )
+  }
+
+  fun testQualifiedClassArrivalRefreshesAnUnresolvedGraphAccessor() {
+    checkQualifiedClassArrival(
+      "@DependencyGraph interface AppGraph { val registry: test.generated.NewRegistry }"
+    )
+  }
+
+  fun testNestedObjectArrivalRefreshesAnUnresolvedGraphAccessor() {
+    checkQualifiedClassArrival(
+      "@DependencyGraph interface AppGraph { val registry: test.generated.NewRegistry.Nested }",
+      declaration = "object NewRegistry { object Nested }",
+      expectedType = "test.generated.NewRegistry.Nested",
+    )
+  }
+
+  /** Checks missing type recovery after its source declaration appears. */
+  private fun checkQualifiedClassArrival(
+    source: String,
+    declaration: String = "object NewRegistry",
+    expectedType: String = "test.generated.NewRegistry",
+  ) {
+    val graph = myFixture.configureMetroFile(source)
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    assertTrue(initial.consumerEntryAt(accessor)!!.key.type.isError)
+
+    myFixture.addFileToProject(
+      "test/generated/NewRegistry.kt",
+      "package test.generated; $declaration",
+    )
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    val updated = service.awaitIndex(graph)
+    val consumer = updated.consumerEntryAt(accessor)!!
+    val binding = updated.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+    assertTrue(binding is KaBinding.ConstructorInjected && binding.isObject)
+    assertEquals(expectedType, binding.typeKey.renderedType)
+  }
+
+  fun testOpaqueTypeErrorsRetryVisibleClassDeclarations() {
+    val graph = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val pointers = SmartPointerManager.getInstance(project)
+    val builder = SourceClassDependencies.Builder(pointers)
+    // Inferred errors can hide the missing class behind another function's return type.
+    val opaqueError = KaTypeSnapshot("<inferred error>", classId = null, isError = true)
+    assertTrue(
+      builder.recordErrorTypes(opaqueError, graph, pointers.createSmartPsiElementPointer(graph))
+    )
+    val dependencies = builder.build()
+
+    val declaration =
+      myFixture.addFileToProject("test/NewRegistry.kt", "package test; object NewRegistry")
+        as KtFile
+    PsiDocumentManager.getInstance(project).commitAllDocuments()
+    assertEquals(setOf(graph.virtualFile), dependencies.ownersForAvailableDeclarations(declaration))
   }
 
   fun testUnannotatedObjectChangesRefreshClassBindings() {

@@ -105,6 +105,38 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     }
   }
 
+  fun testClassArrivalInInvisibleModulePreservesAnUnresolvedGraphSnapshot() {
+    val graph =
+      fixture.addFileToProject(
+        "library/lib/LibraryGraph.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface LibraryGraph { val registry: NewRegistry }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    assertTrue(initial.consumerEntryAt(accessor)!!.key.type.isError)
+
+    // The app depends on the library, so its declarations are invisible from the library graph.
+    fixture.addFileToProject("app/lib/NewRegistry.kt", "package lib; object NewRegistry")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    assertSame(initial, service.awaitIndex(graph))
+
+    fixture.addFileToProject("library/lib/NewRegistry.kt", "package lib; object NewRegistry")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val updated = service.awaitIndex(graph)
+    val consumer = updated.consumerEntryAt(accessor)!!
+    val binding = updated.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+    assertTrue(binding is KaBinding.ConstructorInjected && binding.isObject)
+    assertEquals("lib.NewRegistry", binding.typeKey.renderedType)
+  }
+
   fun testResolutionInputsReuseModuleViewsAcrossOptionTargetsAndEdits() {
     val libraryFile =
       fixture.addFileToProject(
