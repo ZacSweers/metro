@@ -18,6 +18,6 @@ interface MyGraph {
 }
 
 @ContributesTo(Unit::class)
-interface Bindings {
+interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>Bindings<!> {
   @Provides @SingleIn(Unit::class) fun dependency(): Dependency = Dependency("1")
 }

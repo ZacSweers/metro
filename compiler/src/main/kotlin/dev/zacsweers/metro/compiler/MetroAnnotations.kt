@@ -152,6 +152,7 @@ internal class MetroAnnotations<T>(
     )
   }
 
+  /** Combines annotation sites on a declaration while retaining their binding roles. */
   fun mergeWith(other: MetroAnnotations<T>): MetroAnnotations<T> =
     copy(
       isDependencyGraph = isDependencyGraph || other.isDependencyGraph,
@@ -160,6 +161,7 @@ internal class MetroAnnotations<T>(
       isAssistedInject = isAssistedInject || other.isAssistedInject,
       isProvides = isProvides || other.isProvides,
       isBinds = isBinds || other.isBinds,
+      isBindsOptionalOf = isBindsOptionalOf || other.isBindsOptionalOf,
       isBindsInstance = isBindsInstance || other.isBindsInstance,
       isIntoSet = isIntoSet || other.isIntoSet,
       isElementsIntoSet = isElementsIntoSet || other.isElementsIntoSet,

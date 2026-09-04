@@ -1,0 +1,3 @@
+/ContributesToBindingContainerInheritanceUnresolved.kt:6:35: error: Unresolved reference 'MissingParent'.
+
+/ContributesToBindingContainerInheritanceUnresolved.kt:10:32: error: Unresolved reference 'MissingAncestor'.

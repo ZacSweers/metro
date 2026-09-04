@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerCallableChecker
 import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerClassChecker
 import dev.zacsweers.metro.compiler.fir.checkers.ConflictingAnnotationRolesChecker
+import dev.zacsweers.metro.compiler.fir.checkers.ContributesToBindingContainerChecker
 import dev.zacsweers.metro.compiler.fir.checkers.CreateGraphChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DefaultBindingChecker
 import dev.zacsweers.metro.compiler.fir.checkers.DependencyGraphChecker
@@ -38,6 +39,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             MembersInjectChecker,
             AssistedInjectChecker,
             AggregationChecker,
+            ContributesToBindingContainerChecker,
             DependencyGraphCreatorChecker,
             DependencyGraphChecker,
             BindingContainerClassChecker,

@@ -19,6 +19,7 @@ import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_INJECT_IN_M
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CANNOT_HAVE_MULTIPLE_INJECTED_CONSTRUCTORS
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_ANNOTATION_ROLES
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONFLICTING_PROVIDES_SCOPE
+import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_DYNAMIC_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.CREATE_GRAPH_ERROR
 import dev.zacsweers.metro.compiler.fir.MetroDiagnostics.DAGGER_LAZY_CLASS_KEY_ERROR
@@ -194,6 +195,7 @@ internal object MetroDiagnostics : KtDiagnosticsContainer() {
   val REDUNDANT_PROVIDES by warning1<KtElement, String>(NAME_IDENTIFIER)
   val CONFLICTING_PROVIDES_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
   val SUSPICIOUS_AGGREGATION_SCOPE by warning1<KtElement, String>(NAME_IDENTIFIER)
+  val CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER by warning0<KtElement>(NAME_IDENTIFIER)
   val BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val BINDS_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
   val INTRINSIC_BINDING_ERROR by error1<KtElement, String>(NAME_IDENTIFIER)
@@ -384,6 +386,10 @@ private object MetroErrorMessages : BaseDiagnosticRendererFactory() {
         put(REDUNDANT_PROVIDES, "{0}", STRING)
         put(CONFLICTING_PROVIDES_SCOPE, "{0}", STRING)
         put(SUSPICIOUS_AGGREGATION_SCOPE, "{0}", STRING)
+        put(
+          CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER,
+          "Consider making this a binding container with `@BindingContainer` instead",
+        )
         put(AGGREGATION_ERROR, "{0}", STRING)
         put(DEFAULT_BINDING_ERROR, "{0}", STRING)
         put(PRIVATE_CONTRIBUTION_ERROR, "{0}", STRING)
