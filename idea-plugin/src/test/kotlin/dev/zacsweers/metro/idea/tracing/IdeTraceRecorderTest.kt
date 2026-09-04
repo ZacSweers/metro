@@ -484,9 +484,10 @@ class IdeTraceRecorderTest : TestCase() {
         recorder.state.first { it == IdeTraceState.RECORDING }
         recorder.traceSuspend("refresh", { attribute("manualRequest", 1) }) { operation ->
           operation.phase("source.scan") { scan ->
-            scan?.attribute("files.total", 25)
+            // Match a large refresh so the exported trace exercises thousands of item intervals.
+            scan?.attribute("files.total", 2296)
             val work = IdeTraceWorkSummary(checkNotNull(scan), "source.file")
-            repeat(25) { index ->
+            repeat(2296) { index ->
               work.measure { item ->
                 item?.file = "src/File$index.kt"
                 item?.module = "app"
@@ -495,6 +496,20 @@ class IdeTraceRecorderTest : TestCase() {
                   item.stage("source.file.cacheLookup") {
                     item.stage("source.file.declarationExtraction") { 43 }
                   }
+                }
+              }
+            }
+            work.report()
+          }
+          operation.phase("source.resolveClassRequests") { resolution ->
+            val work = IdeTraceWorkSummary(checkNotNull(resolution), "source.class")
+            repeat(4218) { index ->
+              work.measure { item ->
+                item?.className = "example.Class$index"
+                item?.module = "app"
+                item.measureRead {
+                  item.stage("source.class.findClass") { 42 }
+                  item.stage("source.class.cacheCheck") { 43 }
                 }
               }
             }

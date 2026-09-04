@@ -11,7 +11,7 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlinx.coroutines.CancellationException
 
-/** Keeps module totals and twenty slow items for one phase. Entries retain only scalar values. */
+/** Emits item intervals within the capture budget and retains detailed stages for twenty items. */
 internal class IdeTraceWorkSummary(
   private val operation: IdeTraceOperation,
   private val name: String,
@@ -23,6 +23,11 @@ internal class IdeTraceWorkSummary(
     var canceledReads = 0
     var readElapsed = 0L
     var canceledReadElapsed = 0L
+    var shownItems = 0
+    var shownElapsed = 0L
+    var detailedItems = 0
+    var shownStages = 0
+    var shownStageElapsed = 0L
     val outcomes = linkedMapOf<String, Int>()
     val caches = linkedMapOf<String, Int>()
     val stages = linkedMapOf<String, IdeTraceStageTotals>()
@@ -40,6 +45,20 @@ internal class IdeTraceWorkSummary(
         .getOrPut(name, ::IdeTraceStageTotals)
         .add(stage)
     }
+
+    fun includeShown(item: IdeTraceWorkItem, stages: ShownStages) {
+      shownItems++
+      shownElapsed += item.elapsed
+      if (stages.count > 0) detailedItems++
+      shownStages += stages.count
+      shownStageElapsed += stages.elapsed
+    }
+  }
+
+  /** Counts admitted stage intervals; elapsed time includes nested stages. */
+  private data class ShownStages(val count: Int = 0, val elapsed: Long = 0L) {
+    operator fun plus(other: ShownStages) =
+      ShownStages(count + other.count, elapsed + other.elapsed)
   }
 
   private val totals = WorkTotals()
@@ -55,34 +74,46 @@ internal class IdeTraceWorkSummary(
     if (slowest.size < MAX_SLOW_ITEMS) {
       slowest += item
     } else if (item.elapsed > slowest.peek().elapsed) {
-      slowest.remove()
+      emitItem(slowest.remove())
       slowest += item
+    } else {
+      emitItem(item)
     }
   }
 
   /** Called from finally so interrupted phases include completed and canceled work. */
   fun report() {
-    val shown = slowest.sortedByDescending { it.elapsed }
-    operation.writeTotals(totals, shown, prefix = "$name.")
+    for ((index, item) in slowest.sortedByDescending { it.elapsed }.withIndex()) {
+      emitItem(item, rank = index + 1)
+    }
+    slowest.clear()
+    operation.writeTotals(totals, prefix = "$name.")
+    // Resolve the item kind before entering the event receiver, which has its own name.
+    val noun = if (name.endsWith(".class")) "class requests" else "files"
     operation.event("$name.summary") {
-      writeTotals(totals, shown)
-      val noun = if (name.endsWith(".class")) "class requests" else "files"
-      val omitted = totals.items - shown.size
-      val description =
-        if (omitted == 0) "${shown.size} $noun shown"
-        else "${shown.size} slowest $noun shown; $omitted more $noun omitted"
+      writeTotals(totals)
+      val omitted = totals.items - totals.shownItems
+      val description = buildString {
+        append("${totals.shownItems} $noun shown")
+        if (totals.detailedItems > 0) append("; ${totals.detailedItems} with stage details")
+        if (omitted > 0) append("; $omitted omitted by capture limit")
+      }
       attribute("display_name", description)
     }
-    val shownByModule = shown.groupBy { it.module }
     for ((module, moduleTotals) in modules) {
       operation.event("$name.module") {
         attribute("module", module)
-        writeTotals(moduleTotals, shownByModule[module].orEmpty())
+        writeTotals(moduleTotals)
       }
     }
-    for ((index, item) in shown.withIndex()) {
-      operation.completedPhase("$name.slow", item.started, item.finished) {
-        attribute("rank", index + 1)
+  }
+
+  /** Evicted items are emitted immediately so only the twenty candidates retain stage trees. */
+  private fun emitItem(item: IdeTraceWorkItem, rank: Int? = null) {
+    var shownStages = ShownStages()
+    val emitted =
+      operation.completedPhase("$name.item", item.started, item.finished, priority = rank != null) {
+        rank?.let { attribute("rank", it) }
         attribute("module", item.module)
         item.file?.let { attribute("file", it) }
         item.className?.let { attribute("class", it) }
@@ -93,50 +124,50 @@ internal class IdeTraceWorkSummary(
         attribute("read_elapsed_ns", item.readElapsed)
         attribute("canceled_read_elapsed_ns", item.canceledReadElapsed)
         attribute("outside_read_ns", (item.elapsed - item.readElapsed).coerceAtLeast(0))
+        if (rank != null) {
+          writeStageTotals(item.stageTotals)
+          shownStages = emitStages(item.stages.groupBy { it.parentId }, parentId = null)
+        }
         val stageCount = item.stageTotals.values.sumOf { it.attempts }
-        attribute("stage_intervals_shown", item.stages.size)
-        attribute("stage_intervals_omitted", stageCount - item.stages.size)
+        attribute("stage_intervals_shown", shownStages.count)
+        attribute("stage_intervals_omitted", stageCount - shownStages.count)
         val stageElapsed = item.stageTotals.values.sumOf { it.elapsed }
-        val shownStageElapsed = item.stages.sumOf { it.elapsed }
         attribute("stage_timing", "inclusive_wall")
         attribute("stage_elapsed_ns", stageElapsed)
-        attribute("shown_stage_elapsed_ns", shownStageElapsed)
-        attribute("omitted_stage_elapsed_ns", stageElapsed - shownStageElapsed)
-        writeStageTotals(item.stageTotals)
-        val children = item.stages.groupBy { it.parentId }
-        emitStages(children, parentId = null)
+        attribute("shown_stage_elapsed_ns", shownStages.elapsed)
+        attribute("omitted_stage_elapsed_ns", stageElapsed - shownStages.elapsed)
       }
+    if (emitted) {
+      totals.includeShown(item, shownStages)
+      modules.getValue(item.module).includeShown(item, shownStages)
     }
   }
 
   /** Inclusive stage times can overlap when a stage contains other stages. */
   private fun IdeTraceOperation.writeTotals(
     totals: WorkTotals,
-    shown: List<IdeTraceWorkItem>,
     prefix: String = "",
   ) {
-    val shownElapsed = shown.sumOf { it.elapsed }
     val stageCount = totals.stages.values.sumOf { it.attempts }
     val stageElapsed = totals.stages.values.sumOf { it.elapsed }
-    val shownStages = shown.sumOf { it.stages.size }
-    val shownStageElapsed = shown.sumOf { item -> item.stages.sumOf { it.elapsed } }
     attribute("${prefix}items", totals.items)
-    attribute("${prefix}shown_items", shown.size)
-    attribute("${prefix}omitted_items", totals.items - shown.size)
+    attribute("${prefix}shown_items", totals.shownItems)
+    attribute("${prefix}omitted_items", totals.items - totals.shownItems)
+    attribute("${prefix}detailed_items", totals.detailedItems)
     attribute("${prefix}total_elapsed_ns", totals.elapsed)
-    attribute("${prefix}shown_elapsed_ns", shownElapsed)
-    attribute("${prefix}omitted_elapsed_ns", totals.elapsed - shownElapsed)
+    attribute("${prefix}shown_elapsed_ns", totals.shownElapsed)
+    attribute("${prefix}omitted_elapsed_ns", totals.elapsed - totals.shownElapsed)
     attribute("${prefix}read_attempts", totals.reads)
     attribute("${prefix}canceled_read_attempts", totals.canceledReads)
     attribute("${prefix}read_elapsed_ns", totals.readElapsed)
     attribute("${prefix}canceled_read_elapsed_ns", totals.canceledReadElapsed)
     attribute("${prefix}outside_read_ns", (totals.elapsed - totals.readElapsed).coerceAtLeast(0))
     attribute("${prefix}stage_timing", "inclusive_wall")
-    attribute("${prefix}stage_intervals_shown", shownStages)
-    attribute("${prefix}stage_intervals_omitted", stageCount - shownStages)
+    attribute("${prefix}stage_intervals_shown", totals.shownStages)
+    attribute("${prefix}stage_intervals_omitted", stageCount - totals.shownStages)
     attribute("${prefix}stage_elapsed_ns", stageElapsed)
-    attribute("${prefix}shown_stage_elapsed_ns", shownStageElapsed)
-    attribute("${prefix}omitted_stage_elapsed_ns", stageElapsed - shownStageElapsed)
+    attribute("${prefix}shown_stage_elapsed_ns", totals.shownStageElapsed)
+    attribute("${prefix}omitted_stage_elapsed_ns", stageElapsed - totals.shownStageElapsed)
     for ((outcome, count) in totals.outcomes) attribute("${prefix}outcome.$outcome.count", count)
     for ((cache, count) in totals.caches) attribute("${prefix}cache.$cache.count", count)
     writeStageTotals(totals.stages)
@@ -158,14 +189,19 @@ internal class IdeTraceWorkSummary(
   private fun IdeTraceOperation.emitStages(
     children: Map<Int?, List<IdeTraceWorkStage>>,
     parentId: Int?,
-  ) {
+  ): ShownStages {
+    var shown = ShownStages()
     for (stage in children[parentId].orEmpty()) {
-      completedPhase(stage.name, stage.started, stage.finished) {
-        attribute("stage_sequence", stage.id)
-        outcome(stage.outcome)
-        emitStages(children, stage.id)
-      }
+      var descendants = ShownStages()
+      val emitted =
+        completedPhase(stage.name, stage.started, stage.finished, priority = true) {
+          attribute("stage_sequence", stage.id)
+          outcome(stage.outcome)
+          descendants = emitStages(children, stage.id)
+        }
+      if (emitted) shown += ShownStages(1, stage.elapsed) + descendants
     }
+    return shown
   }
 
   private companion object {

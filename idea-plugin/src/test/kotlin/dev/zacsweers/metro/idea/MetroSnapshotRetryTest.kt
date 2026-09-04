@@ -201,7 +201,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       assertTrue(checkNotNull(scan["canceled_read_attempts"]).toInt() >= 1)
       assertEquals(1, sink.results("source.discover").size)
       assertEquals(1, sink.results("snapshot.prepare").size)
-      val fileWork = sink.results("source.file.slow").map { it.metadata }
+      val fileWork = sink.results("source.file.item").map { it.metadata }
       assertEquals(2, fileWork.size)
       val retriedPath = ideTraceFilePath(project, readsBeforeWrite.last().first)
       val retriedWork = fileWork.single { it["file"] == retriedPath }
@@ -239,7 +239,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
         )) {
         assertEquals("Expected one completed $phase", 1, sink.results(phase).size)
       }
-      val classWork = sink.results("source.class.slow").map { it.metadata }
+      val classWork = sink.results("source.class.item").map { it.metadata }
       val exampleWork = classWork.single { it["class"] == "test.Example" }
       assertEquals("resolved", exampleWork["outcome"])
       assertEquals("reused", exampleWork["cache"])

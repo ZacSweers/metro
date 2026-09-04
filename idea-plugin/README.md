@@ -208,21 +208,23 @@ Review the file before sharing it.
 **Metro operations** shows an overview of recorded work even while collapsed. Expand it to inspect
 full-duration bars such as **Analyze source declarations** and **Resolve source class dependencies**.
 Selecting a bar shows its outcome, cache counts, and request identity. File and class summaries report
-how many items the top-20 detail view shows and omits, with elapsed time for each group. Blank space
-between retained items can therefore represent measured work omitted from that view.
+how many item bars the capture shows and omits, with elapsed time for each group. Each file and class
+request gets a named duration bar while the capture budget has room. The 20 slowest items in each
+phase also include detailed nested stages and a rank.
 
 The slowest files include annotation lookup, declaration extraction, dynamic-graph scanning, and shard
 construction. Class requests separate analysis setup, symbol lookup, source checks, qualifier/options
 lookup, cache access, binding construction, and dependency expansion. Stage totals include all measured
 items and appear on phase and module summaries. Detailed stage intervals are limited to 64 per retained
-item; the item's metadata reports any omitted intervals. The trace retains at most 20,000 events and
-reports any omitted events in **Trace summary**.
+item; the item's metadata reports any omitted intervals. The trace retains at most 20,000 events, with
+space reserved for slow-item details, enclosing phases, and summaries. Item summaries distinguish bars
+omitted by the capture limit from omitted stage detail. **Trace summary** reports omitted events.
 
 Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
-callbacks; it includes canceled attempts and can include Kotlin analysis waits. Slow-item summaries
+callbacks; it includes canceled attempts and can include Kotlin analysis waits. Item bars
 also report `canceled_read_elapsed_ns` and `outside_read_ns`. Parent durations include their children.
 Use `debug.operation`, `debug.operation_id`, and `debug.parent_operation_id` for SQL analysis; display
-names include human-readable subjects. Each `.result` instant also carries final timing and outcome.
+names include human-readable subjects. Duration bars carry final timing and outcome metadata.
 
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
