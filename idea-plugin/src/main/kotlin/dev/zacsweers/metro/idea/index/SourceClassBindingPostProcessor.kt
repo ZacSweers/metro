@@ -15,7 +15,14 @@ import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkSummary
+import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
+import dev.zacsweers.metro.idea.tracing.measure
+import dev.zacsweers.metro.idea.tracing.measureRead
 import java.util.Collections
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -137,32 +144,43 @@ internal class SourceClassBindingPostProcessor(
     }
   }
 
-  fun resolveInitial(): SourceClassResolution {
-    for (consumer in consumers) {
-      ProgressManager.checkCanceled()
-      if (consumer.multibindingId != null) continue
-      val owners = consumerOwnership.owningGraphPointers(consumer)
-      if (owners == null) {
-        enqueue(
-          consumer.key,
-          consumerOwnership.pointer(consumer),
-          direct = true,
-          source = consumer.pointer,
-        )
-      } else {
-        for (owner in owners) {
-          enqueue(consumer.key, owner, direct = true, source = consumer.pointer)
+  /** The trace summary belongs to this read attempt and never escapes in the resolution. */
+  fun resolveInitial(trace: IdeTraceOperation? = null): SourceClassResolution {
+    val work = trace?.let { IdeTraceWorkSummary(it, "source.class") }
+    try {
+      for (consumer in consumers) {
+        ProgressManager.checkCanceled()
+        if (consumer.multibindingId != null) continue
+        val owners = consumerOwnership.owningGraphPointers(consumer)
+        if (owners == null) {
+          enqueue(
+            consumer.key,
+            consumerOwnership.pointer(consumer),
+            direct = true,
+            source = consumer.pointer,
+          )
+        } else {
+          for (owner in owners) {
+            enqueue(consumer.key, owner, direct = true, source = consumer.pointer)
+          }
         }
       }
+      for (binding in bindingOnlySeeds) {
+        ProgressManager.checkCanceled()
+        val declaration = binding.pointer.element as? KtElement ?: continue
+        val pointer = pointerManager.createSmartPsiElementPointer(declaration)
+        for (dependency in binding.dependencies) enqueue(dependency.typeKey, pointer, direct = true)
+      }
+      drain(work)
+      return snapshot()
+    } finally {
+      trace?.attribute("requests.processed", processed.size)
+      trace?.attribute("requests.resolved", resolved.size)
+      trace?.attribute("requests.library", libraryRequests.size)
+      trace?.attribute("requests.boundary", boundaries.size)
+      trace?.attribute("bindings.added", addedBindings.size)
+      work?.report()
     }
-    for (binding in bindingOnlySeeds) {
-      ProgressManager.checkCanceled()
-      val declaration = binding.pointer.element as? KtElement ?: continue
-      val pointer = pointerManager.createSmartPsiElementPointer(declaration)
-      for (dependency in binding.dependencies) enqueue(dependency.typeKey, pointer, direct = true)
-    }
-    drain()
-    return snapshot()
   }
 
   /** Retry only previous boundaries; already-expanded source keys remain memoized. */
@@ -259,45 +277,67 @@ internal class SourceClassBindingPostProcessor(
     return request.id
   }
 
-  private fun drain() {
+  @OptIn(KaExperimentalApi::class)
+  private fun drain(work: IdeTraceWorkSummary? = null) {
     while (queue.isNotEmpty()) {
       ProgressManager.checkCanceled()
       val request = queue.removeFirst()
       if (!processed.add(request.id)) continue
       val context = request.context.element ?: continue
-      val binding = resolveClass(request, context)
-      if (binding == null) {
-        // The same class ID can name source in one module and a binary in another. Preserve the
-        // request's original module when handing that unresolved candidate to library lookup.
-        libraryRequests += request
-        continue
-      }
-      resolved += request.id
-      val identity = binding.classBindingIdentity() ?: continue
-      useSites.getOrPut(identity) { linkedMapOf() }.putIfAbsent(request.module, request.context)
-      if (!budget.allowExpansion(binding, request.module, request.direct)) {
-        val boundary = SourceClassRequest(binding.typeKey, request.module, request.context)
-        boundaries[boundary.id] = boundary
-        continue
-      }
-      boundaries.remove(request.id)
-      boundaries.remove(SourceClassRequestId(binding.typeKey, request.module))
-      for (dependency in binding.dependencies) {
-        ProgressManager.checkCanceled()
-        val key = dependency.typeKey
-        if (dependencies.recordErrorTypes(key.type, context, binding.pointer)) {
-          continue
+      work.measure { item ->
+        if (item != null) {
+          item.module = request.module.moduleDescription
+          item.className = request.key.type.classId?.asFqNameString() ?: "<unknown>"
+          item.file = context.containingFile?.virtualFile?.let { ideTraceFilePath(project, it) }
         }
-        if (key.type.classId == null || !budget.isConcrete(key.type)) continue
-        queue += SourceClassRequest(key, request.module, request.context)
+        item.measureRead { resolveRequest(request, context, item) }
       }
+    }
+  }
+
+  /** Attributes resolution and dependency expansion together to their requesting module. */
+  private fun resolveRequest(
+    request: SourceClassRequest,
+    context: KtElement,
+    item: IdeTraceWorkItem?,
+  ) {
+    val binding = resolveClass(request, context, item)
+    if (binding == null) {
+      // The same class ID can name source in one module and a binary in another. Preserve the
+      // request's original module when handing that unresolved candidate to library lookup.
+      item?.outcome = "library"
+      libraryRequests += request
+      return
+    }
+    item?.outcome = "resolved"
+    resolved += request.id
+    val identity = binding.classBindingIdentity() ?: return
+    useSites.getOrPut(identity) { linkedMapOf() }.putIfAbsent(request.module, request.context)
+    if (!budget.allowExpansion(binding, request.module, request.direct)) {
+      item?.outcome = "boundary"
+      val boundary = SourceClassRequest(binding.typeKey, request.module, request.context)
+      boundaries[boundary.id] = boundary
+      return
+    }
+    boundaries.remove(request.id)
+    boundaries.remove(SourceClassRequestId(binding.typeKey, request.module))
+    for (dependency in binding.dependencies) {
+      ProgressManager.checkCanceled()
+      val key = dependency.typeKey
+      if (dependencies.recordErrorTypes(key.type, context, binding.pointer)) {
+        continue
+      }
+      if (key.type.classId == null || !budget.isConcrete(key.type)) continue
+      queue += SourceClassRequest(key, request.module, request.context)
     }
   }
 
   private fun resolveClass(
     request: SourceClassRequest,
     context: KtElement,
+    item: IdeTraceWorkItem?,
   ): KaBinding? {
+    item?.cache = "miss"
     val classId = request.key.type.classId ?: return null
     return analyze(context) {
       val owner = context.containingFile?.virtualFile
@@ -327,6 +367,7 @@ internal class SourceClassBindingPostProcessor(
       val identity = ClassBindingIdentity(key, symbol.classId, file)
       classBindings[identity]?.let {
         if (key != request.key && it !is KaBinding.AssistedFactory) return@analyze null
+        item?.cache = "reused"
         return@analyze it
       }
       val binding =
@@ -334,6 +375,7 @@ internal class SourceClassBindingPostProcessor(
           ?: return@analyze null
       classBindings[identity] = binding
       addedBindings += binding
+      item?.cache = "computed"
       binding
     }
   }

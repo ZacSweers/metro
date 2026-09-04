@@ -32,6 +32,7 @@ import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
 import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
 import dev.zacsweers.metro.idea.tracing.IdeTraceState
 import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
+import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -150,6 +151,28 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       assertTrue(checkNotNull(scan["canceled_read_attempts"]).toInt() >= 1)
       assertEquals(1, sink.results("source.discover").size)
       assertEquals(1, sink.results("snapshot.prepare").size)
+      val fileWork = sink.results("source.file.slow").map { it.metadata }
+      assertEquals(2, fileWork.size)
+      val retriedPath = ideTraceFilePath(project, readsBeforeWrite.last().first)
+      val retriedWork = fileWork.single { it["file"] == retriedPath }
+      assertEquals("reused", retriedWork["cache"])
+      assertTrue(checkNotNull(retriedWork["read_attempts"]).toInt() >= 2)
+      assertTrue(checkNotNull(retriedWork["canceled_read_attempts"]).toInt() >= 1)
+      assertTrue(checkNotNull(retriedWork["canceled_read_elapsed_ns"]).toLong() > 0)
+      assertEquals(module.name, retriedWork["module"])
+      for (phase in
+        listOf(
+          "source.buildOwnershipIndex",
+          "source.consumerOwnership",
+          "source.resolveClassRequests",
+          "source.collectLibraryInputs",
+        )) {
+        assertEquals("Expected one completed $phase", 1, sink.results(phase).size)
+      }
+      val classWork = sink.results("source.class.slow").map { it.metadata }
+      val exampleWork = classWork.single { it["class"] == "test.Example" }
+      assertEquals("resolved", exampleWork["outcome"])
+      assertEquals("reused", exampleWork["cache"])
     } finally {
       release.countDown()
       PlatformTestUtil.waitForFuture(preparation, 30_000)

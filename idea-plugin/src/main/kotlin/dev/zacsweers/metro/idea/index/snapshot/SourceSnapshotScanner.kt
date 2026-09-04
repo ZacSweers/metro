@@ -4,12 +4,17 @@ package dev.zacsweers.metro.idea.index.snapshot
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkSummary
+import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
+import dev.zacsweers.metro.idea.tracing.measure
+import dev.zacsweers.metro.idea.tracing.measureRead
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -35,12 +40,19 @@ internal class SourceSnapshotScanner(
   ): SourceSnapshot {
     val transaction = SourceSnapshotTransaction(previous)
     val scan = SourceScanProgress(progress, files.size + pending.requested.size)
+    val work = trace?.let { IdeTraceWorkSummary(it, "source.file") }
     try {
       for (virtualFile in files) {
         val result =
-          readSnapshotStage(project, checkCurrent, trace) {
-            readShard(virtualFile, pending, shortNames, checkAnnotations = previous != null)
-          }
+          readShardStage(
+            virtualFile,
+            pending,
+            shortNames,
+            previous != null,
+            trace,
+            work,
+            checkCurrent,
+          )
         if (result == null) transaction.removeShard(virtualFile)
         else transaction.applyShard(virtualFile, result.shard)
         scan.advance(result)
@@ -53,9 +65,7 @@ internal class SourceSnapshotScanner(
           continue
         }
         val result =
-          readSnapshotStage(project, checkCurrent, trace) {
-            readShard(virtualFile, pending, shortNames, checkAnnotations = true)
-          }
+          readShardStage(virtualFile, pending, shortNames, true, trace, work, checkCurrent)
         if (result != null) transaction.applyShard(virtualFile, result.shard)
         scan.advance(result)
       }
@@ -69,7 +79,39 @@ internal class SourceSnapshotScanner(
       }
     } finally {
       scan.traceSummary(trace)
+      work?.report()
     }
+  }
+
+  /** One item spans read-action retries, while its read time includes every admitted attempt. */
+  private suspend fun readShardStage(
+    virtualFile: VirtualFile,
+    pending: SourceSnapshotChanges,
+    shortNames: Set<String>,
+    checkAnnotations: Boolean,
+    trace: IdeTraceOperation?,
+    work: IdeTraceWorkSummary?,
+    checkCurrent: () -> Unit,
+  ): SourceFileShardCache.ReadResult? = work.measure { item ->
+    item?.file = ideTraceFilePath(project, virtualFile)
+    val result =
+      readSnapshotStage(project, checkCurrent, trace) {
+        item.measureRead {
+          if (item != null) {
+            item.module =
+              ProjectFileIndex.getInstance(project).getModuleForFile(virtualFile)?.name
+                ?: "<unknown>"
+          }
+          readShard(virtualFile, pending, shortNames, checkAnnotations)
+        }
+      }
+    item?.cache =
+      when {
+        result == null -> "skipped"
+        result.rebuilt -> "rebuilt"
+        else -> "reused"
+      }
+    result
   }
 
   private fun readShard(

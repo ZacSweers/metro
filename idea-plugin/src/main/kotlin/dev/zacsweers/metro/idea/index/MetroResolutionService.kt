@@ -56,6 +56,7 @@ import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import dev.zacsweers.metro.idea.tracing.phase
 import dev.zacsweers.metro.idea.tracing.phaseSuspend
 import dev.zacsweers.metro.idea.tracing.readAttempt
@@ -897,6 +898,7 @@ private constructor(
           project.service<MetroIdeTracingService>().traceSuspend(
             "presentation.build",
             {
+              attribute("file", ideTraceFilePath(project, key.file))
               attribute("attempt", attemptId)
               attribute("generation", System.identityHashCode(index.generationToken))
               attribute("queuedRequests", queuedRequests)
@@ -976,6 +978,7 @@ private constructor(
           project.service<MetroIdeTracingService>().traceSuspend(
             "presentation.anchors",
             {
+              attribute("file", ideTraceFilePath(project, key.file))
               attribute("attempt", attemptId)
               attribute("generation", System.identityHashCode(request.index.generationToken))
               attribute("queuedRequests", queuedRequests)

@@ -209,8 +209,11 @@ internal class ResolutionSnapshotBuilder(
     }
     trace?.attribute("cache", "miss")
     progress.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
-    val summary =
-      buildFinalizedSourceLibrarySummary(project, source, buildSourceOwnershipIndex(source))
+    val ownershipIndex =
+      trace.phase("source.buildOwnershipIndex") {
+        buildSourceOwnershipIndex(source)
+      }
+    val summary = buildFinalizedSourceLibrarySummary(project, source, ownershipIndex, trace)
     cachedSourceSummary =
       CachedSourceLibrarySummary(collected, pending.invalidationRevision, summary)
     return summary
