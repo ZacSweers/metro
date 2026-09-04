@@ -13,6 +13,7 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.project.DumbAware
+import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.PopupHandler
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import javax.swing.JComponent
@@ -43,7 +44,13 @@ internal class RefreshGraphsAction(
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
   override fun update(e: AnActionEvent) {
-    e.presentation.isEnabled = !resolutionService.isExplicitGraphRefreshPending
+    val explicitRefreshPending = resolutionService.isExplicitGraphRefreshPending
+    val refreshing = explicitRefreshPending || resolutionService.indexBuildProgress.value != null
+    val icon = if (refreshing) AnimatedIcon.Default.INSTANCE else AllIcons.Actions.Refresh
+    e.presentation.icon = icon
+    // ActionButton preserves an explicit disabled icon, so the spinner continues while clicks stop.
+    e.presentation.disabledIcon = if (refreshing) icon else null
+    e.presentation.isEnabled = !explicitRefreshPending
   }
 
   override fun actionPerformed(e: AnActionEvent) {

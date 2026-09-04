@@ -72,8 +72,9 @@ class MetroTraceActionTest : BasePlatformTestCase() {
     assertFalse(stopEvent.presentation.isEnabled)
   }
 
-  fun testRefreshWithTracingIsRegisteredAndHonorsTheDebuggingGate() {
-    val action = registeredAction("Metro.RefreshWithTracing")
+  fun testRefreshContextActionHonorsTheDebuggingGate() {
+    assertNull(ActionManager.getInstance().getAction("Metro.RefreshWithTracing"))
+    val action = RefreshMetroTraceAction(project)
     val event = event(action)
     action.update(event)
     assertFalse(event.presentation.isVisible)

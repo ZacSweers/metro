@@ -188,11 +188,11 @@ project and type identifiers, so review the file before sharing it.
 Select **Enable debugging options** under `Settings > Tools > Metro` to show the tracing controls.
 Debugging options are disabled by default.
 
-Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. The same action
-is available in **More** and Find Action. Recording starts before the refresh is submitted, follows
-that request through retries and index publication, then saves after admitted work finishes. Later
-editor requests can happen after capture completion. A 10-minute safety deadline ends admission and
-marks the capture as partial if the refresh is still running.
+Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. Recording starts
+before the refresh is submitted, follows that request through retries and index publication, then
+saves after admitted work finishes. Later editor requests can happen after capture completion.
+A 10-minute safety deadline ends admission and marks the capture as partial if the refresh is still
+running.
 
 For other operations, use **Start Metro Performance Trace**, reproduce the issue, and select
 **Stop Metro Performance Trace**. This capture accepts work for 60 seconds. Both capture modes keep

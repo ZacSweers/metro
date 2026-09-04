@@ -206,7 +206,6 @@ internal class MetroToolWindowPanel(
         templatePresentation.icon = AllIcons.Actions.More
         add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
-        add(RefreshMetroTraceAction(project))
         add(StartMetroTraceAction(project))
         add(StopMetroTraceAction(project))
       }
@@ -236,9 +235,11 @@ internal class MetroToolWindowPanel(
       JPanel().apply {
         isOpaque = false
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        add(indexBuildStatus)
-        add(validationStatus)
-        add(traceStatus)
+        // All status rows share the same leading edge, including labels narrower than the panel.
+        for (status in listOf(indexBuildStatus, validationStatus, traceStatus)) {
+          status.alignmentX = LEFT_ALIGNMENT
+          add(status)
+        }
       }
     content.add(statusContainer, BorderLayout.NORTH)
     browserAndResults.firstComponent = JBScrollPane(tree)
