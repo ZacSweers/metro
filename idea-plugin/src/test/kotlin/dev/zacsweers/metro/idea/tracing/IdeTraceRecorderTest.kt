@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -67,7 +68,7 @@ class IdeTraceRecorderTest : TestCase() {
       recorder.stop()
       recorder.stop()
       recorder.start()
-      assertEquals(IdeTraceState.STOPPING, recorder.state.value)
+      assertEquals(IdeTraceState.DRAINING, recorder.state.value)
       assertEquals(0, sink.closeCount)
       recorder.trace("late") { assertNull(it) }
     } finally {
@@ -153,6 +154,145 @@ class IdeTraceRecorderTest : TestCase() {
       assertEquals("completed", sink.results("moving.child").single().metadata["outcome"])
     }
 
+  fun testRequestCaptureWaitsForOutputAndUsesItsOwnDeadline() = runBlocking {
+    val owner = SupervisorJob()
+    val creating = CompletableDeferred<Unit>()
+    val outputReady = CountDownLatch(1)
+    val entered = CompletableDeferred<Unit>()
+    val finishRefresh = CompletableDeferred<Unit>()
+    val finished = CompletableDeferred<IdeTraceStopReason>()
+    val sink = RecordingIdeTraceSink()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(owner + Dispatchers.Default),
+        {
+          creating.complete(Unit)
+          check(outputReady.await(10, TimeUnit.SECONDS))
+          IdeTraceOutput(TraceDriver(sink))
+        },
+        onFinished = { _, failure, reason, _ ->
+          assertNull(failure)
+          finished.complete(reason)
+        },
+        durationMillis = 25,
+        requestDurationMillis = 10_000,
+      )
+    sink.onClose = { assertEquals(IdeTraceState.SAVING, recorder.state.value) }
+    try {
+      withTimeout(10_000) {
+        assertTrue(
+          recorder.startRequest {
+            recorder.traceSuspend("refresh") {
+              entered.complete(Unit)
+              finishRefresh.await()
+            }
+          }
+        )
+        creating.await()
+        assertEquals(IdeTraceState.STARTING, recorder.state.value)
+        assertFalse(entered.isCompleted)
+        assertFalse(recorder.startRequest { error("Duplicate request") })
+        outputReady.countDown()
+        entered.await()
+        delay(75)
+        assertEquals(IdeTraceState.RECORDING, recorder.state.value)
+        finishRefresh.complete(Unit)
+        assertEquals(IdeTraceStopReason.COMPLETED, finished.await())
+        assertEquals(1, sink.closeCount)
+      }
+    } finally {
+      outputReady.countDown()
+      finishRefresh.complete(Unit)
+      owner.cancelAndJoin()
+    }
+  }
+
+  fun testStoppingRequestCaptureLeavesRefreshAliveAndDrainsAdmittedWork() = runBlocking {
+    val owner = SupervisorJob()
+    val sink = RecordingIdeTraceSink()
+    val refresh = CompletableDeferred<Int>()
+    val observing = CompletableDeferred<Unit>()
+    val finished = CompletableDeferred<IdeTraceStopReason>()
+    val entered = CompletableDeferred<Unit>()
+    val release = CompletableDeferred<Unit>()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(owner + Dispatchers.Default),
+        { IdeTraceOutput(TraceDriver(sink)) },
+        onFinished = { _, failure, reason, _ ->
+          assertNull(failure)
+          finished.complete(reason)
+        },
+      )
+    try {
+      withTimeout(10_000) {
+        recorder.startRequest {
+          recorder.traceSuspend("refresh") {
+            observing.complete(Unit)
+            refresh.await()
+          }
+        }
+        observing.await()
+        val work =
+          async(Dispatchers.Default) {
+            recorder.traceSuspend("candidate") {
+              entered.complete(Unit)
+              release.await()
+            }
+          }
+        entered.await()
+        recorder.stop()
+        assertEquals(IdeTraceState.DRAINING, recorder.state.value)
+        assertFalse(refresh.isCancelled)
+        assertFalse(refresh.isCompleted)
+        assertEquals(0, sink.closeCount)
+        release.complete(Unit)
+        work.await()
+        assertEquals(IdeTraceStopReason.USER, finished.await())
+        refresh.complete(42)
+        assertEquals(42, refresh.await())
+        val stop = sink.events.single { it.name == "capture.finish" }.metadata
+        assertEquals("user", stop["stop_reason"])
+        assertEquals("true", stop["partial"])
+      }
+    } finally {
+      release.complete(Unit)
+      refresh.complete(42)
+      owner.cancelAndJoin()
+    }
+  }
+
+  fun testRequestSafetyDeadlineSavesAPartialCaptureWithoutCancelingRefresh() = runBlocking {
+    val owner = SupervisorJob()
+    val sink = RecordingIdeTraceSink()
+    val refresh = CompletableDeferred<Unit>()
+    val finished = CompletableDeferred<IdeTraceStopReason>()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(owner + Dispatchers.Default),
+        { IdeTraceOutput(TraceDriver(sink)) },
+        onFinished = { _, failure, reason, _ ->
+          assertNull(failure)
+          finished.complete(reason)
+        },
+        requestDurationMillis = 25,
+      )
+    try {
+      withTimeout(10_000) {
+        recorder.startRequest { refresh.await() }
+        assertEquals(IdeTraceStopReason.DEADLINE, finished.await())
+        assertFalse(refresh.isCancelled)
+        assertFalse(refresh.isCompleted)
+        val stop = sink.events.single { it.name == "capture.finish" }.metadata
+        assertEquals("deadline", stop["stop_reason"])
+        assertEquals("true", stop["partial"])
+      }
+    } finally {
+      refresh.complete(Unit)
+      owner.cancelAndJoin()
+    }
+  }
+
   fun testAutomaticStopAndRestartUseSeparateOutputs() = runBlocking {
     val job = SupervisorJob()
     val finished = kotlinx.coroutines.channels.Channel<Unit>(2)
@@ -165,7 +305,7 @@ class IdeTraceRecorderTest : TestCase() {
           sinks += sink
           IdeTraceOutput(TraceDriver(sink))
         },
-        onFinished = { _, failure ->
+        onFinished = { _, failure, _, _ ->
           assertNull(failure)
           finished.send(Unit)
         },
@@ -210,7 +350,7 @@ class IdeTraceRecorderTest : TestCase() {
       withTimeout(10_000) {
         entered.await()
         owner.cancel()
-        recorder.state.first { it == IdeTraceState.STOPPING }
+        recorder.state.first { it == IdeTraceState.DRAINING }
         assertEquals(0, sink.closeCount)
         operation.cancelAndJoin()
         owner.join()
@@ -258,7 +398,7 @@ class IdeTraceRecorderTest : TestCase() {
       IdeTraceRecorder(
         CoroutineScope(owner + Dispatchers.Default),
         createOutput = { throw failure },
-        onFinished = { _, error -> failed.complete(error) },
+        onFinished = { _, error, _, _ -> failed.complete(error) },
       )
     try {
       recorder.start()
@@ -289,7 +429,7 @@ class IdeTraceRecorderTest : TestCase() {
           reportFailure.complete(onFailure)
           IdeTraceOutput(TraceDriver(sink))
         },
-        onFinished = { _, failure -> finished.complete(failure) },
+        onFinished = { _, failure, _, _ -> finished.complete(failure) },
       )
     val release = CompletableDeferred<Unit>()
     val entered = CompletableDeferred<Unit>()
@@ -310,7 +450,7 @@ class IdeTraceRecorderTest : TestCase() {
         entered.await()
         val failure = IOException("Writer failed")
         reportFailure.await()(failure)
-        assertEquals(IdeTraceState.STOPPING, recorder.state.value)
+        assertEquals(IdeTraceState.DRAINING, recorder.state.value)
         assertEquals(0, sink.closeCount)
         recorder.trace("late") { assertNull(it) }
         release.complete(Unit)
@@ -333,7 +473,7 @@ class IdeTraceRecorderTest : TestCase() {
       IdeTraceRecorder(
         CoroutineScope(owner + Dispatchers.Default),
         { failure -> createIdeTraceOutput(directory, failure) },
-        onFinished = { path, failure ->
+        onFinished = { path, failure, _, _ ->
           if (failure != null) saved.completeExceptionally(failure)
           else saved.complete(checkNotNull(path))
         },

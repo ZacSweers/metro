@@ -7,11 +7,14 @@ import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +27,19 @@ internal enum class IdeTraceState {
   IDLE,
   STARTING,
   RECORDING,
-  STOPPING,
+  DRAINING,
+  SAVING,
+}
+
+/** Explains why admission ended; deadline captures can omit later refresh work. */
+internal enum class IdeTraceStopReason(val value: String) {
+  COMPLETED("completed"),
+  NOT_STARTED("not_started"),
+  USER("user"),
+  DEADLINE("deadline"),
+  DEBUGGING_DISABLED("debugging_disabled"),
+  PROJECT_CLOSED("project_closed"),
+  FAILED("failed"),
 }
 
 /** The output is assigned on IO before returning across a cancellable dispatcher boundary. */
@@ -93,12 +108,15 @@ internal class IdeTraceCapture(
 internal class IdeTraceRecorder(
   private val scope: CoroutineScope,
   private val createOutput: ((Throwable) -> Unit) -> IdeTraceOutput,
-  private val onFinished: suspend (Path?, Throwable?) -> Unit = { _, _ -> },
+  private val onFinished: suspend (Path?, Throwable?, IdeTraceStopReason, Boolean) -> Unit =
+    { _, _, _, _ ->
+    },
   private val durationMillis: Long = 60_000,
   private val nanoTime: () -> Long = System::nanoTime,
+  private val requestDurationMillis: Long = 10 * 60_000,
 ) {
-  private class Request {
-    val stop = CompletableDeferred<Unit>()
+  private class Request(val work: (suspend () -> Unit)?) {
+    val stop = CompletableDeferred<IdeTraceStopReason>()
     val failure = AtomicReference<Throwable?>()
     var output: IdeTraceOutput? = null
     var capture: IdeTraceCapture? = null
@@ -111,37 +129,47 @@ internal class IdeTraceRecorder(
   private var current: Request? = null
 
   fun start() {
+    startRequestOwner(null)
+  }
+
+  /**
+   * Runs one refresh observer after output creation. Its cancellation leaves refresh work alive.
+   */
+  fun startRequest(work: suspend () -> Unit): Boolean = startRequestOwner(work)
+
+  private fun startRequestOwner(work: (suspend () -> Unit)?): Boolean =
     synchronized(lock) {
-      if (current != null) return
-      val request = Request()
+      if (current != null) return false
+      val request = Request(work)
       current = request
       mutableState.value = IdeTraceState.STARTING
       // Install finally even if the owning service has already been canceled.
       scope.launch(start = CoroutineStart.UNDISPATCHED) { own(request) }
+      true
+    }
+
+  fun stop(reason: IdeTraceStopReason = IdeTraceStopReason.USER) {
+    synchronized(lock) {
+      val request = current ?: return
+      stop(request, reason)
     }
   }
 
-  fun stop() {
-    synchronized(lock) {
-      val request = current ?: return
-      detach(request)
-      request.stop.complete(Unit)
-    }
+  private fun stop(request: Request, reason: IdeTraceStopReason) {
+    if (current !== request || request.stop.isCompleted) return
+    request.stop.complete(reason)
+    detach(request)
   }
 
   private fun detach(request: Request) {
     request.capture?.stop()
     active.set(null)
-    mutableState.value = IdeTraceState.STOPPING
+    mutableState.value = IdeTraceState.DRAINING
   }
 
   private fun fail(request: Request, failure: Throwable) {
     request.failure.compareAndSet(null, failure)
-    synchronized(lock) {
-      if (current !== request) return
-      detach(request)
-      request.stop.complete(Unit)
-    }
+    synchronized(lock) { stop(request, IdeTraceStopReason.FAILED) }
   }
 
   private suspend fun own(request: Request) {
@@ -167,15 +195,56 @@ internal class IdeTraceRecorder(
           mutableState.value = IdeTraceState.RECORDING
         }
       }
-      withTimeoutOrNull(durationMillis) { request.stop.await() }
+      coroutineScope {
+        val work = request.work
+        val observer =
+          if (work != null && !request.stop.isCompleted) {
+            launch {
+              try {
+                work()
+                synchronized(lock) { stop(request, IdeTraceStopReason.COMPLETED) }
+              } catch (failure: CancellationException) {
+                throw failure
+              } catch (failure: Throwable) {
+                rethrowTraceControlFlow(failure)
+                fail(request, failure)
+              }
+            }
+          } else null
+        try {
+          val deadline = if (work == null) durationMillis else requestDurationMillis
+          if (withTimeoutOrNull(deadline) { request.stop.await() } == null) {
+            synchronized(lock) { stop(request, IdeTraceStopReason.DEADLINE) }
+          }
+        } finally {
+          // The observer only awaits the independent coordinator's completion handle.
+          observer?.cancelAndJoin()
+        }
+      }
     } catch (failure: Throwable) {
       rethrowTraceControlFlow(failure)
       fail(request, failure)
     } finally {
-      synchronized(lock) { detach(request) }
+      synchronized(lock) {
+        if (!request.stop.isCompleted) request.stop.complete(IdeTraceStopReason.PROJECT_CLOSED)
+        detach(request)
+      }
       withContext(NonCancellable + Dispatchers.IO) {
         try {
           request.capture?.drained?.await()
+          request.capture?.let { capture ->
+            val reason = request.stop.await()
+            val result = IdeTraceOperation(capture, "capture.finish")
+            capture.record {
+              result.attribute("stop_reason", reason.value)
+              result.attribute(
+                "partial",
+                request.work != null && reason != IdeTraceStopReason.COMPLETED,
+              )
+              result.instant()
+            }
+          }
+          mutableState.value = IdeTraceState.SAVING
           request.output?.close()
         } catch (failure: Throwable) {
           rethrowTraceControlFlow(failure)
@@ -188,7 +257,12 @@ internal class IdeTraceRecorder(
         }
       }
     }
-    onFinished(request.output?.path, request.failure.get())
+    onFinished(
+      request.output?.path,
+      request.failure.get(),
+      request.stop.await(),
+      request.work != null,
+    )
   }
 
   fun <T> trace(

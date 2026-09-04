@@ -26,6 +26,7 @@ internal class RecordingIdeTraceSink : AbstractTraceSink() {
     get() = closes.get()
 
   var closeFailure: Throwable? = null
+  var onClose: (() -> Unit)? = null
 
   fun results(name: String): List<RecordedIdeTraceEvent> = events.filter {
     it.name == "$name.result"
@@ -52,6 +53,7 @@ internal class RecordingIdeTraceSink : AbstractTraceSink() {
 
   override fun close() {
     check(closes.incrementAndGet() == 1) { "Trace closed more than once" }
+    onClose?.invoke()
     closeFailure?.let { throw it }
   }
 

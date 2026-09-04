@@ -98,6 +98,11 @@ Metro IDE support for Kotlin dependency injection projects.
 
   <actions>
     <action
+        id="Metro.RefreshWithTracing"
+        class="dev.zacsweers.metro.idea.tracing.RefreshMetroTraceAction"
+        text="Refresh with tracing"
+        description="Trace a Metro refresh through index publication and save a local Perfetto file"/>
+    <action
         id="Metro.StartPerformanceTrace"
         class="dev.zacsweers.metro.idea.tracing.StartMetroTraceAction"
         text="Start Metro Performance Trace"

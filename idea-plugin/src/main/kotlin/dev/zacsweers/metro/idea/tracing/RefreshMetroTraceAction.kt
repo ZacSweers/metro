@@ -8,12 +8,13 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 
-/** Finishes an active capture and lets the tracing service save work already in flight. */
-internal class StopMetroTraceAction(private val targetProject: Project? = null) :
+/** Starts recording before one refresh and saves after its generation and admitted work finish. */
+internal class RefreshMetroTraceAction(private val targetProject: Project? = null) :
   AnAction(
-    "Stop Metro Performance Trace",
-    "Finish and save the current Metro performance trace",
+    "Refresh with tracing",
+    "Trace a Metro refresh through index publication and save a local Perfetto file",
     null,
   ),
   DumbAware {
@@ -23,12 +24,17 @@ internal class StopMetroTraceAction(private val targetProject: Project? = null) 
   override fun update(e: AnActionEvent) {
     val project = metroTraceActionProject(targetProject ?: e.project)
     e.presentation.isVisible = project != null
-    val state = project?.service<MetroIdeTracingService>()?.state?.value
-    e.presentation.isEnabled = state == IdeTraceState.STARTING || state == IdeTraceState.RECORDING
+    if (project == null) {
+      e.presentation.isEnabled = false
+      return
+    }
+    val captureIdle = project.service<MetroIdeTracingService>().state.value == IdeTraceState.IDLE
+    val refreshPending = project.service<MetroResolutionService>().isExplicitGraphRefreshPending
+    e.presentation.isEnabled = captureIdle && !refreshPending
   }
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = metroTraceActionProject(targetProject ?: e.project) ?: return
-    project.service<MetroIdeTracingService>().stopCapture()
+    project.service<MetroIdeTracingService>().refreshWithTracing()
   }
 }

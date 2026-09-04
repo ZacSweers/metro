@@ -202,7 +202,9 @@ private constructor(
   @Volatile private var resolutionCandidatePreparedObserver: (() -> Unit)? = null
   private var projectInputsPending = false
   private var settingsPending = false
-  private var pendingManualRefresh: ManualRefreshRequest? = null
+  private var pendingManualRefresh: ManualRefreshHandle? = null
+  /** Completion observers survive candidate retries and never own the coordinator's job. */
+  private val manualRefreshHandles = ConcurrentHashMap<Long, ManualRefreshHandle>()
   /** Clocks captured at the last event drain, used to reject superseded work. */
   private var coordinatorSnapshot = ingress.snapshot()
   private val coordinatorJob: Job
@@ -401,7 +403,7 @@ private constructor(
         is ResolutionCoordinatorEvent.PresentationDemand -> demandedModules += event.module
         is ResolutionCoordinatorEvent.Build -> mergePendingBuild(event)
         is ResolutionCoordinatorEvent.ManualRefresh -> {
-          pendingManualRefresh = ManualRefreshRequest(event.requestId)
+          pendingManualRefresh = event.request
         }
         is ResolutionCoordinatorEvent.FilePresentationRequest -> {
           if (isPresentationIndexPublished(event.index) && !hasFilePresentationWork(event.key)) {
@@ -1242,7 +1244,7 @@ private constructor(
         trace?.outcome("failedPreparation")
         logger<MetroResolutionService>().warn("Metro resolution preparation failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
-        manualRequest?.let { finishManualRefresh(it.id) }
+        manualRequest?.let { finishManualRefresh(it.id, ManualRefreshOutcome.FAILED) }
         return
       }
 
@@ -1278,7 +1280,7 @@ private constructor(
         trace?.outcome("failedSealing")
         logger<MetroResolutionService>().warn("Metro resolution build failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
-        manualRequest?.let { finishManualRefresh(it.id) }
+        manualRequest?.let { finishManualRefresh(it.id, ManualRefreshOutcome.FAILED) }
         return
       }
 
@@ -1340,7 +1342,7 @@ private constructor(
     if (published == null) {
       trace?.outcome("canceledBeforePublication")
       completeBuildRequests(requests.values, IndexBuildOutcome.CANCELED)
-      manualRequest?.let { finishManualRefresh(it.id) }
+      manualRequest?.let { finishManualRefresh(it.id, ManualRefreshOutcome.CANCELED) }
       return
     }
     sourceSnapshot = candidate.source
@@ -1383,7 +1385,7 @@ private constructor(
 
   private fun resolutionCandidateIsSuperseded(
     buildSnapshot: ResolutionIngressSnapshot,
-    manualRequest: ManualRefreshRequest?,
+    manualRequest: ManualRefreshHandle?,
     expectedInputs: IndexInputs? = null,
   ): Boolean {
     if (isDisposed || project.isDisposed) return true
@@ -1395,7 +1397,7 @@ private constructor(
 
   private fun requeueResolutionCandidate(
     requests: Map<Module, PendingIndexBuild>,
-    manualRequest: ManualRefreshRequest?,
+    manualRequest: ManualRefreshHandle?,
   ) {
     for ((module, request) in requests) {
       val existing = pendingBuilds[module]
@@ -1632,21 +1634,30 @@ private constructor(
   }
 
   /** One Refresh request remains active through retries until its complete generation publishes. */
-  internal fun refreshGraphData() {
-    if (isDisposed || project.isDisposed) return
+  internal fun refreshGraphData(): ManualRefreshHandle? {
+    if (isDisposed || project.isDisposed) return null
     activateGraphBrowser()
+    var request: ManualRefreshHandle? = null
     val accepted =
       ingress.submit(manualRefresh = true) { ticket ->
-        ResolutionCoordinatorEvent.ManualRefresh(ticket.eventClock)
+        val handle = ManualRefreshHandle(ticket.eventClock)
+        manualRefreshHandles[handle.id] = handle
+        request = handle
+        ResolutionCoordinatorEvent.ManualRefresh(handle)
       }
     if (accepted != null) scheduleUiStateNotification()
+    return request
   }
 
   /** Includes queued preprocessing and smart-mode waits as well as active preparation. */
   internal val isExplicitGraphRefreshPending: Boolean
     get() = !isDisposed && !project.isDisposed && ingress.snapshot().manualRefreshPending
 
-  private fun finishManualRefresh(requestId: Long) {
+  private fun finishManualRefresh(
+    requestId: Long,
+    outcome: ManualRefreshOutcome = ManualRefreshOutcome.PUBLISHED,
+  ) {
+    manualRefreshHandles.remove(requestId)?.finish(outcome)
     if (ingress.completeManualRefresh(requestId)) scheduleUiStateNotification()
   }
 
@@ -2044,7 +2055,7 @@ private constructor(
     progress: IndexBuildProgressReporter,
     generationToken: IndexGenerationToken,
     buildSnapshot: ResolutionIngressSnapshot,
-    manualRequest: ManualRefreshRequest?,
+    manualRequest: ManualRefreshHandle?,
     capturedInvalidations: CapturedInvalidations,
     trace: IdeTraceOperation?,
   ): CollectedResolutionCandidate {
@@ -2710,6 +2721,8 @@ private constructor(
   /** A stopped coordinator rejects new work and releases callers whose events were still queued. */
   private fun closeIngress() {
     val abandonedEvents = ingress.close()
+    manualRefreshHandles.values.forEach { it.finish(ManualRefreshOutcome.CANCELED) }
+    manualRefreshHandles.clear()
     for (event in abandonedEvents) {
       when (event) {
         is ResolutionCoordinatorEvent.Build -> {
@@ -2782,7 +2795,21 @@ private class PendingIndexBuild(
   }
 }
 
-private data class ManualRefreshRequest(val id: Long)
+/** Finite observation of one refresh. Canceling an awaiter leaves the refresh running. */
+internal class ManualRefreshHandle(val id: Long) {
+  private val result = CompletableDeferred<ManualRefreshOutcome>()
+  val completion: Deferred<ManualRefreshOutcome> = result
+
+  internal fun finish(outcome: ManualRefreshOutcome) {
+    result.complete(outcome)
+  }
+}
+
+internal enum class ManualRefreshOutcome {
+  PUBLISHED,
+  FAILED,
+  CANCELED,
+}
 
 /** Project metadata captured together before the resumable source and dependency reads begin. */
 private data class ResolutionCandidateInputs(
@@ -2888,7 +2915,7 @@ private sealed interface ResolutionCoordinatorEvent {
     override val coalescingKey: Any = ResolutionIngressEventKey.Build(module)
   }
 
-  data class ManualRefresh(val requestId: Long) : ResolutionCoordinatorEvent {
+  data class ManualRefresh(val request: ManualRefreshHandle) : ResolutionCoordinatorEvent {
     override val coalescingKey: Any = ResolutionIngressEventKey.ManualRefresh
   }
 

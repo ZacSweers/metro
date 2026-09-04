@@ -28,6 +28,8 @@ import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.index.IndexRequestMode
 import dev.zacsweers.metro.idea.index.IndexRequestPolicy
+import dev.zacsweers.metro.idea.index.ManualRefreshHandle
+import dev.zacsweers.metro.idea.index.ManualRefreshOutcome
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sharedDeclarationFingerprint
@@ -58,6 +60,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
@@ -1139,6 +1142,36 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testManualRefreshHandleSurvivesRetryAndCanceledObserver() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    var request: ManualRefreshHandle? = null
+    withPausedColdManualRefresh(onRequested = { request = it }) { service, attempts, release ->
+      val handle = checkNotNull(request)
+      assertFalse(handle.completion.isCompleted)
+      assertNull(service.refreshGraphData())
+      val observerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+      val observing = observerScope.launch { handle.completion.await() }
+      runBlocking { observing.cancelAndJoin() }
+      observerScope.cancel()
+      assertFalse(handle.completion.isCancelled)
+      myFixture.addFileToProject(
+        "test/AddedDuringTracedRefresh.kt",
+        "package test\n@dev.zacsweers.metro.Inject class AddedDuringTracedRefresh",
+      )
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      assertFalse(handle.completion.isCompleted)
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      assertEquals(ManualRefreshOutcome.PUBLISHED, runBlocking { handle.completion.await() })
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertEquals(
+        "test.AddedDuringTracedRefresh",
+        service.cachedIndex(file).bindings.single().typeKey.renderedType,
+      )
+    }
+  }
+
   fun testNewFileAfterDiscoveryRestartsColdManualLoad() = withResolutionTrace { recorder, sink ->
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     withPausedColdManualRefresh { service, attempts, release ->
@@ -1220,7 +1253,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       IdeTraceRecorder(
         CoroutineScope(job + Dispatchers.Default),
         createOutput = { IdeTraceOutput(TraceDriver(sink)) },
-        onFinished = { _, failure -> finished.complete(failure) },
+        onFinished = { _, failure, _, _ -> finished.complete(failure) },
       )
     val tracingService = project.service<MetroIdeTracingService>()
     val previousRecorder = tracingService.setRecorderForTest(recorder)
@@ -1332,7 +1365,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   /** Pauses after capture so real PSI writes can race publication outside its read action. */
   private fun withPausedColdManualRefresh(
-    block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit
+    onRequested: (ManualRefreshHandle) -> Unit = {},
+    block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit,
   ) {
     withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
       MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
@@ -1349,7 +1383,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         }
       }
       try {
-        service.refreshGraphData()
+        onRequested(checkNotNull(service.refreshGraphData()))
         PlatformTestUtil.waitForFuture(prepared, 30_000)
         assertTrue(service.isExplicitGraphRefreshPending)
         block(service, attempts, release)

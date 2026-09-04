@@ -51,6 +51,7 @@ import dev.zacsweers.metro.idea.navigation.MetroRevealTarget
 import dev.zacsweers.metro.idea.presentableName
 import dev.zacsweers.metro.idea.tracing.IdeTraceState
 import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.RefreshMetroTraceAction
 import dev.zacsweers.metro.idea.tracing.StartMetroTraceAction
 import dev.zacsweers.metro.idea.tracing.StopMetroTraceAction
 import java.awt.BorderLayout
@@ -120,7 +121,7 @@ internal class MetroToolWindowPanel(
   private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
 
   internal val refreshGraphsAction =
-    RefreshGraphsAction(resolutionService) {
+    RefreshGraphsAction(resolutionService, RefreshMetroTraceAction(project)) {
       updateIndexBuildStatus()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
@@ -205,6 +206,7 @@ internal class MetroToolWindowPanel(
         templatePresentation.icon = AllIcons.Actions.More
         add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
+        add(RefreshMetroTraceAction(project))
         add(StartMetroTraceAction(project))
         add(StopMetroTraceAction(project))
       }
@@ -291,8 +293,10 @@ internal class MetroToolWindowPanel(
       when (state) {
         IdeTraceState.IDLE -> ""
         IdeTraceState.STARTING -> "Starting Metro performance trace…"
-        IdeTraceState.RECORDING -> "Recording Metro performance trace"
-        IdeTraceState.STOPPING -> "Finalizing Metro performance trace…"
+        IdeTraceState.RECORDING ->
+          if (tracingService.isRefreshCapture) "Tracing Metro refresh…" else "Tracing Metro work…"
+        IdeTraceState.DRAINING -> "Finishing traced work…"
+        IdeTraceState.SAVING -> "Saving Metro performance trace…"
       }
     traceStatus.isVisible = enabled && state != IdeTraceState.IDLE
     if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
