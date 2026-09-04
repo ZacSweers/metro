@@ -257,12 +257,7 @@ internal class FileShardBuilder(
   private fun processDynamicGraphCall(call: KtCallExpression) {
     analyze(call) {
       val function =
-        call
-          .resolveToCall()
-          ?.successfulFunctionCallOrNull()
-          ?.partiallyAppliedSymbol
-          ?.signature
-          ?.symbol ?: return@analyze
+        call.resolveToCall()?.successfulFunctionCallOrNull()?.signature?.symbol ?: return@analyze
       val isFactory = DYNAMIC_GRAPH_CALLABLES[function.callableId] ?: return@analyze
       val requestedType = call.expressionType?.fullyExpandedType as? KaClassType ?: return@analyze
       val requestedClass = requestedType.symbol as? KaNamedClassSymbol ?: return@analyze
@@ -626,7 +621,7 @@ internal class FileShardBuilder(
     if (classSymbol.origin == KaSymbolOrigin.LIBRARY) return
     if (!classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return
     val declaration = classSymbol.psi as? KtClassOrObject ?: return
-    declaration.containingFile?.let(cacheDependencies::add)
+    cacheDependencies.add(declaration.containingFile)
     recordAnnotationDependencies(classSymbol, declaration)
     indexAssistedFactory(declaration, classSymbol, factoryType)
   }
@@ -888,7 +883,7 @@ internal class FileShardBuilder(
               referenced is KtTypeAlias ||
                 (referenced is KtProperty && referenced.hasModifier(KtTokens.CONST_KEYWORD))
             if (!isSharedDeclaration) continue
-            val referencedFile = referenced.containingFile ?: continue
+            val referencedFile = referenced.containingFile
             if (referencedFile !== useSiteFile) sharedDeclarationDependencies += referencedFile
           }
           true
