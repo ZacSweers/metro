@@ -7881,9 +7881,17 @@
 <li><strong>[IR]</strong> Support suspend providers with switching providers.</li>
 <li><strong>[IR]</strong> Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.</li>
 <li><strong>[IR]</strong> Avoid initializing the rich terminal renderer for plain compiler diagnostics.</li>
+<li><strong>[Reports]</strong> Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.</li>
+<li><strong>[IDE]</strong> Add actions to make classes injectable and contribute bindings, sets, or maps. Includes constructor, bound-type, scope, and map-key pickers, with editor templates for scope and key values.</li>
+<li><strong>[IDE]</strong> Add a Manual/Automatic refresh selector to the graph window. Manual is the default. Automatic mode batches edits after an idle delay and keeps possibly-stale data visible.</li>
 </ul>
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[IDE]</strong> Reduce graph refreshes after unrelated edits and reuse completed analysis when a refresh is interrupted. Keep previous graph data visible while updating it.</li>
+<li><strong>[IDE]</strong> Preserve completed files and preparation stages when IDE write actions interrupt graph loading. Ignore unrelated configuration-file changes and use one Refresh action that shares an in-progress load.</li>
+<li><strong>[IDE]</strong> Invalidate cached compiler options and graph data when module facets change.</li>
+<li><strong>[IDE]</strong> Clarify contribution picker previews and respect implicit class keys.</li>
+<li><strong>[IDE]</strong> Offer primary and secondary constructors when making a class injectable, including public secondary constructors with a private primary constructor.</li>
 <li><strong>[FIR]</strong> Fix a compiler crash on zero-parameter member-injection functions.</li>
 <li><strong>[FIR]</strong> Avoid annotation-cache races during concurrent IDE analysis.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>

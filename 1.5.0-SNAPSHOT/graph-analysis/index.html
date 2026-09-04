@@ -1394,6 +1394,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#binding-explanations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Binding explanations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2308,6 +2319,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#binding-explanations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Binding explanations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2767,6 +2789,22 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>This enables the compiler to export graph metadata during compilation.</p>
+<h2 id="binding-explanations">Binding explanations<a class="headerlink" href="#binding-explanations" title="Permanent link">&para;</a></h2>
+<p>Graph metadata includes <code>bindingExplanations</code>, using the same decision model and reason codes as<br />
+the IDE&rsquo;s <strong>Why this Metro binding?</strong> action. The aggregated metadata and <code>analysis.json</code> preserve<br />
+these records. Reports also include concrete generated child and dynamic graphs.</p>
+<p>Each explanation identifies its graph context, the requested key when one exists, and the observed<br />
+candidates. Reasons such as <code>selected_explicit</code>, <code>selected_parent</code>, <code>excluded</code>, and <code>replaced</code> are<br />
+structured fields. Related declarations identify the graph or contribution responsible for a<br />
+removal when that information is available.</p>
+<p>The <code>phase</code> distinguishes binding registration, dependency lookup, and candidate filtering. A<br />
+filtering record can describe an excluded contribution before any dependency requests it. Lookup<br />
+records include only candidates reached by the compiler&rsquo;s normal lookup. Later fallbacks stay<br />
+unevaluated, and the candidate list is not exhaustive. The IDE can show additional alternatives<br />
+from its project index.</p>
+<p>Explanation collection is enabled with <code>reportsDestination</code>. It does not change binding selection.<br />
+JSON reports are written during code generation, so a compilation that stops earlier may have no<br />
+report for the failing graph.</p>
 <h2 id="available-tasks">Available Tasks<a class="headerlink" href="#available-tasks" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>

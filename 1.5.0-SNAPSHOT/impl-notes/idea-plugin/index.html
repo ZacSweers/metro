@@ -2090,12 +2090,17 @@ their owning graph declaration and module.</p>
   Computes type keys, dependency keys, map key info, contribution priorities, and multibinding ids.<br />
   Generated contribution providers depend only on constructor parameters, matching the actual<br />
   compiler-generated provider; an exposed injectable implementation retains its injected members.</li>
-<li><code>index/LibraryIndexPostProcessor.kt</code>: cross-file pass for compiled dependencies. Resolves<br />
-  binary inject classes and assisted factories on demand, specializing factory methods and target<br />
-  dependencies to their requested generic arguments. This includes transitive dependencies of<br />
-  generated contribution providers and discoveries from generated hint functions, the same way<br />
-  the compiler does. Generated aliases inherit their origin&rsquo;s contribution priority. Public<br />
-  hints only need classpath visibility; nonpublic hints still use Kotlin&rsquo;s friend-module rules.</li>
+<li><code>index/SourceClassBindingPostProcessor.kt</code> and <code>index/LibraryIndexPostProcessor.kt</code>: resolve<br />
+  concrete constructor, object, and assisted-factory requests across source and libraries. They<br />
+  share class extraction and a bounded expansion state. Declaration dependencies include source<br />
+  files reached through library requests and owners waiting for unresolved source types.</li>
+<li><code>index/LibraryContributionScanner.kt</code>: reads generated hint functions and their binding or graph<br />
+  interface surfaces. Generated aliases inherit their origin&rsquo;s contribution priority. Public hints<br />
+  need classpath visibility; nonpublic hints use Kotlin&rsquo;s friend-module rules. Source and binary<br />
+  graph members share the extractors in <code>index/graph/</code>.</li>
+<li><code>index/LibraryGraphDiscovery.kt</code>: follows referenced binary child graphs and scans newly reached<br />
+  contribution scopes. Requests retain their source use-site modules. Cached child metadata is<br />
+  combined with current source members and factory-input owners before graph indexing.</li>
 </ul>
 <h3 id="model">Model<a class="headerlink" href="#model" title="Permanent link">&para;</a></h3>
 <p>Everything the index stores is session-free. Nothing may retain a <code>KaSession</code>, <code>KaType</code>, or<br />
@@ -2162,9 +2167,10 @@ arguments, including declared defaults), and declarations are held as <code>Smar
   qualifier, matching the compiler&rsquo;s key swap. Parent-owned scoped bindings, including<br />
   multibinding contributions from included binding containers, resolve through the owning graph<br />
   and its module options.</li>
-<li><code>graph/MetroGraphValidationService.kt</code>: computes validation in cancellable background smart<br />
-  reads, sharing one resolution session per index throughout a traversal. Each attempt collects<br />
-  results locally. Asynchronous requests publish only after the read succeeds and the request is<br />
+<li><code>graph/MetroGraphValidationService.kt</code>: captures immutable validation inputs in cancellable smart<br />
+  reads, then seals outside read access. <code>ValidationInputCapture</code> owns one resolution session per<br />
+  index throughout a traversal. <code>ValidationSourceSnapshot</code> supplies captured source details.<br />
+  Each attempt collects results locally. Asynchronous requests publish after computation when the request is<br />
   still current. Cancellation and replaced requests leave retained results unchanged. Publication<br />
   also checks whether results were cleared and which run produced each entry, so an older run<br />
   cannot overwrite newer results.<br />
@@ -2177,7 +2183,9 @@ arguments, including declared defaults), and declarations are held as <code>Smar
   requests. The adapter contains no suspend validation policy. Suspend parity fixtures cover valid<br />
   transitive/deferred paths and representative failures.</li>
 </ul>
-<p>Validation is strictly on demand. Nothing seals during index builds or highlighting passes.</p>
+<p>Explicit actions and opt-in pinned-graph validation submit requests to the same service. Index builds<br />
+and highlighting passes perform no sealing. The pinned-graph service owns its debounce and running<br />
+job, cancels superseded requests, and pauses while indexing or automatic graph refresh is disabled.</p>
 <h3 id="editor-features">Editor features<a class="headerlink" href="#editor-features" title="Permanent link">&para;</a></h3>
 <p><code>index/FilePresentationBundle.kt</code> holds one file&rsquo;s resolved consumers, reverse usages, graph<br />
 contributions, and inlay choices. Providers request a cached bundle and return promptly while missing<br />
