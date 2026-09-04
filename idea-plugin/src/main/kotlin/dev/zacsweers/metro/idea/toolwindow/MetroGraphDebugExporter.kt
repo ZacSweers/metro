@@ -41,6 +41,7 @@ import dev.zacsweers.metro.idea.model.KaAnnotationValueSnapshot
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.canonicalContextKey
@@ -536,6 +537,22 @@ private class GraphDebugReport(
     return "${structuralType(snapshot)} [type#$id]"
   }
 
+  /** Renders captured projections without reading annotation literals. */
+  private fun structuralTypeArgument(argument: KaTypeArgumentSnapshot): String {
+    return when (argument) {
+      KaTypeArgumentSnapshot.Star -> "*"
+      is KaTypeArgumentSnapshot.Typed -> {
+        val prefix =
+          when (argument.variance) {
+            org.jetbrains.kotlin.types.Variance.INVARIANT -> ""
+            org.jetbrains.kotlin.types.Variance.IN_VARIANCE -> "in "
+            org.jetbrains.kotlin.types.Variance.OUT_VARIANCE -> "out "
+          }
+        prefix + structuralType(argument.type)
+      }
+    }
+  }
+
   /**
    * A renderer's type-use annotations/error text may contain literals, so do not copy that text.
    */
@@ -548,11 +565,16 @@ private class GraphDebugReport(
       append(parameter ?: "<non-class type>")
     }
     if (snapshot.typeArguments.isNotEmpty()) {
-      snapshot.typeArguments.joinTo(this, prefix = "<", postfix = ">", transform = ::structuralType)
+      snapshot.typeArguments.joinTo(
+        this,
+        prefix = "<",
+        postfix = ">",
+        transform = ::structuralTypeArgument,
+      )
     } else if ('<' in snapshot.renderedType) {
       append("<opaque arguments>")
     }
-    if (snapshot.renderedType.endsWith('?')) append('?')
+    if (snapshot.isMarkedNullable) append('?')
   }
 
   private fun annotations(values: Collection<KaAnnotationSnapshot>): String =

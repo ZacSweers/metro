@@ -7,7 +7,11 @@ import com.intellij.ide.util.treeView.NodeDescriptor
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.CommonShortcuts
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.actionSystem.ex.ActionUtil
+import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.impl.TestOnlyThreading
 import com.intellij.openapi.command.WriteCommandAction
@@ -23,13 +27,28 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.WaitFor
 import com.intellij.util.ui.tree.TreeUtil
+import dev.zacsweers.metro.compiler.diagnostics.DiagnosticSection
+import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnostic
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.diagnostics.MetroSeverity
+import dev.zacsweers.metro.compiler.diagnostics.Note
+import dev.zacsweers.metro.compiler.diagnostics.textOf
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationRenderer
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
+import dev.zacsweers.metro.idea.explanation.MetroBindingExplanationPanel
+import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
+import dev.zacsweers.metro.idea.graph.CachedValidation
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
+import dev.zacsweers.metro.idea.graph.KaGraphDiagnostic
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -37,28 +56,45 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import dev.zacsweers.metro.idea.toolwindow.ExportGraphDebugInfoAction
 import dev.zacsweers.metro.idea.toolwindow.GraphContextSelectorAction
+import dev.zacsweers.metro.idea.toolwindow.GraphRefreshModeAction
 import dev.zacsweers.metro.idea.toolwindow.IndexBuildStatusPanel
-import dev.zacsweers.metro.idea.toolwindow.LoadOrRefreshGraphsAction
+import dev.zacsweers.metro.idea.toolwindow.MetroDiagnosticDetailsPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroGraphDebugExporter
 import dev.zacsweers.metro.idea.toolwindow.MetroToolWindowPanel
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeNavigation
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeNode
+import dev.zacsweers.metro.idea.toolwindow.MetroTreeSelection
 import dev.zacsweers.metro.idea.toolwindow.MetroTreeStructure
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationRequestService
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationResultPanel
 import dev.zacsweers.metro.idea.toolwindow.MetroValidationResultTreeStructure
+import dev.zacsweers.metro.idea.toolwindow.PinSelectedGraphAction
+import dev.zacsweers.metro.idea.toolwindow.RefreshGraphsAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidateSelectedGraphAction
 import dev.zacsweers.metro.idea.toolwindow.ValidationStatusPanel
+import dev.zacsweers.metro.idea.toolwindow.graphValidationPath
+import dev.zacsweers.metro.idea.toolwindow.matchesRevealTarget
 import dev.zacsweers.metro.idea.toolwindow.writeGraphDebugReport
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import javax.swing.AbstractButton
 import javax.swing.JPanel
+import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.DefaultTreeModel
+import javax.swing.tree.TreePath
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.jetbrains.concurrency.AsyncPromise
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -71,6 +107,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     super.setUp()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
+    project.enableImmediateAutomaticRefresh()
     project.service<MetroResolutionService>().resetGraphBrowserActivation()
     // Results are retained across index invalidation by design, so they survive across tests
     // sharing this project. Start each test clean.
@@ -289,6 +326,334 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
     assertEquals(listOf("ReplacementGraph"), structure.children(root).map { it.text })
     assertNull(pinService.pinnedPath)
+  }
+
+  fun testPinActionClearsAnEqualPathAndPreservesADifferentPin() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @DependencyGraph interface AppGraph
+        @DependencyGraph interface OtherGraph
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val context = index.contextsFor(graph).single()
+    val otherGraph = index.graphs.single { it.name == "OtherGraph" }
+    val otherContext = index.contextsFor(otherGraph).single()
+    val pinService = project.service<GraphContextPinService>()
+    val action = PinSelectedGraphAction(pinService) { context }
+    val event =
+      AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, DataContext { null })
+
+    // A refreshed graph context recreates the same path in a different object.
+    pinService.pin(context.path.copy())
+    assertTrue(action.isSelected(event))
+    action.setSelected(event, false)
+    assertNull(pinService.pinnedPath)
+
+    pinService.pin(otherContext.path)
+    action.setSelected(event, false)
+    assertSame(otherContext.path, pinService.pinnedPath)
+  }
+
+  fun testEditorBindingChoicesKeepConcreteExtensionPaths() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @GraphExtension interface ChildGraph {
+        val value: String
+      }
+
+      @DependencyGraph interface LeftGraph {
+        val child: ChildGraph
+        @Provides fun leftValue(): String = "left"
+      }
+
+      @DependencyGraph interface RightGraph {
+        val child: ChildGraph
+        @Provides fun rightValue(): String = "right"
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child)
+    val offset = file.declarationsIncludingNested().property("value").textOffset
+    val targets = metroEditorTargets(index, file, offset, null)
+
+    assertEquals(contexts.map { it.path }.toSet(), targets.navigation.map { it.path }.toSet())
+    assertEquals(
+      setOf("leftValue", "rightValue"),
+      targets.navigation
+        .map { choice ->
+          (choice.bindings.single().pointer.element as org.jetbrains.kotlin.psi.KtNamedDeclaration)
+            .name
+        }
+        .toSet(),
+    )
+    assertEquals(contexts.map { it.path }.toSet(), targets.reveal.map { it.path }.toSet())
+
+    val leftContext = contexts.single { it.rootGraph.name == "LeftGraph" }
+    val pinned = metroEditorTargets(index, file, offset, leftContext.path)
+    assertEquals(leftContext.path, pinned.navigation.single().path)
+    assertEquals(leftContext.path, pinned.reveal.single().path)
+    assertEquals(
+      "leftValue",
+      (pinned.navigation.single().bindings.single().pointer.element
+          as org.jetbrains.kotlin.psi.KtNamedDeclaration)
+        .name,
+    )
+
+    val explanations = metroBindingExplanations(index, file, offset, null)
+    assertEquals(contexts.map { it.path }.toSet(), explanations.map { it.path }.toSet())
+    assertEquals(2, explanations.map { it.snapshot.context.id }.distinct().size)
+    val pinnedExplanation = metroBindingExplanations(index, file, offset, leftContext.path).single()
+    assertEquals(leftContext.path, pinnedExplanation.path)
+    val selected = pinnedExplanation.candidates.single { it.selected }
+    assertEquals(pinned.navigation.single().bindings.single().pointer, selected.target.pointer)
+    assertEquals(
+      leftContext.path,
+      graphValidationPath(checkNotNull(child.classId), file.virtualFile, leftContext.path),
+    )
+    val rootContext = index.contextsFor(leftContext.rootGraph).single()
+    assertEquals(
+      rootContext.path,
+      graphValidationPath(
+        checkNotNull(leftContext.rootGraph.classId),
+        file.virtualFile,
+        leftContext.path,
+      ),
+    )
+    val rightGraph = index.graphs.single { it.name == "RightGraph" }
+    assertNull(
+      graphValidationPath(checkNotNull(rightGraph.classId), file.virtualFile, leftContext.path)
+    )
+  }
+
+  fun testEditorBindingChoicePreservesAnEmptyPinnedAnswer() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Consumer(val value: String)
+
+      @DependencyGraph interface ProvidingGraph {
+        val consumer: Consumer
+        @Provides fun value(): String = "provided"
+      }
+
+      @DependencyGraph interface MissingGraph {
+        val consumer: Consumer
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val offset = file.declarationsIncludingNested().parameter("value").textOffset
+    val allTargets = metroEditorTargets(index, file, offset, null)
+    assertEquals(2, allTargets.navigation.size)
+    val missingContext =
+      index.contextsFor(index.graphs.single { it.name == "MissingGraph" }).single()
+
+    val pinned = metroEditorTargets(index, file, offset, missingContext.path)
+
+    assertEquals(missingContext.path, pinned.navigation.single().path)
+    assertTrue(pinned.navigation.single().bindings.isEmpty())
+    assertEquals(missingContext.path, pinned.reveal.single().path)
+    assertNull(pinned.reveal.single().binding)
+
+    val explanation = metroBindingExplanations(index, file, offset, missingContext.path).single()
+    assertEquals(missingContext.path, explanation.path)
+    assertTrue(explanation.candidates.none { it.selected })
+    assertTrue(explanation.copyText, "No binding was selected." in explanation.copyText)
+  }
+
+  fun testEditorContextLabelsDistinguishNestedGraphsInOneFile() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Consumer(val value: String)
+
+      object Left {
+        @DependencyGraph interface Graph {
+          val consumer: Consumer
+          @Provides fun value(): String = "left"
+        }
+      }
+
+      object Right {
+        @DependencyGraph interface Graph {
+          val consumer: Consumer
+          @Provides fun value(): String = "right"
+        }
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val offset = file.declarationsIncludingNested().parameter("value").textOffset
+    val navigation = metroEditorTargets(index, file, offset, null).navigation
+    val explanations = metroBindingExplanations(index, file, offset, null)
+
+    assertEquals(2, navigation.map { it.text }.distinct().size)
+    assertEquals(2, explanations.map { it.text }.distinct().size)
+    assertEquals(2, explanations.map { it.snapshot.context.id }.distinct().size)
+    for (qualifiedName in listOf("test.Left.Graph", "test.Right.Graph")) {
+      assertTrue(navigation.any { qualifiedName in it.text })
+      assertTrue(explanations.any { qualifiedName in it.text })
+    }
+  }
+
+  fun testBindingExplanationPanelCopiesEveryDecisionAndNavigatesCandidates() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @Inject class Service
+      @DependencyGraph interface AppGraph {
+        val service: Service
+        @Provides fun explicitService(): Service = Service()
+        @Provides @Named("other") fun qualifiedService(): Service = Service()
+      }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val offset = declarations.property("service").textOffset
+    val explanation = metroBindingExplanations(index, file, offset, null).single()
+    val copied = mutableListOf<String>()
+    val panel = MetroBindingExplanationPanel(project, explanation) { copied += it }
+    val copyEvent =
+      AnActionEvent.createFromAnAction(panel.copyAction, null, ActionPlaces.UNKNOWN) { null }
+    try {
+      TestOnlyThreading
+        .releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+          assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+          assertTrue(panel.summaryArea.text, "Request: test.Service" in panel.summaryArea.text)
+          assertTrue(panel.summaryArea.text, "AppGraph" in panel.summaryArea.text)
+          val snapshot = explanation.snapshot
+          val roundTrip = Json.decodeFromString<BindingExplanation>(Json.encodeToString(snapshot))
+          assertEquals(snapshot, roundTrip)
+          assertEquals(BindingExplanationRenderer.summary(snapshot), panel.summaryArea.text)
+          val implicit = snapshot.candidates.single { it.reason == BindingReason.HIGHER_PRECEDENCE }
+          val explicit = snapshot.candidates.single { it.reason == BindingReason.SELECTED_EXPLICIT }
+          assertEquals(listOf(explicit.declaration), implicit.relatedDeclarations)
+          assertTrue(explanation.copyText.startsWith(BindingExplanationRenderer.render(roundTrip)))
+          assertTrue(panel.detailArea.text, "Selected explicit binding." in panel.detailArea.text)
+          val qualifiedRow =
+            explanation.candidates.indexOfFirst { "different qualifier" in it.details }
+          assertTrue(qualifiedRow >= 0)
+          panel.tree.setSelectionRow(qualifiedRow)
+          assertTrue(panel.detailArea.text, "different qualifier" in panel.detailArea.text)
+          panel.copyAction.actionPerformed(copyEvent)
+          assertEquals(listOf(explanation.copyText), copied)
+          assertTrue(copied.single(), "higher precedence" in copied.single())
+          assertTrue(copied.single(), "different qualifier" in copied.single())
+        }
+
+      panel.tree.setSelectionRow(explanation.candidates.indexOfFirst { it.selected })
+      checkNotNull(panel.treeNavigation.navigate(requestFocus = true)).awaitTestCompletion()
+      val provider = declarations.function("explicitService")
+      val editor = checkNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+      assertEquals(checkNotNull(provider.nameIdentifier).textOffset, editor.caretModel.offset)
+    } finally {
+      Disposer.dispose(panel)
+    }
+    panel.copyAction.update(copyEvent)
+    assertFalse(copyEvent.presentation.isEnabled)
+    panel.copyAction.actionPerformed(copyEvent)
+    assertEquals(1, copied.size)
+    assertNull(panel.treeNavigation.navigate(requestFocus = true))
+  }
+
+  fun testEditorRevealSelectsBindingOutsideThePinnedGraph() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph interface PinnedGraph
+
+      @DependencyGraph interface OtherGraph {
+        val value: String
+        @Provides fun otherValue(): String = "other"
+      }
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val index = service.awaitIndex(file)
+    service.activateGraphBrowser()
+    val pinned = index.contextsFor(index.graphs.single { it.name == "PinnedGraph" }).single()
+    val pinService = project.service<GraphContextPinService>()
+    pinService.pin(pinned.path)
+    val targets =
+      metroEditorTargets(
+        index,
+        file,
+        file.declarationsIncludingNested().property("value").textOffset,
+        pinned.path,
+      )
+    val target = targets.reveal.single()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      assertEquals(
+        listOf("PinnedGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val revealed = CompletableFuture<Boolean>()
+      panel.reveal(target) { revealed.complete(it) }
+      PlatformTestUtil.waitForFuture(revealed, 30_000)
+
+      assertTrue(revealed.join())
+      assertTrue(checkNotNull(selectedTreeNode(panel.tree)).matchesRevealTarget(target))
+      assertEquals(pinned.path, pinService.pinnedPath)
+      assertEquals(
+        setOf("PinnedGraph", "OtherGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }.toSet(),
+      )
+
+      pinService.clear()
+      pinService.pin(pinned.path)
+      assertEquals(
+        listOf("PinnedGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testEditorRevealKeepsManuallyRetainedBrowserData() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface OriginalGraph")
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    service.activateGraphBrowser()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      treeNodes(panel.tree)
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      val current = service.awaitIndex(file)
+      val offset = file.declarationsIncludingNested().klass("AddedGraph").textOffset
+      val target = metroEditorTargets(current, file, offset, null).reveal.single()
+      val revealed = CompletableFuture<Boolean>()
+      panel.reveal(target) { revealed.complete(it) }
+      PlatformTestUtil.waitForFuture(revealed, 30_000)
+
+      assertFalse(revealed.join())
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(service.isManualGraphDataRefreshRequired)
+      assertEquals(
+        listOf("OriginalGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
   }
 
   fun testGraphContextSelectorUsesPrecomputedSnapshotWithoutReadAccess() {
@@ -548,25 +913,45 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
     val panel = IndexBuildStatusPanel()
 
-    panel.show(IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10))
+    panel.show(IndexBuildProgress(IndexBuildPhase.QUEUED), showingPreviousData = true)
     assertTrue(panel.isVisible)
-    assertEquals("Analyzing Metro declarations (4 of 10 files)", panel.messageLabel.text)
+    assertFalse(panel.progressBar.isVisible)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertEquals("Metro graph data may be stale. Refresh is queued", panel.messageLabel.text)
+
+    panel.show(
+      IndexBuildProgress(IndexBuildPhase.ANALYZING_DECLARATIONS, 4, 10, reused = 2, rebuilt = 1)
+    )
+    assertTrue(panel.isVisible)
+    assertEquals(
+      "Checking Metro source files (4 of 10 files, 2 reused, 1 rebuilt)",
+      panel.messageLabel.text,
+    )
+    assertFalse(panel.retainedDataLabel.isVisible)
     assertFalse(panel.progressBar.isIndeterminate)
     assertEquals(4, panel.progressBar.value)
     assertEquals(10, panel.progressBar.maximum)
 
-    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    panel.show(
+      IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA),
+      showingPreviousData = true,
+    )
     assertTrue(panel.progressBar.isIndeterminate)
     assertEquals("Reading dependency metadata", panel.messageLabel.text)
+    assertTrue(panel.retainedDataLabel.isVisible)
+    assertEquals("Showing previous graph data", panel.retainedDataLabel.text)
 
-    panel.showWaitingForIdeIndexing()
-    assertTrue(panel.progressBar.isIndeterminate)
+    panel.showWaitingForIdeIndexing(showingPreviousData = true)
+    assertFalse(panel.progressBar.isIndeterminate)
+    assertFalse(panel.progressBar.isVisible)
     assertEquals("Waiting for IDE indexing to finish", panel.messageLabel.text)
+    assertTrue(panel.retainedDataLabel.isVisible)
 
     panel.showNotLoaded()
     assertTrue(panel.isVisible)
     assertFalse(panel.progressBar.isVisible)
-    assertEquals("Metro graphs have not been loaded", panel.messageLabel.text)
+    assertFalse(panel.retainedDataLabel.isVisible)
+    assertEquals("Click Refresh to load Metro graphs", panel.messageLabel.text)
 
     panel.showRefreshRequired()
     assertTrue(panel.isVisible)
@@ -575,9 +960,86 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       "Metro graph data may be stale. Click Refresh to update",
       panel.messageLabel.text,
     )
+    assertNull(com.intellij.util.ui.UIUtil.findComponentOfType(panel, AbstractButton::class.java))
 
     panel.clear()
     assertFalse(panel.isVisible)
+    assertFalse(panel.retainedDataLabel.isVisible)
+  }
+
+  fun testGraphBrowserKeepsRowsWhileAutomaticRefreshIsPending() {
+    assertGraphBrowserRetainsRows(pinned = false)
+  }
+
+  fun testPinnedGraphBrowserKeepsRowsWhileAutomaticRefreshIsPending() {
+    assertGraphBrowserRetainsRows(pinned = true)
+  }
+
+  /**
+   * Holding the edit's write lock keeps a background rebuild from racing the retained-row checks.
+   */
+  private fun assertGraphBrowserRetainsRows(pinned: Boolean) {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph interface AppGraph {
+        @Provides fun value(): String = "value"
+      }
+      @DependencyGraph interface OtherGraph
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    service.activateGraphBrowser()
+    val pinService = project.service<GraphContextPinService>()
+    val appGraph = initial.graphs.single { it.name == "AppGraph" }
+    val appPath = initial.contextsFor(appGraph).single().path
+    if (pinned) pinService.pin(appPath)
+    val structure = MetroTreeStructure(project, service::indexForToolWindow, pinService) { "" }
+    val root = structure.rootElement as MetroTreeNode
+    val beforeGraphs = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+    val expectedNames = if (pinned) listOf("AppGraph") else listOf("AppGraph", "OtherGraph")
+    assertEquals(expectedNames, beforeGraphs.map { it.graph.name })
+    val appNode = beforeGraphs.single { it.graph.name == "AppGraph" }
+    val beforeCategories = structure.children(appNode).filterIsInstance<MetroTreeNode.Category>()
+    val beforeBindings = beforeCategories.flatMap { structure.children(it) }.map { it.text }
+    assertContainsElements(beforeBindings, "String")
+
+    val documentManager = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documentManager.getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      documentManager.commitDocument(document)
+      assertFalse(service.isCurrent(initial))
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(service.hasGraphBrowserData)
+
+      val retainedGraphs = structure.children(root).filterIsInstance<MetroTreeNode.Graph>()
+      assertEquals(expectedNames, retainedGraphs.map { it.graph.name })
+      val retainedApp = retainedGraphs.single { it.graph.name == "AppGraph" }
+      val retainedCategories =
+        structure.children(retainedApp).filterIsInstance<MetroTreeNode.Category>()
+      assertEquals(
+        beforeBindings,
+        retainedCategories.flatMap { structure.children(it) }.map { it.text },
+      )
+      assertEquals(if (pinned) appPath else null, pinService.pinnedPath)
+    }
+
+    val updated = service.awaitIndex(file)
+    assertNotSame(initial, updated)
+    assertEquals(
+      setOf("AppGraph", "OtherGraph", "AddedGraph"),
+      updated.graphs.map { it.name }.toSet(),
+    )
+    val updatedNames =
+      structure.children(root).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }
+    assertEquals(
+      if (pinned) listOf("AppGraph") else listOf("AddedGraph", "AppGraph", "OtherGraph"),
+      updatedNames,
+    )
+    assertEquals(if (pinned) appPath else null, pinService.pinnedPath)
   }
 
   fun testValidationStatusPanelShowsPreparingAndCountedProgress() {
@@ -637,37 +1099,336 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     assertSame(context, validatedContext)
   }
 
-  fun testGraphBrowserActionLoadsOnceThenRefreshes() {
-    configure()
+  fun testRefreshActionKeepsItsNameAndIgnoresRepeatedClicksWhilePending() {
     val service = project.service<MetroResolutionService>()
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
     var refreshes = 0
-    val action = LoadOrRefreshGraphsAction(service) { refreshes++ }
+    val action = RefreshGraphsAction(service) { refreshes++ }
     val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+    val refreshed = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      if (service.isGraphBrowserActivated && !service.isExplicitGraphRefreshPending) {
+        refreshed.complete(Unit)
+      }
+    }
+    try {
+      action.update(event)
+      assertEquals("Refresh", event.presentation.text)
+      assertEquals("Refresh graphs and bindings", event.presentation.description)
+      assertEquals(true, event.presentation.getClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR))
+      assertTrue(event.presentation.isEnabled)
+      assertFalse(service.isGraphBrowserActivated)
 
-    action.update(event)
-    assertEquals("Load", event.presentation.text)
-    assertEquals("Load graphs and bindings", event.presentation.description)
-    assertFalse(service.isGraphBrowserActivated)
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        action.actionPerformed(event)
+        assertTrue(service.isExplicitGraphRefreshPending)
+        action.update(event)
+        assertFalse(event.presentation.isEnabled)
+        assertEquals("Refresh", event.presentation.text)
+        action.actionPerformed(event)
+        assertEquals(1, refreshes)
+        assertTrue(service.isGraphBrowserActivated)
+      }
+      PlatformTestUtil.waitForFuture(refreshed, 30_000)
+      action.update(event)
+      assertTrue(event.presentation.isEnabled)
+      assertEquals("Refresh", event.presentation.text)
+      assertEquals("Refresh graphs and bindings", event.presentation.description)
+      assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+    } finally {
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
 
-    action.actionPerformed(event)
-    action.update(event)
-    assertEquals(1, refreshes)
-    assertTrue(service.isGraphBrowserActivated)
-    assertEquals("Refresh", event.presentation.text)
-    assertEquals("Refresh graphs and bindings", event.presentation.description)
+  fun testRefreshModeSelectorPersistsChoicesAndCancelsPinnedValidation() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val service = project.service<MetroResolutionService>()
+    val index = service.awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val settings = MetroSettings.getInstance(project).state
+    val previousValidation = settings.automaticallyValidatePinnedGraph
+    val pinService = project.service<GraphContextPinService>()
+    val automaticValidation = project.service<MetroPinnedGraphValidationService>()
+    var changes = 0
+    val action = GraphRefreshModeAction(project) { changes++ }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+    val options = action.createPopupActionGroup(JPanel()) { null }.getChildren(null)
+    assertEquals(listOf("Manual", "Automatic"), options.map { it.templatePresentation.text })
+    val manual = options[0] as ToggleAction
+    val automatic = options[1] as ToggleAction
+    try {
+      settings.automaticallyValidatePinnedGraph = true
+      pinService.pin(context.path)
+      val pending = checkNotNull(automaticValidation.requestValidation())
+
+      manual.setSelected(event, true)
+      assertFalse(settings.automaticallyRefreshGraphData)
+      assertTrue(pending.isCancelled)
+      assertTrue(manual.isSelected(event))
+      assertFalse(automatic.isSelected(event))
+      action.update(event)
+      assertEquals("Manual", event.presentation.text)
+      assertEquals(1, changes)
+      manual.setSelected(event, true)
+      assertEquals(1, changes)
+
+      automatic.setSelected(event, true)
+      assertTrue(settings.automaticallyRefreshGraphData)
+      action.update(event)
+      assertEquals("Automatic", event.presentation.text)
+      assertEquals(2, changes)
+    } finally {
+      pinService.clear()
+      settings.automaticallyValidatePinnedGraph = previousValidation
+      project.enableImmediateAutomaticRefresh()
+      automaticValidation.requestValidation()
+    }
+  }
+
+  fun testManualIdleToolWindowDoesNotShowMetroIndexingInDumbMode() {
+    configure()
+    val settings = MetroSettings.getInstance(project).state
+    settings.automaticallyRefreshGraphData = false
+    project.service<MetroResolutionService>().settingsChanged()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        val status = toolWindowStatus(panel)
+        assertEquals("Click Refresh to load Metro graphs", status.messageLabel.text)
+        assertFalse(status.progressBar.isVisible)
+        assertFalse(status.progressBar.isIndeterminate)
+        val action = panel.refreshGraphsAction
+        val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+        action.update(event)
+        assertTrue(event.presentation.isEnabled)
+      }
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
+
+  fun testQueuedAutomaticRefreshRetainsGraphsAndCanBeRefreshedImmediately() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(file)
+    service.activateGraphBrowser()
+    service.setAutomaticRefreshWindowForTest(
+      AutomaticRefreshWindow(idleMillis = 60_000, intervalMillis = 0, nowMillis = { 0 })
+    )
+    val panel = MetroToolWindowPanel(project)
+    try {
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val documentManager = PsiDocumentManager.getInstance(project)
+      val document = checkNotNull(documentManager.getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+      }
+      documentManager.commitAllDocuments()
+      val status = toolWindowStatus(panel)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text == "Metro graph data may be stale. Refresh is queued"
+          }
+        }
+        .assertCompleted("Queued refresh should mark the retained graph data as possibly stale")
+      assertFalse(status.progressBar.isVisible)
+      assertFalse(status.progressBar.isIndeterminate)
+      val action = panel.refreshGraphsAction
+      val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+      action.update(event)
+      assertTrue(event.presentation.isEnabled)
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+
+      val refreshed = CompletableFuture<Unit>()
+      service.addIndexListener(panel) {
+        if (
+          !service.isGraphDataRefreshRequired &&
+            service.indexForToolWindow(module).graphs.any { it.name == "AddedGraph" }
+        ) {
+          refreshed.complete(Unit)
+        }
+      }
+      action.actionPerformed(event)
+      PlatformTestUtil.waitForFuture(refreshed, 30_000)
+      assertEquals(
+        listOf("AddedGraph", "AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
   }
 
   fun testToolWindowWaitsForInitialGraphLoad() {
-    configure()
     val service = project.service<MetroResolutionService>()
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    configure()
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
     val panel = MetroToolWindowPanel(project)
     try {
       val status = toolWindowStatus(panel)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text == "Click Refresh to load Metro graphs"
+          }
+        }
+        .assertCompleted("Manual mode should settle without loading the graph browser")
       assertFalse(service.isGraphBrowserActivated)
       assertTrue(status.isVisible)
-      assertEquals("Metro graphs have not been loaded", status.messageLabel.text)
+      assertEquals("Click Refresh to load Metro graphs", status.messageLabel.text)
+      assertFalse(status.progressBar.isVisible)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return com.intellij.util.ui.UIUtil.findComponentsOfType(panel, ActionButton::class.java)
+              .any { it.action === panel.refreshGraphsAction }
+          }
+        }
+        .assertCompleted("The toolbar should expose its Refresh action before graphs are loaded")
+      val refreshButtons =
+        com.intellij.util.ui.UIUtil.findComponentsOfType(panel, ActionButton::class.java).filter {
+          it.action === panel.refreshGraphsAction
+        }
+      assertEquals(1, refreshButtons.size)
+      assertEquals("Refresh", refreshButtons.single().presentation.text)
+      assertNull(
+        com.intellij.util.ui.UIUtil.findComponentOfType(status, AbstractButton::class.java)
+      )
     } finally {
       Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
+
+  fun testManualBrowserVisibilityAndReadsDoNotRefreshGraphData() {
+    val service = project.service<MetroResolutionService>()
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val panel = MetroToolWindowPanel(project)
+    val refreshed = CompletableFuture<Unit>()
+    service.addIndexListener(panel) {
+      if (service.isGraphBrowserActivated && !service.isExplicitGraphRefreshPending) {
+        refreshed.complete(Unit)
+      }
+    }
+    try {
+      panel.refreshGraphsAction.refresh()
+      PlatformTestUtil.waitForFuture(refreshed, 30_000)
+      val initial = service.indexForToolWindow(module)
+      assertEquals(listOf("AppGraph"), initial.graphs.map { it.name })
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+      PlatformTestUtil.waitForFuture(settled, 30_000)
+      val builds = AtomicInteger()
+      service.indexBuildProgress
+        .collectInTest { if (it != null) builds.incrementAndGet() }
+        .use {
+          val action = panel.refreshGraphsAction
+          val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+          repeat(3) {
+            panel.isVisible = false
+            panel.isVisible = true
+            panel.tree.requestFocusInWindow()
+            action.update(event)
+            assertTrue(event.presentation.isEnabled)
+            assertEquals("Refresh", event.presentation.text)
+            assertSame(initial, service.indexForToolWindow(module))
+            assertEquals(
+              listOf("AppGraph"),
+              treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+            )
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+          }
+          val readEvents = CompletableFuture.runAsync {
+            runBlocking { service.awaitCoordinatorBarrier() }
+          }
+          PlatformTestUtil.waitForFuture(readEvents, 30_000)
+          assertEquals(
+            "Visibility and cached tree reads must keep the settled generation",
+            0,
+            builds.get(),
+          )
+        }
+      assertSame(initial, service.indexForToolWindow(module))
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertFalse(service.isGraphDataRefreshRequired)
+      assertFalse(toolWindowStatus(panel).isVisible)
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
+    }
+  }
+
+  fun testRetainedStaleRowsReplaceTheInitialLoadStatus() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
+    service.resetGraphBrowserActivation()
+    val stale = CompletableFuture<Unit>()
+    service.addIndexListener(testRootDisposable) {
+      if (service.isGraphDataRefreshRequired) stale.complete(Unit)
+    }
+    val documentManager = PsiDocumentManager.getInstance(project)
+    val document = checkNotNull(documentManager.getDocument(file))
+    WriteCommandAction.runWriteCommandAction(project) {
+      document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
+    }
+    documentManager.commitAllDocuments()
+    // Consume the edit notification before opening a browser backed by the retained generation.
+    PlatformTestUtil.waitForFuture(stale, 30_000)
+    assertFalse(service.isGraphBrowserActivated)
+    val panel = MetroToolWindowPanel(project)
+    try {
+      assertEquals(
+        listOf("AppGraph"),
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name },
+      )
+      val status = toolWindowStatus(panel)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return status.messageLabel.text ==
+              "Metro graph data may be stale. Click Refresh to update"
+          }
+        }
+        .assertCompleted("Retained rows should replace the initial-load message with stale status")
+      assertTrue(service.isGraphBrowserActivated)
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertSame(initial, service.indexForToolWindow(module))
+      assertFalse(status.progressBar.isVisible)
+      val action = panel.refreshGraphsAction
+      val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN) { null }
+      action.update(event)
+      assertEquals("Refresh", event.presentation.text)
+      assertTrue(event.presentation.isEnabled)
+    } finally {
+      Disposer.dispose(panel)
+      project.enableImmediateAutomaticRefresh()
     }
   }
 
@@ -677,6 +1438,202 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testManualValidationShowsRenamedGraphResultsWithoutRefreshingBrowser() {
     assertManualValidationResult(rename = true)
+  }
+
+  fun testExactExtensionValidationDoesNotWidenToOtherParentPaths() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @GraphExtension interface ChildGraph { val value: String }
+      @DependencyGraph interface LeftGraph {
+        val child: ChildGraph
+        @Provides fun value(): String = "left"
+      }
+      @DependencyGraph interface RightGraph { val child: ChildGraph }
+      """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val child = index.graphs.single { it.name == "ChildGraph" }
+    val contexts = index.contextsFor(child)
+    val left = contexts.single { it.rootGraph.name == "LeftGraph" }
+    val right = contexts.single { it.rootGraph.name == "RightGraph" }
+    val rightRoot = index.contextsFor(right.rootGraph).single()
+    val pinService = project.service<GraphContextPinService>()
+    pinService.pin(rightRoot.path)
+    val panel = MetroToolWindowPanel(project)
+    try {
+      panel.selectAndValidate(checkNotNull(child.classId), file.virtualFile, path = left.path)
+      val resultPanel = waitForValidationResults(panel)
+      val rows = treeNodes(resultPanel.tree)
+      assertEquals(
+        listOf(left.path),
+        rows.filterIsInstance<MetroTreeNode.Graph>().map { it.context.path },
+      )
+      assertTrue(rows.none { it is MetroTreeNode.Diagnostic })
+      val validation = project.service<MetroGraphValidationService>()
+      assertNotNull(validation.cachedResult(file, left))
+      assertNull(validation.cachedResult(file, right))
+      assertEquals(rightRoot.path, pinService.pinnedPath)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testExactDynamicValidationUsesCallerOutsideManuallyRetainedBrowser() {
+    val graphFile =
+      myFixture.configureMetroFile(
+        """
+      @BindingContainer object RealBindings {
+        @Provides fun realValue(): String = "real"
+      }
+      @DependencyGraph(bindingContainers = [RealBindings::class])
+      interface AppGraph { val value: String }
+      """,
+        fileName = "AppGraph.kt",
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graphFile)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    service.activateGraphBrowser()
+    val panel = MetroToolWindowPanel(project)
+    try {
+      treeNodes(panel.tree)
+      val caller =
+        myFixture.addFileToProject(
+          "test/Caller.kt",
+          """
+          package test
+          import dev.zacsweers.metro.*
+          @BindingContainer object FakeBindings {
+            @Provides fun fakeValue(): String = "fake"
+          }
+          val graph = createDynamicGraph<AppGraph>(FakeBindings)
+          """
+            .trimIndent(),
+        ) as KtFile
+      val current = service.awaitIndex(caller)
+      val graph = current.graphs.single { it.name == "AppGraph" }
+      val dynamic = current.contextsFor(graph).single { it.dynamicGraph != null }
+      val path =
+        graphValidationPath(checkNotNull(graph.classId), graphFile.virtualFile, dynamic.path)
+      assertEquals(dynamic.path, path)
+
+      panel.selectAndValidate(
+        checkNotNull(graph.classId),
+        graphFile.virtualFile,
+        path = checkNotNull(path),
+      )
+
+      val rows = treeNodes(waitForValidationResults(panel).tree)
+      val result =
+        rows.filterIsInstance<MetroTreeNode.Validation>().single().result.requireCompleted()
+      assertEquals(dynamic.path, result.context.path)
+      assertTrue(result.diagnostics.isEmpty())
+      val providedNames = mutableListOf<String>()
+      result.bindings.forEach { _, binding ->
+        (binding.pointer.element as? org.jetbrains.kotlin.psi.KtNamedDeclaration)
+          ?.name
+          ?.let(providedNames::add)
+      }
+      assertTrue(providedNames.toString(), "fakeValue" in providedNames)
+      assertFalse(providedNames.toString(), "realValue" in providedNames)
+      assertSame(initial, service.indexForToolWindow(module))
+      assertTrue(
+        treeNodes(panel.tree).filterIsInstance<MetroTreeNode.Graph>().all {
+          it.context.dynamicGraph == null
+        }
+      )
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
+  }
+
+  fun testLastValidationTurnsStaleWithoutReplacingItsRunOrReopeningAfterClose() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Missing
+      @DependencyGraph interface AppGraph { val missing: Missing }
+      @DependencyGraph interface OtherGraph
+      """
+      )
+    val service = project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(file)
+    val settings = MetroSettings.getInstance(project).state
+    val automaticRefresh = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val validation = project.service<MetroGraphValidationService>()
+    service.activateGraphBrowser()
+    val graph = initial.graphs.single { it.name == "AppGraph" }
+    val panel = MetroToolWindowPanel(project)
+    try {
+      panel.selectAndValidate(checkNotNull(graph.classId), file.virtualFile)
+      val results = waitForValidationResults(panel)
+      val original =
+        treeNodes(results.tree).filterIsInstance<MetroTreeNode.Validation>().single().result
+      val initialRows = treeNodes(results.tree)
+      val stackRow = initialRows.indexOfFirst { it is MetroTreeNode.StackEntry }
+      assertTrue(stackRow >= 0)
+      results.tree.setSelectionRow(stackRow)
+      val selectedStackText = checkNotNull(selectedTreeNode(results.tree)).text
+      val selectedDetails = results.diagnosticDetails.textArea.text
+      val other = initial.contextsFor(initial.graphs.single { it.name == "OtherGraph" }).single()
+      validation.validate(file, other).requireCompleted()
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(
+        listOf(original.context.path),
+        treeNodes(results.tree).filterIsInstance<MetroTreeNode.Graph>().map { it.context.path },
+      )
+
+      val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@Inject class NewDependency\n")
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            val stale =
+              treeNodes(results.tree)
+                .filterIsInstance<MetroTreeNode.Validation>()
+                .singleOrNull()
+                ?.grayText
+                ?.contains("code changed since this run") == true
+            val selected = selectedTreeNode(results.tree)
+            return stale &&
+              selected is MetroTreeNode.StackEntry &&
+              selected.text == selectedStackText
+          }
+        }
+        .assertCompleted("The visible last result should become stale after source changes")
+
+      val rows = treeNodes(results.tree)
+      assertSame(original, rows.filterIsInstance<MetroTreeNode.Validation>().single().result)
+      assertEquals(selectedDetails, results.diagnosticDetails.textArea.text)
+      assertTrue(
+        rows.filterIsInstance<MetroTreeNode.Graph>().single().grayText.orEmpty().contains("stale")
+      )
+      assertSame(initial, service.indexForToolWindow(module))
+      assertFalse(validation.isValidationRunning(original.context.path))
+
+      val close =
+        AnActionEvent.createFromAnAction(results.closeAction, null, ActionPlaces.UNKNOWN) { null }
+      results.closeAction.actionPerformed(close)
+      validation.clearResults()
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertFalse(results.isVisible)
+      assertTrue(treeNodes(results.tree).isEmpty())
+    } finally {
+      Disposer.dispose(panel)
+      settings.automaticallyRefreshGraphData = automaticRefresh
+      service.settingsChanged()
+    }
   }
 
   /** A requested graph can be absent from the browser's retained generation. */
@@ -981,26 +1938,54 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
 
   fun testToolWindowPanelRecoversAfterDumbMode() {
     val file = configure()
-    project.service<MetroResolutionService>().awaitIndex(file)
+    val service = project.service<MetroResolutionService>()
+    service.awaitIndex(file)
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    service.settingsChanged()
+    val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
+    PlatformTestUtil.waitForFuture(settled, 30_000)
     var panel: MetroToolWindowPanel? = null
-    DumbModeTestUtils.runInDumbModeSynchronously(project) {
-      panel = MetroToolWindowPanel(project)
-      assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
-      val status = toolWindowStatus(checkNotNull(panel))
-      assertTrue(status.isVisible)
-      assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
-    }
-
-    val tree = toolWindowTree(checkNotNull(panel))
-    object : WaitFor(30_000) {
-        override fun condition(): Boolean {
-          PlatformTestUtil.waitForPromise(TreeUtil.promiseExpandAll(tree))
-          return tree.rowCount > 0
-        }
+    try {
+      // Manual mode keeps this edit unclassified until Refresh supplies explicit demand.
+      val documentManager = PsiDocumentManager.getInstance(project)
+      val document = checkNotNull(documentManager.getDocument(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        document.insertString(document.textLength, "\n@DependencyGraph interface AddedGraph\n")
       }
-      .assertCompleted("The Metro tree should populate when smart mode resumes")
-    assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
-    com.intellij.openapi.util.Disposer.dispose(checkNotNull(panel))
+      documentManager.commitAllDocuments()
+      assertTrue(service.isGraphDataRefreshRequired)
+
+      DumbModeTestUtils.runInDumbModeSynchronously(project) {
+        panel = MetroToolWindowPanel(project)
+        assertEquals(0, toolWindowTree(checkNotNull(panel)).rowCount)
+        checkNotNull(panel).refreshGraphsAction.refresh()
+        val status = toolWindowStatus(checkNotNull(panel))
+        object : WaitFor(30_000) {
+            override fun condition(): Boolean {
+              PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+              return status.messageLabel.text == "Waiting for IDE indexing to finish"
+            }
+          }
+          .assertCompleted("The requested refresh should wait for smart mode")
+        assertTrue(status.isVisible)
+        assertEquals("Waiting for IDE indexing to finish", status.messageLabel.text)
+        assertFalse(status.progressBar.isVisible)
+      }
+
+      val tree = toolWindowTree(checkNotNull(panel))
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            val graphNames =
+              treeNodes(tree).filterIsInstance<MetroTreeNode.Graph>().map { it.graph.name }
+            return "AddedGraph" in graphNames && !toolWindowStatus(checkNotNull(panel)).isVisible
+          }
+        }
+        .assertCompleted("The Metro tree should include the pending edit when smart mode resumes")
+      assertFalse(toolWindowStatus(checkNotNull(panel)).isVisible)
+    } finally {
+      panel?.let(Disposer::dispose)
+      project.enableImmediateAutomaticRefresh()
+    }
   }
 
   fun testDisposedToolWindowPanelIgnoresValidationRequests() {
@@ -1782,6 +2767,304 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val stackEntry = structure.children(diagnostic).single() as MetroTreeNode.StackEntry
     assertTrue(stackEntry.text, "is requested at" in stackEntry.text)
     assertNotNull(stackEntry.pointer?.element)
+  }
+
+  fun testDiagnosticDetailsShowFullTextAndActionsWithoutReadAccess() {
+    val model =
+      MetroDiagnostic(
+        id = MetroDiagnosticId.MISSING_BINDING,
+        severity = MetroSeverity.ERROR,
+        title = textOf("Missing a binding for Thing"),
+        sections =
+          listOf(
+            DiagnosticSection.Generic(textOf("Thing is requested by AppGraph")),
+            DiagnosticSection.CodeBlock("@Provides fun provideThing(): Thing"),
+          ),
+        notes =
+          listOf(
+            Note.help("Provide <Thing> & keep its qualifier"),
+            Note.note("This request belongs to AppGraph"),
+          ),
+      )
+    val row =
+      MetroTreeNode.Diagnostic(MetroTreeNode.Root(), KaGraphDiagnostic(model, emptyList()), 0)
+    val copied = mutableListOf<String>()
+    val opened = mutableListOf<String>()
+    val details =
+      MetroDiagnosticDetailsPanel(copyText = { copied += it }, openDocumentation = { opened += it })
+    val copyEvent =
+      AnActionEvent.createFromAnAction(details.copyAction, null, ActionPlaces.UNKNOWN) { null }
+    val documentationEvent =
+      AnActionEvent.createFromAnAction(details.documentationAction, null, ActionPlaces.UNKNOWN) {
+        null
+      }
+
+    TestOnlyThreading.releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+      assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+      details.showDiagnostic(row)
+      val text = details.textArea.text
+      assertTrue(text, "Thing is requested by AppGraph" in text)
+      assertTrue(text, "@Provides fun provideThing(): Thing" in text)
+      assertTrue(text, "help: Provide <Thing> & keep its qualifier" in text)
+      assertTrue(text, "note: This request belongs to AppGraph" in text)
+      assertTrue(text, model.id.docsUrl in text)
+      details.copyAction.update(copyEvent)
+      details.documentationAction.update(documentationEvent)
+      assertTrue(copyEvent.presentation.isEnabled)
+      assertTrue(documentationEvent.presentation.isEnabled)
+      details.copyAction.actionPerformed(copyEvent)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(listOf(text), copied)
+      assertEquals(listOf(model.id.docsUrl), opened)
+
+      val withoutDocumentation =
+        MetroTreeNode.Diagnostic(
+          MetroTreeNode.Root(),
+          KaGraphDiagnostic(model.copy(includeDocsUrl = false), emptyList()),
+          0,
+        )
+      details.showDiagnostic(withoutDocumentation)
+      details.documentationAction.update(documentationEvent)
+      assertFalse(documentationEvent.presentation.isEnabled)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(1, opened.size)
+
+      details.showDiagnostic(null)
+      assertFalse(details.isVisible)
+      assertEquals("", details.textArea.text)
+      details.copyAction.update(copyEvent)
+      details.documentationAction.update(documentationEvent)
+      assertFalse(copyEvent.presentation.isEnabled)
+      assertFalse(documentationEvent.presentation.isEnabled)
+      details.copyAction.actionPerformed(copyEvent)
+      details.documentationAction.actionPerformed(documentationEvent)
+      assertEquals(1, copied.size)
+      assertEquals(1, opened.size)
+    }
+  }
+
+  fun testResultDiagnosticDetailsFollowStackSelectionAndRejectPreviousRows() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+        @DependencyGraph interface AppGraph { val missing: MissingThing }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val result = project.service<MetroGraphValidationService>().validate(file, context)
+    val panel = MetroValidationResultPanel(project) {}
+    try {
+      panel.showResults(listOf(result))
+      val rows = treeNodes(panel.tree)
+      val diagnosticRow = rows.indexOfFirst { it is MetroTreeNode.Diagnostic }
+      val stackRow = rows.indexOfFirst { it is MetroTreeNode.StackEntry }
+      assertTrue(diagnosticRow >= 0)
+      assertTrue(stackRow >= 0)
+      val diagnosticPath = checkNotNull(panel.tree.getPathForRow(diagnosticRow))
+      val stackPath = checkNotNull(panel.tree.getPathForRow(stackRow))
+      panel.tree.selectionPath = diagnosticPath
+      val text = panel.diagnosticDetails.textArea.text
+      assertTrue(text, "MissingThing" in text)
+
+      panel.tree.setSelectionRow(stackRow)
+      assertEquals(text, panel.diagnosticDetails.textArea.text)
+      assertNotNull((selectedTreeNode(panel.tree) as MetroTreeNode.StackEntry).pointer?.element)
+      panel.tree.setSelectionRow(0)
+      assertFalse(panel.diagnosticDetails.isVisible)
+
+      panel.tree.selectionPath = diagnosticPath
+      panel.showResults(emptyList())
+      assertEquals("", panel.diagnosticDetails.textArea.text)
+      // The async model can briefly retain rows from the previous result.
+      panel.tree.selectionPath = diagnosticPath
+      assertFalse(panel.diagnosticDetails.isVisible)
+      panel.tree.selectionPath = stackPath
+      assertNull(panel.navigateSelected())
+
+      panel.showResults(listOf(result))
+      val refreshedRows = treeNodes(panel.tree)
+      panel.tree.setSelectionRow(refreshedRows.indexOfFirst { it is MetroTreeNode.Diagnostic })
+      assertTrue(panel.diagnosticDetails.isVisible)
+      panel.clear()
+      assertEquals("", panel.diagnosticDetails.textArea.text)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testStaleResultRefreshKeepsANewerUserSelection() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface MissingThing
+        @DependencyGraph interface AppGraph { val missing: MissingThing }
+        """
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val result = project.service<MetroGraphValidationService>().validate(file, context)
+    val panel = MetroValidationResultPanel(project) {}
+    try {
+      panel.showResults(listOf(result))
+      val rows = treeNodes(panel.tree)
+      panel.tree.setSelectionRow(rows.indexOfFirst { it is MetroTreeNode.StackEntry })
+      assertTrue(panel.diagnosticDetails.isVisible)
+
+      panel.refreshStaleness(listOf(CachedValidation(result, stale = true)))
+      panel.tree.setSelectionRow(0)
+      object : WaitFor(30_000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            return treeNodes(panel.tree)
+              .filterIsInstance<MetroTreeNode.Validation>()
+              .singleOrNull()
+              ?.grayText
+              ?.contains("code changed since this run") == true
+          }
+        }
+        .assertCompleted("The refreshed result should show its stale label")
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertTrue(selectedTreeNode(panel.tree) is MetroTreeNode.Graph)
+      assertFalse(panel.diagnosticDetails.isVisible)
+    } finally {
+      Disposer.dispose(panel)
+    }
+  }
+
+  fun testTreeSelectionRejectsLateTraversalAndDisposedOwner() {
+    val first = DefaultMutableTreeNode("First")
+    val second = DefaultMutableTreeNode("Second")
+    val root =
+      DefaultMutableTreeNode("Root").apply {
+        add(first)
+        add(second)
+      }
+    val tree = Tree(DefaultTreeModel(root)).apply { isRootVisible = false }
+    val traversals = mutableListOf<AsyncPromise<TreePath?>>()
+    val selection =
+      MetroTreeSelection(tree, testRootDisposable) {
+        AsyncPromise<TreePath?>().also { traversals += it }
+      }
+    val visitor = TreeVisitor { TreeVisitor.Action.INTERRUPT }
+    val firstPath = TreePath(arrayOf(root, first))
+    val secondPath = TreePath(arrayOf(root, second))
+    try {
+      selection.request().select(visitor)
+      selection.request().select(visitor)
+      traversals[1].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      traversals[0].setResult(firstPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(secondPath, tree.selectionPath)
+
+      var resolvedPath: TreePath? = null
+      selection.request().select(visitor) { resolvedPath = it }
+      tree.selectionPath = firstPath
+      traversals[2].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(firstPath, tree.selectionPath)
+      assertEquals(secondPath, resolvedPath)
+
+      selection.request().select(visitor)
+      Disposer.dispose(selection)
+      traversals[3].setResult(secondPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(firstPath, tree.selectionPath)
+    } finally {
+      if (!Disposer.isDisposed(selection)) Disposer.dispose(selection)
+    }
+  }
+
+  fun testTreeSelectionRestoresModelRemovalAndRespectsDeliberateClearing() {
+    val before = DefaultMutableTreeNode("Before")
+    val root = DefaultMutableTreeNode("Root").apply { add(before) }
+    val model = DefaultTreeModel(root)
+    val tree = Tree(model).apply { isRootVisible = false }
+    val traversals = mutableListOf<AsyncPromise<TreePath?>>()
+    val selection =
+      MetroTreeSelection(tree, testRootDisposable) {
+        AsyncPromise<TreePath?>().also { traversals += it }
+      }
+    val visitor = TreeVisitor { TreeVisitor.Action.INTERRUPT }
+    try {
+      tree.selectionPath = TreePath(arrayOf(root, before))
+      selection.request().select(visitor)
+      model.removeNodeFromParent(before)
+      assertNull(tree.selectionPath)
+      val after = DefaultMutableTreeNode("After")
+      model.insertNodeInto(after, root, 0)
+      val afterPath = TreePath(arrayOf(root, after))
+      traversals[0].setResult(afterPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertEquals(afterPath, tree.selectionPath)
+
+      selection.request().select(visitor)
+      tree.clearSelection()
+      traversals[1].setResult(afterPath)
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertNull(tree.selectionPath)
+    } finally {
+      Disposer.dispose(selection)
+    }
+  }
+
+  fun testTreeNavigationUsesNativeShortcutsAndCancelsObsoletePreviews() {
+    val root =
+      DefaultMutableTreeNode("Root").apply {
+        add(DefaultMutableTreeNode("First"))
+        add(DefaultMutableTreeNode("Second"))
+      }
+    val tree = Tree(DefaultTreeModel(root)).apply { isRootVisible = false }
+    val requestedFocus = mutableListOf<Boolean>()
+    val jobs = mutableListOf<Job>()
+    val navigation =
+      MetroTreeNavigation(
+        project,
+        tree,
+        testRootDisposable,
+        canNavigate = { tree.selectionCount > 0 },
+        resolveAndNavigate = { focus ->
+          requestedFocus += focus
+          Job().also { jobs += it }
+        },
+      )
+    val autoScrollAction = navigation.autoscrollAction as ToggleAction
+    val autoScrollEvent =
+      AnActionEvent.createFromAnAction(autoScrollAction, null, ActionPlaces.UNKNOWN) { null }
+    val wasAutoScrollEnabled = autoScrollAction.isSelected(autoScrollEvent)
+    val sourceEvent =
+      AnActionEvent.createFromAnAction(navigation.openSourceAction, null, ActionPlaces.UNKNOWN) {
+        null
+      }
+    try {
+      autoScrollAction.setSelected(autoScrollEvent, false)
+      tree.setSelectionRow(0)
+      assertTrue(jobs.isEmpty())
+      val shortcuts = navigation.openSourceAction.shortcutSet.shortcuts.toSet()
+      assertTrue(shortcuts.containsAll(CommonShortcuts.getEditSource().shortcuts.toList()))
+      assertTrue(shortcuts.containsAll(CommonShortcuts.ENTER.shortcuts.toList()))
+
+      navigation.openSourceAction.update(sourceEvent)
+      assertTrue(sourceEvent.presentation.isEnabled)
+      navigation.openSourceAction.actionPerformed(sourceEvent)
+      assertEquals(listOf(true), requestedFocus)
+      tree.setSelectionRow(1)
+      assertTrue(jobs.single().isCancelled)
+
+      autoScrollAction.setSelected(autoScrollEvent, true)
+      assertEquals(listOf(true, false), requestedFocus)
+      tree.clearSelection()
+      assertTrue(jobs.last().isCancelled)
+      navigation.openSourceAction.update(sourceEvent)
+      assertFalse(sourceEvent.presentation.isEnabled)
+      navigation.openSourceAction.actionPerformed(sourceEvent)
+      assertEquals(2, jobs.size)
+    } finally {
+      autoScrollAction.setSelected(autoScrollEvent, wasAutoScrollEnabled)
+      Disposer.dispose(navigation)
+    }
   }
 
   fun testSameKeyLazyFactoryDiagnosticsNavigateToDistinctParameters() {

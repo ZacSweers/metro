@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.model
 
-import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BaseContextualTypeKey
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
@@ -53,7 +52,7 @@ internal class KaContextualTypeKey(
  * The multibinding id collected by a requested `Set` or `Map`, or null for regular keys. Deduced
  * from the key itself, mirroring how the compiler derives ids from `IrTypeKey`.
  */
-internal fun KaContextualTypeKey.multibindingId(options: MetroOptions): String? {
+internal fun KaContextualTypeKey.multibindingId(): String? {
   val mapNode =
     wrappedType.innerTypesSequence.filterIsInstance<WrappedType.Map<KaTypeSnapshot>>().firstOrNull()
   if (mapNode != null) {
@@ -61,19 +60,7 @@ internal fun KaContextualTypeKey.multibindingId(options: MetroOptions): String? 
     return createMapBindingId(mapNode.keyType.renderedType, valueKey)
   }
   if (typeKey.type.classId != StandardClassIds.Set) return null
-  val elementType = typeKey.type.typeArguments.singleOrNull()?.canonicalType(options) ?: return null
+  // Set contributions keep their declared element type, including provider and lazy wrappers.
+  val elementType = typeKey.type.typeArguments.singleOrNull()?.type ?: return null
   return typeKey.copy(type = elementType).computeMultibindingId()
-}
-
-/** Peels synchronous and suspend provider/lazy wrappers off a snapshot to its underlying type. */
-private tailrec fun KaTypeSnapshot.canonicalType(options: MetroOptions): KaTypeSnapshot {
-  val classId = classId ?: return this
-  val isWrapper =
-    classId in options.providerTypes ||
-      classId in options.lazyTypes ||
-      classId in options.suspendProviderModelingTypes ||
-      classId in options.suspendLazyTypes
-  if (!isWrapper) return this
-  val inner = typeArguments.firstOrNull() ?: return this
-  return inner.canonicalType(options)
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.compiler.graph.reporting.graphReportFileName
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import java.io.File
 import kotlin.io.path.createParentDirectories
@@ -94,7 +95,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
       val graphAnalysis = analysisLookup[graphMetadata.graph] ?: GraphAnalysisData(emptyMap())
       val htmlContent = generateHtml(graphMetadata, graphAnalysis)
 
-      val fileName = "${graphMetadata.graph.replace('.', '-')}.html"
+      val fileName = graphReportFileName(graphMetadata.graph, "html")
       val outputFile = File(outputDir, fileName)
       outputFile.toPath().createParentDirectories()
       outputFile.toPath().writeText(htmlContent)
@@ -238,7 +239,7 @@ public abstract class GenerateGraphHtmlTask : DefaultTask() {
     <p class="count">${metadata.graphCount} dependency graph${if (metadata.graphCount != 1) "s" else ""}</p>
     <ul class="graph-list">
 ${metadata.graphs.joinToString("\n") { graph ->
-  val fileName = "${graph.graph.replace('.', '-')}.html"
+  val fileName = graphReportFileName(graph.graph, "html")
   """      <li>
         <a href="$fileName">${graph.graph}</a>
         <div class="meta">

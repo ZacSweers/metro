@@ -33,6 +33,34 @@ Metro IDE support for Kotlin dependency injection projects.
         implementation="dev.zacsweers.metro.idea.usages.MetroUsageTypeProvider"
         order="first"/>
     <errorHandler implementation="dev.zacsweers.metro.idea.MetroErrorHandler"/>
+    <localInspection
+        language="kotlin"
+        shortName="MetroGraph"
+        displayName="Metro graph validation errors"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="ERROR"
+        implementationClass="dev.zacsweers.metro.idea.diagnostics.MetroGraphInspection"/>
+    <localInspection
+        language="kotlin"
+        shortName="MetroGraphWarning"
+        displayName="Metro graph validation warnings"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="WARNING"
+        implementationClass="dev.zacsweers.metro.idea.diagnostics.MetroGraphWarningInspection"/>
+    <intentionAction>
+      <className>dev.zacsweers.metro.idea.intentions.injection.MakeClassInjectableIntention</className>
+      <category>Metro</category>
+    </intentionAction>
+    <localInspection
+        language="kotlin"
+        shortName="MetroContributeBinding"
+        displayName="Class can contribute a Metro binding"
+        groupName="Metro"
+        enabledByDefault="true"
+        level="INFORMATION"
+        implementationClass="dev.zacsweers.metro.idea.intentions.contributions.MetroContributeBindingInspection"/>
     <codeInsight.lineMarkerProvider
         language="kotlin"
         implementationClass="dev.zacsweers.metro.idea.index.MetroLineMarkerProvider"/>
@@ -69,6 +97,30 @@ Metro IDE support for Kotlin dependency injection projects.
   </extensions>
 
   <actions>
+    <action
+        id="Metro.GoToBinding"
+        class="dev.zacsweers.metro.idea.navigation.GoToMetroBindingAction"
+        text="Go to Metro Binding"
+        description="Opens the binding supplying the Metro dependency at the caret"
+        icon="dev.zacsweers.metro.idea.MetroIcons.PROVIDER">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+    <action
+        id="Metro.SelectInToolWindow"
+        class="dev.zacsweers.metro.idea.navigation.SelectInMetroAction"
+        text="Select in Metro"
+        description="Reveals the graph or binding at the caret in the Metro tool window"
+        icon="dev.zacsweers.metro.idea.MetroIcons.GRAPH">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+    <action
+        id="Metro.ExplainBinding"
+        class="dev.zacsweers.metro.idea.explanation.ExplainMetroBindingAction"
+        text="Why this Metro binding?"
+        description="Explains binding selection for the Metro dependency at the caret"
+        icon="dev.zacsweers.metro.idea.MetroIcons.PROVIDER">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
     <action
         id="Metro.ValidateGraph"
         class="dev.zacsweers.metro.idea.toolwindow.ValidateMetroGraphAction"

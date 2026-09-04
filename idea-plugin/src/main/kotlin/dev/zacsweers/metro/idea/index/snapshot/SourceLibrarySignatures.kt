@@ -7,7 +7,7 @@ import dev.zacsweers.metro.idea.index.BindingData
 import dev.zacsweers.metro.idea.index.FactoryInputEntry
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.GraphInterfaceSurface
-import dev.zacsweers.metro.idea.index.writtenFactoryBudgetKey
+import dev.zacsweers.metro.idea.index.writtenClassBudgetKey
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphId
@@ -58,13 +58,13 @@ private fun FileShard.librarySignature(): SourceLibraryShardSignature {
     },
     contributions.map(::contributionLibrarySignature),
     consumers.map(::consumerLibrarySignature),
-    bindings.mapNotNull { it.writtenFactoryBudgetKey() },
+    bindings.mapNotNull { it.writtenClassBudgetKey() },
     bindings.mapNotNull(::bindingLibrarySignature),
     factoryInputs.map { input ->
       FactoryInputLibrarySignature(
         input.id,
         input.consumers.map(::consumerLibrarySignature),
-        input.bindings.mapNotNull { it.writtenFactoryBudgetKey() },
+        input.bindings.mapNotNull { it.writtenClassBudgetKey() },
         input.bindings.mapNotNull(::bindingLibrarySignature),
       )
     },

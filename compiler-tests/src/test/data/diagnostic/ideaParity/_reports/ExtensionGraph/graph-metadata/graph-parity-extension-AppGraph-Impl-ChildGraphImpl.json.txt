@@ -1,0 +1,268 @@
+{
+  "graph": "parity.extension.AppGraph.Impl.ChildGraphImpl",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "parity.extension.ChildValue",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": false,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [],
+    "customLazyTypes": [],
+    "customAssistedAnnotations": [],
+    "customAssistedFactoryAnnotations": [],
+    "customAssistedInjectAnnotations": [],
+    "customBindsAnnotations": [],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [],
+    "customGraphExtensionFactoryAnnotations": [],
+    "customElementsIntoSetAnnotations": [],
+    "customGraphAnnotations": [],
+    "customGraphFactoryAnnotations": [],
+    "customInjectAnnotations": [],
+    "customIntoMapAnnotations": [],
+    "customIntoSetAnnotations": [],
+    "customMapKeyAnnotations": [],
+    "customMultibindsAnnotations": [],
+    "customProvidesAnnotations": [],
+    "customQualifierAnnotations": [],
+    "customScopeAnnotations": [],
+    "customBindingContainerAnnotations": [],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 1,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 3,
+    "validatedKeys": 3,
+    "reachableKeys": 3,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 1,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "parity.extension.AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "parent",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "parity.extension.ChildValue",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "ChildValue",
+      "dependencies": [
+        {
+          "key": "parity.extension.ParentApi",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "ChildValue"
+    },
+    {
+      "key": "parity.extension.ParentApi",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "parentApi",
+      "dependencies": [
+        {
+          "key": "parity.extension.AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "parentApi"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
+          "key": "parity.extension.AppGraph",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "parity.extension.AppGraph",
+            "label": "parity.extension.AppGraph"
+          },
+          "ownerGraphId": "25:parity.extension.AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.AppGraph",
+        "declaration": {
+          "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi#<this>",
+          "label": "parity.extension.AppGraph.parentApi.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.extension.ChildValue|27:parity.extension.ChildValue",
+          "key": "parity.extension.ChildValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.extension.ChildValue",
+            "label": "parity.extension.ChildValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.ChildValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph|45:parity.extension.AppGraph.Impl.ChildGraphImpl",
+        "label": "parity.extension.AppGraph -> parity.extension.AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "26:parity.extension.ParentApi|90:parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
+          "key": "parity.extension.ParentApi",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.extension.AppGraph.parentApi(parity.extension.AppGraph): parity.extension.ParentApi",
+            "label": "parity.extension.AppGraph.parentApi"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.ParentApi",
+        "declaration": {
+          "id": "parity.extension.ChildValue.MetroFactory.declarationMirror(parity.extension.ChildValue.MetroFactory,parity.extension.ParentApi): parity.extension.ChildValue#api",
+          "label": "parity.extension.ChildValue.MetroFactory.declarationMirror.api"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

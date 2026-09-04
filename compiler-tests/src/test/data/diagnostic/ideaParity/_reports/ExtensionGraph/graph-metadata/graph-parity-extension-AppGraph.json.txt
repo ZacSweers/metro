@@ -148,5 +148,130 @@
       "isSynthetic": false,
       "declaration": "<get-childGraph>"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph",
+        "label": "parity.extension.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
+          "key": "parity.extension.AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.extension.AppGraph",
+            "label": "parity.extension.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph",
+        "label": "parity.extension.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.extension.AppGraph|25:parity.extension.AppGraph",
+          "key": "parity.extension.AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.extension.AppGraph",
+            "label": "parity.extension.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.AppGraph",
+        "declaration": {
+          "id": "parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+          "label": "parity.extension.AppGraph.Impl.<get-childGraph>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph",
+        "label": "parity.extension.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.extension.ChildGraph|108:parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+          "key": "parity.extension.ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+            "label": "parity.extension.AppGraph.Impl.<get-childGraph>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.extension.ChildGraph",
+        "declaration": {
+          "id": "parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+          "label": "parity.extension.AppGraph.Impl.<get-childGraph>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "25:parity.extension.AppGraph",
+        "label": "parity.extension.AppGraph"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.extension.ChildGraph|108:parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+          "key": "parity.extension.ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.extension.AppGraph.Impl.<get-childGraph>(parity.extension.AppGraph.Impl): parity.extension.ChildGraph",
+            "label": "parity.extension.AppGraph.Impl.<get-childGraph>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
   ]
 }

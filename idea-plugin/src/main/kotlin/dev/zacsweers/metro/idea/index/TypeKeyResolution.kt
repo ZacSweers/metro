@@ -8,6 +8,7 @@ import dev.zacsweers.metro.compiler.graph.buildWrappedType
 import dev.zacsweers.metro.compiler.graph.mapTypes
 import dev.zacsweers.metro.idea.model.KaAnnotationSnapshot
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
+import dev.zacsweers.metro.idea.model.KaTypeArgumentSnapshot
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import dev.zacsweers.metro.idea.model.multibindingId
@@ -19,8 +20,13 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.types.KaClassErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.analysis.api.types.KaTypeArgumentWithVariance
+import org.jetbrains.kotlin.analysis.api.types.KaTypeProjection
+import org.jetbrains.kotlin.analysis.api.types.KaUnresolvedClassTypeQualifier
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.types.Variance
 
@@ -64,6 +70,7 @@ internal fun KaSession.optionalTypeKey(
       "${JAVA_OPTIONAL_CLASS_ID.asFqNameString()}<${renderKeyType(inner)}>",
       "${JAVA_OPTIONAL_CLASS_ID.shortClassName.asString()}<${renderShortKeyType(inner)}>",
       JAVA_OPTIONAL_CLASS_ID,
+      listOf(KaTypeArgumentSnapshot.Typed(typeSnapshot(inner), Variance.INVARIANT)),
     )
   return KaTypeKey(snapshot, qualifier)
 }
@@ -77,26 +84,43 @@ internal fun KaSession.typeSnapshot(type: KaType): KaTypeSnapshot {
     renderKeyType(expanded),
     renderShortKeyType(expanded),
     classId,
-    classType
-      ?.typeArguments
-      ?.mapNotNull { argument -> argument.type?.let { typeSnapshot(it) } }
-      .orEmpty(),
+    classType?.typeArguments.orEmpty().map { argument ->
+      when (argument) {
+        is KaTypeArgumentWithVariance ->
+          KaTypeArgumentSnapshot.Typed(typeSnapshot(argument.type), argument.variance)
+        else -> KaTypeArgumentSnapshot.Star
+      }
+    },
+    isMarkedNullable = classType?.isMarkedNullable == true,
+    isError = expanded is KaErrorType,
+    unresolvedClassName =
+      (expanded as? KaClassErrorType)
+        ?.qualifiers
+        ?.lastOrNull { it is KaUnresolvedClassTypeQualifier }
+        ?.name
+        ?.takeUnless { it.isSpecial },
   )
 }
 
 /** Rebuilds a concrete request inside its current, short-lived analysis session. */
 internal fun KaSession.restoreClassType(snapshot: KaTypeSnapshot): KaClassType? {
   val classId = snapshot.classId ?: return null
-  val typeArguments = ArrayList<KaClassType>(snapshot.typeArguments.size)
+  val typeArguments = ArrayList<KaTypeProjection>(snapshot.typeArguments.size)
   for (typeArgument in snapshot.typeArguments) {
-    val restoredArgument = restoreClassType(typeArgument) ?: return null
-    typeArguments += restoredArgument
+    val projection =
+      when (typeArgument) {
+        KaTypeArgumentSnapshot.Star -> typeCreator.starTypeProjection()
+        is KaTypeArgumentSnapshot.Typed -> {
+          val restored = restoreClassType(typeArgument.type) ?: return null
+          typeCreator.typeProjection(typeArgument.variance, restored)
+        }
+      }
+    typeArguments += projection
   }
-  return buildClassType(classId) {
-    isMarkedNullable = snapshot.renderedType.endsWith('?')
-    for (typeArgument in typeArguments) argument(typeArgument)
-  }
-    as? KaClassType
+  return typeCreator.classType(classId) {
+    isMarkedNullable = snapshot.isMarkedNullable
+    for (projection in typeArguments) typeArgument(projection)
+  } as? KaClassType
 }
 
 /** Builds a contextual key that preserves provider/lazy/map wrapper structure. */
@@ -186,7 +210,7 @@ internal fun KaSession.consumedSite(
   return ConsumedSite(
     contextKey,
     isAbstract,
-    contextKey.multibindingId(options),
+    contextKey.multibindingId(),
     contextKey.typeKey.type.classId,
   )
 }

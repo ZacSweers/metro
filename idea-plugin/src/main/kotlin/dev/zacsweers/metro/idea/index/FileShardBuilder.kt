@@ -10,25 +10,25 @@ import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.compiler.capitalizeUS
 import dev.zacsweers.metro.compiler.circuit.CircuitClassIds
 import dev.zacsweers.metro.compiler.flatMapToSet
 import dev.zacsweers.metro.compiler.graph.computeMultibindingId
 import dev.zacsweers.metro.idea.annotationScopeKeys
 import dev.zacsweers.metro.idea.checkCanceledEvery
 import dev.zacsweers.metro.idea.hasAnyAnnotation
-import dev.zacsweers.metro.idea.implicitSingleInAnnotation
+import dev.zacsweers.metro.idea.index.graph.GraphDeclarationExtractor
+import dev.zacsweers.metro.idea.index.graph.GraphMemberExtractor
+import dev.zacsweers.metro.idea.index.graph.containerClassId
+import dev.zacsweers.metro.idea.index.graph.graphExtensionFactoryTarget
+import dev.zacsweers.metro.idea.index.graph.graphReference
 import dev.zacsweers.metro.idea.model.AssistedSite
 import dev.zacsweers.metro.idea.model.BindingContainerEntry
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.DynamicGraphCall
 import dev.zacsweers.metro.idea.model.DynamicGraphId
-import dev.zacsweers.metro.idea.model.GraphCallableReference
-import dev.zacsweers.metro.idea.model.GraphCallableSignature
 import dev.zacsweers.metro.idea.model.GraphDeclarationId
-import dev.zacsweers.metro.idea.model.GraphDefaultImplementation
-import dev.zacsweers.metro.idea.model.GraphExtensionFactoryAccessor
-import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
@@ -48,7 +48,6 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
@@ -92,7 +91,6 @@ internal class FileShardBuilder(
   private val pointerManager = SmartPointerManager.getInstance(project)
 
   private val processedBindingCallables = HashSet<KtDeclaration>()
-  private val processedInheritedBindingCallables = HashSet<InheritedBindingIdentity>()
   private val processedInjectClasses = HashSet<KtClassOrObject>()
   private val processedMemberInjects = HashSet<KtDeclaration>()
   private val processedContributions = HashSet<KtClassOrObject>()
@@ -105,6 +103,25 @@ internal class FileShardBuilder(
   private val processedDynamicGraphs = HashSet<DynamicGraphId>()
   private val cacheDependencies = HashSet<PsiFile>()
   private val sharedDeclarationDependencies = HashSet<PsiFile>()
+  private val graphMembers =
+    GraphMemberExtractor(
+      options,
+      pointerManager,
+      bindings,
+      cacheDependencies::add,
+      { annotated, useSite -> recordAnnotationDependencies(annotated, useSite) },
+      { type -> processRequestedAssistedFactory(type) },
+    )
+  private val graphDeclarations =
+    GraphDeclarationExtractor(
+      options,
+      pointerManager,
+      graphMembers,
+      consumers,
+      ::addGraphFactoryInput,
+      cacheDependencies::add,
+      { annotated, useSite -> recordAnnotationDependencies(annotated, useSite) },
+    )
   private var cancellationWorkIndex = 0
 
   private fun checkCanceled() {
@@ -154,6 +171,14 @@ internal class FileShardBuilder(
     val assistedFactoryNames = annotationNames(options.assistedFactoryAnnotations)
     val containerNames = annotationNames(options.bindingContainerAnnotations)
     val circuitNames = annotationNames(setOf(CircuitClassIds.CircuitInject))
+    val knownAnnotationNames =
+      bindingCallableNames +
+        injectNames +
+        contributesNames +
+        graphNames +
+        assistedFactoryNames +
+        containerNames +
+        circuitNames
     val dynamicGraphNames = buildSet {
       for (callableId in DYNAMIC_GRAPH_CALLABLES.keys) {
         add(callableId.callableName.asString())
@@ -164,7 +189,17 @@ internal class FileShardBuilder(
     PsiTreeUtil.processElements(file) { element ->
       checkCanceled()
       val entry = element as? KtAnnotationEntry ?: return@processElements true
-      val shortName = entry.shortName?.asString() ?: return@processElements true
+      val writtenName = entry.shortName?.asString() ?: return@processElements true
+      // Typealiases can introduce other spellings whose meaning depends on the current scope.
+      val shortName =
+        if (writtenName in knownAnnotationNames) writtenName
+        else {
+          val typeReference = entry.typeReference ?: return@processElements true
+          analyze(typeReference) {
+            val type = typeReference.type.fullyExpandedType as? KaClassType
+            type?.classId?.shortClassName?.asString() ?: writtenName
+          }
+        }
       val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: return@processElements true
       if (shortName in bindingCallableNames) processBindingCallable(declaration)
       if (shortName in injectNames) processInjectAnnotated(declaration)
@@ -280,15 +315,6 @@ internal class FileShardBuilder(
 
   private fun ptr(element: KtElement): SmartPsiElementPointer<KtElement> {
     return pointerManager.createSmartPsiElementPointer(element)
-  }
-
-  /** Companion members belong to the enclosing container class, mirroring the compiler. */
-  private fun KtClassOrObject.containerClassId(): ClassId? {
-    return if (this is KtObjectDeclaration && isCompanion()) {
-      containingClassOrObject?.getClassId() ?: getClassId()
-    } else {
-      getClassId()
-    }
   }
 
   /** `@Provides`/`@Binds`/`@Multibinds` callables, including instance-binding factory params. */
@@ -432,15 +458,15 @@ internal class FileShardBuilder(
   }
 
   /**
-   * Top-level function injection: `@Inject fun App(...)` generates an injectable class named after
-   * the function. Non-assisted parameters are the class's constructor dependencies; assisted
-   * parameters move to the generated class's `invoke`.
+   * Top-level function injection generates an injectable class with the function's capitalized
+   * name. Non-assisted parameters are the class's constructor dependencies; assisted parameters
+   * move to the generated class's `invoke`.
    */
   private fun KaSession.processInjectFunction(
     function: KtNamedFunction,
     symbol: KaNamedFunctionSymbol,
   ) {
-    val name = function.name ?: return
+    val name = function.name?.capitalizeUS() ?: return
     val classId = ClassId(function.containingKtFile.packageFqName, Name.identifier(name))
     val typeKey = KaTypeKey(KaTypeSnapshot(classId.asSingleFqName().asString(), name, classId))
     val dependencies =
@@ -470,7 +496,7 @@ internal class FileShardBuilder(
       recordAnnotationDependencies(classSymbol, ktClass)
       // bindingData verifies injectability/contributions itself; classes without an explicit
       // primary constructor still provide their own type.
-      val dataEntries = ktClass.bindingData(this, options)
+      val dataEntries = ktClass.bindingData(this, options, cacheDependencies::add)
       val consumerContributionScopes = dataEntries.flatMapToSet { it.contributionScopes }
       for (data in dataEntries) {
         checkCanceled()
@@ -505,7 +531,7 @@ internal class FileShardBuilder(
       val factoryType = classSymbol.defaultType as? KaClassType
       val childType =
         if (classSymbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
-          factoryType?.let { graphExtensionFactoryTarget(it) }
+          factoryType?.let { graphExtensionFactoryTarget(it, options, cacheDependencies::add) }
         } else {
           null
         }
@@ -520,7 +546,7 @@ internal class FileShardBuilder(
         )
       contributions += contribution
       if (kind == ContributionEntry.Kind.GRAPH_INTERFACE && factoryType != null) {
-        graphInterfaces += graphInterfaceSurface(contribution, factoryType)
+        graphInterfaces += graphMembers.interfaceSurface(this, contribution, factoryType)
       }
     }
     // Binding-like contributions also originate bindings (and constructor consumers when
@@ -528,550 +554,23 @@ internal class FileShardBuilder(
     processInjectClass(ktClass)
   }
 
-  private class GraphMemberTarget(
-    val graphId: GraphDeclarationId?,
-    val consumers: MutableList<ConsumerEntry>,
-    val extensionCreations: MutableSet<GraphReference>,
-    val extensionFactories: MutableList<GraphExtensionFactoryAccessor>,
-    val injectedMemberOwnerIds: MutableSet<ClassId>,
-    val bindingTemplates: MutableList<GraphInterfaceBinding>? = null,
-    /** The session-local receiver preserves an inherited factory SAM's annotated subtype. */
-    val factoryContext: KaClassType? = null,
-    val defaultImplementations: MutableList<GraphDefaultImplementation> = mutableListOf(),
-  )
-
-  /** Extract once; the merged index assigns owners and selects survivors for each graph path. */
-  private fun KaSession.graphInterfaceSurface(
-    contribution: ContributionEntry,
-    classType: KaClassType,
-  ): GraphInterfaceSurface {
-    val typeKeys = linkedSetOf<KaTypeKey>()
-    val declarations = linkedSetOf<GraphReference>()
-    val memberBindings = mutableListOf<GraphInterfaceBinding>()
-    val memberConsumers = mutableListOf<ConsumerEntry>()
-    val extensionCreations = linkedSetOf<GraphReference>()
-    val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
-    val injectedMemberOwnerIds = linkedSetOf<ClassId>()
-    val target =
-      GraphMemberTarget(
-        null,
-        memberConsumers,
-        extensionCreations,
-        extensionFactories,
-        injectedMemberOwnerIds,
-        memberBindings,
-        factoryContext = classType,
-      )
-    for (type in sequenceOf(classType) + classType.allSupertypes) {
-      checkCanceled()
-      if (type.isAnyType) continue
-      val superType = type as? KaClassType ?: continue
-      if (!typeKeys.add(typeKey(superType, null))) continue
-      declarations += superType.graphReference()
-      superType.symbol.psi?.containingFile?.let(cacheDependencies::add)
-      indexSupertypeMembers(superType, target)
-    }
-    return GraphInterfaceSurface(
-      contribution,
-      typeKeys,
-      declarations,
-      memberBindings,
-      memberConsumers,
-      extensionCreations,
-      extensionFactories,
-      injectedMemberOwnerIds,
-      defaultImplementations = target.defaultImplementations,
-    )
-  }
-
   private fun processGraph(declaration: KtDeclaration) {
     val ktClass = declaration as? KtClassOrObject ?: return
     if (!processedGraphs.add(ktClass)) return
     analyze(ktClass) {
-      val classSymbol = ktClass.symbol as? KaNamedClassSymbol ?: return@analyze
-      val graphAnnotations =
-        classSymbol.annotations.filter { it.classId in options.dependencyGraphAnnotations }
-      val extensionAnnotations =
-        classSymbol.annotations.filter { it.classId in options.graphExtensionAnnotations }
-      val annotations = graphAnnotations + extensionAnnotations
-      if (annotations.isEmpty()) return@analyze
-      recordAnnotationDependencies(classSymbol, ktClass)
-      val scopeKeys = annotations.flatMapToSet { annotationScopeKeys(it) }
-      val excludes = annotations.flatMapToSet { classListArgument(it, "excludes") }
-      val containerIds = annotations.flatMapToSet { classListArgument(it, "bindingContainers") }
-      val graphClassId = ktClass.getClassId()
-      val graphPointer = pointerManager.createSmartPsiElementPointer(ktClass)
-      val graphId = GraphDeclarationId(graphClassId, graphPointer.virtualFile)
-      val factoryAnnotations =
-        options.dependencyGraphFactoryAnnotations + options.graphExtensionFactoryAnnotations
-      val nestedClassIds = mutableSetOf<ClassId>()
-      val includedBindingContainers = mutableSetOf<KaTypeKey>()
-      val includedDependencies = mutableSetOf<KaTypeKey>()
-      val extensionCreations = mutableSetOf<GraphReference>()
-      val extensionFactories = mutableListOf<GraphExtensionFactoryAccessor>()
-      val injectedMemberOwnerIds = mutableSetOf<ClassId>()
-      val memberTarget =
-        GraphMemberTarget(
-          graphId,
-          consumers,
-          extensionCreations,
-          extensionFactories,
-          injectedMemberOwnerIds,
-          factoryContext = classSymbol.defaultType as? KaClassType,
-        )
-
-      for (member in ktClass.declarations) {
-        checkCanceled()
-        when (member) {
-          is KtClassOrObject -> {
-            val memberClassId = member.getClassId() ?: continue
-            nestedClassIds += memberClassId
-            val memberSymbol = member.symbol as? KaClassSymbol ?: continue
-            if (!memberSymbol.hasAnyAnnotation(factoryAnnotations)) continue
-            val graphInputs =
-              memberSymbol.graphFactoryInputs(this, options, pointerManager, graphId)
-            cacheDependencies += graphInputs.cacheDependencies
-            includedBindingContainers += graphInputs.bindingContainers
-            includedDependencies += graphInputs.graphDependencies
-            for (input in graphInputs.inputs) {
-              checkCanceled()
-              val inputBinding = input.bindings.firstOrNull()
-              if (inputBinding is KaBinding.BoundInstance) {
-                bindings += inputBinding
-              }
-              if (processedFactoryInputs.add(input.id)) {
-                factoryInputs += input
-              }
-            }
-          }
-          is KtCallableDeclaration -> {
-            if (member !is KtNamedFunction && member !is KtProperty) continue
-            val symbol = member.symbol as? KaCallableSymbol ?: continue
-            val view = callableBindingView(symbol)
-            recordGraphDefaultImplementation(view, member, memberTarget)
-            indexGraphCallable(view, member, memberTarget)
-          }
-          else -> {}
-        }
-      }
-
-      // Supertype members merge into the graph, mirroring the compiler. Their accessors become
-      // this graph's consumers and their class ids gate their providers' membership.
-      val supertypeIds = mutableSetOf<ClassId>()
-      val supertypeKeys = linkedSetOf<KaTypeKey>()
-      val supertypeDeclarations = linkedSetOf<GraphReference>()
-      // FIR may already expose generated contribution supertypes. Only source-written parents
-      // belong to this unconditional surface; implicit contributions are selected after merging.
-      val writtenSupertypes =
-        ktClass.superTypeListEntries.asSequence().flatMap { entry ->
-          val type = entry.typeReference?.type?.fullyExpandedType as? KaClassType
-          if (type == null) emptySequence() else sequenceOf(type) + type.allSupertypes
-        }
-      for (superType in writtenSupertypes) {
-        checkCanceled()
-        if (superType.isAnyType) continue
-        val classType = superType as? KaClassType ?: continue
-        val superClass = classType.symbol as? KaNamedClassSymbol ?: continue
-        val superClassId = superClass.classId ?: continue
-        if (!supertypeKeys.add(typeKey(classType, null))) continue
-        supertypeIds += superClassId
-        supertypeDeclarations += classType.graphReference()
-        superClass.psi?.containingFile?.let(cacheDependencies::add)
-        indexSupertypeMembers(classType, memberTarget)
-      }
-
-      // Each aggregation scope implicitly conveys @SingleIn(scope) on the graph, alongside any
-      // explicitly declared scope annotations
-      val scopingAnnotations = buildSet {
-        scopeKeys.mapTo(this, ::implicitSingleInAnnotation)
-        addAll(scopeAnnotations(classSymbol, options))
-      }
-
-      graphs +=
-        KaGraphDeclaration(
-          graphPointer,
-          scopeKeys,
-          classId = graphClassId,
-          excludes = excludes,
-          bindingContainers = containerIds,
-          includedBindingContainers = includedBindingContainers,
-          includedDependencies = includedDependencies,
-          isExtension = graphAnnotations.isEmpty(),
-          selfIds = setOfNotNull(graphClassId) + nestedClassIds,
-          supertypeIds = supertypeIds,
-          injectedMemberOwnerIds = injectedMemberOwnerIds,
-          daggerAnvilInteropEnabled = options.enableDaggerAnvilInterop,
-          extensionCreations = extensionCreations,
-          runtimeCoroutinesAvailable = findClass(MetroClassIds.suspendDoubleCheck) != null,
-          scopingAnnotations = scopingAnnotations,
-          supertypeKeys = supertypeKeys,
-          supertypeDeclarations = supertypeDeclarations,
-          extensionFactories = extensionFactories,
-          defaultImplementations = memberTarget.defaultImplementations,
-        )
+      val graph = graphDeclarations.extract(this, ktClass) ?: return@analyze
+      graphs += graph
     }
   }
 
-  /** Indexes a graph supertype's accessors and injectors as members of the merging graph. */
-  private fun KaSession.indexSupertypeMembers(
-    superType: KaClassType,
-    target: GraphMemberTarget,
-  ) {
-    val superClass = superType.symbol as? KaNamedClassSymbol ?: return
-    val scope = superType.scope ?: return
-    // The source annotation sweep never sees library files, so a library supertype's binding
-    // callables index here through their decompiled declarations
-    val isLibrary = superClass.origin == KaSymbolOrigin.LIBRARY
-    val bindingCallableIds =
-      options.providesAnnotations +
-        options.bindsAnnotations +
-        options.multibindsAnnotations +
-        bindsOptionalOfAnnotations(options)
-    for (signature in scope.getCallableSignatures()) {
-      checkCanceled()
-      val view = callableBindingView(signature) ?: continue
-      val callable = view.symbol
-      if (callable.callableId?.classId != superClass.classId) continue
-      callable.psi?.containingFile?.let(cacheDependencies::add)
-      recordAnnotationDependencies(callable, callable.psi)
-      val psi = callable.psi as? KtElement ?: continue
-      recordGraphDefaultImplementation(view, psi, target)
-      if (callable.hasAnyAnnotation(bindingCallableIds)) {
-        if (target.bindingTemplates != null || isLibrary || hasSpecializedTypes(view)) {
-          (callable.psi as? KtDeclaration)?.let { declaration ->
-            processInheritedBindingCallable(declaration, view, target)
-          }
-        }
-        if (!callable.hasAnyAnnotation(options.multibindsAnnotations)) {
-          continue
-        }
-      }
-      indexGraphCallable(view, psi, target)
+  /** Each graph keeps its bound input; shared container and dependency members are merged once. */
+  private fun addGraphFactoryInput(input: FactoryInputEntry) {
+    val inputBinding = input.bindings.firstOrNull()
+    if (inputBinding is KaBinding.BoundInstance) {
+      bindings += inputBinding
     }
-  }
-
-  /**
-   * Keep the real override relation even though a concrete member is not itself a graph request.
-   * The contributing interface may be excluded later, so its implementation cannot suppress the
-   * abstract declaration until the graph's path-specific contribution selection is known.
-   */
-  private fun KaSession.recordGraphDefaultImplementation(
-    view: CallableBindingView,
-    psi: KtElement,
-    target: GraphMemberTarget,
-  ) {
-    val callable = view.symbol
-    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
-    if (view.receiver != null || callable.modality == KaSymbolModality.ABSTRACT) return
-
-    val overriddenDeclarations = mutableListOf<GraphCallableReference>()
-    val seenDeclarations = HashSet<KtElement>()
-    for (overridden in callable.allOverriddenSymbols) {
-      checkCanceled()
-      val original = overridden.fakeOverrideOriginal
-      val declaration = original.psi as? KtElement ?: continue
-      if (!seenDeclarations.add(declaration)) continue
-      declaration.containingFile?.let(cacheDependencies::add)
-      recordAnnotationDependencies(original, declaration)
-      overriddenDeclarations += graphCallableReference(callableBindingView(original), declaration)
-    }
-    // Most concrete providers override nothing. They cannot satisfy another abstract declaration
-    // and need no extra surface metadata or composition work.
-    if (overriddenDeclarations.isEmpty()) return
-
-    target.defaultImplementations +=
-      GraphDefaultImplementation(
-        declaration = graphCallableReference(view, psi),
-        overriddenDeclarations = overriddenDeclarations,
-        isOptional = callable.isOptionalConsumer(options),
-      )
-  }
-
-  private fun KaSession.graphCallableReference(
-    view: CallableBindingView,
-    psi: KtElement,
-  ): GraphCallableReference {
-    val callable = view.symbol
-    val signature =
-      GraphCallableSignature(
-        callableId = callable.callableId,
-        receiverType = view.receiver?.let { typeSnapshot(it.returnType) },
-        parameterTypes = view.valueParameters.map { typeSnapshot(it.returnType) },
-        returnType = typeSnapshot(view.returnType),
-        isProperty = callable is KaPropertySymbol,
-        isSuspend = (callable as? KaNamedFunctionSymbol)?.isSuspend == true,
-      )
-    return GraphCallableReference(ptr(psi), signature)
-  }
-
-  /** The same callable classification is used for written and contributed graph supertypes. */
-  private fun KaSession.indexGraphCallable(
-    view: CallableBindingView,
-    psi: KtElement,
-    target: GraphMemberTarget,
-  ) {
-    val callable = view.symbol
-    if (callable !is KaNamedFunctionSymbol && callable !is KaPropertySymbol) return
-    if (view.receiver != null) return
-    recordAnnotationDependencies(callable, psi)
-    val isOptionalAccessor = callable.isOptionalConsumer(options)
-    if (callable.modality != KaSymbolModality.ABSTRACT && !isOptionalAccessor) return
-    val isMultibindingAccessor = callable.hasAnyAnnotation(options.multibindsAnnotations)
-    if (
-      !isMultibindingAccessor && callable.hasAnyAnnotation(nonAccessorCallableAnnotations(options))
-    )
-      return
-
-    // A contributed factory's create(parameters) is a child creation, not a member injector.
-    val returnType = view.returnType.fullyExpandedType as? KaClassType
-    val returnClass = returnType?.symbol
-    if (returnType != null && returnClass != null) {
-      if (returnClass.hasAnyAnnotation(options.graphExtensionAnnotations)) {
-        returnClass.psi?.containingFile?.let(cacheDependencies::add)
-        val factoryOwner = graphExtensionFactoryOwner(view, target.factoryContext)
-        target.extensionCreations += factoryOwner ?: returnType.graphReference()
-        return
-      }
-      if (returnClass.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
-        val extensionType = graphExtensionFactoryTarget(returnType) ?: return
-        target.extensionCreations += returnType.graphReference()
-        target.extensionFactories +=
-          GraphExtensionFactoryAccessor(
-            ptr(psi),
-            typeKey(returnType, qualifierAnnotation(callable, options)),
-            typeKey(extensionType, null),
-            extensionType.graphReference(),
-          )
-        addGraphAccessor(view, psi, target, isOptionalAccessor)
-        return
-      }
-    }
-    if (callable is KaNamedFunctionSymbol && view.valueParameters.isNotEmpty()) {
-      (psi as? KtNamedFunction)?.let {
-        processGraphInjector(
-          it,
-          target.graphId,
-          target.injectedMemberOwnerIds,
-          view,
-          target.consumers,
-        )
-      }
-      return
-    }
-    if (view.returnType.isUnitType) return
-    addGraphAccessor(view, psi, target, isOptionalAccessor)
-  }
-
-  private fun KaSession.addGraphAccessor(
-    view: CallableBindingView,
-    psi: KtElement,
-    target: GraphMemberTarget,
-    isOptional: Boolean,
-  ) {
-    val site = consumedSite(view.returnType, view.symbol, options)
-    processRequestedAssistedFactory(view.returnType)
-    target.consumers +=
-      ConsumerEntry(
-        ptr(psi),
-        site.contextKey,
-        site.isAbstractType,
-        site.multibindingId,
-        site.typeClassId,
-        graphId = target.graphId,
-        graphRequestKind = ConsumerEntry.GraphRequestKind.ACCESSOR,
-        isSuspend = (view.symbol as? KaNamedFunctionSymbol)?.isSuspend == true,
-        isOptional = isOptional,
-      )
-  }
-
-  private fun KaSession.graphExtensionFactoryTarget(factoryType: KaClassType): KaClassType? {
-    factoryType.symbol.psi?.containingFile?.let(cacheDependencies::add)
-    val function = assistedFactoryFunction(factoryType) ?: return null
-    function.symbol.psi?.containingFile?.let(cacheDependencies::add)
-    val extensionType = function.returnType.fullyExpandedType as? KaClassType ?: return null
-    if (!extensionType.symbol.hasAnyAnnotation(options.graphExtensionAnnotations)) return null
-    extensionType.symbol.psi?.containingFile?.let(cacheDependencies::add)
-    return extensionType
-  }
-
-  /** Recognizes the factory SAM even when a graph declares its covariant override itself. */
-  private fun KaSession.graphExtensionFactoryOwner(
-    view: CallableBindingView,
-    factoryContext: KaClassType?,
-  ): GraphReference? {
-    val function = view.symbol as? KaNamedFunctionSymbol ?: return null
-    val roots = mutableListOf<KaClassType>()
-    if (factoryContext != null) roots += factoryContext
-    val ownerId = function.callableId?.classId
-    val owner = ownerId?.let { findClass(it) as? KaNamedClassSymbol }
-    val ownerType = owner?.defaultType as? KaClassType
-    if (ownerType != null) roots += ownerType
-    val seen = hashSetOf<KaTypeKey>()
-    for (root in roots) {
-      checkCanceled()
-      for (type in sequenceOf(root) + root.allSupertypes) {
-        checkCanceled()
-        val factoryType = type as? KaClassType ?: continue
-        if (!seen.add(typeKey(factoryType, null))) continue
-        if (!factoryType.symbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) continue
-        val sam = assistedFactoryFunction(factoryType) ?: continue
-        val samFunction = sam.symbol as? KaNamedFunctionSymbol ?: continue
-        if (samFunction.name != function.name) continue
-        if (sam.valueParameters.size != view.valueParameters.size) continue
-        val sameParameters =
-          sam.valueParameters.indices.all { index ->
-            typeKey(sam.valueParameters[index].returnType, null) ==
-              typeKey(view.valueParameters[index].returnType, null)
-          }
-        if (!sameParameters) continue
-        factoryType.symbol.psi?.containingFile?.let(cacheDependencies::add)
-        return factoryType.graphReference()
-      }
-    }
-    return null
-  }
-
-  private fun KaClassType.graphReference(): GraphReference {
-    return GraphReference(classId, symbol.psi?.containingFile?.virtualFile)
-  }
-
-  /** Generic inherited providers need their concrete graph type arguments, not raw symbol types. */
-  private fun KaSession.processInheritedBindingCallable(
-    declaration: KtDeclaration,
-    callable: CallableBindingView,
-    target: GraphMemberTarget,
-  ) {
-    recordAnnotationDependencies(callable.symbol, declaration)
-    val graphId = target.graphId
-    // The same generic base can be inherited with different arguments by unrelated graphs.
-    // Owning each specialized declaration by the concrete graph prevents those bindings leaking
-    // into another graph that merely shares the base class id.
-    val containerId =
-      graphId?.classId
-        ?: (declaration as? KtCallableDeclaration)?.containingClassOrObject?.containerClassId()
-    var addedBinding = false
-    for (data in callable.bindingData(this, options)) {
-      checkCanceled()
-      val templates = target.bindingTemplates
-      if (templates != null) {
-        templates += GraphInterfaceBinding(ptr(declaration), data)
-        addedBinding = true
-        continue
-      }
-      val ownerGraphId = checkNotNull(graphId)
-      val identity =
-        InheritedBindingIdentity(
-          declaration,
-          ownerGraphId,
-          data.key,
-          data.multibindingId,
-          data.mapKeyValue,
-        )
-      if (!processedInheritedBindingCallables.add(identity)) continue
-      bindings +=
-        data.toKaBinding(ptr(declaration), containerId = containerId, ownerGraphId = ownerGraphId)
-      addedBinding = true
-    }
-    if (!addedBinding) return
-    for (parameter in callable.valueParameters) {
-      checkCanceled()
-      val source = parameter.symbol.psi as? KtElement ?: continue
-      addConsumer(
-        source,
-        parameter.symbol,
-        parameter.returnType,
-        containerId = containerId,
-        graphId = graphId,
-        targetConsumers = target.consumers,
-      )
-    }
-    val receiver = callable.receiver
-    val receiverSource = (declaration as? KtCallableDeclaration)?.receiverTypeReference
-    if (receiver != null && receiverSource != null) {
-      addConsumer(
-        receiverSource,
-        receiver.symbol,
-        receiver.returnType,
-        containerId = containerId,
-        graphId = graphId,
-        targetConsumers = target.consumers,
-      )
-    }
-  }
-
-  /** Only create a second source binding when receiver type arguments actually change its key. */
-  private fun KaSession.hasSpecializedTypes(callable: CallableBindingView): Boolean {
-    val declaration = callableBindingView(callable.symbol)
-    if (typeKey(callable.returnType, qualifier = null) != typeKey(declaration.returnType, null)) {
-      return true
-    }
-    val receiver = callable.receiver
-    val declaredReceiver = declaration.receiver
-    if (receiver != null && declaredReceiver != null) {
-      if (typeKey(receiver.returnType, null) != typeKey(declaredReceiver.returnType, null)) {
-        return true
-      }
-    }
-    return callable.valueParameters.indices.any { index ->
-      val inherited = callable.valueParameters[index]
-      val declared = declaration.valueParameters[index]
-      typeKey(inherited.returnType, null) != typeKey(declared.returnType, null)
-    }
-  }
-
-  private data class InheritedBindingIdentity(
-    val declaration: KtDeclaration,
-    val graphId: GraphDeclarationId,
-    val typeKey: KaTypeKey,
-    val multibindingId: String?,
-    val mapKeyValue: String?,
-  )
-
-  /**
-   * Indexes a graph injector member such as `fun inject(target: Foo)`. Each of the target's
-   * member-inject keys becomes a consumer anchored at the injector.
-   */
-  private fun KaSession.processGraphInjector(
-    member: KtNamedFunction,
-    graphId: GraphDeclarationId?,
-    injectedMemberOwnerIds: MutableSet<ClassId>,
-    callable: CallableBindingView? = null,
-    targetConsumers: MutableList<ConsumerEntry> = consumers,
-  ) {
-    if (member.valueParameters.size != 1) return
-    val symbol = member.symbol as? KaNamedFunctionSymbol ?: return
-    if (symbol.modality != KaSymbolModality.ABSTRACT) return
-    val returnType = callable?.returnType ?: symbol.returnType
-    if (!returnType.isUnitType) return
-    if (symbol.hasAnyAnnotation(nonAccessorCallableAnnotations(options))) return
-    val targetParameterType =
-      callable?.valueParameters?.singleOrNull()?.returnType
-        ?: symbol.valueParameters.single().returnType
-    val targetType = targetParameterType.fullyExpandedType as? KaClassType ?: return
-    val targetSymbol = targetType.symbol as? KaNamedClassSymbol ?: return
-    for (owner in memberInjectOwners(targetSymbol)) {
-      checkCanceled()
-      owner.classId?.let(injectedMemberOwnerIds::add)
-      owner.psi?.containingFile?.let(cacheDependencies::add)
-    }
-    for (site in
-      memberInjectSites(targetType, options) { dependencyType ->
-        checkCanceled()
-        processRequestedAssistedFactory(dependencyType)
-      }) {
-      checkCanceled()
-      val contextKey = site.key
-      targetConsumers +=
-        ConsumerEntry(
-          ptr(member),
-          contextKey,
-          multibindingId = contextKey.multibindingId(options),
-          typeClassId = contextKey.typeKey.type.classId,
-          graphId = graphId,
-          injectedMemberPointer = site.declaration?.let(::ptr),
-          graphRequestKind = ConsumerEntry.GraphRequestKind.MEMBERS_INJECTOR,
-          isOptional = contextKey.hasDefault,
-        )
+    if (processedFactoryInputs.add(input.id)) {
+      factoryInputs += input
     }
   }
 
@@ -1331,20 +830,17 @@ internal class FileShardBuilder(
   ) {
     recordAnnotationDependencies(symbol, element)
     processRequestedAssistedFactory(type)
-    val site = consumedSite(type, symbol, options)
     targetConsumers +=
-      ConsumerEntry(
+      dependencyConsumer(
         ptr(element),
-        site.contextKey,
-        site.isAbstractType,
-        site.multibindingId,
-        site.typeClassId,
+        symbol,
+        type,
+        options,
         originClassId = originClassId,
         contributionScopes = contributionScopes,
         containerId = containerId,
         graphId = graphId,
         memberOwnerClassId = memberOwnerClassId,
-        isOptional = symbol.isOptionalConsumer(options),
       )
   }
 

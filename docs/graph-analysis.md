@@ -17,6 +17,27 @@ metro {
 
 This enables the compiler to export graph metadata during compilation.
 
+## Binding explanations
+
+Graph metadata includes `bindingExplanations`, using the same decision model and reason codes as
+the IDE's **Why this Metro binding?** action. The aggregated metadata and `analysis.json` preserve
+these records. Reports also include concrete generated child and dynamic graphs.
+
+Each explanation identifies its graph context, the requested key when one exists, and the observed
+candidates. Reasons such as `selected_explicit`, `selected_parent`, `excluded`, and `replaced` are
+structured fields. Related declarations identify the graph or contribution responsible for a
+removal when that information is available.
+
+The `phase` distinguishes binding registration, dependency lookup, and candidate filtering. A
+filtering record can describe an excluded contribution before any dependency requests it. Lookup
+records include only candidates reached by the compiler's normal lookup. Later fallbacks stay
+unevaluated, and the candidate list is not exhaustive. The IDE can show additional alternatives
+from its project index.
+
+Explanation collection is enabled with `reportsDestination`. It does not change binding selection.
+JSON reports are written during code generation, so a compilation that stops earlier may have no
+report for the failing graph.
+
 ## Available Tasks
 
 !!! warning

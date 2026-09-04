@@ -28,6 +28,7 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     val service = project.service<MetroResolutionService>()
@@ -429,7 +430,11 @@ class MetroFilePresentationTest : BasePlatformTestCase() {
     PsiDocumentManager.getInstance(project).commitAllDocuments()
   }
 
+  /** Keeps the EDT available while pending project changes wait for smart-mode reads. */
   private fun awaitCoordinator(service: MetroResolutionService) {
-    runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    val completion = CompletableFuture.supplyAsync {
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    }
+    PlatformTestUtil.waitForFuture(completion, 30_000)
   }
 }

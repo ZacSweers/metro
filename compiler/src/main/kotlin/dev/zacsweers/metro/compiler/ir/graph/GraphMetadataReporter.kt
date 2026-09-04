@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.compiler.graph.WrappedType.Canonical
 import dev.zacsweers.metro.compiler.graph.WrappedType.Provider
+import dev.zacsweers.metro.compiler.graph.reporting.graphReportFileName
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
 import dev.zacsweers.metro.compiler.ir.IrContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
@@ -144,9 +145,12 @@ internal class GraphMetadataReporter(
       put("config", json.encodeToJsonElement(context.options))
       codegenStats?.let { put("stats", buildStatsJson(node, bindingGraph, sealResult, it)) }
       put("bindings", JsonArray(bindings))
+      bindingGraph.decisionCapture?.let { capture ->
+        put("bindingExplanations", json.encodeToJsonElement(capture.snapshot()))
+      }
     }
 
-    val fileName = "graph-${node.sourceGraph.kotlinFqName.asString().replace('.', '-')}.json"
+    val fileName = graphReportFileName(node.sourceGraph.kotlinFqName.asString(), "json", "graph-")
     val outputFile = outputDir.resolve(fileName)
     outputFile.createParentDirectories()
     outputFile.writeText(json.encodeToString(JsonObject.serializer(), graphJson))

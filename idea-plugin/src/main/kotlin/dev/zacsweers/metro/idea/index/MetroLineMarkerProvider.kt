@@ -712,24 +712,53 @@ private fun showTargets(
   val eventComponent = event?.component
   resolveLineMarkerTargets(event, project, targets) { elements ->
     if (eventComponent != null && !eventComponent.isShowing) return@resolveLineMarkerTargets
-    when {
-      elements.isEmpty() -> {
-        val popup = JBPopupFactory.getInstance().createMessage(emptyText)
-        if (relativePoint != null) popup.show(relativePoint) else popup.showInFocusCenter()
-      }
-      elements.size == 1 -> (elements.single() as? Navigatable)?.navigate(true)
-      else -> {
-        val popup =
-          PsiTargetNavigator(elements.toTypedArray())
-            .presentationProvider(MetroTargetRenderer())
-            .createPopup(project, title)
-        if (relativePoint != null) {
-          popup.show(relativePoint)
-        } else {
-          popup.showInFocusCenter()
-        }
-      }
+    showResolvedNavigationTargets(project, elements, title, emptyText, relativePoint)
+  }
+}
+
+/** Editor actions reuse the gutter's background target ordering and native target presentation. */
+internal fun showMetroNavigationTargets(
+  editor: Editor,
+  title: String,
+  emptyText: String,
+  targets: List<SmartPsiElementPointer<*>>,
+  isRequestCurrent: () -> Boolean,
+): Job? {
+  val project = editor.project ?: return null
+  return project.service<MetroNavigationService>().resolveTargets(
+    editor,
+    targets,
+    ::orderNavigationTargets,
+  ) { elements ->
+    if (!isRequestCurrent()) return@resolveTargets
+    showResolvedNavigationTargets(project, elements, title, emptyText, editor = editor)
+  }
+}
+
+private fun showResolvedNavigationTargets(
+  project: Project,
+  elements: List<PsiElement>,
+  title: String,
+  emptyText: String,
+  relativePoint: RelativePoint? = null,
+  editor: Editor? = null,
+) {
+  if (elements.size == 1) {
+    (elements.single() as? Navigatable)?.navigate(true)
+    return
+  }
+  val popup =
+    if (elements.isEmpty()) {
+      JBPopupFactory.getInstance().createMessage(emptyText)
+    } else {
+      PsiTargetNavigator(elements.toTypedArray())
+        .presentationProvider(MetroTargetRenderer())
+        .createPopup(project, title)
     }
+  when {
+    relativePoint != null -> popup.show(relativePoint)
+    editor != null -> popup.showInBestPositionFor(editor)
+    else -> popup.showInFocusCenter()
   }
 }
 

@@ -1,0 +1,458 @@
+{
+  "graph": "AppGraph.Impl.ChildGraphImpl",
+  "scopes": [],
+  "aggregationScopes": [],
+  "roots": {
+    "accessors": [
+      {
+        "key": "FirstParentConsumer",
+        "isDeferrable": false
+      },
+      {
+        "key": "SecondParentConsumer",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": true,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [
+      "dagger/internal/Provider",
+      "javax/inject/Provider",
+      "jakarta/inject/Provider"
+    ],
+    "customLazyTypes": [
+      "dagger/Lazy"
+    ],
+    "customAssistedAnnotations": [
+      "dagger/assisted/Assisted"
+    ],
+    "customAssistedFactoryAnnotations": [
+      "dagger/assisted/AssistedFactory"
+    ],
+    "customAssistedInjectAnnotations": [
+      "dagger/assisted/AssistedInject"
+    ],
+    "customBindsAnnotations": [
+      "dagger/Binds"
+    ],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [
+      "dagger/Subcomponent"
+    ],
+    "customGraphExtensionFactoryAnnotations": [
+      "dagger/Subcomponent.Factory"
+    ],
+    "customElementsIntoSetAnnotations": [
+      "dagger/multibindings/ElementsIntoSet"
+    ],
+    "customGraphAnnotations": [
+      "dagger/Component"
+    ],
+    "customGraphFactoryAnnotations": [
+      "dagger/Component.Factory"
+    ],
+    "customInjectAnnotations": [
+      "javax/inject/Inject",
+      "jakarta/inject/Inject"
+    ],
+    "customIntoMapAnnotations": [
+      "dagger/multibindings/IntoMap"
+    ],
+    "customIntoSetAnnotations": [
+      "dagger/multibindings/IntoSet"
+    ],
+    "customMapKeyAnnotations": [
+      "dagger/MapKey"
+    ],
+    "customMultibindsAnnotations": [
+      "dagger/multibindings/Multibinds"
+    ],
+    "customProvidesAnnotations": [
+      "dagger/Provides",
+      "dagger/BindsInstance"
+    ],
+    "customQualifierAnnotations": [
+      "javax/inject/Qualifier",
+      "jakarta/inject/Qualifier"
+    ],
+    "customScopeAnnotations": [
+      "javax/inject/Scope",
+      "jakarta/inject/Scope"
+    ],
+    "customBindingContainerAnnotations": [
+      "dagger/Module"
+    ],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
+  },
+  "stats": {
+    "providerFactories": 0,
+    "bindsCallables": 0,
+    "multibindsCallables": 0,
+    "optionalBindings": 0,
+    "accessors": 2,
+    "injectors": 0,
+    "graphExtensionAccessors": 0,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 0,
+    "scopedProviderProperties": 0,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 2,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 0,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "parent",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "AppGraph.Impl",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "Impl",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "AppGraph"
+    },
+    {
+      "key": "FirstParentConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "FirstParentConsumer",
+      "dependencies": [
+        {
+          "key": "ParentValue",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "FirstParentConsumer"
+    },
+    {
+      "key": "ParentValue",
+      "bindingKind": "GraphDependency",
+      "isScoped": false,
+      "nameHint": "ChildGraphImplParentValue",
+      "dependencies": [
+        {
+          "key": "AppGraph.Impl",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false
+    },
+    {
+      "key": "SecondParentConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "SecondParentConsumer",
+      "dependencies": [
+        {
+          "key": "ParentValue",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "SecondParentConsumer"
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "candidate_filtering",
+      "outcome": "filtered",
+      "candidates": [
+        {
+          "id": "18:PrioritizedService|18:LowPriorityService",
+          "key": "PrioritizedService",
+          "status": "rejected",
+          "reason": "lower_priority",
+          "declaration": {
+            "id": "LowPriorityService",
+            "label": "LowPriorityService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records candidates removed while constructing this graph."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:AppGraph.Impl|9:generated",
+          "key": "AppGraph.Impl",
+          "status": "selected",
+          "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "19:FirstParentConsumer|19:FirstParentConsumer",
+          "key": "FirstParentConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "FirstParentConsumer",
+            "label": "FirstParentConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "FirstParentConsumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ParentValue",
+        "declaration": {
+          "id": "FirstParentConsumer.MetroFactory.declarationMirror(FirstParentConsumer.MetroFactory,ParentValue): FirstParentConsumer#parentValue",
+          "label": "FirstParentConsumer.MetroFactory.declarationMirror.parentValue"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ParentValue",
+        "declaration": {
+          "id": "SecondParentConsumer.MetroFactory.declarationMirror(SecondParentConsumer.MetroFactory,ParentValue): SecondParentConsumer#parentValue",
+          "label": "SecondParentConsumer.MetroFactory.declarationMirror.parentValue"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "20:SecondParentConsumer|20:SecondParentConsumer",
+          "key": "SecondParentConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "SecondParentConsumer",
+            "label": "SecondParentConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SecondParentConsumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
+  ]
+}

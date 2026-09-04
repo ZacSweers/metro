@@ -6,6 +6,7 @@ import dev.zacsweers.metro.compiler.MetroLogger
 import dev.zacsweers.metro.compiler.Origins
 import dev.zacsweers.metro.compiler.compat.propertyIfAccessorCompat
 import dev.zacsweers.metro.compiler.graph.computeLowerPriorityContributions
+import dev.zacsweers.metro.compiler.graph.explanation.BindingReason
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsLikeCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
@@ -24,6 +25,8 @@ import dev.zacsweers.metro.compiler.ir.ProviderFactory
 import dev.zacsweers.metro.compiler.ir.batchTrackForCallingDeclaration
 import dev.zacsweers.metro.compiler.ir.findAnnotations
 import dev.zacsweers.metro.compiler.ir.getAnnotation
+import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
+import dev.zacsweers.metro.compiler.ir.graph.reporting.RejectedBindingDecision
 import dev.zacsweers.metro.compiler.ir.isBindingContainer
 import dev.zacsweers.metro.compiler.ir.lookupClass
 import dev.zacsweers.metro.compiler.ir.metroGraphOrFail
@@ -45,6 +48,7 @@ import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
@@ -67,6 +71,8 @@ internal class BindingGraphGenerator(
   private val bindingLookupCache: BindingLookupCache,
   private val boundTypeResolver: IrBoundTypeResolver,
 ) : IrMetroContext by metroContext, TraceScope by traceScope {
+
+  private val decisionCapture = if (reportsDir != null) BindingDecisionCapture(node) else null
 
   private val ProviderFactory.isDynamic: Boolean
     get() = this in node.dynamicTypeKeys[typeKey].orEmpty()
@@ -94,6 +100,7 @@ internal class BindingGraphGenerator(
             findMemberInjectors = metroDeclarations::findAllInjectorsFor,
             parentContext = parentContext,
             bindingLookupCache = bindingLookupCache,
+            decisionCapture = decisionCapture,
           )
         }
 
@@ -108,6 +115,7 @@ internal class BindingGraphGenerator(
             bindingLookup = bindingLookup,
             contributionData = contributionData,
             boundTypeResolver = boundTypeResolver,
+            decisionCapture = decisionCapture,
           )
         }
 
@@ -232,7 +240,14 @@ internal class BindingGraphGenerator(
       "Collect provider factories (own=$ownProviderFactoryCount, inh=$inheritedProviderFactoryCount)"
     ) {
       for ((providerFactory, isLocallyDeclared) in providerFactoryCandidates) {
-        if (providerFactory in lowerPriorityDeclarations) continue
+        if (providerFactory in lowerPriorityDeclarations) {
+          decisionCapture?.rejected(
+            providerFactory.typeKey,
+            providerFactory.realDeclaration as? IrDeclarationWithName ?: providerFactory.function,
+            BindingReason.LOWER_PRIORITY,
+          )
+          continue
+        }
 
         val typeKey = providerFactory.typeKey
         // Track IC lookups but don't add bindings yet - they'll be added lazily
@@ -244,6 +259,11 @@ internal class BindingGraphGenerator(
 
         // Skip non-dynamic bindings that have dynamic replacements
         if (!providerFactory.isDynamic && typeKey in node.dynamicTypeKeys) {
+          decisionCapture?.rejected(
+            typeKey,
+            providerFactory.realDeclaration as? IrDeclarationWithName ?: providerFactory.function,
+            BindingReason.DYNAMIC_REPLACEMENT,
+          )
           continue
         }
 
@@ -305,12 +325,24 @@ internal class BindingGraphGenerator(
       }
 
       for ((bindsCallable, isLocallyDeclared) in bindsCallableCandidates) {
-        if (bindsCallable in lowerPriorityDeclarations) continue
+        if (bindsCallable in lowerPriorityDeclarations) {
+          decisionCapture?.rejected(
+            bindsCallable.typeKey,
+            bindsCallable.resolveSourceDeclaration().first,
+            BindingReason.LOWER_PRIORITY,
+          )
+          continue
+        }
 
         val typeKey = bindsCallable.typeKey
 
         // Skip non-dynamic bindings that have dynamic replacements
         if (!bindsCallable.isDynamic && typeKey in node.dynamicTypeKeys) {
+          decisionCapture?.rejected(
+            typeKey,
+            bindsCallable.resolveSourceDeclaration().first,
+            BindingReason.DYNAMIC_REPLACEMENT,
+          )
           continue
         }
 
@@ -905,7 +937,8 @@ internal class BindingGraphGenerator(
         // No parent: compute (will be empty fast-path) without caching.
         computeRawInheritedGraphData(node)
       }
-    return raw.applyDirectlyProvidedFilter(node.directlyProvidedKeys)
+    decisionCapture?.include(raw.rejectedCandidates)
+    return raw.applyDirectlyProvidedFilter(node.directlyProvidedKeys, decisionCapture)
   }
 
   /**
@@ -914,6 +947,8 @@ internal class BindingGraphGenerator(
    * later in [RawInheritedGraphData.applyDirectlyProvidedFilter] so siblings can reuse this.
    */
   private fun computeRawInheritedGraphData(node: GraphNode.Local): RawInheritedGraphData {
+    val rejectedCandidates =
+      if (decisionCapture != null) mutableListOf<RejectedBindingDecision>() else null
     val providerFactories = mutableListOf<RawProviderFactoryEntry>()
     val providerFactoryKeys = mutableSetOf<IrTypeKey>()
     val bindsCallableKeys = mutableSetOf<IrTypeKey>()
@@ -937,10 +972,31 @@ internal class BindingGraphGenerator(
         if (
           key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
         ) {
+          if (rejectedCandidates != null) {
+            for (factory in factories) {
+              rejectedCandidates +=
+                RejectedBindingDecision(
+                  key,
+                  factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
+                  BindingReason.OVERRIDDEN,
+                  extendedNode.typeKey,
+                )
+            }
+          }
           continue
         }
         for (factory in factories) {
-          if (key in extendedNode.graphPrivateKeys) continue
+          if (key in extendedNode.graphPrivateKeys) {
+            rejectedCandidates?.add(
+              RejectedBindingDecision(
+                key,
+                factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
+                BindingReason.PRIVATE_TO_GRAPH,
+                extendedNode.typeKey,
+              )
+            )
+            continue
+          }
 
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
           if (factory.annotations.isScoped) {
@@ -964,11 +1020,32 @@ internal class BindingGraphGenerator(
         if (
           key in alreadyCollectedKeys && !(isDynamicParent && key in extendedNode.dynamicTypeKeys)
         ) {
+          if (rejectedCandidates != null) {
+            for (callable in callables) {
+              rejectedCandidates +=
+                RejectedBindingDecision(
+                  key,
+                  callable.resolveSourceDeclaration().first,
+                  BindingReason.OVERRIDDEN,
+                  extendedNode.typeKey,
+                )
+            }
+          }
           continue
         }
         for (callable in callables) {
           val source = callable.source
-          if (source != null && source in extendedNode.graphPrivateKeys) continue
+          if (source != null && source in extendedNode.graphPrivateKeys) {
+            rejectedCandidates?.add(
+              RejectedBindingDecision(
+                key,
+                callable.resolveSourceDeclaration().first,
+                BindingReason.PRIVATE_TO_GRAPH,
+                extendedNode.typeKey,
+              )
+            )
+            continue
+          }
           val isDynamicInParent = isDynamicParent && key in extendedNode.dynamicTypeKeys
           bindsCallableKeys.add(key)
           bindsCallables.add(RawBindsCallableEntry(key, callable, isDynamicInParent))
@@ -1023,6 +1100,7 @@ internal class BindingGraphGenerator(
       optionalKeys = optionalKeys,
       supertypeAliases = supertypeAliases,
       multibindingAccessors = multibindingAccessors,
+      rejectedCandidates = rejectedCandidates.orEmpty(),
     )
   }
 }
@@ -1039,18 +1117,34 @@ private class RawInheritedGraphData(
   val optionalKeys: Map<IrTypeKey, Set<BindsOptionalOfCallable>>,
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
+  val rejectedCandidates: List<RejectedBindingDecision>,
 ) {
-  fun applyDirectlyProvidedFilter(directlyProvidedKeys: Set<IrTypeKey>): InheritedGraphData {
+  fun applyDirectlyProvidedFilter(
+    directlyProvidedKeys: Set<IrTypeKey>,
+    decisionCapture: BindingDecisionCapture?,
+  ): InheritedGraphData {
     val outProviderFactories = mutableSetOf<Pair<IrTypeKey, ProviderFactory>>()
     val outBindsCallables = mutableListOf<Pair<IrTypeKey, BindsCallable>>()
     for ((key, factory, isDynamicInParent) in providerFactories) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outProviderFactories.add(key to factory)
+      } else {
+        decisionCapture?.rejected(
+          key,
+          factory.realDeclaration as? IrDeclarationWithName ?: factory.function,
+          BindingReason.OVERRIDDEN,
+        )
       }
     }
     for ((key, callable, isDynamicInParent) in bindsCallables) {
       if (isDynamicInParent || key !in directlyProvidedKeys) {
         outBindsCallables.add(key to callable)
+      } else {
+        decisionCapture?.rejected(
+          key,
+          callable.resolveSourceDeclaration().first,
+          BindingReason.OVERRIDDEN,
+        )
       }
     }
     return InheritedGraphData(

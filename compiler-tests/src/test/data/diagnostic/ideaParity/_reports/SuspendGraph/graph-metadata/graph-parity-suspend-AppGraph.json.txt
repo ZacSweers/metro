@@ -186,5 +186,199 @@
       "isSynthetic": false,
       "declaration": "Repository"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+          "key": "parity.suspend.Database",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+            "label": "parity.suspend.AppGraph.provideDatabase"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SuspendProvider<parity.suspend.Database>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+          "key": "parity.suspend.Database",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+            "label": "parity.suspend.AppGraph.provideDatabase"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SuspendProvider<parity.suspend.Database>",
+        "declaration": {
+          "id": "parity.suspend.DeferredRepository.MetroFactory.declarationMirror(parity.suspend.DeferredRepository.MetroFactory,kotlin.coroutines.SuspendFunction0<parity.suspend.Database>): parity.suspend.DeferredRepository#database",
+          "label": "parity.suspend.DeferredRepository.MetroFactory.declarationMirror.database"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.suspend.AppGraph|23:parity.suspend.AppGraph",
+          "key": "parity.suspend.AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.suspend.AppGraph",
+            "label": "parity.suspend.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.suspend.AppGraph",
+        "declaration": {
+          "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database#<this>",
+          "label": "parity.suspend.AppGraph.provideDatabase.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+          "key": "parity.suspend.Database",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
+            "label": "parity.suspend.AppGraph.provideDatabase"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.suspend.Database",
+        "declaration": {
+          "id": "parity.suspend.Repository.MetroFactory.declarationMirror(parity.suspend.Repository.MetroFactory,parity.suspend.Database): parity.suspend.Repository#database",
+          "label": "parity.suspend.Repository.MetroFactory.declarationMirror.database"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "33:parity.suspend.DeferredRepository|33:parity.suspend.DeferredRepository",
+          "key": "parity.suspend.DeferredRepository",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.suspend.DeferredRepository",
+            "label": "parity.suspend.DeferredRepository"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.suspend.DeferredRepository",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "23:parity.suspend.AppGraph",
+        "label": "parity.suspend.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.suspend.Repository|25:parity.suspend.Repository",
+          "key": "parity.suspend.Repository",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.suspend.Repository",
+            "label": "parity.suspend.Repository"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.suspend.Repository",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

@@ -7,6 +7,7 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiAnnotationMethod
 import com.intellij.psi.PsiArrayInitializerMemberValue
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiEnumConstant
@@ -56,13 +57,11 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
     )
   }
 
-  val annotationPsi = annotation.psi
-  val uAnnotation = annotationPsi?.toUElement(UAnnotation::class.java)
-  val project = annotationPsi?.project ?: annotation.constructorSymbol?.psi?.project
-  val resolvedClass = project?.let {
-    JavaPsiFacade.getInstance(it)
-      .findClass(classId.asFqNameString(), GlobalSearchScope.allScope(it))
-  }
+  // Default arguments share fallback lookups for this snapshot. Explicit arguments skip them.
+  var uAnnotation: UAnnotation? = null
+  var didResolveUAnnotation = false
+  var resolvedClass: PsiClass? = null
+  var didResolveClass = false
   val snapshots = mutableListOf<Pair<Name, KaAnnotationValueSnapshot>>()
   for (parameter in constructorParameters) {
     val explicit = explicitArguments[parameter.name]
@@ -93,6 +92,10 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
       continue
     }
 
+    if (!didResolveUAnnotation) {
+      uAnnotation = annotation.psi?.toUElement(UAnnotation::class.java)
+      didResolveUAnnotation = true
+    }
     val uastDefault = uAnnotation?.findAttributeValue(parameter.name.asString())
     val uastSnapshot = uastDefault?.toValueSnapshot()
     if (uastSnapshot != null) {
@@ -100,6 +103,14 @@ internal fun KaSession.toKaAnnotationSnapshot(annotation: KaAnnotation): KaAnnot
       continue
     }
 
+    if (!didResolveClass) {
+      val project = annotation.psi?.project ?: annotation.constructorSymbol?.psi?.project
+      resolvedClass = project?.let {
+        JavaPsiFacade.getInstance(it)
+          .findClass(classId.asFqNameString(), GlobalSearchScope.allScope(it))
+      }
+      didResolveClass = true
+    }
     val javaDefault =
       resolvedClass
         ?.findMethodsByName(parameter.name.asString(), false)

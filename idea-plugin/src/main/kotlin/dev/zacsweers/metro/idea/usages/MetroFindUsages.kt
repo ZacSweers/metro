@@ -14,6 +14,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.SearchScope
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.usageView.UsageInfo
 import com.intellij.usages.PsiElementUsageTarget
@@ -85,7 +86,7 @@ class MetroUsageTypeProvider : UsageTypeProviderEx {
   }
 }
 
-private data class CollectedMetroUsages(
+internal data class CollectedMetroUsages(
   val cacheEntry: MetroUsageCacheEntry?,
   val usages: List<Usage>,
 ) {
@@ -236,6 +237,22 @@ private fun collectMetroUsagesInReadAction(
       resolutionService.usageIndexes(target)
     }
 
+  val searchSession = options.fastTrack?.searchSession
+  val searchKey =
+    target.usageIdentity()?.let { identity ->
+      MetroUsageSearchKey(
+        identity,
+        options.searchScope,
+        pinnedPath,
+        indexes.map { it.generationToken },
+        PsiModificationTracker.getInstance(project).modificationCount,
+      )
+    }
+  if (searchSession != null && searchKey != null) {
+    val cached = searchSession.cachedMetroUsages(searchKey)
+    if (cached != null) return cached
+  }
+
   val seen = mutableSetOf<MetroUsageRelationKey>()
   val relations = mutableListOf<MetroUsageRelation>()
   for (index in indexes) {
@@ -248,10 +265,15 @@ private fun collectMetroUsagesInReadAction(
       relations += relation
     }
   }
-  return CollectedMetroUsages(
-    cacheEntry = target.metroUsageCacheEntry(pinnedPath, relations),
-    usages = relations.map { MetroUsage(it.declaration, it.relationship) },
-  )
+  val result =
+    CollectedMetroUsages(
+      cacheEntry = target.metroUsageCacheEntry(pinnedPath, relations),
+      usages = relations.map { MetroUsage(it.declaration, it.relationship) },
+    )
+  if (searchSession != null && searchKey != null) {
+    searchSession.cacheMetroUsages(searchKey, result)
+  }
+  return result
 }
 
 private data class MetroUsageRelationKey(

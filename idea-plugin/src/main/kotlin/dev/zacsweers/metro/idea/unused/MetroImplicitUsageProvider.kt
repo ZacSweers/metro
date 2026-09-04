@@ -22,6 +22,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import dev.zacsweers.metro.compiler.MetroOptions
+import dev.zacsweers.metro.idea.MetroCompilerSettingsTracker
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIdeAnnotationClassIds
 import dev.zacsweers.metro.idea.MetroIdeModuleState
@@ -42,7 +43,6 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.utils.classId
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettingsTracker
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtAnnotated
@@ -361,7 +361,7 @@ internal class MetroImplicitUsageCache(
     return ImplicitUsageInputs(
       psi = PsiModificationTracker.getInstance(project).modificationCount,
       roots = ProjectRootModificationTracker.getInstance(project).modificationCount,
-      compilerSettings = KotlinCompilerSettingsTracker.getInstance(project).modificationCount,
+      compilerSettings = project.service<MetroCompilerSettingsTracker>().modificationCount,
     )
   }
 }
@@ -449,7 +449,7 @@ private fun KtAnnotated?.hasAnyMetroAnnotation(classIds: Set<ClassId>): Boolean 
 private fun KtAnnotationEntry.isAnyMetroAnnotation(classIds: Set<ClassId>): Boolean {
   val annotationClassId =
     when (val annotationClass = typeReference?.mainReference?.resolve()) {
-      is KtClassOrObject -> annotationClass.fqName?.let(ClassId::topLevel)
+      is KtClassOrObject -> annotationClass.getClassId()
       is PsiClass -> annotationClass.classId
       is PsiMember -> annotationClass.containingClass?.classId
       else -> null

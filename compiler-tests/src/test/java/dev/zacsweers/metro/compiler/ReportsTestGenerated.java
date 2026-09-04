@@ -32,6 +32,18 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("BindingExplanations.kt")
+  public void testBindingExplanations() {
+    run("BindingExplanations.kt");
+  }
+
+  @Test
+  @TestMetadata("BindingExplanationsFullValidation.kt")
+  public void testBindingExplanationsFullValidation() {
+    run("BindingExplanationsFullValidation.kt");
+  }
+
+  @Test
   @TestMetadata("DeeplyNestedGraphsKeysPopulatedReport.kt")
   public void testDeeplyNestedGraphsKeysPopulatedReport() {
     run("DeeplyNestedGraphsKeysPopulatedReport.kt");
@@ -135,6 +147,62 @@ public class ReportsTestGenerated extends AbstractReportsTest {
             }
           }
         }
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/BindingExplanations")
+  @TestDataPath("$PROJECT_ROOT")
+  public class BindingExplanations {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/BindingExplanations/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInBindingExplanations() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BindingExplanations"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/BindingExplanations/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/BindingExplanations/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BindingExplanations/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
+      }
+    }
+  }
+
+  @Nested
+  @TestMetadata("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation")
+  @TestDataPath("$PROJECT_ROOT")
+  public class BindingExplanationsFullValidation {
+    private void run(String fileName) {
+      runTest("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation/" + fileName);
+    }
+
+    @Test
+    public void testAllFilesPresentInBindingExplanationsFullValidation() {
+      KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Nested
+    @TestMetadata("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation/graph-metadata")
+    @TestDataPath("$PROJECT_ROOT")
+    public class Graph_metadata {
+      private void run(String fileName) {
+        runTest("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation/graph-metadata/" + fileName);
+      }
+
+      @Test
+      public void testAllFilesPresentInGraph_metadata() {
+        KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/dump/reports/BindingExplanationsFullValidation/graph-metadata"), Pattern.compile("^(.+)\\.kt$"), null, true);
       }
     }
   }

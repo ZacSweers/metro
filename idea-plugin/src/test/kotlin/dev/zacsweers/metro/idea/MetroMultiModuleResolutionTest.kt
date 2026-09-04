@@ -9,6 +9,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.ModuleOrderEntry
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiDocumentManager
@@ -22,6 +23,8 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.runInEdtAndWait
 import dev.zacsweers.metro.compiler.diagnostics.MetroDiagnosticId
+import dev.zacsweers.metro.compiler.graph.WrappedType
+import dev.zacsweers.metro.idea.explanation.metroBindingExplanations
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
@@ -33,6 +36,7 @@ import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.sourcePointerIdentity
+import dev.zacsweers.metro.idea.navigation.metroEditorTargets
 import java.util.IdentityHashMap
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
@@ -60,6 +64,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val bridgeBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     val indirectAppBuilder = projectBuilder.addModule(EmptyModuleFixtureBuilder::class.java)
     fixture.setUp()
+    fixture.project.enableImmediateAutomaticRefresh()
 
     val appModule = appBuilder.fixture.module
     val libraryModule = libraryBuilder.fixture.module
@@ -102,7 +107,39 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     }
   }
 
-  fun testResolutionInputsShareFileOrdinalsAcrossIsolatedModuleViews() {
+  fun testClassArrivalInInvisibleModulePreservesAnUnresolvedGraphSnapshot() {
+    val graph =
+      fixture.addFileToProject(
+        "library/lib/LibraryGraph.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface LibraryGraph { val registry: NewRegistry }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(graph)
+    val accessor = graph.declarationsIncludingNested().property("registry")
+    assertTrue(initial.consumerEntryAt(accessor)!!.key.type.isError)
+
+    // The app depends on the library, so its declarations are invisible from the library graph.
+    fixture.addFileToProject("app/lib/NewRegistry.kt", "package lib; object NewRegistry")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    assertSame(initial, service.awaitIndex(graph))
+
+    fixture.addFileToProject("library/lib/NewRegistry.kt", "package lib; object NewRegistry")
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val updated = service.awaitIndex(graph)
+    val consumer = updated.consumerEntryAt(accessor)!!
+    val binding = updated.resolveConsumer(consumer).uniformBindings.orEmpty().single()
+    assertTrue(binding is KaBinding.ConstructorInjected && binding.isObject)
+    assertEquals("lib.NewRegistry", binding.typeKey.renderedType)
+  }
+
+  fun testResolutionInputsReuseModuleViewsAcrossOptionTargetsAndEdits() {
     val libraryFile =
       fixture.addFileToProject(
         "library/lib/LibraryService.kt",
@@ -131,10 +168,17 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
         """
           .trimIndent(),
       ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    appModule.setModuleMetroOptions("enable-dagger-anvil-interop" to "true")
+    libraryModule.setModuleMetroOptions("enable-dagger-anvil-interop" to "false")
     PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val index = fixture.project.service<MetroResolutionService>().awaitIndex(appFile)
+    val service = fixture.project.service<MetroResolutionService>()
+    service.awaitIndex(appFile)
+    val libraryIndex = service.awaitIndex(libraryFile)
+    val index = service.awaitIndex(appFile)
     val inputs = index.resolutionInputs
     val appView = checkNotNull(inputs.moduleViewFor(appFile.virtualFile))
     val libraryView = checkNotNull(inputs.moduleViewFor(libraryFile.virtualFile))
@@ -144,6 +188,209 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertFalse(appView.sharesVisibilityArrayWith(libraryView))
     assertTrue(appView.resolutionScope.contains(libraryFile))
     assertFalse(libraryView.resolutionScope.contains(appFile))
+    assertTrue(appView.daggerAnvilInteropEnabled)
+    assertFalse(libraryView.daggerAnvilInteropEnabled)
+    assertNotSame(index, libraryIndex)
+    assertSame(index.generationToken, libraryIndex.generationToken)
+    assertSame(appView, libraryIndex.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertSame(libraryView, libraryIndex.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
+
+    val documents = PsiDocumentManager.getInstance(fixture.project)
+    val document = checkNotNull(documents.getDocument(appFile))
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      document.insertString(document.text.lastIndexOf('}'), "  val otherService: LibraryService\n")
+    }
+    documents.commitAllDocuments()
+    val updated = service.awaitIndex(appFile)
+    assertNotSame(index.generationToken, updated.generationToken)
+    assertNotSame(inputs, updated.resolutionInputs)
+    assertSame(inputs.fileOrdinalTable, updated.resolutionInputs.fileOrdinalTable)
+    assertSame(appView, updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertSame(libraryView, updated.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
+    val accessor = appFile.declarationsIncludingNested().property("otherService")
+    val consumer = updated.consumerEntryAt(accessor)!!
+    assertNull(inputs.sourceIdentity(consumer.pointer))
+    assertEquals(
+      checkNotNull(sourcePointerIdentity(consumer.pointer)),
+      updated.resolutionInputs.sourceIdentity(consumer.pointer),
+    )
+  }
+
+  fun testModuleVisibilityRefreshesWhenDependenciesChange() {
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryService.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.Inject
+        @Inject class LibraryService
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    val appModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val libraryModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(libraryFile))
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertTrue(initialView.resolutionScope.contains(libraryFile))
+
+    ModuleRootModificationUtil.updateModel(appModule) { model ->
+      val dependency =
+        model.orderEntries.filterIsInstance<ModuleOrderEntry>().single {
+          it.module == libraryModule
+        }
+      model.removeOrderEntry(dependency)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+
+    val updated = service.awaitIndex(appFile)
+    val updatedView = checkNotNull(updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, updatedView)
+    assertFalse(updatedView.resolutionScope.contains(libraryFile))
+    assertTrue(initialView.resolutionScope.contains(libraryFile))
+  }
+
+  fun testModuleVisibilityTracksAddedAndRemovedFiles() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph { val service: lib.LibraryService }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    val libraryFile =
+      fixture.addFileToProject(
+        "library/lib/LibraryService.kt",
+        """
+        package lib
+        import dev.zacsweers.metro.Inject
+        @Inject class LibraryService
+        """
+          .trimIndent(),
+      ) as KtFile
+    PsiDocumentManager.getInstance(fixture.project).commitAllDocuments()
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val added = service.awaitIndex(appFile)
+    val addedView = checkNotNull(added.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, addedView)
+    assertTrue(addedView.resolutionScope.contains(libraryFile))
+
+    val libraryVirtualFile = libraryFile.virtualFile
+    val libraryDirectory = libraryVirtualFile.parent
+    val outside = fixture.tempDirFixture.findOrCreateDir("outside")
+    // Moving outside content keeps the file alive while removing it from module visibility.
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      libraryVirtualFile.move(this, outside)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val moved = service.awaitIndex(appFile)
+    assertNull(moved.resolutionInputs.moduleViewFor(libraryVirtualFile))
+    assertNull(moved.resolutionInputs.fileOrdinal(libraryVirtualFile))
+
+    WriteCommandAction.runWriteCommandAction(fixture.project) {
+      libraryVirtualFile.move(this, libraryDirectory)
+    }
+    IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
+    val restored = service.awaitIndex(appFile)
+    assertNotNull(restored.resolutionInputs.moduleViewFor(libraryVirtualFile))
+
+    WriteCommandAction.runWriteCommandAction(fixture.project) { libraryVirtualFile.delete(this) }
+    val removed = service.awaitIndex(appFile)
+    assertNull(removed.resolutionInputs.moduleViewFor(libraryVirtualFile))
+    assertNull(removed.resolutionInputs.fileOrdinal(libraryVirtualFile))
+  }
+
+  fun testModuleVisibilityRefreshesInteropSettings() {
+    val appFile =
+      fixture.addFileToProject(
+        "app/app/AppGraph.kt",
+        """
+        package app
+        import dev.zacsweers.metro.DependencyGraph
+        @DependencyGraph interface AppGraph
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val initial = service.awaitIndex(appFile)
+    val initialView = checkNotNull(initial.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertFalse(initialView.daggerAnvilInteropEnabled)
+
+    fixture.project.setMetroOptions("enable-dagger-anvil-interop" to "true")
+    val updated = service.awaitIndex(appFile)
+    val updatedView = checkNotNull(updated.resolutionInputs.moduleViewFor(appFile.virtualFile))
+    assertNotSame(initialView, updatedView)
+    assertTrue(updatedView.daggerAnvilInteropEnabled)
+    assertFalse(initialView.daggerAnvilInteropEnabled)
+  }
+
+  fun testFacetOptionsInvalidateCachedGraphDataBeforeDeferredCallbacks() {
+    val file =
+      fixture.addFileToProject(
+        "library/lib/LibraryGraph.kt",
+        """
+        package lib
+
+        import dev.zacsweers.metro.*
+
+        @Inject class Value
+
+        @DependencyGraph interface LibraryGraph {
+          val provider: () -> Value
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val service = fixture.project.service<MetroResolutionService>()
+    val validation = fixture.project.service<MetroGraphValidationService>()
+    val initial = service.awaitIndex(file)
+    val initialGraph = initial.graphs.single { it.name == "LibraryGraph" }
+    assertTrue(
+      initial.accessorsFor(initialGraph).single().contextKey.wrappedType is WrappedType.Provider
+    )
+    val initialResult =
+      validation.validate(file, initial.contextsFor(initialGraph).single()).requireCompleted()
+    assertTrue(
+      initialResult.diagnostics.joinToString { it.render() },
+      initialResult.diagnostics.isEmpty(),
+    )
+    val module = checkNotNull(ModuleUtilCore.findModuleForPsiElement(file))
+
+    runInEdtAndWait {
+      runWriteAction {
+        module.setModuleMetroOptions("enable-function-providers" to "false")
+        // Keep deferred callbacks and background reads behind the facet-change assertion.
+        assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      }
+    }
+
+    val updated = service.awaitIndex(file)
+    val updatedGraph = updated.graphs.single { it.name == "LibraryGraph" }
+    assertNotSame(initial, updated)
+    assertTrue(
+      updated.accessorsFor(updatedGraph).single().contextKey.wrappedType is WrappedType.Canonical
+    )
+    val updatedResult =
+      validation.validate(file, updated.contextsFor(updatedGraph).single()).requireCompleted()
+    assertEquals(listOf(MetroDiagnosticId.MISSING_BINDING), updatedResult.diagnostics.map { it.id })
   }
 
   fun testTrackedDirectoryMoveRefreshesModuleOptionsAndDependentShards() {
@@ -203,7 +450,20 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val initialModule =
       checkNotNull(initial.resolutionInputs.moduleViewFor(libraryFile.virtualFile))
     assertFalse(initialGraph.daggerAnvilInteropEnabled)
+    assertFalse(initialModule.daggerAnvilInteropEnabled)
     assertFalse(initialModule.resolutionScope.contains(appFile))
+    assertFalse(
+      fixture.project
+        .service<MetroIdeProjectService>()
+        .state(libraryModule)
+        .options
+        .enableFunctionProviders
+    )
+    val initialAccessor = initial.accessorsFor(initialGraph).single()
+    assertTrue(
+      "The library graph must retain the function request when function providers are disabled",
+      initialAccessor.contextKey.wrappedType is WrappedType.Canonical,
+    )
     val validation = fixture.project.service<MetroGraphValidationService>()
     val initialResult =
       validation
@@ -224,6 +484,7 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     assertNotSame(initial, updated)
     assertEquals(initialGraph.declarationId, updatedGraph.declarationId)
     assertTrue(updatedGraph.daggerAnvilInteropEnabled)
+    assertTrue(updatedModule.daggerAnvilInteropEnabled)
     assertFalse(initialModule.module == updatedModule.module)
     assertTrue(updatedModule.resolutionScope.contains(appFile))
     // The unchanged app file cached inherited members from the moved declaration's file.
@@ -1154,6 +1415,9 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
     val extensionContext = extensionResolution.perContext.keys.single()
     assertEquals(listOf("LibExtension", "AppGraph"), extensionContext.chain.map { it.name })
     assertEquals(appContext.graphModule, index.queryContext(extensionContext)!!.graphModule)
+    val rootModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val extensionLabel = extensionContext.compilationContextName()
+    assertTrue(extensionLabel, "${rootModule.name}: ${appFile.name}" in extensionLabel)
   }
 
   fun testDynamicGraphUsesTheCallSiteModuleAndReplacesLibraryGraphBindings() {
@@ -1210,6 +1474,9 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       )
 
     assertEquals(appKaModule, index.queryContext(dynamicContext)!!.graphModule)
+    val callerModule = checkNotNull(ModuleUtilCore.findModuleForPsiElement(appFile))
+    val dynamicLabel = dynamicContext.compilationContextName()
+    assertTrue(dynamicLabel, "${callerModule.name}: DynamicGraph.kt" in dynamicLabel)
     assertEquals(
       listOf("provideReal"),
       index.bindingsFor(consumer, index.queryContext(staticContext)!!).mapNotNull {
@@ -1593,6 +1860,29 @@ class MetroMultiModuleResolutionTest : UsefulTestCase() {
       listOf("bridgeValue"),
       index.accessorsFor(bridgeGraph).map { (it.pointer.element as KtNamedDeclaration).name },
     )
+
+    // The editor action must carry both the caret's compilation and the graph's source identity.
+    val explanationContextIds = mutableSetOf<String>()
+    val editorChoices =
+      listOf(appFile to "appValue", bridgeFile to "bridgeValue").map { (file, accessor) ->
+        val fileIndex = fixture.project.service<MetroResolutionService>().awaitIndex(file)
+        val offset = file.declarationsIncludingNested().property(accessor).textOffset
+        val targets = metroEditorTargets(fileIndex, file, offset, null)
+        val choice = targets.navigation.single()
+        assertEquals(file.virtualFile, choice.bindings.single().pointer.virtualFile)
+        assertEquals(file.virtualFile, targets.reveal.single().path.segments.single().file)
+        val explanation = metroBindingExplanations(fileIndex, file, offset, null).single()
+        explanationContextIds += explanation.snapshot.context.id
+        assertEquals(choice.path, explanation.path)
+        assertEquals(
+          file.virtualFile,
+          explanation.candidates.single { it.selected }.target.pointer.virtualFile,
+        )
+        choice
+      }
+    assertEquals(2, editorChoices.map { it.path }.distinct().size)
+    assertEquals(2, editorChoices.map { it.text }.distinct().size)
+    assertEquals(2, explanationContextIds.size)
 
     val validationService = fixture.project.service<MetroGraphValidationService>()
     val appResult =

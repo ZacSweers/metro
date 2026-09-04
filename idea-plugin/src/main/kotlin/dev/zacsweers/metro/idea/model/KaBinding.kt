@@ -10,6 +10,7 @@ import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
 import dev.zacsweers.metro.compiler.graph.MergeContribution
 import dev.zacsweers.metro.compiler.graph.WrappedType
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 
 /**
  * A declaration that originates a binding for [typeKey]. The Analysis API analog of the compiler's
@@ -123,7 +124,7 @@ internal sealed interface KaBinding :
     return "${typeKey.render(short = short)} ($label)"
   }
 
-  /** A constructor-injected class providing its own type. */
+  /** A constructor-injected class or object providing its own type. */
   class ConstructorInjected(
     override val pointer: SmartPsiElementPointer<out PsiElement>,
     typeKey: KaTypeKey,
@@ -138,6 +139,8 @@ internal sealed interface KaBinding :
     override val memberInjectionOwnerIds: Set<ClassId> = emptySet(),
     override val hintAvailability: HintAvailability? = null,
     val isAssisted: Boolean = false,
+    /** Objects already exist and have no constructor or member-injection requests. */
+    val isObject: Boolean = false,
   ) : KaBinding {
     override val contextualTypeKey = typeKey.canonicalContextKey()
 
@@ -145,7 +148,10 @@ internal sealed interface KaBinding :
       constructorDependencies + memberDependencies
 
     override val label: String
-      get() = "injected class"
+      get() = if (isObject) "object" else "injected class"
+
+    override val isImplicitlyDeferrable: Boolean
+      get() = isObject
   }
 
   /** A `@Provides` callable, or a generated factory contribution modeled as one. */
@@ -235,6 +241,8 @@ internal sealed interface KaBinding :
     override val contributionScopes: Set<ClassId> = emptySet(),
     /** Whether the declaration permits an empty multibinding. */
     val allowEmpty: Boolean = false,
+    /** A unique resolved Metro source annotation that can safely offer an `allowEmpty` edit. */
+    val metroMultibindsAnnotation: SmartPsiElementPointer<KtAnnotationEntry>? = null,
     val sourceBindings: List<KaTypeKey> = emptyList(),
     override val hintAvailability: HintAvailability? = null,
     override val isGraphPrivate: Boolean = false,

@@ -300,5 +300,422 @@
       "isSynthetic": false,
       "declaration": "TestRepo"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "candidate_filtering",
+      "outcome": "filtered",
+      "candidates": [
+        {
+          "id": "parity.aggregation.ExcludedHandler.MetroContributionToAppScope",
+          "key": "parity.aggregation.ExcludedHandler.MetroContributionToAppScope",
+          "status": "rejected",
+          "reason": "excluded",
+          "declaration": {
+            "id": "parity.aggregation.ExcludedHandler",
+            "label": "parity.aggregation.ExcludedHandler"
+          },
+          "relatedDeclarations": [
+            {
+              "id": "parity.aggregation.AppGraph",
+              "label": "parity.aggregation.AppGraph"
+            }
+          ],
+          "details": []
+        },
+        {
+          "id": "parity.aggregation.RealRepo.MetroContributionToAppScope",
+          "key": "parity.aggregation.RealRepo.MetroContributionToAppScope",
+          "status": "rejected",
+          "reason": "replaced",
+          "declaration": {
+            "id": "parity.aggregation.RealRepo",
+            "label": "parity.aggregation.RealRepo"
+          },
+          "relatedDeclarations": [
+            {
+              "id": "parity.aggregation.TestRepo",
+              "label": "parity.aggregation.TestRepo"
+            }
+          ],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records candidates removed while constructing this graph."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "134:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler|161:parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler",
+            "label": "parity.aggregation.AggregateBindings.Companion.primaryHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"-678079832\") parity.aggregation.Handler",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "132:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler|139:parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity.aggregation.AggregateBindings.Companion): parity.aggregation.Handler",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.AggregateBindings.Companion.secondaryHandler(parity.aggregation.AggregateBindings.Companion): parity.aggregation.Handler",
+            "label": "parity.aggregation.AggregateBindings.Companion.secondaryHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_parity.aggregation.Handler\", \"42302901\") parity.aggregation.Handler",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "120:@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler|29:parity.aggregation.AppHandler",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.AppHandler",
+            "label": "parity.aggregation.AppHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"parity.aggregation.Handler\", \"2113724328\") parity.aggregation.Handler",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "46:Map<kotlin.String, parity.aggregation.Handler>|9:generated",
+          "key": "Map<kotlin.String, parity.aggregation.Handler>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Map<kotlin.String, parity.aggregation.Handler>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "55:kotlin.collections.Set<parity.aggregation.EmptyElement>|167:parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
+          "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "declaration": {
+            "id": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196(parity.aggregation.AggregateBindings): kotlin.collections.Set<parity.aggregation.EmptyElement>",
+            "label": "parity.aggregation.AggregateBindings.BindsMirror.emptyElements4205200196"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<parity.aggregation.EmptyElement>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "50:kotlin.collections.Set<parity.aggregation.Handler>|9:generated",
+          "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<parity.aggregation.Handler>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "29:parity.aggregation.AppHandler|29:parity.aggregation.AppHandler",
+          "key": "parity.aggregation.AppHandler",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.aggregation.AppHandler",
+            "label": "parity.aggregation.AppHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.AppHandler",
+        "declaration": {
+          "id": "parity.aggregation.AppHandler.MetroContributionToAppScope.bindIntoSetAsHandler(parity.aggregation.AppHandler.MetroContributionToAppScope,parity.aggregation.AppHandler): parity.aggregation.Handler#instance",
+          "label": "parity.aggregation.AppHandler.MetroContributionToAppScope.bindIntoSetAsHandler.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.aggregation.RealRepo|27:parity.aggregation.RealRepo",
+          "key": "parity.aggregation.RealRepo",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.aggregation.RealRepo",
+            "label": "parity.aggregation.RealRepo"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.RealRepo",
+        "declaration": {
+          "id": "parity.aggregation.TestRepo.MetroFactory.declarationMirror(parity.aggregation.TestRepo.MetroFactory,parity.aggregation.RealRepo): parity.aggregation.TestRepo#realRepo",
+          "label": "parity.aggregation.TestRepo.MetroFactory.declarationMirror.realRepo"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.aggregation.Repo|27:parity.aggregation.TestRepo",
+          "key": "parity.aggregation.Repo",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.TestRepo",
+            "label": "parity.aggregation.TestRepo"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.Repo",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "23:parity.aggregation.Repo|27:parity.aggregation.TestRepo",
+          "key": "parity.aggregation.Repo",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.TestRepo",
+            "label": "parity.aggregation.TestRepo"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.Repo",
+        "declaration": {
+          "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler#repo",
+          "label": "parity.aggregation.AggregateBindings.Companion.primaryHandler.repo"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:parity.aggregation.ScopedValue|30:parity.aggregation.ScopedValue",
+          "key": "parity.aggregation.ScopedValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.aggregation.ScopedValue",
+            "label": "parity.aggregation.ScopedValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.ScopedValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "27:parity.aggregation.TestRepo|27:parity.aggregation.TestRepo",
+          "key": "parity.aggregation.TestRepo",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.aggregation.TestRepo",
+            "label": "parity.aggregation.TestRepo"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.TestRepo",
+        "declaration": {
+          "id": "parity.aggregation.TestRepo.MetroContributionToAppScope.bindsAsRepo(parity.aggregation.TestRepo.MetroContributionToAppScope,parity.aggregation.TestRepo): parity.aggregation.Repo#instance",
+          "label": "parity.aggregation.TestRepo.MetroContributionToAppScope.bindsAsRepo.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

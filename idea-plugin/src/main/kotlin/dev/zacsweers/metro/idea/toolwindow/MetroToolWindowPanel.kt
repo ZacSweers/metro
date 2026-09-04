@@ -23,7 +23,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.TreeSpeedSearch
@@ -45,9 +44,9 @@ import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.navigation.MetroRevealTarget
 import dev.zacsweers.metro.idea.presentableName
 import java.awt.BorderLayout
-import java.awt.event.MouseEvent
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -61,6 +60,9 @@ import org.jetbrains.kotlin.name.ClassId
 /** The Metro tool window: browse graphs and their bindings, and run on-demand validation. */
 internal class MetroToolWindowPanel(
   private val project: Project,
+  private val contextLookup: (GraphPath, (GraphContext?) -> Unit) -> Job = { path, onResult ->
+    project.service<MetroResolutionService>().findGraphContextAsync(path, onResult)
+  },
   private val graphLookup: (ClassId, VirtualFile?, (KaGraphDeclaration?) -> Unit) -> Job =
     { classId, file, onResult ->
       project.service<MetroResolutionService>().findGraphAsync(classId, file, onResult)
@@ -86,11 +88,12 @@ internal class MetroToolWindowPanel(
     MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
   /** Validation waiting for its graph to become available in a published index. */
-  private var pendingValidation: Pair<ClassId, VirtualFile?>? = null
+  private var pendingValidation: GraphValidationTarget? = null
   private var pendingValidationGeneration = 0L
   private var latestValidationRequestToken = 0L
   private var pendingValidationLookup: Job? = null
   private var pendingValidationLookupGeneration = 0L
+  private var revealGeneration = 0L
   @Volatile private var disposed: Boolean = false
   private val treeModel = StructureTreeModel(treeStructure, this)
   internal val tree =
@@ -98,19 +101,34 @@ internal class MetroToolWindowPanel(
       isRootVisible = false
       showsRootHandles = true
     }
+  private val treeSelection = MetroTreeSelection(tree, this)
+  private var validationSelection: MetroTreeSelection.Request? = null
   private val browserAndResults = JBSplitter(true, 0.65f)
   private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
 
-  internal val loadOrRefreshAction =
-    LoadOrRefreshGraphsAction(resolutionService) {
+  internal val refreshGraphsAction =
+    RefreshGraphsAction(resolutionService) {
       updateIndexBuildStatus()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
     }
   internal val graphContextSelectorAction =
     GraphContextSelectorAction(pinService, treeStructure::contextOptions)
+  internal val graphRefreshModeAction =
+    GraphRefreshModeAction(project) {
+      updateIndexBuildStatus()
+      actionToolbar.updateActionsImmediately()
+    }
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
+  internal val treeNavigation =
+    MetroTreeNavigation(
+      project,
+      tree,
+      this,
+      canNavigate = { !disposed && selectedNode()?.pointer != null },
+      resolveAndNavigate = ::resolveSelected,
+    )
 
   init {
     Disposer.register(this, validationResults)
@@ -135,12 +153,18 @@ internal class MetroToolWindowPanel(
       )
     resolutionService.addIndexListener(this) {
       updateIndexBuildStatus()
+      refreshValidationStaleness()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
       // Retry until a published index contains the requested graph.
       resolvePendingValidation()
     }
-    pinService.addListener(this) { treeModel.invalidateAsync() }
+    pinService.addListener(this) {
+      revealGeneration++
+      treeSelection.cancelPendingSelection()
+      treeStructure.revealPath(null)
+      treeModel.invalidateAsync()
+    }
     resolutionService.addIndexBuildProgressListener(this) { progress ->
       indexBuildProgress = progress
       updateIndexBuildStatus()
@@ -149,11 +173,7 @@ internal class MetroToolWindowPanel(
       validationProgress = progress
       updateValidationStatus()
     }
-
-    object : DoubleClickListener() {
-        override fun onDoubleClick(event: MouseEvent): Boolean = navigateSelected()
-      }
-      .installOn(tree)
+    validationService.addResultListener(this, ::refreshValidationStaleness)
 
     searchField.addDocumentListener(
       object : DocumentAdapter() {
@@ -168,12 +188,13 @@ internal class MetroToolWindowPanel(
     val overflowGroup =
       DefaultActionGroup("More", true).apply {
         templatePresentation.icon = AllIcons.Actions.More
+        add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
       }
     val actionGroup =
       DefaultActionGroup(
-        // Loading needs stub indexes, so the action waits for smart mode.
-        loadOrRefreshAction,
+        refreshGraphsAction,
+        graphRefreshModeAction,
         graphContextSelectorAction,
         pinSelectedGraphAction,
         ValidateSelectedGraphAction(
@@ -207,17 +228,23 @@ internal class MetroToolWindowPanel(
 
   private fun updateIndexBuildStatus() {
     if (disposed || project.isDisposed) return
-    if (DumbService.isDumb(project)) {
-      indexBuildStatus.showWaitingForIdeIndexing()
-    } else {
-      val progress = indexBuildProgress
-      when {
-        progress != null -> indexBuildStatus.show(progress)
-        !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
-        resolutionService.isManualGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
-        else -> indexBuildStatus.clear()
+    val showingPreviousData = resolutionService.hasGraphBrowserData
+    val progress = indexBuildProgress
+    when {
+      progress != null -> {
+        if (DumbService.isDumb(project)) {
+          indexBuildStatus.showWaitingForIdeIndexing(showingPreviousData)
+        } else {
+          indexBuildStatus.show(progress, showingPreviousData)
+        }
       }
+      !resolutionService.isGraphBrowserActivated -> indexBuildStatus.showNotLoaded()
+      resolutionService.isAutomaticGraphDataRefreshPending ->
+        indexBuildStatus.showRefreshQueued(showingPreviousData)
+      resolutionService.isGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
+      else -> indexBuildStatus.clear()
     }
+    if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
   }
 
   private fun updateValidationStatus() {
@@ -237,38 +264,64 @@ internal class MetroToolWindowPanel(
     }
   }
 
-  /** Expands to [classId]'s graph node, selects it, and runs validation. */
+  /** Selects the declaration or exact path requested by an explicit validation action. */
   fun selectAndValidate(
     classId: ClassId,
     file: VirtualFile?,
     requestToken: Long = validationRequestService.beginRequest(),
+    path: GraphPath? = null,
   ) {
+    val target = GraphValidationTarget(classId, file, path)
     val generation = beginValidationRequest(requestToken) ?: return
-    TreeUtil.promiseSelect(tree, graphVisitor(classId, file)).onProcessed {
+    checkNotNull(validationSelection).select(graphVisitor(target)) { selectedPath ->
       if (
         generation == pendingValidationGeneration &&
           !validationRequestService.isLatest(requestToken)
       ) {
         cancelPendingValidation()
-        return@onProcessed
+        return@select
       }
       if (
         disposed ||
           generation != pendingValidationGeneration ||
           !validationRequestService.isLatest(requestToken)
       ) {
-        return@onProcessed
+        return@select
       }
       // Validate even when the tree has no matching node yet (still loading, or the graph's
       // module isn't the one the tree rendered from)
-      val selectedGraph = selectedGraphNode()?.takeIf { it.matches(classId, file) }?.graph
+      val selectedGraph =
+        (selectedPath?.let(::nodeAt) as? MetroTreeNode.Graph)?.takeIf {
+          target.matches(it.context)
+        }
       if (selectedGraph != null) {
         pendingValidation = null
-        validateGraph(selectedGraph, generation)
+        if (path == null) validateGraph(selectedGraph.graph, generation)
+        else validateContext(selectedGraph.context, generation)
       } else {
         // Resolve the source file in a background read before updating the EDT.
-        pendingValidation = classId to file
+        pendingValidation = target
         resolvePendingValidation()
+      }
+    }
+  }
+
+  /**
+   * Reveals a captured graph/binding row while preserving manual refresh state and editor pinning.
+   */
+  internal fun reveal(target: MetroRevealTarget, onResult: (Boolean) -> Unit) {
+    if (disposed || project.isDisposed) return
+    val generation = ++revealGeneration
+    resolutionService.activateGraphBrowser()
+    searchField.text = ""
+    treeStructure.revealPath(target.path)
+    val selection = treeSelection.request { !project.isDisposed && generation == revealGeneration }
+    treeModel.invalidateAsync().thenRun {
+      SwingUtilities.invokeLater {
+        if (disposed || generation != revealGeneration) return@invokeLater
+        selection.select(metroRevealVisitor(target, ::nodeAt)) { selectedPath ->
+          onResult(selectedPath?.let(::nodeAt)?.matchesRevealTarget(target) == true)
+        }
       }
     }
   }
@@ -283,35 +336,41 @@ internal class MetroToolWindowPanel(
     }
     val lookupGeneration = ++pendingValidationLookupGeneration
     pendingValidationLookup?.cancel()
+    val onResult: (KaGraphDeclaration?, GraphContext?) -> Unit = onResult@{ graph, context ->
+      if (lookupGeneration != pendingValidationLookupGeneration) {
+        return@onResult
+      }
+      if (
+        generation == pendingValidationGeneration &&
+          !validationRequestService.isLatest(requestToken)
+      ) {
+        cancelPendingValidation()
+        return@onResult
+      }
+      val isCurrentLookup =
+        generation == pendingValidationGeneration &&
+          pendingValidation == target &&
+          validationRequestService.isLatest(requestToken)
+      if (disposed || !isCurrentLookup) {
+        return@onResult
+      }
+      pendingValidationLookup = null
+      if (graph != null) {
+        pendingValidation = null
+        if (context == null) validateGraph(graph, generation)
+        else validateContext(context, generation)
+      }
+    }
+    val path = target.path
     pendingValidationLookup =
-      graphLookup(
-        target.first,
-        target.second,
-        onResult@{ graph ->
-          if (lookupGeneration != pendingValidationLookupGeneration) {
-            return@onResult
-          }
-          if (
-            generation == pendingValidationGeneration &&
-              !validationRequestService.isLatest(requestToken)
-          ) {
-            cancelPendingValidation()
-            return@onResult
-          }
-          val isCurrentLookup =
-            generation == pendingValidationGeneration &&
-              pendingValidation == target &&
-              validationRequestService.isLatest(requestToken)
-          if (disposed || !isCurrentLookup) {
-            return@onResult
-          }
-          pendingValidationLookup = null
-          if (graph != null) {
-            pendingValidation = null
-            validateGraph(graph, generation)
-          }
-        },
-      )
+      if (path == null) {
+        graphLookup(target.classId, target.file) { graph -> onResult(graph, null) }
+      } else {
+        contextLookup(path) { context ->
+          val matching = context?.takeIf(target::matches)
+          onResult(matching?.graph, matching)
+        }
+      }
   }
 
   private fun beginValidationRequest(requestToken: Long): Long? {
@@ -328,7 +387,13 @@ internal class MetroToolWindowPanel(
     pendingValidationLookupGeneration++
     pendingValidationLookup?.cancel()
     pendingValidationLookup = null
-    return ++pendingValidationGeneration
+    val generation = ++pendingValidationGeneration
+    validationSelection = treeSelection.request {
+      !project.isDisposed &&
+        generation == pendingValidationGeneration &&
+        validationRequestService.isLatest(requestToken)
+    }
+    return generation
   }
 
   private fun cancelPendingValidation() {
@@ -337,6 +402,7 @@ internal class MetroToolWindowPanel(
     pendingValidationLookupGeneration++
     pendingValidationLookup?.cancel()
     pendingValidationLookup = null
+    validationSelection = null
   }
 
   @TestOnly
@@ -351,12 +417,12 @@ internal class MetroToolWindowPanel(
     return graph.classId == classId && (file == null || graph.pointer.virtualFile == file)
   }
 
-  private fun graphVisitor(classId: ClassId, file: VirtualFile?): TreeVisitor {
+  private fun graphVisitor(target: GraphValidationTarget): TreeVisitor {
     return TreeVisitor { path ->
       when (val node = nodeAt(path)) {
         is MetroTreeNode.Root -> TreeVisitor.Action.CONTINUE
         is MetroTreeNode.Graph ->
-          if (node.matches(classId, file)) {
+          if (target.matches(node.context)) {
             TreeVisitor.Action.INTERRUPT
           } else {
             TreeVisitor.Action.SKIP_CHILDREN
@@ -391,6 +457,11 @@ internal class MetroToolWindowPanel(
   private fun validateContext(context: GraphContext) {
     val requestToken = validationRequestService.beginRequest()
     val generation = beginValidationRequest(requestToken) ?: return
+    validateContext(context, generation)
+  }
+
+  /** Exact-path requests retain their original UI generation through a cold context lookup. */
+  private fun validateContext(context: GraphContext, generation: Long) {
     validationService.validateWithExtensionsAsync(context) { results ->
       validationFinished(results, validationVisitor(context), generation)
     }
@@ -407,8 +478,10 @@ internal class MetroToolWindowPanel(
       generation == pendingValidationGeneration &&
         validationRequestService.isLatest(latestValidationRequestToken)
     if (!isLatestRequest) return
+    val selection = validationSelection ?: return
     browserAndResults.secondComponent = validationResults
     validationResults.showResults(results)
+    refreshValidationStaleness()
     // Rerun highlighting so the gutter's validation badge picks up the new result
     project.service<MetroDaemonRestartService>().requestRestart(inUnitTests = true)
     // Select the validation node once the refreshed children load, so the outcome is visible even
@@ -423,7 +496,7 @@ internal class MetroToolWindowPanel(
         ) {
           return@invokeLater
         }
-        TreeUtil.promiseSelect(tree, visitor)
+        selection.select(visitor)
       }
     }
   }
@@ -432,6 +505,12 @@ internal class MetroToolWindowPanel(
   private fun clearValidationResults() {
     validationResults.clear()
     browserAndResults.secondComponent = null
+  }
+
+  /** Reading retained flags never schedules validation or replaces the displayed run. */
+  private fun refreshValidationStaleness() {
+    if (disposed || !validationResults.isVisible) return
+    validationResults.refreshStaleness(validationService.retainedResults())
   }
 
   private fun validationVisitor(graph: KaGraphDeclaration): TreeVisitor {
@@ -467,18 +546,20 @@ internal class MetroToolWindowPanel(
     }
   }
 
-  private fun navigateSelected(): Boolean {
-    val pointer = selectedNode()?.pointer ?: return false
-    project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets ->
+  /** Pointer resolution stays in the shared navigation service's background read. */
+  private fun resolveSelected(requestFocus: Boolean): Job? {
+    val pointer = selectedNode()?.pointer ?: return null
+    return project.service<MetroNavigationService>().resolveTargets(this, listOf(pointer)) { targets
+      ->
       if (disposed) return@resolveTargets
       val target = targets.singleOrNull() as? Navigatable ?: return@resolveTargets
-      if (target.canNavigate()) target.navigate(true)
+      if (target.canNavigate()) target.navigate(requestFocus)
     }
-    return true
   }
 
   override fun dispose() {
     disposed = true
+    revealGeneration++
     cancelPendingValidation()
     browserAndResults.secondComponent = null
     indexBuildStatus.clear()
@@ -577,24 +658,5 @@ internal class PinSelectedGraphAction(
   override fun setSelected(e: AnActionEvent, state: Boolean) {
     val context = selectedContext() ?: return
     if (state) pinService.pin(context.path) else pinService.clearIf(context.path)
-  }
-}
-
-internal class LoadOrRefreshGraphsAction(
-  private val resolutionService: MetroResolutionService,
-  private val refresh: () -> Unit,
-) : AnAction("Load", "Load graphs and bindings", AllIcons.Actions.Refresh) {
-  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
-
-  override fun update(e: AnActionEvent) {
-    val isActivated = resolutionService.isGraphBrowserActivated
-    e.presentation.text = if (isActivated) "Refresh" else "Load"
-    e.presentation.description =
-      if (isActivated) "Refresh graphs and bindings" else "Load graphs and bindings"
-  }
-
-  override fun actionPerformed(e: AnActionEvent) {
-    resolutionService.refreshGraphData()
-    refresh()
   }
 }

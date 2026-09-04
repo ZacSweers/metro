@@ -34,8 +34,7 @@ internal class BindingIndexBuilder(
   val contributions = mutableListOf<ContributionEntry>()
   val assistedSites = mutableListOf<AssistedSite>()
   val bindingContainers = mutableListOf<BindingContainerEntry>()
-  val incompleteAssistedFactories =
-    linkedMapOf<KaModule, Map<SourceAssistedFactoryIdentity, String>>()
+  val incompleteClassBindings = linkedMapOf<KaModule, Map<ClassBindingIdentity, String>>()
   val dynamicGraphs = mutableListOf<DynamicGraphCall>()
 
   /** Module ownership and visibility captured under a read action before building the index. */
@@ -53,9 +52,9 @@ internal class BindingIndexBuilder(
     val frozenContributions = contributions.toList()
     val frozenAssistedSites = assistedSites.toList()
     val frozenBindingContainers = bindingContainers.toList()
-    val frozenIncompleteAssistedFactories =
-      buildMap(incompleteAssistedFactories.size) {
-        for ((module, boundaries) in incompleteAssistedFactories) {
+    val frozenIncompleteClassBindings =
+      buildMap(incompleteClassBindings.size) {
+        for ((module, boundaries) in incompleteClassBindings) {
           put(module, boundaries.toMap())
         }
       }
@@ -90,7 +89,7 @@ internal class BindingIndexBuilder(
       frozenContributions,
       frozenAssistedSites,
       frozenBindingContainers,
-      frozenIncompleteAssistedFactories,
+      frozenIncompleteClassBindings,
       frozenDynamicGraphs,
       frozenResolutionInputs,
       lookups,
@@ -106,7 +105,7 @@ internal class FrozenBindingIndexData(
   val contributions: List<ContributionEntry>,
   val assistedSites: List<AssistedSite>,
   val bindingContainers: List<BindingContainerEntry>,
-  val incompleteAssistedFactories: Map<KaModule, Map<SourceAssistedFactoryIdentity, String>>,
+  val incompleteClassBindings: Map<KaModule, Map<ClassBindingIdentity, String>>,
   val dynamicGraphs: List<DynamicGraphCall>,
   val resolutionInputs: BindingIndexResolutionInputs,
   val lookups: BindingIndexLookups,
@@ -162,18 +161,24 @@ internal class BindingIndexModuleView(
   }
 }
 
-/** Module ownership, visibility, and source ranges captured under a read action. */
+/** Display text captured with the declaration's index generation. */
+internal class DeclarationDisplay(val name: String?, val location: String?)
+
+/** Module ownership, visibility, source ranges, and display text captured under a read action. */
 internal class BindingIndexResolutionInputs(
   internal val fileOrdinalTable: FileOrdinalTable,
   moduleByFile: Map<VirtualFile, ModuleViewId>,
   moduleViews: Map<ModuleViewId, BindingIndexModuleView>,
   pointerSourceIdentities: Map<SmartPsiElementPointer<*>, BindingIndex.SourcePointerIdentity> =
     emptyMap(),
+  declarationDisplays: Map<SmartPsiElementPointer<*>, DeclarationDisplay> = emptyMap(),
 ) {
   private val moduleByFile = moduleByFile.toMap()
   private val moduleViews = moduleViews.toMap()
   private val pointerSourceIdentities =
     Collections.unmodifiableMap(IdentityHashMap(pointerSourceIdentities))
+  private val declarationDisplays =
+    Collections.unmodifiableMap(IdentityHashMap(declarationDisplays))
 
   init {
     require(this.moduleViews.values.all { it.fileOrdinalTable === fileOrdinalTable }) {
@@ -190,6 +195,9 @@ internal class BindingIndexResolutionInputs(
 
   fun sourceIdentity(pointer: SmartPsiElementPointer<*>): BindingIndex.SourcePointerIdentity? =
     pointerSourceIdentities[pointer]
+
+  fun declarationDisplay(pointer: SmartPsiElementPointer<*>): DeclarationDisplay? =
+    declarationDisplays[pointer]
 }
 
 private class FrozenFileResolutionScope(

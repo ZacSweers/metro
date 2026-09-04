@@ -12,7 +12,6 @@ import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.model.KaTypeSnapshot
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /** The Analysis API analog of the compiler's `IrBindingStack`. */
 internal class KaBindingStack(override val graph: KaGraphDeclaration) :
@@ -65,8 +64,8 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
         contextKey: KaContextualTypeKey,
         consumer: ConsumerEntry,
         graph: String,
+        name: String?,
       ): Entry {
-        val name = (consumer.pointer.element as? KtNamedDeclaration)?.name
         return Entry(
           contextKey = contextKey,
           usage = "is requested at",
@@ -77,21 +76,25 @@ internal class KaBindingStack(override val graph: KaGraphDeclaration) :
       }
 
       /** An entry for [contextKey] injected as a dependency of [binding]. */
-      fun injectedAt(contextKey: KaContextualTypeKey, binding: KaBinding): Entry {
+      fun injectedAt(
+        contextKey: KaContextualTypeKey,
+        binding: KaBinding,
+        location: String?,
+      ): Entry {
         return Entry(
           contextKey = contextKey,
           usage = "is injected at",
-          graphContext = binding.location(),
+          graphContext = location,
           pointer = binding.pointer,
         )
       }
 
       /** An entry for a binding provided directly by its declaration. */
-      fun providedAt(binding: KaBinding): Entry {
+      fun providedAt(binding: KaBinding, location: String?): Entry {
         return Entry(
           contextKey = binding.contextualTypeKey,
           usage = "is provided at",
-          graphContext = binding.location(),
+          graphContext = location,
           pointer = binding.pointer,
         )
       }

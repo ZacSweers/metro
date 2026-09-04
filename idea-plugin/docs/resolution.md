@@ -153,8 +153,10 @@ flowchart TD
 A source scan finds files and collects their declarations into `FileShard`s. Incremental builds
 replace affected shards, including shards that depend on changed files, and share unchanged data.
 Aggregation attaches graph interfaces and associates shared factory inputs with every owning graph.
-Source factories are resolved before collecting library requests. When library resolution is disabled,
-dependency shards are empty.
+Source constructors, objects, and assisted factories resolve from concrete requests before collecting
+library requests. Their declaration files and unresolved types participate in invalidation. Source
+and library expansion share a budget that bounds growing generic requests. Reaching the limit leaves
+an incomplete analysis result. When library resolution is disabled, dependency shards are empty.
 
 `PreparedResolutionSnapshot` holds the mutable builders until `buildIndexes()` freezes them outside the
 read action. Before publishing, the coordinator checks for newer events that may change bindings,
@@ -254,10 +256,28 @@ can report the conflict. A validation run can reuse one session per index across
 each graph, `KaBindingGraph` calls the shared graph code to follow dependencies and validate them.
 `KaBindingLookup` supplies bindings along the way.
 
-The IDE and compiler use their own types, binding lookups, and diagnostic reporting. Both call
-`MutableBindingGraph.seal()` and the validation rules in `metro-common`. The IDE also uses shared
-contribution rules such as `computeMergePlan`. Request scheduling, captured module visibility,
-navigation pointers, and editor updates live in `idea-plugin`.
+Asynchronous validation captures graph paths, module options, and source details in a smart read
+action. Sealing then runs outside read access using operation-local resolution sessions. Names and
+locations come from the captured generation, so editing a declaration during a seal leaves the
+diagnostic internally consistent. Results retain their generation identity and become stale after
+relevant edits.
+
+Editor inspections read completed, current results. They perform no binding resolution or graph
+sealing. The optional pinned-graph service debounces index changes, cancels superseded work, and
+submits quiet validation requests through the same service as explicit actions.
+
+The IDE and compiler use their own types, caches, and diagnostic reporting. Both call
+`MutableBindingGraph.seal()` and the validation rules in `metro-common`. They also share the lazy
+lookup order: registered bindings, multibindings, optional declarations, then implicit injection.
+The IDE keeps its binding categories and assisted-request checks alongside its selection adapter.
+Contribution rules such as `computeMergePlan` also live in `metro-common`. Request scheduling,
+captured module visibility, navigation pointers, and editor updates live in `idea-plugin`.
+
+Binding explanation snapshots, decision codes, and plain-text rendering live in
+`metro-common`'s `graph.explanation` package. The IDE captures those snapshots beside its navigation
+targets. The compiler records decisions during registration, merging, and lookup when reports are
+enabled, then writes the shared model to JSON. Capturing an explanation never evaluates an unused
+compiler lookup branch.
 
 Code: [binding index](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingIndex.kt),
 [resolution session](../src/main/kotlin/dev/zacsweers/metro/idea/model/BindingResolutionSession.kt),

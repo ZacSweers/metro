@@ -7,13 +7,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
-import dev.zacsweers.metro.idea.index.SourceAssistedFactoryPostProcessor
-import dev.zacsweers.metro.idea.index.SourceFactoryResolution
-import dev.zacsweers.metro.idea.index.sourceFactoryIdentity
+import dev.zacsweers.metro.idea.index.SourceClassBindingPostProcessor
+import dev.zacsweers.metro.idea.index.SourceClassResolution
+import dev.zacsweers.metro.idea.index.classBindingIdentity
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
-import dev.zacsweers.metro.idea.model.SourceAssistedFactoryIdentity
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -21,46 +21,46 @@ import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
 
-/** Captures source ownership, factory expansion, and library seeds in the snapshot read action. */
+/** Captures source ownership, class expansion, and library seeds in the snapshot read action. */
 internal fun buildFinalizedSourceLibrarySummary(
   project: Project,
   source: SourceAggregate,
   sourceIndex: BindingIndex,
 ): FinalizedSourceLibrarySummary {
   val consumerOwnership = ConsumerOwnershipBundle.build(sourceIndex)
-  val sourceFactories =
-    SourceAssistedFactoryPostProcessor(
+  val sourceClasses =
+    SourceClassBindingPostProcessor(
         project,
         source.bindings,
         source.consumers,
         consumerOwnership,
       )
       .resolveInitial()
-  val completeSource = source.withAddedFactories(sourceFactories.addedBindings)
-  val inputs = completeSource.libraryInputs(project, sourceFactories, consumerOwnership)
+  val completeSource = source.withAddedClassBindings(sourceClasses.addedBindings)
+  val inputs = completeSource.libraryInputs(project, sourceClasses, consumerOwnership)
   ProgressManager.checkCanceled()
-  return FinalizedSourceLibrarySummary(inputs, consumerOwnership, sourceFactories)
+  return FinalizedSourceLibrarySummary(inputs, consumerOwnership, sourceClasses)
 }
 
 /** Reused while effective library lookup inputs and source-module ownership remain unchanged. */
 internal data class FinalizedSourceLibrarySummary(
   val inputs: LibraryInputs,
   val consumerOwnership: ConsumerOwnershipBundle,
-  val sourceFactories: SourceFactoryResolution,
+  val sourceClasses: SourceClassResolution,
 )
 
-/** Resolves requesting modules and source-factory seeds while source pointers remain readable. */
+/** Resolves requesting modules and source-class seeds while source pointers remain readable. */
 private fun SourceAggregate.libraryInputs(
   project: Project,
-  sourceFactories: SourceFactoryResolution,
+  sourceClasses: SourceClassResolution,
   consumerOwnership: ConsumerOwnershipBundle,
 ): LibraryInputs {
-  val sourceFactoryUseSites = sourceFactories.factoryUseSites
+  val sourceClassUseSites = sourceClasses.classUseSites
   val scopeIds = linkedSetOf<ClassId>()
   val participatingModules = linkedSetOf<KaModule>()
   val injectRequests = linkedSetOf<LibraryInjectInput>()
   val seededFactoryUseSites =
-    if (sourceFactoryUseSites.isEmpty()) null
+    if (sourceClassUseSites.isEmpty()) null
     else {
       Collections.newSetFromMap(
         IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
@@ -108,11 +108,12 @@ private fun SourceAggregate.libraryInputs(
     ProgressManager.checkCanceled()
     val hasAdditionalLibrarySeeds =
       binding is KaBinding.AssistedFactory ||
+        binding is KaBinding.ConstructorInjected ||
         binding is KaBinding.Provided && binding.isClassContribution ||
         binding is KaBinding.Alias && binding.isClassContribution
     if (!hasAdditionalLibrarySeeds || binding.dependencies.isEmpty()) continue
-    if (binding is KaBinding.AssistedFactory) {
-      val requestingUseSites = sourceFactoryUseSites[binding]
+    if (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) {
+      val requestingUseSites = sourceClassUseSites[binding]
       if (requestingUseSites != null && seededFactoryUseSites?.add(requestingUseSites) == false) {
         continue
       }
@@ -136,19 +137,19 @@ private fun SourceAggregate.libraryInputs(
       injectRequests += LibraryInjectInput(module, key, classId)
     }
   }
-  val definitions = linkedMapOf<SourceAssistedFactoryIdentity, AssistedFactoryDefinitionSignature>()
+  val definitions = linkedMapOf<ClassBindingIdentity, AssistedFactoryDefinitionSignature>()
   for (binding in bindings) {
     if (binding !is KaBinding.AssistedFactory) continue
-    val identity = binding.sourceFactoryIdentity() ?: continue
+    val identity = binding.classBindingIdentity() ?: continue
     definitions.putIfAbsent(identity, assistedFactoryDefinitionSignature(binding))
   }
-  val budget = sourceFactories.budget
+  val budget = sourceClasses.budget
   return LibraryInputs(
     scopeIds,
     participatingModules,
     injectRequests,
     definitions.values.toList(),
-    FactoryBudgetCacheInput(budget.writtenDepth, budget.writtenNodes, budget.writtenFactoryKeys),
+    FactoryBudgetCacheInput(budget.writtenDepth, budget.writtenNodes, budget.writtenClassKeys),
   )
 }
 

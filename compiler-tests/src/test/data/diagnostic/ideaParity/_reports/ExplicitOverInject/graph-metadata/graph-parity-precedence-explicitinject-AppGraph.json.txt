@@ -149,5 +149,71 @@
       "isSynthetic": false,
       "declaration": "provideThing"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "41:parity.precedence.explicitinject.AppGraph",
+        "label": "parity.precedence.explicitinject.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "41:parity.precedence.explicitinject.AppGraph|41:parity.precedence.explicitinject.AppGraph",
+          "key": "parity.precedence.explicitinject.AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "parity.precedence.explicitinject.AppGraph",
+            "label": "parity.precedence.explicitinject.AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.precedence.explicitinject.AppGraph",
+        "declaration": {
+          "id": "parity.precedence.explicitinject.AppGraph.provideThing(parity.precedence.explicitinject.AppGraph): parity.precedence.explicitinject.Thing#<this>",
+          "label": "parity.precedence.explicitinject.AppGraph.provideThing.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "41:parity.precedence.explicitinject.AppGraph",
+        "label": "parity.precedence.explicitinject.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "38:parity.precedence.explicitinject.Thing|137:parity.precedence.explicitinject.AppGraph.provideThing(parity.precedence.explicitinject.AppGraph): parity.precedence.explicitinject.Thing",
+          "key": "parity.precedence.explicitinject.Thing",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.precedence.explicitinject.AppGraph.provideThing(parity.precedence.explicitinject.AppGraph): parity.precedence.explicitinject.Thing",
+            "label": "parity.precedence.explicitinject.AppGraph.provideThing"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.precedence.explicitinject.Thing",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

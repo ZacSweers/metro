@@ -4,6 +4,8 @@ package dev.zacsweers.metro.idea.model
 
 import com.intellij.util.containers.Interner
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.Variance
 
 /**
  * A session-free snapshot of a [org.jetbrains.kotlin.analysis.api.types.KaType].
@@ -19,7 +21,11 @@ internal class KaTypeSnapshot(
   renderedType: String,
   shortType: String = renderedType,
   val classId: ClassId?,
-  val typeArguments: List<KaTypeSnapshot> = emptyList(),
+  val typeArguments: List<KaTypeArgumentSnapshot> = emptyList(),
+  val isMarkedNullable: Boolean = false,
+  val isError: Boolean = false,
+  /** A missing class name lets source arrivals retry only requests that can resolve differently. */
+  val unresolvedClassName: Name? = null,
 ) {
   // Renders repeat heavily across entries, so intern them to keep the index's retained size flat.
   val renderedType: String = RENDER_INTERNER.intern(renderedType)
@@ -38,4 +44,18 @@ internal class KaTypeSnapshot(
   companion object {
     private val RENDER_INTERNER = Interner.createWeakInterner<String>()
   }
+}
+
+/** A positional type argument. Stars retain their slot when a type is rebuilt. */
+internal sealed interface KaTypeArgumentSnapshot {
+  val type: KaTypeSnapshot?
+
+  data object Star : KaTypeArgumentSnapshot {
+    override val type: KaTypeSnapshot? = null
+  }
+
+  class Typed(
+    override val type: KaTypeSnapshot,
+    val variance: Variance,
+  ) : KaTypeArgumentSnapshot
 }

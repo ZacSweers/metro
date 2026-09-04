@@ -219,5 +219,296 @@
       "isSynthetic": false,
       "declaration": "RealApi"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "48:@dev.zacsweers.metro.Named(\"base\") kotlin.String|90:parity.core.CoreBindings.Companion.name(parity.core.CoreBindings.Companion): kotlin.String",
+          "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.core.CoreBindings.Companion.name(parity.core.CoreBindings.Companion): kotlin.String",
+            "label": "parity.core.CoreBindings.Companion.name"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.Named(\"base\") kotlin.String",
+        "declaration": {
+          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#name",
+          "label": "parity.core.Consumer.MetroFactory.declarationMirror.name"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:parity.core.Engine|18:parity.core.Engine",
+          "key": "parity.core.Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.Engine",
+            "label": "parity.core.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Lazy<parity.core.Engine>",
+        "declaration": {
+          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#engineLazy",
+          "label": "parity.core.Consumer.MetroFactory.declarationMirror.engineLazy"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:parity.core.Engine|18:parity.core.Engine",
+          "key": "parity.core.Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.Engine",
+            "label": "parity.core.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<parity.core.Engine>",
+        "declaration": {
+          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#engineProvider",
+          "label": "parity.core.Consumer.MetroFactory.declarationMirror.engineProvider"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "15:parity.core.Api|95:parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api",
+          "key": "parity.core.Api",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api",
+            "label": "parity.core.CoreBindings.bindApi"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.Api",
+        "declaration": {
+          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#api",
+          "label": "parity.core.Consumer.MetroFactory.declarationMirror.api"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "20:parity.core.Consumer|20:parity.core.Consumer",
+          "key": "parity.core.Consumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.Consumer",
+            "label": "parity.core.Consumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.Consumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:parity.core.Engine|18:parity.core.Engine",
+          "key": "parity.core.Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.Engine",
+            "label": "parity.core.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.Engine",
+        "declaration": {
+          "id": "parity.core.RealApi.MetroFactory.declarationMirror(parity.core.RealApi.MetroFactory,parity.core.Engine): parity.core.RealApi#engine",
+          "label": "parity.core.RealApi.MetroFactory.declarationMirror.engine"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "missing",
+      "candidates": [],
+      "request": {
+        "key": "parity.core.MissingDependency? = ...",
+        "declaration": {
+          "id": "parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue#missing",
+          "label": "parity.core.CoreBindings.Companion.optionalValue.missing"
+        },
+        "hasDefault": true,
+        "isOptional": true
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "25:parity.core.OptionalValue|142:parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue",
+          "key": "parity.core.OptionalValue",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.core.CoreBindings.Companion.optionalValue(parity.core.CoreBindings.Companion,parity.core.MissingDependency?): parity.core.OptionalValue",
+            "label": "parity.core.CoreBindings.Companion.optionalValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.OptionalValue",
+        "declaration": {
+          "id": "parity.core.Consumer.MetroFactory.declarationMirror(parity.core.Consumer.MetroFactory,parity.core.Api,kotlin.String,dev.zacsweers.metro.Provider<parity.core.Engine>,kotlin.Lazy<parity.core.Engine>,parity.core.OptionalValue): parity.core.Consumer#optionalValue",
+          "label": "parity.core.Consumer.MetroFactory.declarationMirror.optionalValue"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "19:parity.core.RealApi|19:parity.core.RealApi",
+          "key": "parity.core.RealApi",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.RealApi",
+            "label": "parity.core.RealApi"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.RealApi",
+        "declaration": {
+          "id": "parity.core.CoreBindings.bindApi(parity.core.CoreBindings,parity.core.RealApi): parity.core.Api#impl",
+          "label": "parity.core.CoreBindings.bindApi.impl"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

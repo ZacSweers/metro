@@ -162,6 +162,10 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
   class Diagnostic(parent: MetroTreeNode, val diagnostic: KaGraphDiagnostic, index: Int) :
     MetroTreeNode(parent) {
     override val text: String = "[${diagnostic.id.fullId}] ${diagnostic.diagnostic.title}"
+    /** Full compiler-rendered text captured while the background tree builds this row. */
+    val details: String = diagnostic.render()
+    val documentationUrl: String? =
+      diagnostic.id.docsUrl.takeIf { diagnostic.diagnostic.includeDocsUrl }
     override val icon: Icon =
       when (diagnostic.severity) {
         MetroSeverity.ERROR -> AllIcons.General.Error
@@ -174,7 +178,7 @@ internal sealed class MetroTreeNode(val parent: MetroTreeNode?) {
     parent: MetroTreeNode,
     override val text: String,
     override val pointer: SmartPsiElementPointer<*>?,
-    index: Int,
+    val index: Int,
   ) : MetroTreeNode(parent) {
     override val icon: Icon = MetroIcons.CONSUMER
     override val identity: Any = index to text
@@ -319,6 +323,12 @@ internal class MetroTreeStructure(
   private val contextOptionSnapshotLock = Any()
   private var contextOptionSnapshotGeneration = 0L
   @Volatile private var contextOptionSnapshot: List<GraphContextOption> = emptyList()
+  @Volatile private var revealedPath: GraphPath? = null
+
+  /** Keeps an explicitly requested row visible alongside the pinned editor context. */
+  internal fun revealPath(path: GraphPath?) {
+    revealedPath = path
+  }
 
   override fun getRootElement(): Any = root
 
@@ -477,9 +487,10 @@ internal class MetroTreeStructure(
       ) {
         if (indexes.isNotEmpty()) pinService.clearIf(pinnedPath)
       } else {
+        val reveal = revealedPath
         contexts = contexts.filter {
           ProgressManager.checkCanceled()
-          it.path.isAtOrBelow(pinnedPath)
+          it.path.isAtOrBelow(pinnedPath) || it.path == reveal
         }
       }
     }

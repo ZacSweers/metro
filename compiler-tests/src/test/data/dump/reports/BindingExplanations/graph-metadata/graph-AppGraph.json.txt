@@ -1,0 +1,1528 @@
+{
+  "graph": "AppGraph",
+  "scopes": [
+    "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)"
+  ],
+  "aggregationScopes": [
+    "dev.zacsweers.metro.AppScope"
+  ],
+  "roots": {
+    "accessors": [
+      {
+        "key": "Service",
+        "isDeferrable": false
+      },
+      {
+        "key": "PrioritizedService",
+        "isDeferrable": false
+      },
+      {
+        "key": "kotlin.collections.Set<Handler>",
+        "isDeferrable": false
+      },
+      {
+        "key": "ExplicitValue",
+        "isDeferrable": false
+      },
+      {
+        "key": "DefaultValue",
+        "isDeferrable": false
+      },
+      {
+        "key": "java.util.Optional<kotlin.String>",
+        "isDeferrable": false
+      },
+      {
+        "key": "MemberTarget",
+        "isDeferrable": false
+      },
+      {
+        "key": "FirstMapConsumer",
+        "isDeferrable": false
+      },
+      {
+        "key": "MapConsumerHolder",
+        "isDeferrable": false
+      }
+    ],
+    "injectors": []
+  },
+  "extensions": {
+    "accessors": [
+      {
+        "key": "ChildGraph"
+      }
+    ],
+    "factoryAccessors": [],
+    "factoriesImplemented": []
+  },
+  "config": {
+    "debug": false,
+    "enabled": true,
+    "generateAssistedFactories": false,
+    "enableTopLevelFunctionInjection": false,
+    "generateContributionHints": true,
+    "generateContributionHintsInFir": false,
+    "generateClassesInIr": false,
+    "enablePrivateProviderProperties": false,
+    "shrinkUnusedBindings": true,
+    "statementsPerInitFun": 25,
+    "enableGraphSharding": true,
+    "keysPerGraphShard": 2000,
+    "mergedSupertypeChunkSize": 0,
+    "enableSwitchingProviders": false,
+    "publicScopedProviderSeverity": "NONE",
+    "nonPublicContributionSeverity": "NONE",
+    "optionalBindingBehavior": "DEFAULT",
+    "warnOnInjectAnnotationPlacement": true,
+    "interopAnnotationsNamedArgSeverity": "NONE",
+    "unusedGraphInputsSeverity": "WARN",
+    "enabledLoggers": [],
+    "enableDaggerRuntimeInterop": true,
+    "enableGuiceRuntimeInterop": false,
+    "maxIrErrorsCount": 20,
+    "customProviderTypes": [
+      "dagger/internal/Provider",
+      "javax/inject/Provider",
+      "jakarta/inject/Provider"
+    ],
+    "customLazyTypes": [
+      "dagger/Lazy"
+    ],
+    "customAssistedAnnotations": [
+      "dagger/assisted/Assisted"
+    ],
+    "customAssistedFactoryAnnotations": [
+      "dagger/assisted/AssistedFactory"
+    ],
+    "customAssistedInjectAnnotations": [
+      "dagger/assisted/AssistedInject"
+    ],
+    "customBindsAnnotations": [
+      "dagger/Binds"
+    ],
+    "customContributesToAnnotations": [],
+    "customContributesBindingAnnotations": [],
+    "customContributesIntoSetAnnotations": [],
+    "customGraphExtensionAnnotations": [
+      "dagger/Subcomponent"
+    ],
+    "customGraphExtensionFactoryAnnotations": [
+      "dagger/Subcomponent.Factory"
+    ],
+    "customElementsIntoSetAnnotations": [
+      "dagger/multibindings/ElementsIntoSet"
+    ],
+    "customGraphAnnotations": [
+      "dagger/Component"
+    ],
+    "customGraphFactoryAnnotations": [
+      "dagger/Component.Factory"
+    ],
+    "customInjectAnnotations": [
+      "javax/inject/Inject",
+      "jakarta/inject/Inject"
+    ],
+    "customIntoMapAnnotations": [
+      "dagger/multibindings/IntoMap"
+    ],
+    "customIntoSetAnnotations": [
+      "dagger/multibindings/IntoSet"
+    ],
+    "customMapKeyAnnotations": [
+      "dagger/MapKey"
+    ],
+    "customMultibindsAnnotations": [
+      "dagger/multibindings/Multibinds"
+    ],
+    "customProvidesAnnotations": [
+      "dagger/Provides",
+      "dagger/BindsInstance"
+    ],
+    "customQualifierAnnotations": [
+      "javax/inject/Qualifier",
+      "jakarta/inject/Qualifier"
+    ],
+    "customScopeAnnotations": [
+      "javax/inject/Scope",
+      "jakarta/inject/Scope"
+    ],
+    "customBindingContainerAnnotations": [
+      "dagger/Module"
+    ],
+    "enableDaggerAnvilInterop": false,
+    "enableFullBindingGraphValidation": false,
+    "enableGraphImplClassAsReturnType": false,
+    "customOriginAnnotations": [],
+    "customOptionalBindingAnnotations": [],
+    "contributesAsInject": false,
+    "enableKlibParamsCheck": false,
+    "patchKlibParams": true,
+    "forceEnableFirInIde": false,
+    "compilerVersionAliases": {},
+    "parallelThreads": 0,
+    "bufferedIcTracking": true,
+    "omitRedundantMirrors": false,
+    "enableProviderInlining": true,
+    "enableFunctionProviders": true,
+    "enableSuspendProviders": false,
+    "desugaredProviderSeverity": "WARN",
+    "enableKClassToClassInterop": false,
+    "generateContributionProviders": false,
+    "enableCircuitCodegen": false,
+    "enableHiltInterop": false,
+    "diagnosticsRenderMode": "PLAIN",
+    "generateStaticAnnotations": true,
+    "enableRuntimeTracing": false,
+    "memberNamingStrategy": "DESCRIPTIVE",
+    "maxGeneratedClassNameLength": 233
+  },
+  "stats": {
+    "providerFactories": 4,
+    "bindsCallables": 4,
+    "multibindsCallables": 0,
+    "optionalBindings": 1,
+    "accessors": 9,
+    "injectors": 0,
+    "graphExtensionAccessors": 1,
+    "graphExtensionFactories": 0,
+    "includedGraphs": 0,
+    "bindingContainers": 0,
+    "dynamicBindings": 0,
+    "graphPrivateKeys": 0,
+    "publishedBindsKeys": 0,
+    "populatedKeys": 21,
+    "validatedKeys": 21,
+    "reachableKeys": 21,
+    "deferredKeys": 0,
+    "unusedInputs": 0,
+    "providerProperties": 4,
+    "scopedProviderProperties": 1,
+    "shards": 0,
+    "optimizations": {
+      "bindingsPrunedByShrinking": 0,
+      "classConstructorDirectInvocations": 7,
+      "classConstructorNewInstanceCalls": 0,
+      "providerDirectInvocations": 1,
+      "providerNewInstanceCalls": 0,
+      "shardsGenerated": 0,
+      "shardedSupertypes": 0,
+      "shardedInitFunctions": 0,
+      "providerInlines": 0
+    }
+  },
+  "bindings": [
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindIntoSetAsHandler",
+      "dependencies": [
+        {
+          "key": "KeptHandler",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "KeptHandler",
+      "aliasTarget": "KeptHandler"
+    },
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "mapValue",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "mapValue"
+    },
+    {
+      "key": "AppGraph",
+      "bindingKind": "BoundInstance",
+      "isScoped": false,
+      "nameHint": "AppGraphProvider",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "AppGraph"
+    },
+    {
+      "key": "ChildGraph",
+      "bindingKind": "GraphExtension",
+      "isScoped": false,
+      "nameHint": "ChildGraph",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-child>"
+    },
+    {
+      "key": "DefaultValue",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "DefaultValue",
+      "dependencies": [
+        {
+          "key": "kotlin.Int = ...",
+          "hasDefault": true
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "DefaultValue"
+    },
+    {
+      "key": "ExplicitValue",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "explicitValue",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "explicitValue"
+    },
+    {
+      "key": "FirstMapConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "FirstMapConsumer",
+      "dependencies": [
+        {
+          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "hasDefault": false,
+          "wrapperType": "Provider"
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "FirstMapConsumer"
+    },
+    {
+      "key": "HighPriorityService",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "HighPriorityService",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "HighPriorityService"
+    },
+    {
+      "key": "KeptHandler",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "KeptHandler",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "KeptHandler"
+    },
+    {
+      "key": "Map<kotlin.String, kotlin.Int>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "mapOfStringToInt",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "MAP",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int"
+        ]
+      }
+    },
+    {
+      "key": "MapConsumerHolder",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "MapConsumerHolder",
+      "dependencies": [
+        {
+          "key": "SecondMapConsumer",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "MapConsumerHolder"
+    },
+    {
+      "key": "MemberTarget",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "MemberTarget",
+      "dependencies": [
+        {
+          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "MemberTarget"
+    },
+    {
+      "key": "ParentValue",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "ParentValue",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ParentValue"
+    },
+    {
+      "key": "PrioritizedService",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindsAsPrioritizedService",
+      "dependencies": [
+        {
+          "key": "HighPriorityService",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "HighPriorityService",
+      "aliasTarget": "HighPriorityService"
+    },
+    {
+      "key": "ReplacementService",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "ReplacementService",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ReplacementService"
+    },
+    {
+      "key": "SecondMapConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "SecondMapConsumer",
+      "dependencies": [
+        {
+          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "hasDefault": false,
+          "wrapperType": "Provider"
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "SecondMapConsumer"
+    },
+    {
+      "key": "Service",
+      "bindingKind": "Alias",
+      "isScoped": false,
+      "nameHint": "bindsAsService",
+      "dependencies": [
+        {
+          "key": "ReplacementService",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "ReplacementService",
+      "aliasTarget": "ReplacementService"
+    },
+    {
+      "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+      "bindingKind": "MembersInjected",
+      "isScoped": false,
+      "nameHint": "MemberTargetMembersInjector",
+      "dependencies": [
+        {
+          "key": "kotlin.String",
+          "hasDefault": false,
+          "wrapperType": "MembersInjected"
+        }
+      ],
+      "isSynthetic": true,
+      "declaration": "MemberTarget"
+    },
+    {
+      "key": "java.util.Optional<kotlin.String>",
+      "bindingKind": "CustomWrapper",
+      "isScoped": false,
+      "nameHint": "OptionalString",
+      "dependencies": [
+        {
+          "key": "kotlin.String = ...",
+          "hasDefault": true
+        }
+      ],
+      "isSynthetic": true,
+      "declaration": "optionalString_opt",
+      "optionalWrapper": {
+        "wrappedType": "kotlin.String = ...",
+        "allowsAbsent": true,
+        "wrapperKey": "Optional"
+      }
+    },
+    {
+      "key": "kotlin.String",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "text",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "text"
+    },
+    {
+      "key": "kotlin.collections.Set<Handler>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "setOfHandler",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "SET",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler"
+        ]
+      }
+    }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "candidate_filtering",
+      "outcome": "filtered",
+      "candidates": [
+        {
+          "id": "18:PrioritizedService|18:LowPriorityService",
+          "key": "PrioritizedService",
+          "status": "rejected",
+          "reason": "lower_priority",
+          "declaration": {
+            "id": "LowPriorityService",
+            "label": "LowPriorityService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "ExcludedHandler.MetroContributionToAppScope",
+          "key": "ExcludedHandler.MetroContributionToAppScope",
+          "status": "rejected",
+          "reason": "excluded",
+          "declaration": {
+            "id": "ExcludedHandler",
+            "label": "ExcludedHandler"
+          },
+          "relatedDeclarations": [
+            {
+              "id": "AppGraph",
+              "label": "AppGraph"
+            }
+          ],
+          "details": []
+        },
+        {
+          "id": "OriginalService.MetroContributionToAppScope",
+          "key": "OriginalService.MetroContributionToAppScope",
+          "status": "rejected",
+          "reason": "replaced",
+          "declaration": {
+            "id": "OriginalService",
+            "label": "OriginalService"
+          },
+          "relatedDeclarations": [
+            {
+              "id": "ReplacementService",
+              "label": "ReplacementService"
+            }
+          ],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records candidates removed while constructing this graph."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "82:@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler|11:KeptHandler",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "KeptHandler",
+            "label": "KeptHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"Handler\", \"-870559630\") Handler",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "102:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int|39:AppGraph.mapValue(AppGraph): kotlin.Int",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.mapValue(AppGraph): kotlin.Int",
+            "label": "AppGraph.mapValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "label": "AppGraph.Impl.<get-child>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.explicitValue(AppGraph): ExplicitValue#<this>",
+          "label": "AppGraph.explicitValue.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.mapValue(AppGraph): kotlin.Int#<this>",
+          "label": "AppGraph.mapValue.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.text(AppGraph): kotlin.String#<this>",
+          "label": "AppGraph.text.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "key": "ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+            "label": "AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ChildGraph",
+        "declaration": {
+          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "label": "AppGraph.Impl.<get-child>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "12:DefaultValue|12:DefaultValue",
+          "key": "DefaultValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "DefaultValue",
+            "label": "DefaultValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "DefaultValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:ExplicitValue|47:AppGraph.explicitValue(AppGraph): ExplicitValue",
+          "key": "ExplicitValue",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.explicitValue(AppGraph): ExplicitValue",
+            "label": "AppGraph.explicitValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ExplicitValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "16:FirstMapConsumer|16:FirstMapConsumer",
+          "key": "FirstMapConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "FirstMapConsumer",
+            "label": "FirstMapConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "FirstMapConsumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "19:HighPriorityService|19:HighPriorityService",
+          "key": "HighPriorityService",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "HighPriorityService",
+            "label": "HighPriorityService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "HighPriorityService",
+        "declaration": {
+          "id": "HighPriorityService.MetroContributionToAppScope.bindsAsPrioritizedService(HighPriorityService.MetroContributionToAppScope,HighPriorityService): PrioritizedService#instance",
+          "label": "HighPriorityService.MetroContributionToAppScope.bindsAsPrioritizedService.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:KeptHandler|11:KeptHandler",
+          "key": "KeptHandler",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "KeptHandler",
+            "label": "KeptHandler"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "KeptHandler",
+        "declaration": {
+          "id": "KeptHandler.MetroContributionToAppScope.bindIntoSetAsHandler(KeptHandler.MetroContributionToAppScope,KeptHandler): Handler#instance",
+          "label": "KeptHandler.MetroContributionToAppScope.bindIntoSetAsHandler.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
+          "key": "Map<kotlin.String, kotlin.Int>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
+          "declaration": {
+            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+            "label": "AppGraph.directMap"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+        "declaration": {
+          "id": "FirstMapConsumer.MetroFactory.declarationMirror(FirstMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): FirstMapConsumer#values",
+          "label": "FirstMapConsumer.MetroFactory.declarationMirror.values"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
+          "key": "Map<kotlin.String, kotlin.Int>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
+          "declaration": {
+            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+            "label": "AppGraph.directMap"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+        "declaration": {
+          "id": "SecondMapConsumer.MetroFactory.declarationMirror(SecondMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): SecondMapConsumer#values",
+          "label": "SecondMapConsumer.MetroFactory.declarationMirror.values"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:MapConsumerHolder|17:MapConsumerHolder",
+          "key": "MapConsumerHolder",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "MapConsumerHolder",
+            "label": "MapConsumerHolder"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "MapConsumerHolder",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "12:MemberTarget|12:MemberTarget",
+          "key": "MemberTarget",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "MemberTarget",
+            "label": "MemberTarget"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "MemberTarget",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ParentValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:PrioritizedService|19:HighPriorityService",
+          "key": "PrioritizedService",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "HighPriorityService",
+            "label": "HighPriorityService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "PrioritizedService",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<ParentValue>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:ReplacementService|18:ReplacementService",
+          "key": "ReplacementService",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ReplacementService",
+            "label": "ReplacementService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ReplacementService",
+        "declaration": {
+          "id": "ReplacementService.MetroContributionToAppScope.bindsAsService(ReplacementService.MetroContributionToAppScope,ReplacementService): Service#instance",
+          "label": "ReplacementService.MetroContributionToAppScope.bindsAsService.instance"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:SecondMapConsumer|17:SecondMapConsumer",
+          "key": "SecondMapConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "SecondMapConsumer",
+            "label": "SecondMapConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SecondMapConsumer",
+        "declaration": {
+          "id": "MapConsumerHolder.MetroFactory.declarationMirror(MapConsumerHolder.MetroFactory,SecondMapConsumer): MapConsumerHolder#consumer",
+          "label": "MapConsumerHolder.MetroFactory.declarationMirror.consumer"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "7:Service|18:ReplacementService",
+          "key": "Service",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "ReplacementService",
+            "label": "ReplacementService"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Service",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
+          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "MemberTarget",
+            "label": "MemberTarget"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "33:java.util.Optional<kotlin.String>|80:OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
+          "key": "java.util.Optional<kotlin.String>",
+          "status": "selected",
+          "reason": "selected_optional",
+          "declaration": {
+            "id": "OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
+            "label": "OptionalBindings.BindsMirror.optionalString_opt"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "java.util.Optional<kotlin.String>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "missing",
+      "candidates": [],
+      "request": {
+        "key": "kotlin.Int = ...",
+        "declaration": {
+          "id": "DefaultValue.MetroFactory.declarationMirror(DefaultValue.MetroFactory,kotlin.Int): DefaultValue#number",
+          "label": "DefaultValue.MetroFactory.declarationMirror.number"
+        },
+        "hasDefault": true,
+        "isOptional": true
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|38:AppGraph.text(AppGraph): kotlin.String",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.text(AppGraph): kotlin.String",
+            "label": "AppGraph.text"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String",
+        "declaration": {
+          "id": "MemberTarget.text: kotlin.String",
+          "label": "MemberTarget.text"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "13:kotlin.String|38:AppGraph.text(AppGraph): kotlin.String",
+          "key": "kotlin.String",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.text(AppGraph): kotlin.String",
+            "label": "AppGraph.text"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.String = ...",
+        "hasDefault": true,
+        "isOptional": true
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "31:kotlin.collections.Set<Handler>|9:generated",
+          "key": "kotlin.collections.Set<Handler>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.collections.Set<Handler>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "registration",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "key": "ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+            "label": "AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
+          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "MemberTarget",
+            "label": "MemberTarget"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "details": [
+        "Records bindings added directly to this graph, including member-injection dependencies."
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -17,6 +18,9 @@ import dev.zacsweers.metro.idea.graph.IncompleteGraphAnalysis
 import dev.zacsweers.metro.idea.graph.KaBindingGraph
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
+import dev.zacsweers.metro.idea.graph.ValidationInput
+import dev.zacsweers.metro.idea.graph.ValidationInputCapture
+import dev.zacsweers.metro.idea.graph.ValidationSourceSnapshot
 import dev.zacsweers.metro.idea.graph.runGraphValidation
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
@@ -1200,7 +1204,13 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       )
 
     val result = index.withResolutionSession { session ->
-      KaBindingGraph(session, countedContext, file.metroIdeState().options).seal()
+      KaBindingGraph(
+          session,
+          countedContext,
+          file.metroIdeState().options,
+          ValidationSourceSnapshot.capture(index, countedContext),
+        )
+        .seal()
     }
     val diagnostics = result.diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
     val parameters = diagnostics.map { it.stack.first().pointer?.element as? KtParameter }
@@ -3512,6 +3522,201 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     assertTrue(result.bindings.asMap().values.none { it is KaBinding.AssistedFactory })
   }
 
+  fun testSourceGenericConstructorUsesConcreteDependenciesWithoutLibraries() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Payload
+      @HasMemberInjections abstract class Base<T : Any> {
+        @Inject lateinit var inherited: T
+      }
+      @Inject class Box<T : Any>(val value: T) : Base<T>()
+      @DependencyGraph interface AppGraph { val box: Box<Payload> }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val box =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single {
+        it.implementationName == "Box"
+      }
+    assertEquals("test.Box<test.Payload>", box.typeKey.renderedType)
+    assertEquals(
+      listOf("test.Payload"),
+      box.constructorDependencies.map { it.typeKey.renderedType },
+    )
+    assertEquals(listOf("test.Payload"), box.memberDependencies.map { it.typeKey.renderedType })
+  }
+
+  fun testSourceGenericConstructorKeepsNestedStarProjection() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Box<T>(val value: T)
+      @DependencyGraph interface AppGraph {
+        val box: Box<List<*>>
+        @Provides fun values(): List<*> = emptyList<Any>()
+      }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val box =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertEquals(
+      "kotlin.collections.List<*>",
+      box.constructorDependencies.single().typeKey.renderedType,
+    )
+  }
+
+  fun testSourceGenericConstructorReachesBinaryDependencies() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibRegistry
+        @Inject class Box<T>(val value: T)
+        @DependencyGraph interface AppGraph { val box: Box<LibRegistry> }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      assertTrue(
+        result.bindings.asMap().values.any { it is KaBinding.ConstructorInjected && it.isObject }
+      )
+    }
+  }
+
+  fun testSourceObjectProvidesItsInstanceWithoutLibraries() {
+    myFixture.addFileToProject("test/Registry.kt", "package test; object Registry")
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @DependencyGraph interface AppGraph { val registry: Registry }
+      """
+      )
+    assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    val binding =
+      result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+    assertTrue(binding.isObject)
+    assertTrue(binding.dependencies.isEmpty())
+  }
+
+  fun testSourceClassDoesNotSatisfyNullableRequest() {
+    val result =
+      validateWithoutLibraryResolution(
+        """
+      @Inject class Client
+      @DependencyGraph interface AppGraph { val client: Client? }
+      """
+      )
+    assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
+  }
+
+  fun testGrowingSourceConstructorReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    val result =
+      validateResult(
+        """
+      @Inject class Growing<T>(val next: Growing<List<T>>)
+      @DependencyGraph interface AppGraph { val node: Growing<Int> }
+      """
+      )
+    assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+  }
+
+  fun testBinaryImplicitClassDoesNotSatisfyNullableRequest() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph(AppScope::class) interface AppGraph {
+          val client: LibClientWithDeps?
+        }
+        """
+        )
+      assertTrue(result.diagnostics.any { it.id == MetroDiagnosticId.MISSING_BINDING })
+    }
+  }
+
+  fun testExplicitNullableBinaryClassBindingStillResolves() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibClientWithDeps
+
+        @DependencyGraph interface AppGraph {
+          val client: LibClientWithDeps?
+          @Provides fun client(): LibClientWithDeps? = null
+        }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+    }
+  }
+
+  fun testBinaryObjectProvidesItsOwnInstance() {
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibRegistry
+
+        @DependencyGraph interface AppGraph { val registry: LibRegistry }
+        """
+        )
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val objectBinding =
+        result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>().single()
+      assertTrue(objectBinding.isObject)
+      assertTrue(objectBinding.dependencies.isEmpty())
+      assertNull(objectBinding.scope)
+    }
+  }
+
+  fun testGrowingBinaryConstructorReportsIncompleteAnalysis() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validateResult(
+          """
+        import libtest.LibGrowingNode
+
+        @DependencyGraph interface AppGraph {
+          val node: LibGrowingNode<Int>
+        }
+        """
+        )
+
+      assertTrue(result.javaClass.simpleName, result is KaGraphValidationResult.Incomplete)
+      result as KaGraphValidationResult.Incomplete
+      assertTrue(result.reason.contains("LibGrowingNode"))
+    }
+  }
+
+  fun testExplicitProviderTerminatesGrowingBinaryConstructor() {
+    module.addKotlinStdlibLibrary()
+    module.withMetroLibFixtureLibrary {
+      val result =
+        validate(
+          """
+        import libtest.LibGrowingNode
+
+        @DependencyGraph interface AppGraph {
+          val node: LibGrowingNode<Int>
+
+          @Provides fun terminal(): LibGrowingNode<List<List<Int>>> = error("unused")
+        }
+        """
+        )
+
+      assertTrue(result.diagnostics.joinToString { it.render() }, result.diagnostics.isEmpty())
+      val nodes = result.bindings.asMap().values.filterIsInstance<KaBinding.ConstructorInjected>()
+      assertEquals(2, nodes.size)
+    }
+  }
+
   fun testExpandingGenericAssistedFactoryReportsIncompleteAnalysis() {
     module.addKotlinStdlibLibrary()
     val result =
@@ -4269,6 +4474,95 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     }
   }
 
+  fun testCapturedValidationKeepsSourceNamesAndLocations() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Missing
+      @Inject class NeedsMissing(val missing: Missing)
+
+      @DependencyGraph
+      interface AppGraph {
+        val value: NeedsMissing
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val graph = index.graphs.single()
+    val context = index.contextsFor(graph).single()
+    val captured =
+      ValidationInputCapture(project)
+        .capture(file, context, includeExtensions = false)
+        .inputs
+        .last() as ValidationInput.Unsealed
+    val binding = index.bindings.single { it is KaBinding.ConstructorInjected }
+    val location = captured.sources.location(binding)
+    assertNotNull(location)
+
+    WriteCommandAction.runWriteCommandAction(project) {
+      val document = myFixture.editor.document
+      document.insertString(0, "\n\n")
+      val nameStart = document.text.indexOf("val value:") + "val ".length
+      document.replaceString(nameStart, nameStart + "value".length, "renamed")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    val result =
+      KaBindingGraph(captured.session, captured.queryContext, captured.options, captured.sources)
+        .seal()
+    val stack = result.diagnostics.single { it.id == MetroDiagnosticId.MISSING_BINDING }.stack
+    assertTrue(stack.any { it.graphContext == "test.AppGraph.value" })
+    assertTrue(stack.any { it.graphContext == location })
+
+    val updatedIndex = refreshedIndex(file)
+    val updatedGraph = updatedIndex.graphs.single()
+    val updatedContext = updatedIndex.contextsFor(updatedGraph).single()
+    val updated =
+      project
+        .service<MetroGraphValidationService>()
+        .validate(file, updatedContext)
+        .requireCompleted()
+    val updatedStack =
+      updated.diagnostics.single { it.id == MetroDiagnosticId.MISSING_BINDING }.stack
+    assertTrue(updatedStack.any { it.graphContext == "test.AppGraph.renamed" })
+    assertFalse(updatedStack.any { it.graphContext == location })
+  }
+
+  fun testCapturedDuplicateLocationsSurviveSourceEdits() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph
+      interface AppGraph {
+        val value: String
+        @Provides fun first(): String = "first"
+        @Provides fun second(): String = "second"
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val captured =
+      ValidationInputCapture(project)
+        .capture(file, context, includeExtensions = false)
+        .inputs
+        .last() as ValidationInput.Unsealed
+    val locations =
+      index.bindings.filterIsInstance<KaBinding.Provided>().map { captured.sources.location(it)!! }
+    assertEquals(2, locations.size)
+    WriteCommandAction.runWriteCommandAction(project) {
+      myFixture.editor.document.insertString(0, "\n\n\n")
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+    }
+
+    val result =
+      KaBindingGraph(captured.session, captured.queryContext, captured.options, captured.sources)
+        .seal()
+    val diagnostic =
+      result.diagnostics.single { it.id == MetroDiagnosticId.DUPLICATE_BINDING }.render()
+    for (location in locations) assertTrue(diagnostic, location in diagnostic)
+  }
+
   fun testResultsAreCachedPerIndex() {
     val file =
       myFixture.configureMetroFile(
@@ -4284,6 +4578,178 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val first = validationService.validate(file, context)
     val second = validationService.validate(file, context)
     assertSame(first, second)
+  }
+
+  fun testAsyncValidationAllowsWritesWhileSealingCapturedInputs() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      interface Missing
+      @Inject class NeedsMissing(val missing: Missing)
+
+      @DependencyGraph
+      interface AppGraph {
+        val value: NeedsMissing
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val ready = CompletableFuture<Unit>()
+    val releaseSeal = CountDownLatch(1)
+    val heldReadAccess = AtomicBoolean()
+    val delivered = CompletableFuture<KaGraphValidationResult>()
+    var job: Job? = null
+    validationService.setBeforeGraphSealObserver {
+      heldReadAccess.set(ApplicationManager.getApplication().isReadAccessAllowed)
+      ready.complete(Unit)
+      releaseSeal.await()
+    }
+    try {
+      val started = validationService.validateAsync(file, context) { delivered.complete(it) }
+      job = started
+      started.invokeOnCompletion { failure ->
+        if (failure != null) {
+          ready.completeExceptionally(failure)
+          delivered.completeExceptionally(failure)
+        }
+      }
+      PlatformTestUtil.waitForFuture(ready, 30_000)
+      // Check before taking write access so a regression fails without blocking the EDT.
+      assertFalse(heldReadAccess.get())
+      WriteCommandAction.runWriteCommandAction(project) {
+        val document = myFixture.editor.document
+        document.insertString(0, "\n\n")
+        val nameStart = document.text.indexOf("val value:") + "val ".length
+        document.replaceString(nameStart, nameStart + "value".length, "renamed")
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+      }
+      releaseSeal.countDown()
+
+      val result = PlatformTestUtil.waitForFuture(delivered, 30_000).requireCompleted()
+      val stack = result.diagnostics.single { it.id == MetroDiagnosticId.MISSING_BINDING }.stack
+      assertTrue(stack.any { it.graphContext == "test.AppGraph.value" })
+      refreshedIndex(file)
+      // Edits during a seal leave its result available with the generation's stale marker.
+      assertTrue(validationService.cachedResult(file, context)!!.stale)
+    } finally {
+      releaseSeal.countDown()
+      job?.cancel()
+      validationService.setBeforeGraphSealObserver(null)
+    }
+  }
+
+  fun testAsyncExtensionValidationUsesCapturedDiagnosticSources() {
+    module.addKotlinStdlibLibrary()
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @AssistedInject
+      class Widget(@Assisted val id: String) {
+        @AssistedFactory
+        interface Factory {
+          fun create(id: String): Widget
+        }
+      }
+
+      @Inject class Consumer(val first: Lazy<Widget.Factory>, val second: Lazy<Widget.Factory>)
+
+      @GraphExtension
+      interface ChildGraph {
+        val consumer: Consumer
+      }
+
+      @DependencyGraph
+      interface AppGraph {
+        val child: ChildGraph
+        val text: String
+        @Provides fun first(): String = "first"
+        @Provides fun second(): String = "second"
+      }
+      """
+      )
+    val index = refreshedIndex(file)
+    val graph = index.graphs.single { it.name == "AppGraph" }
+    val context = index.contextsFor(graph).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val heldReadAccess = AtomicBoolean()
+    val seals = AtomicInteger()
+    validationService.setBeforeGraphSealObserver {
+      if (ApplicationManager.getApplication().isReadAccessAllowed) heldReadAccess.set(true)
+      seals.incrementAndGet()
+    }
+    try {
+      for (useContext in listOf(false, true)) {
+        validationService.clearResults()
+        val delivered = CompletableFuture<List<KaGraphValidationResult>>()
+        val job =
+          if (useContext) {
+            validationService.validateWithExtensionsAsync(context) { delivered.complete(it) }
+          } else {
+            validationService.validateWithExtensionsAsync(graph) { delivered.complete(it) }
+          }
+        job.invokeOnCompletion { failure ->
+          if (failure != null) delivered.completeExceptionally(failure)
+        }
+        try {
+          val results =
+            PlatformTestUtil.waitForFuture(delivered, 30_000).map { it.requireCompleted() }
+          assertEquals(listOf("ChildGraph", "AppGraph"), results.map { it.graph.name })
+          val invalidRequests =
+            results.first().diagnostics.filter { it.id == MetroDiagnosticId.INVALID_BINDING }
+          val parameterNames =
+            invalidRequests
+              .map { (it.stack.first().pointer?.element as? KtParameter)?.name }
+              .toSet()
+          assertEquals(setOf("first", "second"), parameterNames)
+          val duplicate =
+            results.last().diagnostics.single { it.id == MetroDiagnosticId.DUPLICATE_BINDING }
+          assertTrue(duplicate.render(), "Test.kt:" in duplicate.render())
+        } finally {
+          job.cancel()
+        }
+      }
+      assertEquals(4, seals.get())
+      assertFalse(heldReadAccess.get())
+    } finally {
+      validationService.setBeforeGraphSealObserver(null)
+    }
+  }
+
+  fun testAsyncValidationCancellationAfterCapturePreventsPublication() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    val ready = CompletableFuture<Unit>()
+    val releaseSeal = CountDownLatch(1)
+    val completed = CompletableFuture<Unit>()
+    val delivered = AtomicBoolean()
+    var job: Job? = null
+    validationService.setBeforeGraphSealObserver {
+      ready.complete(Unit)
+      releaseSeal.await()
+    }
+    try {
+      val started = validationService.validateAsync(file, context) { delivered.set(true) }
+      job = started
+      started.invokeOnCompletion { failure ->
+        if (failure != null) ready.completeExceptionally(failure)
+        completed.complete(Unit)
+      }
+      PlatformTestUtil.waitForFuture(ready, 30_000)
+      started.cancel()
+      releaseSeal.countDown()
+      PlatformTestUtil.waitForFuture(completed, 30_000)
+      UIUtil.dispatchAllInvocationEvents()
+      assertFalse(delivered.get())
+      assertNull(validationService.cachedResult(file, context))
+    } finally {
+      releaseSeal.countDown()
+      job?.cancel()
+      validationService.setBeforeGraphSealObserver(null)
+    }
   }
 
   fun testSupersededAsyncValidationDoesNotPublishOrDeliverItsResult() {
@@ -4511,7 +4977,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       PlatformTestUtil.waitForFuture(completed, 30_000)
       UIUtil.dispatchAllInvocationEvents()
 
-      assertEquals(2, snapshots.size)
+      // Finishing the child may publish another update before the removal reaches the EDT.
+      assertEquals(1, snapshots.count { it.isEmpty() })
       assertTrue(snapshots.last().isEmpty())
     } finally {
       releasePublication.countDown()
@@ -4534,6 +5001,8 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val validationService = project.service<MetroGraphValidationService>()
     val result = validationService.validate(file, context)
     assertFalse(validationService.cachedResult(file, context)!!.stale)
+    assertSame(result, validationService.retainedResults().single().result)
+    assertFalse(validationService.retainedResults().single().stale)
 
     // A new binding invalidates the index while the previous validation stays visible as stale.
     val document = checkNotNull(PsiDocumentManager.getInstance(project).getDocument(file))
@@ -4541,6 +5010,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       document.insertString(document.textLength, "\n\n@Inject class AddedBinding")
     }
     PsiDocumentManager.getInstance(project).commitAllDocuments()
+    assertTrue(validationService.retainedResults().single().stale)
     val cached = validationService.cachedResult(file, context)!!
     assertSame(result, cached.result)
     assertTrue(cached.stale)
@@ -4555,6 +5025,38 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     val rebuiltCached = validationService.cachedResult(file, rebuiltContext)!!
     assertSame(rebuiltResult, rebuiltCached.result)
     assertFalse(rebuiltCached.stale)
+    assertFalse(validationService.retainedResults().single().stale)
+  }
+
+  fun testResultListenersCoalescePublicationAndObserveClears() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validationService = project.service<MetroGraphValidationService>()
+    UIUtil.dispatchAllInvocationEvents()
+    val listenerLifetime = Disposer.newDisposable()
+    var notifications = 0
+    val retainedCounts = mutableListOf<Int>()
+    validationService.addResultListener(listenerLifetime) {
+      assertTrue(ApplicationManager.getApplication().isDispatchThread)
+      notifications++
+      retainedCounts += validationService.retainedResults().size
+    }
+    try {
+      validationService.validate(file, context)
+      validationService.validate(file, context)
+      UIUtil.dispatchAllInvocationEvents()
+      assertEquals(listOf(1), retainedCounts)
+
+      validationService.clearResults()
+      UIUtil.dispatchAllInvocationEvents()
+      assertEquals(listOf(1, 0), retainedCounts)
+    } finally {
+      Disposer.dispose(listenerLifetime)
+    }
+    validationService.validate(file, context)
+    UIUtil.dispatchAllInvocationEvents()
+    assertEquals(2, notifications)
   }
 
   fun testValidationCancelsWhenRetainedGraphDisappears() {
@@ -4591,7 +5093,7 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
       validationService.validate(file, context)
       fail("Expected stale graph context validation to be cancelled")
     } catch (e: CancellationException) {
-      assertEquals("Metro graph context is no longer current", e.message)
+      assertEquals("Metro graph context is no longer available", e.message)
     }
 
     try {

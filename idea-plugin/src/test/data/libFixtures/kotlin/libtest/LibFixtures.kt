@@ -14,6 +14,7 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntoMap
 import dev.zacsweers.metro.IntoSet
+import dev.zacsweers.metro.HasMemberInjections
 import dev.zacsweers.metro.Origin
 import dev.zacsweers.metro.Provider
 import dev.zacsweers.metro.Provides
@@ -23,6 +24,9 @@ import dev.zacsweers.metro.StringKey
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metro.internal.MetroContribution
 import kotlin.reflect.KClass
+
+/** An ordinary object is an implicit class binding. */
+object LibRegistry
 
 interface LibJson
 
@@ -38,6 +42,51 @@ interface LibGenericBase<T> {
   @Provides fun provideValue(): T = error("unused")
 }
 
+/** Isolates contributed interface members from unrelated fixture graphs. */
+abstract class LibInterfaceScope
+
+@Inject class LibInterfaceDependency
+
+@Inject class LibInterfaceClient(val dependency: LibInterfaceDependency)
+
+@HasMemberInjections
+class LibInterfaceMembers {
+  @Inject lateinit var client: LibInterfaceClient
+}
+
+/** Inherited members use the concrete type supplied by the contributed interface. */
+interface LibContributedGeneric<T> {
+  val value: T
+
+  @Provides fun provideValue(dependency: LibInterfaceDependency): T = error("unused")
+
+  fun inject(target: LibInterfaceMembers)
+}
+
+@ContributesTo(LibInterfaceScope::class)
+interface LibContributedGraph : LibContributedGeneric<String> {
+  val client: LibInterfaceClient
+}
+
+interface LibDefaultValue
+
+interface LibDefaultGraphBase {
+  val defaultValue: LibDefaultValue
+}
+
+/** A contributed default implementation satisfies its inherited abstract accessor. */
+@ContributesTo(LibInterfaceScope::class)
+interface LibDefaultGraph : LibDefaultGraphBase {
+  override val defaultValue: LibDefaultValue
+    get() = error("unused")
+}
+
+/** Only an internal contribution hint exposes this interface. */
+@ContributesTo(LibInterfaceScope::class)
+interface LibHiddenGraph {
+  val hidden: LibDefaultValue
+}
+
 interface LibService
 
 interface LibAnalytics
@@ -47,6 +96,9 @@ interface LibAnalytics
 
 /** Resolvable on demand as a constructor-injected library class. */
 @Inject @SingleIn(AppScope::class) class LibHttpClient
+
+/** Each dependency adds a type argument layer during implicit construction. */
+@Inject class LibGrowingNode<T>(val next: LibGrowingNode<List<T>>)
 
 /** Carries constructor dependencies, for binary dependency-key extraction. */
 @Inject class LibClientWithDeps(val client: LibHttpClient)

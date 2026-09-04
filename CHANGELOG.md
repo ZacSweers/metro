@@ -10,9 +10,17 @@ Changelog
 - **[IR]** Support suspend providers with switching providers.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
+- **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
+- **[IDE]** Add actions to make classes injectable and contribute bindings, sets, or maps. Includes constructor, bound-type, scope, and map-key pickers, with editor templates for scope and key values.
+- **[IDE]** Add a Manual/Automatic refresh selector to the graph window. Manual is the default. Automatic mode batches edits after an idle delay and keeps possibly-stale data visible.
 
 ### Fixes
 
+- **[IDE]** Reduce graph refreshes after unrelated edits and reuse completed analysis when a refresh is interrupted. Keep previous graph data visible while updating it.
+- **[IDE]** Preserve completed files and preparation stages when IDE write actions interrupt graph loading. Ignore unrelated configuration-file changes and use one Refresh action that shares an in-progress load.
+- **[IDE]** Invalidate cached compiler options and graph data when module facets change.
+- **[IDE]** Clarify contribution picker previews and respect implicit class keys.
+- **[IDE]** Offer primary and secondary constructors when making a class injectable, including public secondary constructors with a private primary constructor.
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.

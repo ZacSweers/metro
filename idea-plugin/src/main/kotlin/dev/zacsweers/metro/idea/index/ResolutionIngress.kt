@@ -15,7 +15,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
  *
  * An editor-hint request advances only [eventClock], allowing an index build to continue. A PSI
  * change also advances [semanticClock], so the build must reconsider its inputs. A manual refresh
- * records its [eventClock] in [latestManualRequestId] so a newer refresh can replace an older one.
+ * keeps its request ID through retries. Repeated clicks share that request until it finishes.
  */
 internal class ResolutionIngress<E : Any>(
   private val coalescingKey: (E) -> Any? = { null },
@@ -37,10 +37,11 @@ internal class ResolutionIngress<E : Any>(
   private var semanticClock = 0L
 
   /**
-   * The [eventClock] of the latest manual refresh, or zero before the first refresh. Unrelated
-   * requests leave it unchanged. Only manual-refresh builds compare this ID to detect replacement.
+   * The [eventClock] of the latest accepted manual refresh, or zero before the first refresh.
+   * Completion checks this ID so an older attempt cannot clear a newer request.
    */
   private var latestManualRequestId = 0L
+  private var manualRefreshPending = false
   private var coalescedEvents = linkedMapOf<Any, E>()
   private var uncoalescedEvents = mutableListOf<E>()
 
@@ -54,7 +55,7 @@ internal class ResolutionIngress<E : Any>(
    *
    * [semanticChange] marks work that may invalidate binding data. Ordinary build requests and
    * worker completions leave it false. [manualRefresh] assigns a new refresh ID independently of
-   * whether binding data changed.
+   * whether binding data changed. Duplicate manual requests return null while one is pending.
    */
   fun submit(
     semanticChange: Boolean = false,
@@ -63,10 +64,13 @@ internal class ResolutionIngress<E : Any>(
   ): ResolutionIngressTicket? {
     val ticket =
       synchronized(lock) {
-        if (closed) return@synchronized null
+        if (closed || (manualRefresh && manualRefreshPending)) return@synchronized null
         eventClock++
         if (semanticChange) semanticClock++
-        if (manualRefresh) latestManualRequestId = eventClock
+        if (manualRefresh) {
+          latestManualRequestId = eventClock
+          manualRefreshPending = true
+        }
         val accepted =
           ResolutionIngressTicket(
             eventClock = eventClock,
@@ -108,12 +112,21 @@ internal class ResolutionIngress<E : Any>(
   /** Reads the latest counters and queue state without consuming events. */
   fun snapshot(): ResolutionIngressSnapshot = synchronized(lock) { snapshotLocked() }
 
+  /** Repeated Refresh clicks share one request until its load finishes or fails. */
+  fun completeManualRefresh(requestId: Long): Boolean =
+    synchronized(lock) {
+      if (!manualRefreshPending || latestManualRequestId != requestId) return@synchronized false
+      manualRefreshPending = false
+      true
+    }
+
   /** Stops accepting requests and returns queued events so the caller can cancel their waiters. */
   fun close(): List<E> {
     val abandoned =
       synchronized(lock) {
         if (closed) return@synchronized emptyList()
         closed = true
+        manualRefreshPending = false
         val pending =
           buildList(coalescedEvents.size + uncoalescedEvents.size) {
             addAll(coalescedEvents.values)
@@ -132,6 +145,7 @@ internal class ResolutionIngress<E : Any>(
       eventClock = eventClock,
       semanticClock = semanticClock,
       latestManualRequestId = latestManualRequestId,
+      manualRefreshPending = manualRefreshPending,
       hasPendingEvents = coalescedEvents.isNotEmpty() || uncoalescedEvents.isNotEmpty(),
       isClosed = closed,
     )
@@ -159,6 +173,8 @@ internal data class ResolutionIngressSnapshot(
   val semanticClock: Long,
   /** Compared with a manual-refresh build's ID to detect a newer refresh request. */
   val latestManualRequestId: Long,
+  /** True from an accepted Refresh click through its terminal completion. */
+  val manualRefreshPending: Boolean,
   /** Whether events remain in this queue. Drained events may still be awaiting processing. */
   val hasPendingEvents: Boolean,
   /** Whether [ResolutionIngress.close] has stopped further submissions. */

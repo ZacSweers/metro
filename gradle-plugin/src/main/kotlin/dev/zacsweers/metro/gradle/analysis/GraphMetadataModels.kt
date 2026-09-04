@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.gradle.analysis
 
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanation
 import dev.zacsweers.metro.gradle.ExperimentalMetroGradleApi
 import dev.zacsweers.metro.gradle.artifacts.GenerateGraphMetadataTask
 import kotlinx.serialization.Serializable
@@ -32,6 +33,8 @@ public data class GraphMetadata(
   /** Compiler-collected counters for this graph. */
   val stats: GraphStatsMetadata? = null,
   val bindings: List<BindingMetadata>,
+  /** Decisions observed while the compiler assembled and resolved this graph. */
+  val bindingExplanations: List<BindingExplanation> = emptyList(),
 )
 
 /** Compiler-collected counters for a graph. */

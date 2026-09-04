@@ -19,6 +19,7 @@ import dev.zacsweers.metro.idea.model.KaContextualTypeKey
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtElement
 
 /** Key plus display metadata for a consuming site. */
@@ -72,6 +73,8 @@ internal class BindingData(
   val isClassContribution: Boolean = false,
   /** See [KaBinding.Multibinding.allowEmpty]. */
   val allowEmpty: Boolean = false,
+  /** See [KaBinding.Multibinding.metroMultibindsAnnotation]. */
+  val metroMultibindsAnnotation: SmartPsiElementPointer<KtAnnotationEntry>? = null,
   /** See [KaBinding.isGraphPrivate]. */
   val isGraphPrivate: Boolean = false,
 ) {
@@ -138,6 +141,7 @@ internal class GraphInterfaceSurface(
         ownerGraphId = graph.declarationId,
         originClassId = contribution.classId,
         contributionScopes = contribution.scopeKeys,
+        hintAvailability = contribution.hintAvailability,
       )
     }
     return GraphInterfaceContribution(

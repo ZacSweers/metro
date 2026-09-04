@@ -252,5 +252,446 @@
       "origin": "GraphMetadataStatsReport.kt:42:13",
       "declaration": "provideG"
     }
+  ],
+  "bindingExplanations": [
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:A|1:A",
+          "key": "A",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "A",
+            "label": "A",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 25,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "A",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:A|1:A",
+          "key": "A",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "A",
+            "label": "A",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 25,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "A",
+        "declaration": {
+          "id": "B.MetroFactory.declarationMirror(B.MetroFactory,A): B#a",
+          "label": "B.MetroFactory.declarationMirror.a",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 27,
+            "column": 44
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:B|1:B",
+          "key": "B",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "B",
+            "label": "B",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 27,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "B",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:B|1:B",
+          "key": "B",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "B",
+            "label": "B",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 27,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "B",
+        "declaration": {
+          "id": "C.MetroFactory.declarationMirror(C.MetroFactory,B): C#b",
+          "label": "C.MetroFactory.declarationMirror.b",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 29,
+            "column": 44
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:C|1:C",
+          "key": "C",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "C",
+            "label": "C",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 29,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "C",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:C|1:C",
+          "key": "C",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "C",
+            "label": "C",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 29,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "C",
+        "declaration": {
+          "id": "D.MetroFactory.declarationMirror(D.MetroFactory,C): D#c",
+          "label": "D.MetroFactory.declarationMirror.c",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 31,
+            "column": 44
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:D|1:D",
+          "key": "D",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "D",
+            "label": "D",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 31,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "D",
+        "declaration": {
+          "id": "E.MetroFactory.declarationMirror(E.MetroFactory,D): E#d",
+          "label": "E.MetroFactory.declarationMirror.d",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 33,
+            "column": 44
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:E|1:E",
+          "key": "E",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "E",
+            "label": "E",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 33,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "E",
+        "declaration": {
+          "id": "F.MetroFactory.declarationMirror(F.MetroFactory,E): F#e",
+          "label": "F.MetroFactory.declarationMirror.e",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 35,
+            "column": 44
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:F|1:F",
+          "key": "F",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "F",
+            "label": "F",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 35,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "F",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:F|1:F",
+          "key": "F",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "F",
+            "label": "F",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 35,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "F",
+        "declaration": {
+          "id": "StatsModule.provideG(StatsModule,F): G#f",
+          "label": "StatsModule.provideG.f",
+          "source": {
+            "path": "GraphMetadataStatsReport.kt",
+            "line": 42,
+            "column": 26
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "1:G|38:StatsModule.provideG(StatsModule,F): G",
+          "key": "G",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "StatsModule.provideG(StatsModule,F): G",
+            "label": "StatsModule.provideG",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 42,
+              "column": 13
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "G",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    }
   ]
 }

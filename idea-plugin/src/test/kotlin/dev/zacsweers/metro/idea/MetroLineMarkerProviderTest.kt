@@ -3,19 +3,28 @@
 package dev.zacsweers.metro.idea
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.resolveLineMarkerTargets
 import dev.zacsweers.metro.idea.model.BindingIndex
+import dev.zacsweers.metro.idea.navigation.MetroEditorRequest
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -30,6 +39,7 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<MetroGraphValidationService>().clearResults()
@@ -218,6 +228,168 @@ class MetroLineMarkerProviderTest : BasePlatformTestCase() {
     checkNotNull(job)
     PlatformTestUtil.waitForFuture(delivered, 30_000)
     assertEquals("Target", delivered.join())
+  }
+
+  fun testNewNavigationSupersedesAColdEditorQuery() {
+    val file = myFixture.configureByText("Navigation.kt", "class Target") as KtFile
+    val target = file.declarations.single() as KtNamedDeclaration
+    val pointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(target)
+    val service = project.service<MetroNavigationService>()
+    val started = CompletableFuture<Unit>()
+    val release = CompletableDeferred<Unit>()
+    val queryDelivered = AtomicBoolean()
+    val navigated = CompletableFuture<List<PsiElement>>()
+    val query =
+      checkNotNull(
+        service.runEditorRequest(
+          myFixture.editor,
+          resolve = {
+            started.complete(Unit)
+            withContext(NonCancellable) { release.await() }
+            "older result"
+          },
+          onResolved = { queryDelivered.set(true) },
+        )
+      )
+    try {
+      PlatformTestUtil.waitForFuture(started, 30_000)
+      checkNotNull(
+        service.resolveTargets(myFixture.editor, listOf(pointer)) { navigated.complete(it) }
+      )
+      PlatformTestUtil.waitForFuture(navigated, 30_000)
+      release.complete(Unit)
+      query.awaitTestCompletion()
+
+      assertEquals(listOf(target), navigated.join())
+      assertTrue(query.isCancelled)
+      assertFalse(queryDelivered.get())
+    } finally {
+      release.complete(Unit)
+      query.awaitTestCompletion()
+    }
+  }
+
+  fun testReleasingEditorCancelsItsSuspendedColdQuery() {
+    val factory = EditorFactory.getInstance()
+    val editor = factory.createEditor(factory.createDocument("class Target"), project)
+    val service = project.service<MetroNavigationService>()
+    val started = CompletableFuture<Unit>()
+    val suspended = CompletableDeferred<Unit>()
+    val delivered = AtomicBoolean()
+    val query =
+      service.runEditorRequest(
+        editor,
+        resolve = {
+          started.complete(Unit)
+          suspended.await()
+          "result"
+        },
+        onResolved = { delivered.set(true) },
+      )
+    try {
+      val running = checkNotNull(query)
+      PlatformTestUtil.waitForFuture(started, 30_000)
+      factory.releaseEditor(editor)
+
+      assertTrue(running.isCancelled)
+      running.awaitTestCompletion()
+      assertFalse(suspended.isCompleted)
+      assertFalse(delivered.get())
+    } finally {
+      query?.cancel()
+      query?.awaitTestCompletion()
+      if (!editor.isDisposed) factory.releaseEditor(editor)
+    }
+  }
+
+  fun testRegisteredEditorActionNavigatesToBindingFromAColdIndex() {
+    project.service<MetroResolutionService>()
+    val providerFile =
+      myFixture.addFileToProject(
+        "test/Values.kt",
+        """
+        package test
+        import dev.zacsweers.metro.Provides
+
+        interface Values {
+          @Provides fun provideValue(): String = "value"
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+    val file =
+      myFixture.configureMetroFile(
+        """
+      @DependencyGraph(bindingContainers = [Values::class])
+      interface AppGraph {
+        val <caret>value: String
+      }
+      """
+      )
+    val action = checkNotNull(ActionManager.getInstance().getAction("Metro.GoToBinding"))
+    val selectAction =
+      checkNotNull(ActionManager.getInstance().getAction("Metro.SelectInToolWindow"))
+    val explainAction = checkNotNull(ActionManager.getInstance().getAction("Metro.ExplainBinding"))
+    val dataContext = DataContext { dataId ->
+      when {
+        CommonDataKeys.PROJECT.`is`(dataId) -> project
+        CommonDataKeys.EDITOR.`is`(dataId) -> myFixture.editor
+        CommonDataKeys.PSI_FILE.`is`(dataId) -> file
+        else -> null
+      }
+    }
+    val event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext)
+    val selectEvent =
+      AnActionEvent.createFromAnAction(selectAction, null, ActionPlaces.UNKNOWN, dataContext)
+    val explainEvent =
+      AnActionEvent.createFromAnAction(explainAction, null, ActionPlaces.UNKNOWN, dataContext)
+    action.update(event)
+    selectAction.update(selectEvent)
+    explainAction.update(explainEvent)
+    assertTrue(event.presentation.isEnabledAndVisible)
+    assertTrue(selectEvent.presentation.isEnabledAndVisible)
+    assertTrue(explainEvent.presentation.isEnabledAndVisible)
+
+    action.actionPerformed(event)
+
+    object : WaitFor(30_000) {
+        override fun condition(): Boolean {
+          PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+          return providerFile.virtualFile in FileEditorManager.getInstance(project).selectedFiles
+        }
+      }
+      .assertCompleted("Go to Metro Binding should open the provider's file")
+    val editor = checkNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+    val provider = providerFile.declarationsIncludingNested().function("provideValue")
+    assertEquals(checkNotNull(provider.nameIdentifier).textOffset, editor.caretModel.offset)
+  }
+
+  fun testOpenEditorChooserDropsChoicesAfterItsCaretDocumentOrPinChanges() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val pinService = project.service<GraphContextPinService>()
+    val editor = myFixture.editor
+    editor.caretModel.moveToOffset(0)
+    val changes =
+      listOf<() -> Unit>(
+        { editor.caretModel.moveToOffset(editor.caretModel.offset + 1) },
+        {
+          WriteCommandAction.runWriteCommandAction(project) {
+            editor.document.insertString(0, "// edited\n")
+          }
+        },
+        { pinService.pin(context.path) },
+      )
+    for (change in changes) {
+      val selected = mutableListOf<String>()
+      val request = MetroEditorRequest(editor)
+      val choose = request.guard<String> { selected += it }
+      choose("current")
+      change()
+      choose("stale")
+      assertEquals(listOf("current"), selected)
+    }
   }
 
   fun testInjectorMarkerTargetsInjectedMembers() {

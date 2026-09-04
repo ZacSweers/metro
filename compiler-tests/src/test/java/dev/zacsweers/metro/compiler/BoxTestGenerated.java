@@ -3443,6 +3443,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     }
 
     @Test
+    @TestMetadata("DirectMapAndMultibindingValues.kt")
+    public void testDirectMapAndMultibindingValues() {
+      run("DirectMapAndMultibindingValues.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetProperty.kt")
     public void testElementsIntoSetProperty() {
       run("ElementsIntoSetProperty.kt");
@@ -3714,6 +3720,12 @@ public class BoxTestGenerated extends AbstractBoxTest {
     @Test
     public void testAllFilesPresentInReports() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("BindingExplanationsPreserveBindings.kt")
+    public void testBindingExplanationsPreserveBindings() {
+      run("BindingExplanationsPreserveBindings.kt");
     }
 
     @Test

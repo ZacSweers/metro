@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroClassIds
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.compiler.graph.BoundTypeResolution
@@ -53,6 +55,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -293,18 +296,21 @@ private fun KaAnnotationSnapshot.resolveImplicitClassKey(
 /**
  * Computes the bindings originated by this declaration: `@Provides`/`@Binds`/`@Multibinds`
  * callables, injected classes, contributed bindings, and instance-binding factory parameters.
+ * [onDeclarationFile] records files read for inherited member injection metadata.
  */
 internal fun KtDeclaration.bindingData(
   session: KaSession,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<BindingData> {
   return when (this) {
     is KtPropertyAccessor -> property.bindingData(session, options)
     is KtNamedFunction,
     is KtProperty -> (this as KtCallableDeclaration).callableBindingData(session, options)
     is KtParameter -> instanceBindingData(session, options)
-    is KtClassOrObject -> classBindingData(session, options)
-    is KtConstructor<*> -> getContainingClassOrObject().classBindingData(session, options)
+    is KtClassOrObject -> classBindingData(session, options, onDeclarationFile)
+    is KtConstructor<*> ->
+      getContainingClassOrObject().classBindingData(session, options, onDeclarationFile)
     else -> emptyList()
   }
 }
@@ -366,7 +372,7 @@ internal fun CallableBindingView.bindingData(
         }
         isElementsIntoSet -> {
           // `@ElementsIntoSet fun x(): Collection<X>` contributes X elements
-          val elementType = canonicalKey.type.typeArguments.singleOrNull() ?: return null
+          val elementType = canonicalKey.type.typeArguments.singleOrNull()?.type ?: return null
           canonicalKey.copy(type = elementType).computeMultibindingId()
         }
         else -> canonicalKey.computeMultibindingId()
@@ -375,17 +381,11 @@ internal fun CallableBindingView.bindingData(
 
     when {
       has(options.bindsAnnotations) -> {
-        val sourceType =
-          callable.receiver?.returnType
-            ?: callable.valueParameters.singleOrNull()?.returnType
-            ?: return@with emptyList()
-        val sourceParam = callable.valueParameters.singleOrNull()
+        val source = callable.receiver ?: callable.valueParameters.singleOrNull()
+        if (source == null) return@with emptyList()
+        val sourceType = source.returnType
         val consumedKey =
-          contextualTypeKey(
-            sourceType,
-            sourceParam?.let { qualifierAnnotation(it.symbol, options) },
-            options,
-          )
+          contextualTypeKey(sourceType, qualifierAnnotation(source.symbol, options), options)
         val implementationName =
           (sourceType.fullyExpandedType as? KaClassType)?.classId?.shortClassName?.asString()
         val elementKey = typeKey(returnType, qualifier)
@@ -422,9 +422,13 @@ internal fun CallableBindingView.bindingData(
         )
       }
       has(options.multibindsAnnotations) -> {
+        val annotations =
+          (symbol.annotations + listOfNotNull(getterSymbol).flatMap { it.annotations }).filter {
+            it.classId in options.multibindsAnnotations
+          }
         val allowEmpty =
-          (symbol.annotations + listOfNotNull(getterSymbol).flatMap { it.annotations })
-            .firstOrNull { it.classId in options.multibindsAnnotations }
+          annotations
+            .firstOrNull()
             ?.arguments
             ?.firstOrNull { it.name.asString() == "allowEmpty" }
             ?.let { (it.expression as? KaAnnotationValue.ConstantValue)?.value?.value } == true
@@ -435,6 +439,7 @@ internal fun CallableBindingView.bindingData(
             scope,
             null,
             allowEmpty = allowEmpty,
+            metroMultibindsAnnotation = sourceMetroMultibindsAnnotation(annotations),
             isGraphPrivate = isGraphPrivate,
           )
         )
@@ -486,21 +491,13 @@ private fun KtParameter.instanceBindingData(
   with(session) {
     val symbol =
       this@instanceBindingData.symbol as? KaValueParameterSymbol ?: return@with emptyList()
-    if (!symbol.hasAnyAnnotation(options.providesAnnotations)) return@with emptyList()
-    listOf(
-      BindingData(
-        typeKey(symbol.returnType, qualifierAnnotation(symbol, options)),
-        BindingData.Kind.BOUND_INSTANCE,
-        null,
-        null,
-        isGraphPrivate = symbol.annotations.any { it.classId == MetroClassIds.graphPrivate },
-      )
-    )
+    CallableParameterView(symbol, symbol.returnType).instanceBindingData(this, options)
   }
 
 private fun KtClassOrObject.classBindingData(
   session: KaSession,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)?,
 ): List<BindingData> =
   with(session) {
     val ktClass = this@classBindingData
@@ -549,7 +546,11 @@ private fun KtClassOrObject.classBindingData(
         emptyList()
       }
     val memberDependencies =
-      if (ownsInjectBinding) memberInjectDependencyKeys(classSymbol, options) else emptyList()
+      if (ownsInjectBinding) {
+        memberInjectDependencyKeys(classSymbol, options, onDeclarationFile)
+      } else {
+        emptyList()
+      }
     val memberInjectionOwnerIds =
       if (ownsInjectBinding) memberInjectOwnerClassIds(classSymbol) else emptySet()
     if (ownsInjectBinding) {
@@ -719,22 +720,41 @@ private fun KaSession.contributedBoundType(
   if (explicitTypeRef != null) {
     return explicitTypeRef.type
   }
-  // The implicit bound type (supertype @DefaultBinding, else sole supertype) is resolved by the
-  // shared decision so the IDE and compiler agree on ambiguity. Ambiguous/multiple → unresolved.
+  return when (val resolution = implicitContributedBoundType(classSymbol)) {
+    is BoundTypeResolution.Resolved -> resolution.type
+    else -> null
+  }
+}
+
+/** Keeps contribution indexing and source actions on the same implicit bound-type decision. */
+internal fun KaSession.implicitContributedBoundType(
+  classSymbol: KaNamedClassSymbol
+): BoundTypeResolution<KaType> {
+  // The implicit bound type comes from a supertype's @DefaultBinding or the sole supertype.
+  // The shared decision preserves ambiguous choices for the caller to handle.
   val superTypes =
     classSymbol.superTypes.filterIndexed { index, type ->
       checkCanceledEvery(index)
       !type.isAnyType
     }
-  val resolution =
-    resolveImplicitBoundType(superTypes) { superType ->
-      val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
-      supertypeSymbol?.let { resolveDefaultBindingType(it) }
-    }
-  return when (resolution) {
-    is BoundTypeResolution.Resolved -> resolution.type
-    else -> null
+  return resolveImplicitBoundType(superTypes) { superType ->
+    val supertypeSymbol = (superType.fullyExpandedType as? KaClassType)?.symbol as? KaClassSymbol
+    supertypeSymbol?.let { resolveDefaultBindingType(it) }
   }
+}
+
+/** Retains an edit target only when the declaration has one resolved Metro source annotation. */
+private fun sourceMetroMultibindsAnnotation(
+  annotations: List<KaAnnotation>
+): SmartPsiElementPointer<KtAnnotationEntry>? {
+  val annotation = annotations.distinctBy { it.psi ?: it }.singleOrNull() ?: return null
+  if (annotation.classId != MetroClassIds.multibinds) return null
+  val entry = annotation.psi as? KtAnnotationEntry ?: return null
+  val file = entry.containingFile as? KtFile ?: return null
+  if (file.isCompiled) return null
+  val virtualFile = file.virtualFile ?: return null
+  if (!ProjectFileIndex.getInstance(entry.project).isInSourceContent(virtualFile)) return null
+  return SmartPointerManager.createPointer(entry)
 }
 
 /** Removes outer type annotations without replacing the declared projections or nullability. */
@@ -851,7 +871,9 @@ internal fun KaSession.assistedFactoryBinding(
     targetConstructorDependencies =
       targetType?.let { injectConstructorDependencyKeys(it, options, onDependencyType) }.orEmpty(),
     targetMemberDependencies =
-      targetType?.let { memberInjectDependencyKeys(it, options, onDependencyType) }.orEmpty(),
+      targetType
+        ?.let { memberInjectDependencyKeys(it, options, onDeclarationFile, onDependencyType) }
+        .orEmpty(),
     memberInjectionOwnerIds = targetSymbol?.let { memberInjectOwnerClassIds(it) }.orEmpty(),
     factoryFunctionName = samFunction?.name?.asString(),
     factoryFunctionIsSuspend = samFunction?.isSuspend == true,
@@ -907,27 +929,30 @@ internal class MemberInjectSite(
 internal fun KaSession.memberInjectDependencyKeys(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
-  return memberInjectSites(classSymbol, options).map { it.key }
+  return memberInjectSites(classSymbol, options, onDeclarationFile).map { it.key }
 }
 
 /** Resolves direct and inherited member injections through the target's specialized type scope. */
 internal fun KaSession.memberInjectDependencyKeys(
   classType: KaClassType,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
   onDependencyType: ((KaType) -> Unit)? = null,
 ): List<KaContextualTypeKey> {
-  return memberInjectSites(classType, options, onDependencyType).map { it.key }
+  return memberInjectSites(classType, options, onDeclarationFile, onDependencyType).map { it.key }
 }
 
 /** Preserves member source locations while specializing direct and inherited injection sites. */
 internal fun KaSession.memberInjectSites(
   classType: KaClassType,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
   onDependencyType: ((KaType) -> Unit)? = null,
 ): List<MemberInjectSite> {
   val classSymbol = classType.symbol as? KaNamedClassSymbol ?: return emptyList()
-  val owners = memberInjectOwners(classSymbol)
+  val owners = memberInjectOwners(classSymbol, onDeclarationFile)
   if (
     classSymbol.typeParameters.isEmpty() &&
       classType.typeArguments.isEmpty() &&
@@ -985,9 +1010,10 @@ internal fun KaSession.memberInjectSites(
 internal fun KaSession.memberInjectSites(
   classSymbol: KaNamedClassSymbol,
   options: MetroOptions,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<MemberInjectSite> {
   val result = mutableListOf<MemberInjectSite>()
-  for ((index, owner) in memberInjectOwners(classSymbol).withIndex()) {
+  for ((index, owner) in memberInjectOwners(classSymbol, onDeclarationFile).withIndex()) {
     checkCanceledEvery(index)
     collectDeclaredMemberInjectKeys(owner, options, result)
   }
@@ -999,19 +1025,29 @@ internal fun KaSession.memberInjectOwnerClassIds(classSymbol: KaNamedClassSymbol
   return memberInjectOwners(classSymbol).mapNotNullTo(linkedSetOf()) { it.classId }
 }
 
+/**
+ * Reports files whose members or inheritance marker are read. The first unmarked superclass is a
+ * dependency too, because adding its marker changes the inherited injection sites.
+ */
 internal fun KaSession.memberInjectOwners(
-  classSymbol: KaNamedClassSymbol
+  classSymbol: KaNamedClassSymbol,
+  onDeclarationFile: ((PsiFile) -> Unit)? = null,
 ): List<KaNamedClassSymbol> {
   val result = mutableListOf<KaNamedClassSymbol>()
   var current: KaNamedClassSymbol? = classSymbol
   var depth = 0
+  if (onDeclarationFile != null) {
+    classSymbol.psi?.containingFile?.let(onDeclarationFile)
+  }
   while (current != null) {
     checkCanceledEvery(depth++)
     result += current
-    current =
-      superClassSymbol(current)?.takeIf {
-        it.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))
-      }
+    val superclass = superClassSymbol(current) ?: break
+    if (onDeclarationFile != null) {
+      superclass.psi?.containingFile?.let(onDeclarationFile)
+    }
+    if (!superclass.hasAnyAnnotation(setOf(MetroClassIds.hasMemberInjections))) break
+    current = superclass
   }
   return result
 }

@@ -9,6 +9,32 @@ configuration and uses the K2 Analysis API and Kotlin stub indexes to find bindi
 
 ## Features
 
+### Create Injectable Classes and Contributions
+
+Use **Make class injectable** from Alt+Enter on a class header to add `@Inject`. Classes with only
+secondary constructors get a constructor picker when there is a choice.
+
+An injectable class with a supertype also offers **Contribute Metro binding**. Objects can use the
+same action. Choose `ContributesBinding`, `ContributesIntoSet`, or `ContributesIntoMap`, then choose
+an aggregation scope. For example, an injected `RealHttpApi : HttpApi` can become:
+
+```kotlin
+@Inject
+@ContributesBinding(AppScope::class)
+class RealHttpApi : HttpApi
+```
+
+The action respects `@DefaultBinding` and asks for a bound type when several choices remain. Concrete
+generic arguments are preserved. Scope choices come from known graphs and contributions, with an
+editor field for entering another scope.
+
+Map contributions reuse an existing map key or offer built-in and compatible custom key annotations.
+Required key arguments become editor template fields. Type a value and press Tab to move to the next
+field. Custom keys with required array or nested-annotation arguments can be added by hand.
+
+Both actions support preview and undo. Closing a picker leaves the source unchanged. The contribution
+suggestion is informational and can be disabled under `Settings > Editor > Inspections > Metro`.
+
 ### Unused Declaration Suppression
 
 Metro-generated code can be the only caller of providers, injected classes, etc. The plugin marks those
@@ -40,6 +66,26 @@ or show an unresolved marker when the IDE index has no binding for the key.
 
 Pin a graph context in the Metro tool window to see its bindings in gutter tooltips and navigation.
 The pin applies to declarations in that context and leaves the binding index unchanged.
+
+At a dependency site, use **Go to Metro Binding** from the editor context menu to open its provider.
+**Select in Metro** reveals the corresponding graph or binding in the tool window. These actions
+request current graph data, including when automatic browser refresh is disabled.
+
+### Binding Explanations
+
+Use **Why this Metro binding?** on a dependency to see the candidates in a concrete graph context.
+For example, it can explain why a higher-priority contribution wins, why a graph excludes a binding,
+or why a qualifier prevents a match. The dialog shows the selected bindings, their alternatives,
+and source navigation. **Copy Explanation** copies the complete result for sharing.
+
+Explanations use a snapshot of graph data. Run the action again after editing code.
+
+Compiler graph reports use the same structured reasons. Enable `reportsDestination` to include
+binding explanations in exported graph metadata and `analysis.json`. Compiler reports describe
+the candidates reached during compilation; the IDE can also show alternatives from its project
+index. See [graph analysis](../docs/graph-analysis.md#binding-explanations).
+
+### Optional Dependencies and Graph Extensions
 
 Optional dependencies have two forms:
 
@@ -129,7 +175,8 @@ returns to **All Graphs**.
 
 Expanding a graph groups its bindings into scoped, unscoped, multibinding, and contributed
 categories. The search field filters by binding key or implementation name, and double-clicking a
-binding navigates to its declaration. After validation, an Unused category lists authored
+binding navigates to its declaration. Enter and F4 also open the selected source. Autoscroll to Source
+can preview selections without moving focus from the tree. After validation, an Unused category lists authored
 `@Provides` and `@Binds` bindings that were not reached by that graph or its validated extensions.
 
 Select a graph and use **More > Export Graph Debug Info** to write a local report to the IDE log
@@ -138,7 +185,7 @@ project and type identifiers, so review the file before sharing it.
 
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
-### On-Demand Graph Validation
+### Graph Validation
 
 Graphs can be validated from their gutter icon, the editor context menu, or the Validate action in
 the Metro tool window. Validation runs in the background and checks every concrete extension context
@@ -167,6 +214,20 @@ The graph's gutter badge and its Validation row in the browser retain the cached
 it stale after relevant code changes until validation runs again. Unexpected plugin failures are
 reported as internal plugin errors.
 
+Completed diagnostics also appear in the editor and IntelliJ's Problems view. Stale diagnostics
+disappear from the editor until validation runs again. The **Last validation** pane keeps its
+previous result visible with a stale label. Inspection severity can be configured under
+`Settings > Editor > Inspections > Metro`.
+
+An empty multibinding can offer **Allow an empty multibinding**, which adds
+`@Multibinds(allowEmpty = true)` or changes a literal `false` to `true`. The fix supports preview and
+undo. It is available for a single editable Metro declaration with current validation results.
+
+To check one graph as you work, enable **Automatically validate the pinned graph after code changes**
+in Metro settings and pin its context. The plugin validates that graph and its children after a short
+pause. Unpinning, entering IDE indexing, or disabling automatic graph refresh cancels this work.
+Explicit validation starts immediately.
+
 > TODO: Add a GIF showing a graph validation run and navigation through a missing-binding trace.
 
 ## Settings
@@ -177,6 +238,7 @@ Project settings live under `Settings > Tools > Metro`.
 - Suppress false-positive kapt configuration warnings in Metro-enabled modules
 - Show binding navigation (gutter icons, code vision, inlay hints)
 - Automatically refresh graphs and bindings after code changes
+- Automatically validate the pinned graph after code changes (off by default)
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types
 
@@ -193,6 +255,8 @@ when the compiler provides enough metadata:
 - Constructor-injected classes resolve from library metadata when requested.
 - Contributions are found through generated Metro hint functions, as they are in `metroc`.
 - Contribution-provider container objects identify their source through `@Origin`.
+- Contributed interfaces expose their accessors, providers, and member injectors in the owning graph.
+- Referenced graph extensions and contributed factories include their child graphs and factory inputs.
 - `internal` contribution hints are visible only from friend/associated compilations, as defined by
   the compiler. Internal hints from other libraries are ignored.
 
@@ -212,7 +276,7 @@ to the project-wide view otherwise.
 Not yet modeled:
 
 - Exact parity with every compiler validation and diagnostic.
-- Validation-backed editor inspections and quick fixes.
+- Quick fixes beyond allowing a single empty multibinding.
 - Graph diagram views.
 
 ## Known Issues

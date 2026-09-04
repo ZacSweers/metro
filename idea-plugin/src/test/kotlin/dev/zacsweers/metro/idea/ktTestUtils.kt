@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
@@ -12,8 +13,10 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.WaitFor
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
+import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.FilePresentationBundle
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
@@ -145,6 +148,16 @@ internal fun Module.withMetroLibFixtureLibrary(
   }
 }
 
+/**
+ * Resolution feature tests opt into automatic presentation without waiting for production timers.
+ */
+internal fun Project.enableImmediateAutomaticRefresh() {
+  MetroSettings.getInstance(this).state.automaticallyRefreshGraphData = true
+  service<MetroResolutionService>().setAutomaticRefreshWindowForTest(AutomaticRefreshWindow(0, 0))
+  service<MetroResolutionService>().settingsChanged()
+}
+
+/** Configures Metro for the fixture, enabling the plugin unless explicitly disabled. */
 internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {
   val configuredOptions =
     if (options.any { (name, _) -> name == "enabled" }) {
@@ -152,15 +165,25 @@ internal fun Project.setMetroOptions(vararg options: Pair<String, String>) {
     } else {
       listOf("enabled" to "true") + options
     }
-  KotlinCommonCompilerArgumentsHolder.getInstance(this).update {
-    pluginOptions =
-      configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
-  }
+  updateMetroOptions(
+    configuredOptions.map { (name, value) -> "plugin:$PLUGIN_ID:$name=$value" }.toTypedArray()
+  )
 }
 
 /** Removes the plugin arguments so tests can represent a project that does not use Metro. */
 internal fun Project.clearMetroOptions() {
-  KotlinCommonCompilerArgumentsHolder.getInstance(this).update { pluginOptions = null }
+  updateMetroOptions(null)
+}
+
+/**
+ * Holds write access through option changes and notifications so background reads see one state.
+ */
+private fun Project.updateMetroOptions(options: Array<String>?) {
+  runInEdtAndWait {
+    runWriteAction {
+      KotlinCommonCompilerArgumentsHolder.getInstance(this).update { pluginOptions = options }
+    }
+  }
 }
 
 /**

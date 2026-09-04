@@ -49,6 +49,7 @@ import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.annotationsIn
 import dev.zacsweers.metro.compiler.ir.getAnnotation
+import dev.zacsweers.metro.compiler.ir.graph.reporting.BindingDecisionCapture
 import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
@@ -125,6 +126,8 @@ internal class IrBindingGraph(
   bindingLookup: BindingLookup,
   private val contributionData: IrContributionData,
   private val boundTypeResolver: IrBoundTypeResolver,
+  /** Report data outlives the lookup caches released after sealing. */
+  internal val decisionCapture: BindingDecisionCapture? = null,
 ) : IrMetroContext by metroContext, ErrorReporter<IrBindingStack> {
   private var hasErrors = false
 
@@ -320,6 +323,7 @@ internal class IrBindingGraph(
       errorReporter = this,
       missingBindingDiagnosticDetails = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
+      onExistingBinding = decisionCapture?.let { capture -> capture::reused },
     )
 
   private fun findSuspendCycleKey(
@@ -362,6 +366,7 @@ internal class IrBindingGraph(
       realGraph.tryPut(binding, bindingStack, key)
       if (realGraph.bindings.size != previousSize) {
         graphGeneration++
+        decisionCapture?.registered(binding)
       }
     }
   }

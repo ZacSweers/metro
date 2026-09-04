@@ -94,6 +94,15 @@ public open class MutableBindingGraph<
     { _, _ ->
       null
     },
+  /** Renders duplicate-binding locations from the caller's captured source information. */
+  private val bindingLocationDiagnostic: (Binding) -> LocationDiagnostic = {
+    it.renderLocationDiagnostic(short = true)
+  },
+  /**
+   * Observes requests satisfied by bindings already in the graph. Dependency entries are created
+   * only when this callback is present; root requests reuse their supplied entries.
+   */
+  private val onExistingBinding: ((ContextualTypeKey, Binding, BindingStackEntry) -> Unit)? = null,
 ) : BindingGraph<Type, TypeKey, ContextualTypeKey, Binding, BindingStackEntry, BindingStack> {
   // Populated by initial graph setup and later seal()
   override val bindings: MutableScatterMap<TypeKey, Binding> = MutableScatterMap(256)
@@ -264,6 +273,8 @@ public open class MutableBindingGraph<
         } else if (!contextKey.hasDefault) {
           stack.withEntry(entry) { missingBindings[contextKey.typeKey] = stack.copy() }
         }
+      } else {
+        onExistingBinding?.invoke(contextKey, bindings.getValue(contextKey.typeKey), entry)
       }
     }
 
@@ -296,10 +307,16 @@ public open class MutableBindingGraph<
         for (depKey in binding.dependencies) {
           ensureActive()
           val typeKey = depKey.typeKey
-          // Fast path: if the dependency already has a binding we have nothing to do. Skip the
-          // stack-entry allocation + push/pop which are only needed for missing-binding reports
-          // and error paths inside computeBindings. Avoid repeat loops for valid cycles
-          if (typeKey in bindings) continue
+          // Fast path: existing dependencies need no lookup. Stack entries support reporting,
+          // and are allocated here only for an observer. Avoid repeat loops for valid cycles.
+          if (typeKey in bindings) {
+            onExistingBinding?.invoke(
+              depKey,
+              bindings.getValue(typeKey),
+              stack.newBindingStackEntry(depKey, binding, roots),
+            )
+            continue
+          }
           stack.withEntry(stack.newBindingStackEntry(depKey, binding, roots)) {
             // If the binding isn't present, we'll report it later
             val newBindings =
@@ -562,7 +579,7 @@ public open class MutableBindingGraph<
     bindings: List<Binding>,
     bindingStack: BindingStack,
   ) {
-    val locations = bindings.map { it.renderLocationDiagnostic(short = true) }
+    val locations = bindings.map(bindingLocationDiagnostic)
     val notes = buildList {
       addAll(bindings.flatMap { it.diagnosticNotes }.distinct())
       addAll(locations.flatMap { it.notes }.distinct())

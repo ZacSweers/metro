@@ -31,6 +31,7 @@ internal class KaSuspendBindingValidator(
   private val graph: KaGraphDeclaration,
   private val graphName: String,
   private val options: MetroOptions,
+  private val sources: ValidationSourceSnapshot,
   private val graphConsumers: List<ConsumerEntry>,
   private val bindings: ScatterMap<KaTypeKey, KaBinding>,
   private val runtimeCoroutinesAvailable: Boolean,
@@ -141,8 +142,8 @@ internal class KaSuspendBindingValidator(
         val isSet = binding.typeKey.type.classId == StandardClassIds.Set
         SuspendMultibindingMetadata(
           isSet = isSet,
-          mapKeyType = binding.typeKey.type.typeArguments.getOrNull(0)?.shortType,
-          mapValueType = binding.typeKey.type.typeArguments.getOrNull(1)?.shortType,
+          mapKeyType = binding.typeKey.type.typeArguments.getOrNull(0)?.type?.shortType,
+          mapValueType = binding.typeKey.type.typeArguments.getOrNull(1)?.type?.shortType,
         )
       }
     val assistedFactory =
@@ -174,13 +175,19 @@ internal class KaSuspendBindingValidator(
       SuspendValidationSite.Graph -> Unit
       is SuspendValidationSite.GraphRequest -> {
         val request = site.request
-        val entry = KaBindingStack.Entry.requestedAt(request.contextKey, request.source, graphName)
+        val entry =
+          KaBindingStack.Entry.requestedAt(
+            request.contextKey,
+            request.source,
+            graphName,
+            sources.name(request.source),
+          )
         stack.push(if (path == null) entry else entry.withTrailingComment(NEEDS_SUSPEND_SUPPORT))
       }
       is SuspendValidationSite.BindingDependency -> {
         val binding = site.binding
         val dependency = site.dependency
-        val entry = KaBindingStack.Entry.injectedAt(dependency, binding)
+        val entry = KaBindingStack.Entry.injectedAt(dependency, binding, sources.location(binding))
         stack.push(if (path == null) entry else entry.withTrailingComment(NEEDS_SUSPEND_SUPPORT))
       }
     }
@@ -189,12 +196,14 @@ internal class KaSuspendBindingValidator(
     for (edge in path.edges) {
       val binding = bindings[edge.consumerKey] ?: break
       stack.push(
-        KaBindingStack.Entry.injectedAt(edge.dependency, binding)
+        KaBindingStack.Entry.injectedAt(edge.dependency, binding, sources.location(binding))
           .withTrailingComment(NEEDS_SUSPEND_SUPPORT)
       )
     }
     if (path.sourceIsSuspend) {
-      bindings[path.sourceKey]?.let { stack.push(KaBindingStack.Entry.providedAt(it)) }
+      bindings[path.sourceKey]?.let {
+        stack.push(KaBindingStack.Entry.providedAt(it, sources.location(it)))
+      }
     }
     return stack
   }

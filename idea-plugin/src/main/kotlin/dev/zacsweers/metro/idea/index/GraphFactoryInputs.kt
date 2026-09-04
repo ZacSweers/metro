@@ -34,6 +34,7 @@ internal class GraphFactoryInputs(
   val graphDependencies: Set<KaTypeKey>,
   val inputs: List<FactoryInputEntry>,
   val cacheDependencies: Set<PsiFile>,
+  val instanceBindings: List<KaBinding.BoundInstance> = emptyList(),
 ) {
   companion object {
     val EMPTY = GraphFactoryInputs(emptySet(), emptySet(), emptyList(), emptySet())
@@ -46,6 +47,7 @@ internal fun KaClassSymbol.graphFactoryInputs(
   options: MetroOptions,
   pointerManager: SmartPointerManager,
   graphId: GraphDeclarationId,
+  includeInstanceBindings: Boolean = false,
 ): GraphFactoryInputs =
   with(session) {
     val factoryScope =
@@ -66,8 +68,22 @@ internal fun KaClassSymbol.graphFactoryInputs(
     val graphDependencies = linkedSetOf<KaTypeKey>()
     val inputs = mutableListOf<FactoryInputEntry>()
     val cacheDependencies = linkedSetOf<PsiFile>()
+    val instanceBindings = mutableListOf<KaBinding.BoundInstance>()
     callable.symbol.psi?.containingFile?.let(cacheDependencies::add)
     for (parameter in callable.valueParameters) {
+      if (includeInstanceBindings) {
+        val source = parameter.symbol.psi
+        if (source != null) {
+          for (data in parameter.instanceBindingData(this, options)) {
+            instanceBindings +=
+              data.toKaBinding(
+                pointerManager.createSmartPsiElementPointer(source),
+                containerId = graphId.classId,
+                ownerGraphId = graphId,
+              ) as KaBinding.BoundInstance
+          }
+        }
+      }
       val isIncluded = parameter.symbol.annotations.any { it.classId == MetroClassIds.includes }
       if (!isIncluded) continue
       val parameterType = parameter.returnType.fullyExpandedType as? KaClassType ?: continue
@@ -101,7 +117,13 @@ internal fun KaClassSymbol.graphFactoryInputs(
           )
       }
     }
-    GraphFactoryInputs(bindingContainers, graphDependencies, inputs, cacheDependencies)
+    GraphFactoryInputs(
+      bindingContainers,
+      graphDependencies,
+      inputs,
+      cacheDependencies,
+      instanceBindings,
+    )
   }
 
 private fun KaSession.includedGraphDependency(

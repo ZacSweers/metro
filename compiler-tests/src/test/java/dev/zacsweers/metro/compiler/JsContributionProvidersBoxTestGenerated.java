@@ -2519,6 +2519,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("DirectMapAndMultibindingValues.kt")
+    public void testDirectMapAndMultibindingValues() {
+      run("DirectMapAndMultibindingValues.kt");
+    }
+
+    @Test
     @TestMetadata("ElementsIntoSetProperty.kt")
     public void testElementsIntoSetProperty() {
       run("ElementsIntoSetProperty.kt");
@@ -2790,6 +2796,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @Test
     public void testAllFilesPresentInReports() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/box/reports"), Pattern.compile("^(.+)\\.kt$"), null, true, "interop", "circuit");
+    }
+
+    @Test
+    @TestMetadata("BindingExplanationsPreserveBindings.kt")
+    public void testBindingExplanationsPreserveBindings() {
+      run("BindingExplanationsPreserveBindings.kt");
     }
 
     @Test

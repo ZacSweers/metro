@@ -1,0 +1,4 @@
+import dev.zacsweers.metro.Inject
+
+@Inject
+class Service

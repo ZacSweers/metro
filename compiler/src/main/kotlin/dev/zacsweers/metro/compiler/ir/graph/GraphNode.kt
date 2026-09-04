@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler.ir.graph
 
 import dev.zacsweers.metro.compiler.BitField
 import dev.zacsweers.metro.compiler.Origins
+import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.BindsCallable
 import dev.zacsweers.metro.compiler.ir.BindsOptionalOfCallable
 import dev.zacsweers.metro.compiler.ir.IrAnnotation
@@ -203,6 +204,8 @@ internal sealed class GraphNode {
     override val graphPrivateKeys: Set<IrTypeKey> = emptySet(),
     override val publishedBindsKeys: Set<IrTypeKey> = emptySet(),
     var proto: DependencyGraphProto? = null,
+    /** Actual contribution removals retained for this graph's optional report. */
+    val contributionDecisions: List<BindingExplanationCandidate> = emptyList(),
   ) : GraphNode() {
     val hasExtensions = graphExtensions.isNotEmpty()
 

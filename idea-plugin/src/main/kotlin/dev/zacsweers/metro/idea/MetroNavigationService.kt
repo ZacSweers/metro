@@ -7,6 +7,9 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.EditorFactoryEvent
+import com.intellij.openapi.editor.event.EditorFactoryListener
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -33,12 +36,29 @@ import org.jetbrains.annotations.TestOnly
 internal class MetroNavigationService(
   private val project: Project,
   private val scope: CoroutineScope,
-) {
+) : Disposable {
   private data class NavigationRequest(val identity: Any, val job: Job)
 
   private val lock = Any()
+  private var disposed = false
   private val requestsByOwner = IdentityHashMap<Any, NavigationRequest>()
   private val targetResolutionObserver = AtomicReference<(suspend () -> Unit)?>(null)
+
+  init {
+    // Editor release can happen while a cold query is suspended waiting for project indexes.
+    EditorFactory.getInstance()
+      .addEditorFactoryListener(
+        object : EditorFactoryListener {
+          override fun editorReleased(event: EditorFactoryEvent) {
+            val editor = event.editor
+            if (editor.project !== project) return
+            val request = synchronized(lock) { requestsByOwner.remove(editor) }
+            request?.job?.cancel()
+          }
+        },
+        this,
+      )
+  }
 
   /** A newer request from [owner] cancels and supersedes its previous request. */
   fun resolveTargets(
@@ -56,6 +76,13 @@ internal class MetroNavigationService(
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? = resolveTargets(owner, { Disposer.isDisposed(owner) }, targets, orderTargets, onResolved)
 
+  /** Cold editor queries share pointer navigation's latest-request and editor-lifetime guards. */
+  fun <T> runEditorRequest(
+    owner: Editor,
+    resolve: suspend () -> T,
+    onResolved: (T) -> Unit,
+  ): Job? = runRequest(owner, { owner.isDisposed }, resolve, onResolved)
+
   private fun resolveTargets(
     owner: Any,
     isOwnerDisposed: () -> Boolean,
@@ -63,15 +90,12 @@ internal class MetroNavigationService(
     orderTargets: ((List<PsiElement>) -> List<PsiElement>)?,
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? {
-    if (project.isDisposed || isOwnerDisposed()) return null
-    val requestIdentity = Any()
-    val job =
-      scope.launch(start = CoroutineStart.LAZY) {
+    return runRequest(
+      owner,
+      isOwnerDisposed,
+      resolve = {
         targetResolutionObserver.get()?.invoke()
-        if (project.isDisposed || !isCurrent(owner, requestIdentity) || isOwnerDisposed()) {
-          return@launch
-        }
-        val elements = readAction {
+        readAction {
           val resolved = buildList {
             for (target in targets) {
               ProgressManager.checkCanceled()
@@ -80,15 +104,39 @@ internal class MetroNavigationService(
           }
           if (orderTargets == null) resolved else orderTargets(resolved)
         }
+      },
+      onResolved = { onResolved(it.filter(PsiElement::isValid)) },
+    )
+  }
+
+  /** Publishes on the EDT only while this request still owns its editor or tool-window slot. */
+  private fun <T> runRequest(
+    owner: Any,
+    isOwnerDisposed: () -> Boolean,
+    resolve: suspend () -> T,
+    onResolved: (T) -> Unit,
+  ): Job? {
+    if (project.isDisposed || isOwnerDisposed()) return null
+    val requestIdentity = Any()
+    val job =
+      scope.launch(start = CoroutineStart.LAZY) {
+        if (project.isDisposed || !isCurrent(owner, requestIdentity) || isOwnerDisposed()) {
+          return@launch
+        }
+        val result = resolve()
         withContext(Dispatchers.EDT) {
           if (project.isDisposed || isOwnerDisposed()) return@withContext
           if (!isCurrent(owner, requestIdentity)) return@withContext
-          onResolved(elements.filter(PsiElement::isValid))
+          onResolved(result)
         }
       }
 
     val previous =
       synchronized(lock) {
+        if (disposed) {
+          job.cancel()
+          return null
+        }
         requestsByOwner.put(owner, NavigationRequest(requestIdentity, job))
       }
     previous?.job?.cancel()
@@ -110,5 +158,17 @@ internal class MetroNavigationService(
 
   private fun isCurrent(owner: Any, requestIdentity: Any): Boolean {
     return synchronized(lock) { requestsByOwner[owner]?.identity === requestIdentity }
+  }
+
+  /** Service disposal removes the application listener and releases pending owner references. */
+  override fun dispose() {
+    val jobs =
+      synchronized(lock) {
+        disposed = true
+        val pending = requestsByOwner.values.map { it.job }
+        requestsByOwner.clear()
+        pending
+      }
+    for (job in jobs) job.cancel()
   }
 }

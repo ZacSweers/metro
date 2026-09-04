@@ -5,20 +5,28 @@ package dev.zacsweers.metro.idea
 import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.SearchRequestCollector
 import com.intellij.psi.search.SearchScope
+import com.intellij.psi.search.SearchSession
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.usages.Usage
 import com.intellij.usages.impl.rules.UsageWithType
 import com.intellij.usages.rules.PsiElementUsage
+import com.intellij.util.Processor
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.usages.MetroFindUsagesHandlerFactory
+import dev.zacsweers.metro.idea.usages.MetroUsageSearcher
 import dev.zacsweers.metro.idea.usages.collectMetroUsages
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.KtFile
@@ -29,6 +37,7 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
 
   override fun setUp() {
     super.setUp()
+    project.enableImmediateAutomaticRefresh()
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
     project.service<GraphContextPinService>().clear()
@@ -240,6 +249,95 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
     )
   }
 
+  fun testCustomSearcherReusesThePreparedCollection() {
+    val file = configureSharedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    val options = searchOptions()
+    val prepared = runBlocking { collectMetroUsages(target, options) }
+    val collected = mutableListOf<Usage>()
+
+    val search = CompletableFuture.runAsync {
+      ProgressManager.getInstance()
+        .runProcess(
+          {
+            MetroUsageSearcher()
+              .processElementUsages(
+                target,
+                Processor { usage ->
+                  collected += usage
+                  true
+                },
+                options,
+              )
+          },
+          EmptyProgressIndicator(),
+        )
+    }
+    PlatformTestUtil.waitForFuture(search, 30_000)
+    search.join()
+
+    assertEquals(2, prepared.size)
+    assertEquals(prepared.size, collected.size)
+    for (index in prepared.indices) {
+      assertSame(prepared[index], collected[index])
+    }
+
+    val nextSearch = runBlocking { collectMetroUsages(target, searchOptions()) }
+    assertNotSame(prepared, nextSearch)
+    assertEquals(foundUsages(prepared), foundUsages(nextSearch))
+  }
+
+  fun testSearchCollectionTracksItsTargetAndScope() {
+    val file = configureSharedService()
+    val declarations = file.declarationsIncludingNested()
+    val target = declarations.klass("Service")
+    val options = searchOptions()
+    val initial = runBlocking { collectMetroUsages(target, options) }
+    assertEquals(2, initial.size)
+
+    val accessor = declarations.property("firstService")
+    val provider = runBlocking { collectMetroUsages(accessor, options) }
+    assertEquals(listOf(FoundUsage("Service", "Provided by")), foundUsages(provider))
+
+    options.searchScope = LocalSearchScope(declarations.klass("FirstGraph"))
+    val scoped = runBlocking { collectMetroUsages(target, options) }
+    assertEquals(listOf(FoundUsage("FirstGraph.firstService", "Injected at")), foundUsages(scoped))
+  }
+
+  fun testSearchCollectionTracksThePinnedGraph() {
+    val file = configureSharedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    val options = searchOptions()
+    assertEquals(2, runBlocking { collectMetroUsages(target, options) }.size)
+
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val graph = index.graphs.single { it.name == "FirstGraph" }
+    project.service<GraphContextPinService>().pin(index.contextsFor(graph).single().path)
+
+    val pinned = runBlocking { collectMetroUsages(target, options) }
+    assertEquals(listOf(FoundUsage("FirstGraph.firstService", "Injected at")), foundUsages(pinned))
+
+    project.service<GraphContextPinService>().clear()
+    assertEquals(2, runBlocking { collectMetroUsages(target, options) }.size)
+  }
+
+  fun testSearchCollectionTracksIndexRefreshes() {
+    val file = configureSharedService()
+    val target = file.declarationsIncludingNested().klass("Service")
+    val options = searchOptions()
+    val service = project.service<MetroResolutionService>()
+    val initialIndex = service.awaitIndex(file)
+    val initial = runBlocking { collectMetroUsages(target, options) }
+
+    service.refreshGraphData()
+    val updatedIndex = service.awaitIndex(file)
+    assertNotSame(initialIndex.generationToken, updatedIndex.generationToken)
+
+    val updated = runBlocking { collectMetroUsages(target, options) }
+    assertNotSame(initial, updated)
+    assertEquals(foundUsages(initial), foundUsages(updated))
+  }
+
   fun testUnrelatedDeclarationsAndExcludedScopesProduceNoMetroUsages() {
     val file =
       myFixture.configureMetroFile(
@@ -321,6 +419,10 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
     val usages = mutableListOf<Usage>()
     val options = FindUsagesOptions(project).apply { searchScope = scope }
     usages += runBlocking { collectMetroUsages(target, options) }
+    return foundUsages(usages)
+  }
+
+  private fun foundUsages(usages: List<Usage>): List<FoundUsage> {
     return usages.map { usage ->
       val element = (usage as PsiElementUsage).element
       val declaration =
@@ -330,6 +432,32 @@ class MetroFindUsagesTest : BasePlatformTestCase() {
         }
       checkNotNull(declaration)
       FoundUsage(declaration.testName(), (usage as UsageWithType).usageType.toString())
+    }
+  }
+
+  private fun configureSharedService(): KtFile {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        @Inject class Service
+
+        @DependencyGraph interface FirstGraph {
+          val firstService: Service
+        }
+
+        @DependencyGraph interface SecondGraph {
+          val secondService: Service
+        }
+        """
+      )
+    project.service<MetroResolutionService>().awaitIndex(file)
+    return file
+  }
+
+  private fun searchOptions(): FindUsagesOptions {
+    return FindUsagesOptions(project).apply {
+      searchScope = GlobalSearchScope.projectScope(project)
+      fastTrack = SearchRequestCollector(SearchSession())
     }
   }
 }
