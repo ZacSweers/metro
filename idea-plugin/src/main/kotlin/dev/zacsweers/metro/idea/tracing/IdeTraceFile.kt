@@ -15,7 +15,11 @@ import okio.buffer
 import okio.sink
 
 /** Called on IO. The serializer remains alive until the capture owner drains and closes it. */
-internal fun createIdeTraceOutput(directory: Path, onFailure: (Throwable) -> Unit): IdeTraceOutput {
+internal fun createIdeTraceOutput(
+  directory: Path,
+  onFailure: (Throwable) -> Unit,
+  includeThreadActivity: Boolean = false,
+): IdeTraceOutput {
   Files.createDirectories(directory)
   val path = Files.createTempFile(directory, "metro-ide-", ".perfetto-trace")
   val bufferedSink = path.toFile().sink().buffer()
@@ -27,8 +31,9 @@ internal fun createIdeTraceOutput(directory: Path, onFailure: (Throwable) -> Uni
     driver.tracer.instant(category = "metro.ide", name = "capture") {
       addMetadataEntry("plugin_version", VERSION)
       addMetadataEntry("plugin_git_sha", GIT_SHA)
+      addMetadataEntry("include_thread_activity", includeThreadActivity.toString())
     }
-    return IdeTraceOutput(driver, path, IdeTraceTimeline())
+    return IdeTraceOutput(driver, path, IdeTraceTimeline(), includeThreadActivity)
   } catch (failure: Throwable) {
     try {
       if (sink == null) bufferedSink.close() else sink.close()

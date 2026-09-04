@@ -195,7 +195,8 @@ internal constructor(
   /** A writer failure must never execute user work twice or replace its exception. */
   internal fun <T> run(block: (IdeTraceOperation?) -> T): T {
     val started = capture.nanoTime()
-    if (capture.timeline != null) {
+    // Optional live slices share operation IDs with the completed logical intervals.
+    if (capture.timeline != null && !capture.includeThreadActivity) {
       var failure: Throwable? = null
       try {
         return block(this)
@@ -247,7 +248,8 @@ internal constructor(
 
   internal suspend fun <T> runSuspend(block: suspend (IdeTraceOperation?) -> T): T {
     val started = capture.nanoTime()
-    if (capture.timeline != null) {
+    // AndroidX records coroutine resumptions and their flows while finish retains the wall span.
+    if (capture.timeline != null && !capture.includeThreadActivity) {
       var failure: Throwable? = null
       try {
         return block(this)

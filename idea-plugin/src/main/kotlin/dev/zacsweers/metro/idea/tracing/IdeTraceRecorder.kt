@@ -47,6 +47,8 @@ internal class IdeTraceOutput(
   val driver: AbstractTraceDriver,
   val path: Path? = null,
   val timeline: IdeTraceTimeline? = null,
+  /** Fixed for this output so changing settings only affects subsequent captures. */
+  val includeThreadActivity: Boolean = false,
 ) {
   fun close() {
     driver.close()
@@ -60,6 +62,7 @@ internal class IdeTraceCapture(
   val nanoTime: () -> Long,
   private val onFailure: (Throwable) -> Unit,
   val timeline: IdeTraceTimeline? = null,
+  val includeThreadActivity: Boolean = false,
 ) {
   val nextOperationId = AtomicLong()
   private val lock = Any()
@@ -185,6 +188,7 @@ internal class IdeTraceRecorder(
           nanoTime,
           onFailure = { fail(request, it) },
           timeline = output.timeline,
+          includeThreadActivity = output.includeThreadActivity,
         )
       synchronized(lock) {
         request.capture = capture
