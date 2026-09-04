@@ -33,6 +33,7 @@ import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
@@ -93,6 +94,7 @@ internal class MetroToolWindowPanel(
   private val traceStatus =
     JBLabel().apply {
       isVisible = false
+      foreground = UIUtil.getContextHelpForeground()
       border = JBUI.Borders.empty(6, 8)
     }
   private var indexBuildProgress: IndexBuildProgress? = null
@@ -285,7 +287,7 @@ internal class MetroToolWindowPanel(
     actionToolbar?.updateActionsAsync()
   }
 
-  /** Keeps capture lifetime visible while debugging controls are enabled. */
+  /** Shows capture lifetime as a secondary note while debugging controls are enabled. */
   private fun updateTraceStatus() {
     if (disposed || project.isDisposed) return
     val enabled = MetroSettings.getInstance(project).state.enableDebuggingOptions
@@ -294,8 +296,7 @@ internal class MetroToolWindowPanel(
       when (state) {
         IdeTraceState.IDLE -> ""
         IdeTraceState.STARTING -> "Starting Metro performance trace…"
-        IdeTraceState.RECORDING ->
-          if (tracingService.isRefreshCapture) "Tracing Metro refresh…" else "Tracing Metro work…"
+        IdeTraceState.RECORDING -> "Tracing enabled…"
         IdeTraceState.DRAINING -> "Finishing traced work…"
         IdeTraceState.SAVING -> "Saving Metro performance trace…"
       }
