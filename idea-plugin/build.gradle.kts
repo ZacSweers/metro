@@ -262,14 +262,17 @@ dependencies {
   compileOnly("dev.zacsweers.metro:metro-common")
   compileOnly(libs.androidx.collection)
   compileOnly(libs.androidx.tracing)
+  compileOnly(libs.androidx.tracing.wire)
   add(shaded.name, "dev.zacsweers.metro:metro-common")
   add(shaded.name, libs.androidx.collection)
   add(shaded.name, libs.androidx.tracing)
+  add(shaded.name, libs.androidx.tracing.wire)
   testImplementation(libs.junit)
   testImplementation(libs.kotlin.test)
   testImplementation("dev.zacsweers.metro:metro-common")
   testImplementation(libs.androidx.collection)
   testImplementation(libs.androidx.tracing)
+  testImplementation(libs.androidx.tracing.wire)
 }
 
 tasks.jar {
