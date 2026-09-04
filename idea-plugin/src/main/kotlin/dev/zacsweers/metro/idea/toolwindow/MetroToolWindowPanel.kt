@@ -97,7 +97,8 @@ internal class MetroToolWindowPanel(
     }
   private var indexBuildProgress: IndexBuildProgress? = null
   private var validationProgress: List<GraphValidationProgress> = emptyList()
-  private lateinit var actionToolbar: ActionToolbar
+  /** State listeners can run before the toolbar is attached during construction. */
+  private var actionToolbar: ActionToolbar? = null
   private val treeStructure =
     MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
@@ -131,7 +132,7 @@ internal class MetroToolWindowPanel(
   internal val graphRefreshModeAction =
     GraphRefreshModeAction(project) {
       updateIndexBuildStatus()
-      actionToolbar.updateActionsImmediately()
+      actionToolbar?.updateActionsAsync()
     }
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
@@ -222,12 +223,13 @@ internal class MetroToolWindowPanel(
         ),
         overflowGroup,
       )
-    actionToolbar =
+    val toolbar =
       ActionManager.getInstance().createActionToolbar("MetroToolWindow", actionGroup, true)
-    actionToolbar.targetComponent = tree
+    toolbar.targetComponent = tree
+    actionToolbar = toolbar
 
     val header = JPanel(BorderLayout())
-    header.add(actionToolbar.component, BorderLayout.WEST)
+    header.add(toolbar.component, BorderLayout.WEST)
     header.add(searchField, BorderLayout.CENTER)
     setToolbar(header)
     val content = JPanel(BorderLayout())
@@ -265,7 +267,7 @@ internal class MetroToolWindowPanel(
       resolutionService.isGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
       else -> indexBuildStatus.clear()
     }
-    if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
+    actionToolbar?.updateActionsAsync()
   }
 
   private fun updateValidationStatus() {
@@ -280,9 +282,7 @@ internal class MetroToolWindowPanel(
     } else {
       validationStatus.show(progress)
     }
-    if (::actionToolbar.isInitialized) {
-      actionToolbar.updateActionsImmediately()
-    }
+    actionToolbar?.updateActionsAsync()
   }
 
   /** Keeps capture lifetime visible while debugging controls are enabled. */
@@ -300,7 +300,7 @@ internal class MetroToolWindowPanel(
         IdeTraceState.SAVING -> "Saving Metro performance trace…"
       }
     traceStatus.isVisible = enabled && state != IdeTraceState.IDLE
-    if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
+    actionToolbar?.updateActionsAsync()
   }
 
   /** Selects the declaration or exact path requested by an explicit validation action. */

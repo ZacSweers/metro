@@ -177,7 +177,7 @@ internal class MetroValidationResultPanel(
   private fun showSelectedDiagnostic() {
     var node = tree.selectionPath?.let(::nodeAt)
     while (node != null && node !is MetroTreeNode.Diagnostic) node = node.parent
-    val diagnostic = (node as? MetroTreeNode.Diagnostic)?.takeIf { structure.contains(it) }
+    val diagnostic = node?.takeIf { structure.contains(it) }
     diagnosticDetails.showDiagnostic(diagnostic)
     treeAndDetails.secondComponent = diagnosticDetails.takeIf { diagnostic != null }
   }
@@ -241,7 +241,7 @@ internal class MetroValidationResultTreeStructure(private val project: Project) 
     val updated = displayed.mapValues { (path, cached) ->
       val retained = retainedByPath[path]
       val isSameResult = retained?.result === cached.result
-      val stale = !isSameResult || retained?.stale == true
+      val stale = !isSameResult || retained.stale
       if (stale == cached.stale) {
         cached
       } else {
