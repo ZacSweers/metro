@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../site-assets/img/favicon.ico">
-      <meta name="generator" content="zensical-0.0.58">
+      <meta name="generator" content="zensical-0.0.59">
     
     
       
@@ -3408,7 +3408,6 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by <code>Provider</code>/<code>Lazy</code>) together in the same shard.</p>
-<p>This feature is disabled by default but will likely be enabled by default in the future.</p>
 <div class="admonition configuration">
 <p class="admonition-title">Configuration</p>
 <table>
@@ -3425,7 +3424,7 @@
 <td>enableGraphSharding</td>
 <td><code>metro.enableGraphSharding</code></td>
 <td><code>enable-graph-sharding</code></td>
-<td>Enable/disable sharding (default: <code>false</code>)</td>
+<td>Enable/disable sharding (default: <code>true</code>)</td>
 </tr>
 <tr>
 <td>keysPerGraphShard</td>
