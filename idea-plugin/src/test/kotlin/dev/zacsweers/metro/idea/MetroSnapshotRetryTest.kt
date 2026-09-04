@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import androidx.tracing.wire.TraceDriver
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -26,6 +27,11 @@ import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
 import dev.zacsweers.metro.idea.index.snapshot.SourceFileShardCache
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
+import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
+import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -33,8 +39,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -95,7 +107,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     }
   }
 
-  fun testWriteActionRetriesOnlyTheActiveFileRead() {
+  fun testWriteActionRetriesOnlyTheActiveFileRead() = withSnapshotTrace { recorder, sink ->
     val file = configureTwoFiles()
     val reads = mutableListOf<Pair<VirtualFile, FileShard>>()
     val readFiles = linkedSetOf<VirtualFile>()
@@ -112,7 +124,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
         awaitReadCancellation(release, interrupted)
       }
     }
-    val preparation = startPreparation(builder, file, publish = events::add)
+    val preparation = startPreparation(builder, file, recorder = recorder, publish = events::add)
     try {
       val readsBeforeWrite = PlatformTestUtil.waitForFuture(activeRead, 30_000)
       val completedFile = readsBeforeWrite.first().first
@@ -127,9 +139,42 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       val finalProgress = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
       assertEquals(finalProgress.total, finalProgress.completed)
       assertEquals(2, finalProgress.reused!! + finalProgress.rebuilt!!)
+      recorder.stop()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+      val scan = sink.results("source.scan").single().metadata
+      assertEquals("completed", scan["outcome"])
+      val rebuilt = checkNotNull(scan["files.rebuilt"]).toInt()
+      val reused = checkNotNull(scan["files.reused"]).toInt()
+      assertEquals(2, rebuilt + reused)
+      assertTrue(checkNotNull(scan["read_attempts"]).toInt() > 2)
+      assertTrue(checkNotNull(scan["canceled_read_attempts"]).toInt() >= 1)
+      assertEquals(1, sink.results("source.discover").size)
+      assertEquals(1, sink.results("snapshot.prepare").size)
     } finally {
       release.countDown()
       PlatformTestUtil.waitForFuture(preparation, 30_000)
+    }
+  }
+
+  /** Runs enabled tracing with an in-memory sink while the fixture exercises real read retries. */
+  private fun withSnapshotTrace(block: (IdeTraceRecorder, RecordingIdeTraceSink) -> Unit) {
+    val job = SupervisorJob()
+    val sink = RecordingIdeTraceSink()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(job + Dispatchers.Default),
+        createOutput = { IdeTraceOutput(TraceDriver(sink)) },
+      )
+    try {
+      recorder.start()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.RECORDING } } }
+      block(recorder, sink)
+    } finally {
+      recorder.stop()
+      runBlocking {
+        withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } }
+        job.cancelAndJoin()
+      }
     }
   }
 
@@ -435,6 +480,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     revision: Long = 0,
     resolveFromLibraries: Boolean = false,
     parentJob: Job? = null,
+    recorder: IdeTraceRecorder? = null,
     checkCurrent: () -> Unit = {},
     publish: (IndexBuildProgress) -> Unit = {},
   ): CompletableFuture<Result<PreparedResolutionSnapshot>> = CompletableFuture.supplyAsync {
@@ -452,23 +498,27 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
               )
             )
           }
-        builder.prepare(
-          previous = null,
-          inputs = IndexInputs(0, 0),
-          targets = targets,
-          pending =
-            SourceSnapshotChanges(
-              emptySet(),
-              setOf(file.virtualFile),
-              emptySet(),
-              true,
-              invalidationRevision = revision,
-            ),
-          coldSweep = true,
-          progress = IndexBuildProgressReporter(publish),
-          generationToken = IndexGenerationToken.create(),
-          checkCurrent = checkCurrent,
-        )
+        suspend fun prepare(trace: IdeTraceOperation?): PreparedResolutionSnapshot =
+          builder.prepare(
+            previous = null,
+            inputs = IndexInputs(0, 0),
+            targets = targets,
+            pending =
+              SourceSnapshotChanges(
+                emptySet(),
+                setOf(file.virtualFile),
+                emptySet(),
+                true,
+                invalidationRevision = revision,
+              ),
+            coldSweep = true,
+            progress = IndexBuildProgressReporter(publish),
+            generationToken = IndexGenerationToken.create(),
+            trace = trace,
+            checkCurrent = checkCurrent,
+          )
+        if (recorder == null) prepare(null)
+        else recorder.traceSuspend("snapshot.prepare") { prepare(it) }
       }
     }
   }

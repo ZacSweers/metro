@@ -54,6 +54,11 @@ import dev.zacsweers.metro.idea.model.GraphContext
 import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.phase
+import dev.zacsweers.metro.idea.tracing.phaseSuspend
+import dev.zacsweers.metro.idea.tracing.readAttempt
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
@@ -407,6 +412,7 @@ private constructor(
           val activeAttempt = filePresentationBuilds[event.key]
           val accepted = activeAttempt?.id == event.attemptId && activeAttempt.index === event.index
           if (!accepted) {
+            tracePresentationResult(event.attemptId, event.outcome, "obsoleteAttempt")
             continue
           }
           filePresentationBuilds.remove(event.key)
@@ -416,14 +422,20 @@ private constructor(
               FilePresentationBuildOutcome.Failed -> null
               is FilePresentationBuildOutcome.Succeeded -> outcome.bundle
             }
-          if (
+          val readyForPublication =
             bundle != null &&
               isPresentationIndexPublished(event.index) &&
               event.key !in filePresentationBundles &&
               completedFilePresentationBundles.none { it.key == event.key }
-          ) {
+          tracePresentationResult(
+            event.attemptId,
+            event.outcome,
+            if (readyForPublication) "readyForPublication" else "discarded",
+          )
+          if (readyForPublication) {
             completedFilePresentationBundles +=
               CompletedFilePresentationBundle(
+                event.attemptId,
                 event.index,
                 event.key,
                 bundle,
@@ -462,7 +474,10 @@ private constructor(
               activeAttempt.index === event.index &&
               activeAttempt.baseBundle === event.baseBundle &&
               activeAttempt.modificationStamp == event.modificationStamp
-          if (!accepted) continue
+          if (!accepted) {
+            tracePresentationResult(event.attemptId, event.outcome, "obsoleteAttempt")
+            continue
+          }
           filePresentationAnchorBuilds.remove(event.key)
           val bundle =
             when (val outcome = event.outcome) {
@@ -475,17 +490,23 @@ private constructor(
             pending != null &&
               (pending.baseBundle !== event.baseBundle ||
                 pending.modificationStamp != event.modificationStamp)
-          if (
+          val readyForPublication =
             bundle != null &&
               !superseded &&
               isPresentationBundlePublished(event.index, event.key, event.baseBundle) &&
               bundle.sharesSemanticData(event.baseBundle) &&
               bundle.anchorsAreCurrent(event.modificationStamp) &&
               completedFilePresentationAnchorBundles.none { it.key == event.key }
-          ) {
+          tracePresentationResult(
+            event.attemptId,
+            event.outcome,
+            if (readyForPublication) "readyForPublication" else "discarded",
+          )
+          if (readyForPublication) {
             pendingFilePresentationAnchorRequests.remove(event.key)
             completedFilePresentationAnchorBundles +=
               CompletedFilePresentationAnchorBundle(
+                event.attemptId,
                 event.index,
                 event.key,
                 event.baseBundle,
@@ -647,7 +668,15 @@ private constructor(
     val batch = pendingPsiChanges
     pendingPsiChanges = PendingPsiChanges()
     try {
-      classifyAndApplyPsiChanges(batch)
+      project.service<MetroIdeTracingService>().traceSuspend(
+        "index.classifyPsi",
+        {
+          attribute("files", batch.files.size)
+          attribute("directories", batch.directories.size)
+        },
+      ) { trace ->
+        classifyAndApplyPsiChanges(batch, trace)
+      }
     } catch (_: ProcessCanceledException) {
       mergePendingPsiChanges(batch)
       yield()
@@ -658,21 +687,30 @@ private constructor(
   }
 
   /** Falls back to full invalidation when classification fails without cancellation. */
-  private suspend fun classifyAndApplyPsiChanges(batch: PendingPsiChanges) {
+  private suspend fun classifyAndApplyPsiChanges(
+    batch: PendingPsiChanges,
+    trace: IdeTraceOperation?,
+  ) {
     try {
       val classified =
         smartReadAction(project) {
-          checkPsiClassificationActive()
-          classifyPsiChanges(batch)
+          trace.readAttempt {
+            checkPsiClassificationActive()
+            classifyPsiChanges(batch)
+          }
         }
       psiClassificationObserver?.invoke()
       currentCoroutineContext().ensureActive()
       checkPsiClassificationActive()
       applyClassifiedPsiChanges(classified)
+      trace?.attribute("files.dirty", classified.dirty.size)
+      trace?.attribute("files.irrelevant", classified.irrelevantFiles.size)
+      trace?.attribute("forceAll", classified.forceAll)
     } catch (failure: Throwable) {
       if (failure is ProcessCanceledException) throw failure
       if (failure is CancellationException) throw failure
       checkPsiClassificationActive()
+      trace?.outcome("fullInvalidationFallback")
       logger<MetroResolutionService>().warn("Metro PSI invalidation failed", failure)
       val requested = failedClassificationRequests(batch)
       sourceInvalidationRevision++
@@ -850,38 +888,60 @@ private constructor(
       }
       requests.remove()
       val attemptId = ++nextFilePresentationAttemptId
+      val queuedRequests = pendingFilePresentationRequests.size
+      val activeWorkers = MAX_CONCURRENT_FILE_PRESENTATION_BUILDS - available + 1
       val job =
         scope.async(start = CoroutineStart.LAZY) {
-          try {
-            currentCoroutineContext().ensureActive()
-            if (!isPresentationIndexPublished(index)) {
-              return@async FilePresentationBuildOutcome.Canceled
-            }
-            val semanticBundle = index.withResolutionSession { session ->
-              FilePresentationBundleBuilder(
-                  index = index,
-                  session = session,
-                  file = key.file,
-                  declarationAnchorSignatures =
-                    declarationAnchorSignatures[index.generationToken].orEmpty(),
-                )
-                .build()
-            }
-            val bundle =
-              smartReadAction(project) {
-                val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
-                ktFile?.let(semanticBundle::rebuildAnchors) ?: semanticBundle
+          project.service<MetroIdeTracingService>().traceSuspend(
+            "presentation.build",
+            {
+              attribute("attempt", attemptId)
+              attribute("generation", System.identityHashCode(index.generationToken))
+              attribute("queuedRequests", queuedRequests)
+              attribute("activeWorkers", activeWorkers)
+            },
+          ) { trace ->
+            try {
+              currentCoroutineContext().ensureActive()
+              if (!isPresentationIndexPublished(index)) {
+                trace?.outcome("superseded")
+                return@traceSuspend FilePresentationBuildOutcome.Canceled
               }
-            currentCoroutineContext().ensureActive()
-            FilePresentationBuildOutcome.Succeeded(bundle)
-          } catch (exception: CancellationException) {
-            throw exception
-          } catch (_: ProcessCanceledException) {
-            FilePresentationBuildOutcome.Canceled
-          } catch (failure: Throwable) {
-            logger<MetroResolutionService>()
-              .warn("Metro file presentation build failed for ${key.file.name}", failure)
-            FilePresentationBuildOutcome.Failed
+              val semanticBundle =
+                trace.phase("presentation.resolve") {
+                  index.withResolutionSession { session ->
+                    FilePresentationBundleBuilder(
+                        index = index,
+                        session = session,
+                        file = key.file,
+                        declarationAnchorSignatures =
+                          declarationAnchorSignatures[index.generationToken].orEmpty(),
+                      )
+                      .build()
+                  }
+                }
+              val bundle =
+                trace.phaseSuspend("presentation.captureAnchors") { phase ->
+                  smartReadAction(project) {
+                    phase.readAttempt {
+                      val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
+                      ktFile?.let(semanticBundle::rebuildAnchors) ?: semanticBundle
+                    }
+                  }
+                }
+              currentCoroutineContext().ensureActive()
+              FilePresentationBuildOutcome.Succeeded(bundle)
+            } catch (exception: CancellationException) {
+              throw exception
+            } catch (_: ProcessCanceledException) {
+              trace?.outcome("platformCanceled")
+              FilePresentationBuildOutcome.Canceled
+            } catch (failure: Throwable) {
+              trace?.outcome("failed")
+              logger<MetroResolutionService>()
+                .warn("Metro file presentation build failed for ${key.file.name}", failure)
+              FilePresentationBuildOutcome.Failed
+            }
           }
         }
       filePresentationBuilds[key] = FilePresentationBuildAttempt(attemptId, index, job)
@@ -907,36 +967,54 @@ private constructor(
       if (key in filePresentationBuilds || key in filePresentationAnchorBuilds) continue
       requests.remove()
       val attemptId = ++nextFilePresentationAttemptId
+      val queuedRequests = pendingFilePresentationAnchorRequests.size
+      val activeWorkers = MAX_CONCURRENT_FILE_PRESENTATION_BUILDS - available + 1
       val job =
         scope.async(start = CoroutineStart.LAZY) {
-          try {
-            currentCoroutineContext().ensureActive()
-            if (!isPresentationBundlePublished(request.index, key, request.baseBundle)) {
-              return@async FilePresentationBuildOutcome.Canceled
-            }
-            val bundle =
-              smartReadAction(project) {
-                val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
-                if (ktFile?.modificationStamp != request.modificationStamp) {
-                  null
-                } else {
-                  request.baseBundle.rebuildAnchors(ktFile)
-                }
+          project.service<MetroIdeTracingService>().traceSuspend(
+            "presentation.anchors",
+            {
+              attribute("attempt", attemptId)
+              attribute("generation", System.identityHashCode(request.index.generationToken))
+              attribute("queuedRequests", queuedRequests)
+              attribute("activeWorkers", activeWorkers)
+            },
+          ) { trace ->
+            try {
+              currentCoroutineContext().ensureActive()
+              if (!isPresentationBundlePublished(request.index, key, request.baseBundle)) {
+                trace?.outcome("superseded")
+                return@traceSuspend FilePresentationBuildOutcome.Canceled
               }
-            currentCoroutineContext().ensureActive()
-            if (bundle != null && bundle.anchorsAreCurrent(request.modificationStamp)) {
-              FilePresentationBuildOutcome.Succeeded(bundle)
-            } else {
+              val bundle =
+                smartReadAction(project) {
+                  trace.readAttempt {
+                    val ktFile = PsiManager.getInstance(project).findFile(key.file) as? KtFile
+                    if (ktFile?.modificationStamp != request.modificationStamp) {
+                      null
+                    } else {
+                      request.baseBundle.rebuildAnchors(ktFile)
+                    }
+                  }
+                }
+              currentCoroutineContext().ensureActive()
+              if (bundle != null && bundle.anchorsAreCurrent(request.modificationStamp)) {
+                FilePresentationBuildOutcome.Succeeded(bundle)
+              } else {
+                trace?.outcome("superseded")
+                FilePresentationBuildOutcome.Canceled
+              }
+            } catch (exception: CancellationException) {
+              throw exception
+            } catch (_: ProcessCanceledException) {
+              trace?.outcome("platformCanceled")
               FilePresentationBuildOutcome.Canceled
+            } catch (failure: Throwable) {
+              trace?.outcome("failed")
+              logger<MetroResolutionService>()
+                .warn("Metro file presentation anchor build failed for ${key.file.name}", failure)
+              FilePresentationBuildOutcome.Failed
             }
-          } catch (exception: CancellationException) {
-            throw exception
-          } catch (_: ProcessCanceledException) {
-            FilePresentationBuildOutcome.Canceled
-          } catch (failure: Throwable) {
-            logger<MetroResolutionService>()
-              .warn("Metro file presentation anchor build failed for ${key.file.name}", failure)
-            FilePresentationBuildOutcome.Failed
           }
         }
       filePresentationAnchorBuilds[key] =
@@ -981,21 +1059,47 @@ private constructor(
     }
   }
 
+  /** Correlates a worker's computation with the coordinator's later acceptance decision. */
+  private fun tracePresentationResult(
+    attemptId: Long,
+    result: FilePresentationBuildOutcome,
+    disposition: String,
+  ) {
+    project.service<MetroIdeTracingService>().event("presentation.result") {
+      attribute("attempt", attemptId)
+      attribute(
+        "workerOutcome",
+        when (result) {
+          is FilePresentationBuildOutcome.Succeeded -> "succeeded"
+          FilePresentationBuildOutcome.Canceled -> "canceled"
+          FilePresentationBuildOutcome.Failed -> "failed"
+        },
+      )
+      attribute("disposition", disposition)
+    }
+  }
+
   private fun publishCompletedFileBundles() {
     while (completedFilePresentationBundles.isNotEmpty()) {
       val completed = completedFilePresentationBundles.removeFirst()
-      if (!isPresentationIndexPublished(completed.index)) continue
-      filePresentationBundles[completed.key] = completed.bundle
-      while (filePresentationBundles.size > MAX_FILE_PRESENTATION_BUNDLES) {
-        val eldest = filePresentationBundles.entries.iterator()
-        eldest.next()
-        eldest.remove()
-      }
-      val published = updatePublishedResolution { publication ->
-        publication.copy(filePresentationBundles = filePresentationBundles.toMap())
-      }
-      if (published != null && !isDisposed && !project.isDisposed) {
-        project.service<MetroDaemonRestartService>().requestRestart()
+      var accepted = false
+      try {
+        if (!isPresentationIndexPublished(completed.index)) continue
+        filePresentationBundles[completed.key] = completed.bundle
+        while (filePresentationBundles.size > MAX_FILE_PRESENTATION_BUNDLES) {
+          val eldest = filePresentationBundles.entries.iterator()
+          eldest.next()
+          eldest.remove()
+        }
+        val published = updatePublishedResolution { publication ->
+          publication.copy(filePresentationBundles = filePresentationBundles.toMap())
+        }
+        accepted = published?.filePresentationBundles?.get(completed.key) === completed.bundle
+        if (published != null && !isDisposed && !project.isDisposed) {
+          project.service<MetroDaemonRestartService>().requestRestart()
+        }
+      } finally {
+        tracePresentationPublication(completed.attemptId, accepted)
       }
     }
   }
@@ -1004,34 +1108,47 @@ private constructor(
   private fun publishCompletedFilePresentationAnchors() {
     while (completedFilePresentationAnchorBundles.isNotEmpty()) {
       val completed = completedFilePresentationAnchorBundles.removeFirst()
-      if (!isPresentationIndexPublished(completed.index)) continue
-      val current = filePresentationBundles[completed.key] ?: continue
-      if (current !== completed.baseBundle) continue
-      if (!completed.bundle.sharesSemanticData(current)) continue
-      if (!completed.bundle.anchorsAreCurrent(completed.modificationStamp)) continue
-      val pending = pendingFilePresentationAnchorRequests[completed.key]
-      if (
-        pending != null &&
-          (pending.baseBundle !== completed.baseBundle ||
-            pending.modificationStamp != completed.modificationStamp)
-      ) {
-        continue
-      }
-      val updatedBundles = LinkedHashMap(filePresentationBundles)
-      updatedBundles[completed.key] = completed.bundle
-      val published = updatePublishedResolution { publication ->
-        if (publication.filePresentationBundles[completed.key] !== completed.baseBundle) {
-          publication
-        } else {
-          publication.copy(filePresentationBundles = updatedBundles.toMap())
+      var accepted = false
+      try {
+        if (!isPresentationIndexPublished(completed.index)) continue
+        val current = filePresentationBundles[completed.key] ?: continue
+        if (current !== completed.baseBundle) continue
+        if (!completed.bundle.sharesSemanticData(current)) continue
+        if (!completed.bundle.anchorsAreCurrent(completed.modificationStamp)) continue
+        val pending = pendingFilePresentationAnchorRequests[completed.key]
+        if (
+          pending != null &&
+            (pending.baseBundle !== completed.baseBundle ||
+              pending.modificationStamp != completed.modificationStamp)
+        ) {
+          continue
         }
+        val updatedBundles = LinkedHashMap(filePresentationBundles)
+        updatedBundles[completed.key] = completed.bundle
+        val published = updatePublishedResolution { publication ->
+          if (publication.filePresentationBundles[completed.key] !== completed.baseBundle) {
+            publication
+          } else {
+            publication.copy(filePresentationBundles = updatedBundles.toMap())
+          }
+        }
+        accepted = published?.filePresentationBundles?.get(completed.key) === completed.bundle
+        if (!accepted) continue
+        filePresentationBundles[completed.key] = completed.bundle
+      } finally {
+        tracePresentationPublication(completed.attemptId, accepted)
       }
-      val accepted = published?.filePresentationBundles?.get(completed.key) === completed.bundle
-      if (!accepted) continue
-      filePresentationBundles[completed.key] = completed.bundle
       if (!isDisposed && !project.isDisposed) {
         project.service<MetroDaemonRestartService>().requestRestart()
       }
+    }
+  }
+
+  /** Completed queues retain the worker ID so publication can be observed after its span closes. */
+  private fun tracePresentationPublication(attemptId: Long, accepted: Boolean) {
+    project.service<MetroIdeTracingService>().event("presentation.publication") {
+      attribute("attempt", attemptId)
+      attribute("disposition", if (accepted) "published" else "discarded")
     }
   }
 
@@ -1053,14 +1170,19 @@ private constructor(
 
   private suspend fun processResolutionCandidate(manualRefresh: Boolean) {
     try {
-      buildResolutionCandidate(manualRefresh)
+      project.service<MetroIdeTracingService>().traceSuspend("index.candidate") { trace ->
+        buildResolutionCandidate(manualRefresh, trace)
+      }
     } finally {
       preparingSourceFiles = emptySet()
     }
   }
 
   /** Scheduled-file coverage stays available through preparation, sealing, and publication. */
-  private suspend fun buildResolutionCandidate(manualRefresh: Boolean) {
+  private suspend fun buildResolutionCandidate(
+    manualRefresh: Boolean,
+    trace: IdeTraceOperation?,
+  ) {
     val existingPublication = publishedResolution.value
     val retainedTokens =
       existingPublication.current.indexGenerationTokens +
@@ -1076,7 +1198,11 @@ private constructor(
         requests.values.any { it.intent == IndexBuildIntent.EXPLICIT } -> IndexBuildIntent.EXPLICIT
         else -> IndexBuildIntent.AUTOMATIC
       }
+    trace?.attribute("intent", intent.name)
+    trace?.attribute("modules.requested", requests.size)
+    manualRequest?.let { trace?.attribute("manualRequest", it.id) }
     if (intent == IndexBuildIntent.AUTOMATIC && !automaticallyRefreshGraphData) {
+      trace?.outcome("skipped")
       completeBuildRequests(requests.values, IndexBuildOutcome.SKIPPED)
       return
     }
@@ -1084,6 +1210,8 @@ private constructor(
     if (intent == IndexBuildIntent.AUTOMATIC) automaticRefreshWindow.attemptStarted()
     val buildSnapshot = coordinatorSnapshot
     val generationToken = IndexGenerationToken.create()
+    trace?.attribute("generation", System.identityHashCode(generationToken))
+    trace?.attribute("semanticClock", buildSnapshot.semanticClock)
     val progress = IndexBuildProgressReporter(::publishIndexBuildProgress)
     progress.phase(IndexBuildPhase.QUEUED)
     val candidate =
@@ -1095,12 +1223,15 @@ private constructor(
           buildSnapshot = buildSnapshot,
           manualRequest = manualRequest,
           capturedInvalidations = capturedInvalidations,
+          trace = trace,
         )
       } catch (_: ResolutionCandidateSupersededException) {
+        trace?.outcome("superseded")
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
       } catch (_: ProcessCanceledException) {
+        trace?.outcome("platformCanceled")
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
@@ -1108,6 +1239,7 @@ private constructor(
         requeueResolutionCandidate(requests, manualRequest)
         throw exception
       } catch (failure: Throwable) {
+        trace?.outcome("failedPreparation")
         logger<MetroResolutionService>().warn("Metro resolution preparation failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
         manualRequest?.let { finishManualRefresh(it.id) }
@@ -1119,19 +1251,23 @@ private constructor(
         resolutionCandidatePreparedObserver?.invoke()
         currentCoroutineContext().ensureActive()
         val builtIndexes =
-          candidate.prepared.buildIndexes {
-            if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, candidate.inputs)) {
-              throw ResolutionCandidateSupersededException()
+          trace.phase("index.seal") {
+            candidate.prepared.buildIndexes {
+              if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, candidate.inputs)) {
+                throw ResolutionCandidateSupersededException()
+              }
             }
           }
         // Cancellation of the service scope must stop this candidate before publication.
         currentCoroutineContext().ensureActive()
         builtIndexes
       } catch (_: ResolutionCandidateSupersededException) {
+        trace?.outcome("superseded")
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
       } catch (_: ProcessCanceledException) {
+        trace?.outcome("platformCanceled")
         requeueResolutionCandidate(requests, manualRequest)
         yield()
         return
@@ -1139,6 +1275,7 @@ private constructor(
         requeueResolutionCandidate(requests, manualRequest)
         throw exception
       } catch (failure: Throwable) {
+        trace?.outcome("failedSealing")
         logger<MetroResolutionService>().warn("Metro resolution build failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
         manualRequest?.let { finishManualRefresh(it.id) }
@@ -1170,6 +1307,7 @@ private constructor(
         isDisposed ||
         project.isDisposed
     ) {
+      trace?.outcome("supersededBeforePublication")
       requeueResolutionCandidate(requests, manualRequest)
       yield()
       return
@@ -1200,6 +1338,7 @@ private constructor(
       )
     }
     if (published == null) {
+      trace?.outcome("canceledBeforePublication")
       completeBuildRequests(requests.values, IndexBuildOutcome.CANCELED)
       manualRequest?.let { finishManualRefresh(it.id) }
       return
@@ -1212,6 +1351,8 @@ private constructor(
     )
     retainPublishedFilePresentationBundles()
     completeBuildRequests(requests.values, IndexBuildOutcome.PUBLISHED)
+    trace?.attribute("presentationPublished", publishPresentation)
+    trace?.outcome("published")
 
     if (manualRequest != null) {
       finishManualRefresh(manualRequest.id)
@@ -1905,21 +2046,26 @@ private constructor(
     buildSnapshot: ResolutionIngressSnapshot,
     manualRequest: ManualRefreshRequest?,
     capturedInvalidations: CapturedInvalidations,
+    trace: IdeTraceOperation?,
   ): CollectedResolutionCandidate {
     val previous = sourceSnapshot
     val captured =
-      smartReadAction(project) {
-        if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
-          throw ResolutionCandidateSupersededException()
+      trace.phaseSuspend("index.captureTargets") { phase ->
+        smartReadAction(project) {
+          phase.readAttempt {
+            if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
+              throw ResolutionCandidateSupersededException()
+            }
+            val inputs = currentInputs()
+            val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
+            val compilerSettingsChanged =
+              previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
+            val fingerprintChanged =
+              compilerSettingsChanged &&
+                previous.moduleFingerprints != snapshotBuilder.moduleFingerprints()
+            ResolutionCandidateInputs(inputs, targets, fingerprintChanged)
+          }
         }
-        val inputs = currentInputs()
-        val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
-        val compilerSettingsChanged =
-          previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
-        val fingerprintChanged =
-          compilerSettingsChanged &&
-            previous.moduleFingerprints != snapshotBuilder.moduleFingerprints()
-        ResolutionCandidateInputs(inputs, targets, fingerprintChanged)
       }
     val (inputs, targets, fingerprintChanged) = captured
     if (manualRequest != null) {
@@ -1932,6 +2078,18 @@ private constructor(
         capturedInvalidations
       }
     val coldSweep = previous == null || previous.inputs.roots != inputs.roots || fingerprintChanged
+    trace?.attribute("targets", targets.size)
+    trace?.attribute("files.dirty", candidateInvalidations.sourceChanges.dirty.size)
+    trace?.attribute("files.requested", candidateInvalidations.sourceChanges.requested.size)
+    trace?.attribute("forceAll", candidateInvalidations.sourceChanges.forceAll)
+    val sourceMode =
+      when {
+        previous == null -> "initial"
+        previous.inputs.roots != inputs.roots -> "rootsChanged"
+        fingerprintChanged -> "optionsChanged"
+        else -> "incremental"
+      }
+    trace?.attribute("sourceMode", sourceMode)
     val prepared =
       snapshotBuilder.prepare(
         previous = previous,
@@ -1941,6 +2099,7 @@ private constructor(
         coldSweep = coldSweep,
         progress = progress,
         generationToken = generationToken,
+        trace = trace,
         checkCurrent = {
           if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest, inputs)) {
             throw ResolutionCandidateSupersededException()
@@ -2646,7 +2805,9 @@ private class ResolutionCandidateSupersededException : RuntimeException() {
   override fun fillInStackTrace(): Throwable = this
 }
 
+/** Completed semantic work retains its primitive worker ID through final publication. */
 private data class CompletedFilePresentationBundle(
+  val attemptId: Long,
   val index: BindingIndex,
   val key: FilePresentationKey,
   val bundle: FilePresentationBundle,
@@ -2662,6 +2823,7 @@ private data class PendingFilePresentationAnchorBuild(
 
 /** Updated declaration locations waiting for the coordinator to check and publish them. */
 private data class CompletedFilePresentationAnchorBundle(
+  val attemptId: Long,
   val index: BindingIndex,
   val key: FilePresentationKey,
   val baseBundle: FilePresentationBundle,

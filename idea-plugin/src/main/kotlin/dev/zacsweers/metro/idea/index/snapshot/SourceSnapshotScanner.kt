@@ -9,6 +9,7 @@ import com.intellij.psi.PsiManager
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -29,40 +30,45 @@ internal class SourceSnapshotScanner(
     shortNames: Set<String>,
     pending: SourceSnapshotChanges,
     progress: IndexBuildProgressReporter,
+    trace: IdeTraceOperation? = null,
     checkCurrent: () -> Unit,
   ): SourceSnapshot {
     val transaction = SourceSnapshotTransaction(previous)
     val scan = SourceScanProgress(progress, files.size + pending.requested.size)
-    for (virtualFile in files) {
-      val result =
-        readSnapshotStage(project, checkCurrent) {
-          readShard(virtualFile, pending, shortNames, checkAnnotations = previous != null)
-        }
-      if (result == null) transaction.removeShard(virtualFile)
-      else transaction.applyShard(virtualFile, result.shard)
-      scan.advance(result)
-    }
-    // Stub loading can surface requested files before their annotations reach the stub index.
-    // Draining them here keeps them from lingering until another cold sweep.
-    for (virtualFile in pending.requested) {
-      if (transaction.containsShard(virtualFile)) {
-        scan.advance(null)
-        continue
+    try {
+      for (virtualFile in files) {
+        val result =
+          readSnapshotStage(project, checkCurrent, trace) {
+            readShard(virtualFile, pending, shortNames, checkAnnotations = previous != null)
+          }
+        if (result == null) transaction.removeShard(virtualFile)
+        else transaction.applyShard(virtualFile, result.shard)
+        scan.advance(result)
       }
-      val result =
-        readSnapshotStage(project, checkCurrent) {
-          readShard(virtualFile, pending, shortNames, checkAnnotations = true)
+      // Stub loading can surface requested files before their annotations reach the stub index.
+      // Draining them here keeps them from lingering until another cold sweep.
+      for (virtualFile in pending.requested) {
+        if (transaction.containsShard(virtualFile)) {
+          scan.advance(null)
+          continue
         }
-      if (result != null) transaction.applyShard(virtualFile, result.shard)
-      scan.advance(result)
-    }
-    return readSnapshotStage(project, checkCurrent) {
-      transaction.snapshot(
-        inputs,
-        moduleFingerprints,
-        shortNames,
-        sourceModulesMayHaveChanged = pending.sourceModulesMayHaveChanged,
-      )
+        val result =
+          readSnapshotStage(project, checkCurrent, trace) {
+            readShard(virtualFile, pending, shortNames, checkAnnotations = true)
+          }
+        if (result != null) transaction.applyShard(virtualFile, result.shard)
+        scan.advance(result)
+      }
+      return readSnapshotStage(project, checkCurrent, trace) {
+        transaction.snapshot(
+          inputs,
+          moduleFingerprints,
+          shortNames,
+          sourceModulesMayHaveChanged = pending.sourceModulesMayHaveChanged,
+        )
+      }
+    } finally {
+      scan.traceSummary(trace)
     }
   }
 
@@ -106,5 +112,14 @@ private class SourceScanProgress(
 
   private fun report() {
     reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total, reused, rebuilt)
+  }
+
+  /** Includes completed work from a pass that was canceled before producing its snapshot. */
+  fun traceSummary(trace: IdeTraceOperation?) {
+    trace?.attribute("files.total", total)
+    trace?.attribute("files.visited", completed)
+    trace?.attribute("files.reused", reused)
+    trace?.attribute("files.rebuilt", rebuilt)
+    trace?.attribute("files.skipped", completed - reused - rebuilt)
   }
 }
