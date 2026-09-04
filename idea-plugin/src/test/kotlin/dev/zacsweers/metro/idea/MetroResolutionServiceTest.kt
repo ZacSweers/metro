@@ -1060,6 +1060,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       awaitCoordinator(service)
       assertEquals(1, attempts.get())
       assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+      assertFalse(service.isExplicitGraphRefreshPending)
     }
   }
 
@@ -1126,6 +1127,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       awaitCoordinator(service)
       assertEquals(1, attempts.get())
       assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+      assertFalse(service.isExplicitGraphRefreshPending)
     }
   }
 
@@ -1147,6 +1149,88 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals(listOf("AppGraph"), index.graphs.map { it.name })
       assertEquals("test.AddedAfterDiscovery", index.bindings.single().typeKey.renderedType)
       assertSame(index, service.cachedIndex(added))
+      assertFalse(service.isExplicitGraphRefreshPending)
+    }
+  }
+
+  fun testRepeatedRefreshRequestsShareTheRunningManualLoad() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    withPausedColdManualRefresh { service, attempts, release ->
+      repeat(2) { service.refreshGraphData() }
+      assertTrue(service.isExplicitGraphRefreshPending)
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(1, attempts.get())
+      assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+      assertFalse(service.isExplicitGraphRefreshPending)
+
+      service.refreshGraphData()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      assertFalse(service.isExplicitGraphRefreshPending)
+    }
+  }
+
+  fun testFailedManualLoadAllowsAnotherRefresh() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+      MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+      service.settingsChanged()
+      awaitCoordinator(service)
+      val attempts = AtomicInteger()
+      service.setResolutionCandidatePreparedObserver {
+        if (attempts.incrementAndGet() == 1) error("Test index build failure")
+      }
+
+      service.refreshGraphData()
+      awaitCoordinator(service)
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+
+      service.refreshGraphData()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+      assertFalse(service.isExplicitGraphRefreshPending)
+    }
+  }
+
+  fun testCancelingServiceScopeReleasesTheManualRefreshRequest() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val settings = MetroSettings.getInstance(project).state
+    val previousMode = settings.automaticallyRefreshGraphData
+    settings.automaticallyRefreshGraphData = false
+    val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val service =
+      MetroResolutionService.createForTest(
+        project,
+        serviceScope,
+        IndexRequestPolicy.Production,
+        AutomaticRefreshWindow(0, 0),
+      )
+    val prepared = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    service.setResolutionCandidatePreparedObserver {
+      prepared.complete(Unit)
+      check(release.await(30, TimeUnit.SECONDS))
+    }
+    try {
+      service.refreshGraphData()
+      PlatformTestUtil.waitForFuture(prepared, 30_000)
+      assertTrue(service.isExplicitGraphRefreshPending)
+      serviceScope.cancel()
+      release.countDown()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      service.refreshGraphData()
+      assertFalse(service.isExplicitGraphRefreshPending)
+    } finally {
+      release.countDown()
+      Disposer.dispose(service)
+      serviceScope.cancel()
+      serviceScope.coroutineContext.job.awaitTestCompletion()
+      settings.automaticallyRefreshGraphData = previousMode
     }
   }
 
@@ -1171,6 +1255,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       try {
         service.refreshGraphData()
         PlatformTestUtil.waitForFuture(prepared, 30_000)
+        assertTrue(service.isExplicitGraphRefreshPending)
         block(service, attempts, release)
       } finally {
         release.countDown()

@@ -79,9 +79,7 @@ internal class MetroToolWindowPanel(
   private val validationService = project.service<MetroGraphValidationService>()
   private val validationRequestService = project.service<MetroValidationRequestService>()
   private val pinService = project.service<GraphContextPinService>()
-  private val indexBuildStatus = IndexBuildStatusPanel {
-    if (!disposed && !project.isDisposed) loadOrRefreshAction.refresh()
-  }
+  private val indexBuildStatus = IndexBuildStatusPanel()
   private val validationStatus = ValidationStatusPanel()
   private var indexBuildProgress: IndexBuildProgress? = null
   private var validationProgress: List<GraphValidationProgress> = emptyList()
@@ -108,8 +106,8 @@ internal class MetroToolWindowPanel(
   private val browserAndResults = JBSplitter(true, 0.65f)
   private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
 
-  internal val loadOrRefreshAction =
-    LoadOrRefreshGraphsAction(resolutionService) {
+  internal val refreshGraphsAction =
+    RefreshGraphsAction(resolutionService) {
       updateIndexBuildStatus()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
@@ -195,7 +193,7 @@ internal class MetroToolWindowPanel(
       }
     val actionGroup =
       DefaultActionGroup(
-        loadOrRefreshAction,
+        refreshGraphsAction,
         graphRefreshModeAction,
         graphContextSelectorAction,
         pinSelectedGraphAction,
@@ -246,6 +244,7 @@ internal class MetroToolWindowPanel(
       resolutionService.isGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
       else -> indexBuildStatus.clear()
     }
+    if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
   }
 
   private fun updateValidationStatus() {
@@ -659,29 +658,5 @@ internal class PinSelectedGraphAction(
   override fun setSelected(e: AnActionEvent, state: Boolean) {
     val context = selectedContext() ?: return
     if (state) pinService.pin(context.path) else pinService.clearIf(context.path)
-  }
-}
-
-internal class LoadOrRefreshGraphsAction(
-  private val resolutionService: MetroResolutionService,
-  private val onRefresh: () -> Unit,
-) : AnAction("Load", "Load graphs and bindings", AllIcons.Actions.Refresh), DumbAware {
-  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
-
-  override fun update(e: AnActionEvent) {
-    val isActivated = resolutionService.isGraphBrowserActivated
-    e.presentation.text = if (isActivated) "Refresh" else "Load"
-    e.presentation.description =
-      if (isActivated) "Refresh graphs and bindings" else "Load graphs and bindings"
-  }
-
-  override fun actionPerformed(e: AnActionEvent) {
-    refresh()
-  }
-
-  /** Both toolbar and status links enqueue the same smart-mode refresh request. */
-  fun refresh() {
-    resolutionService.refreshGraphData()
-    onRefresh()
   }
 }

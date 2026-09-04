@@ -55,6 +55,7 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -138,6 +139,8 @@ private constructor(
     MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
   /** Coalesces pending refresh requests until the EDT can notify listeners. */
   private val notificationRequests = Channel<Unit>(Channel.CONFLATED)
+  /** Mode-independent UI changes must reach the window while its data remains stale. */
+  private val uiStateNotificationPending = AtomicBoolean()
   /** Cancels EDT delivery and disposable-bound collectors when this service is disposed. */
   private val notificationScope =
     CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
@@ -368,7 +371,9 @@ private constructor(
       }
     } finally {
       automaticRefreshTimer?.cancel()
+      closeIngress()
       cancelCoordinatorWork()
+      scheduleUiStateNotification()
       publishIndexBuildProgress(null)
     }
   }
@@ -1105,6 +1110,7 @@ private constructor(
       } catch (failure: Throwable) {
         logger<MetroResolutionService>().warn("Metro resolution preparation failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
+        manualRequest?.let { finishManualRefresh(it.id) }
         return
       }
 
@@ -1135,10 +1141,17 @@ private constructor(
       } catch (failure: Throwable) {
         logger<MetroResolutionService>().warn("Metro resolution build failed", failure)
         completeBuildRequests(requests.values, IndexBuildOutcome.FAILED)
+        manualRequest?.let { finishManualRefresh(it.id) }
         return
       }
 
-    currentCoroutineContext().ensureActive()
+    try {
+      currentCoroutineContext().ensureActive()
+    } catch (exception: CancellationException) {
+      // These waiters belong to this candidate until publication or requeueing completes.
+      completeBuildRequests(requests.values, IndexBuildOutcome.CANCELED)
+      throw exception
+    }
     val completedInputs = currentInputs()
     val latestIngress = ingress.snapshot()
     val sameSemanticClock = latestIngress.semanticClock == buildSnapshot.semanticClock
@@ -1188,6 +1201,7 @@ private constructor(
     }
     if (published == null) {
       completeBuildRequests(requests.values, IndexBuildOutcome.CANCELED)
+      manualRequest?.let { finishManualRefresh(it.id) }
       return
     }
     sourceSnapshot = candidate.source
@@ -1200,6 +1214,7 @@ private constructor(
     completeBuildRequests(requests.values, IndexBuildOutcome.PUBLISHED)
 
     if (manualRequest != null) {
+      finishManualRefresh(manualRequest.id)
       notifyListeners(restartDaemon = true, forceDaemonRestart = true)
     } else {
       notifyIndexPublished(intent)
@@ -1446,7 +1461,7 @@ private constructor(
       if (!previous.isDisposed && !previous.graphBrowserActivated) {
         // currentIndexes() may have skipped earlier modules while the browser was inactive. Ask the
         // tree to make one active pass so those modules can schedule their own snapshots.
-        scheduleInvalidationNotification()
+        scheduleUiStateNotification()
       }
     }
     return index
@@ -1469,15 +1484,29 @@ private constructor(
     get() = publishedResolution.value.graphBrowserActivated
 
   internal fun activateGraphBrowser() {
-    updatePublishedResolution { it.copy(graphBrowserActivated = true) }
+    val previous = publishedResolution.getAndUpdate { publication ->
+      if (publication.isDisposed) publication else publication.copy(graphBrowserActivated = true)
+    }
+    if (!previous.isDisposed && !previous.graphBrowserActivated) scheduleUiStateNotification()
   }
 
-  /** Builds and publishes a generation containing every pending change. */
+  /** One Refresh request remains active through retries until its complete generation publishes. */
   internal fun refreshGraphData() {
+    if (isDisposed || project.isDisposed) return
     activateGraphBrowser()
-    ingress.submit(manualRefresh = true) { ticket ->
-      ResolutionCoordinatorEvent.ManualRefresh(ticket.eventClock)
-    }
+    val accepted =
+      ingress.submit(manualRefresh = true) { ticket ->
+        ResolutionCoordinatorEvent.ManualRefresh(ticket.eventClock)
+      }
+    if (accepted != null) scheduleUiStateNotification()
+  }
+
+  /** Includes queued preprocessing and smart-mode waits as well as active preparation. */
+  internal val isExplicitGraphRefreshPending: Boolean
+    get() = !isDisposed && !project.isDisposed && ingress.snapshot().manualRefreshPending
+
+  private fun finishManualRefresh(requestId: Long) {
+    if (ingress.completeManualRefresh(requestId)) scheduleUiStateNotification()
   }
 
   /** Pending changes make retained data possibly stale before classification runs. */
@@ -2488,13 +2517,14 @@ private constructor(
       // Service disposal and scope cancellation own the consumer's lifetime.
       if (project.isDisposed) return@consumeEach
       if (indexChanges.subscriptionCount.value == 0) return@consumeEach
+      val forceDelivery = uiStateNotificationPending.getAndSet(false)
       var deliver = false
       publishedResolution.updateAndGet { publication ->
         if (publication.isDisposed) return@updateAndGet publication
         // Recheck freshness with this publication so a concurrent no-op classification cannot
         // leave its stale notification set on data that is already current.
         val stale = graphDataRefreshRequired(publication)
-        deliver = !stale || !publication.staleNotificationSent
+        deliver = forceDelivery || !stale || !publication.staleNotificationSent
         publication.copy(staleNotificationSent = stale)
       }
       if (deliver) indexChanges.emit(Unit)
@@ -2512,11 +2542,14 @@ private constructor(
     if (!isDisposed && !project.isDisposed) notificationRequests.trySend(Unit)
   }
 
-  override fun dispose() {
-    publishedResolution.value = PublishedResolution.DISPOSED
-    psiClassificationObserver = null
-    resolutionCandidatePreparedObserver = null
-    preparingSourceFiles = emptySet()
+  /** Activation and request completion update controls even when no binding data changed. */
+  private fun scheduleUiStateNotification() {
+    uiStateNotificationPending.set(true)
+    scheduleInvalidationNotification()
+  }
+
+  /** A stopped coordinator rejects new work and releases callers whose events were still queued. */
+  private fun closeIngress() {
     val abandonedEvents = ingress.close()
     for (event in abandonedEvents) {
       when (event) {
@@ -2527,6 +2560,14 @@ private constructor(
         else -> Unit
       }
     }
+  }
+
+  override fun dispose() {
+    publishedResolution.value = PublishedResolution.DISPOSED
+    psiClassificationObserver = null
+    resolutionCandidatePreparedObserver = null
+    preparingSourceFiles = emptySet()
+    closeIngress()
     coordinatorJob.cancel()
     notificationRequests.close()
     notificationScope.cancel()
