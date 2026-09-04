@@ -29,6 +29,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeAdapter
 import com.intellij.psi.PsiTreeChangeEvent
@@ -186,6 +188,7 @@ private constructor(
   private val demandedModules = linkedSetOf<Module>()
   private var pendingPsiChanges = PendingPsiChanges()
   @Volatile private var psiClassificationObserver: (() -> Unit)? = null
+  @Volatile private var resolutionCandidatePreparedObserver: (() -> Unit)? = null
   private var projectInputsPending = false
   private var settingsPending = false
   private var pendingManualRefresh: ManualRefreshRequest? = null
@@ -1114,6 +1117,7 @@ private constructor(
 
     val indexesByKey =
       try {
+        resolutionCandidatePreparedObserver?.invoke()
         currentCoroutineContext().ensureActive()
         val builtIndexes =
           candidate.prepared.buildIndexes {
@@ -2004,7 +2008,9 @@ private constructor(
     if (event.file?.isPhysical == false) return
     // Write access changes leave declaration metadata unchanged.
     if (event.propertyName == PsiTreeChangeEvent.PROP_WRITABLE) return
-    val virtualFile = changedVirtualFile(event)
+    val changedFile = changedPsiFile(event)
+    if (changedFile != null && !isGraphInputFile(changedFile)) return
+    val virtualFile = changedFile?.virtualFile
     if (virtualFile == null) {
       val directory = changedDirectoryVirtualFile(event)
       if (directory != null && structuralChange) {
@@ -2116,14 +2122,19 @@ private constructor(
     }
   }
 
-  private fun changedVirtualFile(event: PsiTreeChangeEvent): VirtualFile? {
-    event.file?.virtualFile?.let {
-      return it
-    }
-    (event.element as? KtFile)?.virtualFile?.let {
-      return it
-    }
-    return (event.child as? KtFile)?.virtualFile
+  private fun changedPsiFile(event: PsiTreeChangeEvent): PsiFile? {
+    return event.file ?: event.element as? PsiFile ?: event.child as? PsiFile
+  }
+
+  /** Source code can affect an unpublished candidate. Other files need a recorded dependency. */
+  private fun isGraphInputFile(file: PsiFile): Boolean {
+    if (file is KtFile || file is PsiJavaFile) return true
+    val virtualFile = file.virtualFile ?: return false
+    val publication = publishedResolution.value
+    // A rename can change the PSI language before the old source shard has been removed.
+    if (virtualFile in publication.trackedSourceFiles) return true
+    if (!publication.current.source?.dependencyOwnersFor(virtualFile).isNullOrEmpty()) return true
+    return !publication.presentation.source?.dependencyOwnersFor(virtualFile).isNullOrEmpty()
   }
 
   private fun changedDirectoryVirtualFile(event: PsiTreeChangeEvent): VirtualFile? {
@@ -2177,6 +2188,12 @@ private constructor(
   @TestOnly
   internal fun setPsiClassificationObserver(observer: (() -> Unit)?) {
     psiClassificationObserver = observer
+  }
+
+  /** Lets tests apply an IDE write after preparation has released its last read lock. */
+  @TestOnly
+  internal fun setResolutionCandidatePreparedObserver(observer: (() -> Unit)?) {
+    resolutionCandidatePreparedObserver = observer
   }
 
   /** Called by the coordinator inside a smart read action. */
@@ -2492,6 +2509,7 @@ private constructor(
   override fun dispose() {
     publishedResolution.value = PublishedResolution.DISPOSED
     psiClassificationObserver = null
+    resolutionCandidatePreparedObserver = null
     val abandonedEvents = ingress.close()
     for (event in abandonedEvents) {
       when (event) {

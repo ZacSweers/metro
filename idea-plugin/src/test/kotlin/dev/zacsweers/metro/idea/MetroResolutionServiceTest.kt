@@ -9,7 +9,10 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Disposer
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.WaitFor
@@ -1038,6 +1041,108 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertTrue(service.isGraphDataRefreshRequired)
       awaitRefreshedBinding(service, file, "AfterCancellation") { service.refreshGraphData() }
       assertFalse(service.isGraphDataRefreshRequired)
+    }
+  }
+
+  fun testUnrelatedXmlPsiChangeDoesNotRestartColdManualLoad() {
+    val settingsFile =
+      myFixture.addFileToProject("config/options.xml", "<settings value=\"before\"/>") as XmlFile
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val tag = checkNotNull(settingsFile.document?.rootTag)
+
+    withPausedColdManualRefresh { service, attempts, release ->
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      WriteCommandAction.runWriteCommandAction(project) { tag.setAttribute("value", "after") }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      assertEquals("after", tag.getAttributeValue("value"))
+
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(1, attempts.get())
+      assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+    }
+  }
+
+  fun testJavaDependencyChangeRestartsColdManualLoad() {
+    module.addKotlinStdlibLibrary()
+    val base =
+      myFixture.addFileToProject(
+        "test/JavaBase.java",
+        """
+        package test;
+
+        import dev.zacsweers.metro.HasMemberInjections;
+        import dev.zacsweers.metro.Inject;
+
+        @HasMemberInjections
+        public class JavaBase {
+          @Inject public void install(OldService service) {}
+        }
+        """
+          .trimIndent(),
+      ) as PsiJavaFile
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface OldService
+        interface NewService
+
+        @Inject class Screen : JavaBase()
+
+        @DependencyGraph interface AppGraph {
+          val screen: Screen
+        }
+        """
+      )
+
+    withPausedColdManualRefresh { service, attempts, release ->
+      assertSame(BindingIndex.EMPTY, service.cachedIndex(file))
+      WriteCommandAction.runWriteCommandAction(project) {
+        val parameter = base.classes.single().methods.single().parameterList.parameters.single()
+        val updatedType =
+          JavaPsiFacade.getElementFactory(project)
+            .createTypeElementFromText("NewService", parameter)
+        checkNotNull(parameter.typeElement).replace(updatedType)
+      }
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      val binding =
+        service.cachedIndex(file).bindings.single { it.typeKey.renderedType == "test.Screen" }
+      val dependencyType = binding.dependencies.single().typeKey.type
+      assertFalse(dependencyType.renderedType, dependencyType.isError)
+      assertEquals("test.NewService!", dependencyType.renderedType)
+    }
+  }
+
+  /** Pauses after capture so real PSI writes can race publication outside its read action. */
+  private fun withPausedColdManualRefresh(
+    block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit
+  ) {
+    withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+      MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+      service.settingsChanged()
+      awaitCoordinator(service)
+      val prepared = CompletableFuture<Unit>()
+      val attempts = AtomicInteger()
+      val release = CountDownLatch(1)
+      service.setResolutionCandidatePreparedObserver {
+        assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+        if (attempts.incrementAndGet() == 1) {
+          prepared.complete(Unit)
+          check(release.await(30, TimeUnit.SECONDS))
+        }
+      }
+      try {
+        service.refreshGraphData()
+        PlatformTestUtil.waitForFuture(prepared, 30_000)
+        block(service, attempts, release)
+      } finally {
+        release.countDown()
+        service.setResolutionCandidatePreparedObserver(null)
+      }
     }
   }
 
