@@ -30,7 +30,13 @@ internal class MetroIdeTracingService(
   private var recorder =
     IdeTraceRecorder(
       scope,
-      { failure -> createIdeTraceOutput(PathManager.getLogDir(), failure) },
+      { failure ->
+        createIdeTraceOutput(
+          PathManager.getLogDir(),
+          failure,
+          includeThreadActivity = MetroSettings.getInstance(project).state.includeThreadActivity,
+        )
+      },
       ::captureFinished,
     )
 

@@ -42,6 +42,11 @@ class MetroSettingsState : BaseState() {
 
   /** Exposes local performance tracing controls for investigating plugin behavior. */
   var enableDebuggingOptions by property(false)
+
+  /**
+   * Adds thread execution slices and coroutine flows to captures started with this option enabled.
+   */
+  var includeThreadActivity by property(false)
 }
 
 /** Project-level Metro IDE settings, stored in `.idea/metro.xml` so teams can check them in. */
@@ -117,13 +122,26 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           .comment("Metro does not require kapt; applies only to modules with Metro enabled")
       }
     }
-    group("Debugging") {
+    group("Debugging/Experimental") {
+      lateinit var debuggingSelected: ComponentPredicate
       row {
-        checkBox("Enable debugging options")
-          .bindSelected(state::enableDebuggingOptions)
-          .comment(
-            "Shows local performance tracing actions in Find Action and the Metro tool window"
-          )
+        val cell =
+          checkBox("Enable debugging options")
+            .bindSelected(state::enableDebuggingOptions)
+            .comment(
+              "Shows local performance tracing actions in Find Action and the Metro tool window"
+            )
+        debuggingSelected = cell.selected
+      }
+      indent {
+        row {
+            checkBox("Include thread activity")
+              .bindSelected(state::includeThreadActivity)
+              .comment(
+                "Adds thread slices and coroutine arrows to new captures; increases recording overhead"
+              )
+          }
+          .visibleIf(debuggingSelected)
       }
     }
   }
