@@ -205,11 +205,18 @@ during file output. Traces are saved locally in the IDE log directory and open i
 [Perfetto](https://ui.perfetto.dev). Trace metadata can contain project, module, file, and class names.
 Review the file before sharing it.
 
-Expand **Metro operations** to inspect full-duration bars such as **Analyze source declarations** and
-**Resolve source class dependencies**. Selecting a bar shows its outcome, cache counts, and request
-identity. The source scan and class resolution phases include module totals and the 20 slowest items
-with their file or class names. Start with the longest phase, then inspect its nested steps and slow
-items. The trace retains at most 20,000 events and reports any omitted events in **Trace summary**.
+**Metro operations** shows an overview of recorded work even while collapsed. Expand it to inspect
+full-duration bars such as **Analyze source declarations** and **Resolve source class dependencies**.
+Selecting a bar shows its outcome, cache counts, and request identity. File and class summaries report
+how many items the top-20 detail view shows and omits, with elapsed time for each group. Blank space
+between retained items can therefore represent measured work omitted from that view.
+
+The slowest files include annotation lookup, declaration extraction, dynamic-graph scanning, and shard
+construction. Class requests separate analysis setup, symbol lookup, source checks, qualifier/options
+lookup, cache access, binding construction, and dependency expansion. Stage totals include all measured
+items and appear on phase and module summaries. Detailed stage intervals are limited to 64 per retained
+item; the item's metadata reports any omitted intervals. The trace retains at most 20,000 events and
+reports any omitted events in **Trace summary**.
 
 Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
 callbacks; it includes canceled attempts and can include Kotlin analysis waits. Slow-item summaries

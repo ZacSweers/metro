@@ -13,6 +13,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.IdempotenceChecker
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
@@ -31,6 +32,7 @@ import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
 import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
 import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
 import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import java.util.concurrent.CompletableFuture
@@ -108,6 +110,54 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     }
   }
 
+  fun testShardCacheUsesOnlyTheCurrentTraceItem() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      typealias GraphAlias = dev.zacsweers.metro.DependencyGraph
+      @GraphAlias interface AppGraph
+      """
+      )
+    // Random cache-consistency checks intentionally recompute values during ordinary cache hits.
+    IdempotenceChecker.disableRandomChecksUntil(testRootDisposable)
+    val cache = SourceFileShardCache()
+    val firstTicks = AtomicLong()
+    val firstItem = IdeTraceWorkItem(firstTicks::incrementAndGet)
+    allowAnalysisOnEdt {
+      val first = cache.read(file, 1, firstItem)
+      assertTrue(first.rebuilt)
+      assertTrue(firstItem.stageTotals.isNotEmpty())
+      val aliasLookup = firstItem.stageTotals["source.file.typealiasLookup"]
+      assertNotNull(aliasLookup)
+      assertTrue(checkNotNull(aliasLookup).attempts > 0)
+      val completedFirstTicks = firstTicks.get()
+      val completedFirstStages = firstItem.stageTotals.values.sumOf { it.attempts }
+
+      val untraced = cache.read(file, 2)
+      assertTrue(untraced.rebuilt)
+      assertNotSame(first.shard, untraced.shard)
+      assertEquals(completedFirstTicks, firstTicks.get())
+      assertEquals(completedFirstStages, firstItem.stageTotals.values.sumOf { it.attempts })
+
+      val secondTicks = AtomicLong()
+      val secondItem = IdeTraceWorkItem(secondTicks::incrementAndGet)
+      val retraced = cache.read(file, 3, secondItem)
+      assertTrue(retraced.rebuilt)
+      assertNotSame(untraced.shard, retraced.shard)
+      assertTrue(secondItem.stageTotals.isNotEmpty())
+      assertEquals(completedFirstTicks, firstTicks.get())
+      val completedSecondTicks = secondTicks.get()
+      val completedSecondStages = secondItem.stageTotals.values.sumOf { it.attempts }
+
+      val reused = cache.read(file, 3, secondItem)
+      assertFalse(reused.rebuilt)
+      assertSame(retraced.shard, reused.shard)
+      assertEquals(completedSecondTicks, secondTicks.get())
+      assertEquals(completedSecondStages, secondItem.stageTotals.values.sumOf { it.attempts })
+      assertEquals(completedFirstTicks, firstTicks.get())
+    }
+  }
+
   fun testWriteActionRetriesOnlyTheActiveFileRead() = withSnapshotTrace { recorder, sink ->
     val file = configureTwoFiles()
     val reads = mutableListOf<Pair<VirtualFile, FileShard>>()
@@ -160,6 +210,26 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       assertTrue(checkNotNull(retriedWork["canceled_read_attempts"]).toInt() >= 1)
       assertTrue(checkNotNull(retriedWork["canceled_read_elapsed_ns"]).toLong() > 0)
       assertEquals(module.name, retriedWork["module"])
+      assertTrue(checkNotNull(retriedWork["stage.source.file.cacheLookup.attempts"]).toInt() >= 2)
+      for (stage in
+        listOf(
+          "source.file.psi",
+          "source.file.imports",
+          "source.file.annotationScan",
+          "source.file.annotationLookup",
+          "source.file.declarationExtraction",
+          "source.file.dynamicGraphScan",
+          "source.file.shardConstruction",
+        )) {
+        assertTrue(
+          "Expected aggregate time for $stage",
+          checkNotNull(retriedWork["stage.$stage.elapsed_ns"]).toLong() >= 0,
+        )
+        assertTrue(
+          "Expected a retained interval for $stage",
+          sink.results(stage).any { it.metadata["file"] == retriedPath },
+        )
+      }
       for (phase in
         listOf(
           "source.buildOwnershipIndex",
@@ -173,6 +243,27 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       val exampleWork = classWork.single { it["class"] == "test.Example" }
       assertEquals("resolved", exampleWork["outcome"])
       assertEquals("reused", exampleWork["cache"])
+      for (stage in
+        listOf(
+          "source.class.analysisEntry",
+          "source.class.analysisSetup",
+          "source.class.findClass",
+          "source.class.declarationEligibility",
+          "source.class.optionsAndQualifierLookup",
+          "source.class.cacheCheck",
+          "source.class.analysisExit",
+          "source.class.dependencyExpansion",
+        )) {
+        assertTrue(
+          "Expected aggregate time for $stage",
+          checkNotNull(exampleWork["stage.$stage.elapsed_ns"]).toLong() >= 0,
+        )
+        assertTrue(
+          "Expected a retained interval for $stage",
+          sink.results(stage).any { it.metadata["class"] == "test.Example" },
+        )
+      }
+      assertNull(exampleWork["stage.source.class.bindingConstruction.attempts"])
     } finally {
       release.countDown()
       PlatformTestUtil.waitForFuture(preparation, 30_000)

@@ -11,10 +11,12 @@ import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
 import dev.zacsweers.metro.idea.tracing.IdeTraceWorkSummary
 import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import dev.zacsweers.metro.idea.tracing.measure
 import dev.zacsweers.metro.idea.tracing.measureRead
+import dev.zacsweers.metro.idea.tracing.stage
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -102,7 +104,7 @@ internal class SourceSnapshotScanner(
               ProjectFileIndex.getInstance(project).getModuleForFile(virtualFile)?.name
                 ?: "<unknown>"
           }
-          readShard(virtualFile, pending, shortNames, checkAnnotations)
+          readShard(virtualFile, pending, shortNames, checkAnnotations, item)
         }
       }
     item?.cache =
@@ -119,13 +121,20 @@ internal class SourceSnapshotScanner(
     pending: SourceSnapshotChanges,
     shortNames: Set<String>,
     checkAnnotations: Boolean,
+    trace: IdeTraceWorkItem?,
   ): SourceFileShardCache.ReadResult? {
     if (!virtualFile.isValid) return null
-    val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: return null
+    val file =
+      trace.stage("source.file.psi") {
+        PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
+      } ?: return null
     if (!file.isValid) return null
     if (checkAnnotations && !containsRelevantAnnotation(file, shortNames)) return null
     val revision = if (pending.forcesRebuild(virtualFile)) pending.invalidationRevision else null
-    val result = fileShards.read(file, revision)
+    val result =
+      trace.stage("source.file.cacheLookup") {
+        fileShards.read(file, revision, trace)
+      }
     onShardRead(file, result.shard)
     return result
   }
