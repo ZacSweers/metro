@@ -314,7 +314,7 @@ Any assisted context parameters will be carried as context parameters to the gen
 
     ```kotlin
     @Inject
-    class ClockWidgetClass(private val clock: () -> Clock) {
+    class ClockWidget(private val clock: () -> Clock) {
       @Composable
       context(sharedTransitionScope: SharedTransitionScope)
       operator fun invoke(modifier: Modifier) {
