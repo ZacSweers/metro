@@ -127,6 +127,7 @@ private constructor(
       project,
       onShardRead = ::seedSharedDeclarationFingerprints,
       captureResolutionInputs = resolutionInputCapture::capture,
+      onSourceFilesScheduled = { preparingSourceFiles = it },
     )
 
   /** Latest progress of the coordinator's current index build. */
@@ -176,6 +177,8 @@ private constructor(
   /** Distinguishes accepted forced rebuilds while an earlier forced rebuild is still pending. */
   private var sourceInvalidationRevision = 0L
   private var sourceSnapshot: SourceSnapshot? = null
+  /** Editor queries can share files already covered by the current unpublished candidate. */
+  @Volatile private var preparingSourceFiles: Set<VirtualFile> = emptySet()
   /** Accepts callbacks from any thread and wakes the coordinator with coalesced requests. */
   private val ingress =
     ResolutionIngress(
@@ -1044,6 +1047,15 @@ private constructor(
   }
 
   private suspend fun processResolutionCandidate(manualRefresh: Boolean) {
+    try {
+      buildResolutionCandidate(manualRefresh)
+    } finally {
+      preparingSourceFiles = emptySet()
+    }
+  }
+
+  /** Scheduled-file coverage stays available through preparation, sealing, and publication. */
+  private suspend fun buildResolutionCandidate(manualRefresh: Boolean) {
     val existingPublication = publishedResolution.value
     val retainedTokens =
       existingPublication.current.indexGenerationTokens +
@@ -1072,32 +1084,13 @@ private constructor(
     val candidate =
       try {
         val capturedInvalidations = capturePendingInvalidations()
-        smartReadAction(project) {
-          val targets =
-            resolutionTargets(
-              if (manualRequest != null) {
-                null
-              } else {
-                demandedModules
-              }
-            )
-          if (manualRequest != null) {
-            for ((_, modules) in targets) {
-              demandedModules += modules
-            }
-          }
-          if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
-            throw ResolutionCandidateSupersededException()
-          }
-          collectResolutionCandidate(
-            targets = targets,
-            progress = progress,
-            generationToken = generationToken,
-            buildSnapshot = buildSnapshot,
-            manualRequest = manualRequest,
-            capturedInvalidations = capturedInvalidations,
-          )
-        }
+        collectResolutionCandidate(
+          progress = progress,
+          generationToken = generationToken,
+          buildSnapshot = buildSnapshot,
+          manualRequest = manualRequest,
+          capturedInvalidations = capturedInvalidations,
+        )
       } catch (_: ResolutionCandidateSupersededException) {
         requeueResolutionCandidate(requests, manualRequest)
         yield()
@@ -1877,20 +1870,32 @@ private constructor(
   }
 
   /** Captures a detached snapshot while retaining revision and supersession ownership. */
-  private fun collectResolutionCandidate(
-    targets: List<ResolutionSnapshotTarget>,
+  private suspend fun collectResolutionCandidate(
     progress: IndexBuildProgressReporter,
     generationToken: IndexGenerationToken,
     buildSnapshot: ResolutionIngressSnapshot,
     manualRequest: ManualRefreshRequest?,
     capturedInvalidations: CapturedInvalidations,
   ): CollectedResolutionCandidate {
-    val inputs = currentInputs()
     val previous = sourceSnapshot
-    val compilerSettingsChanged =
-      previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
-    val fingerprintChanged =
-      compilerSettingsChanged && previous.moduleFingerprints != snapshotBuilder.moduleFingerprints()
+    val captured =
+      smartReadAction(project) {
+        if (resolutionCandidateIsSuperseded(buildSnapshot, manualRequest)) {
+          throw ResolutionCandidateSupersededException()
+        }
+        val inputs = currentInputs()
+        val targets = resolutionTargets(if (manualRequest != null) null else demandedModules)
+        val compilerSettingsChanged =
+          previous != null && previous.inputs.compilerSettings != inputs.compilerSettings
+        val fingerprintChanged =
+          compilerSettingsChanged &&
+            previous.moduleFingerprints != snapshotBuilder.moduleFingerprints()
+        ResolutionCandidateInputs(inputs, targets, fingerprintChanged)
+      }
+    val (inputs, targets, fingerprintChanged) = captured
+    if (manualRequest != null) {
+      for ((_, modules) in targets) demandedModules += modules
+    }
     val candidateInvalidations =
       if (fingerprintChanged) {
         capturedInvalidations.copy(semanticRevision = capturedInvalidations.semanticRevision + 1)
@@ -1970,6 +1975,7 @@ private constructor(
   /** An opened file may be available before its stub index or directory-creation event settles. */
   private fun enrollRequestedFile(file: KtFile) {
     val virtualFile = file.virtualFile ?: return
+    if (virtualFile in preparingSourceFiles) return
     val publication = publishedResolution.value
     if (
       virtualFile in publication.trackedSourceFiles ||
@@ -2510,6 +2516,7 @@ private constructor(
     publishedResolution.value = PublishedResolution.DISPOSED
     psiClassificationObserver = null
     resolutionCandidatePreparedObserver = null
+    preparingSourceFiles = emptySet()
     val abandonedEvents = ingress.close()
     for (event in abandonedEvents) {
       when (event) {
@@ -2576,6 +2583,13 @@ private class PendingIndexBuild(
 }
 
 private data class ManualRefreshRequest(val id: Long)
+
+/** Project metadata captured together before the resumable source and dependency reads begin. */
+private data class ResolutionCandidateInputs(
+  val inputs: IndexInputs,
+  val targets: List<ResolutionSnapshotTarget>,
+  val fingerprintChanged: Boolean,
+)
 
 private data class CollectedResolutionCandidate(
   val prepared: PreparedResolutionSnapshot,

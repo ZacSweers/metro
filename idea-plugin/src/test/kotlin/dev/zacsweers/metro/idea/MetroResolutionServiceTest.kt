@@ -1117,6 +1117,39 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testPassiveQueryForDiscoveredFileDoesNotRestartColdManualLoad() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    withPausedColdManualRefresh { service, attempts, release ->
+      repeat(3) { assertSame(BindingIndex.EMPTY, service.presentationIndex(file)) }
+
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(1, attempts.get())
+      assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+    }
+  }
+
+  fun testNewFileAfterDiscoveryRestartsColdManualLoad() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    withPausedColdManualRefresh { service, attempts, release ->
+      val added =
+        myFixture.addFileToProject(
+          "test/AddedAfterDiscovery.kt",
+          "package test\n\n@dev.zacsweers.metro.Inject class AddedAfterDiscovery",
+        ) as KtFile
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      assertSame(BindingIndex.EMPTY, service.presentationIndex(added))
+
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      val index = service.cachedIndex(file)
+      assertEquals(listOf("AppGraph"), index.graphs.map { it.name })
+      assertEquals("test.AddedAfterDiscovery", index.bindings.single().typeKey.renderedType)
+      assertSame(index, service.cachedIndex(added))
+    }
+  }
+
   /** Pauses after capture so real PSI writes can race publication outside its read action. */
   private fun withPausedColdManualRefresh(
     block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit

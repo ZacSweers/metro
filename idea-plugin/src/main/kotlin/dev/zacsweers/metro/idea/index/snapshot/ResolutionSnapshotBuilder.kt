@@ -6,10 +6,8 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
@@ -36,6 +34,8 @@ import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
 import org.jetbrains.kotlin.idea.stubindex.KotlinAnnotationsIndex
 import org.jetbrains.kotlin.name.ClassId
@@ -47,17 +47,21 @@ import org.jetbrains.kotlin.psi.KtImportDirective
 /**
  * Constructs source and dependency snapshots for one resolution coordinator.
  *
- * Calls are serialized by that coordinator. Preparation runs in its smart read; sealing uses only
- * captured data after the read. The builder owns reusable binary shards and never accepts or
- * publishes a generation. The callbacks keep invalidation fingerprints and presentation anchors
- * with the coordinator that owns their lifetime.
+ * Calls are serialized by that coordinator. Preparation uses separate smart reads for source files
+ * and later capture stages; sealing uses captured data outside read access. The builder owns
+ * reusable binary shards and never accepts or publishes a generation. The callbacks keep
+ * invalidation fingerprints and presentation anchors with the coordinator that owns their lifetime.
  */
 internal class ResolutionSnapshotBuilder(
   private val project: Project,
   private val onShardRead: (KtFile, FileShard) -> Unit,
+  /** Announces the attempt's source coverage outside read access before scanning begins. */
+  private val onSourceFilesScheduled: (Set<VirtualFile>) -> Unit = {},
   private val captureResolutionInputs: (BindingIndexBuilder, Set<VirtualFile>) -> Unit,
 ) {
   private val fileShards = SourceFileShardCache()
+  private val sourceScanner =
+    SourceSnapshotScanner(project, fileShards, onShardRead, ::containsRelevantAnnotation)
   private var cachedSourceSummary: CachedSourceLibrarySummary? = null
   private val libraryShards =
     object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
@@ -66,8 +70,8 @@ internal class ResolutionSnapshotBuilder(
       ): Boolean = size > MAX_CACHED_LIBRARY_SHARDS
     }
 
-  /** Runs inside the coordinator's smart read and returns privately owned build inputs. */
-  fun prepare(
+  /** Runs outside read access and retains completed stages while a later read is retried. */
+  suspend fun prepare(
     previous: SourceSnapshot?,
     inputs: IndexInputs,
     targets: List<ResolutionSnapshotTarget>,
@@ -77,8 +81,8 @@ internal class ResolutionSnapshotBuilder(
     generationToken: IndexGenerationToken,
     checkCurrent: () -> Unit,
   ): PreparedResolutionSnapshot {
-    check(!DumbService.isDumb(project))
-    ProgressManager.checkCanceled()
+    currentCoroutineContext().ensureActive()
+    checkCurrent()
     if (targets.isEmpty()) {
       return PreparedResolutionSnapshot(
         source = null,
@@ -95,15 +99,22 @@ internal class ResolutionSnapshotBuilder(
           inputs,
           pending,
           progress,
+          checkCurrent,
         )
       } else {
-        incremental(checkNotNull(previous), inputs, pending, progress)
+        incremental(checkNotNull(previous), inputs, pending, progress, checkCurrent)
       }
     checkCurrent()
 
     progress.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
-    val rawSource = aggregateSource(collectedSource, progress)
-    val summary = sourceLibrarySummary(collectedSource, rawSource, pending, progress)
+    val rawSource =
+      readSnapshotStage(project, checkCurrent) {
+        aggregateSource(collectedSource, progress)
+      }
+    val summary =
+      readSnapshotStage(project, checkCurrent) {
+        sourceLibrarySummary(collectedSource, rawSource, pending, progress)
+      }
     val finalizedSource = collectedSource.withLibrarySummary(summary)
     val classDependencies =
       SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
@@ -113,39 +124,49 @@ internal class ResolutionSnapshotBuilder(
     val keysByModule = linkedMapOf<Module, SnapshotKey>()
     val declarationSignatureFiles = finalizedSource.shardOrder.toSet()
     for ((key, modules) in targets) {
-      ProgressManager.checkCanceled()
+      currentCoroutineContext().ensureActive()
       checkCurrent()
       val library =
         if (key.resolveFromLibraries) {
-          libraryShardFor(key.fingerprint, inputs.roots, source, summary, progress)
+          readSnapshotStage(project, checkCurrent) {
+            libraryShardFor(key.fingerprint, inputs.roots, source, summary, progress)
+          }
         } else {
           LibraryShard.EMPTY
         }
       classDependencies.include(library.sourceDependencies)
-      val composedSource =
-        source
-          .withLibraryGraphs(library.graphDeclarations)
-          .withGraphInterfaces(library.graphInterfaces)
       progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
-        BindingIndexBuilder(generationToken).apply {
-          bindings += composedSource.bindings + library.bindings
-          consumers += composedSource.consumers
-          graphs += composedSource.graphs
-          contributions += source.contributions + library.contributions
-          assistedSites += source.assistedSites
-          bindingContainers += source.bindingContainers
-          incompleteClassBindings +=
-            if (key.resolveFromLibraries) library.incompleteBindings
-            else summary.sourceClasses.incompleteBindings
-          dynamicGraphs += source.dynamicGraphs
+        readSnapshotStage(project, checkCurrent) {
+          val composedSource =
+            source
+              .withLibraryGraphs(library.graphDeclarations)
+              .withGraphInterfaces(library.graphInterfaces)
+          // A retried capture starts with a fresh builder so canceled pointer capture leaves no
+          // state.
+          val builder =
+            BindingIndexBuilder(generationToken).apply {
+              bindings += composedSource.bindings + library.bindings
+              consumers += composedSource.consumers
+              graphs += composedSource.graphs
+              contributions += source.contributions + library.contributions
+              assistedSites += source.assistedSites
+              bindingContainers += source.bindingContainers
+              incompleteClassBindings +=
+                if (key.resolveFromLibraries) library.incompleteBindings
+                else summary.sourceClasses.incompleteBindings
+              dynamicGraphs += source.dynamicGraphs
+            }
+          captureResolutionInputs(builder, declarationSignatureFiles)
+          builder
         }
-      captureResolutionInputs(indexBuilder, declarationSignatureFiles)
       buildersByKey[key] = indexBuilder
       for (module in modules) {
         keysByModule[module] = key
       }
     }
+    currentCoroutineContext().ensureActive()
+    checkCurrent()
     return PreparedResolutionSnapshot(
       source = finalizedSource.withClassBindingDependencies(classDependencies.build()),
       inputs = inputs,
@@ -191,57 +212,48 @@ internal class ResolutionSnapshotBuilder(
     return builder.build()
   }
 
-  private fun coldSweep(
+  private suspend fun coldSweep(
     options: MetroOptions,
     inputs: IndexInputs,
     pending: SourceSnapshotChanges,
-    progress: IndexBuildProgressReporter?,
+    progress: IndexBuildProgressReporter,
+    checkCurrent: () -> Unit,
   ): SourceSnapshot {
-    progress?.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
-    val annotationIds = projectSweepAnnotationIds(options)
-    val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
-    val transaction = SourceSnapshotTransaction()
-    val candidates = candidateFiles(annotationIds, shortNames)
-    val total = candidates.size + pending.requested.size
-    val scan = SourceScanProgress(progress, total)
-    for (file in candidates) {
-      ProgressManager.checkCanceled()
-      try {
-        val virtualFile = file.virtualFile ?: continue
-        transaction.applyShard(
-          virtualFile,
-          readShard(file, pending, scan),
+    progress.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
+    val discovery =
+      readSnapshotStage(project, checkCurrent) {
+        val annotationIds = projectSweepAnnotationIds(options)
+        val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
+        SourceFileDiscovery(
+          candidateFiles(annotationIds, shortNames),
+          shortNames,
+          moduleFingerprints(),
         )
-      } finally {
-        scan.advance()
       }
-    }
-    // Stub loading can surface requested files before their annotations reach the stub index.
-    for (virtualFile in pending.requested) {
-      ProgressManager.checkCanceled()
-      try {
-        if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
-          continue
-        }
-        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
-        if (containsRelevantAnnotation(file, shortNames)) {
-          transaction.applyShard(
-            virtualFile,
-            readShard(file, pending, scan),
-          )
-        }
-      } finally {
-        scan.advance()
+    onSourceFilesScheduled(
+      buildSet {
+        addAll(discovery.files)
+        addAll(pending.requested)
       }
-    }
-    return transaction.snapshot(inputs, moduleFingerprints(), shortNames)
+    )
+    return sourceScanner.scan(
+      previous = null,
+      files = discovery.files,
+      inputs = inputs,
+      moduleFingerprints = discovery.moduleFingerprints,
+      shortNames = discovery.shortNames,
+      pending = pending,
+      progress = progress,
+      checkCurrent = checkCurrent,
+    )
   }
 
-  private fun incremental(
+  private suspend fun incremental(
     prev: SourceSnapshot,
     inputs: IndexInputs,
     pending: SourceSnapshotChanges,
-    progress: IndexBuildProgressReporter?,
+    progress: IndexBuildProgressReporter,
+    checkCurrent: () -> Unit,
   ): SourceSnapshot {
     val dirty =
       if (pending.forceAll) {
@@ -252,57 +264,26 @@ internal class ResolutionSnapshotBuilder(
       } else {
         pending.dirty
       }
+    onSourceFilesScheduled(
+      buildSet {
+        addAll(prev.shardOrder)
+        addAll(dirty)
+        addAll(pending.requested)
+      }
+    )
     if (dirty.isEmpty() && pending.requested.isEmpty()) {
       // Output-only compiler-option changes update inputs without touching any shard.
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
-    val transaction = SourceSnapshotTransaction(prev)
-    val total = dirty.size + pending.requested.size
-    val scan = SourceScanProgress(progress, total)
-    for (virtualFile in dirty) {
-      ProgressManager.checkCanceled()
-      try {
-        if (!virtualFile.isValid) {
-          transaction.removeShard(virtualFile)
-          continue
-        }
-        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
-        if (file == null || !file.isValid || !containsRelevantAnnotation(file, prev.shortNames)) {
-          transaction.removeShard(virtualFile)
-          continue
-        }
-        transaction.applyShard(
-          virtualFile,
-          readShard(file, pending, scan),
-        )
-      } finally {
-        scan.advance()
-      }
-    }
-    // Requested files were enqueued before their stubs or directory events settled. Draining
-    // them here keeps them from lingering until a cold sweep.
-    for (virtualFile in pending.requested) {
-      ProgressManager.checkCanceled()
-      try {
-        if (!virtualFile.isValid || transaction.containsShard(virtualFile)) {
-          continue
-        }
-        val file = PsiManager.getInstance(project).findFile(virtualFile) as? KtFile ?: continue
-        if (containsRelevantAnnotation(file, prev.shortNames)) {
-          transaction.applyShard(
-            virtualFile,
-            readShard(file, pending, scan),
-          )
-        }
-      } finally {
-        scan.advance()
-      }
-    }
-    return transaction.snapshot(
-      inputs,
-      prev.moduleFingerprints,
-      prev.shortNames,
-      sourceModulesMayHaveChanged = pending.sourceModulesMayHaveChanged,
+    return sourceScanner.scan(
+      previous = prev,
+      files = dirty,
+      inputs = inputs,
+      moduleFingerprints = prev.moduleFingerprints,
+      shortNames = prev.shortNames,
+      pending = pending,
+      progress = progress,
+      checkCurrent = checkCurrent,
     )
   }
 
@@ -426,14 +407,17 @@ internal class ResolutionSnapshotBuilder(
   }
 
   /** Files containing any Metro-relevant annotation or an exact aliased import, via indexes. */
-  private fun candidateFiles(annotationIds: Set<ClassId>, shortNames: Set<String>): Set<KtFile> {
+  private fun candidateFiles(
+    annotationIds: Set<ClassId>,
+    shortNames: Set<String>,
+  ): Set<VirtualFile> {
     val searchScope = GlobalSearchScope.projectScope(project)
-    val files = LinkedHashSet<KtFile>()
+    val files = LinkedHashSet<VirtualFile>()
     for (shortName in shortNames.sorted()) {
       ProgressManager.checkCanceled()
       for (entry in KotlinAnnotationsIndex[shortName, project, searchScope]) {
         ProgressManager.checkCanceled()
-        files += entry.containingKtFile
+        entry.containingKtFile.virtualFile?.let(files::add)
       }
     }
 
@@ -447,7 +431,7 @@ internal class ResolutionSnapshotBuilder(
       val callableName = callableId.callableName.asString()
       searchHelper.processElementsWithWord(
         { element, _ ->
-          (element.containingFile as? KtFile)?.let(files::add)
+          (element.containingFile as? KtFile)?.virtualFile?.let(files::add)
           true
         },
         searchScope,
@@ -469,7 +453,7 @@ internal class ResolutionSnapshotBuilder(
               directive.importedFqName in canonicalNames &&
               file != null
           ) {
-            files += file
+            file.virtualFile?.let(files::add)
           }
           true
         },
@@ -537,19 +521,6 @@ internal class ResolutionSnapshotBuilder(
     return hasDynamicGraphCall
   }
 
-  private fun readShard(
-    file: KtFile,
-    pending: SourceSnapshotChanges,
-    scan: SourceScanProgress,
-  ): FileShard {
-    val revision =
-      if (pending.forcesRebuild(file.virtualFile)) pending.invalidationRevision else null
-    val result = fileShards.read(file, revision)
-    scan.recordRead(result.rebuilt)
-    onShardRead(file, result.shard)
-    return result.shard
-  }
-
   /** Drops stale library data without changing the published presentation generation. */
   fun evictLibraryShards(
     currentRoots: Long,
@@ -573,32 +544,12 @@ internal class ResolutionSnapshotBuilder(
   }
 }
 
-/** Counts completed reads separately from visited files, including skipped or removed files. */
-private class SourceScanProgress(
-  private val reporter: IndexBuildProgressReporter?,
-  private val total: Int,
-) {
-  private var completed = 0
-  private var reused = 0
-  private var rebuilt = 0
-
-  init {
-    report()
-  }
-
-  fun recordRead(wasRebuilt: Boolean) {
-    if (wasRebuilt) rebuilt++ else reused++
-  }
-
-  fun advance() {
-    completed++
-    report()
-  }
-
-  private fun report() {
-    reporter?.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total, reused, rebuilt)
-  }
-}
+/** Discovery retains file identities so source reads can resume without keeping PSI trees alive. */
+private data class SourceFileDiscovery(
+  val files: Set<VirtualFile>,
+  val shortNames: Set<String>,
+  val moduleFingerprints: Map<Module, IndexOptionsFingerprint>,
+)
 
 private data class LibraryCacheKey(
   val fingerprint: IndexOptionsFingerprint,
