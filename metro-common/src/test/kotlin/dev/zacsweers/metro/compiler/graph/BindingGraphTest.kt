@@ -103,6 +103,107 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `existing bindings notify root and shared dependency requests in either order`() {
+    val first = "First".contextualTypeKey
+    val second = "Second".contextualTypeKey
+    val sharedRequest = "Shared".contextualTypeKey
+    val sharedBinding = sharedRequest.typeKey.toBinding()
+    val providers =
+      listOf(first, second).associate { it.typeKey to it.typeKey.toBinding(sharedRequest) }
+
+    for (providerOrder in listOf(listOf(first, second), listOf(second, first))) {
+      val rootKey = "Root".contextualTypeKey
+      val rootEntry = StringBindingStack.Entry(rootKey, usage = "root")
+      // Root dependency order controls when the computed providers enter the traversal queue.
+      val rootBinding = rootKey.typeKey.toBinding(providerOrder)
+      val computed = mutableListOf<StringContextualTypeKey>()
+      val createdEntries = mutableListOf<StringBindingStack.Entry>()
+      val observed =
+        mutableListOf<Triple<StringContextualTypeKey, StringBinding, StringBindingStack.Entry>>()
+      val graph =
+        MutableBindingGraph<
+          String,
+          StringTypeKey,
+          StringContextualTypeKey,
+          StringBinding,
+          StringBindingStack.Entry,
+          StringBindingStack,
+        >(
+          newBindingStack = { StringBindingStack("AppGraph") },
+          newBindingStackEntry = { contextKey, callingBinding, _ ->
+            StringBindingStack.Entry(contextKey, usage = callingBinding?.typeKey?.type).also {
+              createdEntries += it
+            }
+          },
+          computeBindings = { contextKey, _, _ ->
+            computed += contextKey
+            setOf(providers.getValue(contextKey.typeKey))
+          },
+          onExistingBinding = { contextKey, binding, entry ->
+            observed += Triple(contextKey, binding, entry)
+          },
+        )
+      graph.tryPut(rootBinding, StringBindingStack("AppGraph"))
+      graph.tryPut(sharedBinding, StringBindingStack("AppGraph"))
+
+      graph.seal(roots = mapOf(rootKey to rootEntry))
+
+      assertThat(computed).containsExactlyElementsIn(providerOrder).inOrder()
+      assertThat(observed).hasSize(3)
+      val root = observed.first()
+      assertThat(root.first).isSameInstanceAs(rootKey)
+      assertThat(root.second).isSameInstanceAs(rootBinding)
+      assertThat(root.third).isSameInstanceAs(rootEntry)
+      val dependencies = observed.drop(1)
+      assertThat(dependencies.map { it.third.usage })
+        .containsExactlyElementsIn(providerOrder.map { it.typeKey.type })
+        .inOrder()
+      for ((request, binding, entry) in dependencies) {
+        assertThat(request).isSameInstanceAs(sharedRequest)
+        assertThat(binding).isSameInstanceAs(sharedBinding)
+        assertThat(entry.contextKey).isSameInstanceAs(request)
+        assertThat(createdEntries).contains(entry)
+      }
+      assertThat(createdEntries).hasSize(4)
+    }
+  }
+
+  @Test
+  fun `existing bindings need no lookups or stack entries when observation is disabled`() {
+    val sharedRequest = "Shared".contextualTypeKey
+    val rootKey = "Root".contextualTypeKey
+    val rootEntry = StringBindingStack.Entry(rootKey)
+    var computed = 0
+    var createdEntries = 0
+    val graph =
+      MutableBindingGraph<
+        String,
+        StringTypeKey,
+        StringContextualTypeKey,
+        StringBinding,
+        StringBindingStack.Entry,
+        StringBindingStack,
+      >(
+        newBindingStack = { StringBindingStack("AppGraph") },
+        newBindingStackEntry = { contextKey, _, _ ->
+          createdEntries++
+          StringBindingStack.Entry(contextKey)
+        },
+        computeBindings = { _, _, _ ->
+          computed++
+          emptySet()
+        },
+      )
+    graph.tryPut(rootKey.typeKey.toBinding(sharedRequest), StringBindingStack("AppGraph"))
+    graph.tryPut(sharedRequest.typeKey.toBinding(), StringBindingStack("AppGraph"))
+
+    graph.seal(roots = mapOf(rootKey to rootEntry))
+
+    assertThat(computed).isEqualTo(0)
+    assertThat(createdEntries).isEqualTo(0)
+  }
+
+  @Test
   fun put() {
     val key = "key".typeKey
     val (graph) = buildGraph { binding("key") }
