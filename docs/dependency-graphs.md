@@ -838,13 +838,11 @@ class AppGraph$Impl : AppGraph {
 
 Sharding respects required binding initialization order and keeps strongly connected components (valid cycles broken by `Provider`/`Lazy`) together in the same shard.
 
-This feature is disabled by default but will likely be enabled by default in the future.
-
 !!! Configuration
 
     | Gradle Extension Property | Gradle/System Property | Compiler Option | Description |
     | ------------------ | --------------- | --------------- | ----------- |
-    | enableGraphSharding | `metro.enableGraphSharding` | `enable-graph-sharding` | Enable/disable sharding (default: `false`) |
+    | enableGraphSharding | `metro.enableGraphSharding` | `enable-graph-sharding` | Enable/disable sharding (default: `true`) |
     | keysPerGraphShard | `metro.keysPerGraphShard` | `keys-per-graph-shard` | Max bindings per shard (default: `2000`) |
 
 #### Switching Providers
