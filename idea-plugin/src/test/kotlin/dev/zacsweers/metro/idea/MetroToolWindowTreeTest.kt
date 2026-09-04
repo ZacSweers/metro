@@ -23,6 +23,7 @@ import com.intellij.platform.eel.fs.EelFiles
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.AnimatedIcon
@@ -103,6 +104,15 @@ import org.jetbrains.kotlin.psi.KtFile
 
 /** Checks graph-browser and explicit-result rows, including platform tree refresh and selection. */
 class MetroToolWindowTreeTest : BasePlatformTestCase() {
+
+  /** Initial-load assertions require a project without retained indexes from earlier tests. */
+  override fun getProjectDescriptor(): LightProjectDescriptor? {
+    if (name == "testToolWindowWaitsForInitialGraphLoad") return InitialGraphLoadProject
+    return super.getProjectDescriptor()
+  }
+
+  /** A distinct descriptor gives the initial-load test its own light project. */
+  private object InitialGraphLoadProject : LightProjectDescriptor()
 
   override fun setUp() {
     super.setUp()
@@ -1283,9 +1293,14 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
     service.settingsChanged()
-    configure()
+    val file = configure()
     val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
     PlatformTestUtil.waitForFuture(settled, 30_000)
+    assertSame(
+      "Initial graph loading requires an unpublished presentation index",
+      BindingIndex.EMPTY,
+      service.presentationIndex(file),
+    )
     val panel = MetroToolWindowPanel(project)
     try {
       val status = toolWindowStatus(panel)
