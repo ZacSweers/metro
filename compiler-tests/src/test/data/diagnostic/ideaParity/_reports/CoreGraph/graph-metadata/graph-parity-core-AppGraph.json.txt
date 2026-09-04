@@ -393,6 +393,40 @@
         "label": "parity.core.AppGraph"
       },
       "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "18:parity.core.Engine|18:parity.core.Engine",
+          "key": "parity.core.Engine",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "parity.core.Engine",
+            "label": "parity.core.Engine"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.core.Engine",
+        "declaration": {
+          "id": "parity.core.RealApi.MetroFactory.declarationMirror(parity.core.RealApi.MetroFactory,parity.core.Engine): parity.core.RealApi#engine",
+          "label": "parity.core.RealApi.MetroFactory.declarationMirror.engine"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "20:parity.core.AppGraph",
+        "label": "parity.core.AppGraph"
+      },
+      "phase": "lookup",
       "outcome": "missing",
       "candidates": [],
       "request": {

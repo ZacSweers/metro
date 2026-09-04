@@ -1,20 +1,16 @@
 {
-  "graph": "parity.suspend.AppGraph",
+  "graph": "AppGraph.Impl.ChildGraphImpl",
   "scopes": [],
   "aggregationScopes": [],
   "roots": {
     "accessors": [
       {
-        "key": "parity.suspend.Repository",
+        "key": "FirstParentConsumer",
         "isDeferrable": false
       },
       {
-        "key": "parity.suspend.DeferredRepository",
+        "key": "SecondParentConsumer",
         "isDeferrable": false
-      },
-      {
-        "key": "SuspendProvider<parity.suspend.Database>",
-        "isDeferrable": true
       }
     ],
     "injectors": []
@@ -46,32 +42,78 @@
     "interopAnnotationsNamedArgSeverity": "NONE",
     "unusedGraphInputsSeverity": "WARN",
     "enabledLoggers": [],
-    "enableDaggerRuntimeInterop": false,
+    "enableDaggerRuntimeInterop": true,
     "enableGuiceRuntimeInterop": false,
     "maxIrErrorsCount": 20,
-    "customProviderTypes": [],
-    "customLazyTypes": [],
-    "customAssistedAnnotations": [],
-    "customAssistedFactoryAnnotations": [],
-    "customAssistedInjectAnnotations": [],
-    "customBindsAnnotations": [],
+    "customProviderTypes": [
+      "dagger/internal/Provider",
+      "javax/inject/Provider",
+      "jakarta/inject/Provider"
+    ],
+    "customLazyTypes": [
+      "dagger/Lazy"
+    ],
+    "customAssistedAnnotations": [
+      "dagger/assisted/Assisted"
+    ],
+    "customAssistedFactoryAnnotations": [
+      "dagger/assisted/AssistedFactory"
+    ],
+    "customAssistedInjectAnnotations": [
+      "dagger/assisted/AssistedInject"
+    ],
+    "customBindsAnnotations": [
+      "dagger/Binds"
+    ],
     "customContributesToAnnotations": [],
     "customContributesBindingAnnotations": [],
     "customContributesIntoSetAnnotations": [],
-    "customGraphExtensionAnnotations": [],
-    "customGraphExtensionFactoryAnnotations": [],
-    "customElementsIntoSetAnnotations": [],
-    "customGraphAnnotations": [],
-    "customGraphFactoryAnnotations": [],
-    "customInjectAnnotations": [],
-    "customIntoMapAnnotations": [],
-    "customIntoSetAnnotations": [],
-    "customMapKeyAnnotations": [],
-    "customMultibindsAnnotations": [],
-    "customProvidesAnnotations": [],
-    "customQualifierAnnotations": [],
-    "customScopeAnnotations": [],
-    "customBindingContainerAnnotations": [],
+    "customGraphExtensionAnnotations": [
+      "dagger/Subcomponent"
+    ],
+    "customGraphExtensionFactoryAnnotations": [
+      "dagger/Subcomponent.Factory"
+    ],
+    "customElementsIntoSetAnnotations": [
+      "dagger/multibindings/ElementsIntoSet"
+    ],
+    "customGraphAnnotations": [
+      "dagger/Component"
+    ],
+    "customGraphFactoryAnnotations": [
+      "dagger/Component.Factory"
+    ],
+    "customInjectAnnotations": [
+      "javax/inject/Inject",
+      "jakarta/inject/Inject"
+    ],
+    "customIntoMapAnnotations": [
+      "dagger/multibindings/IntoMap"
+    ],
+    "customIntoSetAnnotations": [
+      "dagger/multibindings/IntoSet"
+    ],
+    "customMapKeyAnnotations": [
+      "dagger/MapKey"
+    ],
+    "customMultibindsAnnotations": [
+      "dagger/multibindings/Multibinds"
+    ],
+    "customProvidesAnnotations": [
+      "dagger/Provides",
+      "dagger/BindsInstance"
+    ],
+    "customQualifierAnnotations": [
+      "javax/inject/Qualifier",
+      "jakarta/inject/Qualifier"
+    ],
+    "customScopeAnnotations": [
+      "javax/inject/Scope",
+      "jakarta/inject/Scope"
+    ],
+    "customBindingContainerAnnotations": [
+      "dagger/Module"
+    ],
     "enableDaggerAnvilInterop": false,
     "enableFullBindingGraphValidation": false,
     "enableGraphImplClassAsReturnType": false,
@@ -87,7 +129,7 @@
     "omitRedundantMirrors": false,
     "enableProviderInlining": true,
     "enableFunctionProviders": true,
-    "enableSuspendProviders": true,
+    "enableSuspendProviders": false,
     "desugaredProviderSeverity": "WARN",
     "enableKClassToClassInterop": false,
     "generateContributionProviders": false,
@@ -100,11 +142,11 @@
     "maxGeneratedClassNameLength": 233
   },
   "stats": {
-    "providerFactories": 1,
+    "providerFactories": 0,
     "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 3,
+    "accessors": 2,
     "injectors": 0,
     "graphExtensionAccessors": 0,
     "graphExtensionFactories": 0,
@@ -113,19 +155,19 @@
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 4,
-    "validatedKeys": 4,
-    "reachableKeys": 4,
+    "populatedKeys": 5,
+    "validatedKeys": 5,
+    "reachableKeys": 5,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 1,
+    "providerProperties": 0,
     "scopedProviderProperties": 0,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
       "classConstructorDirectInvocations": 2,
       "classConstructorNewInstanceCalls": 0,
-      "providerDirectInvocations": 1,
+      "providerDirectInvocations": 0,
       "providerNewInstanceCalls": 0,
       "shardsGenerated": 0,
       "shardedSupertypes": 0,
@@ -135,82 +177,120 @@
   },
   "bindings": [
     {
-      "key": "parity.suspend.AppGraph",
+      "key": "AppGraph",
       "bindingKind": "BoundInstance",
       "isScoped": false,
-      "nameHint": "AppGraphProvider",
+      "nameHint": "parent",
       "dependencies": [],
       "isSynthetic": false,
       "declaration": "AppGraph"
     },
     {
-      "key": "parity.suspend.Database",
-      "bindingKind": "Provided",
+      "key": "AppGraph.Impl",
+      "bindingKind": "Alias",
       "isScoped": false,
-      "nameHint": "provideDatabase",
+      "nameHint": "Impl",
       "dependencies": [
         {
-          "key": "parity.suspend.AppGraph",
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": true,
+      "aliasTarget": "AppGraph"
+    },
+    {
+      "key": "FirstParentConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "FirstParentConsumer",
+      "dependencies": [
+        {
+          "key": "ParentValue",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
-      "declaration": "provideDatabase"
+      "declaration": "FirstParentConsumer"
     },
     {
-      "key": "parity.suspend.DeferredRepository",
-      "bindingKind": "ConstructorInjected",
+      "key": "ParentValue",
+      "bindingKind": "GraphDependency",
       "isScoped": false,
-      "nameHint": "DeferredRepository",
+      "nameHint": "ChildGraphImplParentValue",
       "dependencies": [
         {
-          "key": "SuspendProvider<parity.suspend.Database>",
-          "hasDefault": false,
-          "wrapperType": "SuspendProvider"
+          "key": "AppGraph.Impl",
+          "hasDefault": false
         }
       ],
-      "isSynthetic": false,
-      "declaration": "DeferredRepository"
+      "isSynthetic": false
     },
     {
-      "key": "parity.suspend.Repository",
+      "key": "SecondParentConsumer",
       "bindingKind": "ConstructorInjected",
       "isScoped": false,
-      "nameHint": "Repository",
+      "nameHint": "SecondParentConsumer",
       "dependencies": [
         {
-          "key": "parity.suspend.Database",
+          "key": "ParentValue",
           "hasDefault": false
         }
       ],
       "isSynthetic": false,
-      "declaration": "Repository"
+      "declaration": "SecondParentConsumer"
     }
   ],
   "bindingExplanations": [
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
       },
-      "phase": "lookup",
-      "outcome": "selected",
+      "phase": "candidate_filtering",
+      "outcome": "filtered",
       "candidates": [
         {
-          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-          "key": "parity.suspend.Database",
-          "status": "selected",
-          "reason": "selected_explicit",
+          "id": "18:PrioritizedService|18:LowPriorityService",
+          "key": "PrioritizedService",
+          "status": "rejected",
+          "reason": "lower_priority",
           "declaration": {
-            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-            "label": "parity.suspend.AppGraph.provideDatabase"
+            "id": "LowPriorityService",
+            "label": "LowPriorityService"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
+      "details": [
+        "Records candidates removed while constructing this graph."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
       "request": {
-        "key": "SuspendProvider<parity.suspend.Database>",
+        "key": "AppGraph",
         "hasDefault": false,
         "isOptional": false
       },
@@ -220,64 +300,87 @@
     },
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-          "key": "parity.suspend.Database",
-          "status": "selected",
-          "reason": "selected_explicit",
-          "declaration": {
-            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-            "label": "parity.suspend.AppGraph.provideDatabase"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "SuspendProvider<parity.suspend.Database>",
-        "declaration": {
-          "id": "parity.suspend.DeferredRepository.MetroFactory.declarationMirror(parity.suspend.DeferredRepository.MetroFactory,kotlin.coroutines.SuspendFunction0<parity.suspend.Database>): parity.suspend.DeferredRepository#database",
-          "label": "parity.suspend.DeferredRepository.MetroFactory.declarationMirror.database"
-        },
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "23:parity.suspend.AppGraph|23:parity.suspend.AppGraph",
-          "key": "parity.suspend.AppGraph",
+          "id": "13:AppGraph.Impl|9:generated",
+          "key": "AppGraph.Impl",
           "status": "selected",
           "reason": "selected_generated",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph.Impl",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "19:FirstParentConsumer|19:FirstParentConsumer",
+          "key": "FirstParentConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.suspend.AppGraph",
-            "label": "parity.suspend.AppGraph"
+            "id": "FirstParentConsumer",
+            "label": "FirstParentConsumer"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.suspend.AppGraph",
+        "key": "FirstParentConsumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_parent",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "ownerGraphId": "8:AppGraph",
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ParentValue",
         "declaration": {
-          "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database#<this>",
-          "label": "parity.suspend.AppGraph.provideDatabase.<this>"
+          "id": "FirstParentConsumer.MetroFactory.declarationMirror(FirstParentConsumer.MetroFactory,ParentValue): FirstParentConsumer#parentValue",
+          "label": "FirstParentConsumer.MetroFactory.declarationMirror.parentValue"
         },
         "hasDefault": false,
         "isOptional": false
@@ -288,30 +391,31 @@
     },
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "23:parity.suspend.Database|89:parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-          "key": "parity.suspend.Database",
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
           "status": "selected",
-          "reason": "selected_explicit",
+          "reason": "selected_parent",
           "declaration": {
-            "id": "parity.suspend.AppGraph.provideDatabase(parity.suspend.AppGraph): parity.suspend.Database",
-            "label": "parity.suspend.AppGraph.provideDatabase"
+            "id": "ParentValue",
+            "label": "ParentValue"
           },
+          "ownerGraphId": "8:AppGraph",
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.suspend.Database",
+        "key": "ParentValue",
         "declaration": {
-          "id": "parity.suspend.Repository.MetroFactory.declarationMirror(parity.suspend.Repository.MetroFactory,parity.suspend.Database): parity.suspend.Repository#database",
-          "label": "parity.suspend.Repository.MetroFactory.declarationMirror.database"
+          "id": "SecondParentConsumer.MetroFactory.declarationMirror(SecondParentConsumer.MetroFactory,ParentValue): SecondParentConsumer#parentValue",
+          "label": "SecondParentConsumer.MetroFactory.declarationMirror.parentValue"
         },
         "hasDefault": false,
         "isOptional": false
@@ -322,57 +426,27 @@
     },
     {
       "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
+        "id": "8:AppGraph|28:AppGraph.Impl.ChildGraphImpl",
+        "label": "AppGraph -> AppGraph.Impl.ChildGraphImpl"
       },
       "phase": "lookup",
       "outcome": "selected",
       "candidates": [
         {
-          "id": "33:parity.suspend.DeferredRepository|33:parity.suspend.DeferredRepository",
-          "key": "parity.suspend.DeferredRepository",
+          "id": "20:SecondParentConsumer|20:SecondParentConsumer",
+          "key": "SecondParentConsumer",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
-            "id": "parity.suspend.DeferredRepository",
-            "label": "parity.suspend.DeferredRepository"
+            "id": "SecondParentConsumer",
+            "label": "SecondParentConsumer"
           },
           "relatedDeclarations": [],
           "details": []
         }
       ],
       "request": {
-        "key": "parity.suspend.DeferredRepository",
-        "hasDefault": false,
-        "isOptional": false
-      },
-      "details": [
-        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
-      ]
-    },
-    {
-      "context": {
-        "id": "23:parity.suspend.AppGraph",
-        "label": "parity.suspend.AppGraph"
-      },
-      "phase": "lookup",
-      "outcome": "selected",
-      "candidates": [
-        {
-          "id": "25:parity.suspend.Repository|25:parity.suspend.Repository",
-          "key": "parity.suspend.Repository",
-          "status": "selected",
-          "reason": "selected_implicit",
-          "declaration": {
-            "id": "parity.suspend.Repository",
-            "label": "parity.suspend.Repository"
-          },
-          "relatedDeclarations": [],
-          "details": []
-        }
-      ],
-      "request": {
-        "key": "parity.suspend.Repository",
+        "key": "SecondParentConsumer",
         "hasDefault": false,
         "isOptional": false
       },

@@ -187,6 +187,173 @@
         "id": "8:AppGraph",
         "label": "AppGraph"
       },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "BindingExplanationsFullValidation.kt",
+              "line": 10,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "BindingExplanationsFullValidation.kt",
+              "line": 10,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.requestedValue(AppGraph): RequestedValue#<this>",
+          "label": "AppGraph.requestedValue.<this>",
+          "source": {
+            "path": "BindingExplanationsFullValidation.kt",
+            "line": 14,
+            "column": 13
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph",
+            "source": {
+              "path": "BindingExplanationsFullValidation.kt",
+              "line": 10,
+              "column": 1
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.unrequestedValue(AppGraph): UnrequestedValue#<this>",
+          "label": "AppGraph.unrequestedValue.<this>",
+          "source": {
+            "path": "BindingExplanationsFullValidation.kt",
+            "line": 16,
+            "column": 13
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "14:RequestedValue|49:AppGraph.requestedValue(AppGraph): RequestedValue",
+          "key": "RequestedValue",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.requestedValue(AppGraph): RequestedValue",
+            "label": "AppGraph.requestedValue",
+            "source": {
+              "path": "BindingExplanationsFullValidation.kt",
+              "line": 14,
+              "column": 13
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "RequestedValue",
+        "declaration": {
+          "id": "AppGraph.requestedValue: RequestedValue",
+          "label": "AppGraph.requestedValue",
+          "source": {
+            "path": "BindingExplanationsFullValidation.kt",
+            "line": 12,
+            "column": 3
+          }
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
       "phase": "registration",
       "outcome": "selected",
       "candidates": [

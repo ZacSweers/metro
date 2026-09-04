@@ -628,6 +628,40 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "23:parity.aggregation.Repo|27:parity.aggregation.TestRepo",
+          "key": "parity.aggregation.Repo",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.aggregation.TestRepo",
+            "label": "parity.aggregation.TestRepo"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.aggregation.Repo",
+        "declaration": {
+          "id": "parity.aggregation.AggregateBindings.Companion.primaryHandler(parity.aggregation.AggregateBindings.Companion,parity.aggregation.Repo): parity.aggregation.Handler#repo",
+          "label": "parity.aggregation.AggregateBindings.Companion.primaryHandler.repo"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "27:parity.aggregation.AppGraph",
+        "label": "parity.aggregation.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "30:parity.aggregation.ScopedValue|30:parity.aggregation.ScopedValue",
           "key": "parity.aggregation.ScopedValue",
           "status": "selected",

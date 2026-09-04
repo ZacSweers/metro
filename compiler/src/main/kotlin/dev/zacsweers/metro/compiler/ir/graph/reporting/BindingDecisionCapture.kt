@@ -16,6 +16,7 @@ import dev.zacsweers.metro.compiler.ir.IrTypeKey
 import dev.zacsweers.metro.compiler.ir.graph.GraphNode
 import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.graph.IrBindingStack
+import java.util.IdentityHashMap
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 
 /** One candidate removed during graph construction, before requests reach binding lookup. */
@@ -33,6 +34,11 @@ internal data class RejectedBindingDecision(
  */
 internal class BindingDecisionCapture(private val node: GraphNode.Local) {
   private val lookups = linkedMapOf<LookupIdentity, LookupDecision>()
+  /** Keeps the original selection when graph storage uses a generated parent delegate. */
+  private val selectionsByBinding = IdentityHashMap<IrBinding, RecordedSelection>()
+  /** Wrapped-map rejections apply only to requests with the same contextual type. */
+  private val rejectionsByBinding =
+    IdentityHashMap<IrBinding, MutableMap<IrContextualTypeKey, List<RejectedBindingDecision>>>()
   private val rejected = linkedSetOf<RejectedBindingDecision>()
   private val registered = mutableListOf<IrBinding>()
   private val optionalDeclarations =
@@ -47,17 +53,23 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
     registered += binding
   }
 
+  /**
+   * [resolvedBinding] associates the original selection with the binding installed in the graph.
+   */
   fun selected(
     request: IrContextualTypeKey,
     stack: IrBindingStack,
     binding: IrBinding,
     conflicts: Collection<IrBinding>? = null,
     ownerGraph: IrTypeKey? = null,
+    resolvedBinding: IrBinding = binding,
   ) {
     val decision = lookup(request, stack)
     val candidates = (conflicts ?: listOf(binding)).filterNot { it is IrBinding.Absent }
     decision.selected = candidates.map { SelectedBindingDecision(it, ownerGraph) }
     decision.conflicts = candidates.size > 1
+    selectionsByBinding[resolvedBinding] = RecordedSelection(decision.selected, decision.conflicts)
+    rememberRejections(resolvedBinding, request, decision)
   }
 
   /**
@@ -84,6 +96,39 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
     }
     decision.selected = selected
     decision.conflicts = selected.size > 1
+    val selection = RecordedSelection(decision.selected, decision.conflicts)
+    for (binding in bindings) {
+      if (binding.typeKey == request.typeKey && binding !is IrBinding.Absent) {
+        selectionsByBinding[binding] = selection
+        rememberRejections(binding, request, decision)
+      }
+    }
+  }
+
+  /** Records a cache hit without replacing an earlier decision or running another lookup. */
+  fun reused(request: IrContextualTypeKey, binding: IrBinding, entry: IrBindingStack.Entry) {
+    val identity = LookupIdentity(request, request.hasDefault, entry.declaration)
+    if (identity in lookups) return
+    val decision = LookupDecision()
+    val selection = selectionsByBinding[binding]
+    if (selection != null) {
+      decision.selected = selection.bindings
+      decision.conflicts = selection.conflicts
+    } else if (binding !is IrBinding.Absent) {
+      decision.selected = listOf(SelectedBindingDecision(binding, null))
+    }
+    decision.rejected += rejectionsByBinding[binding]?.get(request).orEmpty()
+    lookups[identity] = decision
+  }
+
+  /** Keeps only observed rejections; contextual keys distinguish plain and wrapped map values. */
+  private fun rememberRejections(
+    binding: IrBinding,
+    request: IrContextualTypeKey,
+    decision: LookupDecision,
+  ) {
+    if (decision.rejected.isEmpty()) return
+    rejectionsByBinding.getOrPut(binding) { mutableMapOf() }[request] = decision.rejected.toList()
   }
 
   fun missing(request: IrContextualTypeKey, stack: IrBindingStack) {
@@ -221,6 +266,12 @@ internal class BindingDecisionCapture(private val node: GraphNode.Local) {
   }
 
   private class SelectedBindingDecision(val binding: IrBinding, val ownerGraph: IrTypeKey?)
+
+  /** Immutable selection data can be shared by requests that reuse the same binding instance. */
+  private class RecordedSelection(
+    val bindings: List<SelectedBindingDecision>,
+    val conflicts: Boolean,
+  )
 }
 
 private fun RejectedBindingDecision.toExplanationCandidate(

@@ -323,6 +323,7 @@ internal class IrBindingGraph(
       errorReporter = this,
       missingBindingDiagnosticDetails = ::missingBindingHints,
       findSuspendCycleKey = ::findSuspendCycleKey,
+      onExistingBinding = decisionCapture?.let { capture -> capture::reused },
     )
 
   private fun findSuspendCycleKey(

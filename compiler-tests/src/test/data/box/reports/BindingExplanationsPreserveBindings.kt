@@ -9,6 +9,10 @@ import java.util.Optional
 
 @SingleIn(AppScope::class) @Inject class ParentValue
 
+@Inject class FirstParentConsumer(val parentValue: ParentValue)
+
+@Inject class SecondParentConsumer(val parentValue: ParentValue)
+
 @Inject
 class MemberTarget {
   @Inject lateinit var value: Value
@@ -22,6 +26,8 @@ interface OptionalBindings {
 @GraphExtension
 interface ChildGraph {
   val parentValue: ParentValue
+  val first: FirstParentConsumer
+  val second: SecondParentConsumer
 }
 
 @DependencyGraph(AppScope::class, bindingContainers = [OptionalBindings::class])
@@ -44,6 +50,9 @@ fun box(): String {
   assertEquals("explicit", graph.values.single().origin)
   assertEquals("explicit", graph.optionalValue.get().origin)
   assertEquals("explicit", graph.memberTarget.value.origin)
-  assertSame(graph.parentValue, graph.child.parentValue)
+  val child = graph.child
+  assertSame(graph.parentValue, child.parentValue)
+  assertSame(graph.parentValue, child.first.parentValue)
+  assertSame(graph.parentValue, child.second.parentValue)
   return "OK"
 }

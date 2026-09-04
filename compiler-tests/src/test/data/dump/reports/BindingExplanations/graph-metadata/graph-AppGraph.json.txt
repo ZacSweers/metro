@@ -35,12 +35,24 @@
       {
         "key": "MemberTarget",
         "isDeferrable": false
+      },
+      {
+        "key": "FirstMapConsumer",
+        "isDeferrable": false
+      },
+      {
+        "key": "MapConsumerHolder",
+        "isDeferrable": false
       }
     ],
     "injectors": []
   },
   "extensions": {
-    "accessors": [],
+    "accessors": [
+      {
+        "key": "ChildGraph"
+      }
+    ],
     "factoryAccessors": [],
     "factoriesImplemented": []
   },
@@ -166,30 +178,30 @@
     "maxGeneratedClassNameLength": 233
   },
   "stats": {
-    "providerFactories": 2,
+    "providerFactories": 4,
     "bindsCallables": 4,
     "multibindsCallables": 0,
     "optionalBindings": 1,
-    "accessors": 7,
+    "accessors": 9,
     "injectors": 0,
-    "graphExtensionAccessors": 0,
+    "graphExtensionAccessors": 1,
     "graphExtensionFactories": 0,
     "includedGraphs": 0,
     "bindingContainers": 0,
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 14,
-    "validatedKeys": 14,
-    "reachableKeys": 14,
+    "populatedKeys": 21,
+    "validatedKeys": 21,
+    "reachableKeys": 21,
     "deferredKeys": 0,
     "unusedInputs": 0,
-    "providerProperties": 2,
-    "scopedProviderProperties": 0,
+    "providerProperties": 4,
+    "scopedProviderProperties": 1,
     "shards": 0,
     "optimizations": {
       "bindingsPrunedByShrinking": 0,
-      "classConstructorDirectInvocations": 4,
+      "classConstructorDirectInvocations": 7,
       "classConstructorNewInstanceCalls": 0,
       "providerDirectInvocations": 1,
       "providerNewInstanceCalls": 0,
@@ -212,9 +224,22 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:31:1",
       "declaration": "KeptHandler",
       "aliasTarget": "KeptHandler"
+    },
+    {
+      "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "mapValue",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "mapValue"
     },
     {
       "key": "AppGraph",
@@ -223,8 +248,21 @@
       "nameHint": "AppGraphProvider",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:53:1",
       "declaration": "AppGraph"
+    },
+    {
+      "key": "ChildGraph",
+      "bindingKind": "GraphExtension",
+      "isScoped": false,
+      "nameHint": "ChildGraph",
+      "dependencies": [
+        {
+          "key": "AppGraph",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "<get-child>"
     },
     {
       "key": "DefaultValue",
@@ -238,7 +276,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:41:1",
       "declaration": "DefaultValue"
     },
     {
@@ -253,8 +290,22 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:68:13",
       "declaration": "explicitValue"
+    },
+    {
+      "key": "FirstMapConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "FirstMapConsumer",
+      "dependencies": [
+        {
+          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "hasDefault": false,
+          "wrapperType": "Provider"
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "FirstMapConsumer"
     },
     {
       "key": "HighPriorityService",
@@ -263,7 +314,6 @@
       "nameHint": "HighPriorityService",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:25:1",
       "declaration": "HighPriorityService"
     },
     {
@@ -273,8 +323,41 @@
       "nameHint": "KeptHandler",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:31:1",
       "declaration": "KeptHandler"
+    },
+    {
+      "key": "Map<kotlin.String, kotlin.Int>",
+      "bindingKind": "Multibinding",
+      "isScoped": false,
+      "nameHint": "mapOfStringToInt",
+      "dependencies": [
+        {
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "multibinding": {
+        "type": "MAP",
+        "allowEmpty": false,
+        "sources": [
+          "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int"
+        ]
+      }
+    },
+    {
+      "key": "MapConsumerHolder",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "MapConsumerHolder",
+      "dependencies": [
+        {
+          "key": "SecondMapConsumer",
+          "hasDefault": false
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "MapConsumerHolder"
     },
     {
       "key": "MemberTarget",
@@ -288,8 +371,17 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:43:1",
       "declaration": "MemberTarget"
+    },
+    {
+      "key": "ParentValue",
+      "bindingKind": "ConstructorInjected",
+      "scope": "@dev.zacsweers.metro.SingleIn(dev.zacsweers.metro.AppScope::class)",
+      "isScoped": true,
+      "nameHint": "ParentValue",
+      "dependencies": [],
+      "isSynthetic": false,
+      "declaration": "ParentValue"
     },
     {
       "key": "PrioritizedService",
@@ -303,7 +395,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:25:1",
       "declaration": "HighPriorityService",
       "aliasTarget": "HighPriorityService"
     },
@@ -314,8 +405,22 @@
       "nameHint": "ReplacementService",
       "dependencies": [],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:15:1",
       "declaration": "ReplacementService"
+    },
+    {
+      "key": "SecondMapConsumer",
+      "bindingKind": "ConstructorInjected",
+      "isScoped": false,
+      "nameHint": "SecondMapConsumer",
+      "dependencies": [
+        {
+          "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+          "hasDefault": false,
+          "wrapperType": "Provider"
+        }
+      ],
+      "isSynthetic": false,
+      "declaration": "SecondMapConsumer"
     },
     {
       "key": "Service",
@@ -329,7 +434,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:15:1",
       "declaration": "ReplacementService",
       "aliasTarget": "ReplacementService"
     },
@@ -346,7 +450,6 @@
         }
       ],
       "isSynthetic": true,
-      "origin": "BindingExplanations.kt:43:1",
       "declaration": "MemberTarget"
     },
     {
@@ -361,7 +464,6 @@
         }
       ],
       "isSynthetic": true,
-      "origin": "BindingExplanations.kt:50:20",
       "declaration": "optionalString_opt",
       "optionalWrapper": {
         "wrappedType": "kotlin.String = ...",
@@ -381,7 +483,6 @@
         }
       ],
       "isSynthetic": false,
-      "origin": "BindingExplanations.kt:70:13",
       "declaration": "text"
     },
     {
@@ -421,12 +522,7 @@
           "reason": "lower_priority",
           "declaration": {
             "id": "LowPriorityService",
-            "label": "LowPriorityService",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 21,
-              "column": 1
-            }
+            "label": "LowPriorityService"
           },
           "relatedDeclarations": [],
           "details": []
@@ -443,12 +539,7 @@
           "relatedDeclarations": [
             {
               "id": "AppGraph",
-              "label": "AppGraph",
-              "source": {
-                "path": "BindingExplanations.kt",
-                "line": 53,
-                "column": 1
-              }
+              "label": "AppGraph"
             }
           ],
           "details": []
@@ -465,12 +556,7 @@
           "relatedDeclarations": [
             {
               "id": "ReplacementService",
-              "label": "ReplacementService",
-              "source": {
-                "path": "BindingExplanations.kt",
-                "line": 15,
-                "column": 1
-              }
+              "label": "ReplacementService"
             }
           ],
           "details": []
@@ -495,12 +581,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "KeptHandler",
-            "label": "KeptHandler",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 31,
-              "column": 1
-            }
+            "label": "KeptHandler"
           },
           "relatedDeclarations": [],
           "details": []
@@ -524,18 +605,73 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "102:@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int|39:AppGraph.mapValue(AppGraph): kotlin.Int",
+          "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "AppGraph.mapValue(AppGraph): kotlin.Int",
+            "label": "AppGraph.mapValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "@dev.zacsweers.metro.internal.MultibindingElement(\"kotlin.String_kotlin.Int\", \"1629395126\") kotlin.Int",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "8:AppGraph|8:AppGraph",
           "key": "AppGraph",
           "status": "selected",
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 53,
-              "column": 1
-            }
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
           },
           "relatedDeclarations": [],
           "details": []
@@ -544,13 +680,8 @@
       "request": {
         "key": "AppGraph",
         "declaration": {
-          "id": "AppGraph.explicitValue(AppGraph): ExplicitValue#<this>",
-          "label": "AppGraph.explicitValue.<this>",
-          "source": {
-            "path": "BindingExplanations.kt",
-            "line": 68,
-            "column": 13
-          }
+          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -574,12 +705,75 @@
           "reason": "selected_generated",
           "declaration": {
             "id": "AppGraph",
-            "label": "AppGraph",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 53,
-              "column": 1
-            }
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.explicitValue(AppGraph): ExplicitValue#<this>",
+          "label": "AppGraph.explicitValue.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "AppGraph",
+        "declaration": {
+          "id": "AppGraph.mapValue(AppGraph): kotlin.Int#<this>",
+          "label": "AppGraph.mapValue.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "8:AppGraph|8:AppGraph",
+          "key": "AppGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph",
+            "label": "AppGraph"
           },
           "relatedDeclarations": [],
           "details": []
@@ -589,12 +783,41 @@
         "key": "AppGraph",
         "declaration": {
           "id": "AppGraph.text(AppGraph): kotlin.String#<this>",
-          "label": "AppGraph.text.<this>",
-          "source": {
-            "path": "BindingExplanations.kt",
-            "line": 70,
-            "column": 13
-          }
+          "label": "AppGraph.text.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "key": "ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+            "label": "AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ChildGraph",
+        "declaration": {
+          "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "label": "AppGraph.Impl.<get-child>"
         },
         "hasDefault": false,
         "isOptional": false
@@ -618,12 +841,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "DefaultValue",
-            "label": "DefaultValue",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 41,
-              "column": 1
-            }
+            "label": "DefaultValue"
           },
           "relatedDeclarations": [],
           "details": []
@@ -653,12 +871,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.explicitValue(AppGraph): ExplicitValue",
-            "label": "AppGraph.explicitValue",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 68,
-              "column": 13
-            }
+            "label": "AppGraph.explicitValue"
           },
           "relatedDeclarations": [],
           "details": []
@@ -682,18 +895,43 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "16:FirstMapConsumer|16:FirstMapConsumer",
+          "key": "FirstMapConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "FirstMapConsumer",
+            "label": "FirstMapConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "FirstMapConsumer",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "19:HighPriorityService|19:HighPriorityService",
           "key": "HighPriorityService",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
             "id": "HighPriorityService",
-            "label": "HighPriorityService",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 25,
-              "column": 1
-            }
+            "label": "HighPriorityService"
           },
           "relatedDeclarations": [],
           "details": []
@@ -727,12 +965,7 @@
           "reason": "selected_implicit",
           "declaration": {
             "id": "KeptHandler",
-            "label": "KeptHandler",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 31,
-              "column": 1
-            }
+            "label": "KeptHandler"
           },
           "relatedDeclarations": [],
           "details": []
@@ -760,18 +993,127 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
+          "key": "Map<kotlin.String, kotlin.Int>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
+          "declaration": {
+            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+            "label": "AppGraph.directMap"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+        "declaration": {
+          "id": "FirstMapConsumer.MetroFactory.declarationMirror(FirstMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): FirstMapConsumer#values",
+          "label": "FirstMapConsumer.MetroFactory.declarationMirror.values"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "30:Map<kotlin.String, kotlin.Int>|9:generated",
+          "key": "Map<kotlin.String, kotlin.Int>",
+          "status": "selected",
+          "reason": "selected_multibinding",
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
+          "id": "49:kotlin.collections.Map<kotlin.String, kotlin.Int>|79:AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "key": "kotlin.collections.Map<kotlin.String, kotlin.Int>",
+          "status": "rejected",
+          "reason": "incompatible_map_value",
+          "declaration": {
+            "id": "AppGraph.directMap(AppGraph): kotlin.collections.Map<kotlin.String, kotlin.Int>",
+            "label": "AppGraph.directMap"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Map<kotlin.String, Provider<kotlin.Int>>",
+        "declaration": {
+          "id": "SecondMapConsumer.MetroFactory.declarationMirror(SecondMapConsumer.MetroFactory,kotlin.collections.Map<kotlin.String, kotlin.Function0<kotlin.Int>>): SecondMapConsumer#values",
+          "label": "SecondMapConsumer.MetroFactory.declarationMirror.values"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "17:MapConsumerHolder|17:MapConsumerHolder",
+          "key": "MapConsumerHolder",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "MapConsumerHolder",
+            "label": "MapConsumerHolder"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "MapConsumerHolder",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "12:MemberTarget|12:MemberTarget",
           "key": "MemberTarget",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
             "id": "MemberTarget",
-            "label": "MemberTarget",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 43,
-              "column": 1
-            }
+            "label": "MemberTarget"
           },
           "relatedDeclarations": [],
           "details": []
@@ -795,18 +1137,43 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "ParentValue",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "18:PrioritizedService|19:HighPriorityService",
           "key": "PrioritizedService",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
             "id": "HighPriorityService",
-            "label": "HighPriorityService",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 25,
-              "column": 1
-            }
+            "label": "HighPriorityService"
           },
           "relatedDeclarations": [],
           "details": []
@@ -830,18 +1197,43 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "11:ParentValue|11:ParentValue",
+          "key": "ParentValue",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "ParentValue",
+            "label": "ParentValue"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "Provider<ParentValue>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "18:ReplacementService|18:ReplacementService",
           "key": "ReplacementService",
           "status": "selected",
           "reason": "selected_implicit",
           "declaration": {
             "id": "ReplacementService",
-            "label": "ReplacementService",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 15,
-              "column": 1
-            }
+            "label": "ReplacementService"
           },
           "relatedDeclarations": [],
           "details": []
@@ -869,18 +1261,47 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "17:SecondMapConsumer|17:SecondMapConsumer",
+          "key": "SecondMapConsumer",
+          "status": "selected",
+          "reason": "selected_implicit",
+          "declaration": {
+            "id": "SecondMapConsumer",
+            "label": "SecondMapConsumer"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "SecondMapConsumer",
+        "declaration": {
+          "id": "MapConsumerHolder.MetroFactory.declarationMirror(MapConsumerHolder.MetroFactory,SecondMapConsumer): MapConsumerHolder#consumer",
+          "label": "MapConsumerHolder.MetroFactory.declarationMirror.consumer"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "7:Service|18:ReplacementService",
           "key": "Service",
           "status": "selected",
           "reason": "selected_explicit",
           "declaration": {
             "id": "ReplacementService",
-            "label": "ReplacementService",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 15,
-              "column": 1
-            }
+            "label": "ReplacementService"
           },
           "relatedDeclarations": [],
           "details": []
@@ -904,18 +1325,43 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
+          "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "MemberTarget",
+            "label": "MemberTarget"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
           "id": "33:java.util.Optional<kotlin.String>|80:OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
           "key": "java.util.Optional<kotlin.String>",
           "status": "selected",
           "reason": "selected_optional",
           "declaration": {
             "id": "OptionalBindings.BindsMirror.optionalString_opt(OptionalBindings): kotlin.String",
-            "label": "OptionalBindings.BindsMirror.optionalString_opt",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 50,
-              "column": 20
-            }
+            "label": "OptionalBindings.BindsMirror.optionalString_opt"
           },
           "relatedDeclarations": [],
           "details": []
@@ -942,12 +1388,7 @@
         "key": "kotlin.Int = ...",
         "declaration": {
           "id": "DefaultValue.MetroFactory.declarationMirror(DefaultValue.MetroFactory,kotlin.Int): DefaultValue#number",
-          "label": "DefaultValue.MetroFactory.declarationMirror.number",
-          "source": {
-            "path": "BindingExplanations.kt",
-            "line": 41,
-            "column": 28
-          }
+          "label": "DefaultValue.MetroFactory.declarationMirror.number"
         },
         "hasDefault": true,
         "isOptional": true
@@ -971,12 +1412,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.text(AppGraph): kotlin.String",
-            "label": "AppGraph.text",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 70,
-              "column": 13
-            }
+            "label": "AppGraph.text"
           },
           "relatedDeclarations": [],
           "details": []
@@ -986,12 +1422,7 @@
         "key": "kotlin.String",
         "declaration": {
           "id": "MemberTarget.text: kotlin.String",
-          "label": "MemberTarget.text",
-          "source": {
-            "path": "BindingExplanations.kt",
-            "line": 45,
-            "column": 20
-          }
+          "label": "MemberTarget.text"
         },
         "hasDefault": false,
         "isOptional": false
@@ -1015,12 +1446,7 @@
           "reason": "selected_explicit",
           "declaration": {
             "id": "AppGraph.text(AppGraph): kotlin.String",
-            "label": "AppGraph.text",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 70,
-              "column": 13
-            }
+            "label": "AppGraph.text"
           },
           "relatedDeclarations": [],
           "details": []
@@ -1070,18 +1496,25 @@
       "outcome": "selected",
       "candidates": [
         {
+          "id": "10:ChildGraph|52:AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+          "key": "ChildGraph",
+          "status": "selected",
+          "reason": "selected_generated",
+          "declaration": {
+            "id": "AppGraph.Impl.<get-child>(AppGraph.Impl): ChildGraph",
+            "label": "AppGraph.Impl.<get-child>"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        },
+        {
           "id": "49:dev.zacsweers.metro.MembersInjector<MemberTarget>|12:MemberTarget",
           "key": "dev.zacsweers.metro.MembersInjector<MemberTarget>",
           "status": "selected",
           "reason": "selected_generated",
           "declaration": {
             "id": "MemberTarget",
-            "label": "MemberTarget",
-            "source": {
-              "path": "BindingExplanations.kt",
-              "line": 43,
-              "column": 1
-            }
+            "label": "MemberTarget"
           },
           "relatedDeclarations": [],
           "details": []

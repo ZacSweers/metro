@@ -676,14 +676,16 @@ internal class BindingLookup(
                 scope != null && key !in locallyDeclaredKeys && parentContext?.contains(key) == true
               ) {
                 val token = parentContext.mark(key, scope)
+                val parentBinding = createParentGraphDependency(key, token!!)
                 decisionCapture?.selected(
                   contextKey,
                   stack,
                   binding,
                   conflicts = duplicateBindings[key],
-                  ownerGraph = token!!.ownerGraphKey,
+                  ownerGraph = token.ownerGraphKey,
+                  resolvedBinding = parentBinding,
                 )
-                return@registered setOf(createParentGraphDependency(key, token!!))
+                return@registered setOf(parentBinding)
               }
               decisionCapture?.selected(contextKey, stack, binding, duplicateBindings[key])
               return@registered setOf(binding)

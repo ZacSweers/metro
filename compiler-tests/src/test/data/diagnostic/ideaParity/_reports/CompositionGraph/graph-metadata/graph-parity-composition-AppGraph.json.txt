@@ -353,6 +353,40 @@
       "details": [
         "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
       ]
+    },
+    {
+      "context": {
+        "id": "27:parity.composition.AppGraph",
+        "label": "parity.composition.AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "46:parity.composition.GenericBindings<kotlin.Int>|204:parity.composition.AppGraph.Factory.create(parity.composition.AppGraph.Factory,parity.composition.ExternalDependencies,parity.composition.GenericBindings<kotlin.Int>): parity.composition.AppGraph#bindings",
+          "key": "parity.composition.GenericBindings<kotlin.Int>",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "parity.composition.AppGraph.Factory.create(parity.composition.AppGraph.Factory,parity.composition.ExternalDependencies,parity.composition.GenericBindings<kotlin.Int>): parity.composition.AppGraph#bindings",
+            "label": "parity.composition.AppGraph.Factory.create.bindings"
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "parity.composition.GenericBindings<kotlin.Int>",
+        "declaration": {
+          "id": "parity.composition.GenericBindings.value(parity.composition.GenericBindings<T>): T#<this>",
+          "label": "parity.composition.GenericBindings.value.<this>"
+        },
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
     }
   ]
 }
