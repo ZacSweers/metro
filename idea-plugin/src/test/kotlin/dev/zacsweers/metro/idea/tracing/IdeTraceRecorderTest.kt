@@ -482,8 +482,24 @@ class IdeTraceRecorderTest : TestCase() {
       withTimeout(10_000) {
         recorder.start()
         recorder.state.first { it == IdeTraceState.RECORDING }
-        recorder.traceSuspend("smoke.refresh", { attribute("intent", "manual") }) { operation ->
-          operation.phase("smoke.scan") { it.readAttempt { 42 } }
+        recorder.traceSuspend("refresh", { attribute("manualRequest", 1) }) { operation ->
+          operation.phase("source.scan") { scan ->
+            scan?.attribute("files.total", 25)
+            val work = IdeTraceWorkSummary(checkNotNull(scan), "source.file")
+            repeat(25) { index ->
+              work.measure { item ->
+                item?.file = "src/File$index.kt"
+                item?.module = "app"
+                item.measureRead {
+                  item.stage("source.file.annotationLookup") { 42 }
+                  item.stage("source.file.cacheLookup") {
+                    item.stage("source.file.declarationExtraction") { 43 }
+                  }
+                }
+              }
+            }
+            work.report()
+          }
           withContext(Dispatchers.Default) {
             operation.phase("smoke.seal") { Unit }
           }

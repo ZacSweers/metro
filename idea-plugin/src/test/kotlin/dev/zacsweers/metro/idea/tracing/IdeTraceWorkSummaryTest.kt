@@ -40,6 +40,17 @@ class IdeTraceWorkSummaryTest : TestCase() {
       assertEquals("20", totals.getValue("app").attributes["cache.rebuilt.count"])
       assertEquals("20", totals.getValue("library").attributes["cache.reused.count"])
       assertEquals("400", totals.getValue("library").attributes["total_elapsed_ns"])
+      assertEquals("10", totals.getValue("app").attributes["shown_items"])
+      assertEquals("10", totals.getValue("app").attributes["omitted_items"])
+      assertEquals("310", totals.getValue("app").attributes["shown_elapsed_ns"])
+      assertEquals("110", totals.getValue("app").attributes["omitted_elapsed_ns"])
+      val report = intervals.single { it.name == "source.file.summary" }.attributes
+      assertEquals("40", report["items"])
+      assertEquals("20", report["shown_items"])
+      assertEquals("20", report["omitted_items"])
+      assertEquals("610", report["shown_elapsed_ns"])
+      assertEquals("210", report["omitted_elapsed_ns"])
+      assertEquals("20 slowest files shown; 20 more files omitted", report["display_name"])
     }
   }
 
@@ -107,6 +118,149 @@ class IdeTraceWorkSummaryTest : TestCase() {
       assertEquals("25", result["canceled_read_elapsed_ns"])
       assertEquals("example.AppGraph", result["class"])
     }
+  }
+
+  fun testNestedStagesAreEmittedOnlyForRetainedItemsAndTotalsIncludeOmittedItems() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.class")
+      for (index in 1..40) {
+        summary.measure { item ->
+          checkNotNull(item)
+          item.module = "app"
+          item.className = "example.Class$index"
+          item.stage("source.class.bindingConstruction") {
+            clock.now += index
+            item.stage("source.class.dependencyExpansion") { clock.now += 2 }
+          }
+        }
+      }
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      val retained = intervals.filter { it.name == "source.class.slow" }
+      val construction = intervals.filter { it.name == "source.class.bindingConstruction" }
+      val expansion = intervals.filter { it.name == "source.class.dependencyExpansion" }
+      assertEquals(20, retained.size)
+      assertEquals(20, construction.size)
+      assertEquals(20, expansion.size)
+      val slow = retained.single { it.attributes["rank"] == "1" }
+      val parent = construction.single { it.parentId == slow.id }
+      val child = expansion.single { it.parentId == parent.id }
+      assertEquals(42L, checkNotNull(parent.finished) - parent.started)
+      assertEquals(2L, checkNotNull(child.finished) - child.started)
+      val totals = intervals.single { it.name == "source.class.module" }.attributes
+      assertEquals("40", totals["stage.source.class.bindingConstruction.attempts"])
+      assertEquals("900", totals["stage.source.class.bindingConstruction.elapsed_ns"])
+      assertEquals("80", totals["stage.source.class.dependencyExpansion.elapsed_ns"])
+      assertEquals("40", totals["stage_intervals_shown"])
+      assertEquals("40", totals["stage_intervals_omitted"])
+    }
+  }
+
+  fun testStageIntervalLimitPreservesTotalsAndReportsDroppedCost() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.file")
+      summary.measure { item ->
+        repeat(70) { item.stage("source.file.annotationLookup") { clock.now++ } }
+      }
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      assertEquals(64, intervals.count { it.name == "source.file.annotationLookup" })
+      val totals = intervals.single { it.name == "source.file.summary" }.attributes
+      assertEquals("70", totals["stage.source.file.annotationLookup.attempts"])
+      assertEquals("70", totals["stage.source.file.annotationLookup.elapsed_ns"])
+      assertEquals("64", totals["stage_intervals_shown"])
+      assertEquals("6", totals["stage_intervals_omitted"])
+      assertEquals("64", totals["shown_stage_elapsed_ns"])
+      assertEquals("6", totals["omitted_stage_elapsed_ns"])
+      val item = intervals.single { it.name == "source.file.slow" }.attributes
+      assertEquals("6", item["stage_intervals_omitted"])
+      assertEquals("6", item["omitted_stage_elapsed_ns"])
+      assertEquals("inclusive_wall", item["stage_timing"])
+    }
+  }
+
+  fun testStageCancellationPreservesExceptionAndRecordsInclusiveCanceledCost() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.file")
+      val cancellation = CancellationException("Write action")
+      try {
+        summary.measure { item ->
+          item.stage("source.file.declarationExtraction") {
+            clock.now += 5
+            item.stage("source.file.annotationLookup") {
+              clock.now += 10
+              throw cancellation
+            }
+          }
+        }
+        fail("Expected cancellation")
+      } catch (actual: CancellationException) {
+        assertSame(cancellation, actual)
+      }
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      val totals = intervals.single { it.name == "source.file.summary" }.attributes
+      assertEquals("1", totals["stage.source.file.declarationExtraction.canceled_attempts"])
+      assertEquals("15", totals["stage.source.file.declarationExtraction.canceled_elapsed_ns"])
+      assertEquals("10", totals["stage.source.file.annotationLookup.canceled_elapsed_ns"])
+      assertTrue(
+        intervals
+          .filter {
+            it.name == "source.file.declarationExtraction" ||
+              it.name == "source.file.annotationLookup"
+          }
+          .all { it.attributes["outcome"] == "canceled" }
+      )
+    }
+  }
+
+  fun testEntryTokenEndsOnceBeforeAnalysisWorkAndFailureIsPreserved() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.class")
+      val failure = IllegalStateException("Cannot resolve")
+      try {
+        summary.measure { item ->
+          val entry = item?.beginStage("source.class.analysisEntry")
+          try {
+            clock.now += 5
+            entry?.finish()
+            item.stage("source.class.findClass") {
+              clock.now += 10
+              throw failure
+            }
+          } finally {
+            entry?.finish(failure)
+          }
+        }
+        fail("Expected failure")
+      } catch (actual: IllegalStateException) {
+        assertSame(failure, actual)
+      }
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      val totals = intervals.single { it.name == "source.class.summary" }.attributes
+      assertEquals("1", totals["stage.source.class.analysisEntry.attempts"])
+      assertEquals("5", totals["stage.source.class.analysisEntry.elapsed_ns"])
+      assertEquals("0", totals["stage.source.class.analysisEntry.failed_attempts"])
+      assertEquals("1", totals["stage.source.class.findClass.failed_attempts"])
+      assertEquals("10", totals["stage.source.class.findClass.failed_elapsed_ns"])
+    }
+  }
+
+  fun testDisabledStageAllowsSingleInitializationAndNonlocalReturn() {
+    val item: IdeTraceWorkItem? = null
+    val result: Int
+    item.stage("disabled") { result = 42 }
+    assertEquals(42, result)
+    var calls = 0
+    fun calculate(): Int {
+      item.stage("disabled") {
+        calls++
+        return 43
+      }
+    }
+    assertEquals(43, calculate())
+    assertEquals(1, calls)
   }
 
   fun testDisabledSummarySkipsRecordsAndLabels() {

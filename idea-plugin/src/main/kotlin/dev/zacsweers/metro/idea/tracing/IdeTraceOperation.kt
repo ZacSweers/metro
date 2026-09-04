@@ -277,7 +277,7 @@ internal constructor(
 
   private companion object {
     val CONTEXT_KEYS =
-      setOf("manualRequest", "intent", "generation", "request", "file", "graph", "module")
+      setOf("manualRequest", "intent", "generation", "request", "file", "class", "graph", "module")
   }
 }
 
