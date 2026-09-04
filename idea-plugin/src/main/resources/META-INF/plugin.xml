@@ -98,6 +98,16 @@ Metro IDE support for Kotlin dependency injection projects.
 
   <actions>
     <action
+        id="Metro.StartPerformanceTrace"
+        class="dev.zacsweers.metro.idea.tracing.StartMetroTraceAction"
+        text="Start Metro Performance Trace"
+        description="Record Metro IDE work to a local Perfetto trace"/>
+    <action
+        id="Metro.StopPerformanceTrace"
+        class="dev.zacsweers.metro.idea.tracing.StopMetroTraceAction"
+        text="Stop Metro Performance Trace"
+        description="Finish and save the current Metro performance trace"/>
+    <action
         id="Metro.GoToBinding"
         class="dev.zacsweers.metro.idea.navigation.GoToMetroBindingAction"
         text="Go to Metro Binding"

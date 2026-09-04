@@ -183,6 +183,22 @@ Select a graph and use **More > Export Graph Debug Info** to write a local repor
 directory. Reports omit source bodies, absolute paths, and annotation literal values. They contain
 project and type identifiers, so review the file before sharing it.
 
+### Performance Tracing
+
+Select **Enable debugging options** under `Settings > Tools > Metro` to show
+**Start Metro Performance Trace** and **Stop Metro Performance Trace** in Find Action and the
+Metro tool window's **More** menu. Debugging options are disabled by default.
+
+Start a capture, reproduce the slow operation, then stop it. For example, capture a **Refresh** or
+graph validation to inspect snapshot preparation and graph sealing. Starting a capture leaves graph
+data and caches in their current state. Recording also ends automatically after 60 seconds. Work
+already being traced finishes before the file is finalized, so saving can take longer.
+
+The tool window shows when a trace is starting, recording, or being finalized. Disabling debugging
+options ends an active capture. Traces are saved locally in the IDE log directory and can be opened
+in [Perfetto](https://ui.perfetto.dev). Trace metadata can contain project identifiers and exception
+stack traces. Review the file before sharing it.
+
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
 ### Graph Validation
@@ -241,6 +257,7 @@ Project settings live under `Settings > Tools > Metro`.
 - Automatically validate the pinned graph after code changes (off by default)
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types
+- Enable debugging options (off by default)
 
 Turning off binding navigation hides editor decorations only. The Metro tool window and explicit
 graph validation remain available, and library resolution can still be configured independently.

@@ -16,6 +16,7 @@ import com.intellij.ui.dsl.builder.selected
 import com.intellij.ui.layout.ComponentPredicate
 import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
+import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
 
 class MetroSettingsState : BaseState() {
   /** Suppresses unused-declaration warnings for declarations Metro consumes via generated code. */
@@ -38,6 +39,9 @@ class MetroSettingsState : BaseState() {
 
   /** `assisted` inlay hint next to implicitly assisted parameters, like Circuit-provided ones. */
   var assistedParameterInlays by property(true)
+
+  /** Exposes local performance tracing controls for investigating plugin behavior. */
+  var enableDebuggingOptions by property(false)
 }
 
 /** Project-level Metro IDE settings, stored in `.idea/metro.xml` so teams can check them in. */
@@ -104,6 +108,11 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
           )
       }
     }
+    row {
+      checkBox("Enable debugging options")
+        .bindSelected(state::enableDebuggingOptions)
+        .comment("Shows local performance tracing actions in Find Action and the Metro tool window")
+    }
   }
 
   override fun apply() {
@@ -114,6 +123,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
 
 /** Applies settings from the preferences panel and the tool-window refresh selector. */
 internal fun applyMetroSettings(project: Project) {
+  project.service<MetroIdeTracingService>().settingsChanged()
   project.service<MetroResolutionService>().settingsChanged()
   project.service<MetroPinnedGraphValidationService>().requestValidation()
   // Apply editor display settings without waiting for a source edit.

@@ -6,7 +6,7 @@ import com.intellij.util.xmlb.XmlSerializer
 import junit.framework.TestCase
 import org.jdom.Element
 
-/** Covers the default for new projects and explicit refresh choices stored by existing projects. */
+/** Covers safe project defaults and persisted refresh and debugging choices. */
 class MetroSettingsTest : TestCase() {
   fun testNewProjectsDefaultToManualRefresh() {
     assertFalse(MetroSettingsState().automaticallyRefreshGraphData)
@@ -25,6 +25,23 @@ class MetroSettingsTest : TestCase() {
       val settings = MetroSettings()
       settings.loadState(XmlSerializer.deserialize(stored, MetroSettingsState::class.java))
       assertEquals(automatic, settings.state.automaticallyRefreshGraphData)
+    }
+  }
+
+  fun testDebuggingOptionsDefaultToDisabled() {
+    assertFalse(MetroSettingsState().enableDebuggingOptions)
+    val existing =
+      XmlSerializer.deserialize(Element("MetroSettingsState"), MetroSettingsState::class.java)
+    assertFalse(existing.enableDebuggingOptions)
+  }
+
+  fun testDebuggingChoiceSurvivesSerialization() {
+    for (enabled in listOf(false, true)) {
+      val state = MetroSettingsState().apply { enableDebuggingOptions = enabled }
+      val stored = XmlSerializer.serialize(state)
+      val settings = MetroSettings()
+      settings.loadState(XmlSerializer.deserialize(stored, MetroSettingsState::class.java))
+      assertEquals(enabled, settings.state.enableDebuggingOptions)
     }
   }
 }
