@@ -55,63 +55,76 @@ class MetroSettings : SimplePersistentStateComponent<MetroSettingsState>(MetroSe
 
 class MetroSettingsConfigurable(private val project: Project) : BoundConfigurable("Metro") {
 
+  /** Keeps each dependent control beside the option that enables it. */
   override fun createPanel() = panel {
     val state = MetroSettings.getInstance(project).state
-    row {
-      checkBox("Suppress unused-declaration warnings for Metro-injected declarations")
-        .bindSelected(state::suppressUnusedWarnings)
-        .comment(
-          "Treats providers, injected classes, and contributions as used even when their only " +
-            "usages are in generated code"
-        )
-    }
-    row {
-      checkBox("Suppress false-positive kapt configuration warnings")
-        .bindSelected(state::suppressKaptConfigurationWarning)
-        .comment("Metro does not require kapt; applies only to modules with Metro enabled")
-    }
-    lateinit var resolutionSelected: ComponentPredicate
-    row {
-      val cell =
-        checkBox("Show binding navigation (gutter icons, code vision, inlay hints)")
-          .bindSelected(state::enableBindingResolution)
-      resolutionSelected = cell.selected
-    }
-    row {
-      checkBox("Resolve bindings from compiled dependencies")
-        .bindSelected(state::resolveFromLibraries)
-        .comment("Includes bindings contributed by compiled project dependencies")
-    }
-    lateinit var automaticRefreshSelected: ComponentPredicate
-    row {
-      val cell =
-        checkBox("Automatically refresh graphs and bindings after code changes")
-          .bindSelected(state::automaticallyRefreshGraphData)
-          .comment("When disabled, use Refresh in the Metro tool window to update graph data")
-      automaticRefreshSelected = cell.selected
-    }
-    row {
-      checkBox("Automatically validate the pinned graph after code changes")
-        .bindSelected(state::automaticallyValidatePinnedGraph)
-        .enabledIf(automaticRefreshSelected)
-        .comment(
-          "Checks the pinned graph and its children after a short pause; requires automatic graph refresh"
-        )
-    }
-    indent {
+    group("Editor") {
+      lateinit var resolutionSelected: ComponentPredicate
       row {
-        checkBox("Show \"assisted\" inlay hints")
-          .bindSelected(state::assistedParameterInlays)
-          .enabledIf(resolutionSelected)
-          .comment(
-            "Implicitly assisted parameters, such as Circuit-provided types, that have no @Assisted annotation in source"
-          )
+        val cell =
+          checkBox("Show binding navigation (gutter icons, code vision, inlay hints)")
+            .bindSelected(state::enableBindingResolution)
+        resolutionSelected = cell.selected
+      }
+      indent {
+        row {
+          checkBox("Show \"assisted\" inlay hints")
+            .bindSelected(state::assistedParameterInlays)
+            .enabledIf(resolutionSelected)
+            .comment(
+              "Implicitly assisted parameters, such as Circuit-provided types, that have no @Assisted annotation in source"
+            )
+        }
       }
     }
-    row {
-      checkBox("Enable debugging options")
-        .bindSelected(state::enableDebuggingOptions)
-        .comment("Shows local performance tracing actions in Find Action and the Metro tool window")
+    group("Graphs and bindings") {
+      row {
+        checkBox("Resolve bindings from compiled dependencies")
+          .bindSelected(state::resolveFromLibraries)
+          .comment("Includes bindings contributed by compiled project dependencies")
+      }
+      lateinit var automaticRefreshSelected: ComponentPredicate
+      row {
+        val cell =
+          checkBox("Automatically refresh graphs and bindings after code changes")
+            .bindSelected(state::automaticallyRefreshGraphData)
+            .comment("When disabled, use Refresh in the Metro tool window to update graph data")
+        automaticRefreshSelected = cell.selected
+      }
+      indent {
+        row {
+          checkBox("Automatically validate the pinned graph after code changes")
+            .bindSelected(state::automaticallyValidatePinnedGraph)
+            .enabledIf(automaticRefreshSelected)
+            .comment(
+              "Checks the pinned graph and its children after a short pause; requires automatic graph refresh"
+            )
+        }
+      }
+    }
+    group("Warnings") {
+      row {
+        checkBox("Suppress unused-declaration warnings for Metro-injected declarations")
+          .bindSelected(state::suppressUnusedWarnings)
+          .comment(
+            "Treats providers, injected classes, and contributions as used even when their only " +
+              "usages are in generated code"
+          )
+      }
+      row {
+        checkBox("Suppress false-positive kapt configuration warnings")
+          .bindSelected(state::suppressKaptConfigurationWarning)
+          .comment("Metro does not require kapt; applies only to modules with Metro enabled")
+      }
+    }
+    group("Debugging") {
+      row {
+        checkBox("Enable debugging options")
+          .bindSelected(state::enableDebuggingOptions)
+          .comment(
+            "Shows local performance tracing actions in Find Action and the Metro tool window"
+          )
+      }
     }
   }
 
