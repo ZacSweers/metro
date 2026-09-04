@@ -185,24 +185,37 @@ project and type identifiers, so review the file before sharing it.
 
 ### Performance Tracing
 
-Select **Enable debugging options** under `Settings > Tools > Metro` to show
-**Start Metro Performance Trace** and **Stop Metro Performance Trace** in Find Action and the
-Metro tool window's **More** menu. Debugging options are disabled by default.
+Select **Enable debugging options** under `Settings > Tools > Metro` to show the tracing controls.
+Debugging options are disabled by default.
 
-Start a capture, reproduce the slow operation, then stop it. For example, capture a **Refresh** or
-graph validation to inspect snapshot preparation and graph sealing. Starting a capture leaves graph
-data and caches in their current state. Recording also ends automatically after 60 seconds. Work
-already being traced finishes before the file is finalized, so saving can take longer.
+Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. The same action
+is available in **More** and Find Action. Recording starts before the refresh is submitted, follows
+that request through retries and index publication, then saves after admitted work finishes. Later
+editor requests can happen after capture completion. A 10-minute safety deadline ends admission and
+marks the capture as partial if the refresh is still running.
 
-The tool window shows when a trace is starting, recording, or being finalized. Disabling debugging
-options ends an active capture. Traces are saved locally in the IDE log directory and can be opened
-in [Perfetto](https://ui.perfetto.dev). Trace metadata can contain project identifiers and exception
-stack traces. Review the file before sharing it.
+For other operations, use **Start Metro Performance Trace**, reproduce the issue, and select
+**Stop Metro Performance Trace**. This capture accepts work for 60 seconds. Both capture modes keep
+the existing caches and refresh policy. Stopping tracing or disabling debugging options ends
+admission and lets admitted operations finish. The refresh continues independently.
 
-Operations appear under the `metro.ide` category. A coroutine can produce slices on several threads;
-`operation_id` and `parent_operation_id` connect the operation and its phases. Each `.result` event
-contains the final outcome and total elapsed time, including suspension. Read phases also report
-active read time and canceled attempts.
+The tool window shows **Tracing Metro refresh…** or **Tracing Metro work…** during recording,
+**Finishing traced work…** while admitted operations drain, and **Saving Metro performance trace…**
+during file output. Traces are saved locally in the IDE log directory and open in
+[Perfetto](https://ui.perfetto.dev). Trace metadata can contain project, module, file, and class names.
+Review the file before sharing it.
+
+Expand **Metro operations** to inspect full-duration bars such as **Analyze source declarations** and
+**Resolve source class dependencies**. Selecting a bar shows its outcome, cache counts, and request
+identity. The source scan and class resolution phases include module totals and the 20 slowest items
+with their file or class names. Start with the longest phase, then inspect its nested steps and slow
+items. The trace retains at most 20,000 events and reports any omitted events in **Trace summary**.
+
+Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
+callbacks; it includes canceled attempts and can include Kotlin analysis waits. Slow-item summaries
+also report `canceled_read_elapsed_ns` and `outside_read_ns`. Parent durations include their children.
+Use `debug.operation`, `debug.operation_id`, and `debug.parent_operation_id` for SQL analysis; display
+names include human-readable subjects. Each `.result` instant also carries final timing and outcome.
 
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
