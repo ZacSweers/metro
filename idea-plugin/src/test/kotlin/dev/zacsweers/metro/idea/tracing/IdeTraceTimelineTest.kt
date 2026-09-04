@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.tracing
 
 import androidx.tracing.wire.TraceDriver
+import dev.zacsweers.metro.compiler.tracing.TraceScope
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicLong
 import junit.framework.TestCase
@@ -56,6 +57,7 @@ class IdeTraceTimelineTest : TestCase() {
         ideTraceDisplayName(scan.name, scan.attributes),
       )
       assertEquals("published", spans.single { it.name == "index.candidate" }.attributes["outcome"])
+      assertTrue(lane.intervals.none { it.name.endsWith(".result") })
       assertTrue(sink.events.none { it.name == "source.scan" })
     } finally {
       recorder.stop()
@@ -81,6 +83,113 @@ class IdeTraceTimelineTest : TestCase() {
     val timeline = IdeTraceTimeline(capacity = 2)
     repeat(10) { index -> timeline.record(span(index + 1L, null, index * 10L, index * 10L + 1)) }
     assertEquals(2, timeline.lanes().sumOf { it.intervals.size })
+  }
+
+  fun testDetailSaturationPreservesRankedChildrenAndLaterPhaseSummary() {
+    val timeline = IdeTraceTimeline(capacity = 8, enclosingReserve = 2, priorityReserve = 2)
+    var now = 0L
+    val capture =
+      IdeTraceCapture(TraceScope.noop(), { now }, { throw AssertionError(it) }, timeline)
+    var rejectedMetadataCalls = 0
+    IdeTraceOperation(capture, "source.scan").run { operation ->
+      checkNotNull(operation)
+      repeat(4) { index ->
+        assertTrue(operation.completedPhase("source.file.item", index * 2L, index * 2L + 1))
+      }
+      assertFalse(
+        operation.completedPhase("source.file.item", 10, 11) {
+          rejectedMetadataCalls++
+          completedPhase("unexpected.child", 10, 11)
+        }
+      )
+      assertTrue(
+        operation.completedPhase("source.file.item", 20, 80, priority = true) {
+          attribute("rank", 1)
+          assertTrue(completedPhase("source.file.annotationScan", 30, 40, priority = true))
+          assertFalse(
+            completedPhase("source.file.shardConstruction", 50, 60, priority = true) {
+              rejectedMetadataCalls++
+              completedPhase("unexpected.child", 50, 60, priority = true)
+            }
+          )
+        }
+      )
+      now = 90
+      operation.event("source.file.summary")
+      now = 100
+    }
+    val intervals = timeline.lanes().flatMap { it.intervals }
+    assertEquals(0, rejectedMetadataCalls)
+    assertEquals(8, intervals.size)
+    assertEquals(1, intervals.count { it.name == "source.scan" })
+    assertEquals(1, intervals.count { it.name == "source.file.summary" })
+    assertTrue(intervals.none { it.name.endsWith(".result") })
+    val ranked = intervals.single { it.attributes["rank"] == "1" }
+    val child = intervals.single { it.name == "source.file.annotationScan" }
+    assertEquals(ranked.id, child.parentId)
+    val ids = intervals.map { it.id }.toSet()
+    assertTrue(intervals.all { it.parentId == null || it.parentId in ids })
+    assertEquals("2", timeline.overview()?.attributes?.get("dropped_events"))
+  }
+
+  fun testOrdinaryRecordsCannotConsumeAReservedParentSlot() {
+    val timeline = IdeTraceTimeline(capacity = 3, enclosingReserve = 0, priorityReserve = 0)
+    val parent = checkNotNull(timeline.reserveDetail(priority = true))
+    timeline.record(span(2, 1, 10, 20))
+    timeline.record(span(3, 1, 30, 40))
+    timeline.record(span(4, 1, 50, 60))
+    timeline.recordReservedDetail(parent, span(1, null, 0, 100))
+    timeline.releaseDetail(parent)
+    val intervals = timeline.lanes().flatMap { it.intervals }
+    assertEquals(setOf(1L, 2L, 3L), intervals.map { it.id }.toSet())
+    assertEquals("1", timeline.overview()?.attributes?.get("dropped_events"))
+  }
+
+  fun testUnusedReservationCanBeReleasedOnceAfterFailure() {
+    val timeline = IdeTraceTimeline(capacity = 1, enclosingReserve = 0, priorityReserve = 0)
+    val unused = checkNotNull(timeline.reserveDetail(priority = false))
+    timeline.releaseDetail(unused)
+    timeline.releaseDetail(unused)
+    val next = checkNotNull(timeline.reserveDetail(priority = false))
+    timeline.recordReservedDetail(next, span(1, null, 0, 100))
+    assertNull(timeline.reserveDetail(priority = false))
+    assertEquals(1, timeline.lanes().sumOf { it.intervals.size })
+  }
+
+  fun testMetadataFailureKeepsAlreadyRecordedChildrenAndTheirParent() {
+    val timeline = IdeTraceTimeline(capacity = 4, enclosingReserve = 1, priorityReserve = 0)
+    val failures = mutableListOf<Throwable>()
+    var now = 0L
+    val capture = IdeTraceCapture(TraceScope.noop(), { now }, { failures += it }, timeline)
+    val failure = IllegalStateException("Cannot finish detail metadata")
+    IdeTraceOperation(capture, "source.scan").run { operation ->
+      checkNotNull(operation)
+      assertTrue(
+        operation.completedPhase("source.file.item", 10, 80) {
+          assertTrue(completedPhase("source.file.annotationScan", 20, 30))
+          throw failure
+        }
+      )
+      assertTrue(operation.completedPhase("source.file.item", 85, 90))
+      now = 100
+    }
+    assertEquals(listOf(failure), failures)
+    val intervals = timeline.lanes().flatMap { it.intervals }
+    assertEquals(4, intervals.size)
+    val parent = intervals.single { it.attributes["outcome"] == "failed" }
+    val child = intervals.single { it.name == "source.file.annotationScan" }
+    assertEquals(parent.id, child.parentId)
+  }
+
+  fun testEveryFileAndClassItemHasASubjectLabel() {
+    assertEquals(
+      "Analyze file: src/AppGraph.kt",
+      ideTraceDisplayName("source.file.item", mapOf("file" to "src/AppGraph.kt")),
+    )
+    assertEquals(
+      "Resolve class: example.AppGraph",
+      ideTraceDisplayName("source.class.item", mapOf("class" to "example.AppGraph")),
+    )
   }
 
   fun testOverviewCoversConcurrentWorkAndRetainsPartialCaptureReason() {

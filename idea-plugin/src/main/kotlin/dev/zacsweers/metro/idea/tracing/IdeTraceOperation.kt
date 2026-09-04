@@ -56,16 +56,44 @@ internal constructor(
     }
   }
 
-  /** Bounded slow-item summaries can report their original interval after selection finishes. */
+  /**
+   * Returns whether detail was recorded. Reserves before metadata emits children, and skips
+   * metadata when full. Priority preserves space for selected slow work after coarse admission
+   * ends.
+   */
   fun completedPhase(
     name: String,
     started: Long,
     finished: Long,
+    priority: Boolean = false,
     metadata: IdeTraceOperation.() -> Unit = {},
-  ) {
+  ): Boolean {
+    var recorded = false
     capture.record {
-      child(name).apply(metadata).finish(null, started, finished)
+      val timeline = capture.timeline
+      if (timeline == null) {
+        child(name).apply(metadata).finish(null, started, finished)
+        recorded = true
+        return@record
+      }
+      val reservation = timeline.reserveDetail(priority) ?: return@record
+      try {
+        val phase = child(name)
+        var failure: Throwable? = null
+        try {
+          phase.metadata()
+        } catch (caught: Throwable) {
+          failure = caught
+          throw caught
+        } finally {
+          // Metadata may already have emitted children. Preserve their admitted parent on failure.
+          recorded = phase.finish(failure, started, finished, reservation)
+        }
+      } finally {
+        timeline.releaseDetail(reservation)
+      }
     }
+    return recorded
   }
 
   internal fun <T> read(block: () -> T): T {
@@ -86,7 +114,12 @@ internal constructor(
   }
 
   /** Emits the outcome after work, when cache counts and publication decisions are known. */
-  internal fun finish(failure: Throwable?, started: Long, finished: Long = capture.nanoTime()) {
+  internal fun finish(
+    failure: Throwable?,
+    started: Long,
+    finished: Long = capture.nanoTime(),
+    reservation: IdeTraceTimeline.DetailReservation? = null,
+  ): Boolean {
     synchronized(attributes) {
       if (result == null) {
         result =
@@ -106,12 +139,20 @@ internal constructor(
         attributes["read_elapsed_ns"] = readNanos.toString()
       }
     }
-    capture.record {
-      capture.timeline?.record(
-        IdeTraceInterval(id, parentId, rootId ?: id, name, started, finished, metadataSnapshot())
-      )
+    val timeline = capture.timeline
+    if (timeline == null) {
+      instant("$name.result")
+      return true
     }
-    instant("$name.result")
+    var recorded = false
+    capture.record {
+      val interval =
+        IdeTraceInterval(id, parentId, rootId ?: id, name, started, finished, metadataSnapshot())
+      if (reservation == null) timeline.record(interval)
+      else timeline.recordReservedDetail(reservation, interval)
+      recorded = true
+    }
+    return recorded
   }
 
   internal fun instant(eventName: String = name) {

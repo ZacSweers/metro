@@ -31,13 +31,59 @@ internal data class IdeTraceLane(val name: String, val intervals: List<IdeTraceI
  * Keeps bounded, completed operations until capture drain. Export orders begin/end packets by time
  * and places final metadata on the selected duration bar. Suspension stays inside the interval.
  */
-internal class IdeTraceTimeline(private val capacity: Int = 20_000) {
+internal class IdeTraceTimeline(
+  private val capacity: Int = 20_000,
+  private val enclosingReserve: Int = minOf(1024, capacity / 4),
+  private val priorityReserve: Int = minOf(4096, (capacity - enclosingReserve) / 4),
+) {
   private val intervals = mutableListOf<IdeTraceInterval>()
   private var dropped = 0
+  private var reservedDetails = 0
+
+  init {
+    require(capacity >= 0)
+    require(enclosingReserve in 0..capacity)
+    require(priorityReserve in 0..(capacity - enclosingReserve))
+  }
+
+  /** A reserved parent keeps its slot while its metadata emits nested detail intervals. */
+  internal class DetailReservation internal constructor(internal val owner: IdeTraceTimeline) {
+    internal var active = true
+  }
+
+  /** Coarse work leaves room for ranked details and the enclosing phase's final summaries. */
+  @Synchronized
+  internal fun reserveDetail(priority: Boolean): DetailReservation? {
+    val detailCapacity = capacity - enclosingReserve - if (priority) 0 else priorityReserve
+    if (intervals.size + reservedDetails >= detailCapacity) {
+      dropped++
+      return null
+    }
+    reservedDetails++
+    return DetailReservation(this)
+  }
+
+  /** Admission already counted this slot; nested children can finish before their parent. */
+  @Synchronized
+  internal fun recordReservedDetail(reservation: DetailReservation, interval: IdeTraceInterval) {
+    check(reservation.owner === this && reservation.active)
+    reservation.active = false
+    reservedDetails--
+    intervals += interval
+  }
+
+  /** Releases an unused slot after a recording failure. Completed reservations are unchanged. */
+  @Synchronized
+  internal fun releaseDetail(reservation: DetailReservation) {
+    check(reservation.owner === this)
+    if (!reservation.active) return
+    reservation.active = false
+    reservedDetails--
+  }
 
   @Synchronized
   fun record(interval: IdeTraceInterval) {
-    if (intervals.size < capacity) intervals += interval else dropped++
+    if (intervals.size + reservedDetails < capacity) intervals += interval else dropped++
   }
 
   /** The collapsed parent shows the envelope of recorded work, including gaps and suspension. */
@@ -266,8 +312,8 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.consumerOwnership" -> "Find consumer ownership"
       "source.resolveClassRequests" -> "Resolve class requests"
       "source.collectLibraryInputs" -> "Collect library inputs"
-      "source.file.slow" -> "Analyze file"
-      "source.class.slow" -> "Resolve class"
+      "source.file.item" -> "Analyze file"
+      "source.class.item" -> "Resolve class"
       "source.file.module" -> "Source files by module"
       "source.class.module" -> "Class requests by module"
       "source.file.psi" -> "Load source PSI"
@@ -312,10 +358,10 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "index.candidate" -> attributes["manualRequest"]?.let { "refresh #$it" }
       "source.scan" -> attributes["files.total"]?.let { "$it files" }
       "capture.overview" -> attributes["manualRequest"]?.let { "refresh #$it" }
-      "source.file.slow",
+      "source.file.item",
       "presentation.build",
       "presentation.anchors" -> attributes["file"]
-      "source.class.slow" -> attributes["class"]
+      "source.class.item" -> attributes["class"]
       "source.file.module",
       "source.class.module" -> attributes["module"]
       "validation.seal" -> attributes["graph"]
