@@ -144,8 +144,7 @@ internal class MetroGraphDebugExporter(
     when (failure) {
       is CancellationException,
       is ProcessCanceledException,
-      is VirtualMachineError,
-      is ThreadDeath -> throw failure
+      is VirtualMachineError -> throw failure
     }
     return failure.javaClass.name
   }
