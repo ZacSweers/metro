@@ -7,8 +7,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
+import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.metroIdeState
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ConsumerEntry
@@ -16,11 +18,13 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceStageToken
 import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
 import dev.zacsweers.metro.idea.tracing.IdeTraceWorkSummary
 import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import dev.zacsweers.metro.idea.tracing.measure
 import dev.zacsweers.metro.idea.tracing.measureRead
+import dev.zacsweers.metro.idea.tracing.stage
 import java.util.Collections
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -295,7 +299,7 @@ internal class SourceClassBindingPostProcessor(
     }
   }
 
-  /** Attributes resolution and dependency expansion together to their requesting module. */
+  /** Measures resolution and dependency traversal separately for their requesting module. */
   private fun resolveRequest(
     request: SourceClassRequest,
     context: KtElement,
@@ -309,29 +313,34 @@ internal class SourceClassBindingPostProcessor(
       libraryRequests += request
       return
     }
-    item?.outcome = "resolved"
-    resolved += request.id
-    val identity = binding.classBindingIdentity() ?: return
-    useSites.getOrPut(identity) { linkedMapOf() }.putIfAbsent(request.module, request.context)
-    if (!budget.allowExpansion(binding, request.module, request.direct)) {
-      item?.outcome = "boundary"
-      val boundary = SourceClassRequest(binding.typeKey, request.module, request.context)
-      boundaries[boundary.id] = boundary
-      return
-    }
-    boundaries.remove(request.id)
-    boundaries.remove(SourceClassRequestId(binding.typeKey, request.module))
-    for (dependency in binding.dependencies) {
-      ProgressManager.checkCanceled()
-      val key = dependency.typeKey
-      if (dependencies.recordErrorTypes(key.type, context, binding.pointer)) {
-        continue
+    item.stage("source.class.dependencyExpansion") {
+      item?.outcome = "resolved"
+      resolved += request.id
+      val identity = binding.classBindingIdentity() ?: return
+      useSites.getOrPut(identity) { linkedMapOf() }.putIfAbsent(request.module, request.context)
+      if (!budget.allowExpansion(binding, request.module, request.direct)) {
+        item?.outcome = "boundary"
+        val boundary = SourceClassRequest(binding.typeKey, request.module, request.context)
+        boundaries[boundary.id] = boundary
+        return
       }
-      if (key.type.classId == null || !budget.isConcrete(key.type)) continue
-      queue += SourceClassRequest(key, request.module, request.context)
+      boundaries.remove(request.id)
+      boundaries.remove(SourceClassRequestId(binding.typeKey, request.module))
+      for (dependency in binding.dependencies) {
+        ProgressManager.checkCanceled()
+        val key = dependency.typeKey
+        if (dependencies.recordErrorTypes(key.type, context, binding.pointer)) {
+          continue
+        }
+        if (key.type.classId == null || !budget.isConcrete(key.type)) continue
+        queue += SourceClassRequest(key, request.module, request.context)
+      }
     }
   }
 
+  /**
+   * Analysis entry and exit measure session overhead around the separately measured body stages.
+   */
   private fun resolveClass(
     request: SourceClassRequest,
     context: KtElement,
@@ -339,44 +348,79 @@ internal class SourceClassBindingPostProcessor(
   ): KaBinding? {
     item?.cache = "miss"
     val classId = request.key.type.classId ?: return null
-    return analyze(context) {
-      val owner = context.containingFile?.virtualFile
-      val symbol = findClass(classId) as? KaNamedClassSymbol
-      if (symbol == null) {
-        dependencies.recordUnresolved(classId, owner, request.module)
-        return@analyze null
-      }
-      val declaration = symbol.psi ?: return@analyze null
-      val file = declaration.containingFile?.virtualFile ?: return@analyze null
-      if (!fileIndex.isInContent(file)) return@analyze null
-      val onDeclarationFile: (com.intellij.psi.PsiFile) -> Unit = {
-        val dependencyFile = it.virtualFile
-        if (dependencyFile != null && fileIndex.isInContent(dependencyFile)) {
-          dependencies.record(it, owner)
+    val analysisEntry = item?.beginStage("source.class.analysisEntry")
+    var analysisExit: IdeTraceStageToken? = null
+    try {
+      return analyze(context) {
+        analysisEntry?.finish()
+        try {
+          val owner =
+            item.stage("source.class.analysisSetup") { context.containingFile?.virtualFile }
+          val symbol =
+            item.stage("source.class.findClass") {
+              val symbol = findClass(classId) as? KaNamedClassSymbol
+              if (symbol == null) {
+                dependencies.recordUnresolved(classId, owner, request.module)
+              }
+              symbol
+            } ?: return@analyze null
+          val declaration: PsiElement
+          val file: VirtualFile
+          val onDeclarationFile: (PsiFile) -> Unit
+          item.stage("source.class.declarationEligibility") {
+            declaration = symbol.psi ?: return@analyze null
+            file = declaration.containingFile?.virtualFile ?: return@analyze null
+            if (!fileIndex.isInContent(file)) return@analyze null
+            onDeclarationFile = {
+              val dependencyFile = it.virtualFile
+              if (dependencyFile != null && fileIndex.isInContent(dependencyFile)) {
+                dependencies.record(it, owner)
+              }
+            }
+            declaration.containingFile?.let(onDeclarationFile)
+            val isObject =
+              symbol.classKind == KaClassKind.OBJECT ||
+                symbol.classKind == KaClassKind.COMPANION_OBJECT
+            if (!isObject && (classId to file) !in sourceDeclarations) return@analyze null
+            if (request.key.type.isMarkedNullable) return@analyze null
+          }
+          val options: MetroOptions
+          val key: KaTypeKey
+          val identity: ClassBindingIdentity
+          item.stage("source.class.optionsAndQualifierLookup") {
+            // Source metadata uses the owning module's configured annotations. Shared project
+            // snapshots may be requested from another module.
+            options = declaration.metroIdeState().options
+            key = KaTypeKey(request.key.type, qualifierAnnotation(symbol, options))
+            identity = ClassBindingIdentity(key, symbol.classId, file)
+          }
+          item.stage("source.class.cacheCheck") {
+            classBindings[identity]?.let {
+              if (key != request.key && it !is KaBinding.AssistedFactory) return@analyze null
+              item?.cache = "reused"
+              return@analyze it
+            }
+          }
+          item.stage("source.class.bindingConstruction") {
+            val binding =
+              resolveClassBinding(symbol, request.key, options, pointerManager, onDeclarationFile)
+                ?: return@analyze null
+            classBindings[identity] = binding
+            addedBindings += binding
+            item?.cache = "computed"
+            binding
+          }
+        } finally {
+          analysisExit = item?.beginStage("source.class.analysisExit")
         }
       }
-      declaration.containingFile?.let(onDeclarationFile)
-      val isObject =
-        symbol.classKind == KaClassKind.OBJECT || symbol.classKind == KaClassKind.COMPANION_OBJECT
-      if (!isObject && (classId to file) !in sourceDeclarations) return@analyze null
-      if (request.key.type.isMarkedNullable) return@analyze null
-      // Source metadata is interpreted with its owning module's configured annotations, never with
-      // whichever module happened to request the shared project snapshot first.
-      val options = declaration.metroIdeState().options
-      val key = KaTypeKey(request.key.type, qualifierAnnotation(symbol, options))
-      val identity = ClassBindingIdentity(key, symbol.classId, file)
-      classBindings[identity]?.let {
-        if (key != request.key && it !is KaBinding.AssistedFactory) return@analyze null
-        item?.cache = "reused"
-        return@analyze it
-      }
-      val binding =
-        resolveClassBinding(symbol, request.key, options, pointerManager, onDeclarationFile)
-          ?: return@analyze null
-      classBindings[identity] = binding
-      addedBindings += binding
-      item?.cache = "computed"
-      binding
+    } catch (failure: Throwable) {
+      analysisEntry?.finish(failure)
+      analysisExit?.finish(failure)
+      throw failure
+    } finally {
+      analysisEntry?.finish()
+      analysisExit?.finish()
     }
   }
 }
