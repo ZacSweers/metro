@@ -28,13 +28,23 @@ internal enum class IdeTraceState {
 }
 
 /** The output is assigned on IO before returning across a cancellable dispatcher boundary. */
-internal class IdeTraceOutput(val driver: AbstractTraceDriver, val path: Path? = null)
+internal class IdeTraceOutput(
+  val driver: AbstractTraceDriver,
+  val path: Path? = null,
+  val timeline: IdeTraceTimeline? = null,
+) {
+  fun close() {
+    driver.close()
+    timeline?.writeTo(checkNotNull(path))
+  }
+}
 
 /** Owns admission and leases. Published IDE data must never retain this capture. */
 internal class IdeTraceCapture(
   val traceScope: TraceScope,
   val nanoTime: () -> Long,
   private val onFailure: (Throwable) -> Unit,
+  val timeline: IdeTraceTimeline? = null,
 ) {
   val nextOperationId = AtomicLong()
   private val lock = Any()
@@ -142,9 +152,12 @@ internal class IdeTraceRecorder(
       }
       val output = checkNotNull(request.output)
       val capture =
-        IdeTraceCapture(TraceScope(output.driver.tracer, "metro.ide"), nanoTime) {
-          fail(request, it)
-        }
+        IdeTraceCapture(
+          TraceScope(output.driver.tracer, "metro.ide"),
+          nanoTime,
+          onFailure = { fail(request, it) },
+          timeline = output.timeline,
+        )
       synchronized(lock) {
         request.capture = capture
         if (request.stop.isCompleted) {
@@ -163,7 +176,7 @@ internal class IdeTraceRecorder(
       withContext(NonCancellable + Dispatchers.IO) {
         try {
           request.capture?.drained?.await()
-          request.output?.driver?.close()
+          request.output?.close()
         } catch (failure: Throwable) {
           rethrowTraceControlFlow(failure)
           request.failure.compareAndSet(null, failure)

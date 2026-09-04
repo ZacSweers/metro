@@ -28,7 +28,7 @@ internal fun createIdeTraceOutput(directory: Path, onFailure: (Throwable) -> Uni
       addMetadataEntry("plugin_version", VERSION)
       addMetadataEntry("plugin_git_sha", GIT_SHA)
     }
-    return IdeTraceOutput(driver, path)
+    return IdeTraceOutput(driver, path, IdeTraceTimeline())
   } catch (failure: Throwable) {
     try {
       if (sink == null) bufferedSink.close() else sink.close()

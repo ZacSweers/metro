@@ -16,6 +16,8 @@ internal constructor(
   private val capture: IdeTraceCapture,
   val name: String,
   private val parentId: Long? = null,
+  private val rootId: Long? = null,
+  private val context: Map<String, String> = emptyMap(),
 ) : TraceScope by capture.traceScope {
   private val id = capture.nextOperationId.incrementAndGet()
   private val attributes = linkedMapOf<String, String>()
@@ -39,7 +41,32 @@ internal constructor(
     synchronized(attributes) { result = value }
   }
 
-  internal fun child(name: String) = IdeTraceOperation(capture, name, id)
+  internal fun child(name: String): IdeTraceOperation {
+    val inherited =
+      synchronized(attributes) { context + attributes.filterKeys { it in CONTEXT_KEYS } }
+    return IdeTraceOperation(capture, name, id, rootId ?: id, inherited)
+  }
+
+  internal fun nowNanos(): Long = capture.nanoTime()
+
+  /** Summaries retain primitive metadata and stay with their enclosing operation's capture. */
+  fun event(name: String, metadata: IdeTraceOperation.() -> Unit = {}) {
+    capture.record {
+      child(name).apply(metadata).instant()
+    }
+  }
+
+  /** Bounded slow-item summaries can report their original interval after selection finishes. */
+  fun completedPhase(
+    name: String,
+    started: Long,
+    finished: Long,
+    metadata: IdeTraceOperation.() -> Unit = {},
+  ) {
+    capture.record {
+      child(name).apply(metadata).finish(null, started, finished)
+    }
+  }
 
   internal fun <T> read(block: () -> T): T {
     val started = capture.nanoTime()
@@ -59,7 +86,7 @@ internal constructor(
   }
 
   /** Emits the outcome after work, when cache counts and publication decisions are known. */
-  internal fun finish(failure: Throwable?, started: Long) {
+  internal fun finish(failure: Throwable?, started: Long, finished: Long = capture.nanoTime()) {
     synchronized(attributes) {
       if (result == null) {
         result =
@@ -71,33 +98,73 @@ internal constructor(
           }
       }
       attributes["outcome"] = checkNotNull(result)
-      attributes["elapsed_ns"] = (capture.nanoTime() - started).toString()
+      attributes["elapsed_ns"] = (finished - started).toString()
+      attributes["started_ns"] = started.toString()
       if (readAttempts > 0) {
         attributes["read_attempts"] = readAttempts.toString()
         attributes["canceled_read_attempts"] = canceledReadAttempts.toString()
         attributes["read_elapsed_ns"] = readNanos.toString()
       }
     }
+    capture.record {
+      capture.timeline?.record(
+        IdeTraceInterval(id, parentId, rootId ?: id, name, started, finished, metadataSnapshot())
+      )
+    }
     instant("$name.result")
   }
 
   internal fun instant(eventName: String = name) {
     capture.record {
-      tracer.instant(category = category, name = eventName) { writeMetadata(this) }
+      val timeline = capture.timeline
+      if (timeline == null) {
+        tracer.instant(category = category, name = eventName) { writeMetadata(this) }
+      } else {
+        val timestamp = capture.nanoTime()
+        timeline.record(
+          IdeTraceInterval(
+            id,
+            parentId,
+            rootId ?: id,
+            eventName,
+            timestamp,
+            null,
+            metadataSnapshot(),
+          )
+        )
+      }
     }
   }
 
-  private fun writeMetadata(metadata: EventMetadata) {
-    metadata.addMetadataEntry("operation_id", id.toString())
-    parentId?.let { metadata.addMetadataEntry("parent_operation_id", it.toString()) }
+  private fun metadataSnapshot(): Map<String, String> =
     synchronized(attributes) {
-      for ((key, value) in attributes) metadata.addMetadataEntry(key, value)
+      buildMap {
+        putAll(context)
+        putAll(attributes)
+        put("operation", name)
+        put("operation_id", id.toString())
+        parentId?.let { put("parent_operation_id", it.toString()) }
+      }
     }
+
+  private fun writeMetadata(metadata: EventMetadata) {
+    for ((key, value) in metadataSnapshot()) metadata.addMetadataEntry(key, value)
   }
 
   /** A writer failure must never execute user work twice or replace its exception. */
   internal fun <T> run(block: (IdeTraceOperation?) -> T): T {
     val started = capture.nanoTime()
+    if (capture.timeline != null) {
+      var failure: Throwable? = null
+      try {
+        return block(this)
+      } catch (caught: Throwable) {
+        failure = caught
+        throw caught
+      } finally {
+        finish(failure, started)
+      }
+    }
     var entered = false
     var completed = false
     var value: Any? = null
@@ -139,6 +206,17 @@ internal constructor(
 
   internal suspend fun <T> runSuspend(block: suspend (IdeTraceOperation?) -> T): T {
     val started = capture.nanoTime()
+    if (capture.timeline != null) {
+      var failure: Throwable? = null
+      try {
+        return block(this)
+      } catch (caught: Throwable) {
+        failure = caught
+        throw caught
+      } finally {
+        finish(failure, started)
+      }
+    }
     var entered = false
     var completed = false
     var value: Any? = null
@@ -195,6 +273,11 @@ internal constructor(
     } finally {
       closeable.close()
     }
+  }
+
+  private companion object {
+    val CONTEXT_KEYS =
+      setOf("manualRequest", "intent", "generation", "request", "file", "graph", "module")
   }
 }
 
