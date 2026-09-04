@@ -373,8 +373,7 @@ private fun KtDeclaration.isMetroImplicitUsage(
 ): Boolean {
   return when (this) {
     // Contributed objects are instance bindings even though they have no injectable constructor.
-    is KtClassOrObject ->
-      hasGeneratedInjectionEntryPoint(options, annotationClassIds, hasAnnotation)
+    is KtClassOrObject -> hasGeneratedCodeUsage(options, annotationClassIds, hasAnnotation)
     is KtConstructor<*> -> hasAnnotation(this, annotationClassIds.constructorInjectionAnnotations)
     is KtNamedFunction -> hasAnnotation(this, annotationClassIds.functionAnnotations)
     is KtProperty -> hasAnyMetroAnnotationOnPropertyOrGetter(annotationClassIds, hasAnnotation)
@@ -402,11 +401,13 @@ private fun PsiElement.ownerDeclaration(): KtDeclaration? {
   }
 }
 
-private fun KtClassOrObject.hasGeneratedInjectionEntryPoint(
+/** Recognizes types consumed by graph merging and generated injection code. */
+private fun KtClassOrObject.hasGeneratedCodeUsage(
   options: MetroOptions,
   annotationClassIds: MetroIdeAnnotationClassIds,
   hasAnnotation: MetroAnnotationMatcher,
 ): Boolean {
+  if (hasAnnotation(this, options.contributesToAnnotations)) return true
   if (hasAnnotation(this, annotationClassIds.classLevelInjectionAnnotations)) return true
   if (hasContributionProviderGeneratedUsage(options, annotationClassIds, hasAnnotation)) return true
 
