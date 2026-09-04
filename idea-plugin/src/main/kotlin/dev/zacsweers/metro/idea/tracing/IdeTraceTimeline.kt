@@ -40,6 +40,28 @@ internal class IdeTraceTimeline(private val capacity: Int = 20_000) {
     if (intervals.size < capacity) intervals += interval else dropped++
   }
 
+  /** The collapsed parent shows the envelope of recorded work, including gaps and suspension. */
+  @Synchronized
+  internal fun overview(): IdeTraceInterval? {
+    if (intervals.isEmpty()) return null
+    val work = intervals.filter { it.finished != null }
+    val first = work.minOfOrNull { it.started } ?: intervals.minOf { it.started }
+    val last = work.maxOfOrNull { checkNotNull(it.finished) } ?: intervals.maxOf { it.started }
+    val request = intervals.firstOrNull { it.name == "refresh" && it.finished != null }
+    val finish = intervals.firstOrNull { it.name == "capture.finish" }
+    val attributes = buildMap {
+      put("operation", "capture.overview")
+      put("operation_id", "0")
+      put("elapsed_ns", (last - first).toString())
+      put("timing", "First to last recorded operation, including gaps and suspension")
+      put("dropped_events", dropped.toString())
+      request?.attributes?.get("manualRequest")?.let { put("manualRequest", it) }
+      finish?.attributes?.get("stop_reason")?.let { put("stop_reason", it) }
+      finish?.attributes?.get("partial")?.let { put("partial", it) }
+    }
+    return IdeTraceInterval(0, null, 0, "capture.overview", first, last, attributes)
+  }
+
   /** Uses ancestry to prevent overlapping sibling operations from looking like nested calls. */
   @Synchronized
   fun lanes(): List<IdeTraceLane> = buildList {
@@ -86,6 +108,7 @@ internal class IdeTraceTimeline(private val capacity: Int = 20_000) {
   /** Called on IO after AndroidX closes its writer; both writers use desktop System.nanoTime(). */
   fun writeTo(path: Path) {
     val lanes = lanes()
+    val overview = overview()
     path.toFile().appendingSink().buffer().use { sink ->
       sink.descriptor(TRACK_BASE, "Metro operations", null)
       lanes.forEachIndexed { index, lane ->
@@ -98,6 +121,14 @@ internal class IdeTraceTimeline(private val capacity: Int = 20_000) {
         val interval: IdeTraceInterval,
       )
       val boundaries = buildList {
+        if (overview != null) {
+          if (overview.started == overview.finished) {
+            add(Boundary(overview.started, 3, TRACK_BASE, overview))
+          } else {
+            add(Boundary(overview.started, 1, TRACK_BASE, overview))
+            add(Boundary(checkNotNull(overview.finished), 2, TRACK_BASE, overview))
+          }
+        }
         lanes.forEachIndexed { index, lane ->
           val track = TRACK_BASE + index + 1
           for (interval in lane.intervals) {
@@ -135,7 +166,10 @@ internal class IdeTraceTimeline(private val capacity: Int = 20_000) {
         TRACK_BASE,
         3,
         "Trace summary",
-        mapOf("dropped_events" to dropped.toString(), "timing" to "wall time, including suspension"),
+        mapOf(
+          "dropped_events" to dropped.toString(),
+          "timing" to "wall time, including suspension",
+        ),
       )
     }
   }
@@ -219,6 +253,7 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
   }
   val label =
     when (name) {
+      "capture.overview" -> "Metro recorded work"
       "refresh" -> "Refresh Metro graphs"
       "index.candidate" -> "Build graph index"
       "index.classifyPsi" -> "Classify changed source files"
@@ -235,6 +270,24 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.class.slow" -> "Resolve class"
       "source.file.module" -> "Source files by module"
       "source.class.module" -> "Class requests by module"
+      "source.file.psi" -> "Load source PSI"
+      "source.file.cacheLookup" -> "Read source shard cache"
+      "source.file.imports" -> "Read source imports"
+      "source.file.annotationScan" -> "Find annotated declarations"
+      "source.file.annotationLookup" -> "Resolve annotation name"
+      "source.file.typealiasLookup" -> "Resolve annotation type alias"
+      "source.file.declarationExtraction" -> "Extract Metro declaration"
+      "source.file.dynamicGraphScan" -> "Find dynamic graph factories"
+      "source.file.shardConstruction" -> "Construct source shard"
+      "source.class.analysisEntry" -> "Enter Kotlin analysis"
+      "source.class.analysisSetup" -> "Locate requesting file"
+      "source.class.findClass" -> "Find class symbol"
+      "source.class.declarationEligibility" -> "Check source declaration"
+      "source.class.optionsAndQualifierLookup" -> "Read options and qualifiers"
+      "source.class.cacheCheck" -> "Check class binding cache"
+      "source.class.bindingConstruction" -> "Build class binding"
+      "source.class.dependencyExpansion" -> "Expand class dependencies"
+      "source.class.analysisExit" -> "Leave Kotlin analysis"
       "library.resolve" -> "Resolve library dependencies"
       "library.discoverMetadata" -> "Discover library metadata"
       "library.resolveClasses" -> "Resolve library classes"
@@ -257,7 +310,8 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
     when (name) {
       "refresh",
       "index.candidate" -> attributes["manualRequest"]?.let { "refresh #$it" }
-      "source.scan" -> attributes["files_total"]?.let { "$it files" }
+      "source.scan" -> attributes["files.total"]?.let { "$it files" }
+      "capture.overview" -> attributes["manualRequest"]?.let { "refresh #$it" }
       "source.file.slow",
       "presentation.build",
       "presentation.anchors" -> attributes["file"]

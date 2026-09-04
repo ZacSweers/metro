@@ -37,7 +37,7 @@ class IdeTraceTimelineTest : TestCase() {
         clock.set(110)
         operation.phaseSuspend("source.scan") { scan ->
           withContext(Dispatchers.Default) { clock.set(200) }
-          scan?.attribute("files_total", 2297)
+          scan?.attribute("files.total", 2297)
           scan?.attribute("files_rebuilt", 2296)
         }
         clock.set(210)
@@ -81,6 +81,32 @@ class IdeTraceTimelineTest : TestCase() {
     val timeline = IdeTraceTimeline(capacity = 2)
     repeat(10) { index -> timeline.record(span(index + 1L, null, index * 10L, index * 10L + 1)) }
     assertEquals(2, timeline.lanes().sumOf { it.intervals.size })
+  }
+
+  fun testOverviewCoversConcurrentWorkAndRetainsPartialCaptureReason() {
+    val timeline = IdeTraceTimeline()
+    assertNull(timeline.overview())
+    timeline.record(IdeTraceInterval(1, null, 1, "refresh", 20, 80, mapOf("manualRequest" to "12")))
+    timeline.record(IdeTraceInterval(2, null, 2, "index.candidate", 30, 100, emptyMap()))
+    timeline.record(IdeTraceInterval(3, null, 3, "index.classifyPsi", 10, 15, emptyMap()))
+    timeline.record(
+      IdeTraceInterval(
+        4,
+        null,
+        4,
+        "capture.finish",
+        110,
+        null,
+        mapOf("partial" to "true", "stop_reason" to "user"),
+      )
+    )
+    val overview = checkNotNull(timeline.overview())
+    assertEquals(10L, overview.started)
+    assertEquals(100L, overview.finished)
+    assertEquals("90", overview.attributes["elapsed_ns"])
+    assertEquals("12", overview.attributes["manualRequest"])
+    assertEquals("true", overview.attributes["partial"])
+    assertEquals("user", overview.attributes["stop_reason"])
   }
 
   private fun span(id: Long, parent: Long?, start: Long, end: Long) =
