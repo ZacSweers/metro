@@ -127,6 +127,32 @@ class IdeTraceRecorderTest : TestCase() {
     assertEquals("failed", sink.results("failure").single().metadata["outcome"])
   }
 
+  fun testCoroutinePhaseClosesAfterSynchronousChildAndThreadSwitch() =
+    withRecorder { recorder, sink ->
+      var calls = 0
+      val result =
+        async(Dispatchers.Unconfined) {
+            recorder.traceSuspend("moving") { operation ->
+              calls++
+              val initialThread = Thread.currentThread().threadId()
+              operation.phase("moving.child") { 42 }
+              // Unconfined resumes on the worker so the parent closes on a different thread.
+              withContext(Dispatchers.Default) {
+                assertTrue(initialThread != Thread.currentThread().threadId())
+              }
+              43
+            }
+          }
+          .await()
+      assertEquals(43, result)
+      assertEquals(1, calls)
+      assertEquals(IdeTraceState.RECORDING, recorder.state.value)
+      recorder.stop()
+      recorder.state.first { it == IdeTraceState.IDLE }
+      assertEquals("completed", sink.results("moving").single().metadata["outcome"])
+      assertEquals("completed", sink.results("moving.child").single().metadata["outcome"])
+    }
+
   fun testAutomaticStopAndRestartUseSeparateOutputs() = runBlocking {
     val job = SupervisorJob()
     val finished = kotlinx.coroutines.channels.Channel<Unit>(2)

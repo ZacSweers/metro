@@ -199,6 +199,11 @@ options ends an active capture. Traces are saved locally in the IDE log director
 in [Perfetto](https://ui.perfetto.dev). Trace metadata can contain project identifiers and exception
 stack traces. Review the file before sharing it.
 
+Operations appear under the `metro.ide` category. A coroutine can produce slices on several threads;
+`operation_id` and `parent_operation_id` connect the operation and its phases. Each `.result` event
+contains the final outcome and total elapsed time, including suspension. Read phases also report
+active read time and canceled attempts.
+
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
 ### Graph Validation

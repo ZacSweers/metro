@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.tracing
 
+import androidx.tracing.DelicateTracingApi
 import androidx.tracing.EventMetadata
+import androidx.tracing.recordExceptionAndThrow
 import com.intellij.openapi.progress.ProcessCanceledException
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 
 /** One finite operation. Children use its capture until the enclosing operation returns. */
 internal class IdeTraceOperation
@@ -142,7 +145,7 @@ internal constructor(
     var workFailure: Throwable? = null
     var traceFailure: Throwable? = null
     try {
-      return tracer.traceCoroutine(category, name, metadataBlock = { writeMetadata(this) }) {
+      return traceCoroutineWithOwnedHandle {
         entered = true
         try {
           block(this@IdeTraceOperation).also {
@@ -172,6 +175,25 @@ internal constructor(
       }
     } finally {
       finish(workFailure ?: traceFailure, started)
+    }
+  }
+
+  /**
+   * Captures the coroutine handle before same-thread child events reuse AndroidX's mutable holder.
+   */
+  @OptIn(DelicateTracingApi::class)
+  private suspend fun <T> traceCoroutineWithOwnedHandle(block: suspend () -> T): T {
+    if (!tracer.isCategoryEnabled(category)) return block()
+    val section = tracer.beginCoroutineSection(category, name, token = null) { writeMetadata(this) }
+    val closeable = section.closeable
+    try {
+      val contextElement = section.propagationToken.contextElementOrNull()
+      if (contextElement == null) return block()
+      return withContext(contextElement) { block() }
+    } catch (failure: Throwable) {
+      tracer.recordExceptionAndThrow(category, "$name.exception", failure)
+    } finally {
+      closeable.close()
     }
   }
 }
