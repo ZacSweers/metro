@@ -16,17 +16,18 @@ import kotlinx.coroutines.sync.Semaphore
  * Reads items on a bounded pool and returns their results in input order.
  *
  * A parallelism of one runs reads inline on the caller. Larger pools run reads in [context] and cap
- * concurrent reads at `min(parallelism, size)`. The context defaults to [Dispatchers.Default] and
- * must not carry a [Job].
+ * concurrent reads at `min(parallelism, size)`. [read] must be safe to call from several threads at
+ * once. The context defaults to [Dispatchers.Default] and must not carry a [Job].
  *
  * [accept] is an optional hook. It sees each result in input order on the caller's coroutine before
  * the result joins the returned list. It can't suspend. While it's set, reads run at most twice the
  * worker count of items ahead of acceptance.
  *
- * A failed read or acceptance fails the whole call. Earlier items may already be accepted by then.
- * Callers must be able to discard that state. A `CancellationException` from a read propagates to
- * the caller and leaves the caller's job active. Cancellation joins the entire pool before this
- * call returns.
+ * A failed read or acceptance fails the whole call. Failures from other workers arrive as
+ * suppressed exceptions on the first one. Earlier items may already be accepted by then. Callers
+ * must be able to discard that state. A `CancellationException` from a read propagates to the
+ * caller and leaves the caller's job active. Cancellation joins the entire pool before this call
+ * returns.
  */
 public suspend fun <T, R> List<T>.parallelMap(
   parallelism: Int,

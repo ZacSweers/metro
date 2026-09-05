@@ -4,6 +4,7 @@ package dev.zacsweers.metro.compiler
 
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -382,6 +383,42 @@ class ParallelMapTest {
       } catch (actual: IllegalStateException) {
         assertOriginalFailure(failure, actual)
         assertTrue(otherStopped.isCompleted)
+      }
+    }
+  }
+
+  @Test
+  fun `concurrent failures surface as one exception with the other suppressed`() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val bothStarted = CountDownLatch(2)
+      val first = IllegalStateException("first")
+      val second = IllegalArgumentException("second")
+      try {
+        val _ =
+          listOf(0, 1).parallelMap(parallelism = 2) { item ->
+            // Block instead of suspending so neither throw can turn into a cancellation.
+            bothStarted.countDown()
+            bothStarted.await(5, TimeUnit.SECONDS)
+            if (item == 0) {
+              throw first
+            } else {
+              throw second
+            }
+          }
+        fail("Expected both reads to fail")
+      } catch (actual: RuntimeException) {
+        val chain = generateSequence<Throwable>(actual) { it.cause }.toList()
+        val thrown = listOf(first, second).single { it in chain }
+        val other =
+          if (thrown === first) {
+            second
+          } else {
+            first
+          }
+        assertTrue(
+          chain.any { other in it.suppressed },
+          "Expected the sibling failure as suppressed",
+        )
       }
     }
   }
