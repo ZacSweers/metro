@@ -137,7 +137,21 @@ case "$1" in
        fi
 
        if [[ "$local" = true ]]; then
-           ./gradlew -p idea-plugin buildPlugin --quiet "${publish_args[@]}"
+           if [[ "$dry_run" = false ]]; then
+               if [[ -z "${METRO_IDEA_PLUGIN_PRIVATE_KEY:-}" ]]; then
+                   echo "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY"
+                   exit 1
+               fi
+               if [[ -z "${METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD:-}" ]]; then
+                   echo "Missing METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"
+                   exit 1
+               fi
+               if [[ -z "${METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN:-}" ]]; then
+                   echo "Missing METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN"
+                   exit 1
+               fi
+           fi
+           ./gradlew -p idea-plugin signPlugin verifyPluginSignature --quiet "${publish_args[@]}"
        else
            ./gradlew -p idea-plugin publishPlugin --quiet "${publish_args[@]}"
        fi
@@ -372,7 +386,7 @@ case "$1" in
        echo ""
        echo "publish-idea-plugin options:"
        echo "  --version <version>  Specify IDE plugin version for publishing"
-       echo "  --local              Build the IDE plugin ZIP locally instead of publishing"
+       echo "  --local              Build, sign, and verify the IDE plugin ZIP for manual upload"
        echo "  --dry-run            Preview publish tasks without publishing"
        echo ""
        echo "check options:"
