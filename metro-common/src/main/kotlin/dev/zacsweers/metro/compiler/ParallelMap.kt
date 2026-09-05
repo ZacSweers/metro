@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea.index.snapshot
+package dev.zacsweers.metro.compiler
 
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +28,8 @@ import kotlinx.coroutines.sync.Semaphore
  * the caller and leaves the caller's job active. Cancellation joins the entire pool before this
  * call returns.
  */
-internal suspend fun <T, R> List<T>.parallelMap(
+@IgnorableReturnValue
+public suspend fun <T, R> List<T>.parallelMap(
   parallelism: Int,
   context: CoroutineContext = Dispatchers.Default,
   accept: ((T, R) -> Unit)? = null,
@@ -44,7 +45,8 @@ internal suspend fun <T, R> List<T>.parallelMap(
 }
 
 /** [parallelMap] with each item's index passed to both callbacks. */
-internal suspend fun <T, R> List<T>.parallelMapIndexed(
+@IgnorableReturnValue
+public suspend fun <T, R> List<T>.parallelMapIndexed(
   parallelism: Int,
   context: CoroutineContext = Dispatchers.Default,
   accept: ((Int, T, R) -> Unit)? = null,

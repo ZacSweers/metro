@@ -8,6 +8,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
+import dev.zacsweers.metro.compiler.parallelMap
 import dev.zacsweers.metro.idea.SOURCE_SCAN_POOL_SIZE_RANGE
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildFile

@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Zac Sweers
 // SPDX-License-Identifier: Apache-2.0
-package dev.zacsweers.metro.idea.index.snapshot
+package dev.zacsweers.metro.compiler
 
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
@@ -8,7 +8,13 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import junit.framework.TestCase
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import kotlin.test.fail
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -24,9 +30,10 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
-/** Gates control overlap, ordering, and cleanup independently of file analysis. */
-class ParallelMapTest : TestCase() {
-  fun testOneWorkerReadsAndAcceptsOnTheCaller() = runBlocking {
+/** Exercises overlap, ordering, cancellation, and cleanup without any real reads. */
+class ParallelMapTest {
+  @Test
+  fun `one worker reads and accepts on the caller`() = runBlocking {
     val caller = Thread.currentThread()
     val events = mutableListOf<String>()
     listOf(1, 2, 3)
@@ -48,7 +55,8 @@ class ParallelMapTest : TestCase() {
     )
   }
 
-  fun testOneWorkerSkipsAcceptWhenReadCancelsTheCaller() = runBlocking {
+  @Test
+  fun `one worker skips accept when read cancels the caller`() = runBlocking {
     val reads = mutableListOf<Int>()
     val accepted = mutableListOf<Int>()
     val scan = launch {
@@ -70,7 +78,8 @@ class ParallelMapTest : TestCase() {
     assertTrue(accepted.isEmpty())
   }
 
-  fun testOneWorkerStopsReadingWhenAcceptCancelsTheCaller() = runBlocking {
+  @Test
+  fun `one worker stops reading when accept cancels the caller`() = runBlocking {
     val reads = mutableListOf<Int>()
     val accepted = mutableListOf<Int>()
     val scan = launch {
@@ -94,7 +103,8 @@ class ParallelMapTest : TestCase() {
     assertEquals(listOf(1), accepted)
   }
 
-  fun testPooledReadsRunConcurrentlyOffTheCallerThread() = runBlocking {
+  @Test
+  fun `pooled reads run concurrently off the caller thread`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val readThreads = ConcurrentHashMap.newKeySet<Thread>()
@@ -120,7 +130,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testPooledSingleItemReadsOffTheCallerAndAcceptsOnce() = runBlocking {
+  @Test
+  fun `pooled single item reads off the caller and accepts once`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val accepted = mutableListOf<Pair<Int, Int>>()
@@ -140,7 +151,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testPoolLargerThanInputReadsEveryItemAtOnce() = runBlocking {
+  @Test
+  fun `pool larger than input reads every item at once`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val started = AtomicInteger()
       val allStarted = CompletableDeferred<Unit>()
@@ -162,7 +174,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testDuplicateItemsAreReadAndAcceptedPerIndex() = runBlocking {
+  @Test
+  fun `duplicate items are read and accepted per index`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val reads = AtomicInteger()
       val accepted = mutableListOf<Pair<String, Int>>()
@@ -177,7 +190,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testRejectsNonPositiveParallelism() = runBlocking {
+  @Test
+  fun `rejects non-positive parallelism`() = runBlocking {
     for (parallelism in listOf(0, -1)) {
       try {
         listOf(1)
@@ -193,7 +207,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testReadsRunInTheSuppliedContext() = runBlocking {
+  @Test
+  fun `reads run in the supplied context`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val readThreads = ConcurrentHashMap.newKeySet<Thread>()
@@ -220,7 +235,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testRejectsAContextWithAJob() = runBlocking {
+  @Test
+  fun `rejects a context with a Job`() = runBlocking {
     try {
       listOf(1)
         .parallelMap(
@@ -235,7 +251,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testParallelReadsHaveBoundedBacklogAndAcceptInOrderOnTheCaller() = runBlocking {
+  @Test
+  fun `parallel reads have a bounded backlog and accept in order on the caller`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val firstStarted = CompletableDeferred<Unit>()
@@ -290,8 +307,8 @@ class ParallelMapTest : TestCase() {
       releaseFirst.complete(Unit)
       scan.await()
       assertTrue(
-        "Item 4 started before anything was accepted",
         acceptedWhenBeyondWindowStarted.get() >= 1,
+        "Item 4 started before anything was accepted",
       )
       assertEquals(
         (0..9).map {
@@ -308,7 +325,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testPlainMapReadsAheadPastASlowItemAndReturnsInOrder() = runBlocking {
+  @Test
+  fun `plain map reads ahead past a slow item and returns in order`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val lastStarted = CompletableDeferred<Unit>()
       val results =
@@ -326,7 +344,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testReadFailureCancelsAndJoinsOtherWorkers() = runBlocking {
+  @Test
+  fun `read failure cancels and joins other workers`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
@@ -357,7 +376,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testReadCancellationStopsThePool() = runBlocking {
+  @Test
+  fun `read cancellation stops the pool`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
@@ -388,7 +408,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testReadFailureKeepsAcceptedResultsAndDropsTheRest() = runBlocking {
+  @Test
+  fun `read failure keeps accepted results and drops the rest`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val secondAccepted = CompletableDeferred<Unit>()
       val lastStopped = CompletableDeferred<Unit>()
@@ -430,7 +451,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testReadCancellationStillAcceptsEarlierCompletedResults() = runBlocking {
+  @Test
+  fun `read cancellation still accepts earlier completed results`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val firstAccepted = CompletableDeferred<Unit>()
       val lastStarted = CompletableDeferred<Unit>()
@@ -477,7 +499,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testPooledCollectorSkipsPendingResultsAfterCancellation() = runBlocking {
+  @Test
+  fun `pooled collector skips pending results after cancellation`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val thirdReadStarted = CompletableDeferred<Unit>()
       val accepted = mutableListOf<Int>()
@@ -510,7 +533,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testPooledWorkerStopsTakingItemsAfterCancellation() = runBlocking {
+  @Test
+  fun `pooled worker stops taking items after cancellation`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val secondReadStarted = CompletableDeferred<Unit>()
       val firstReadReturned = CompletableDeferred<Unit>()
@@ -546,7 +570,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testCollectorFailureCancelsAndJoinsWorkers() = runBlocking {
+  @Test
+  fun `collector failure cancels and joins workers`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
@@ -578,7 +603,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testParentCancellationWaitsForWorkerCleanup() = runBlocking {
+  @Test
+  fun `parent cancellation waits for worker cleanup`() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val bothStarted = CompletableDeferred<Unit>()
       val cleanupStarted = CompletableDeferred<Unit>()
@@ -619,7 +645,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testIndexedCallbacksReceiveEachItemsIndex() = runBlocking {
+  @Test
+  fun `indexed callbacks receive each item's index`() = runBlocking {
     for (parallelism in listOf(1, 2)) {
       val accepted = mutableListOf<Triple<Int, String, String>>()
       listOf("a", "b", "c")
@@ -635,7 +662,8 @@ class ParallelMapTest : TestCase() {
     }
   }
 
-  fun testEmptyInputSkipsBothCallbacks() = runBlocking {
+  @Test
+  fun `empty input skips both callbacks`() = runBlocking {
     val results =
       emptyList<Int>()
         .parallelMap(

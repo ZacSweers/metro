@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.idea.index.snapshot
 
 import com.intellij.openapi.project.Project
+import dev.zacsweers.metro.compiler.parallelMapIndexed
 import dev.zacsweers.metro.idea.index.IndexBuildFile
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
