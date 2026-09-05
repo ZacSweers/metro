@@ -14,6 +14,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -42,6 +43,52 @@ class ParallelMapTest : TestCase() {
       listOf("read 1", "accept 1=2", "read 2", "accept 2=4", "read 3", "accept 3=6"),
       events,
     )
+  }
+
+  fun testOneWorkerSkipsAcceptWhenReadCancelsTheCaller() = runBlocking {
+    val reads = mutableListOf<Int>()
+    val accepted = mutableListOf<Int>()
+    val scan = launch {
+      val job = coroutineContext.job
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 1,
+          read = { item ->
+            reads += item
+            job.cancel()
+            item
+          },
+          accept = { item, _ -> accepted += item },
+        )
+    }
+    scan.join()
+    assertTrue(scan.isCancelled)
+    assertEquals(listOf(1), reads)
+    assertTrue(accepted.isEmpty())
+  }
+
+  fun testOneWorkerStopsReadingWhenAcceptCancelsTheCaller() = runBlocking {
+    val reads = mutableListOf<Int>()
+    val accepted = mutableListOf<Int>()
+    val scan = launch {
+      val job = coroutineContext.job
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 1,
+          read = { item ->
+            reads += item
+            item
+          },
+          accept = { item, _ ->
+            accepted += item
+            job.cancel()
+          },
+        )
+    }
+    scan.join()
+    assertTrue(scan.isCancelled)
+    assertEquals(listOf(1), reads)
+    assertEquals(listOf(1), accepted)
   }
 
   fun testPooledReadsRunConcurrentlyOffTheCallerThread() = runBlocking {
@@ -196,6 +243,75 @@ class ParallelMapTest : TestCase() {
         assertOriginalFailure(cancellation, actual)
         assertTrue(otherStopped.isCompleted)
       }
+    }
+  }
+
+  fun testPooledCollectorSkipsPendingResultsAfterCancellation() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val thirdReadStarted = CompletableDeferred<Unit>()
+      val accepted = mutableListOf<Int>()
+      val scan = launch {
+        val job = coroutineContext.job
+        listOf(0, 1, 2)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                // The worker that read item 1 sent it before moving on to item 2.
+                0 -> thirdReadStarted.await()
+                2 -> {
+                  thirdReadStarted.complete(Unit)
+                  awaitCancellation()
+                }
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              job.cancel()
+            },
+          )
+      }
+      scan.join()
+      assertTrue(scan.isCancelled)
+      assertEquals(listOf(0), accepted)
+    }
+  }
+
+  fun testPooledWorkerStopsTakingItemsAfterCancellation() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val secondReadStarted = CompletableDeferred<Unit>()
+      val firstReadReturned = CompletableDeferred<Unit>()
+      val reads = ConcurrentHashMap.newKeySet<Int>()
+      val scan = launch {
+        val job = coroutineContext.job
+        listOf(0, 1, 2)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              reads += item
+              when (item) {
+                0 -> {
+                  secondReadStarted.await()
+                  job.cancel()
+                  firstReadReturned.complete(Unit)
+                }
+                // Hold the other worker so item 2 stays queued until after the cancel.
+                1 -> {
+                  secondReadStarted.complete(Unit)
+                  withContext(NonCancellable) { firstReadReturned.await() }
+                }
+                else -> {}
+              }
+              item
+            },
+            accept = { _, _ -> fail("A canceled scan cannot accept") },
+          )
+      }
+      scan.join()
+      assertTrue(scan.isCancelled)
+      assertEquals(setOf(0, 1), reads.toSet())
     }
   }
 
