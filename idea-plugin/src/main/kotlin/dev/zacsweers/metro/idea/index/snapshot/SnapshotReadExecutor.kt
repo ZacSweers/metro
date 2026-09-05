@@ -91,31 +91,25 @@ internal class SnapshotReadExecutor(
       scheduled += items.size
       publish()
     }
-    val results = ArrayList<R>(items.size)
-    items.parallelMapIndexed(
-      parallelism,
-      read = { index, item ->
-        val slot = started(descriptions[index])
-        var completedRead = false
-        try {
-          val value = work.measure { workItem ->
-            workItem?.className = descriptions[index].name
-            workItem?.file = descriptions[index].path
-            workItem?.module = descriptions[index].module ?: "<unknown>"
-            read {
-              update(slot, describe(item))
-              workItem.measureRead { capture(item) }
-            }
+    return items.parallelMapIndexed(parallelism) { index, item ->
+      val slot = started(descriptions[index])
+      var completedRead = false
+      try {
+        val value = work.measure { workItem ->
+          workItem?.className = descriptions[index].name
+          workItem?.file = descriptions[index].path
+          workItem?.module = descriptions[index].module ?: "<unknown>"
+          read {
+            update(slot, describe(item))
+            workItem.measureRead { capture(item) }
           }
-          completedRead = true
-          value
-        } finally {
-          finished(slot, completedRead)
         }
-      },
-      accept = { _, _, result -> results += result },
-    )
-    return results
+        completedRead = true
+        value
+      } finally {
+        finished(slot, completedRead)
+      }
+    }
   }
 
   @Synchronized

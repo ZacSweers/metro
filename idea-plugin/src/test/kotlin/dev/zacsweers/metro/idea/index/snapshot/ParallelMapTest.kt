@@ -2,15 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index.snapshot
 
+import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import junit.framework.TestCase
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -189,6 +193,48 @@ class ParallelMapTest : TestCase() {
     }
   }
 
+  fun testReadsRunInTheSuppliedContext() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val caller = Thread.currentThread()
+      val readThreads = ConcurrentHashMap.newKeySet<Thread>()
+      val accepted = mutableListOf<Int>()
+      val executor = Executors.newSingleThreadExecutor()
+      val worker = executor.submit(Callable { Thread.currentThread() }).get()
+      executor.asCoroutineDispatcher().use { dispatcher ->
+        listOf(1, 2, 3)
+          .parallelMap(
+            parallelism = 2,
+            context = dispatcher,
+            read = { item ->
+              readThreads += Thread.currentThread()
+              item
+            },
+            accept = { item, _ ->
+              assertSame(caller, Thread.currentThread())
+              accepted += item
+            },
+          )
+      }
+      assertEquals(setOf(worker), readThreads.toSet())
+      assertEquals(listOf(1, 2, 3), accepted)
+    }
+  }
+
+  fun testRejectsAContextWithAJob() = runBlocking {
+    try {
+      listOf(1)
+        .parallelMap(
+          parallelism = 2,
+          context = Job(),
+          read = { fail("No read expected") },
+          accept = { _, _ -> fail("No accept expected") },
+        )
+      fail("Expected the Job to be rejected")
+    } catch (expected: IllegalArgumentException) {
+      assertEquals("context must not contain a Job", expected.message)
+    }
+  }
+
   fun testParallelReadsHaveBoundedBacklogAndAcceptInOrderOnTheCaller() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
@@ -259,6 +305,24 @@ class ParallelMapTest : TestCase() {
         accepted,
       )
       assertEquals(0, active.get())
+    }
+  }
+
+  fun testPlainMapReadsAheadPastASlowItemAndReturnsInOrder() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val lastStarted = CompletableDeferred<Unit>()
+      val results =
+        (0..9).toList().parallelMap(parallelism = 2) { item ->
+          // Item 0 can't finish until every later item has been read, which the in-flight
+          // limit would never allow.
+          when (item) {
+            0 -> lastStarted.await()
+            9 -> lastStarted.complete(Unit)
+            else -> {}
+          }
+          item * 2
+        }
+      assertEquals((0..9).map { it * 2 }, results)
     }
   }
 
@@ -572,12 +636,14 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testEmptyInputSkipsBothCallbacks() = runBlocking {
-    emptyList<Int>()
-      .parallelMap(
-        parallelism = 2,
-        read = { fail("No read expected") },
-        accept = { _, _ -> fail("No result expected") },
-      )
+    val results =
+      emptyList<Int>()
+        .parallelMap(
+          parallelism = 2,
+          read = { fail("No read expected") },
+          accept = { _, _ -> fail("No result expected") },
+        )
+    assertTrue(results.isEmpty())
   }
 
   /** Coroutine stack recovery can wrap the same failure while retaining its original cause. */
