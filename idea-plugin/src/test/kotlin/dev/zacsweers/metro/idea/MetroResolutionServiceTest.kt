@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
+import dev.zacsweers.metro.idea.index.IndexBuildFile
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
@@ -2044,6 +2045,91 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         { progress.copy(workerLimit = 0) },
         { progress.copy(phase = IndexBuildPhase.BUILDING_GRAPH_INDEX) },
         { progress.copy(completed = null, total = null) },
+      )
+    for (change in invalidChanges) {
+      assertTrue(runCatching(change).exceptionOrNull() is IllegalArgumentException)
+    }
+  }
+
+  fun testIndexBuildProgressReporterPublishesFileChangesWithoutCountChanges() {
+    var now = 0L
+    val progress = mutableListOf<IndexBuildProgress>()
+    val reporter =
+      IndexBuildProgressReporter(
+        publish = progress::add,
+        updateIntervalNanos = 250,
+        nanoTime = { now },
+      )
+    val first = IndexBuildFile("First.kt", "src/First.kt", "app")
+    val second = IndexBuildFile("Second.kt", "src/Second.kt")
+    fun report(file: IndexBuildFile?, force: Boolean = false) {
+      val activeWorkers =
+        if (file == null) {
+          0
+        } else {
+          1
+        }
+      reporter.counted(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = activeWorkers,
+        workerLimit = 2,
+        workerFiles = listOf(file, null),
+        force = force,
+      )
+    }
+
+    report(first)
+    now = 100
+    report(second)
+    assertEquals(listOf(first), progress.map { it.workerFiles.first() })
+    now = 250
+    report(second)
+    now = 300
+    val secondWithModule = second.copy(module = "app")
+    report(secondWithModule)
+    now = 500
+    report(secondWithModule)
+    report(secondWithModule)
+    assertEquals(
+      listOf(first, second, secondWithModule),
+      progress.map { it.workerFiles.first() },
+    )
+    assertTrue(progress.all { it.completed == 1 && it.activeWorkers == 1 })
+
+    // Cancellation drains the rows immediately even when the file count is incomplete.
+    now = 550
+    report(null)
+    assertEquals(secondWithModule, progress.last().workerFiles.first())
+    report(null, force = true)
+    assertEquals(4, progress.size)
+    assertEquals(1, progress.last().completed)
+    assertEquals(10, progress.last().total)
+    assertEquals(0, progress.last().activeWorkers)
+    assertEquals(listOf(null, null), progress.last().workerFiles)
+
+    reporter.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
+    assertTrue(progress.last().workerFiles.isEmpty())
+  }
+
+  fun testIndexBuildProgressRejectsInconsistentWorkerFiles() {
+    val file = IndexBuildFile("Example.kt", "src/Example.kt", "app")
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = 2,
+        workerLimit = 4,
+        workerFiles = listOf(file, null, file.copy(name = "Other.kt", path = "src/Other.kt"), null),
+      )
+    val invalidChanges =
+      listOf<() -> IndexBuildProgress>(
+        { progress.copy(workerFiles = listOf(file, file)) },
+        { progress.copy(workerFiles = listOf(null, null, null, null)) },
+        { progress.copy(workerFiles = listOf(file, file, file, null)) },
+        { progress.copy(activeWorkers = null, workerLimit = null) },
       )
     for (change in invalidChanges) {
       assertTrue(runCatching(change).exceptionOrNull() is IllegalArgumentException)

@@ -12,10 +12,13 @@ internal enum class IndexBuildPhase(val message: String) {
   BUILDING_GRAPH_INDEX("Building the Metro graph index"),
 }
 
+/** Detached display data for a source file; progress never retains PSI or module objects. */
+internal data class IndexBuildFile(val name: String, val path: String, val module: String? = null)
+
 /**
- * File counts include visited cache entries. Worker counts include file tasks waiting for IDE
- * reads. The scan serializes progress updates; completed shard reads contribute cache counters
- * once.
+ * File counts include visited cache entries. Worker slots include file tasks waiting for IDE reads
+ * and remain assigned through retries. Each update owns a snapshot of the slots; null entries are
+ * idle. The scan serializes updates and counts each completed file once.
  */
 internal data class IndexBuildProgress(
   val phase: IndexBuildPhase,
@@ -25,6 +28,7 @@ internal data class IndexBuildProgress(
   val rebuilt: Int? = null,
   val activeWorkers: Int? = null,
   val workerLimit: Int? = null,
+  val workerFiles: List<IndexBuildFile?> = emptyList(),
 ) {
   init {
     require((completed == null) == (total == null))
@@ -44,6 +48,10 @@ internal data class IndexBuildProgress(
       require(workerLimit > 0)
       require(activeWorkers in 0..workerLimit)
     }
+    if (workerFiles.isNotEmpty()) {
+      require(workerFiles.size == workerLimit)
+      require(workerFiles.count { it != null } == activeWorkers)
+    }
   }
 
   val message: String
@@ -51,7 +59,11 @@ internal data class IndexBuildProgress(
       val completed = completed ?: return phase.message
       val total = total ?: return phase.message
       val details =
-        if (reused != null && rebuilt != null) ", $reused reused, $rebuilt rebuilt" else ""
+        if (reused != null && rebuilt != null) {
+          ", $reused reused, $rebuilt rebuilt"
+        } else {
+          ""
+        }
       return "${phase.message} ($completed of $total files$details)"
     }
 }
@@ -72,6 +84,7 @@ internal class IndexBuildProgressReporter(
     lastPublishedAt = nanoTime()
   }
 
+  /** Terminal updates can bypass throttling to clear file rows after cancellation. */
   fun counted(
     phase: IndexBuildPhase,
     completed: Int,
@@ -80,9 +93,20 @@ internal class IndexBuildProgressReporter(
     rebuilt: Int? = null,
     activeWorkers: Int? = null,
     workerLimit: Int? = null,
+    workerFiles: List<IndexBuildFile?> = emptyList(),
+    force: Boolean = false,
   ) {
     val progress =
-      IndexBuildProgress(phase, completed, total, reused, rebuilt, activeWorkers, workerLimit)
+      IndexBuildProgress(
+        phase,
+        completed,
+        total,
+        reused,
+        rebuilt,
+        activeWorkers,
+        workerLimit,
+        workerFiles,
+      )
     val previous = lastProgress
     if (progress == previous) {
       return
@@ -98,7 +122,8 @@ internal class IndexBuildProgressReporter(
     val workersDrained = completed >= total && activeWorkers == 0
     val intervalElapsed = lastPublishedAt?.let { now - it >= updateIntervalNanos } ?: true
     val activityBoundary = initialPoolFilled || workersDrained
-    if (!phaseChanged && !atBoundary && !activityBoundary && !intervalElapsed) {
+    val publishImmediately = force || phaseChanged || atBoundary || activityBoundary
+    if (!publishImmediately && !intervalElapsed) {
       return
     }
 

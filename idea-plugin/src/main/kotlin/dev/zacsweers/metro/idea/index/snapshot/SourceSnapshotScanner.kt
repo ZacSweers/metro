@@ -5,10 +5,12 @@ package dev.zacsweers.metro.idea.index.snapshot
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import dev.zacsweers.metro.idea.SOURCE_SCAN_POOL_SIZE_RANGE
 import dev.zacsweers.metro.idea.index.FileShard
+import dev.zacsweers.metro.idea.index.IndexBuildFile
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
@@ -57,18 +59,13 @@ internal class SourceSnapshotScanner(
     val scan = SourceScanProgress(progress, orderedFiles.size + pending.requested.size, parallelism)
     val work = trace?.let { IdeTraceWorkSummary(it, "source.file") }
     val fingerprints = mutableMapOf<VirtualFile, String>()
-    // Publish throttled worker changes even when the remaining files spend a long time in a read.
-    val progressUpdates =
-      if (parallelism > 1) {
-        launch {
-          while (isActive) {
-            delay(250)
-            scan.refresh()
-          }
-        }
-      } else {
-        null
+    // Flush file changes even when a single remaining read spends a long time waiting for the IDE.
+    val progressUpdates = launch {
+      while (isActive) {
+        delay(250)
+        scan.refresh()
       }
+    }
 
     fun accept(file: VirtualFile, result: FileReadResult?, removeMissing: Boolean) {
       checkCurrent()
@@ -89,16 +86,19 @@ internal class SourceSnapshotScanner(
     }
 
     suspend fun read(file: VirtualFile, checkAnnotations: Boolean): FileReadResult? {
-      scan.started()
+      val worker = scan.started(IndexBuildFile(file.name, file.presentableUrl))
       var result: FileReadResult? = null
       var completed = false
       try {
         result =
-          readShardStage(file, pending, shortNames, checkAnnotations, trace, work, checkCurrent)
+          readShardStage(file, pending, shortNames, checkAnnotations, trace, work, checkCurrent) {
+            activity ->
+            scan.reading(worker, activity)
+          }
         completed = true
         return result
       } finally {
-        scan.finished(result?.cached, completed)
+        scan.finished(worker, result?.cached, completed)
       }
     }
 
@@ -127,7 +127,9 @@ internal class SourceSnapshotScanner(
         )
       }
     } finally {
-      progressUpdates?.cancel()
+      progressUpdates.cancel()
+      // The pool has joined. Clear file rows promptly when cancellation leaves counts unfinished.
+      scan.refresh(force = true)
       scan.traceSummary(trace)
       work?.report()
     }
@@ -142,15 +144,19 @@ internal class SourceSnapshotScanner(
     trace: IdeTraceOperation?,
     work: IdeTraceWorkSummary?,
     checkCurrent: () -> Unit,
+    onRead: (IndexBuildFile) -> Unit,
   ): FileReadResult? = work.measure { item ->
     item?.file = ideTraceFilePath(project, virtualFile)
     val result =
       readSnapshotStage(project, checkCurrent, trace) {
         item.measureRead {
-          if (item != null) {
-            item.module =
-              ProjectFileIndex.getInstance(project).getModuleForFile(virtualFile)?.name
-                ?: "<unknown>"
+          if (virtualFile.isValid) {
+            val fileIndex = ProjectFileIndex.getInstance(project)
+            val module = fileIndex.getModuleForFile(virtualFile)?.name
+            val root = fileIndex.getContentRootForFile(virtualFile)
+            val path = root?.let { VfsUtilCore.getRelativePath(virtualFile, it, '/') }
+            onRead(IndexBuildFile(virtualFile.name, path ?: virtualFile.presentableUrl, module))
+            item?.module = module ?: "<unknown>"
           }
           readShard(virtualFile, pending, shortNames, checkAnnotations, item)
         }
@@ -223,6 +229,7 @@ private class SourceScanProgress(
   private var rebuilt = 0
   private var activeWorkers = 0
   private var peakWorkers = 0
+  private val workerFiles = arrayOfNulls<IndexBuildFile>(workerLimit)
 
   init {
     report()
@@ -241,16 +248,28 @@ private class SourceScanProgress(
     report()
   }
 
-  /** Occupied workers include the read's suspension and retry time. */
+  /** A read owns its display slot across suspension and read-action retries. */
   @Synchronized
-  fun started() {
+  fun started(file: IndexBuildFile): Int {
+    val worker = workerFiles.indexOfFirst { it == null }
+    check(worker >= 0) { "Source reads exceeded the configured pool size" }
+    workerFiles[worker] = file
     activeWorkers++
     peakWorkers = maxOf(peakWorkers, activeWorkers)
+    report()
+    return worker
+  }
+
+  /** Module and content-root information becomes available when IDE read access is admitted. */
+  @Synchronized
+  fun reading(worker: Int, file: IndexBuildFile) {
+    workerFiles[worker] = file
     report()
   }
 
   @Synchronized
-  fun finished(result: SourceFileShardCache.ReadResult?, completed: Boolean) {
+  fun finished(worker: Int, result: SourceFileShardCache.ReadResult?, completed: Boolean) {
+    workerFiles[worker] = null
     activeWorkers--
     if (completed) {
       advance(result)
@@ -259,7 +278,7 @@ private class SourceScanProgress(
     }
   }
 
-  private fun report() {
+  private fun report(force: Boolean = false) {
     reporter.counted(
       IndexBuildPhase.ANALYZING_DECLARATIONS,
       completed,
@@ -268,11 +287,13 @@ private class SourceScanProgress(
       rebuilt,
       activeWorkers = activeWorkers,
       workerLimit = workerLimit,
+      workerFiles = workerFiles.toList(),
+      force = force,
     )
   }
 
   /** Flushes the latest counters after the reporter's throttle interval passes. */
-  @Synchronized fun refresh() = report()
+  @Synchronized fun refresh(force: Boolean = false) = report(force)
 
   /** Includes completed work from a pass that was canceled before producing its snapshot. */
   fun traceSummary(trace: IdeTraceOperation?) {
