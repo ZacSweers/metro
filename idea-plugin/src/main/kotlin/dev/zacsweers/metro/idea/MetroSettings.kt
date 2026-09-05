@@ -56,12 +56,16 @@ class MetroSettingsState : BaseState() {
   /** Disabling debugging restores sequential analysis while preserving the saved pool size. */
   @get:Transient
   internal val effectiveSourceScanPoolSize: Int
-    get() {
-      if (!enableDebuggingOptions) {
-        return 1
-      }
-      return sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE)
+    get() = effectiveSourceScanPoolSize(Runtime.getRuntime().availableProcessors())
+
+  /** [effectiveSourceScanPoolSize] for a given CPU count. One CPU always stays free for the IDE. */
+  internal fun effectiveSourceScanPoolSize(availableProcessors: Int): Int {
+    if (!enableDebuggingOptions) {
+      return 1
     }
+    val cpuLimit = maxOf(1, availableProcessors - 1)
+    return sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE).coerceAtMost(cpuLimit)
+  }
 }
 
 /** Bounds experimental analysis concurrency to limit memory use and competing IDE reads. */
@@ -165,7 +169,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
                 setter = { state.sourceScanPoolSize = it },
               )
               .comment(
-                "Maximum concurrent file, class, and metadata lookups. Applies to the next refresh; 1 is sequential."
+                "Maximum concurrent file, class, and metadata lookups. Also capped at one below the CPU count. Applies to the next refresh; 1 is sequential."
               )
           }
           .visibleIf(debuggingSelected)

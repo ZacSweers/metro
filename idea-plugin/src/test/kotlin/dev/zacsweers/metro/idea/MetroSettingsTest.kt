@@ -82,7 +82,7 @@ class MetroSettingsTest : TestCase() {
     assertEquals(4, settings.state.sourceScanPoolSize)
     assertEquals(1, settings.state.effectiveSourceScanPoolSize)
     settings.state.enableDebuggingOptions = true
-    assertEquals(4, settings.state.effectiveSourceScanPoolSize)
+    assertEquals(4, settings.state.effectiveSourceScanPoolSize(availableProcessors = 8))
     assertEquals(listOf("sourceScanPoolSize"), stored.children.map { it.getAttributeValue("name") })
   }
 
@@ -93,11 +93,27 @@ class MetroSettingsTest : TestCase() {
           enableDebuggingOptions = true
           sourceScanPoolSize = stored
         }
-      assertEquals(expected, state.effectiveSourceScanPoolSize)
+      assertEquals(expected, state.effectiveSourceScanPoolSize(availableProcessors = 16))
       assertEquals(stored, state.sourceScanPoolSize)
       state.enableDebuggingOptions = false
       assertEquals(1, state.effectiveSourceScanPoolSize)
     }
+  }
+
+  fun testSourceAnalysisLeavesOneCpuForTheIde() {
+    val state =
+      MetroSettingsState().apply {
+        enableDebuggingOptions = true
+        sourceScanPoolSize = 8
+      }
+    for ((cpus, expected) in listOf(1 to 1, 2 to 1, 3 to 2, 4 to 3, 8 to 7, 9 to 8, 16 to 8)) {
+      assertEquals(expected, state.effectiveSourceScanPoolSize(availableProcessors = cpus))
+    }
+    val runtimeCpus = Runtime.getRuntime().availableProcessors()
+    assertEquals(
+      state.effectiveSourceScanPoolSize(availableProcessors = runtimeCpus),
+      state.effectiveSourceScanPoolSize,
+    )
   }
 }
 
@@ -126,7 +142,7 @@ class MetroSettingsConfigurableTest : BasePlatformTestCase() {
       poolSize.value = 4
       panel.apply()
       assertEquals(4, state.sourceScanPoolSize)
-      assertEquals(4, state.effectiveSourceScanPoolSize)
+      assertEquals(4, state.effectiveSourceScanPoolSize(availableProcessors = 8))
 
       debugging.doClick()
       assertFalse(poolSize.isVisible)

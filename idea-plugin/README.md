@@ -189,7 +189,8 @@ Select **Enable debugging options** in the **Debugging/Experimental** section un
 `Settings > Tools > Metro` to show the tracing controls. Debugging options are disabled by default.
 
 **Analysis pool size** in that section controls concurrent source-file, class, and dependency
-metadata reads. It defaults to 1 and accepts values from 1 to 8. Changes apply to the next refresh;
+metadata reads. It defaults to 1 and accepts values from 1 to 8. The effective size is also capped
+at one below the CPU count so other IDE work keeps a thread. Changes apply to the next refresh;
 disabling debugging options uses one worker while preserving the saved pool size.
 
 The tool window shows each worker's current file, class, or metadata hint below the progress bar,
