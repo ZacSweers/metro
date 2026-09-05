@@ -62,16 +62,17 @@ class ParallelMapTest {
     val accepted = mutableListOf<Int>()
     val scan = launch {
       val job = coroutineContext.job
-      listOf(1, 2)
-        .parallelMap(
-          parallelism = 1,
-          read = { item ->
-            reads += item
-            job.cancel()
-            item
-          },
-          accept = { item, _ -> accepted += item },
-        )
+      val _ =
+        listOf(1, 2)
+          .parallelMap(
+            parallelism = 1,
+            read = { item ->
+              reads += item
+              job.cancel()
+              item
+            },
+            accept = { item, _ -> accepted += item },
+          )
     }
     scan.join()
     assertTrue(scan.isCancelled)
@@ -85,18 +86,19 @@ class ParallelMapTest {
     val accepted = mutableListOf<Int>()
     val scan = launch {
       val job = coroutineContext.job
-      listOf(1, 2)
-        .parallelMap(
-          parallelism = 1,
-          read = { item ->
-            reads += item
-            item
-          },
-          accept = { item, _ ->
-            accepted += item
-            job.cancel()
-          },
-        )
+      val _ =
+        listOf(1, 2)
+          .parallelMap(
+            parallelism = 1,
+            read = { item ->
+              reads += item
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              job.cancel()
+            },
+          )
     }
     scan.join()
     assertTrue(scan.isCancelled)
@@ -521,26 +523,27 @@ class ParallelMapTest {
       val accepted = mutableListOf<Int>()
       val scan = launch {
         val job = coroutineContext.job
-        listOf(0, 1, 2)
-          .parallelMap(
-            parallelism = 2,
-            read = { item ->
-              when (item) {
-                // The worker that read item 1 sent it before moving on to item 2.
-                0 -> thirdReadStarted.await()
-                2 -> {
-                  thirdReadStarted.complete(Unit)
-                  awaitCancellation()
+        val _ =
+          listOf(0, 1, 2)
+            .parallelMap(
+              parallelism = 2,
+              read = { item ->
+                when (item) {
+                  // The worker that read item 1 sent it before moving on to item 2.
+                  0 -> thirdReadStarted.await()
+                  2 -> {
+                    thirdReadStarted.complete(Unit)
+                    awaitCancellation()
+                  }
+                  else -> {}
                 }
-                else -> {}
-              }
-              item
-            },
-            accept = { item, _ ->
-              accepted += item
-              job.cancel()
-            },
-          )
+                item
+              },
+              accept = { item, _ ->
+                accepted += item
+                job.cancel()
+              },
+            )
       }
       scan.join()
       assertTrue(scan.isCancelled)
@@ -556,28 +559,29 @@ class ParallelMapTest {
       val reads = ConcurrentHashMap.newKeySet<Int>()
       val scan = launch {
         val job = coroutineContext.job
-        listOf(0, 1, 2)
-          .parallelMap(
-            parallelism = 2,
-            read = { item ->
-              reads += item
-              when (item) {
-                0 -> {
-                  secondReadStarted.await()
-                  job.cancel()
-                  firstReadReturned.complete(Unit)
+        val _ =
+          listOf(0, 1, 2)
+            .parallelMap(
+              parallelism = 2,
+              read = { item ->
+                reads += item
+                when (item) {
+                  0 -> {
+                    secondReadStarted.await()
+                    job.cancel()
+                    firstReadReturned.complete(Unit)
+                  }
+                  // Hold the other worker so item 2 stays queued until after the cancel.
+                  1 -> {
+                    secondReadStarted.complete(Unit)
+                    withContext(NonCancellable) { firstReadReturned.await() }
+                  }
+                  else -> {}
                 }
-                // Hold the other worker so item 2 stays queued until after the cancel.
-                1 -> {
-                  secondReadStarted.complete(Unit)
-                  withContext(NonCancellable) { firstReadReturned.await() }
-                }
-                else -> {}
-              }
-              item
-            },
-            accept = { _, _ -> fail("A canceled scan cannot accept") },
-          )
+                item
+              },
+              accept = { _, _ -> fail("A canceled scan cannot accept") },
+            )
       }
       scan.join()
       assertTrue(scan.isCancelled)
@@ -627,26 +631,27 @@ class ParallelMapTest {
       val releaseCleanup = CompletableDeferred<Unit>()
       val active = AtomicInteger()
       val scan = launch {
-        (0..9)
-          .toList()
-          .parallelMap(
-            parallelism = 2,
-            read = {
-              if (active.incrementAndGet() == 2) {
-                bothStarted.complete(Unit)
-              }
-              try {
-                awaitCancellation()
-              } finally {
-                withContext(NonCancellable) {
-                  cleanupStarted.complete(Unit)
-                  releaseCleanup.await()
-                  active.decrementAndGet()
+        val _ =
+          (0..9)
+            .toList()
+            .parallelMap(
+              parallelism = 2,
+              read = {
+                if (active.incrementAndGet() == 2) {
+                  bothStarted.complete(Unit)
                 }
-              }
-            },
-            accept = { _, _ -> fail("A canceled scan cannot accept pending reads") },
-          )
+                try {
+                  awaitCancellation()
+                } finally {
+                  withContext(NonCancellable) {
+                    cleanupStarted.complete(Unit)
+                    releaseCleanup.await()
+                    active.decrementAndGet()
+                  }
+                }
+              },
+              accept = { _, _ -> fail("A canceled scan cannot accept pending reads") },
+            )
       }
       try {
         bothStarted.await()
