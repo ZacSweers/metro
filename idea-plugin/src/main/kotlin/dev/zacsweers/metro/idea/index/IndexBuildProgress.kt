@@ -2,17 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index
 
-internal enum class IndexBuildPhase(val message: String) {
+internal enum class IndexBuildPhase(
+  val message: String,
+  val unit: String = "files",
+  val discoversMoreWork: Boolean = false,
+) {
   QUEUED("Preparing Metro graphs"),
   DISCOVERING_SOURCE_FILES("Finding Metro source files"),
   ANALYZING_DECLARATIONS("Checking Metro source files"),
   COMBINING_DECLARATIONS("Combining Metro declarations"),
-  RESOLVING_CLASS_BINDINGS("Resolving injected classes and objects"),
-  READING_DEPENDENCY_METADATA("Reading dependency metadata"),
+  RESOLVING_CLASS_BINDINGS("Resolving injected classes and objects", "classes", true),
+  READING_DEPENDENCY_METADATA("Reading dependency metadata", "items", true),
+  RESOLVING_LIBRARY_CLASSES("Resolving library classes", "classes", true),
   BUILDING_GRAPH_INDEX("Building the Metro graph index"),
 }
 
-/** Detached display data for a source file; progress never retains PSI or module objects. */
+/** Detached file, class, or hint display data; progress never retains PSI or module objects. */
 internal data class IndexBuildFile(val name: String, val path: String, val module: String? = null)
 
 /**
@@ -43,7 +48,7 @@ internal data class IndexBuildProgress(
     }
     require((activeWorkers == null) == (workerLimit == null))
     if (activeWorkers != null && workerLimit != null) {
-      require(phase == IndexBuildPhase.ANALYZING_DECLARATIONS)
+      require(phase == IndexBuildPhase.ANALYZING_DECLARATIONS || phase.discoversMoreWork)
       require(completed != null)
       require(workerLimit > 0)
       require(activeWorkers in 0..workerLimit)
@@ -58,6 +63,9 @@ internal data class IndexBuildProgress(
     get() {
       val completed = completed ?: return phase.message
       val total = total ?: return phase.message
+      if (phase.discoversMoreWork) {
+        return "${phase.message} ($completed ${phase.unit} checked)"
+      }
       val details =
         if (reused != null && rebuilt != null) {
           ", $reused reused, $rebuilt rebuilt"

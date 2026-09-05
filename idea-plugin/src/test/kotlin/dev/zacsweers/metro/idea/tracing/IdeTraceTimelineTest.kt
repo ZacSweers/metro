@@ -190,6 +190,18 @@ class IdeTraceTimelineTest : TestCase() {
       "Resolve class: example.AppGraph",
       ideTraceDisplayName("source.class.item", mapOf("class" to "example.AppGraph")),
     )
+    val names =
+      mapOf(
+        "source.request.item" to "Read source class",
+        "library.request.item" to "Read library class",
+        "metadata.request.item" to "Read dependency metadata",
+      )
+    for ((name, label) in names) {
+      assertEquals(
+        "$label: example.AppGraph",
+        ideTraceDisplayName(name, mapOf("class" to "example.AppGraph")),
+      )
+    }
   }
 
   fun testOverviewCoversConcurrentWorkAndRetainsPartialCaptureReason() {

@@ -1075,6 +1075,42 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     component.components.filterIsInstance<java.awt.Container>().forEach(::layoutStatusPanel)
   }
 
+  fun testIndexBuildStatusPanelShowsClassAndMetadataWorkersAsTheQueueGrows() {
+    val panel = IndexBuildStatusPanel()
+    val current = IndexBuildFile("test.Example", "src/Example.kt", "app")
+    for (phase in
+      listOf(
+        IndexBuildPhase.RESOLVING_CLASS_BINDINGS,
+        IndexBuildPhase.RESOLVING_LIBRARY_CLASSES,
+        IndexBuildPhase.READING_DEPENDENCY_METADATA,
+      )) {
+      val progress =
+        IndexBuildProgress(
+          phase,
+          completed = 4,
+          total = 10,
+          activeWorkers = 1,
+          workerLimit = 2,
+          workerFiles = listOf(current, null),
+        )
+      panel.show(progress)
+      assertTrue(panel.progressBar.isIndeterminate)
+      assertEquals("${phase.message} (4 ${phase.unit} checked)", panel.messageLabel.text)
+      val row = panel.workerFilesPanel.getComponent(0) as IndexBuildStatusPanel.WorkerFileRow
+      assertEquals(
+        "test.Example  app · src/Example.kt",
+        row.fileLabel.getCharSequence(false).toString(),
+      )
+      assertEquals("Worker 1: test.Example · app · src/Example.kt", row.toolTipText)
+      panel.show(progress.copy(completed = 5, total = 20))
+      assertTrue(panel.progressBar.isIndeterminate)
+      assertSame(row, panel.workerFilesPanel.getComponent(0))
+      assertEquals("${phase.message} (5 ${phase.unit} checked)", panel.messageLabel.text)
+    }
+    panel.clear()
+    assertEquals(0, panel.workerFilesPanel.componentCount)
+  }
+
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
     val panel = IndexBuildStatusPanel()
 

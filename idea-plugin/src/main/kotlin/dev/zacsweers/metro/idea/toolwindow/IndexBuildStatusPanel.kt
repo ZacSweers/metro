@@ -63,7 +63,7 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
     showWorkerFiles(progress.workerFiles)
     progressBar.isVisible = true
     val total = progress.total
-    if (total != null && total > 0) {
+    if (total != null && total > 0 && !progress.phase.discoversMoreWork) {
       progressBar.isIndeterminate = false
       progressBar.minimum = 0
       progressBar.maximum = total
@@ -159,14 +159,23 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
           "Worker $workerNumber: Idle"
         } else {
           fileLabel.append(file.name, SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
-          val parentPath = file.path.substringBeforeLast('/', "")
+          val locationPath =
+            if (file.name == file.path.substringAfterLast('/')) {
+              file.path.substringBeforeLast('/', "")
+            } else {
+              file.path
+            }
           val location =
-            listOfNotNull(file.module, parentPath.takeIf { it.isNotEmpty() }).joinToString(" · ")
+            listOfNotNull(file.module, locationPath.takeIf { it.isNotEmpty() }).joinToString(" · ")
           if (location.isNotEmpty()) {
             fileLabel.append("  $location", SimpleTextAttributes.GRAYED_ATTRIBUTES)
           }
           val fullLocation = listOfNotNull(file.module, file.path).joinToString(" · ")
-          "Worker $workerNumber: $fullLocation"
+          if (file.name == file.path.substringAfterLast('/')) {
+            "Worker $workerNumber: $fullLocation"
+          } else {
+            "Worker $workerNumber: ${file.name} · $fullLocation"
+          }
         }
       toolTipText = description
       workerLabel.toolTipText = description
