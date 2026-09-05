@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788553819358,
+  "lastUpdate": 1788582387090,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22568,6 +22568,62 @@ window.BENCHMARK_DATA = {
             "value": 20072.946000000004,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +0.27%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "69ff012f~1",
+          "message": "[before] Add checker for contributed interfaces that could ",
+          "timestamp": "2026-09-05T03:27:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/69ff012fdb1e6f714b9d4493f35c4439debc2c66"
+        },
+        "date": 1788582387090,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 18319.68,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "69ff012fdb1e6f714b9d4493f35c4439debc2c66",
+          "message": "[after] Add checker for contributed interfaces that could ",
+          "timestamp": "2026-09-05T03:27:32Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/69ff012fdb1e6f714b9d4493f35c4439debc2c66"
+        },
+        "date": 1788582387091,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 17891.156,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -2.34%"
           }
         ]
       }
