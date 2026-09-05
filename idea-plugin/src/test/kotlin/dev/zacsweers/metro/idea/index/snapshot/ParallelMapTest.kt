@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 
 /** Gates control overlap, ordering, and cleanup independently of file analysis. */
 class ParallelMapTest : TestCase() {
@@ -196,7 +195,8 @@ class ParallelMapTest : TestCase() {
       val firstStarted = CompletableDeferred<Unit>()
       val releaseFirst = CompletableDeferred<Unit>()
       val windowFilled = CompletableDeferred<Unit>()
-      val beyondWindowStarted = CompletableDeferred<Unit>()
+      val acceptedCount = AtomicInteger()
+      val acceptedWhenBeyondWindowStarted = AtomicInteger(-1)
       val active = AtomicInteger()
       val peak = AtomicInteger()
       val accepted = mutableListOf<Pair<Int, Int?>>()
@@ -219,7 +219,8 @@ class ParallelMapTest : TestCase() {
                   windowFilled.complete(Unit)
                 }
                 if (item == 4) {
-                  beyondWindowStarted.complete(Unit)
+                  // Item 4 needs a permit back, so item 0 must have been accepted by now.
+                  acceptedWhenBeyondWindowStarted.set(acceptedCount.get())
                 }
                 if (item == 5) {
                   null
@@ -233,15 +234,19 @@ class ParallelMapTest : TestCase() {
             accept = { item, result ->
               assertSame(caller, Thread.currentThread())
               accepted += item to result
+              acceptedCount.incrementAndGet()
             },
           )
       }
       windowFilled.await()
       assertEquals(2, peak.get())
       assertTrue(accepted.isEmpty())
-      assertNull(withTimeoutOrNull(250.milliseconds) { beyondWindowStarted.await() })
       releaseFirst.complete(Unit)
       scan.await()
+      assertTrue(
+        "Item 4 started before anything was accepted",
+        acceptedWhenBeyondWindowStarted.get() >= 1,
+      )
       assertEquals(
         (0..9).map {
           it to
