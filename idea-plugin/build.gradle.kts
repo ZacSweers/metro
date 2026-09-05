@@ -173,17 +173,20 @@ buildConfig {
       topLevelConstants = true
     }
   }
-  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.map { "\"$it\"" })
-  buildConfigField("String", "VERSION", providers.provider { "\"$version\"" })
+
+  fun Provider<*>.mapToQuotedString() = map { "\"$it\"" }
+
+  buildConfigField("String", "PLUGIN_ID", libs.versions.pluginId.mapToQuotedString())
+  buildConfigField("String", "VERSION", pluginVersion.mapToQuotedString())
   buildConfigField(
     "String",
     "BUGSNAG_KEY",
     propertyResolver
       .optionalStringProvider("MetroIntellijBugsnagKey")
-      .map { "\"$it\"" }
+      .mapToQuotedString()
       .orElse("\"\""),
   )
-  buildConfigField("String", "GIT_SHA", gitSha.map { "\"$it\"" })
+  buildConfigField("String", "GIT_SHA", gitSha.mapToQuotedString())
 }
 
 val metroRuntime = configurations.dependencyScope("metroRuntime")
@@ -294,11 +297,9 @@ intellijPlatform {
   }
 
   signing {
-    keyStore.set(
-      layout.file(propertyResolver.optionalStringProvider("signing.secretKeyRingFile").map(::file))
-    )
-    keyStorePassword.set(propertyResolver.optionalStringProvider("signing.password"))
-    keyStoreKeyAlias.set(propertyResolver.optionalStringProvider("signing.keyId"))
+    privateKey.set(providers.environmentVariable("METRO_IDEA_PLUGIN_PRIVATE_KEY"))
+    password.set(providers.environmentVariable("METRO_IDEA_PLUGIN_PRIVATE_KEY_PASSWORD"))
+    certificateChain.set(providers.environmentVariable("METRO_IDEA_PLUGIN_CERTIFICATE_CHAIN"))
   }
 
   publishing {
