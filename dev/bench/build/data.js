@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788582387090,
+  "lastUpdate": 1788585585499,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22624,6 +22624,62 @@ window.BENCHMARK_DATA = {
             "value": 17891.156,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -2.34%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8e142d21~1",
+          "message": "[before] Fix internal object contribution providers in IR c",
+          "timestamp": "2026-09-05T04:19:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8e142d21abe6cdc005b9892b5d2c3a21a806fc52"
+        },
+        "date": 1788585585499,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19873.945,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "8e142d21abe6cdc005b9892b5d2c3a21a806fc52",
+          "message": "[after] Fix internal object contribution providers in IR c",
+          "timestamp": "2026-09-05T04:19:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/8e142d21abe6cdc005b9892b5d2c3a21a806fc52"
+        },
+        "date": 1788585585500,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19820.225,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.27%"
           }
         ]
       }
