@@ -28,7 +28,7 @@ internal suspend fun <T, R> List<T>.parallelMap(
   read: suspend (T) -> R,
   accept: (T, R) -> Unit,
 ) {
-  require(parallelism > 0) { "Source scan parallelism must be positive" }
+  require(parallelism > 0) { "parallelism must be positive, was $parallelism" }
   if (parallelism == 1) {
     for (item in this) {
       currentCoroutineContext().ensureActive()
