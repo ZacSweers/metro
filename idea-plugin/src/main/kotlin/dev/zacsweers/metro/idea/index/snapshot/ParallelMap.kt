@@ -68,6 +68,8 @@ internal suspend fun <T, R> List<T>.parallelMap(
       launch(Dispatchers.Default) {
         try {
           for (index in input) {
+            // Channel fast paths skip cancellation checks. Bail before starting a read.
+            ensureActive()
             results.send(IndexedValue(index, read(get(index))))
           }
         } catch (failure: Throwable) {
