@@ -76,6 +76,9 @@ internal class SnapshotReadExecutor(
   /**
    * A bounded frontier may discover more work when the caller merges its results. Completed
    * captures survive another item's read retry; the caller validates their combined dependencies.
+   *
+   * Calls on one executor must not overlap. Each call uses the whole worker pool, and the progress
+   * slots are sized for one pool.
    */
   suspend fun <T, R> map(
     items: List<T>,
