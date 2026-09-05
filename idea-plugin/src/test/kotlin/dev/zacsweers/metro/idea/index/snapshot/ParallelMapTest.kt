@@ -319,6 +319,95 @@ class ParallelMapTest : TestCase() {
     }
   }
 
+  fun testReadFailureKeepsAcceptedResultsAndDropsTheRest() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val secondAccepted = CompletableDeferred<Unit>()
+      val lastStopped = CompletableDeferred<Unit>()
+      val failure = IllegalStateException("Read failed")
+      val accepted = mutableListOf<Int>()
+      try {
+        listOf(0, 1, 2, 3)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                2 -> {
+                  secondAccepted.await()
+                  throw failure
+                }
+                3 ->
+                  try {
+                    awaitCancellation()
+                  } finally {
+                    lastStopped.complete(Unit)
+                  }
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              if (item == 1) {
+                secondAccepted.complete(Unit)
+              }
+            },
+          )
+        fail("Expected read failure")
+      } catch (actual: IllegalStateException) {
+        assertOriginalFailure(failure, actual)
+        assertTrue(lastStopped.isCompleted)
+        assertEquals(listOf(0, 1), accepted)
+      }
+    }
+  }
+
+  fun testReadCancellationStillAcceptsEarlierCompletedResults() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val firstAccepted = CompletableDeferred<Unit>()
+      val lastStarted = CompletableDeferred<Unit>()
+      val lastStopped = CompletableDeferred<Unit>()
+      val cancellation = CancellationException("Read superseded")
+      val accepted = mutableListOf<Int>()
+      try {
+        listOf(0, 1, 2, 3)
+          .parallelMap(
+            parallelism = 2,
+            read = { item ->
+              when (item) {
+                // Item 1 is sent before its worker takes another item, so it's already in the
+                // results channel when item 2 fails.
+                1 -> firstAccepted.await()
+                2 -> {
+                  lastStarted.await()
+                  throw cancellation
+                }
+                3 ->
+                  try {
+                    lastStarted.complete(Unit)
+                    awaitCancellation()
+                  } finally {
+                    lastStopped.complete(Unit)
+                  }
+                else -> {}
+              }
+              item
+            },
+            accept = { item, _ ->
+              accepted += item
+              if (item == 0) {
+                firstAccepted.complete(Unit)
+              }
+            },
+          )
+        fail("Expected read cancellation")
+      } catch (actual: CancellationException) {
+        assertOriginalFailure(cancellation, actual)
+        assertTrue(lastStopped.isCompleted)
+        assertEquals(listOf(0, 1), accepted)
+      }
+    }
+  }
+
   fun testPooledCollectorSkipsPendingResultsAfterCancellation() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val thirdReadStarted = CompletableDeferred<Unit>()
