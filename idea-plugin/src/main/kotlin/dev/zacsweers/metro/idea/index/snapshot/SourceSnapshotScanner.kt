@@ -103,8 +103,7 @@ internal class SourceSnapshotScanner(
     }
 
     try {
-      scanInOrder(
-        orderedFiles,
+      orderedFiles.parallelMap(
         parallelism,
         read = { read(it, previous != null) },
         accept = { file, result -> accept(file, result, removeMissing = true) },
