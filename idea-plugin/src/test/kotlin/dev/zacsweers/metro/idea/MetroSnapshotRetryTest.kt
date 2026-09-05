@@ -8,11 +8,14 @@ import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.CachedValueBase
 import com.intellij.util.IdempotenceChecker
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
@@ -35,6 +38,7 @@ import dev.zacsweers.metro.idea.tracing.IdeTraceState
 import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
 import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
+import java.lang.ref.Reference
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -63,24 +67,33 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
 
   fun testForcedShardIsReusedAfterCancellation() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
     val reads = mutableListOf<FileShard>()
+    var retainedCacheEntry: CachedValueBase.Data<*>? = null
     var cancel = true
-    val builder = builder { _, shard ->
+    val builder = builder { readFile, shard ->
       reads += shard
       if (cancel) {
+        retainedCacheEntry = cachedShardEntry(readFile, shard)
         cancel = false
         throw CancellationException("Stop after the first completed shard")
       }
     }
     try {
+      try {
+        prepare(builder, file)
+        fail("Expected cancellation after reading a shard")
+      } catch (_: CancellationException) {
+        // The retry keeps the completed shard even though its candidate was never published.
+      }
       prepare(builder, file)
-      fail("Expected cancellation after reading a shard")
-    } catch (_: CancellationException) {
-      // The retry keeps the completed shard even though its candidate was never published.
+      assertEquals(2, reads.size)
+      assertSame(reads[0], reads[1])
+    } finally {
+      // IntelliJ holds cache entries through soft references. Holding the shard alone permits
+      // eviction.
+      Reference.reachabilityFence(retainedCacheEntry)
     }
-    prepare(builder, file)
-    assertEquals(2, reads.size)
-    assertSame(reads[0], reads[1])
   }
 
   fun testNewForcedRevisionRebuildsTheShard() {
@@ -526,6 +539,19 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     val second = prepare(builder, graph)
     assertNotSame(first.source!!.librarySummary, second.source!!.librarySummary)
     assertTrue(second.source!!.librarySummary!!.sourceClasses.addedBindings.isEmpty())
+  }
+
+  /**
+   * Finds the completed cache entry under read access so this test can retain it across retries.
+   */
+  private fun cachedShardEntry(file: KtFile, shard: FileShard): CachedValueBase.Data<*> {
+    val userData = (file as UserDataHolderBase).userMap
+    for (key in userData.keys) {
+      val cachedValue = userData.get(key) as? CachedValueBase<*> ?: continue
+      val entry = cachedValue.upToDateOrNull ?: continue
+      if (entry.value === shard) return entry
+    }
+    error("Expected the completed shard to be present in the file cache")
   }
 
   private fun builder(
