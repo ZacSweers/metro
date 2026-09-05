@@ -116,7 +116,7 @@ internal class IndexBuildProgressReporter(
         workerFiles,
       )
     val previous = lastProgress
-    if (progress == previous) {
+    if (!force && progress == previous) {
       return
     }
     val now = nanoTime()

@@ -125,8 +125,14 @@ internal class SnapshotReadExecutor(
     check(slot >= 0) { "Snapshot reads exceeded the configured pool size" }
     slots[slot] = file
     peakWorkers = maxOf(peakWorkers, slots.count { it != null })
-    publish()
-    return slot
+    try {
+      publish()
+      return slot
+    } catch (failure: Throwable) {
+      // A progress consumer can cancel before map receives this slot and owns its cleanup.
+      slots[slot] = null
+      throw failure
+    }
   }
 
   @Synchronized

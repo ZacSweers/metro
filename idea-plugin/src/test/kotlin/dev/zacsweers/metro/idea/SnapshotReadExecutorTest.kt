@@ -208,10 +208,39 @@ class SnapshotReadExecutorTest : BasePlatformTestCase() {
     }
   }
 
+  fun testProgressCancellationBeforeCaptureClearsItsAllocatedSlot() {
+    val events = ConcurrentLinkedQueue<IndexBuildProgress>()
+    val canceled = AtomicBoolean()
+    val captures = AtomicInteger()
+    val preparation =
+      startMap(
+        listOf(0),
+        events = events,
+        parallelism = 1,
+        onProgress = { progress ->
+          if (progress.activeWorkers == 1 && canceled.compareAndSet(false, true)) {
+            throw CancellationException("Cancel when the worker row becomes visible")
+          }
+        },
+      ) { index ->
+        captures.incrementAndGet()
+        CapturedValue(index)
+      }
+    val result = PlatformTestUtil.waitForFuture(preparation, 30_000)
+    assertTrue(result.exceptionOrNull() is CancellationException)
+    assertTrue(canceled.get())
+    assertEquals(0, captures.get())
+    assertTrue(events.any { it.activeWorkers == 1 })
+    assertEquals(0, events.last().activeWorkers)
+    assertEquals(0, events.last().completed)
+    assertEquals(listOf(null), events.last().workerFiles)
+  }
+
   /** Launches outside EDT read access and leaves the fixture thread free to perform writes. */
   private fun <T> startMap(
     items: List<Int>,
     events: ConcurrentLinkedQueue<IndexBuildProgress>,
+    parallelism: Int = 2,
     parent: Job? = null,
     progressIntervalNanos: Long = 0,
     onProgress: (IndexBuildProgress) -> Unit = {},
@@ -227,20 +256,25 @@ class SnapshotReadExecutorTest : BasePlatformTestCase() {
             },
             updateIntervalNanos = progressIntervalNanos,
           )
-        SnapshotReadExecutor(project, 2, progress, IndexBuildPhase.RESOLVING_CLASS_BINDINGS).run {
-          executor ->
-          executor.map(
-            items,
-            describe = { index ->
-              assertTrue(ApplicationManager.getApplication().isReadAccessAllowed)
-              IndexBuildFile("Class$index", "test/Class$index.kt", "test")
-            },
-            capture = { index ->
-              assertTrue(ApplicationManager.getApplication().isReadAccessAllowed)
-              capture(index)
-            },
+        SnapshotReadExecutor(
+            project,
+            parallelism,
+            progress,
+            IndexBuildPhase.RESOLVING_CLASS_BINDINGS,
           )
-        }
+          .run { executor ->
+            executor.map(
+              items,
+              describe = { index ->
+                assertTrue(ApplicationManager.getApplication().isReadAccessAllowed)
+                IndexBuildFile("Class$index", "test/Class$index.kt", "test")
+              },
+              capture = { index ->
+                assertTrue(ApplicationManager.getApplication().isReadAccessAllowed)
+                capture(index)
+              },
+            )
+          }
       }
     }
   }
