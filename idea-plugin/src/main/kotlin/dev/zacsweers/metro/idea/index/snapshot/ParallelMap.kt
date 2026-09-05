@@ -69,6 +69,7 @@ internal suspend fun <T, R> List<T>.parallelMap(
       }
     }
 
+    // The wrapper keeps a null result distinct from a missing entry.
     val pending = HashMap<Int, IndexedValue<R>>()
     var next = 0
     repeat(size) {
