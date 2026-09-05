@@ -1197,7 +1197,13 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         for ((debug, size) in listOf(true to 2, true to 4, false to 4)) {
           settings.enableDebuggingOptions = debug
           settings.sourceScanPoolSize = size
-          appendBinding(file, "Pool${size}${if (debug) "Enabled" else "Disabled"}")
+          val debuggingState =
+            if (debug) {
+              "Enabled"
+            } else {
+              "Disabled"
+            }
+          appendBinding(file, "Pool${size}$debuggingState")
           val request = checkNotNull(service.refreshGraphData())
           expectedPools[request.id.toString()] = settings.effectiveSourceScanPoolSize.toString()
           awaitCoordinator(service)

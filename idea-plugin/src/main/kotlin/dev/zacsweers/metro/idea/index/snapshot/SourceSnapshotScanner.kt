@@ -59,24 +59,30 @@ internal class SourceSnapshotScanner(
     val fingerprints = mutableMapOf<VirtualFile, String>()
     // Publish throttled worker changes even when the remaining files spend a long time in a read.
     val progressUpdates =
-      if (parallelism > 1)
+      if (parallelism > 1) {
         launch {
           while (isActive) {
             delay(250)
             scan.refresh()
           }
         }
-      else null
+      } else {
+        null
+      }
 
     fun accept(file: VirtualFile, result: FileReadResult?, removeMissing: Boolean) {
       checkCurrent()
       if (result == null) {
-        if (removeMissing) transaction.removeShard(file)
+        if (removeMissing) {
+          transaction.removeShard(file)
+        }
         return
       }
       for ((dependency, fingerprint) in result.fingerprints) {
         val earlier = fingerprints.putIfAbsent(dependency, fingerprint)
-        if (earlier != null && earlier != fingerprint) throw SourceSnapshotConflictException()
+        if (earlier != null && earlier != fingerprint) {
+          throw SourceSnapshotConflictException()
+        }
       }
       acceptFingerprints(result.fingerprints)
       transaction.applyShard(file, result.cached.shard)
@@ -166,14 +172,25 @@ internal class SourceSnapshotScanner(
     checkAnnotations: Boolean,
     trace: IdeTraceWorkItem?,
   ): FileReadResult? {
-    if (!virtualFile.isValid) return null
+    if (!virtualFile.isValid) {
+      return null
+    }
     val file =
       trace.stage("source.file.psi") {
         PsiManager.getInstance(project).findFile(virtualFile) as? KtFile
       } ?: return null
-    if (!file.isValid) return null
-    if (checkAnnotations && !containsRelevantAnnotation(file, shortNames)) return null
-    val revision = if (pending.forcesRebuild(virtualFile)) pending.invalidationRevision else null
+    if (!file.isValid) {
+      return null
+    }
+    if (checkAnnotations && !containsRelevantAnnotation(file, shortNames)) {
+      return null
+    }
+    val revision =
+      if (pending.forcesRebuild(virtualFile)) {
+        pending.invalidationRevision
+      } else {
+        null
+      }
     val result =
       trace.stage("source.file.cacheLookup") {
         fileShards.read(file, revision, trace)
@@ -215,7 +232,11 @@ private class SourceScanProgress(
   @Synchronized
   fun advance(result: SourceFileShardCache.ReadResult?) {
     if (result != null) {
-      if (result.rebuilt) rebuilt++ else reused++
+      if (result.rebuilt) {
+        rebuilt++
+      } else {
+        reused++
+      }
     }
     completed++
     report()
@@ -232,7 +253,11 @@ private class SourceScanProgress(
   @Synchronized
   fun finished(result: SourceFileShardCache.ReadResult?, completed: Boolean) {
     activeWorkers--
-    if (completed) advance(result) else report()
+    if (completed) {
+      advance(result)
+    } else {
+      report()
+    }
   }
 
   private fun report() {

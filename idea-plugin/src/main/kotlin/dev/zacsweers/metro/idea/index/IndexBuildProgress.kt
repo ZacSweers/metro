@@ -84,7 +84,9 @@ internal class IndexBuildProgressReporter(
     val progress =
       IndexBuildProgress(phase, completed, total, reused, rebuilt, activeWorkers, workerLimit)
     val previous = lastProgress
-    if (progress == previous) return
+    if (progress == previous) {
+      return
+    }
     val now = nanoTime()
     val phaseChanged = phase != previous?.phase
     val countChanged = completed != previous?.completed || total != previous?.total
@@ -96,7 +98,9 @@ internal class IndexBuildProgressReporter(
     val workersDrained = completed >= total && activeWorkers == 0
     val intervalElapsed = lastPublishedAt?.let { now - it >= updateIntervalNanos } ?: true
     val activityBoundary = initialPoolFilled || workersDrained
-    if (!phaseChanged && !atBoundary && !activityBoundary && !intervalElapsed) return
+    if (!phaseChanged && !atBoundary && !activityBoundary && !intervalElapsed) {
+      return
+    }
 
     publish(progress)
     lastProgress = progress

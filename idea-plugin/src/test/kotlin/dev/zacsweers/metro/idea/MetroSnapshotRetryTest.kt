@@ -362,7 +362,9 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
         builder,
         file,
         publish = { progress ->
-          if (progress.activeWorkers == 2 && progress.workerLimit == 4) occupied.complete(progress)
+          if (progress.activeWorkers == 2 && progress.workerLimit == 4) {
+            occupied.complete(progress)
+          }
         },
       )
     try {
@@ -496,13 +498,19 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     fun onRead(file: KtFile, shard: FileShard) {
       val virtualFile = file.virtualFile
       reads += virtualFile to shard
-      if (firstReads.putIfAbsent(virtualFile, shard) != null) return
-      if (entered.incrementAndGet() == 2) active.complete(Unit)
+      if (firstReads.putIfAbsent(virtualFile, shard) != null) {
+        return
+      }
+      if (entered.incrementAndGet() == 2) {
+        active.complete(Unit)
+      }
       val canceled = AtomicBoolean()
       try {
         awaitReadCancellation(release, canceled)
       } finally {
-        if (canceled.get()) interrupted += virtualFile
+        if (canceled.get()) {
+          interrupted += virtualFile
+        }
       }
     }
   }

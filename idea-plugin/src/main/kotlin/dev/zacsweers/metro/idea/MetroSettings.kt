@@ -57,7 +57,9 @@ class MetroSettingsState : BaseState() {
   @get:Transient
   internal val effectiveSourceScanPoolSize: Int
     get() {
-      if (!enableDebuggingOptions) return 1
+      if (!enableDebuggingOptions) {
+        return 1
+      }
       return sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE)
     }
 }

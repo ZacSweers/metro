@@ -64,9 +64,17 @@ class OrderedSourceScanTest : TestCase() {
               } else {
                 firstStarted.await()
               }
-              if (item == 3) windowFilled.complete(Unit)
-              if (item == 4) beyondWindowStarted.complete(Unit)
-              if (item == 5) null else item * 2
+              if (item == 3) {
+                windowFilled.complete(Unit)
+              }
+              if (item == 4) {
+                beyondWindowStarted.complete(Unit)
+              }
+              if (item == 5) {
+                null
+              } else {
+                item * 2
+              }
             } finally {
               active.decrementAndGet()
             }
@@ -83,7 +91,17 @@ class OrderedSourceScanTest : TestCase() {
       assertNull(withTimeoutOrNull(250) { beyondWindowStarted.await() })
       releaseFirst.complete(Unit)
       scan.await()
-      assertEquals((0..9).map { it to if (it == 5) null else it * 2 }, accepted)
+      assertEquals(
+        (0..9).map {
+          it to
+            if (it == 5) {
+              null
+            } else {
+              it * 2
+            }
+        },
+        accepted,
+      )
       assertEquals(0, active.get())
     }
   }
@@ -193,7 +211,9 @@ class OrderedSourceScanTest : TestCase() {
           items = (0..9).toList(),
           parallelism = 2,
           read = {
-            if (active.incrementAndGet() == 2) bothStarted.complete(Unit)
+            if (active.incrementAndGet() == 2) {
+              bothStarted.complete(Unit)
+            }
             try {
               awaitCancellation()
             } finally {
@@ -235,7 +255,9 @@ class OrderedSourceScanTest : TestCase() {
     assertEquals(expected.message, actual.message)
     var cause: Throwable? = actual
     while (cause != null) {
-      if (cause === expected) return
+      if (cause === expected) {
+        return
+      }
       cause = cause.cause
     }
     fail("Expected the original failure in the cause chain")

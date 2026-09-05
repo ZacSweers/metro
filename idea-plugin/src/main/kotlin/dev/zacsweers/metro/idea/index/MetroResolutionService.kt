@@ -2158,14 +2158,18 @@ private constructor(
     fun capture(declarationFile: KtFile) {
       ProgressManager.checkCanceled()
       val virtualFile = declarationFile.virtualFile ?: return
-      if (virtualFile in captured || !fileHasSharedDeclarationsCached(declarationFile)) return
+      if (virtualFile in captured || !fileHasSharedDeclarationsCached(declarationFile)) {
+        return
+      }
       captured[virtualFile] = sharedDeclarationFingerprintCached(declarationFile)
     }
     capture(file)
     val psiManager = PsiManager.getInstance(project)
     for (dependencyFile in shard.dependencyFiles + shard.sharedDeclarationFiles) {
       ProgressManager.checkCanceled()
-      if (dependencyFile in captured) continue
+      if (dependencyFile in captured) {
+        continue
+      }
       val dependency = psiManager.findFile(dependencyFile) as? KtFile ?: continue
       capture(dependency)
     }

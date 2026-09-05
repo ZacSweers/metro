@@ -31,7 +31,9 @@ internal suspend fun <T, R> scanInOrder(
     }
     return
   }
-  if (items.isEmpty()) return
+  if (items.isEmpty()) {
+    return
+  }
 
   coroutineScope {
     val workers = minOf(parallelism, items.size)

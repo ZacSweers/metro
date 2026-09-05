@@ -20,9 +20,19 @@ class IdeTraceWorkSummaryTest : TestCase() {
           val index = worker * 20 + sequence
           summary.measure { item ->
             checkNotNull(item)
-            item.module = if (index % 2 == 0) "app" else "library"
+            item.module =
+              if (index % 2 == 0) {
+                "app"
+              } else {
+                "library"
+              }
             item.file = "src/File$index.kt"
-            item.cache = if (index % 2 == 0) "rebuilt" else "reused"
+            item.cache =
+              if (index % 2 == 0) {
+                "rebuilt"
+              } else {
+                "reused"
+              }
             item.measureRead {
               item.stage("source.file.annotationScan") {
                 item.stage("source.file.annotationLookup") { clock.now++ }
@@ -96,7 +106,9 @@ class IdeTraceWorkSummaryTest : TestCase() {
               item.stage("source.file.annotationLookup") {
                 reading.await(10, TimeUnit.SECONDS)
                 clock.now += (worker + 1) * 20
-                if (worker == 0) throw cancellation
+                if (worker == 0) {
+                  throw cancellation
+                }
               }
             }
           }
