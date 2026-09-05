@@ -7877,6 +7877,7 @@
 <h2 id="unreleased"><strong>Unreleased</strong><a class="headerlink" href="#unreleased" title="Permanent link">&para;</a></h2>
 <h3 id="enhancements">Enhancements<a class="headerlink" href="#enhancements" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>[FIR]</strong> Warn when a <code>@ContributesTo</code> interface only exposes bindings and recommend making it a binding container with <code>@BindingContainer</code>.</li>
 <li><strong>[FIR/IR]</strong> Support <code>priority</code> on <code>@ContributesBinding</code> and <code>@ContributesIntoMap</code>, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.</li>
 <li><strong>[IR]</strong> Support suspend providers with switching providers.</li>
 <li><strong>[IR]</strong> Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.</li>
@@ -7894,6 +7895,7 @@
 <li><strong>[IDE]</strong> Offer primary and secondary constructors when making a class injectable, including public secondary constructors with a private primary constructor.</li>
 <li><strong>[FIR]</strong> Fix a compiler crash on zero-parameter member-injection functions.</li>
 <li><strong>[FIR]</strong> Avoid annotation-cache races during concurrent IDE analysis.</li>
+<li><strong>[FIR/IR/interop]</strong> Fix recognition of <code>@get:BindsOptionalOf</code> properties when Dagger interop is enabled.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
 <li><strong>[IR/interop]</strong> Fix <code>Class</code>-keyed maps wrapped in providers or lazy values when <code>KClass</code>/<code>Class</code> interop is enabled.</li>
