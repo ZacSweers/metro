@@ -325,6 +325,7 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.file.declarationExtraction" -> "Extract Metro declaration"
       "source.file.dynamicGraphScan" -> "Find dynamic graph factories"
       "source.file.shardConstruction" -> "Construct source shard"
+      "source.file.fingerprints" -> "Capture shared declaration fingerprints"
       "source.class.analysisEntry" -> "Enter Kotlin analysis"
       "source.class.analysisSetup" -> "Locate requesting file"
       "source.class.findClass" -> "Find class symbol"
