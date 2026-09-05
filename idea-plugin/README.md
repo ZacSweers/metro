@@ -190,9 +190,10 @@ Select **Enable debugging options** in the **Debugging/Experimental** section un
 
 **Source analysis pool size** in that section controls concurrent source-file reads. It defaults to
 1 and accepts values from 1 to 8. Changes apply to the next scan; disabling debugging options uses
-one worker while preserving the saved pool size. During parallel scans, the tool window shows the
-number of active workers below the file counts. Active workers include files waiting for IDE read
-access or retrying after an edit. Results retain their original file order, and completed file counts
+one worker while preserving the saved pool size. During source analysis, the tool window shows each
+worker's current file below the progress bar, with its module and directory. Hover over a row to see
+the full location. Rows update as files start and finish, including files waiting for IDE read access
+or retrying after an edit. Results retain their original file order, and completed file counts
 advance as workers finish. Traces record the configured pool size and peak active workers as
 `files.workers` and `files.peakWorkers` on the source-analysis phase.
 
