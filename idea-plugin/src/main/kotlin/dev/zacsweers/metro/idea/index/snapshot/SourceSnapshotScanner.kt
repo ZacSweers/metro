@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
+import dev.zacsweers.metro.idea.SOURCE_SCAN_POOL_SIZE_RANGE
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
@@ -17,6 +18,10 @@ import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import dev.zacsweers.metro.idea.tracing.measure
 import dev.zacsweers.metro.idea.tracing.measureRead
 import dev.zacsweers.metro.idea.tracing.stage
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
@@ -28,6 +33,11 @@ internal class SourceSnapshotScanner(
   private val fileShards: SourceFileShardCache,
   private val onShardRead: (KtFile, FileShard) -> Unit,
   private val containsRelevantAnnotation: (KtFile, Set<String>) -> Boolean,
+  private val poolSize: () -> Int = { 1 },
+  private val captureFingerprints: (KtFile, FileShard) -> Map<VirtualFile, String> = { _, _ ->
+    emptyMap()
+  },
+  private val acceptFingerprints: (Map<VirtualFile, String>) -> Unit = {},
 ) {
   suspend fun scan(
     previous: SourceSnapshot?,
@@ -39,26 +49,60 @@ internal class SourceSnapshotScanner(
     progress: IndexBuildProgressReporter,
     trace: IdeTraceOperation? = null,
     checkCurrent: () -> Unit,
-  ): SourceSnapshot {
+  ): SourceSnapshot = coroutineScope {
+    // A settings change takes effect on the next scan. Each file has one owner in this pass.
+    val parallelism = poolSize().coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE)
+    val orderedFiles = files.distinct()
     val transaction = SourceSnapshotTransaction(previous)
-    val scan = SourceScanProgress(progress, files.size + pending.requested.size)
+    val scan = SourceScanProgress(progress, orderedFiles.size + pending.requested.size, parallelism)
     val work = trace?.let { IdeTraceWorkSummary(it, "source.file") }
-    try {
-      for (virtualFile in files) {
-        val result =
-          readShardStage(
-            virtualFile,
-            pending,
-            shortNames,
-            previous != null,
-            trace,
-            work,
-            checkCurrent,
-          )
-        if (result == null) transaction.removeShard(virtualFile)
-        else transaction.applyShard(virtualFile, result.shard)
-        scan.advance(result)
+    val fingerprints = mutableMapOf<VirtualFile, String>()
+    // Publish throttled worker changes even when the remaining files spend a long time in a read.
+    val progressUpdates =
+      if (parallelism > 1)
+        launch {
+          while (isActive) {
+            delay(250)
+            scan.refresh()
+          }
+        }
+      else null
+
+    fun accept(file: VirtualFile, result: FileReadResult?, removeMissing: Boolean) {
+      checkCurrent()
+      if (result == null) {
+        if (removeMissing) transaction.removeShard(file)
+        return
       }
+      for ((dependency, fingerprint) in result.fingerprints) {
+        val earlier = fingerprints.putIfAbsent(dependency, fingerprint)
+        if (earlier != null && earlier != fingerprint) throw SourceSnapshotConflictException()
+      }
+      acceptFingerprints(result.fingerprints)
+      transaction.applyShard(file, result.cached.shard)
+    }
+
+    suspend fun read(file: VirtualFile, checkAnnotations: Boolean): FileReadResult? {
+      scan.started()
+      var result: FileReadResult? = null
+      var completed = false
+      try {
+        result =
+          readShardStage(file, pending, shortNames, checkAnnotations, trace, work, checkCurrent)
+        completed = true
+        return result
+      } finally {
+        scan.finished(result?.cached, completed)
+      }
+    }
+
+    try {
+      scanInOrder(
+        orderedFiles,
+        parallelism,
+        read = { read(it, previous != null) },
+        accept = { file, result -> accept(file, result, removeMissing = true) },
+      )
       // Stub loading can surface requested files before their annotations reach the stub index.
       // Draining them here keeps them from lingering until another cold sweep.
       for (virtualFile in pending.requested) {
@@ -66,12 +110,10 @@ internal class SourceSnapshotScanner(
           scan.advance(null)
           continue
         }
-        val result =
-          readShardStage(virtualFile, pending, shortNames, true, trace, work, checkCurrent)
-        if (result != null) transaction.applyShard(virtualFile, result.shard)
-        scan.advance(result)
+        val result = read(virtualFile, checkAnnotations = true)
+        accept(virtualFile, result, removeMissing = false)
       }
-      return readSnapshotStage(project, checkCurrent, trace) {
+      readSnapshotStage(project, checkCurrent, trace) {
         transaction.snapshot(
           inputs,
           moduleFingerprints,
@@ -80,6 +122,7 @@ internal class SourceSnapshotScanner(
         )
       }
     } finally {
+      progressUpdates?.cancel()
       scan.traceSummary(trace)
       work?.report()
     }
@@ -94,7 +137,7 @@ internal class SourceSnapshotScanner(
     trace: IdeTraceOperation?,
     work: IdeTraceWorkSummary?,
     checkCurrent: () -> Unit,
-  ): SourceFileShardCache.ReadResult? = work.measure { item ->
+  ): FileReadResult? = work.measure { item ->
     item?.file = ideTraceFilePath(project, virtualFile)
     val result =
       readSnapshotStage(project, checkCurrent, trace) {
@@ -110,7 +153,7 @@ internal class SourceSnapshotScanner(
     item?.cache =
       when {
         result == null -> "skipped"
-        result.rebuilt -> "rebuilt"
+        result.cached.rebuilt -> "rebuilt"
         else -> "reused"
       }
     result
@@ -122,7 +165,7 @@ internal class SourceSnapshotScanner(
     shortNames: Set<String>,
     checkAnnotations: Boolean,
     trace: IdeTraceWorkItem?,
-  ): SourceFileShardCache.ReadResult? {
+  ): FileReadResult? {
     if (!virtualFile.isValid) return null
     val file =
       trace.stage("source.file.psi") {
@@ -136,23 +179,40 @@ internal class SourceSnapshotScanner(
         fileShards.read(file, revision, trace)
       }
     onShardRead(file, result.shard)
-    return result
+    val fingerprints =
+      trace.stage("source.file.fingerprints") {
+        captureFingerprints(file, result.shard)
+      }
+    return FileReadResult(result, fingerprints)
   }
+
+  /** Only detached source data crosses from a worker read to ordered snapshot application. */
+  private data class FileReadResult(
+    val cached: SourceFileShardCache.ReadResult,
+    val fingerprints: Map<VirtualFile, String>,
+  )
 }
+
+/** Different reads observed different contents of a shared dependency in the same attempt. */
+internal class SourceSnapshotConflictException : RuntimeException()
 
 /** Counts successful reads separately from visited files, including skipped or removed files. */
 private class SourceScanProgress(
   private val reporter: IndexBuildProgressReporter,
   private val total: Int,
+  private val workerLimit: Int,
 ) {
   private var completed = 0
   private var reused = 0
   private var rebuilt = 0
+  private var activeWorkers = 0
+  private var peakWorkers = 0
 
   init {
     report()
   }
 
+  @Synchronized
   fun advance(result: SourceFileShardCache.ReadResult?) {
     if (result != null) {
       if (result.rebuilt) rebuilt++ else reused++
@@ -161,9 +221,34 @@ private class SourceScanProgress(
     report()
   }
 
-  private fun report() {
-    reporter.counted(IndexBuildPhase.ANALYZING_DECLARATIONS, completed, total, reused, rebuilt)
+  /** Occupied workers include the read's suspension and retry time. */
+  @Synchronized
+  fun started() {
+    activeWorkers++
+    peakWorkers = maxOf(peakWorkers, activeWorkers)
+    report()
   }
+
+  @Synchronized
+  fun finished(result: SourceFileShardCache.ReadResult?, completed: Boolean) {
+    activeWorkers--
+    if (completed) advance(result) else report()
+  }
+
+  private fun report() {
+    reporter.counted(
+      IndexBuildPhase.ANALYZING_DECLARATIONS,
+      completed,
+      total,
+      reused,
+      rebuilt,
+      activeWorkers = activeWorkers,
+      workerLimit = workerLimit,
+    )
+  }
+
+  /** Flushes the latest counters after the reporter's throttle interval passes. */
+  @Synchronized fun refresh() = report()
 
   /** Includes completed work from a pass that was canceled before producing its snapshot. */
   fun traceSummary(trace: IdeTraceOperation?) {
@@ -172,5 +257,7 @@ private class SourceScanProgress(
     trace?.attribute("files.reused", reused)
     trace?.attribute("files.rebuilt", rebuilt)
     trace?.attribute("files.skipped", completed - reused - rebuilt)
+    trace?.attribute("files.workers", workerLimit)
+    trace?.attribute("files.peakWorkers", peakWorkers)
   }
 }

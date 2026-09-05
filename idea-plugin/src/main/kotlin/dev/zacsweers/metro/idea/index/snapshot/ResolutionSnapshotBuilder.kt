@@ -57,14 +57,28 @@ import org.jetbrains.kotlin.psi.KtImportDirective
  */
 internal class ResolutionSnapshotBuilder(
   private val project: Project,
-  private val onShardRead: (KtFile, FileShard) -> Unit,
+  /** Observes completed shard reads inside read access; concurrent scans can invoke it together. */
+  private val onShardRead: (KtFile, FileShard) -> Unit = { _, _ -> },
   /** Announces the attempt's source coverage outside read access before scanning begins. */
   private val onSourceFilesScheduled: (Set<VirtualFile>) -> Unit = {},
+  private val sourceScanPoolSize: () -> Int = { 1 },
+  private val captureSourceFingerprints: (KtFile, FileShard) -> Map<VirtualFile, String> = { _, _ ->
+    emptyMap()
+  },
+  private val acceptSourceFingerprints: (Map<VirtualFile, String>) -> Unit = {},
   private val captureResolutionInputs: (BindingIndexBuilder, Set<VirtualFile>) -> Unit,
 ) {
   private val fileShards = SourceFileShardCache()
   private val sourceScanner =
-    SourceSnapshotScanner(project, fileShards, onShardRead, ::containsRelevantAnnotation)
+    SourceSnapshotScanner(
+      project,
+      fileShards,
+      onShardRead,
+      ::containsRelevantAnnotation,
+      sourceScanPoolSize,
+      captureSourceFingerprints,
+      acceptSourceFingerprints,
+    )
   private var cachedSourceSummary: CachedSourceLibrarySummary? = null
   private val libraryShards =
     object : LinkedHashMap<LibraryCacheKey, LibraryShard>(8, 0.75f, true) {
