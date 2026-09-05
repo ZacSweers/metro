@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea.index.snapshot
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import junit.framework.TestCase
 import kotlinx.coroutines.CancellationException
@@ -38,6 +41,32 @@ class ParallelMapTest : TestCase() {
       listOf("read 1", "accept 1=2", "read 2", "accept 2=4", "read 3", "accept 3=6"),
       events,
     )
+  }
+
+  fun testPooledReadsRunConcurrentlyOffTheCallerThread() = runBlocking {
+    withTimeout(10_000) {
+      val caller = Thread.currentThread()
+      val readThreads = ConcurrentHashMap.newKeySet<Thread>()
+      val rendezvous = CyclicBarrier(2)
+      val accepted = mutableListOf<Pair<Int, Int>>()
+      listOf(1, 2)
+        .parallelMap(
+          parallelism = 2,
+          read = { item ->
+            readThreads += Thread.currentThread()
+            // Both reads must block here at the same time, which needs two threads.
+            rendezvous.await(5, TimeUnit.SECONDS)
+            item * 2
+          },
+          accept = { item, result ->
+            assertSame(caller, Thread.currentThread())
+            accepted += item to result
+          },
+        )
+      assertFalse(readThreads.contains(caller))
+      assertEquals(2, readThreads.size)
+      assertEquals(listOf(1 to 2, 2 to 4), accepted)
+    }
   }
 
   fun testParallelReadsHaveBoundedBacklogAndAcceptInOrderOnTheCaller() = runBlocking {
