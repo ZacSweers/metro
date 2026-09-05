@@ -122,12 +122,15 @@ internal class IndexBuildProgressReporter(
     val now = nanoTime()
     val phaseChanged = phase != previous?.phase
     val countChanged = completed != previous?.completed || total != previous?.total
-    val atBoundary = (completed == 0 || completed >= total) && countChanged
+    // Discovery totals grow after each batch. Only fixed totals mark the end of a phase;
+    // publishing every discovery batch's empty slots would hide the next batch's activity.
+    val fixedTotalComplete = !phase.discoversMoreWork && completed >= total
+    val atBoundary = (completed == 0 || fixedTotalComplete) && countChanged
     // Show the full initial pool before a long first read and clear the last occupied worker
     // promptly.
     val initialPoolFilled =
       completed == 0 && workerLimit != null && activeWorkers == minOf(workerLimit, total)
-    val workersDrained = completed >= total && activeWorkers == 0
+    val workersDrained = fixedTotalComplete && activeWorkers == 0
     val intervalElapsed = lastPublishedAt?.let { now - it >= updateIntervalNanos } ?: true
     val activityBoundary = initialPoolFilled || workersDrained
     val publishImmediately = force || phaseChanged || atBoundary || activityBoundary

@@ -2027,6 +2027,73 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertNull(progress.last().workerLimit)
   }
 
+  fun testIndexBuildProgressReporterKeepsDiscoveryWorkersVisibleBetweenBatches() {
+    val phases = IndexBuildPhase.entries.filter { it.discoversMoreWork }
+    for (phase in phases) {
+      var now = 0L
+      val progress = mutableListOf<IndexBuildProgress>()
+      val reporter =
+        IndexBuildProgressReporter(
+          publish = progress::add,
+          updateIntervalNanos = 250,
+          nanoTime = { now },
+        )
+      val first = IndexBuildFile("test.First", "src/First.kt", "app")
+      val second = IndexBuildFile("test.Second", "src/Second.kt", "app")
+      val third = IndexBuildFile("test.Third", "src/Third.kt", "app")
+      val fourth = IndexBuildFile("test.Fourth", "src/Fourth.kt", "app")
+      fun report(
+        completed: Int,
+        total: Int,
+        files: List<IndexBuildFile?>,
+        force: Boolean = false,
+      ) {
+        reporter.counted(
+          phase,
+          completed,
+          total,
+          activeWorkers = files.count { it != null },
+          workerLimit = 2,
+          workerFiles = files,
+          force = force,
+        )
+      }
+
+      report(0, 0, listOf(null, null), force = true)
+      report(0, 2, listOf(null, null))
+      report(0, 2, listOf(first, null))
+      report(0, 2, listOf(first, second))
+      val firstBatch = progress.last()
+      assertEquals(listOf(first, second), firstBatch.workerFiles)
+
+      // A drained frontier can immediately discover another batch in the same phase.
+      now = 100
+      report(1, 2, listOf(null, second))
+      report(2, 2, listOf(null, null))
+      report(2, 4, listOf(null, null))
+      report(2, 4, listOf(third, null))
+      report(2, 4, listOf(third, fourth))
+      assertSame(
+        "$phase should retain its sampled workers between batches",
+        firstBatch,
+        progress.last(),
+      )
+
+      // Batch completion must also leave the periodic update deadline intact.
+      now = 250
+      report(2, 4, listOf(third, fourth))
+      val secondBatch = progress.last()
+      assertEquals(listOf(third, fourth), secondBatch.workerFiles)
+      now = 300
+      report(4, 4, listOf(null, null))
+      assertSame(secondBatch, progress.last())
+
+      report(4, 4, listOf(null, null), force = true)
+      assertEquals(listOf(null, null), progress.last().workerFiles)
+      assertEquals(0, progress.last().activeWorkers)
+    }
+  }
+
   fun testIndexBuildProgressRejectsInvalidWorkerCounts() {
     val progress =
       IndexBuildProgress(
