@@ -42,14 +42,24 @@ internal suspend fun <T, R> List<T>.parallelMap(
     return
   }
 
+  // Three coroutines cooperate here. The producer hands out indices in order and takes one
+  // `inFlight` permit per index. The workers read on Dispatchers.Default and send back each result
+  // with its index. The collector runs on the caller, parks out-of-order results in `pending`, and
+  // accepts them once everything before them has been accepted.
+  //
+  // The `inFlight` limit exists because acceptance is in order. Otherwise one slow item at the
+  // front would let the workers read the whole rest of the list and hold every result in memory
+  // until that item finished. Permits only come back when the collector accepts an item. Once a
+  // slow item blocks acceptance the producer can hand out at most twice the worker count of
+  // indices before it has to wait.
   coroutineScope {
     val workers = minOf(parallelism, size)
-    val window = Semaphore(minOf(size.toLong(), workers.toLong() * 2).toInt())
+    val inFlight = Semaphore(minOf(size.toLong(), workers.toLong() * 2).toInt())
     val input = Channel<Int>(workers)
     val results = Channel<IndexedValue<R>>(workers)
     launch {
       for (index in indices) {
-        window.acquire()
+        inFlight.acquire()
         input.send(index)
       }
       input.close()
@@ -80,8 +90,7 @@ internal suspend fun <T, R> List<T>.parallelMap(
         currentCoroutineContext().ensureActive()
         accept(get(next), ready.value)
         next++
-        // Acceptance opens another slot even when an earlier slow read filled the reorder window.
-        window.release()
+        inFlight.release()
       }
     }
   }
