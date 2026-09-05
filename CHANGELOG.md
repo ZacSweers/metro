@@ -34,11 +34,13 @@ Changelog
 
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
+- Update embedded Okio dependency to `3.18.2`.
 
 ### Contributors
 
 Special thanks to the following contributors for contributing to this release!
 
+- [@AlexVanyo](https://github.com/AlexVanyo)
 - [@grandstaish](https://github.com/grandstaish)
 - [@kevinguitar](https://github.com/kevinguitar)
 
