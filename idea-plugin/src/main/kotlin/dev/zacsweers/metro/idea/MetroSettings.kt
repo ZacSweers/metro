@@ -50,7 +50,7 @@ class MetroSettingsState : BaseState() {
    */
   var includeThreadActivity by property(false)
 
-  /** Maximum concurrent source-file tasks, applied when the next refresh starts. */
+  /** Maximum concurrent analysis tasks. The stored name preserves existing project settings. */
   var sourceScanPoolSize by property(1)
 
   /** Disabling debugging restores sequential analysis while preserving the saved pool size. */
@@ -146,7 +146,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         val cell =
           checkBox("Enable debugging options")
             .bindSelected(state::enableDebuggingOptions)
-            .comment("Shows performance tracing controls and experimental source analysis settings")
+            .comment("Shows performance tracing controls and experimental analysis settings")
         debuggingSelected = cell.selected
       }
       indent {
@@ -158,14 +158,14 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
               )
           }
           .visibleIf(debuggingSelected)
-        row("Source analysis pool size:") {
+        row("Analysis pool size:") {
             spinner(SOURCE_SCAN_POOL_SIZE_RANGE)
               .bindIntValue(
                 getter = { state.sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE) },
                 setter = { state.sourceScanPoolSize = it },
               )
               .comment(
-                "Maximum files analyzed at once. Applies to the next refresh; 1 is sequential."
+                "Maximum concurrent file, class, and metadata lookups. Applies to the next refresh; 1 is sequential."
               )
           }
           .visibleIf(debuggingSelected)

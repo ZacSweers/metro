@@ -188,14 +188,21 @@ project and type identifiers, so review the file before sharing it.
 Select **Enable debugging options** in the **Debugging/Experimental** section under
 `Settings > Tools > Metro` to show the tracing controls. Debugging options are disabled by default.
 
-**Source analysis pool size** in that section controls concurrent source-file reads. It defaults to
-1 and accepts values from 1 to 8. Changes apply to the next scan; disabling debugging options uses
-one worker while preserving the saved pool size. During source analysis, the tool window shows each
-worker's current file below the progress bar, with its module and directory. Hover over a row to see
-the full location. Rows update as files start and finish, including files waiting for IDE read access
-or retrying after an edit. Results retain their original file order, and completed file counts
-advance as workers finish. Traces record the configured pool size and peak active workers as
-`files.workers` and `files.peakWorkers` on the source-analysis phase.
+**Analysis pool size** in that section controls concurrent source-file, class, and dependency
+metadata reads. It defaults to 1 and accepts values from 1 to 8. Changes apply to the next refresh;
+disabling debugging options uses one worker while preserving the saved pool size.
+
+The tool window shows each worker's current file, class, or metadata hint below the progress bar,
+with its requesting module and location. Hover over a row to see the full location. Rows update
+while work waits for IDE read access or retries after an edit. Class and metadata discovery show
+completed counts with an indeterminate bar because resolving one item can discover more work.
+Library class resolution has its own phase after metadata discovery.
+
+Lookups have individual read-retry boundaries. Completed results survive an unrelated write that
+interrupts another lookup; changed dependency stamps invalidate the combined snapshot. Results
+merge in discovery order so parallel completion cannot change duplicate selection or expansion
+limits. Traces retain request details and record `workers.limit` and `workers.peak` for class and
+metadata phases, and `files.workers` and `files.peakWorkers` for source-file scanning.
 
 Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. Recording starts
 before the refresh is submitted, follows that request through retries and index publication, then
