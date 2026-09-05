@@ -10,6 +10,7 @@ import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.IdeTraceWorkSummary
 import dev.zacsweers.metro.idea.tracing.measure
 import dev.zacsweers.metro.idea.tracing.measureRead
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -52,7 +53,7 @@ internal class SnapshotReadExecutor(
     publish(force = true)
     val updates = launch {
       while (isActive) {
-        delay(250)
+        delay(250.milliseconds)
         publish()
       }
     }
@@ -91,31 +92,29 @@ internal class SnapshotReadExecutor(
       publish()
     }
     val results = ArrayList<R>(items.size)
-    items.indices
-      .toList()
-      .parallelMap(
-        parallelism,
-        read = { index ->
-          val slot = started(descriptions[index])
-          var completedRead = false
-          try {
-            val value = work.measure { item ->
-              item?.className = descriptions[index].name
-              item?.file = descriptions[index].path
-              item?.module = descriptions[index].module ?: "<unknown>"
-              read {
-                update(slot, describe(items[index]))
-                item.measureRead { capture(items[index]) }
-              }
+    items.parallelMapIndexed(
+      parallelism,
+      read = { index, item ->
+        val slot = started(descriptions[index])
+        var completedRead = false
+        try {
+          val value = work.measure { workItem ->
+            workItem?.className = descriptions[index].name
+            workItem?.file = descriptions[index].path
+            workItem?.module = descriptions[index].module ?: "<unknown>"
+            read {
+              update(slot, describe(item))
+              workItem.measureRead { capture(item) }
             }
-            completedRead = true
-            value
-          } finally {
-            finished(slot, completedRead)
           }
-        },
-        accept = { _, result -> results += result },
-      )
+          completedRead = true
+          value
+        } finally {
+          finished(slot, completedRead)
+        }
+      },
+      accept = { _, _, result -> results += result },
+    )
     return results
   }
 

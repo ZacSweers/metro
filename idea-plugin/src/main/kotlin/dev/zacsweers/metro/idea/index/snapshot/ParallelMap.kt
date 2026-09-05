@@ -28,13 +28,27 @@ internal suspend fun <T, R> List<T>.parallelMap(
   read: suspend (T) -> R,
   accept: (T, R) -> Unit,
 ) {
+  parallelMapIndexed(
+    parallelism,
+    read = { _, item -> read(item) },
+    accept = { _, item, result -> accept(item, result) },
+  )
+}
+
+/** [parallelMap] with each item's index passed to both callbacks. */
+internal suspend fun <T, R> List<T>.parallelMapIndexed(
+  parallelism: Int,
+  read: suspend (Int, T) -> R,
+  accept: (Int, T, R) -> Unit,
+) {
   require(parallelism > 0) { "parallelism must be positive, was $parallelism" }
   if (parallelism == 1) {
-    for (item in this) {
+    for (index in indices) {
+      val item = get(index)
       currentCoroutineContext().ensureActive()
-      val result = read(item)
+      val result = read(index, item)
       currentCoroutineContext().ensureActive()
-      accept(item, result)
+      accept(index, item, result)
     }
     return
   }
@@ -70,7 +84,7 @@ internal suspend fun <T, R> List<T>.parallelMap(
           for (index in input) {
             // Channel fast paths skip cancellation checks. Bail before starting a read.
             ensureActive()
-            results.send(IndexedValue(index, read(get(index))))
+            results.send(IndexedValue(index, read(index, get(index))))
           }
         } catch (failure: Throwable) {
           // A read can cancel itself independently of the pool's parent. Wake the collector so that
@@ -90,7 +104,7 @@ internal suspend fun <T, R> List<T>.parallelMap(
       while (true) {
         val ready = pending.remove(next) ?: break
         currentCoroutineContext().ensureActive()
-        accept(get(next), ready.value)
+        accept(next, get(next), ready.value)
         next++
         inFlight.release()
       }

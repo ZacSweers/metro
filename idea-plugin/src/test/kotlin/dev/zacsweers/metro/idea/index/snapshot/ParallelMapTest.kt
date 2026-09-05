@@ -555,6 +555,22 @@ class ParallelMapTest : TestCase() {
     }
   }
 
+  fun testIndexedCallbacksReceiveEachItemsIndex() = runBlocking {
+    for (parallelism in listOf(1, 2)) {
+      val accepted = mutableListOf<Triple<Int, String, String>>()
+      listOf("a", "b", "c")
+        .parallelMapIndexed(
+          parallelism,
+          read = { index, item -> "$index:$item" },
+          accept = { index, item, result -> accepted += Triple(index, item, result) },
+        )
+      assertEquals(
+        listOf(Triple(0, "a", "0:a"), Triple(1, "b", "1:b"), Triple(2, "c", "2:c")),
+        accepted,
+      )
+    }
+  }
+
   fun testEmptyInputSkipsBothCallbacks() = runBlocking {
     emptyList<Int>()
       .parallelMap(
