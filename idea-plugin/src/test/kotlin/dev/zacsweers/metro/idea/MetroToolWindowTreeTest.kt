@@ -921,6 +921,50 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     }
   }
 
+  fun testIndexBuildStatusPanelShowsActiveSourceWorkers() {
+    val panel = IndexBuildStatusPanel()
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 4,
+        total = 10,
+        reused = 2,
+        rebuilt = 2,
+        activeWorkers = 2,
+        workerLimit = 4,
+      )
+    panel.show(progress, showingPreviousData = true)
+    assertEquals("2 of 4 workers active", panel.workerActivityLabel.text)
+    assertTrue(panel.workerActivityLabel.isVisible)
+    assertEquals(java.awt.Component.LEFT_ALIGNMENT, panel.workerActivityLabel.alignmentX)
+    assertTrue(panel.retainedDataLabel.isVisible)
+    assertEquals(
+      "Checking Metro source files (4 of 10 files, 2 reused, 2 rebuilt)",
+      panel.messageLabel.text,
+    )
+    assertEquals(4, panel.progressBar.value)
+
+    panel.show(progress.copy(activeWorkers = 1))
+    assertEquals("1 of 4 workers active", panel.workerActivityLabel.text)
+    panel.show(progress.copy(activeWorkers = 0))
+    assertEquals("0 of 4 workers active", panel.workerActivityLabel.text)
+
+    panel.show(progress.copy(activeWorkers = 1, workerLimit = 1))
+    assertFalse(panel.workerActivityLabel.isVisible)
+    panel.show(progress)
+    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    assertFalse(panel.workerActivityLabel.isVisible)
+    panel.show(progress)
+    panel.showWaitingForIdeIndexing()
+    assertFalse(panel.workerActivityLabel.isVisible)
+    panel.show(progress)
+    panel.showRefreshQueued()
+    assertFalse(panel.workerActivityLabel.isVisible)
+    panel.show(progress)
+    panel.clear()
+    assertFalse(panel.workerActivityLabel.isVisible)
+  }
+
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {
     val panel = IndexBuildStatusPanel()
 

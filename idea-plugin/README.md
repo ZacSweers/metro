@@ -188,6 +188,14 @@ project and type identifiers, so review the file before sharing it.
 Select **Enable debugging options** in the **Debugging/Experimental** section under
 `Settings > Tools > Metro` to show the tracing controls. Debugging options are disabled by default.
 
+**Source analysis pool size** in that section controls concurrent source-file reads. It defaults to
+1 and accepts values from 1 to 8. Changes apply to the next scan; disabling debugging options uses
+one worker while preserving the saved pool size. During parallel scans, the tool window shows the
+number of active workers below the file counts. Active workers include files waiting for IDE read
+access or retrying after an edit. Results retain their original file order, and completed file counts
+advance as workers finish. Traces record the configured pool size and peak active workers as
+`files.workers` and `files.peakWorkers` on the source-analysis phase.
+
 Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. Recording starts
 before the refresh is submitted, follows that request through retries and index publication, then
 saves after admitted work finishes. Later editor requests can happen after capture completion.
@@ -230,6 +238,8 @@ omitted by the capture limit from omitted stage detail. **Trace summary** report
 Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
 callbacks; it includes canceled attempts and can include Kotlin analysis waits. Item bars
 also report `canceled_read_elapsed_ns` and `outside_read_ns`. Parent durations include their children.
+Summary durations add time across all items. Concurrent file workers overlap, so summed item, read,
+and stage times can exceed the enclosing phase's elapsed time. Stage totals also include nested stages.
 Use `debug.operation`, `debug.operation_id`, and `debug.parent_operation_id` for SQL analysis; display
 names include human-readable subjects. Duration bars carry final timing and outcome metadata.
 

@@ -8,6 +8,7 @@ import com.intellij.util.ui.UIUtil
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import java.awt.BorderLayout
+import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.JProgressBar
 
@@ -20,6 +21,12 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
       isVisible = false
     }
   internal val progressBar = JProgressBar()
+  internal val workerActivityLabel =
+    JBLabel().apply {
+      foreground = UIUtil.getContextHelpForeground()
+      isVisible = false
+      toolTipText = "Active workers include source-file tasks waiting for IDE read access"
+    }
 
   init {
     isOpaque = false
@@ -27,7 +34,16 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
     border = JBUI.Borders.empty(6, 8)
     progressBar.isStringPainted = false
     add(messageLabel, BorderLayout.NORTH)
-    add(retainedDataLabel, BorderLayout.CENTER)
+    val details =
+      JPanel().apply {
+        isOpaque = false
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        retainedDataLabel.alignmentX = LEFT_ALIGNMENT
+        workerActivityLabel.alignmentX = LEFT_ALIGNMENT
+        add(retainedDataLabel)
+        add(workerActivityLabel)
+      }
+    add(details, BorderLayout.CENTER)
     add(progressBar, BorderLayout.SOUTH)
   }
 
@@ -38,6 +54,11 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
     }
     messageLabel.text = progress.message
     retainedDataLabel.isVisible = showingPreviousData
+    val workerLimit = progress.workerLimit
+    workerActivityLabel.isVisible = workerLimit != null && workerLimit > 1
+    if (workerActivityLabel.isVisible) {
+      workerActivityLabel.text = "${progress.activeWorkers} of $workerLimit workers active"
+    }
     progressBar.isVisible = true
     val total = progress.total
     if (total != null && total > 0) {
@@ -76,6 +97,7 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
   ) {
     messageLabel.text = message
     retainedDataLabel.isVisible = showingPreviousData
+    workerActivityLabel.isVisible = false
     progressBar.isVisible = false
     progressBar.isIndeterminate = false
     isVisible = true
@@ -84,6 +106,7 @@ internal class IndexBuildStatusPanel : JPanel(BorderLayout(0, JBUI.scale(4))) {
   fun clear() {
     isVisible = false
     retainedDataLabel.isVisible = false
+    workerActivityLabel.isVisible = false
     progressBar.isVisible = false
     progressBar.isIndeterminate = false
   }

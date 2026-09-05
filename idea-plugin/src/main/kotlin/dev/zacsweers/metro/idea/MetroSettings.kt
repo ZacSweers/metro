@@ -10,10 +10,12 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.project.Project
+import com.intellij.ui.dsl.builder.bindIntValue
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
 import com.intellij.ui.layout.ComponentPredicate
+import com.intellij.util.xmlb.annotations.Transient
 import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
@@ -47,7 +49,21 @@ class MetroSettingsState : BaseState() {
    * Adds thread execution slices and coroutine flows to captures started with this option enabled.
    */
   var includeThreadActivity by property(false)
+
+  /** Maximum concurrent source-file tasks, applied when the next refresh starts. */
+  var sourceScanPoolSize by property(1)
+
+  /** Disabling debugging restores sequential analysis while preserving the saved pool size. */
+  @get:Transient
+  internal val effectiveSourceScanPoolSize: Int
+    get() {
+      if (!enableDebuggingOptions) return 1
+      return sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE)
+    }
 }
+
+/** Bounds experimental analysis concurrency to limit memory use and competing IDE reads. */
+internal val SOURCE_SCAN_POOL_SIZE_RANGE = 1..8
 
 /** Project-level Metro IDE settings, stored in `.idea/metro.xml` so teams can check them in. */
 @Service(Service.Level.PROJECT)
@@ -128,9 +144,7 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
         val cell =
           checkBox("Enable debugging options")
             .bindSelected(state::enableDebuggingOptions)
-            .comment(
-              "Shows local performance tracing actions in Find Action and the Metro tool window"
-            )
+            .comment("Shows performance tracing controls and experimental source analysis settings")
         debuggingSelected = cell.selected
       }
       indent {
@@ -139,6 +153,17 @@ class MetroSettingsConfigurable(private val project: Project) : BoundConfigurabl
               .bindSelected(state::includeThreadActivity)
               .comment(
                 "Adds thread slices and coroutine arrows to new captures; increases recording overhead"
+              )
+          }
+          .visibleIf(debuggingSelected)
+        row("Source analysis pool size:") {
+            spinner(SOURCE_SCAN_POOL_SIZE_RANGE)
+              .bindIntValue(
+                getter = { state.sourceScanPoolSize.coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE) },
+                setter = { state.sourceScanPoolSize = it },
+              )
+              .comment(
+                "Maximum files analyzed at once. Applies to the next refresh; 1 is sequential."
               )
           }
           .visibleIf(debuggingSelected)
