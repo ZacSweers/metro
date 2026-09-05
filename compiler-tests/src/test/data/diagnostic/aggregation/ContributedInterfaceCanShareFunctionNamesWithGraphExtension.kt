@@ -18,6 +18,9 @@ interface MyGraph {
 }
 
 @ContributesTo(Unit::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>Bindings<!> {
+interface Bindings {
   @Provides @SingleIn(Unit::class) fun dependency(): Dependency = Dependency("1")
+
+  // Keep this as a graph supertype to exercise the inherited provider clash.
+  val providedDependency: Dependency
 }

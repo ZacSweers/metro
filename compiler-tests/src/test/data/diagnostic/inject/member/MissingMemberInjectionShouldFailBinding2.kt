@@ -12,8 +12,8 @@ class Implementation() : Base
 abstract class AppSubscope
 
 @ContributesTo(AppSubscope::class)
-interface <!CONTRIBUTES_TO_COULD_BE_BINDING_CONTAINER!>SubscopeMultibindingModule<!> {
-
+@BindingContainer
+interface SubscopeMultibindingModule {
   @Binds
   @IntoMap
   @ClassKey(ClassWithoutMembersInjector::class)
