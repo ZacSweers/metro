@@ -6,10 +6,12 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import dev.zacsweers.metro.compiler.MetroOptions
 import dev.zacsweers.metro.idea.hasAnyAnnotation
+import dev.zacsweers.metro.idea.index.snapshot.SnapshotReadExecutor
 import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.BindingResolutionSession
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
@@ -53,8 +55,11 @@ internal class LibraryIndexPostProcessor(
 
   private lateinit var sourceClasses: SourceClassBindingPostProcessor
 
-  fun postProcess(): SourceClassResolution {
-    sourceClasses =
+  /**
+   * Read workers return detached bindings; this caller owns traversal and shared expansion limits.
+   */
+  suspend fun postProcess(executor: SnapshotReadExecutor): SourceClassResolution {
+    sourceClasses = executor.read {
       SourceClassBindingPostProcessor(
         project,
         bindings,
@@ -62,9 +67,10 @@ internal class LibraryIndexPostProcessor(
         consumerOwnership,
         initialSourceClasses,
       )
-    val resumed = sourceClasses.resumeBoundaries()
+    }
+    val resumed = sourceClasses.resumeBoundaries(executor)
     bindings += resumed.addedBindings
-    resolveLibraryInjectBindings(resumed.libraryRequests)
+    resolveLibraryInjectBindings(resumed.libraryRequests, executor)
     return sourceClasses.snapshot()
   }
 
@@ -73,101 +79,184 @@ internal class LibraryIndexPostProcessor(
    * Source consumer sites and source/hint binding dependencies seed the same transitive traversal,
    * so generated providers also discover library dependencies without their own source consumers.
    */
-  @OptIn(KaPlatformInterface::class)
-  private fun resolveLibraryInjectBindings(resumedRequests: List<SourceClassRequest>) {
-    val queue = ArrayDeque<LibraryInjectRequest>()
-    for (consumer in consumers) {
-      ProgressManager.checkCanceled()
-      val classId = consumer.typeClassId ?: continue
-      if (consumer.multibindingId != null) {
+  private suspend fun resolveLibraryInjectBindings(
+    resumedRequests: List<SourceClassRequest>,
+    executor: SnapshotReadExecutor,
+  ) {
+    val seeds = executor.read { initialRequests(resumedRequests) }
+    sourceClasses.includeDependencies(seeds.dependencies)
+    val queue = ArrayDeque(seeds.requests)
+    for (seed in seeds.bindings) {
+      if (seed.needsExpansion && !sourceClasses.mayExpandSourceBinding(seed.binding, seed.module)) {
         continue
       }
-      val containerOwners = consumerOwnership.owningGraphPointers(consumer)
-      if (containerOwners == null) {
-        val context = consumerOwnership.pointer(consumer).element ?: continue
-        queue += LibraryInjectRequest(consumer.key, classId, context, direct = true)
-      } else {
-        for (owner in containerOwners) {
-          val context = owner.element ?: continue
-          queue += LibraryInjectRequest(consumer.key, classId, context, direct = true)
-        }
-      }
+      enqueueDependencies(seed.binding, seed.module, seed.context, queue)
     }
-    for (request in resumedRequests) {
-      val context = request.context.element ?: continue
-      val classId = request.key.type.classId ?: continue
-      queue += LibraryInjectRequest(request.key, classId, context)
+    if (queue.isEmpty()) {
+      return
     }
-    enqueueBindingDependencies(queue)
-    if (queue.isEmpty()) return
 
-    val visited = mutableSetOf<LibraryInjectRequestId>()
+    val visited = mutableSetOf<SourceClassRequestId>()
     val bindingIds =
       bindings.mapNotNullTo(mutableSetOf()) { binding ->
         val file = binding.pointer.virtualFile ?: return@mapNotNullTo null
         LibraryInjectBindingId(binding.typeKey, file)
       }
-    val fileIndex = ProjectFileIndex.getInstance(project)
     while (queue.isNotEmpty()) {
       ProgressManager.checkCanceled()
-      val request = queue.removeFirst()
-      val module = KaModuleProvider.getModule(project, request.context, useSiteModule = null)
-      if (!visited.add(LibraryInjectRequestId(request.key, module))) continue
-      val source = sourceClasses.resolveFromBinary(request.key, request.context, request.direct)
-      for (binding in source.addedBindings) {
-        val file = binding.pointer.virtualFile ?: continue
-        if (bindingIds.add(LibraryInjectBindingId(binding.typeKey, file))) bindings += binding
-      }
-      for (dependency in source.libraryRequests) {
-        val context = dependency.context.element ?: continue
-        val classId = dependency.key.type.classId ?: continue
-        queue += LibraryInjectRequest(dependency.key, classId, context)
-      }
-      // A same-FQN source class in another module does not make this module's binary class
-      // a source declaration. Fall through unless the exact request was actually handled.
-      if (source.handled) continue
-      val resolved =
-        analyze(request.context) {
-          val classSymbol = findClass(request.classId) as? KaNamedClassSymbol ?: return@analyze null
-          val psi = classSymbol.psi ?: return@analyze null
-          // Project sources were already swept; finding nothing there was authoritative
-          val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
-          if (fileIndex.isInContent(virtualFile)) return@analyze null
-
-          val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
-          if (isAssistedFactory && !sourceClasses.isConcrete(request.key)) return@analyze null
-          val binding =
-            resolveClassBinding(classSymbol, request.key, options, pointerManager)
-              ?: return@analyze null
-          ResolvedLibraryBinding(
-            LibraryInjectBindingId(binding.typeKey, virtualFile),
-            binding,
-          )
+      val requests = buildList {
+        while (queue.isNotEmpty() && size < executor.parallelism) {
+          val request = queue.removeFirst()
+          if (visited.add(request.id)) {
+            add(request)
+          }
         }
-      if (resolved == null) continue
-      if (bindingIds.add(resolved.id)) bindings += resolved.binding
-      if (!sourceClasses.expandClassBinding(resolved.binding, request.context, request.direct)) {
-        continue
       }
-      for (dependency in resolved.binding.dependencies) {
+      // Budget access stays on the collector because concreteness checks memoize type complexity.
+      val lookups = requests.mapNotNull { request ->
+        if (request.id in initialSourceClasses.resolvedRequests) {
+          null
+        } else {
+          LibraryLookup(request, sourceClasses.isConcrete(request.key))
+        }
+      }
+      val candidates = executor.map(lookups, ::describeLookup, ::resolveLibraryBinding)
+      val candidatesByRequest =
+        lookups.indices.associate { index ->
+          lookups[index].request.id to candidates[index]
+        }
+      for (request in requests) {
         ProgressManager.checkCanceled()
-        val key = dependency.typeKey
-        val classId = key.type.classId ?: continue
-        queue += LibraryInjectRequest(key, classId, request.context)
+        // Accept source and binary results in FIFO order. They share limits, so a later source
+        // request must wait until an earlier binary request has consumed its expansion allowance.
+        val candidate = candidatesByRequest[request.id]
+        if (candidate != null) {
+          sourceClasses.includeDependencies(candidate.dependencies)
+        }
+        val source = sourceClasses.resolveFromBinary(request, executor)
+        for (binding in source.addedBindings) {
+          val file = binding.pointer.virtualFile ?: continue
+          if (bindingIds.add(LibraryInjectBindingId(binding.typeKey, file))) {
+            bindings += binding
+          }
+        }
+        queue += source.libraryRequests
+        // A same-FQN source class in another module does not make this module's binary class
+        // a source declaration. Fall through unless the exact request was actually handled.
+        if (source.handled) {
+          continue
+        }
+        val resolved = candidate?.binding ?: continue
+        if (bindingIds.add(resolved.id)) {
+          bindings += resolved.binding
+        }
+        if (!sourceClasses.expandClassBinding(resolved.binding, request.module, request.direct)) {
+          continue
+        }
+        enqueueDependencies(resolved.binding, request.module, request.context, queue)
       }
     }
   }
 
+  /** Each retry captures a fresh queue without mutating traversal or its expansion budget. */
+  @OptIn(KaPlatformInterface::class)
+  private fun initialRequests(resumedRequests: List<SourceClassRequest>): LibrarySeeds {
+    val requests = mutableListOf<SourceClassRequest>()
+    val dependencies = SourceClassDependencies.Builder(pointerManager)
+    for (consumer in consumers) {
+      ProgressManager.checkCanceled()
+      consumer.pointer.element?.containingFile?.let { dependencies.recordContext(it) }
+      if (consumer.typeClassId == null || consumer.multibindingId != null) {
+        continue
+      }
+      val owners = consumerOwnership.owningGraphPointers(consumer)
+      val pointers = owners ?: listOf(consumerOwnership.pointer(consumer))
+      for (pointer in pointers) {
+        val context = pointer.element ?: continue
+        context.containingFile?.let { dependencies.recordContext(it) }
+        val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
+        requests += SourceClassRequest(consumer.key, module, pointer, direct = true)
+      }
+    }
+    for (request in resumedRequests) {
+      request.context.element?.containingFile?.let { dependencies.recordContext(it) }
+      requests += request
+    }
+    val bindings = bindingSeeds(dependencies)
+    return LibrarySeeds(requests, bindings, dependencies.build())
+  }
+
+  /** Every outcome retains its input stamps so a later read cannot hide a stale prefetch. */
+  private fun resolveLibraryBinding(lookup: LibraryLookup): CapturedLibraryBinding {
+    val dependencies = SourceClassDependencies.Builder(pointerManager)
+    val request = lookup.request
+    val context = request.context.element
+    if (context == null) {
+      return CapturedLibraryBinding(null, dependencies.build())
+    }
+    val owner = context.containingFile?.virtualFile
+    context.containingFile?.let(dependencies::recordContext)
+    val classId = request.key.type.classId
+    if (classId == null) {
+      return CapturedLibraryBinding(null, dependencies.build())
+    }
+    val fileIndex = ProjectFileIndex.getInstance(project)
+    val onDeclarationFile: (PsiFile) -> Unit = { file ->
+      val virtualFile = file.virtualFile
+      if (virtualFile != null && fileIndex.isInContent(virtualFile)) {
+        dependencies.record(file, owner)
+      }
+    }
+    val resolved =
+      analyze(context) {
+        val classSymbol = findClass(classId) as? KaNamedClassSymbol ?: return@analyze null
+        val psi = classSymbol.psi ?: return@analyze null
+        // Project sources were already swept; finding nothing there was authoritative.
+        val virtualFile = psi.containingFile?.virtualFile ?: return@analyze null
+        if (fileIndex.isInContent(virtualFile)) {
+          psi.containingFile?.let(onDeclarationFile)
+          return@analyze null
+        }
+        val isAssistedFactory = classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)
+        if (isAssistedFactory && !lookup.isConcrete) {
+          return@analyze null
+        }
+        val binding =
+          resolveClassBinding(classSymbol, request.key, options, pointerManager, onDeclarationFile)
+            ?: return@analyze null
+        ResolvedLibraryBinding(LibraryInjectBindingId(binding.typeKey, virtualFile), binding)
+      }
+    return CapturedLibraryBinding(resolved, dependencies.build())
+  }
+
+  /** Request identity stays useful while its context pointer is being restored after an edit. */
+  private fun describeLookup(lookup: LibraryLookup): IndexBuildFile {
+    val request = lookup.request
+    val name = request.key.type.classId?.asFqNameString() ?: request.key.renderedType
+    val path = request.context.virtualFile?.presentableUrl ?: name
+    return IndexBuildFile(name, path, request.module.moduleDescription)
+  }
+
   /**
    * Hint-created providers have no source consumer entry, so their dependencies seed lookup too.
+   * Visibility is captured under read access before the collector applies source expansion limits.
    */
   @OptIn(KaPlatformInterface::class)
-  private fun enqueueBindingDependencies(queue: ArrayDeque<LibraryInjectRequest>) {
+  private fun bindingSeeds(
+    dependencies: SourceClassDependencies.Builder
+  ): List<LibraryBindingSeed> {
+    val seeds = mutableListOf<LibraryBindingSeed>()
     val fileIndex = ProjectFileIndex.getInstance(project)
     val useSites = sourceUseSitesByModule(project, graphs, contributions, consumers)
+    // Keep the selected context even if visibility filtering produces no requests or its pointer
+    // disappears before a worker starts. That change must invalidate this captured seed set.
+    for (context in useSites.values) {
+      context.containingFile?.let { dependencies.recordContext(it) }
+    }
     val seededFactoryUseSites =
-      if (sourceClassUseSites.isEmpty()) null
-      else {
+      if (sourceClassUseSites.isEmpty()) {
+        null
+      } else {
         Collections.newSetFromMap(
           IdentityHashMap<Map<KaModule, SmartPsiElementPointer<out KtElement>>, Boolean>()
         )
@@ -175,11 +264,20 @@ internal class LibraryIndexPostProcessor(
     val scopes = HashMap<KaModule, DeclarationResolutionScope>()
     for (binding in bindings) {
       ProgressManager.checkCanceled()
-      if (binding.dependencies.isEmpty()) continue
-      // Graph member parameters already have consumers with their selected graph owners.
-      if (binding.ownerGraphId != null) continue
       val declaration = binding.pointer.element ?: continue
       val virtualFile = binding.pointer.virtualFile ?: continue
+      if (fileIndex.isInContent(virtualFile)) {
+        // Seed dependencies were already captured in source metadata. This read only borrows the
+        // declaration as a lookup context; source signatures govern its retained cache identity.
+        declaration.containingFile?.let(dependencies::recordContext)
+      }
+      if (binding.dependencies.isEmpty()) {
+        continue
+      }
+      // Graph member parameters already have consumers with their selected graph owners.
+      if (binding.ownerGraphId != null) {
+        continue
+      }
       if (fileIndex.isInContent(virtualFile)) {
         // Ordinary source providers/injectables already contributed their parameter consumers.
         // Generated providers and concrete generic classes can own specialized dependencies.
@@ -189,55 +287,64 @@ internal class LibraryIndexPostProcessor(
             binding is KaBinding.ConstructorInjected ||
             binding is KaBinding.Provided && binding.isClassContribution ||
             binding is KaBinding.Alias && binding.isClassContribution
-        if (!needsSourceSeed) continue
-        if (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) {
+        if (!needsSourceSeed) {
+          continue
+        }
+        val needsExpansion =
+          binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected
+        if (needsExpansion) {
           val requestingModules = sourceClassUseSites[binding]
           if (requestingModules != null && seededFactoryUseSites?.add(requestingModules) == false) {
             continue
           }
           if (!requestingModules.isNullOrEmpty()) {
-            for (pointer in requestingModules.values) {
+            for ((module, pointer) in requestingModules) {
               val context = pointer.element ?: continue
-              if (!sourceClasses.mayExpandSourceBinding(binding, context)) continue
-              enqueueDependencies(binding, context, queue)
+              context.containingFile?.let { dependencies.recordContext(it) }
+              seeds += LibraryBindingSeed(binding, module, pointer, needsExpansion = true)
             }
             continue
           }
         }
         val context = declaration as? KtElement ?: continue
-        if (
-          (binding is KaBinding.AssistedFactory || binding is KaBinding.ConstructorInjected) &&
-            !sourceClasses.mayExpandSourceBinding(binding, context)
-        )
-          continue
-        enqueueDependencies(binding, context, queue)
+        val module = KaModuleProvider.getModule(project, context, useSiteModule = null)
+        seeds += LibraryBindingSeed(binding, module, ptr(context), needsExpansion)
         continue
       }
 
       for ((module, context) in useSites) {
         ProgressManager.checkCanceled()
         val availability = binding.hintAvailability
-        if (availability != null && !availability.isVisibleFrom(module)) continue
+        if (availability != null && !availability.isVisibleFrom(module)) {
+          continue
+        }
         val resolutionScope =
           scopes.getOrPut(module) {
             val platformScope = KaResolutionScope.forModule(module)
             DeclarationResolutionScope(platformScope::contains)
           }
-        if (!resolutionScope.contains(declaration)) continue
-        enqueueDependencies(binding, context, queue)
+        if (!resolutionScope.contains(declaration)) {
+          continue
+        }
+        seeds += LibraryBindingSeed(binding, module, ptr(context), needsExpansion = false)
       }
     }
+    return seeds
   }
 
   private fun enqueueDependencies(
     binding: KaBinding,
-    context: KtElement,
-    queue: ArrayDeque<LibraryInjectRequest>,
+    module: KaModule,
+    context: SmartPsiElementPointer<out KtElement>,
+    queue: ArrayDeque<SourceClassRequest>,
   ) {
     for (dependency in binding.dependencies) {
+      ProgressManager.checkCanceled()
       val key = dependency.typeKey
-      val classId = key.type.classId ?: continue
-      queue += LibraryInjectRequest(key, classId, context)
+      if (key.type.classId == null) {
+        continue
+      }
+      queue += SourceClassRequest(key, module, context)
     }
   }
 
@@ -245,14 +352,25 @@ internal class LibraryIndexPostProcessor(
     return pointerManager.createSmartPsiElementPointer(element)
   }
 
-  private data class LibraryInjectRequest(
-    val key: KaTypeKey,
-    val classId: ClassId,
-    val context: KtElement,
-    val direct: Boolean = false,
+  private class LibrarySeeds(
+    val requests: List<SourceClassRequest>,
+    val bindings: List<LibraryBindingSeed>,
+    val dependencies: SourceClassDependencies,
   )
 
-  private data class LibraryInjectRequestId(val key: KaTypeKey, val module: KaModule)
+  private class LibraryBindingSeed(
+    val binding: KaBinding,
+    val module: KaModule,
+    val context: SmartPsiElementPointer<out KtElement>,
+    val needsExpansion: Boolean,
+  )
+
+  private class LibraryLookup(val request: SourceClassRequest, val isConcrete: Boolean)
+
+  private class CapturedLibraryBinding(
+    val binding: ResolvedLibraryBinding?,
+    val dependencies: SourceClassDependencies,
+  )
 
   private data class LibraryInjectBindingId(val key: KaTypeKey, val file: VirtualFile)
 

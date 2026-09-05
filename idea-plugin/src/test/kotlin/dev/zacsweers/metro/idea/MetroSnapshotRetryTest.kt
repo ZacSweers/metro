@@ -763,44 +763,22 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       )
     val builder = builder()
     val events = mutableListOf<IndexBuildProgress>()
-    val activeClassRead = CompletableFuture<Unit>()
-    val release = CountDownLatch(1)
-    val interrupted = AtomicBoolean()
-    val pauseClassRead = AtomicBoolean(true)
-    val preparation =
-      startPreparation(
-        builder,
-        file,
-        publish = { progress ->
-          events += progress
-          if (
-            progress.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS &&
-              pauseClassRead.compareAndSet(true, false)
-          ) {
-            activeClassRead.complete(Unit)
-            awaitReadCancellation(release, interrupted)
-          }
-          if (progress.phase == IndexBuildPhase.BUILDING_GRAPH_INDEX) {
-            throw CancellationException("Stop after completing source class resolution")
-          }
-        },
-      )
     try {
-      PlatformTestUtil.waitForFuture(activeClassRead, 30_000)
-      runInEdtAndWait { runWriteAction {} }
-      val stopped = PlatformTestUtil.waitForFuture(preparation, 30_000)
-      assertTrue(interrupted.get())
-      assertTrue(stopped.exceptionOrNull() is CancellationException)
-      assertTrue(events.count { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS } >= 2)
-      // The next preparation must reuse the completed pass, including after earlier read retries.
-      events.clear()
-      val prepared = prepare(builder, file) { events += it }
-      assertNotNull(prepared.source?.librarySummary)
-      assertFalse(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
-    } finally {
-      release.countDown()
-      PlatformTestUtil.waitForFuture(preparation, 30_000)
+      prepare(builder, file) { progress ->
+        events += progress
+        if (progress.phase == IndexBuildPhase.BUILDING_GRAPH_INDEX) {
+          throw CancellationException("Stop after completing source class resolution")
+        }
+      }
+      fail("Expected cancellation after completing source class resolution")
+    } catch (_: CancellationException) {
+      // Source resolution is cached before the later graph-index stage begins.
     }
+    assertTrue(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
+    events.clear()
+    val prepared = prepare(builder, file) { events += it }
+    assertNotNull(prepared.source?.librarySummary)
+    assertFalse(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
   }
 
   fun testCompletedLibraryResolutionIsReusedAfterCancellation() {

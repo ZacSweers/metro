@@ -35,7 +35,6 @@ internal class SourceSnapshotScanner(
   private val fileShards: SourceFileShardCache,
   private val onShardRead: (KtFile, FileShard) -> Unit,
   private val containsRelevantAnnotation: (KtFile, Set<String>) -> Boolean,
-  private val poolSize: () -> Int = { 1 },
   private val captureFingerprints: (KtFile, FileShard) -> Map<VirtualFile, String> = { _, _ ->
     emptyMap()
   },
@@ -50,10 +49,11 @@ internal class SourceSnapshotScanner(
     pending: SourceSnapshotChanges,
     progress: IndexBuildProgressReporter,
     trace: IdeTraceOperation? = null,
+    parallelism: Int = 1,
     checkCurrent: () -> Unit,
   ): SourceSnapshot = coroutineScope {
-    // A settings change takes effect on the next scan. Each file has one owner in this pass.
-    val parallelism = poolSize().coerceIn(SOURCE_SCAN_POOL_SIZE_RANGE)
+    // The refresh captures its pool size once. Each file has one owner in this pass.
+    require(parallelism in SOURCE_SCAN_POOL_SIZE_RANGE)
     val orderedFiles = files.distinct()
     val transaction = SourceSnapshotTransaction(previous)
     val scan = SourceScanProgress(progress, orderedFiles.size + pending.requested.size, parallelism)
