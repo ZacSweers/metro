@@ -11,9 +11,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 
 /**
- * Reads independent items on a fixed pool and accepts results on the caller in input order. The
- * caller must supply distinct items. At most twice the worker count can await acceptance, including
- * active reads. Cancellation joins the entire pool before this call returns.
+ * Reads items on a bounded pool and accepts each result in input order on the caller's coroutine.
+ *
+ * A parallelism of one runs reads inline on the caller. Larger pools run reads on
+ * [Dispatchers.Default] and cap concurrent reads at `min(parallelism, size)`. At most twice the
+ * worker count of items can await acceptance. Active reads count toward that limit. [accept] cannot
+ * suspend.
+ *
+ * A failed read or acceptance fails the whole call. Earlier items may already be accepted by then.
+ * Callers must be able to discard that state. A `CancellationException` from a read propagates to
+ * the caller and leaves the caller's job active. Cancellation joins the entire pool before this
+ * call returns.
  */
 internal suspend fun <T, R> List<T>.parallelMap(
   parallelism: Int,
