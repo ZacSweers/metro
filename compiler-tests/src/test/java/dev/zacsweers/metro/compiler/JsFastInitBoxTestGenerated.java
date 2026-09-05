@@ -490,6 +490,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       }
 
       @Test
+      @TestMetadata("internalObjectBinding.kt")
+      public void testInternalObjectBinding() {
+        run("internalObjectBinding.kt");
+      }
+
+      @Test
       @TestMetadata("internalSetContributions.kt")
       public void testInternalSetContributions() {
         run("internalSetContributions.kt");
@@ -535,6 +541,12 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
       @TestMetadata("privateConstructorSkipped.kt")
       public void testPrivateConstructorSkipped() {
         run("privateConstructorSkipped.kt");
+      }
+
+      @Test
+      @TestMetadata("privateConstructorSkippedWithContributionProviders.kt")
+      public void testPrivateConstructorSkippedWithContributionProviders() {
+        run("privateConstructorSkippedWithContributionProviders.kt");
       }
 
       @Test

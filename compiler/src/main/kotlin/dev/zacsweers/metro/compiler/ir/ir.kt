@@ -351,9 +351,12 @@ internal fun IrClass.usesContributionProviderPath(
   if (annotationsIn(classIds.contributionProviderExclusionAnnotations).any()) return false
   if (!annotationsIn(classIds.contributesBindingLikeAnnotationsWithContainers).any()) return false
   // Can't generate a contribution provider if the inject constructor is private
-  val injectCtor =
-    findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)
-  if (injectCtor?.visibility == DescriptorVisibilities.PRIVATE) return false
+  // Object providers access the singleton instance, so its constructor visibility is irrelevant.
+  if (kind == ClassKind.CLASS) {
+    val injectCtor =
+      findInjectableConstructor(onlyUsePrimaryConstructor = false, classIds.injectLikeAnnotations)
+    if (injectCtor?.visibility == DescriptorVisibilities.PRIVATE) return false
+  }
   return true
 }
 
