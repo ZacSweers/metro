@@ -1172,6 +1172,70 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testParallelManualRefreshHandleSurvivesRetryAndCanceledObserver() {
+    withSourceScanPool(2) { testManualRefreshHandleSurvivesRetryAndCanceledObserver() }
+  }
+
+  fun testParallelManualRefreshUpdatesTypeAliases() {
+    withSourceScanPool(2) { testManualRefreshUpdatesTypeAliases() }
+  }
+
+  fun testSourceScanPoolChoiceIsReadForEachRefresh() = withResolutionTrace { recorder, sink ->
+    val settings = MetroSettings.getInstance(project).state
+    val automatic = settings.automaticallyRefreshGraphData
+    val debugging = settings.enableDebuggingOptions
+    val poolSize = settings.sourceScanPoolSize
+    settings.automaticallyRefreshGraphData = false
+    val expectedPools = linkedMapOf<String, String>()
+    try {
+      myFixture.addFileToProject(
+        "test/PooledBinding.kt",
+        "package test\n@dev.zacsweers.metro.Inject class PooledBinding",
+      )
+      val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+      withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+        for ((debug, size) in listOf(true to 2, true to 4, false to 4)) {
+          settings.enableDebuggingOptions = debug
+          settings.sourceScanPoolSize = size
+          appendBinding(file, "Pool${size}${if (debug) "Enabled" else "Disabled"}")
+          val request = checkNotNull(service.refreshGraphData())
+          expectedPools[request.id.toString()] = settings.effectiveSourceScanPoolSize.toString()
+          awaitCoordinator(service)
+          assertEquals(ManualRefreshOutcome.PUBLISHED, runBlocking { request.completion.await() })
+          assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+        }
+      }
+      recorder.stop()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+      val scans = sink.results("source.scan").filter { it.metadata["files.workers"] != null }
+      // Trace packets from different threads can arrive in a different order from the requests.
+      assertEquals(expectedPools.size, scans.size)
+      assertEquals(
+        expectedPools,
+        scans.associate { it.metadata["manualRequest"] to it.metadata["files.workers"] },
+      )
+    } finally {
+      settings.automaticallyRefreshGraphData = automatic
+      settings.enableDebuggingOptions = debugging
+      settings.sourceScanPoolSize = poolSize
+    }
+  }
+
+  /** Runs the existing service-level refresh contracts with explicitly enabled parallel reads. */
+  private fun withSourceScanPool(size: Int, block: () -> Unit) {
+    val settings = MetroSettings.getInstance(project).state
+    val debugging = settings.enableDebuggingOptions
+    val poolSize = settings.sourceScanPoolSize
+    settings.enableDebuggingOptions = true
+    settings.sourceScanPoolSize = size
+    try {
+      block()
+    } finally {
+      settings.enableDebuggingOptions = debugging
+      settings.sourceScanPoolSize = poolSize
+    }
+  }
+
   fun testNewFileAfterDiscoveryRestartsColdManualLoad() = withResolutionTrace { recorder, sink ->
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     withPausedColdManualRefresh { service, attempts, release ->
@@ -1913,6 +1977,70 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       settings.resolveFromLibraries = true
       settings.automaticallyRefreshGraphData = true
       service.settingsChanged()
+    }
+  }
+
+  fun testIndexBuildProgressReporterThrottlesWorkerActivityAndKeepsPoolBoundaries() {
+    var now = 0L
+    val progress = mutableListOf<IndexBuildProgress>()
+    val reporter =
+      IndexBuildProgressReporter(
+        publish = progress::add,
+        updateIntervalNanos = 250,
+        nanoTime = { now },
+      )
+    fun report(completed: Int, activeWorkers: Int) {
+      reporter.counted(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed,
+        total = 10,
+        activeWorkers = activeWorkers,
+        workerLimit = 2,
+      )
+    }
+
+    report(0, 0)
+    report(0, 1)
+    report(0, 2)
+    report(1, 1)
+    now = 250
+    report(1, 1)
+    now = 500
+    report(1, 1)
+    report(10, 1)
+    report(10, 0)
+    report(10, 0)
+    assertEquals(
+      listOf(0 to 0, 0 to 2, 1 to 1, 10 to 1, 10 to 0),
+      progress.map { it.completed to it.activeWorkers },
+    )
+
+    reporter.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
+    assertNull(progress.last().activeWorkers)
+    assertNull(progress.last().workerLimit)
+  }
+
+  fun testIndexBuildProgressRejectsInvalidWorkerCounts() {
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = 2,
+        workerLimit = 4,
+      )
+    val invalidChanges =
+      listOf<() -> IndexBuildProgress>(
+        { progress.copy(activeWorkers = -1) },
+        { progress.copy(activeWorkers = 5) },
+        { progress.copy(activeWorkers = null) },
+        { progress.copy(workerLimit = null) },
+        { progress.copy(workerLimit = 0) },
+        { progress.copy(phase = IndexBuildPhase.BUILDING_GRAPH_INDEX) },
+        { progress.copy(completed = null, total = null) },
+      )
+    for (change in invalidChanges) {
+      assertTrue(runCatching(change).exceptionOrNull() is IllegalArgumentException)
     }
   }
 
