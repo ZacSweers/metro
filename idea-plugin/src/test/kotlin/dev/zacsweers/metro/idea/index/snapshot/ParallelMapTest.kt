@@ -117,6 +117,79 @@ class ParallelMapTest : TestCase() {
     }
   }
 
+  fun testPooledSingleItemReadsOffTheCallerAndAcceptsOnce() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val caller = Thread.currentThread()
+      val accepted = mutableListOf<Pair<Int, Int>>()
+      listOf(42)
+        .parallelMap(
+          parallelism = 8,
+          read = { item ->
+            assertNotSame(caller, Thread.currentThread())
+            item * 2
+          },
+          accept = { item, result ->
+            assertSame(caller, Thread.currentThread())
+            accepted += item to result
+          },
+        )
+      assertEquals(listOf(42 to 84), accepted)
+    }
+  }
+
+  fun testPoolLargerThanInputReadsEveryItemAtOnce() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val started = AtomicInteger()
+      val allStarted = CompletableDeferred<Unit>()
+      val accepted = mutableListOf<Pair<Int, Int>>()
+      listOf(1, 2, 3)
+        .parallelMap(
+          parallelism = 8,
+          read = { item ->
+            if (started.incrementAndGet() == 3) {
+              allStarted.complete(Unit)
+            }
+            // Every read waits for the others, so fewer than three workers would hang here.
+            allStarted.await()
+            item * 2
+          },
+          accept = { item, result -> accepted += item to result },
+        )
+      assertEquals(listOf(1 to 2, 2 to 4, 3 to 6), accepted)
+    }
+  }
+
+  fun testDuplicateItemsAreReadAndAcceptedPerIndex() = runBlocking {
+    withTimeout(10_000.milliseconds) {
+      val reads = AtomicInteger()
+      val accepted = mutableListOf<Pair<String, Int>>()
+      listOf("a", "a", "b")
+        .parallelMap(
+          parallelism = 2,
+          read = { reads.incrementAndGet() },
+          accept = { item, result -> accepted += item to result },
+        )
+      assertEquals(listOf("a", "a", "b"), accepted.map { it.first })
+      assertEquals(listOf(1, 2, 3), accepted.map { it.second }.sorted())
+    }
+  }
+
+  fun testRejectsNonPositiveParallelism() = runBlocking {
+    for (parallelism in listOf(0, -1)) {
+      try {
+        listOf(1)
+          .parallelMap(
+            parallelism,
+            read = { fail("No read expected") },
+            accept = { _, _ -> fail("No accept expected") },
+          )
+        fail("Expected $parallelism to be rejected")
+      } catch (expected: IllegalArgumentException) {
+        assertTrue(expected.message!!.contains(parallelism.toString()))
+      }
+    }
+  }
+
   fun testParallelReadsHaveBoundedBacklogAndAcceptInOrderOnTheCaller() = runBlocking {
     withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
