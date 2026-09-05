@@ -7897,6 +7897,7 @@
 <li><strong>[FIR]</strong> Avoid annotation-cache races during concurrent IDE analysis.</li>
 <li><strong>[FIR/IR/interop]</strong> Fix recognition of <code>@get:BindsOptionalOf</code> properties when Dagger interop is enabled.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
+<li><strong>[IR]</strong> Fix missing bindings for internal contributed objects across modules when <code>generateContributionProviders</code>, <code>generateClassesInIr</code>, and <code>contributesAsInject</code> are enabled together.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
 <li><strong>[IR/interop]</strong> Fix <code>Class</code>-keyed maps wrapped in providers or lazy values when <code>KClass</code>/<code>Class</code> interop is enabled.</li>
 <li><strong>[IR/interop]</strong> Fix a runtime <code>ClassCastException</code> when a <code>Class</code>-keyed map is injected into a provider-created class across modules with <code>KClass</code>/<code>Class</code> interop enabled.</li>
