@@ -6,6 +6,8 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import javax.swing.JCheckBox
+import javax.swing.JSpinner
+import javax.swing.SpinnerNumberModel
 import junit.framework.TestCase
 import org.jdom.Element
 
@@ -60,10 +62,93 @@ class MetroSettingsTest : TestCase() {
       assertEquals(enabled, settings.state.enableDebuggingOptions)
     }
   }
+
+  fun testSourceAnalysisDefaultsToOneWorkerForNewAndExistingProjects() {
+    val existing =
+      XmlSerializer.deserialize(Element("MetroSettingsState"), MetroSettingsState::class.java)
+    for (state in listOf(MetroSettingsState(), existing)) {
+      assertEquals(1, state.sourceScanPoolSize)
+      assertEquals(1, state.effectiveSourceScanPoolSize)
+      state.enableDebuggingOptions = true
+      assertEquals(1, state.effectiveSourceScanPoolSize)
+    }
+  }
+
+  fun testSourceAnalysisPoolSizeIsPreservedWhileDebuggingIsDisabled() {
+    val state = MetroSettingsState().apply { sourceScanPoolSize = 4 }
+    val stored = XmlSerializer.serialize(state)
+    val settings = MetroSettings()
+    settings.loadState(XmlSerializer.deserialize(stored, MetroSettingsState::class.java))
+    assertEquals(4, settings.state.sourceScanPoolSize)
+    assertEquals(1, settings.state.effectiveSourceScanPoolSize)
+    settings.state.enableDebuggingOptions = true
+    assertEquals(4, settings.state.effectiveSourceScanPoolSize)
+    assertEquals(listOf("sourceScanPoolSize"), stored.children.map { it.getAttributeValue("name") })
+  }
+
+  fun testSourceAnalysisClampsStoredPoolSizes() {
+    for ((stored, expected) in listOf(-10 to 1, 0 to 1, 1 to 1, 4 to 4, 8 to 8, 64 to 8)) {
+      val state =
+        MetroSettingsState().apply {
+          enableDebuggingOptions = true
+          sourceScanPoolSize = stored
+        }
+      assertEquals(expected, state.effectiveSourceScanPoolSize)
+      assertEquals(stored, state.sourceScanPoolSize)
+      state.enableDebuggingOptions = false
+      assertEquals(1, state.effectiveSourceScanPoolSize)
+    }
+  }
 }
 
 /** Exercises dependent visibility using the real settings panel and its bound state. */
 class MetroSettingsConfigurableTest : BasePlatformTestCase() {
+  fun testSourceAnalysisPoolSizeAppearsOnlyWhileDebuggingIsSelected() {
+    val state = MetroSettings.getInstance(project).state
+    state.enableDebuggingOptions = false
+    state.sourceScanPoolSize = 1
+    val configurable = MetroSettingsConfigurable(project)
+    try {
+      val panel = configurable.createPanel()
+      val debugging =
+        UIUtil.findComponentsOfType(panel, JCheckBox::class.java).single {
+          it.text == "Enable debugging options"
+        }
+      val poolSize = UIUtil.findComponentsOfType(panel, JSpinner::class.java).single()
+      assertFalse(poolSize.isVisible)
+      assertEquals(1, poolSize.value)
+      val model = poolSize.model as SpinnerNumberModel
+      assertEquals(1, model.minimum)
+      assertEquals(8, model.maximum)
+
+      debugging.doClick()
+      assertTrue(poolSize.isVisible)
+      poolSize.value = 4
+      panel.apply()
+      assertEquals(4, state.sourceScanPoolSize)
+      assertEquals(4, state.effectiveSourceScanPoolSize)
+
+      debugging.doClick()
+      assertFalse(poolSize.isVisible)
+      panel.apply()
+      assertEquals(4, state.sourceScanPoolSize)
+      assertEquals(1, state.effectiveSourceScanPoolSize)
+
+      debugging.doClick()
+      assertTrue(poolSize.isVisible)
+      assertEquals(4, poolSize.value)
+      poolSize.value = 2
+      panel.reset()
+      assertEquals(4, poolSize.value)
+      assertFalse(debugging.isSelected)
+      assertFalse(poolSize.isVisible)
+    } finally {
+      configurable.disposeUIResources()
+      state.enableDebuggingOptions = false
+      state.sourceScanPoolSize = 1
+    }
+  }
+
   fun testThreadActivityAppearsOnlyWhileDebuggingOptionsAreSelected() {
     val state = MetroSettings.getInstance(project).state
     state.enableDebuggingOptions = false

@@ -6,6 +6,7 @@ import androidx.tracing.wire.TraceDriver
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.UserDataHolderBase
@@ -21,6 +22,7 @@ import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
+import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.snapshot.IndexInputs
 import dev.zacsweers.metro.idea.index.snapshot.IndexOptionsFingerprint
 import dev.zacsweers.metro.idea.index.snapshot.PreparedResolutionSnapshot
@@ -30,6 +32,7 @@ import dev.zacsweers.metro.idea.index.snapshot.ResolutionSnapshotTarget
 import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
 import dev.zacsweers.metro.idea.index.snapshot.SourceFileShardCache
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
+import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotConflictException
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
@@ -40,9 +43,12 @@ import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import java.lang.ref.Reference
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
@@ -61,6 +67,15 @@ import org.jetbrains.kotlin.psi.KtFile
 class MetroSnapshotRetryTest : BasePlatformTestCase() {
   override fun setUp() {
     super.setUp()
+    // Light fixtures retain their project service. Stop its automatic scans before this test's
+    // separate builder starts forcing shard revisions in the shared PSI cache.
+    MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
+    val service = project.service<MetroResolutionService>()
+    service.settingsChanged()
+    val drained = CompletableFuture.runAsync {
+      runBlocking { withTimeout(30_000) { service.awaitCoordinatorBarrier() } }
+    }
+    PlatformTestUtil.waitForFuture(drained, 30_000)
     project.setMetroOptions()
     module.addMetroRuntimeLibrary()
   }
@@ -283,6 +298,322 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     }
   }
 
+  fun testWriteActionRetriesBothParallelReadsAndKeepsCompletedCacheEntries() =
+    withSnapshotTrace { recorder, sink ->
+      IdempotenceChecker.disableRandomChecksUntil(testRootDisposable)
+      val file = configureTwoFiles()
+      val gate = ParallelReadGate()
+      val events = ConcurrentLinkedQueue<IndexBuildProgress>()
+      val workerSlots = ConcurrentLinkedQueue<Pair<VirtualFile, Int>>()
+      val builder =
+        builder(poolSize = 2) { readFile, shard ->
+          val current = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+          val slot = current.workerFiles.indexOfFirst { it?.name == readFile.name }
+          assertTrue("Expected an occupied slot for ${readFile.name}", slot >= 0)
+          workerSlots += readFile.virtualFile to slot
+          gate.onRead(readFile, shard)
+        }
+      val preparation =
+        startPreparation(
+          builder,
+          file,
+          recorder = recorder,
+          progressIntervalNanos = 0,
+          publish = events::add,
+        )
+      try {
+        PlatformTestUtil.waitForFuture(gate.active, 30_000)
+        assertEquals(2, gate.firstReads.size)
+        val occupied = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+        val occupiedFiles = occupied.workerFiles.filterNotNull()
+        assertEquals(
+          gate.firstReads.keys.map { it.name }.toSet(),
+          occupiedFiles.map { it.name }.toSet(),
+        )
+        assertTrue(occupiedFiles.all { it.module == module.name })
+        assertEquals("test/Example.kt", occupiedFiles.single { it.name == "Example.kt" }.path)
+        runInEdtAndWait { runWriteAction {} }
+        val prepared = awaitPreparation(preparation)
+        assertEquals(gate.firstReads.keys, gate.interrupted)
+        for ((readFile, cached) in gate.firstReads) {
+          assertSame(cached, prepared.source!!.shards[readFile])
+          val attempts = gate.reads.filter { it.first == readFile }
+          assertTrue("Expected a retry for ${readFile.name}", attempts.size >= 2)
+          assertTrue(attempts.all { it.second === cached })
+          val slots = workerSlots.filter { it.first == readFile }.map { it.second }
+          assertEquals("A read keeps its worker row across write retries", 1, slots.distinct().size)
+        }
+        val progress = events.filter { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+        assertTrue(progress.any { it.activeWorkers == 2 })
+        assertTrue(progress.all { it.workerLimit == 2 })
+        val completed = progress.last()
+        assertEquals(completed.total, completed.completed)
+        assertEquals(0, completed.activeWorkers)
+        assertEquals(listOf(null, null), completed.workerFiles)
+        assertEquals(
+          "Published snapshots survive later worker updates",
+          occupiedFiles,
+          occupied.workerFiles.filterNotNull(),
+        )
+        assertEquals(2, completed.reused)
+        assertEquals(0, completed.rebuilt)
+        assertEquals(1, events.count { it.phase == IndexBuildPhase.DISCOVERING_SOURCE_FILES })
+
+        recorder.stop()
+        runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+        val scan = sink.results("source.scan").single().metadata
+        assertEquals("completed", scan["outcome"])
+        assertEquals("2", scan["files.workers"])
+        assertEquals("2", scan["files.peakWorkers"])
+        assertEquals("2", scan["source.file.items"])
+        assertTrue(checkNotNull(scan["canceled_read_attempts"]).toInt() >= 2)
+        val items = sink.results("source.file.item").map { it.metadata }
+        assertEquals(2, items.size)
+        for (item in items) {
+          assertEquals("completed", item["outcome"])
+          assertEquals("reused", item["cache"])
+          assertTrue(checkNotNull(item["read_attempts"]).toInt() >= 2)
+          assertTrue(checkNotNull(item["canceled_read_attempts"]).toInt() >= 1)
+        }
+      } finally {
+        gate.release.countDown()
+        PlatformTestUtil.waitForFuture(preparation, 30_000)
+      }
+    }
+
+  fun testParallelReadsRejectConflictingDependencyFingerprintsBeforeAggregation() {
+    val file = configureTwoFiles()
+    val dependency = file.virtualFile
+    val events = mutableListOf<IndexBuildProgress>()
+    val builder =
+      builder(
+        poolSize = 2,
+        captureFingerprints = { readFile, _ -> mapOf(dependency to readFile.name) },
+      )
+    val preparation = startPreparation(builder, file, publish = events::add)
+    val result = PlatformTestUtil.waitForFuture(preparation, 30_000)
+    assertTrue(result.exceptionOrNull() is SourceSnapshotConflictException)
+    assertFalse(events.any { it.phase == IndexBuildPhase.COMBINING_DECLARATIONS })
+  }
+
+  fun testProgressPublishesPartiallyOccupiedPoolWhileReadsWait() {
+    val file = configureTwoFiles()
+    val gate = ParallelReadGate()
+    val occupied = CompletableFuture<IndexBuildProgress>()
+    val builder = builder(poolSize = 4, onShardRead = gate::onRead)
+    val preparation =
+      startPreparation(
+        builder,
+        file,
+        publish = { progress ->
+          if (progress.activeWorkers == 2 && progress.workerLimit == 4) {
+            occupied.complete(progress)
+          }
+        },
+      )
+    try {
+      PlatformTestUtil.waitForFuture(gate.active, 30_000)
+      val progress = PlatformTestUtil.waitForFuture(occupied, 30_000)
+      assertEquals(0, progress.completed)
+      assertEquals(4, progress.workerFiles.size)
+      assertEquals(
+        gate.firstReads.keys.map { it.name }.toSet(),
+        progress.workerFiles.filterNotNull().map { it.name }.toSet(),
+      )
+    } finally {
+      gate.release.countDown()
+      awaitPreparation(preparation)
+    }
+  }
+
+  fun testProgressShowsTheCurrentFileWithOneWorker() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val entered = CompletableFuture<Unit>()
+    val occupied = CompletableFuture<IndexBuildProgress>()
+    val release = CountDownLatch(1)
+    val events = ConcurrentLinkedQueue<IndexBuildProgress>()
+    val builder = builder { _, _ ->
+      entered.complete(Unit)
+      awaitReadCancellation(release, AtomicBoolean())
+    }
+    val preparation =
+      startPreparation(
+        builder,
+        file,
+        publish = { progress ->
+          events += progress
+          val current = progress.workerFiles.singleOrNull()
+          if (current?.name == file.name && current.module == module.name) {
+            occupied.complete(progress)
+          }
+        },
+      )
+    try {
+      PlatformTestUtil.waitForFuture(entered, 30_000)
+      val progress = PlatformTestUtil.waitForFuture(occupied, 30_000)
+      assertEquals(0, progress.completed)
+      assertEquals(1, progress.workerLimit)
+      assertEquals(1, progress.activeWorkers)
+      val current = checkNotNull(progress.workerFiles.single())
+      assertEquals(file.name, current.name)
+      assertTrue(current.path.endsWith(file.name))
+      assertEquals(module.name, current.module)
+      release.countDown()
+      awaitPreparation(preparation)
+      val completed = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+      assertEquals(listOf(null), completed.workerFiles)
+      assertEquals(current, progress.workerFiles.single())
+    } finally {
+      release.countDown()
+      PlatformTestUtil.waitForFuture(preparation, 30_000)
+    }
+  }
+
+  fun testParallelPreparationPreservesSerialOrderWhenTheSecondFileFinishesFirst() {
+    val file = configureTwoFiles()
+    val serial = prepare(builder(), file)
+    val serialSource = checkNotNull(serial.source)
+    val firstFile = serialSource.shardOrder.first()
+    val entered = CompletableFuture<Unit>()
+    val laterCompleted = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    val interrupted = AtomicBoolean()
+    val builder =
+      builder(poolSize = 2) { readFile, _ ->
+        if (readFile.virtualFile == firstFile) {
+          entered.complete(Unit)
+          awaitReadCancellation(release, interrupted)
+        }
+      }
+    val preparation =
+      startPreparation(
+        builder,
+        file,
+        progressIntervalNanos = 0,
+        publish = { progress ->
+          if (progress.phase == IndexBuildPhase.ANALYZING_DECLARATIONS && progress.completed == 1) {
+            laterCompleted.complete(Unit)
+          }
+        },
+      )
+    try {
+      PlatformTestUtil.waitForFuture(entered, 30_000)
+      PlatformTestUtil.waitForFuture(laterCompleted, 30_000)
+      release.countDown()
+      val parallel = awaitPreparation(preparation)
+      val parallelSource = checkNotNull(parallel.source)
+      assertEquals(serialSource.shardOrder, parallelSource.shardOrder)
+      for (readFile in serialSource.shardOrder) {
+        val serialShard = checkNotNull(serialSource.shards[readFile])
+        val parallelShard = checkNotNull(parallelSource.shards[readFile])
+        assertEquals(
+          serialShard.bindings.map { it.typeKey },
+          parallelShard.bindings.map { it.typeKey },
+        )
+        assertEquals(serialShard.consumers.map { it.key }, parallelShard.consumers.map { it.key })
+        assertEquals(serialShard.graphs.map { it.name }, parallelShard.graphs.map { it.name })
+        assertEquals(serialShard.dependencyFiles, parallelShard.dependencyFiles)
+        assertEquals(serialShard.sharedDeclarationFiles, parallelShard.sharedDeclarationFiles)
+        assertEquals(
+          serialSource.dependencyOwnersFor(readFile),
+          parallelSource.dependencyOwnersFor(readFile),
+        )
+        assertEquals(
+          serialSource.sharedDeclarationOwners[readFile],
+          parallelSource.sharedDeclarationOwners[readFile],
+        )
+      }
+      val serialIndex = serial.buildIndexes {}.values.single()
+      val parallelIndex = parallel.buildIndexes {}.values.single()
+      assertEquals(serialIndex.graphs.map { it.name }, parallelIndex.graphs.map { it.name })
+      val serialAccessor = serialIndex.accessorsFor(serialIndex.graphs.single()).single()
+      val parallelAccessor = parallelIndex.accessorsFor(parallelIndex.graphs.single()).single()
+      assertEquals(serialAccessor.key, parallelAccessor.key)
+      val serialBinding =
+        serialIndex.resolveConsumer(serialAccessor).uniformBindings.orEmpty().single()
+      val parallelBinding =
+        parallelIndex.resolveConsumer(parallelAccessor).uniformBindings.orEmpty().single()
+      assertEquals(serialBinding.typeKey, parallelBinding.typeKey)
+    } finally {
+      release.countDown()
+      PlatformTestUtil.waitForFuture(preparation, 30_000)
+    }
+  }
+
+  fun testParentCancellationJoinsBothParallelReadsBeforePreparationReturns() =
+    withSnapshotTrace { recorder, sink ->
+      val file = configureTwoFiles()
+      val gate = ParallelReadGate()
+      val parent = Job()
+      val events = ConcurrentLinkedQueue<IndexBuildProgress>()
+      val builder = builder(poolSize = 2, onShardRead = gate::onRead)
+      val preparation =
+        startPreparation(
+          builder,
+          file,
+          parentJob = parent,
+          recorder = recorder,
+          publish = events::add,
+        )
+      try {
+        PlatformTestUtil.waitForFuture(gate.active, 30_000)
+        val occupied = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+        val occupiedFiles = occupied.workerFiles.filterNotNull()
+        assertEquals(2, occupiedFiles.size)
+        parent.cancel()
+        val result = PlatformTestUtil.waitForFuture(preparation, 30_000)
+        assertTrue(result.exceptionOrNull() is CancellationException)
+        assertEquals(gate.firstReads.keys, gate.interrupted)
+        assertFalse(events.any { it.phase == IndexBuildPhase.COMBINING_DECLARATIONS })
+        val canceled = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
+        assertEquals(0, canceled.activeWorkers)
+        assertEquals(listOf(null, null), canceled.workerFiles)
+        assertEquals(occupiedFiles, occupied.workerFiles.filterNotNull())
+        recorder.stop()
+        runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+        val scan = sink.results("source.scan").single().metadata
+        assertEquals("canceled", scan["outcome"])
+        assertEquals("2", scan["files.peakWorkers"])
+        assertEquals("2", scan["source.file.items"])
+        val items = sink.results("source.file.item").map { it.metadata }
+        assertEquals(2, items.size)
+        assertTrue(items.all { it["outcome"] == "canceled" })
+      } finally {
+        parent.cancel()
+        gate.release.countDown()
+        PlatformTestUtil.waitForFuture(preparation, 30_000)
+      }
+    }
+
+  /** Both first reads retain their completed cache entries while waiting for real cancellation. */
+  private inner class ParallelReadGate {
+    val active = CompletableFuture<Unit>()
+    val release = CountDownLatch(1)
+    val reads = ConcurrentLinkedQueue<Pair<VirtualFile, FileShard>>()
+    val firstReads = ConcurrentHashMap<VirtualFile, FileShard>()
+    val interrupted = ConcurrentHashMap.newKeySet<VirtualFile>()
+    private val entered = AtomicInteger()
+
+    fun onRead(file: KtFile, shard: FileShard) {
+      val virtualFile = file.virtualFile
+      reads += virtualFile to shard
+      if (firstReads.putIfAbsent(virtualFile, shard) != null) {
+        return
+      }
+      if (entered.incrementAndGet() == 2) {
+        active.complete(Unit)
+      }
+      val canceled = AtomicBoolean()
+      try {
+        awaitReadCancellation(release, canceled)
+      } finally {
+        if (canceled.get()) {
+          interrupted += virtualFile
+        }
+      }
+    }
+  }
+
   /** Runs enabled tracing with an in-memory sink while the fixture exercises real read retries. */
   private fun withSnapshotTrace(block: (IdeTraceRecorder, RecordingIdeTraceSink) -> Unit) {
     val job = SupervisorJob()
@@ -445,44 +776,22 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       )
     val builder = builder()
     val events = mutableListOf<IndexBuildProgress>()
-    val activeClassRead = CompletableFuture<Unit>()
-    val release = CountDownLatch(1)
-    val interrupted = AtomicBoolean()
-    val pauseClassRead = AtomicBoolean(true)
-    val preparation =
-      startPreparation(
-        builder,
-        file,
-        publish = { progress ->
-          events += progress
-          if (
-            progress.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS &&
-              pauseClassRead.compareAndSet(true, false)
-          ) {
-            activeClassRead.complete(Unit)
-            awaitReadCancellation(release, interrupted)
-          }
-          if (progress.phase == IndexBuildPhase.BUILDING_GRAPH_INDEX) {
-            throw CancellationException("Stop after completing source class resolution")
-          }
-        },
-      )
     try {
-      PlatformTestUtil.waitForFuture(activeClassRead, 30_000)
-      runInEdtAndWait { runWriteAction {} }
-      val stopped = PlatformTestUtil.waitForFuture(preparation, 30_000)
-      assertTrue(interrupted.get())
-      assertTrue(stopped.exceptionOrNull() is CancellationException)
-      assertTrue(events.count { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS } >= 2)
-      // The next preparation must reuse the completed pass, including after earlier read retries.
-      events.clear()
-      val prepared = prepare(builder, file) { events += it }
-      assertNotNull(prepared.source?.librarySummary)
-      assertFalse(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
-    } finally {
-      release.countDown()
-      PlatformTestUtil.waitForFuture(preparation, 30_000)
+      prepare(builder, file) { progress ->
+        events += progress
+        if (progress.phase == IndexBuildPhase.BUILDING_GRAPH_INDEX) {
+          throw CancellationException("Stop after completing source class resolution")
+        }
+      }
+      fail("Expected cancellation after completing source class resolution")
+    } catch (_: CancellationException) {
+      // Source resolution is cached before the later graph-index stage begins.
     }
+    assertTrue(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
+    events.clear()
+    val prepared = prepare(builder, file) { events += it }
+    assertNotNull(prepared.source?.librarySummary)
+    assertFalse(events.any { it.phase == IndexBuildPhase.RESOLVING_CLASS_BINDINGS })
   }
 
   fun testCompletedLibraryResolutionIsReusedAfterCancellation() {
@@ -556,10 +865,17 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
 
   private fun builder(
     onCapture: (Set<VirtualFile>) -> Unit = {},
+    poolSize: Int = 1,
+    captureFingerprints: (KtFile, FileShard) -> Map<VirtualFile, String> = { _, _ -> emptyMap() },
     onShardRead: (KtFile, FileShard) -> Unit = { _, _ -> },
   ): ResolutionSnapshotBuilder {
     val inputCapture = ResolutionInputCapture(project) { _, _ -> }
-    return ResolutionSnapshotBuilder(project, onShardRead) { indexBuilder, declarationFiles ->
+    return ResolutionSnapshotBuilder(
+      project,
+      onShardRead,
+      sourceScanPoolSize = { poolSize },
+      captureSourceFingerprints = captureFingerprints,
+    ) { indexBuilder, declarationFiles ->
       inputCapture.capture(indexBuilder, declarationFiles)
       onCapture(declarationFiles)
     }
@@ -622,6 +938,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     parentJob: Job? = null,
     recorder: IdeTraceRecorder? = null,
     checkCurrent: () -> Unit = {},
+    progressIntervalNanos: Long = 250_000_000L,
     publish: (IndexBuildProgress) -> Unit = {},
   ): CompletableFuture<Result<PreparedResolutionSnapshot>> = CompletableFuture.supplyAsync {
     runCatching {
@@ -652,7 +969,8 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
                 invalidationRevision = revision,
               ),
             coldSweep = true,
-            progress = IndexBuildProgressReporter(publish),
+            progress =
+              IndexBuildProgressReporter(publish, updateIntervalNanos = progressIntervalNanos),
             generationToken = IndexGenerationToken.create(),
             trace = trace,
             checkCurrent = checkCurrent,

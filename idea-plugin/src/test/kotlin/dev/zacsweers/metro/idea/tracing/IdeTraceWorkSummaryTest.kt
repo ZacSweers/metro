@@ -3,11 +3,143 @@
 package dev.zacsweers.metro.idea.tracing
 
 import dev.zacsweers.metro.compiler.tracing.TraceScope
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import junit.framework.TestCase
 import kotlinx.coroutines.CancellationException
 
 /** Verifies bounded attribution independently of IDE scheduling and real clock speed. */
 class IdeTraceWorkSummaryTest : TestCase() {
+  fun testConcurrentWorkersKeepAllTotalsAndOneGlobalSlowestTwenty() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.file")
+      val finishing = CyclicBarrier(4)
+      runWorkers(4) { worker ->
+        for (sequence in 1..20) {
+          val index = worker * 20 + sequence
+          summary.measure { item ->
+            checkNotNull(item)
+            item.module =
+              if (index % 2 == 0) {
+                "app"
+              } else {
+                "library"
+              }
+            item.file = "src/File$index.kt"
+            item.cache =
+              if (index % 2 == 0) {
+                "rebuilt"
+              } else {
+                "reused"
+              }
+            item.measureRead {
+              item.stage("source.file.annotationScan") {
+                item.stage("source.file.annotationLookup") { clock.now++ }
+                clock.now += index - 1
+              }
+            }
+            // Workers reach the shared summary together, after building their own stage trees.
+            finishing.await(10, TimeUnit.SECONDS)
+          }
+        }
+      }
+      clock.now = 1410 // The fourth worker has the longest total work duration.
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      val items = intervals.filter { it.name == "source.file.item" }
+      assertEquals(80, items.size)
+      assertEquals(80, items.map { it.attributes["file"] }.toSet().size)
+      val ranked = items.filter { "rank" in it.attributes }
+      assertEquals(
+        (61..80).map { "src/File$it.kt" }.toSet(),
+        ranked.map { it.attributes["file"] }.toSet(),
+      )
+      assertEquals(
+        "src/File80.kt",
+        ranked.single { it.attributes["rank"] == "1" }.attributes["file"],
+      )
+      val parents = intervals.filter { it.name == "source.file.annotationScan" }
+      val children = intervals.filter { it.name == "source.file.annotationLookup" }
+      assertEquals(20, parents.size)
+      assertEquals(20, children.size)
+      for (item in ranked) {
+        val parent = parents.single { it.parentId == item.id }
+        val child = children.single { it.parentId == parent.id }
+        assertEquals(item.attributes["file"], child.attributes["file"])
+      }
+      val report = intervals.single { it.name == "source.file.summary" }.attributes
+      assertEquals("80", report["items"])
+      assertEquals("80", report["shown_items"])
+      assertEquals("20", report["detailed_items"])
+      assertEquals("3240", report["total_elapsed_ns"])
+      assertEquals("3240", report["read_elapsed_ns"])
+      assertEquals("80", report["read_attempts"])
+      assertEquals("0", report["outside_read_ns"])
+      assertEquals("summed_item_wall", report["timing"])
+      assertEquals("80", report["stage.source.file.annotationScan.attempts"])
+      assertEquals("3240", report["stage.source.file.annotationScan.elapsed_ns"])
+      assertEquals("80", report["stage.source.file.annotationLookup.elapsed_ns"])
+      assertEquals("40", report["stage_intervals_shown"])
+      assertEquals("120", report["stage_intervals_omitted"])
+      val modules =
+        intervals.filter { it.name == "source.file.module" }.associateBy { it.attributes["module"] }
+      assertEquals("40", modules.getValue("app").attributes["cache.rebuilt.count"])
+      assertEquals("1640", modules.getValue("app").attributes["total_elapsed_ns"])
+      assertEquals("40", modules.getValue("library").attributes["cache.reused.count"])
+      assertEquals("1600", modules.getValue("library").attributes["total_elapsed_ns"])
+    }
+  }
+
+  fun testCanceledWorkerContributesItsPartialReadAndStageAfterAllWorkersJoin() {
+    withTrace { operation, timeline, clock ->
+      val summary = IdeTraceWorkSummary(operation, "source.file")
+      val reading = CyclicBarrier(2)
+      val cancellation = CancellationException("Superseded")
+      runWorkers(2) { worker ->
+        try {
+          summary.measure { item ->
+            checkNotNull(item)
+            item.module = "app"
+            item.file = "src/File$worker.kt"
+            item.measureRead {
+              item.stage("source.file.annotationLookup") {
+                reading.await(10, TimeUnit.SECONDS)
+                clock.now += (worker + 1) * 20
+                if (worker == 0) {
+                  throw cancellation
+                }
+              }
+            }
+          }
+          assertEquals(1, worker)
+        } catch (actual: CancellationException) {
+          assertEquals(0, worker)
+          assertSame(cancellation, actual)
+        }
+      }
+      clock.now = 40
+      summary.report()
+      val intervals = timeline.lanes().flatMap { it.intervals }
+      val totals = intervals.single { it.name == "source.file.summary" }.attributes
+      assertEquals("2", totals["items"])
+      assertEquals("1", totals["outcome.completed.count"])
+      assertEquals("1", totals["outcome.canceled.count"])
+      assertEquals("60", totals["total_elapsed_ns"])
+      assertEquals("60", totals["read_elapsed_ns"])
+      assertEquals("20", totals["canceled_read_elapsed_ns"])
+      assertEquals("1", totals["canceled_read_attempts"])
+      assertEquals("1", totals["stage.source.file.annotationLookup.canceled_attempts"])
+      assertEquals("20", totals["stage.source.file.annotationLookup.canceled_elapsed_ns"])
+      val canceled = intervals.single {
+        it.name == "source.file.item" && it.attributes["outcome"] == "canceled"
+      }
+      assertEquals("src/File0.kt", canceled.attributes["file"])
+      val stage = intervals.single { it.parentId == canceled.id }
+      assertEquals("canceled", stage.attributes["outcome"])
+    }
+  }
+
   fun testEveryItemHasOneBarAndOnlySlowestTwentyAreRanked() {
     withTrace { operation, timeline, clock ->
       val summary = IdeTraceWorkSummary(operation, "source.file")
@@ -396,16 +528,39 @@ class IdeTraceWorkSummaryTest : TestCase() {
     val result = summary.measure { item ->
       assertNull(item)
       item?.file = error("Built disabled label")
+      item?.beginStage(error("Built disabled stage name"))
       item.measureRead {
-        calls++
-        42
+        item.stage("source.file.annotationLookup") {
+          calls++
+          42
+        }
       }
     }
     assertEquals(42, result)
     assertEquals(1, calls)
   }
 
-  private class Clock(var now: Long = 0)
+  /** Each worker advances a logical clock so concurrency tests have exact durations. */
+  private class Clock {
+    private val times = ThreadLocal.withInitial { 0L }
+    var now: Long
+      get() = times.get()
+      set(value) {
+        times.set(value)
+      }
+  }
+
+  /** Joins every worker before reporting; failed assertions are propagated through the futures. */
+  private fun runWorkers(count: Int, block: (Int) -> Unit) {
+    val executor = Executors.newFixedThreadPool(count)
+    try {
+      val futures = (0 until count).map { worker -> executor.submit { block(worker) } }
+      futures.forEach { it.get(20, TimeUnit.SECONDS) }
+    } finally {
+      executor.shutdownNow()
+      assertTrue("Trace workers did not stop", executor.awaitTermination(20, TimeUnit.SECONDS))
+    }
+  }
 
   private fun withTrace(
     timeline: IdeTraceTimeline = IdeTraceTimeline(),

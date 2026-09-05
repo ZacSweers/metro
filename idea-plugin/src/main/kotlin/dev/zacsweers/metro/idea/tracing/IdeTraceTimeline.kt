@@ -314,8 +314,14 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.collectLibraryInputs" -> "Collect library inputs"
       "source.file.item" -> "Analyze file"
       "source.class.item" -> "Resolve class"
+      "source.request.item" -> "Read source class"
+      "library.request.item" -> "Read library class"
+      "metadata.request.item" -> "Read dependency metadata"
       "source.file.module" -> "Source files by module"
       "source.class.module" -> "Class requests by module"
+      "source.request.module" -> "Source class reads by module"
+      "library.request.module" -> "Library class reads by module"
+      "metadata.request.module" -> "Metadata reads by module"
       "source.file.psi" -> "Load source PSI"
       "source.file.cacheLookup" -> "Read source shard cache"
       "source.file.imports" -> "Read source imports"
@@ -325,6 +331,7 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.file.declarationExtraction" -> "Extract Metro declaration"
       "source.file.dynamicGraphScan" -> "Find dynamic graph factories"
       "source.file.shardConstruction" -> "Construct source shard"
+      "source.file.fingerprints" -> "Capture shared declaration fingerprints"
       "source.class.analysisEntry" -> "Enter Kotlin analysis"
       "source.class.analysisSetup" -> "Locate requesting file"
       "source.class.findClass" -> "Find class symbol"
@@ -361,9 +368,15 @@ internal fun ideTraceDisplayName(name: String, attributes: Map<String, String>):
       "source.file.item",
       "presentation.build",
       "presentation.anchors" -> attributes["file"]
-      "source.class.item" -> attributes["class"]
+      "source.class.item",
+      "source.request.item",
+      "library.request.item",
+      "metadata.request.item" -> attributes["class"]
       "source.file.module",
-      "source.class.module" -> attributes["module"]
+      "source.class.module",
+      "source.request.module",
+      "library.request.module",
+      "metadata.request.module" -> attributes["module"]
       "validation.seal" -> attributes["graph"]
       else -> null
     }

@@ -16,6 +16,7 @@ import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
 import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
 import dev.zacsweers.metro.idea.tracing.phase
+import dev.zacsweers.metro.idea.tracing.phaseSuspend
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -23,31 +24,34 @@ import org.jetbrains.kotlin.analysis.api.projectStructure.KaModuleProvider
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtElement
 
-/** Captures source ownership, class expansion, and library seeds in the snapshot read action. */
-internal fun buildFinalizedSourceLibrarySummary(
+/** Captures ownership and library seeds around independently retryable class lookups. */
+internal suspend fun buildFinalizedSourceLibrarySummary(
   project: Project,
   source: SourceAggregate,
   sourceIndex: BindingIndex,
+  executor: SnapshotReadExecutor,
   trace: IdeTraceOperation? = null,
 ): FinalizedSourceLibrarySummary {
   val consumerOwnership =
-    trace.phase("source.consumerOwnership") {
-      ConsumerOwnershipBundle.build(sourceIndex)
+    trace.phaseSuspend("source.consumerOwnership") {
+      executor.read { ConsumerOwnershipBundle.build(sourceIndex) }
     }
   val sourceClasses =
-    trace.phase("source.resolveClassRequests") { phase ->
-      SourceClassBindingPostProcessor(
+    trace.phaseSuspend("source.resolveClassRequests") { phase ->
+      val processor = executor.read {
+        SourceClassBindingPostProcessor(
           project,
           source.bindings,
           source.consumers,
           consumerOwnership,
         )
-        .resolveInitial(phase)
+      }
+      processor.resolveInitial(executor, phase)
     }
   val completeSource = source.withAddedClassBindings(sourceClasses.addedBindings)
   val inputs =
-    trace.phase("source.collectLibraryInputs") {
-      completeSource.libraryInputs(project, sourceClasses, consumerOwnership)
+    trace.phaseSuspend("source.collectLibraryInputs") {
+      executor.read { completeSource.libraryInputs(project, sourceClasses, consumerOwnership) }
     }
   ProgressManager.checkCanceled()
   return FinalizedSourceLibrarySummary(inputs, consumerOwnership, sourceClasses)
@@ -58,7 +62,16 @@ internal data class FinalizedSourceLibrarySummary(
   val inputs: LibraryInputs,
   val consumerOwnership: ConsumerOwnershipBundle,
   val sourceClasses: SourceClassResolution,
-)
+) {
+  /** Semantic input comparison governs reuse once the current reads have been validated. */
+  fun withoutReadContexts(): FinalizedSourceLibrarySummary {
+    val retained = sourceClasses.withoutReadContexts()
+    if (retained === sourceClasses) {
+      return this
+    }
+    return copy(sourceClasses = retained)
+  }
+}
 
 /** Resolves requesting modules and source-class seeds while source pointers remain readable. */
 private fun SourceAggregate.libraryInputs(

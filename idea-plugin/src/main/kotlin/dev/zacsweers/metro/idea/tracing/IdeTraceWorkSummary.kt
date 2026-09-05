@@ -11,7 +11,10 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlinx.coroutines.CancellationException
 
-/** Emits item intervals within the capture budget and retains detailed stages for twenty items. */
+/**
+ * Collects worker-confined items under one lock and retains detailed stages for twenty items.
+ * Summed item and read durations include overlapping work from concurrent workers.
+ */
 internal class IdeTraceWorkSummary(
   private val operation: IdeTraceOperation,
   private val name: String,
@@ -64,24 +67,30 @@ internal class IdeTraceWorkSummary(
   private val totals = WorkTotals()
   private val modules = linkedMapOf<String, WorkTotals>()
   private val slowest = PriorityQueue<IdeTraceWorkItem>(compareBy { it.elapsed })
+  private val lock = Any()
 
   fun start(): IdeTraceWorkItem = IdeTraceWorkItem(operation::nowNanos)
 
   fun finish(item: IdeTraceWorkItem) {
+    // Summary contention belongs to the scan's elapsed time. End this item's timer before waiting.
     item.finish()
-    totals.add(item)
-    modules.getOrPut(item.module, ::WorkTotals).add(item)
-    if (slowest.size < MAX_SLOW_ITEMS) {
-      slowest += item
-    } else if (item.elapsed > slowest.peek().elapsed) {
-      emitItem(slowest.remove())
-      slowest += item
-    } else {
-      emitItem(item)
+    synchronized(lock) {
+      totals.add(item)
+      modules.getOrPut(item.module, ::WorkTotals).add(item)
+      if (slowest.size < MAX_SLOW_ITEMS) {
+        slowest += item
+      } else if (item.elapsed > slowest.peek().elapsed) {
+        emitItem(slowest.remove())
+        slowest += item
+      } else {
+        emitItem(item)
+      }
     }
   }
 
-  /** Called from finally so interrupted phases include completed and canceled work. */
+  /**
+   * Called once after every worker joins, including cancellation, to report the complete attempt.
+   */
   fun report() {
     for ((index, item) in slowest.sortedByDescending { it.elapsed }.withIndex()) {
       emitItem(item, rank = index + 1)
@@ -143,7 +152,7 @@ internal class IdeTraceWorkSummary(
     }
   }
 
-  /** Inclusive stage times can overlap when a stage contains other stages. */
+  /** Worker durations overlap; inclusive stage times also overlap with their nested stages. */
   private fun IdeTraceOperation.writeTotals(
     totals: WorkTotals,
     prefix: String = "",
@@ -154,6 +163,7 @@ internal class IdeTraceWorkSummary(
     attribute("${prefix}shown_items", totals.shownItems)
     attribute("${prefix}omitted_items", totals.items - totals.shownItems)
     attribute("${prefix}detailed_items", totals.detailedItems)
+    attribute("${prefix}timing", "summed_item_wall")
     attribute("${prefix}total_elapsed_ns", totals.elapsed)
     attribute("${prefix}shown_elapsed_ns", totals.shownElapsed)
     attribute("${prefix}omitted_elapsed_ns", totals.elapsed - totals.shownElapsed)

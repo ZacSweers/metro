@@ -51,6 +51,7 @@ import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.graph.auto.MetroPinnedGraphValidationService
 import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
+import dev.zacsweers.metro.idea.index.IndexBuildFile
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.MetroResolutionService
@@ -919,6 +920,195 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     DumbModeTestUtils.runInDumbModeSynchronously(project) {
       assertTrue(structure.children(root).isEmpty())
     }
+  }
+
+  fun testIndexBuildStatusPanelShowsCurrentSourceFilesBelowTheProgressBar() {
+    val panel = IndexBuildStatusPanel()
+    val first = IndexBuildFile("Graph.kt", "app/src/main/kotlin/Graph.kt", "app")
+    val second = IndexBuildFile("Graph.kt", "library/src/commonMain/kotlin/Graph.kt", "library")
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 4,
+        total = 10,
+        reused = 2,
+        rebuilt = 2,
+        activeWorkers = 2,
+        workerLimit = 4,
+        workerFiles = listOf(first, second, null, null),
+      )
+    panel.show(progress, showingPreviousData = true)
+    assertTrue(panel.workerFilesPanel.isVisible)
+    val rows = panel.workerFilesPanel.components.map { it as IndexBuildStatusPanel.WorkerFileRow }
+    assertEquals(listOf("1", "2", "3", "4"), rows.map { it.workerLabel.text })
+    assertEquals(
+      listOf(
+        "Graph.kt  app · app/src/main/kotlin",
+        "Graph.kt  library · library/src/commonMain/kotlin",
+        "Idle",
+        "Idle",
+      ),
+      rows.map { it.fileLabel.getCharSequence(false).toString() },
+    )
+    assertEquals("Worker 1: app · app/src/main/kotlin/Graph.kt", rows[0].toolTipText)
+    assertEquals(
+      "Worker 2: library · library/src/commonMain/kotlin/Graph.kt",
+      rows[1].fileLabel.toolTipText,
+    )
+    assertEquals("Worker 3: Idle", rows[2].toolTipText)
+    assertEquals(rows[0].toolTipText, rows[0].getAccessibleContext().accessibleName)
+    assertTrue(rows.all { it.fileLabel.icon != null })
+    assertTrue(rows.all { it.alignmentX == java.awt.Component.LEFT_ALIGNMENT })
+    assertTrue(panel.retainedDataLabel.isVisible)
+    assertEquals(
+      "Checking Metro source files (4 of 10 files, 2 reused, 2 rebuilt)",
+      panel.messageLabel.text,
+    )
+    assertEquals(4, panel.progressBar.value)
+
+    panel.setSize(850, panel.preferredSize.height)
+    layoutStatusPanel(panel)
+    val firstRow = javax.swing.SwingUtilities.convertPoint(rows[0], 0, 0, panel)
+    assertTrue(firstRow.y >= panel.progressBar.y + panel.progressBar.height)
+    val rowHeights = rows.map { it.height }
+
+    val nextFile =
+      IndexBuildFile("LongerFileName.kt", "app/src/main/kotlin/LongerFileName.kt", "app")
+    panel.show(progress.copy(workerFiles = listOf(nextFile, null, second, null)))
+    layoutStatusPanel(panel)
+    rows.forEachIndexed { slot, row -> assertSame(row, panel.workerFilesPanel.getComponent(slot)) }
+    assertEquals(
+      "LongerFileName.kt  app · app/src/main/kotlin",
+      rows[0].fileLabel.getCharSequence(false).toString(),
+    )
+    assertEquals("Idle", rows[1].fileLabel.getCharSequence(false).toString())
+    assertEquals(
+      "Graph.kt  library · library/src/commonMain/kotlin",
+      rows[2].fileLabel.getCharSequence(false).toString(),
+    )
+    assertEquals(rowHeights, rows.map { it.height })
+  }
+
+  fun testIndexBuildStatusPanelClipsLongWorkerPathsInANarrowWindow() {
+    val panel = IndexBuildStatusPanel()
+    panel.show(
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = 1,
+        workerLimit = 1,
+        workerFiles =
+          listOf(
+            IndexBuildFile(
+              "Dependencies.kt",
+              "feature/src/commonMain/kotlin/example/a/very/long/package/Dependencies.kt",
+              "feature",
+            )
+          ),
+      )
+    )
+    panel.setSize(240, panel.preferredSize.height)
+    layoutStatusPanel(panel)
+    val row = panel.workerFilesPanel.getComponent(0) as IndexBuildStatusPanel.WorkerFileRow
+    assertEquals(panel.workerFilesPanel.width, row.width)
+    assertTrue(row.fileLabel.width > 0)
+    assertTrue(row.fileLabel.x + row.fileLabel.width <= row.width)
+    assertTrue(row.fileLabel.preferredSize.width > row.fileLabel.width)
+    assertEquals(
+      "Worker 1: feature · feature/src/commonMain/kotlin/example/a/very/long/package/Dependencies.kt",
+      row.fileLabel.toolTipText,
+    )
+    val image =
+      java.awt.image.BufferedImage(
+        panel.width,
+        panel.height,
+        java.awt.image.BufferedImage.TYPE_INT_ARGB,
+      )
+    val graphics = image.createGraphics()
+    try {
+      panel.paint(graphics)
+    } finally {
+      graphics.dispose()
+    }
+  }
+
+  fun testIndexBuildStatusPanelShowsOneWorkerAndClearsFileRows() {
+    val panel = IndexBuildStatusPanel()
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 4,
+        total = 10,
+        activeWorkers = 1,
+        workerLimit = 1,
+        workerFiles = listOf(IndexBuildFile("Graph.kt", "src/Graph.kt")),
+      )
+    panel.show(progress)
+    assertTrue(panel.workerFilesPanel.isVisible)
+    assertEquals(1, panel.workerFilesPanel.componentCount)
+    val row = panel.workerFilesPanel.getComponent(0) as IndexBuildStatusPanel.WorkerFileRow
+    assertEquals("Graph.kt  src", row.fileLabel.getCharSequence(false).toString())
+
+    panel.show(IndexBuildProgress(IndexBuildPhase.READING_DEPENDENCY_METADATA))
+    assertFalse(panel.workerFilesPanel.isVisible)
+    assertEquals(0, panel.workerFilesPanel.componentCount)
+    panel.show(progress)
+    panel.showWaitingForIdeIndexing()
+    assertFalse(panel.workerFilesPanel.isVisible)
+    assertEquals(0, panel.workerFilesPanel.componentCount)
+    panel.show(progress)
+    panel.showRefreshQueued()
+    assertFalse(panel.workerFilesPanel.isVisible)
+    assertEquals(0, panel.workerFilesPanel.componentCount)
+    panel.show(progress)
+    panel.clear()
+    assertFalse(panel.workerFilesPanel.isVisible)
+    assertEquals(0, panel.workerFilesPanel.componentCount)
+  }
+
+  /**
+   * Lays out detached Swing components so row placement and clipping use actual component bounds.
+   */
+  private fun layoutStatusPanel(component: java.awt.Container) {
+    component.doLayout()
+    component.components.filterIsInstance<java.awt.Container>().forEach(::layoutStatusPanel)
+  }
+
+  fun testIndexBuildStatusPanelShowsClassAndMetadataWorkersAsTheQueueGrows() {
+    val panel = IndexBuildStatusPanel()
+    val current = IndexBuildFile("test.Example", "src/Example.kt", "app")
+    for (phase in
+      listOf(
+        IndexBuildPhase.RESOLVING_CLASS_BINDINGS,
+        IndexBuildPhase.RESOLVING_LIBRARY_CLASSES,
+        IndexBuildPhase.READING_DEPENDENCY_METADATA,
+      )) {
+      val progress =
+        IndexBuildProgress(
+          phase,
+          completed = 4,
+          total = 10,
+          activeWorkers = 1,
+          workerLimit = 2,
+          workerFiles = listOf(current, null),
+        )
+      panel.show(progress)
+      assertTrue(panel.progressBar.isIndeterminate)
+      assertEquals("${phase.message} (4 ${phase.unit} checked)", panel.messageLabel.text)
+      val row = panel.workerFilesPanel.getComponent(0) as IndexBuildStatusPanel.WorkerFileRow
+      assertEquals(
+        "test.Example  app · src/Example.kt",
+        row.fileLabel.getCharSequence(false).toString(),
+      )
+      assertEquals("Worker 1: test.Example · app · src/Example.kt", row.toolTipText)
+      panel.show(progress.copy(completed = 5, total = 20))
+      assertTrue(panel.progressBar.isIndeterminate)
+      assertSame(row, panel.workerFilesPanel.getComponent(0))
+      assertEquals("${phase.message} (5 ${phase.unit} checked)", panel.messageLabel.text)
+    }
+    panel.clear()
+    assertEquals(0, panel.workerFilesPanel.componentCount)
   }
 
   fun testIndexBuildStatusPanelShowsStagesAndCountedProgress() {

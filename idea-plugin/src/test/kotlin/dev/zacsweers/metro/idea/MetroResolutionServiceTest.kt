@@ -23,6 +23,7 @@ import dev.zacsweers.metro.compiler.graph.WrappedType
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
 import dev.zacsweers.metro.idea.index.AutomaticRefreshWindow
 import dev.zacsweers.metro.idea.index.ConsumerOwnershipBundle
+import dev.zacsweers.metro.idea.index.IndexBuildFile
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
@@ -1172,6 +1173,76 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
+  fun testParallelManualRefreshHandleSurvivesRetryAndCanceledObserver() {
+    withSourceScanPool(2) { testManualRefreshHandleSurvivesRetryAndCanceledObserver() }
+  }
+
+  fun testParallelManualRefreshUpdatesTypeAliases() {
+    withSourceScanPool(2) { testManualRefreshUpdatesTypeAliases() }
+  }
+
+  fun testSourceScanPoolChoiceIsReadForEachRefresh() = withResolutionTrace { recorder, sink ->
+    val settings = MetroSettings.getInstance(project).state
+    val automatic = settings.automaticallyRefreshGraphData
+    val debugging = settings.enableDebuggingOptions
+    val poolSize = settings.sourceScanPoolSize
+    settings.automaticallyRefreshGraphData = false
+    val expectedPools = linkedMapOf<String, String>()
+    try {
+      myFixture.addFileToProject(
+        "test/PooledBinding.kt",
+        "package test\n@dev.zacsweers.metro.Inject class PooledBinding",
+      )
+      val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+      withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
+        for ((debug, size) in listOf(true to 2, true to 4, false to 4)) {
+          settings.enableDebuggingOptions = debug
+          settings.sourceScanPoolSize = size
+          val debuggingState =
+            if (debug) {
+              "Enabled"
+            } else {
+              "Disabled"
+            }
+          appendBinding(file, "Pool${size}$debuggingState")
+          val request = checkNotNull(service.refreshGraphData())
+          expectedPools[request.id.toString()] = settings.effectiveSourceScanPoolSize.toString()
+          awaitCoordinator(service)
+          assertEquals(ManualRefreshOutcome.PUBLISHED, runBlocking { request.completion.await() })
+          assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
+        }
+      }
+      recorder.stop()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+      val scans = sink.results("source.scan").filter { it.metadata["files.workers"] != null }
+      // Trace packets from different threads can arrive in a different order from the requests.
+      assertEquals(expectedPools.size, scans.size)
+      assertEquals(
+        expectedPools,
+        scans.associate { it.metadata["manualRequest"] to it.metadata["files.workers"] },
+      )
+    } finally {
+      settings.automaticallyRefreshGraphData = automatic
+      settings.enableDebuggingOptions = debugging
+      settings.sourceScanPoolSize = poolSize
+    }
+  }
+
+  /** Runs the existing service-level refresh contracts with explicitly enabled parallel reads. */
+  private fun withSourceScanPool(size: Int, block: () -> Unit) {
+    val settings = MetroSettings.getInstance(project).state
+    val debugging = settings.enableDebuggingOptions
+    val poolSize = settings.sourceScanPoolSize
+    settings.enableDebuggingOptions = true
+    settings.sourceScanPoolSize = size
+    try {
+      block()
+    } finally {
+      settings.enableDebuggingOptions = debugging
+      settings.sourceScanPoolSize = poolSize
+    }
+  }
+
   fun testNewFileAfterDiscoveryRestartsColdManualLoad() = withResolutionTrace { recorder, sink ->
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     withPausedColdManualRefresh { service, attempts, release ->
@@ -1913,6 +1984,222 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       settings.resolveFromLibraries = true
       settings.automaticallyRefreshGraphData = true
       service.settingsChanged()
+    }
+  }
+
+  fun testIndexBuildProgressReporterThrottlesWorkerActivityAndKeepsPoolBoundaries() {
+    var now = 0L
+    val progress = mutableListOf<IndexBuildProgress>()
+    val reporter =
+      IndexBuildProgressReporter(
+        publish = progress::add,
+        updateIntervalNanos = 250,
+        nanoTime = { now },
+      )
+    fun report(completed: Int, activeWorkers: Int) {
+      reporter.counted(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed,
+        total = 10,
+        activeWorkers = activeWorkers,
+        workerLimit = 2,
+      )
+    }
+
+    report(0, 0)
+    report(0, 1)
+    report(0, 2)
+    report(1, 1)
+    now = 250
+    report(1, 1)
+    now = 500
+    report(1, 1)
+    report(10, 1)
+    report(10, 0)
+    report(10, 0)
+    assertEquals(
+      listOf(0 to 0, 0 to 2, 1 to 1, 10 to 1, 10 to 0),
+      progress.map { it.completed to it.activeWorkers },
+    )
+
+    reporter.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
+    assertNull(progress.last().activeWorkers)
+    assertNull(progress.last().workerLimit)
+  }
+
+  fun testIndexBuildProgressReporterKeepsDiscoveryWorkersVisibleBetweenBatches() {
+    val phases = IndexBuildPhase.entries.filter { it.discoversMoreWork }
+    for (phase in phases) {
+      var now = 0L
+      val progress = mutableListOf<IndexBuildProgress>()
+      val reporter =
+        IndexBuildProgressReporter(
+          publish = progress::add,
+          updateIntervalNanos = 250,
+          nanoTime = { now },
+        )
+      val first = IndexBuildFile("test.First", "src/First.kt", "app")
+      val second = IndexBuildFile("test.Second", "src/Second.kt", "app")
+      val third = IndexBuildFile("test.Third", "src/Third.kt", "app")
+      val fourth = IndexBuildFile("test.Fourth", "src/Fourth.kt", "app")
+      fun report(
+        completed: Int,
+        total: Int,
+        files: List<IndexBuildFile?>,
+        force: Boolean = false,
+      ) {
+        reporter.counted(
+          phase,
+          completed,
+          total,
+          activeWorkers = files.count { it != null },
+          workerLimit = 2,
+          workerFiles = files,
+          force = force,
+        )
+      }
+
+      report(0, 0, listOf(null, null), force = true)
+      report(0, 2, listOf(null, null))
+      report(0, 2, listOf(first, null))
+      report(0, 2, listOf(first, second))
+      val firstBatch = progress.last()
+      assertEquals(listOf(first, second), firstBatch.workerFiles)
+
+      // A drained frontier can immediately discover another batch in the same phase.
+      now = 100
+      report(1, 2, listOf(null, second))
+      report(2, 2, listOf(null, null))
+      report(2, 4, listOf(null, null))
+      report(2, 4, listOf(third, null))
+      report(2, 4, listOf(third, fourth))
+      assertSame(
+        "$phase should retain its sampled workers between batches",
+        firstBatch,
+        progress.last(),
+      )
+
+      // Batch completion must also leave the periodic update deadline intact.
+      now = 250
+      report(2, 4, listOf(third, fourth))
+      val secondBatch = progress.last()
+      assertEquals(listOf(third, fourth), secondBatch.workerFiles)
+      now = 300
+      report(4, 4, listOf(null, null))
+      assertSame(secondBatch, progress.last())
+
+      report(4, 4, listOf(null, null), force = true)
+      assertEquals(listOf(null, null), progress.last().workerFiles)
+      assertEquals(0, progress.last().activeWorkers)
+    }
+  }
+
+  fun testIndexBuildProgressRejectsInvalidWorkerCounts() {
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = 2,
+        workerLimit = 4,
+      )
+    val invalidChanges =
+      listOf<() -> IndexBuildProgress>(
+        { progress.copy(activeWorkers = -1) },
+        { progress.copy(activeWorkers = 5) },
+        { progress.copy(activeWorkers = null) },
+        { progress.copy(workerLimit = null) },
+        { progress.copy(workerLimit = 0) },
+        { progress.copy(phase = IndexBuildPhase.BUILDING_GRAPH_INDEX) },
+        { progress.copy(completed = null, total = null) },
+      )
+    for (change in invalidChanges) {
+      assertTrue(runCatching(change).exceptionOrNull() is IllegalArgumentException)
+    }
+  }
+
+  fun testIndexBuildProgressReporterPublishesFileChangesWithoutCountChanges() {
+    var now = 0L
+    val progress = mutableListOf<IndexBuildProgress>()
+    val reporter =
+      IndexBuildProgressReporter(
+        publish = progress::add,
+        updateIntervalNanos = 250,
+        nanoTime = { now },
+      )
+    val first = IndexBuildFile("First.kt", "src/First.kt", "app")
+    val second = IndexBuildFile("Second.kt", "src/Second.kt")
+    fun report(file: IndexBuildFile?, force: Boolean = false) {
+      val activeWorkers =
+        if (file == null) {
+          0
+        } else {
+          1
+        }
+      reporter.counted(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = activeWorkers,
+        workerLimit = 2,
+        workerFiles = listOf(file, null),
+        force = force,
+      )
+    }
+
+    report(first)
+    now = 100
+    report(second)
+    assertEquals(listOf(first), progress.map { it.workerFiles.first() })
+    now = 250
+    report(second)
+    now = 300
+    val secondWithModule = second.copy(module = "app")
+    report(secondWithModule)
+    now = 500
+    report(secondWithModule)
+    report(secondWithModule)
+    assertEquals(
+      listOf(first, second, secondWithModule),
+      progress.map { it.workerFiles.first() },
+    )
+    assertTrue(progress.all { it.completed == 1 && it.activeWorkers == 1 })
+
+    // Cancellation drains the rows immediately even when the file count is incomplete.
+    now = 550
+    report(null)
+    assertEquals(secondWithModule, progress.last().workerFiles.first())
+    report(null, force = true)
+    assertEquals(4, progress.size)
+    assertEquals(1, progress.last().completed)
+    assertEquals(10, progress.last().total)
+    assertEquals(0, progress.last().activeWorkers)
+    assertEquals(listOf(null, null), progress.last().workerFiles)
+
+    reporter.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
+    assertTrue(progress.last().workerFiles.isEmpty())
+  }
+
+  fun testIndexBuildProgressRejectsInconsistentWorkerFiles() {
+    val file = IndexBuildFile("Example.kt", "src/Example.kt", "app")
+    val progress =
+      IndexBuildProgress(
+        IndexBuildPhase.ANALYZING_DECLARATIONS,
+        completed = 1,
+        total = 10,
+        activeWorkers = 2,
+        workerLimit = 4,
+        workerFiles = listOf(file, null, file.copy(name = "Other.kt", path = "src/Other.kt"), null),
+      )
+    val invalidChanges =
+      listOf<() -> IndexBuildProgress>(
+        { progress.copy(workerFiles = listOf(file, file)) },
+        { progress.copy(workerFiles = listOf(null, null, null, null)) },
+        { progress.copy(workerFiles = listOf(file, file, file, null)) },
+        { progress.copy(activeWorkers = null, workerLimit = null) },
+      )
+    for (change in invalidChanges) {
+      assertTrue(runCatching(change).exceptionOrNull() is IllegalArgumentException)
     }
   }
 
