@@ -51,6 +51,36 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("ContributesToBindingContainer.kt")
+    public void testContributesToBindingContainer() {
+      run("ContributesToBindingContainer.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToBindingContainerInheritance.kt")
+    public void testContributesToBindingContainerInheritance() {
+      run("ContributesToBindingContainerInheritance.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToBindingContainerInheritanceCompiled.kt")
+    public void testContributesToBindingContainerInheritanceCompiled() {
+      run("ContributesToBindingContainerInheritanceCompiled.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToBindingContainerInheritanceUnresolved.kt")
+    public void testContributesToBindingContainerInheritanceUnresolved() {
+      run("ContributesToBindingContainerInheritanceUnresolved.kt");
+    }
+
+    @Test
+    @TestMetadata("ContributesToBindingContainerInterop.kt")
+    public void testContributesToBindingContainerInterop() {
+      run("ContributesToBindingContainerInterop.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt")
     public void testContributesToOnlyPermittedOnInterfacesOrBindingContainers() {
       run("ContributesToOnlyPermittedOnInterfacesOrBindingContainers.kt");

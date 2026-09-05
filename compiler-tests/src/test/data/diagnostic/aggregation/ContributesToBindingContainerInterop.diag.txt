@@ -1,0 +1,1 @@
+/ContributesToBindingContainerInterop.kt:10:11: warning: Consider making this a binding container with `@BindingContainer` instead

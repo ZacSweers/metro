@@ -6,6 +6,7 @@ Changelog
 
 ### Enhancements
 
+- **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`.
 - **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
 - **[IR]** Support suspend providers with switching providers.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.
@@ -23,6 +24,7 @@ Changelog
 - **[IDE]** Offer primary and secondary constructors when making a class injectable, including public secondary constructors with a private primary constructor.
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
+- **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.

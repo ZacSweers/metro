@@ -7,18 +7,23 @@
 // CHECK_REPORTS: merging-unmatched-exclusions-ir/kotlin/Unit
 
 @DependencyGraph(AppScope::class)
-interface AppGraph {
+interface AppGraph
+
+// The contributed accessor exercises FIR supertype merging alongside the binding container.
+@ContributesTo(AppScope::class)
+interface ChildGraphAccessor {
   val childGraph: ChildGraph
 }
 
 // FIR: This contributor replaces NonExistentModule, which doesn't exist as a contributor
 @ContributesTo(AppScope::class, replaces = [NonExistentModule::class])
-interface ReplacingSupertype {
+@BindingContainer
+object ReplacingContainer {
   @Provides fun provideString(): String = "hello"
 }
 
-// FIR: This contributor excludes NonExistentExcludedModule, which doesn't exist as a contributor
-@DependencyGraph(AppScope::class, excludes = [NonExistentExcludedModule::class])
+// FIR: Keep this exclusion in an independent scope so it has no contributed child graph.
+@DependencyGraph(ExcludingSupertypeGraph::class, excludes = [NonExistentExcludedModule::class])
 interface ExcludingSupertypeGraph
 
 // Placeholders - these exist but are NOT contributors
@@ -33,7 +38,8 @@ interface ChildGraph {
 }
 
 @ContributesTo(Unit::class, replaces = [NonExistentIrReplacement::class])
-interface ReplacingChildSupertype {
+@BindingContainer
+object ReplacingChildContainer {
   @Provides fun provideString(): String = "hello"
 }
 

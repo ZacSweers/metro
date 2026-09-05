@@ -1,0 +1,3 @@
+/Children.kt:37:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/Children.kt:42:11: warning: Consider making this a binding container with `@BindingContainer` instead

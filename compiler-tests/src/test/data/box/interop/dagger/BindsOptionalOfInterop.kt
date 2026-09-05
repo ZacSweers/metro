@@ -21,10 +21,14 @@ import dagger.Module
 import java.util.Optional
 
 @Module
-interface Bindings {
-  @BindsOptionalOf
-  fun optionalString(): String
+interface GetterBindings {
+  // Getter annotations must make a property-only module contribute its optional binding.
+  @get:BindsOptionalOf
+  val optionalString: String
+}
 
+@Module
+interface Bindings {
   @Named("qualified")
   @BindsOptionalOf
   fun qualifiedOptionalString(): String
@@ -37,7 +41,7 @@ interface Bindings {
   fun qualifiedOptionalInt(): Int
 }
 
-@Component(modules = [Bindings::class, ExternalBindings::class])
+@Component(modules = [Bindings::class, GetterBindings::class, ExternalBindings::class])
 interface ExampleGraph {
   val emptyOptionalAccessor: Optional<String>
   @Named("qualified") val qualifiedEmptyOptionalAccessor: Optional<String>

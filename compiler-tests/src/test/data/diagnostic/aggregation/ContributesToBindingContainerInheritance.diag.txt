@@ -1,0 +1,7 @@
+/ContributesToBindingContainerInheritance.kt:18:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainerInheritance.kt:23:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainerInheritance.kt:28:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainerInheritance.kt:33:11: warning: Consider making this a binding container with `@BindingContainer` instead

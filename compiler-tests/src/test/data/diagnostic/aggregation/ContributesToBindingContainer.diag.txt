@@ -1,0 +1,29 @@
+/ContributesToBindingContainer.kt:10:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:15:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:20:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:25:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:30:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:35:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:40:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:45:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:50:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:55:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:66:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:77:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:90:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:96:11: warning: Consider making this a binding container with `@BindingContainer` instead
+
+/ContributesToBindingContainer.kt:124:16: error: `@IntoSet`, `@IntoMap`, and `@ElementsIntoSet` must be used in conjunction with `@Provides` or `@Binds` annotations.
