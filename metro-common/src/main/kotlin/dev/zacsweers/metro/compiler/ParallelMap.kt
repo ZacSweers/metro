@@ -28,7 +28,6 @@ import kotlinx.coroutines.sync.Semaphore
  * the caller and leaves the caller's job active. Cancellation joins the entire pool before this
  * call returns.
  */
-@IgnorableReturnValue
 public suspend fun <T, R> List<T>.parallelMap(
   parallelism: Int,
   context: CoroutineContext = Dispatchers.Default,
@@ -45,7 +44,6 @@ public suspend fun <T, R> List<T>.parallelMap(
 }
 
 /** [parallelMap] with each item's index passed to both callbacks. */
-@IgnorableReturnValue
 public suspend fun <T, R> List<T>.parallelMapIndexed(
   parallelism: Int,
   context: CoroutineContext = Dispatchers.Default,
