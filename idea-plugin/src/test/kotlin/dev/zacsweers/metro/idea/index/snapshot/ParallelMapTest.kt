@@ -7,6 +7,7 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import junit.framework.TestCase
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
@@ -44,7 +45,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testPooledReadsRunConcurrentlyOffTheCallerThread() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val readThreads = ConcurrentHashMap.newKeySet<Thread>()
       val rendezvous = CyclicBarrier(2)
@@ -70,7 +71,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testParallelReadsHaveBoundedBacklogAndAcceptInOrderOnTheCaller() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val caller = Thread.currentThread()
       val firstStarted = CompletableDeferred<Unit>()
       val releaseFirst = CompletableDeferred<Unit>()
@@ -118,7 +119,7 @@ class ParallelMapTest : TestCase() {
       windowFilled.await()
       assertEquals(2, peak.get())
       assertTrue(accepted.isEmpty())
-      assertNull(withTimeoutOrNull(250) { beyondWindowStarted.await() })
+      assertNull(withTimeoutOrNull(250.milliseconds) { beyondWindowStarted.await() })
       releaseFirst.complete(Unit)
       scan.await()
       assertEquals(
@@ -137,7 +138,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testReadFailureCancelsAndJoinsOtherWorkers() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
       val failure = IllegalStateException("Read failed")
@@ -168,7 +169,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testReadCancellationStopsThePool() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
       val cancellation = CancellationException("Read superseded")
@@ -199,7 +200,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testCollectorFailureCancelsAndJoinsWorkers() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val otherStarted = CompletableDeferred<Unit>()
       val otherStopped = CompletableDeferred<Unit>()
       val failure = IllegalStateException("Conflicting result")
@@ -231,7 +232,7 @@ class ParallelMapTest : TestCase() {
   }
 
   fun testParentCancellationWaitsForWorkerCleanup() = runBlocking {
-    withTimeout(10_000) {
+    withTimeout(10_000.milliseconds) {
       val bothStarted = CompletableDeferred<Unit>()
       val cleanupStarted = CompletableDeferred<Unit>()
       val releaseCleanup = CompletableDeferred<Unit>()
