@@ -377,7 +377,7 @@ internal class SourceClassBindingPostProcessor(
         // owns its dependency shape. Capture later use sites against that canonical cache entry.
         val existing = read?.cacheIdentity?.let(classBindings::get)
         val canonicalRead =
-          if (existing != null && existing !== read?.binding) {
+          if (existing != null && existing !== read.binding) {
             executor.read { captureRead(request, work) }
           } else {
             read
