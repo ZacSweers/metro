@@ -34,6 +34,9 @@ import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.ContributionEntry
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.phase
+import dev.zacsweers.metro.idea.tracing.phaseSuspend
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -79,6 +82,7 @@ internal class ResolutionSnapshotBuilder(
     coldSweep: Boolean,
     progress: IndexBuildProgressReporter,
     generationToken: IndexGenerationToken,
+    trace: IdeTraceOperation? = null,
     checkCurrent: () -> Unit,
   ): PreparedResolutionSnapshot {
     currentCoroutineContext().ensureActive()
@@ -93,27 +97,34 @@ internal class ResolutionSnapshotBuilder(
     }
 
     val collectedSource =
-      if (coldSweep) {
-        coldSweep(
-          targets.first().key.fingerprint.options,
-          inputs,
-          pending,
-          progress,
-          checkCurrent,
-        )
-      } else {
-        incremental(checkNotNull(previous), inputs, pending, progress, checkCurrent)
+      trace.phaseSuspend("source.scan") { sourceTrace ->
+        if (coldSweep) {
+          coldSweep(
+            targets.first().key.fingerprint.options,
+            inputs,
+            pending,
+            progress,
+            sourceTrace,
+            checkCurrent,
+          )
+        } else {
+          incremental(checkNotNull(previous), inputs, pending, progress, sourceTrace, checkCurrent)
+        }
       }
     checkCurrent()
 
     progress.phase(IndexBuildPhase.COMBINING_DECLARATIONS)
     val rawSource =
-      readSnapshotStage(project, checkCurrent) {
-        aggregateSource(collectedSource, progress)
+      trace.phaseSuspend("source.aggregate") { phase ->
+        readSnapshotStage(project, checkCurrent, phase) {
+          aggregateSource(collectedSource, progress)
+        }
       }
     val summary =
-      readSnapshotStage(project, checkCurrent) {
-        sourceLibrarySummary(collectedSource, rawSource, pending, progress)
+      trace.phaseSuspend("source.resolveClasses") { phase ->
+        readSnapshotStage(project, checkCurrent, phase) {
+          sourceLibrarySummary(collectedSource, rawSource, pending, progress, phase)
+        }
       }
     val finalizedSource = collectedSource.withLibrarySummary(summary)
     val classDependencies =
@@ -128,8 +139,10 @@ internal class ResolutionSnapshotBuilder(
       checkCurrent()
       val library =
         if (key.resolveFromLibraries) {
-          readSnapshotStage(project, checkCurrent) {
-            libraryShardFor(key.fingerprint, inputs.roots, source, summary, progress)
+          trace.phaseSuspend("library.resolve") { phase ->
+            readSnapshotStage(project, checkCurrent, phase) {
+              libraryShardFor(key.fingerprint, inputs.roots, source, summary, progress, phase)
+            }
           }
         } else {
           LibraryShard.EMPTY
@@ -137,28 +150,30 @@ internal class ResolutionSnapshotBuilder(
       classDependencies.include(library.sourceDependencies)
       progress.phase(IndexBuildPhase.BUILDING_GRAPH_INDEX)
       val indexBuilder =
-        readSnapshotStage(project, checkCurrent) {
-          val composedSource =
-            source
-              .withLibraryGraphs(library.graphDeclarations)
-              .withGraphInterfaces(library.graphInterfaces)
-          // A retried capture starts with a fresh builder so canceled pointer capture leaves no
-          // state.
-          val builder =
-            BindingIndexBuilder(generationToken).apply {
-              bindings += composedSource.bindings + library.bindings
-              consumers += composedSource.consumers
-              graphs += composedSource.graphs
-              contributions += source.contributions + library.contributions
-              assistedSites += source.assistedSites
-              bindingContainers += source.bindingContainers
-              incompleteClassBindings +=
-                if (key.resolveFromLibraries) library.incompleteBindings
-                else summary.sourceClasses.incompleteBindings
-              dynamicGraphs += source.dynamicGraphs
-            }
-          captureResolutionInputs(builder, declarationSignatureFiles)
-          builder
+        trace.phaseSuspend("index.captureInputs") { phase ->
+          readSnapshotStage(project, checkCurrent, phase) {
+            val composedSource =
+              source
+                .withLibraryGraphs(library.graphDeclarations)
+                .withGraphInterfaces(library.graphInterfaces)
+            // A retried capture starts with a fresh builder so canceled pointer capture leaves no
+            // state.
+            val builder =
+              BindingIndexBuilder(generationToken).apply {
+                bindings += composedSource.bindings + library.bindings
+                consumers += composedSource.consumers
+                graphs += composedSource.graphs
+                contributions += source.contributions + library.contributions
+                assistedSites += source.assistedSites
+                bindingContainers += source.bindingContainers
+                incompleteClassBindings +=
+                  if (key.resolveFromLibraries) library.incompleteBindings
+                  else summary.sourceClasses.incompleteBindings
+                dynamicGraphs += source.dynamicGraphs
+              }
+            captureResolutionInputs(builder, declarationSignatureFiles)
+            builder
+          }
         }
       buildersByKey[key] = indexBuilder
       for (module in modules) {
@@ -181,17 +196,24 @@ internal class ResolutionSnapshotBuilder(
     source: SourceAggregate,
     pending: SourceSnapshotChanges,
     progress: IndexBuildProgressReporter,
+    trace: IdeTraceOperation?,
   ): FinalizedSourceLibrarySummary {
     collected.librarySummary?.let {
+      trace?.attribute("cache", "snapshot")
       return it
     }
     val cached = cachedSourceSummary
     if (cached != null && cached.matches(collected, pending.invalidationRevision)) {
+      trace?.attribute("cache", "reused")
       return cached.summary
     }
+    trace?.attribute("cache", "miss")
     progress.phase(IndexBuildPhase.RESOLVING_CLASS_BINDINGS)
-    val summary =
-      buildFinalizedSourceLibrarySummary(project, source, buildSourceOwnershipIndex(source))
+    val ownershipIndex =
+      trace.phase("source.buildOwnershipIndex") {
+        buildSourceOwnershipIndex(source)
+      }
+    val summary = buildFinalizedSourceLibrarySummary(project, source, ownershipIndex, trace)
     cachedSourceSummary =
       CachedSourceLibrarySummary(collected, pending.invalidationRevision, summary)
     return summary
@@ -217,18 +239,21 @@ internal class ResolutionSnapshotBuilder(
     inputs: IndexInputs,
     pending: SourceSnapshotChanges,
     progress: IndexBuildProgressReporter,
+    trace: IdeTraceOperation?,
     checkCurrent: () -> Unit,
   ): SourceSnapshot {
     progress.phase(IndexBuildPhase.DISCOVERING_SOURCE_FILES)
     val discovery =
-      readSnapshotStage(project, checkCurrent) {
-        val annotationIds = projectSweepAnnotationIds(options)
-        val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
-        SourceFileDiscovery(
-          candidateFiles(annotationIds, shortNames),
-          shortNames,
-          moduleFingerprints(),
-        )
+      trace.phaseSuspend("source.discover") { phase ->
+        readSnapshotStage(project, checkCurrent, phase) {
+          val annotationIds = projectSweepAnnotationIds(options)
+          val shortNames = annotationIds.mapToSet { it.shortClassName.asString() }
+          SourceFileDiscovery(
+            candidateFiles(annotationIds, shortNames),
+            shortNames,
+            moduleFingerprints(),
+          )
+        }
       }
     onSourceFilesScheduled(
       buildSet {
@@ -244,6 +269,7 @@ internal class ResolutionSnapshotBuilder(
       shortNames = discovery.shortNames,
       pending = pending,
       progress = progress,
+      trace = trace,
       checkCurrent = checkCurrent,
     )
   }
@@ -253,6 +279,7 @@ internal class ResolutionSnapshotBuilder(
     inputs: IndexInputs,
     pending: SourceSnapshotChanges,
     progress: IndexBuildProgressReporter,
+    trace: IdeTraceOperation?,
     checkCurrent: () -> Unit,
   ): SourceSnapshot {
     val dirty =
@@ -273,6 +300,7 @@ internal class ResolutionSnapshotBuilder(
     )
     if (dirty.isEmpty() && pending.requested.isEmpty()) {
       // Output-only compiler-option changes update inputs without touching any shard.
+      trace?.attribute("cache", "unchanged")
       return if (prev.inputs == inputs) prev else prev.withInputs(inputs)
     }
     return sourceScanner.scan(
@@ -283,6 +311,7 @@ internal class ResolutionSnapshotBuilder(
       shortNames = prev.shortNames,
       pending = pending,
       progress = progress,
+      trace = trace,
       checkCurrent = checkCurrent,
     )
   }
@@ -293,24 +322,32 @@ internal class ResolutionSnapshotBuilder(
     source: SourceAggregate,
     summary: FinalizedSourceLibrarySummary,
     progress: IndexBuildProgressReporter,
+    trace: IdeTraceOperation?,
   ): LibraryShard {
     val key =
       LibraryCacheKey(fingerprint, rootsGeneration, summary.inputs, summary.consumerOwnership)
     libraryShards[key]?.let {
-      if (it.sourceDependencies.isCurrent()) return it
+      if (it.sourceDependencies.isCurrent()) {
+        trace?.attribute("cache", "reused")
+        return it
+      }
+      trace?.attribute("sourceDependenciesChanged", true)
     }
+    trace?.attribute("cache", "miss")
 
     progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
     val metadata =
-      LibraryGraphDiscovery(
-          project,
-          fingerprint.options,
-          source.graphs,
-          source.contributions,
-          source.consumers,
-          source.graphInterfaceSurfaces,
-        )
-        .discover()
+      trace.phase("library.discoverMetadata") {
+        LibraryGraphDiscovery(
+            project,
+            fingerprint.options,
+            source.graphs,
+            source.contributions,
+            source.consumers,
+            source.graphInterfaceSurfaces,
+          )
+          .discover()
+      }
     val hints = metadata.contributions
     val sourceWithGraphs = source.withLibraryGraphs(metadata.declarations)
     val interfaces =
@@ -346,18 +383,25 @@ internal class ResolutionSnapshotBuilder(
     val baseBindingCount = bindings.size
     bindings += initialClasses.addedBindings.drop(summary.sourceClasses.addedBindings.size)
     val classResolution =
-      LibraryIndexPostProcessor(
-          project,
-          fingerprint.options,
-          bindings,
-          composed.consumers,
-          composed.graphs,
-          contributions,
-          initialClasses.classUseSites,
-          ownership,
-          initialClasses,
-        )
-        .postProcess()
+      trace.phase("library.resolveClasses") {
+        LibraryIndexPostProcessor(
+            project,
+            fingerprint.options,
+            bindings,
+            composed.consumers,
+            composed.graphs,
+            contributions,
+            initialClasses.classUseSites,
+            ownership,
+            initialClasses,
+          )
+          .postProcess()
+      }
+    trace?.attribute("bindings.added", bindings.size - baseBindingCount)
+    trace?.attribute(
+      "bindings.incomplete",
+      classResolution.incompleteBindings.values.sumOf { it.size },
+    )
     val dependencies = SourceClassDependencies.Builder(SmartPointerManager.getInstance(project))
     dependencies.include(metadata.sourceDependencies)
     dependencies.include(classResolution.dependencies)

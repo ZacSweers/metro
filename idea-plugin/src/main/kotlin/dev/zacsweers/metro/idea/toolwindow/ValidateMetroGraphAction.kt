@@ -50,7 +50,7 @@ internal class ValidateMetroGraphAction : AnAction(), DumbAware {
         readAction {
           val ktClass = graphClassAt(project, file, offset) ?: return@readAction null
           val classId = ktClass.getClassId() ?: return@readAction null
-          val graphFile = ktClass.containingFile?.virtualFile
+          val graphFile = ktClass.containingFile.virtualFile
           GraphValidationTarget(
             classId,
             graphFile,

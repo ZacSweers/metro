@@ -14,6 +14,8 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.ClassBindingIdentity
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaTypeKey
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.phase
 import java.util.Collections
 import java.util.IdentityHashMap
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
@@ -26,18 +28,27 @@ internal fun buildFinalizedSourceLibrarySummary(
   project: Project,
   source: SourceAggregate,
   sourceIndex: BindingIndex,
+  trace: IdeTraceOperation? = null,
 ): FinalizedSourceLibrarySummary {
-  val consumerOwnership = ConsumerOwnershipBundle.build(sourceIndex)
+  val consumerOwnership =
+    trace.phase("source.consumerOwnership") {
+      ConsumerOwnershipBundle.build(sourceIndex)
+    }
   val sourceClasses =
-    SourceClassBindingPostProcessor(
-        project,
-        source.bindings,
-        source.consumers,
-        consumerOwnership,
-      )
-      .resolveInitial()
+    trace.phase("source.resolveClassRequests") { phase ->
+      SourceClassBindingPostProcessor(
+          project,
+          source.bindings,
+          source.consumers,
+          consumerOwnership,
+        )
+        .resolveInitial(phase)
+    }
   val completeSource = source.withAddedClassBindings(sourceClasses.addedBindings)
-  val inputs = completeSource.libraryInputs(project, sourceClasses, consumerOwnership)
+  val inputs =
+    trace.phase("source.collectLibraryInputs") {
+      completeSource.libraryInputs(project, sourceClasses, consumerOwnership)
+    }
   ProgressManager.checkCanceled()
   return FinalizedSourceLibrarySummary(inputs, consumerOwnership, sourceClasses)
 }

@@ -81,7 +81,7 @@ internal class LibraryGraphDiscovery(
     }
     for (contribution in sourceContributions) {
       val child = contribution.graphExtension ?: continue
-      val context = contribution.pointer.element as? KtElement ?: continue
+      val context = contribution.pointer.element ?: continue
       enqueue(child, context)
     }
     while (pendingScopes.isNotEmpty() || requests.isNotEmpty()) {

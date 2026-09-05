@@ -65,7 +65,7 @@ internal fun applyContribution(
           addMetroAnnotation(writable, it, updater)
         }
     val annotation = addMetroAnnotation(writable, annotationText, updater)
-    val hasKeyFields = mapAnnotation != null && !key?.editableArguments.isNullOrEmpty()
+    val hasKeyFields = mapAnnotation != null && key.editableArguments.isNotEmpty()
     if (!edit.scope.editable && !hasKeyFields) return@psiUpdate
     val template = updater.templateBuilder()
     if (edit.scope.editable) {
@@ -74,7 +74,7 @@ internal fun applyContribution(
       val receiver = checkNotNull(scopeArgument.receiverExpression)
       template.field(receiver, "scope", ConstantNode(receiver.text))
     }
-    if (mapAnnotation != null && key != null) {
+    if (mapAnnotation != null) {
       for (argument in mapAnnotation.valueArguments) {
         val name = argument.getArgumentName()?.asName?.asString() ?: continue
         if (name !in key.editableArguments) continue

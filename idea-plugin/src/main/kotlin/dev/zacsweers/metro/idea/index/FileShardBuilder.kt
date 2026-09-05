@@ -39,6 +39,8 @@ import dev.zacsweers.metro.idea.model.multibindingId
 import dev.zacsweers.metro.idea.qualifierAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotation
 import dev.zacsweers.metro.idea.scopeAnnotations
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
+import dev.zacsweers.metro.idea.tracing.stage
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KaAnnotated
@@ -135,16 +137,21 @@ internal class FileShardBuilder(
   val psiDependencies: Set<PsiFile>
     get() = cacheDependencies
 
-  fun buildShard(file: KtFile): FileShard {
+  /** Stage measurements stay with this invocation; shards and cached providers retain no trace. */
+  fun buildShard(file: KtFile, trace: IdeTraceWorkItem? = null): FileShard {
     // Read imports once per shard. Most files have no aliases, so their annotation groups retain
     // the original short-name-only path without seven repeated PSI import walks.
-    val aliasedImports = mutableMapOf<FqName, MutableSet<String>>()
-    for (directive in file.importDirectives) {
-      checkCanceled()
-      val alias = directive.aliasName ?: continue
-      val importedName = directive.importedFqName ?: continue
-      aliasedImports.getOrPut(importedName, ::mutableSetOf) += alias
-    }
+    val aliasedImports =
+      trace.stage("source.file.imports") {
+        val imports = mutableMapOf<FqName, MutableSet<String>>()
+        for (directive in file.importDirectives) {
+          checkCanceled()
+          val alias = directive.aliasName ?: continue
+          val importedName = directive.importedFqName ?: continue
+          imports.getOrPut(importedName, ::mutableSetOf) += alias
+        }
+        imports
+      }
 
     fun annotationNames(annotationIds: Set<ClassId>): Set<String> {
       val names = shortNames(annotationIds)
@@ -186,63 +193,71 @@ internal class FileShardBuilder(
       }
     }
 
-    PsiTreeUtil.processElements(file) { element ->
-      checkCanceled()
-      val entry = element as? KtAnnotationEntry ?: return@processElements true
-      val writtenName = entry.shortName?.asString() ?: return@processElements true
-      // Typealiases can introduce other spellings whose meaning depends on the current scope.
-      val shortName =
-        if (writtenName in knownAnnotationNames) writtenName
-        else {
-          val typeReference = entry.typeReference ?: return@processElements true
-          analyze(typeReference) {
-            val type = typeReference.type.fullyExpandedType as? KaClassType
-            type?.classId?.shortClassName?.asString() ?: writtenName
+    trace.stage("source.file.annotationScan") {
+      PsiTreeUtil.processElements(file) { element ->
+        checkCanceled()
+        val entry = element as? KtAnnotationEntry ?: return@processElements true
+        val writtenName = entry.shortName?.asString() ?: return@processElements true
+        // Typealiases can introduce other spellings whose meaning depends on the current scope.
+        val shortName =
+          trace.stage("source.file.annotationLookup") {
+            if (writtenName in knownAnnotationNames) writtenName
+            else {
+              val typeReference = entry.typeReference ?: return@processElements true
+              trace.stage("source.file.typealiasLookup") {
+                analyze(typeReference) {
+                  val type = typeReference.type.fullyExpandedType as? KaClassType
+                  type?.classId?.shortClassName?.asString() ?: writtenName
+                }
+              }
+            }
+          }
+        val declaration =
+          entry.getStrictParentOfType<KtDeclaration>() ?: return@processElements true
+        trace.stage("source.file.declarationExtraction") {
+          if (shortName in bindingCallableNames) processBindingCallable(declaration)
+          if (shortName in injectNames) processInjectAnnotated(declaration)
+          if (shortName in contributesNames) processContribution(declaration)
+          if (shortName in graphNames) processGraph(declaration)
+          if (shortName in assistedFactoryNames) processAssistedFactory(declaration)
+          if (shortName in containerNames) processBindingContainer(declaration)
+          if (options.enableCircuitCodegen && shortName in circuitNames) {
+            processCircuitInject(declaration)
           }
         }
-      val declaration = entry.getStrictParentOfType<KtDeclaration>() ?: return@processElements true
-      if (shortName in bindingCallableNames) processBindingCallable(declaration)
-      if (shortName in injectNames) processInjectAnnotated(declaration)
-      if (shortName in contributesNames) processContribution(declaration)
-      if (shortName in graphNames) processGraph(declaration)
-      if (shortName in assistedFactoryNames) processAssistedFactory(declaration)
-      if (shortName in containerNames) processBindingContainer(declaration)
-      if (options.enableCircuitCodegen && shortName in circuitNames) {
-        processCircuitInject(declaration)
+        true
       }
-      true
     }
-    PsiTreeUtil.processElements(file) { element ->
-      checkCanceled()
-      val call = element as? KtCallExpression ?: return@processElements true
-      val name = call.calleeExpression?.text ?: return@processElements true
-      if (name in dynamicGraphNames) processDynamicGraphCall(call)
-      true
+    trace.stage("source.file.dynamicGraphScan") {
+      PsiTreeUtil.processElements(file) { element ->
+        checkCanceled()
+        val call = element as? KtCallExpression ?: return@processElements true
+        val name = call.calleeExpression?.text ?: return@processElements true
+        if (name in dynamicGraphNames) processDynamicGraphCall(call)
+        true
+      }
     }
-    return FileShard(
-      bindings,
-      consumers,
-      graphs,
-      contributions,
-      assistedSites,
-      bindingContainerEntries,
-      factoryInputs,
-      dynamicGraphs,
-      cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
-      sharedDeclarationDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
-      graphInterfaces,
-    )
+    return trace.stage("source.file.shardConstruction") {
+      FileShard(
+        bindings,
+        consumers,
+        graphs,
+        contributions,
+        assistedSites,
+        bindingContainerEntries,
+        factoryInputs,
+        dynamicGraphs,
+        cacheDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
+        sharedDeclarationDependencies.mapNotNullTo(mutableSetOf()) { it.virtualFile },
+        graphInterfaces,
+      )
+    }
   }
 
   private fun processDynamicGraphCall(call: KtCallExpression) {
     analyze(call) {
       val function =
-        call
-          .resolveToCall()
-          ?.successfulFunctionCallOrNull()
-          ?.partiallyAppliedSymbol
-          ?.signature
-          ?.symbol ?: return@analyze
+        call.resolveToCall()?.successfulFunctionCallOrNull()?.signature?.symbol ?: return@analyze
       val isFactory = DYNAMIC_GRAPH_CALLABLES[function.callableId] ?: return@analyze
       val requestedType = call.expressionType?.fullyExpandedType as? KaClassType ?: return@analyze
       val requestedClass = requestedType.symbol as? KaNamedClassSymbol ?: return@analyze
@@ -606,7 +621,7 @@ internal class FileShardBuilder(
     if (classSymbol.origin == KaSymbolOrigin.LIBRARY) return
     if (!classSymbol.hasAnyAnnotation(options.assistedFactoryAnnotations)) return
     val declaration = classSymbol.psi as? KtClassOrObject ?: return
-    declaration.containingFile?.let(cacheDependencies::add)
+    cacheDependencies.add(declaration.containingFile)
     recordAnnotationDependencies(classSymbol, declaration)
     indexAssistedFactory(declaration, classSymbol, factoryType)
   }
@@ -868,7 +883,7 @@ internal class FileShardBuilder(
               referenced is KtTypeAlias ||
                 (referenced is KtProperty && referenced.hasModifier(KtTokens.CONST_KEYWORD))
             if (!isSharedDeclaration) continue
-            val referencedFile = referenced.containingFile ?: continue
+            val referencedFile = referenced.containingFile
             if (referencedFile !== useSiteFile) sharedDeclarationDependencies += referencedFile
           }
           true

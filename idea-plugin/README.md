@@ -183,6 +183,56 @@ Select a graph and use **More > Export Graph Debug Info** to write a local repor
 directory. Reports omit source bodies, absolute paths, and annotation literal values. They contain
 project and type identifiers, so review the file before sharing it.
 
+### Performance Tracing
+
+Select **Enable debugging options** in the **Debugging/Experimental** section under
+`Settings > Tools > Metro` to show the tracing controls. Debugging options are disabled by default.
+
+Right-click **Refresh** in the Metro tool window and select **Refresh with tracing**. Recording starts
+before the refresh is submitted, follows that request through retries and index publication, then
+saves after admitted work finishes. Later editor requests can happen after capture completion.
+A 10-minute safety deadline ends admission and marks the capture as partial if the refresh is still
+running.
+
+For other operations, use **Start Metro Performance Trace**, reproduce the issue, and select
+**Stop Metro Performance Trace**. This capture accepts work for 60 seconds. Both capture modes keep
+the existing caches and refresh policy. Stopping tracing or disabling debugging options ends
+admission and lets admitted operations finish. The refresh continues independently.
+
+The tool window shows **Tracing Metro refresh…** or **Tracing Metro work…** during recording,
+**Finishing traced work…** while admitted operations drain, and **Saving Metro performance trace…**
+during file output. Traces are saved locally in the IDE log directory and open in
+[Perfetto](https://ui.perfetto.dev). Trace metadata can contain project, module, file, and class names.
+Review the file before sharing it.
+
+**Metro operations** shows an overview of recorded work even while collapsed. Expand it to inspect
+full-duration bars such as **Analyze source declarations** and **Resolve source class dependencies**.
+Selecting a bar shows its outcome, cache counts, and request identity. File and class summaries report
+how many item bars the capture shows and omits, with elapsed time for each group. Each file and class
+request gets a named duration bar while the capture budget has room. The 20 slowest items in each
+phase also include detailed nested stages and a rank.
+
+Enable **Include thread activity** in the same settings section to add IDE thread slices and coroutine
+flow arrows alongside **Metro operations**. This option is off by default and applies to new captures.
+Thread activity increases recording overhead and trace size; the full-duration Metro operation bars
+remain available in the same trace.
+Expand the Java process and its threads, then select a coroutine slice to inspect its flow arrows.
+Its `operation_id` links the initial thread section to the final Metro operation bar.
+
+The slowest files include annotation lookup, declaration extraction, dynamic-graph scanning, and shard
+construction. Class requests separate analysis setup, symbol lookup, source checks, qualifier/options
+lookup, cache access, binding construction, and dependency expansion. Stage totals include all measured
+items and appear on phase and module summaries. Detailed stage intervals are limited to 64 per retained
+item; the item's metadata reports any omitted intervals. The logical timeline retains at most 20,000 events, with
+space reserved for slow-item details, enclosing phases, and summaries. Item summaries distinguish bars
+omitted by the capture limit from omitted stage detail. **Trace summary** reports omitted events.
+
+Durations measure wall time, including suspension. `read_elapsed_ns` measures time inside read-action
+callbacks; it includes canceled attempts and can include Kotlin analysis waits. Item bars
+also report `canceled_read_elapsed_ns` and `outside_read_ns`. Parent durations include their children.
+Use `debug.operation`, `debug.operation_id`, and `debug.parent_operation_id` for SQL analysis; display
+names include human-readable subjects. Duration bars carry final timing and outcome metadata.
+
 > TODO: Add a screenshot of the Metro tool window with a graph's binding categories expanded.
 
 ### Graph Validation
@@ -241,6 +291,8 @@ Project settings live under `Settings > Tools > Metro`.
 - Automatically validate the pinned graph after code changes (off by default)
 - Resolve bindings from compiled dependencies
 - Show "assisted" inlay hints for Circuit implicit assisted types
+- Enable debugging options (off by default)
+- Include thread activity in new captures (off by default; shown when debugging options are enabled)
 
 Turning off binding navigation hides editor decorations only. The Metro tool window and explicit
 graph validation remain available, and library resolution can still be configured independently.

@@ -65,7 +65,7 @@ internal class ResolutionInputCapture(
           val containingFile = element.containingFile
           val document = containingFile?.viewProvider?.document
           val line = document?.getLineNumber(element.textOffset)?.plus(1)
-          val location = if (line == null) containingFile?.name else "${containingFile?.name}:$line"
+          val location = if (line == null) containingFile?.name else "${containingFile.name}:$line"
           declarationDisplays[pointer] =
             DeclarationDisplay((element as? KtNamedDeclaration)?.name, location)
         }

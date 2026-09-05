@@ -16,7 +16,7 @@ internal fun validationSelectionVisitor(
     if (ancestor is MetroTreeNode.Diagnostic) diagnostic = ancestor
     ancestor = ancestor.parent
   }
-  val validation = ancestor as? MetroTreeNode.Validation ?: return null
+  val validation = ancestor ?: return null
   val result = validation.result
   val selectedDiagnostic = diagnostic?.diagnostic
   return TreeVisitor { path ->

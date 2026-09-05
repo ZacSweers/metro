@@ -68,13 +68,30 @@ internal class MetroNavigationService(
     onResolved: (List<PsiElement>) -> Unit,
   ): Job? = resolveTargets(owner, { owner.isDisposed }, targets, orderTargets, onResolved)
 
-  /** Disposing [owner] prevents its pending navigation callback from running. */
+  /**
+   * Disposing [owner] prevents its pending navigation callback from running. Each request keeps a
+   * checked child disposable until its job finishes so the guard retains its own disposal state.
+   */
   fun resolveTargets(
     owner: Disposable,
     targets: List<SmartPsiElementPointer<*>>,
     orderTargets: ((List<PsiElement>) -> List<PsiElement>)? = null,
     onResolved: (List<PsiElement>) -> Unit,
-  ): Job? = resolveTargets(owner, { Disposer.isDisposed(owner) }, targets, orderTargets, onResolved)
+  ): Job? {
+    val lifetime = Disposer.newCheckedDisposable()
+    // Project-owned requests also end when this service is unloaded with the plugin.
+    val parent = if (owner === project) this else owner
+    var job: Job? = null
+    try {
+      if (!Disposer.tryRegister(parent, lifetime)) return null
+      job = resolveTargets(owner, { lifetime.isDisposed }, targets, orderTargets, onResolved)
+      return job
+    } finally {
+      val request = job
+      if (request == null) Disposer.dispose(lifetime)
+      else request.invokeOnCompletion { Disposer.dispose(lifetime) }
+    }
+  }
 
   /** Cold editor queries share pointer navigation's latest-request and editor-lifetime guards. */
   fun <T> runEditorRequest(

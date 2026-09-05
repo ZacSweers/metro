@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import androidx.tracing.wire.TraceDriver
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -12,6 +13,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.IdempotenceChecker
 import dev.zacsweers.metro.idea.index.FileShard
 import dev.zacsweers.metro.idea.index.IndexBuildPhase
 import dev.zacsweers.metro.idea.index.IndexBuildProgress
@@ -26,6 +28,13 @@ import dev.zacsweers.metro.idea.index.snapshot.SnapshotKey
 import dev.zacsweers.metro.idea.index.snapshot.SourceFileShardCache
 import dev.zacsweers.metro.idea.index.snapshot.SourceSnapshotChanges
 import dev.zacsweers.metro.idea.model.IndexGenerationToken
+import dev.zacsweers.metro.idea.tracing.IdeTraceOperation
+import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
+import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
+import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.IdeTraceWorkItem
+import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
+import dev.zacsweers.metro.idea.tracing.ideTraceFilePath
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -33,8 +42,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -95,7 +110,55 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     }
   }
 
-  fun testWriteActionRetriesOnlyTheActiveFileRead() {
+  fun testShardCacheUsesOnlyTheCurrentTraceItem() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+      typealias GraphAlias = dev.zacsweers.metro.DependencyGraph
+      @GraphAlias interface AppGraph
+      """
+      )
+    // Random cache-consistency checks intentionally recompute values during ordinary cache hits.
+    IdempotenceChecker.disableRandomChecksUntil(testRootDisposable)
+    val cache = SourceFileShardCache()
+    val firstTicks = AtomicLong()
+    val firstItem = IdeTraceWorkItem(firstTicks::incrementAndGet)
+    allowAnalysisOnEdt {
+      val first = cache.read(file, 1, firstItem)
+      assertTrue(first.rebuilt)
+      assertTrue(firstItem.stageTotals.isNotEmpty())
+      val aliasLookup = firstItem.stageTotals["source.file.typealiasLookup"]
+      assertNotNull(aliasLookup)
+      assertTrue(checkNotNull(aliasLookup).attempts > 0)
+      val completedFirstTicks = firstTicks.get()
+      val completedFirstStages = firstItem.stageTotals.values.sumOf { it.attempts }
+
+      val untraced = cache.read(file, 2)
+      assertTrue(untraced.rebuilt)
+      assertNotSame(first.shard, untraced.shard)
+      assertEquals(completedFirstTicks, firstTicks.get())
+      assertEquals(completedFirstStages, firstItem.stageTotals.values.sumOf { it.attempts })
+
+      val secondTicks = AtomicLong()
+      val secondItem = IdeTraceWorkItem(secondTicks::incrementAndGet)
+      val retraced = cache.read(file, 3, secondItem)
+      assertTrue(retraced.rebuilt)
+      assertNotSame(untraced.shard, retraced.shard)
+      assertTrue(secondItem.stageTotals.isNotEmpty())
+      assertEquals(completedFirstTicks, firstTicks.get())
+      val completedSecondTicks = secondTicks.get()
+      val completedSecondStages = secondItem.stageTotals.values.sumOf { it.attempts }
+
+      val reused = cache.read(file, 3, secondItem)
+      assertFalse(reused.rebuilt)
+      assertSame(retraced.shard, reused.shard)
+      assertEquals(completedSecondTicks, secondTicks.get())
+      assertEquals(completedSecondStages, secondItem.stageTotals.values.sumOf { it.attempts })
+      assertEquals(completedFirstTicks, firstTicks.get())
+    }
+  }
+
+  fun testWriteActionRetriesOnlyTheActiveFileRead() = withSnapshotTrace { recorder, sink ->
     val file = configureTwoFiles()
     val reads = mutableListOf<Pair<VirtualFile, FileShard>>()
     val readFiles = linkedSetOf<VirtualFile>()
@@ -112,7 +175,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
         awaitReadCancellation(release, interrupted)
       }
     }
-    val preparation = startPreparation(builder, file, publish = events::add)
+    val preparation = startPreparation(builder, file, recorder = recorder, publish = events::add)
     try {
       val readsBeforeWrite = PlatformTestUtil.waitForFuture(activeRead, 30_000)
       val completedFile = readsBeforeWrite.first().first
@@ -127,9 +190,105 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
       val finalProgress = events.last { it.phase == IndexBuildPhase.ANALYZING_DECLARATIONS }
       assertEquals(finalProgress.total, finalProgress.completed)
       assertEquals(2, finalProgress.reused!! + finalProgress.rebuilt!!)
+      recorder.stop()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+      val scan = sink.results("source.scan").single().metadata
+      assertEquals("completed", scan["outcome"])
+      val rebuilt = checkNotNull(scan["files.rebuilt"]).toInt()
+      val reused = checkNotNull(scan["files.reused"]).toInt()
+      assertEquals(2, rebuilt + reused)
+      assertTrue(checkNotNull(scan["read_attempts"]).toInt() > 2)
+      assertTrue(checkNotNull(scan["canceled_read_attempts"]).toInt() >= 1)
+      assertEquals(1, sink.results("source.discover").size)
+      assertEquals(1, sink.results("snapshot.prepare").size)
+      val fileWork = sink.results("source.file.item").map { it.metadata }
+      assertEquals(2, fileWork.size)
+      val retriedPath = ideTraceFilePath(project, readsBeforeWrite.last().first)
+      val retriedWork = fileWork.single { it["file"] == retriedPath }
+      assertEquals("reused", retriedWork["cache"])
+      assertTrue(checkNotNull(retriedWork["read_attempts"]).toInt() >= 2)
+      assertTrue(checkNotNull(retriedWork["canceled_read_attempts"]).toInt() >= 1)
+      assertTrue(checkNotNull(retriedWork["canceled_read_elapsed_ns"]).toLong() > 0)
+      assertEquals(module.name, retriedWork["module"])
+      assertTrue(checkNotNull(retriedWork["stage.source.file.cacheLookup.attempts"]).toInt() >= 2)
+      for (stage in
+        listOf(
+          "source.file.psi",
+          "source.file.imports",
+          "source.file.annotationScan",
+          "source.file.annotationLookup",
+          "source.file.declarationExtraction",
+          "source.file.dynamicGraphScan",
+          "source.file.shardConstruction",
+        )) {
+        assertTrue(
+          "Expected aggregate time for $stage",
+          checkNotNull(retriedWork["stage.$stage.elapsed_ns"]).toLong() >= 0,
+        )
+        assertTrue(
+          "Expected a retained interval for $stage",
+          sink.results(stage).any { it.metadata["file"] == retriedPath },
+        )
+      }
+      for (phase in
+        listOf(
+          "source.buildOwnershipIndex",
+          "source.consumerOwnership",
+          "source.resolveClassRequests",
+          "source.collectLibraryInputs",
+        )) {
+        assertEquals("Expected one completed $phase", 1, sink.results(phase).size)
+      }
+      val classWork = sink.results("source.class.item").map { it.metadata }
+      val exampleWork = classWork.single { it["class"] == "test.Example" }
+      assertEquals("resolved", exampleWork["outcome"])
+      assertEquals("reused", exampleWork["cache"])
+      for (stage in
+        listOf(
+          "source.class.analysisEntry",
+          "source.class.analysisSetup",
+          "source.class.findClass",
+          "source.class.declarationEligibility",
+          "source.class.optionsAndQualifierLookup",
+          "source.class.cacheCheck",
+          "source.class.analysisExit",
+          "source.class.dependencyExpansion",
+        )) {
+        assertTrue(
+          "Expected aggregate time for $stage",
+          checkNotNull(exampleWork["stage.$stage.elapsed_ns"]).toLong() >= 0,
+        )
+        assertTrue(
+          "Expected a retained interval for $stage",
+          sink.results(stage).any { it.metadata["class"] == "test.Example" },
+        )
+      }
+      assertNull(exampleWork["stage.source.class.bindingConstruction.attempts"])
     } finally {
       release.countDown()
       PlatformTestUtil.waitForFuture(preparation, 30_000)
+    }
+  }
+
+  /** Runs enabled tracing with an in-memory sink while the fixture exercises real read retries. */
+  private fun withSnapshotTrace(block: (IdeTraceRecorder, RecordingIdeTraceSink) -> Unit) {
+    val job = SupervisorJob()
+    val sink = RecordingIdeTraceSink()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(job + Dispatchers.Default),
+        createOutput = { IdeTraceOutput(TraceDriver(sink)) },
+      )
+    try {
+      recorder.start()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.RECORDING } } }
+      block(recorder, sink)
+    } finally {
+      recorder.stop()
+      runBlocking {
+        withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } }
+        job.cancelAndJoin()
+      }
     }
   }
 
@@ -435,6 +594,7 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
     revision: Long = 0,
     resolveFromLibraries: Boolean = false,
     parentJob: Job? = null,
+    recorder: IdeTraceRecorder? = null,
     checkCurrent: () -> Unit = {},
     publish: (IndexBuildProgress) -> Unit = {},
   ): CompletableFuture<Result<PreparedResolutionSnapshot>> = CompletableFuture.supplyAsync {
@@ -452,23 +612,27 @@ class MetroSnapshotRetryTest : BasePlatformTestCase() {
               )
             )
           }
-        builder.prepare(
-          previous = null,
-          inputs = IndexInputs(0, 0),
-          targets = targets,
-          pending =
-            SourceSnapshotChanges(
-              emptySet(),
-              setOf(file.virtualFile),
-              emptySet(),
-              true,
-              invalidationRevision = revision,
-            ),
-          coldSweep = true,
-          progress = IndexBuildProgressReporter(publish),
-          generationToken = IndexGenerationToken.create(),
-          checkCurrent = checkCurrent,
-        )
+        suspend fun prepare(trace: IdeTraceOperation?): PreparedResolutionSnapshot =
+          builder.prepare(
+            previous = null,
+            inputs = IndexInputs(0, 0),
+            targets = targets,
+            pending =
+              SourceSnapshotChanges(
+                emptySet(),
+                setOf(file.virtualFile),
+                emptySet(),
+                true,
+                invalidationRevision = revision,
+              ),
+            coldSweep = true,
+            progress = IndexBuildProgressReporter(publish),
+            generationToken = IndexGenerationToken.create(),
+            trace = trace,
+            checkCurrent = checkCurrent,
+          )
+        if (recorder == null) prepare(null)
+        else recorder.traceSuspend("snapshot.prepare") { prepare(it) }
       }
     }
   }

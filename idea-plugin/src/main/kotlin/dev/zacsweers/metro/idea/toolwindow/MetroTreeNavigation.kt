@@ -43,7 +43,7 @@ internal class MetroTreeNavigation(
         if (state) navigate(requestFocus = false) else cancelPendingNavigation()
       }
 
-      override fun scrollToSource(component: Component) {
+      override fun scrollToSource(tree: Component) {
         if (isAutoScrollMode()) navigate(requestFocus = false)
       }
     }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import androidx.tracing.wire.TraceDriver
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -27,6 +28,8 @@ import dev.zacsweers.metro.idea.index.IndexBuildProgress
 import dev.zacsweers.metro.idea.index.IndexBuildProgressReporter
 import dev.zacsweers.metro.idea.index.IndexRequestMode
 import dev.zacsweers.metro.idea.index.IndexRequestPolicy
+import dev.zacsweers.metro.idea.index.ManualRefreshHandle
+import dev.zacsweers.metro.idea.index.ManualRefreshOutcome
 import dev.zacsweers.metro.idea.index.MetroResolutionService
 import dev.zacsweers.metro.idea.index.retryCancelledIndexBuild
 import dev.zacsweers.metro.idea.index.sharedDeclarationFingerprint
@@ -36,6 +39,11 @@ import dev.zacsweers.metro.idea.model.BindingRejection
 import dev.zacsweers.metro.idea.model.ConsumerResolution
 import dev.zacsweers.metro.idea.model.KaBinding
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
+import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
+import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
+import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -49,7 +57,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
@@ -1131,7 +1142,37 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     }
   }
 
-  fun testNewFileAfterDiscoveryRestartsColdManualLoad() {
+  fun testManualRefreshHandleSurvivesRetryAndCanceledObserver() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    var request: ManualRefreshHandle? = null
+    withPausedColdManualRefresh(onRequested = { request = it }) { service, attempts, release ->
+      val handle = checkNotNull(request)
+      assertFalse(handle.completion.isCompleted)
+      assertNull(service.refreshGraphData())
+      val observerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+      val observing = observerScope.launch { handle.completion.await() }
+      runBlocking { observing.cancelAndJoin() }
+      observerScope.cancel()
+      assertFalse(handle.completion.isCancelled)
+      myFixture.addFileToProject(
+        "test/AddedDuringTracedRefresh.kt",
+        "package test\n@dev.zacsweers.metro.Inject class AddedDuringTracedRefresh",
+      )
+      PsiDocumentManager.getInstance(project).commitAllDocuments()
+      assertFalse(handle.completion.isCompleted)
+      release.countDown()
+      awaitCoordinator(service)
+      assertEquals(2, attempts.get())
+      assertEquals(ManualRefreshOutcome.PUBLISHED, runBlocking { handle.completion.await() })
+      assertFalse(service.isExplicitGraphRefreshPending)
+      assertEquals(
+        "test.AddedDuringTracedRefresh",
+        service.cachedIndex(file).bindings.single().typeKey.renderedType,
+      )
+    }
+  }
+
+  fun testNewFileAfterDiscoveryRestartsColdManualLoad() = withResolutionTrace { recorder, sink ->
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     withPausedColdManualRefresh { service, attempts, release ->
       val added =
@@ -1150,6 +1191,94 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
       assertEquals("test.AddedAfterDiscovery", index.bindings.single().typeKey.renderedType)
       assertSame(index, service.cachedIndex(added))
       assertFalse(service.isExplicitGraphRefreshPending)
+      added.awaitMetroPresentation(service)
+      awaitCoordinator(service)
+    }
+    assertEquals(IdeTraceState.RECORDING, recorder.state.value)
+    recorder.stop()
+    runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+    val candidateEvents = sink.results("index.candidate")
+    val manualRequestIds =
+      candidateEvents
+        .filter { it.metadata["intent"] == "MANUAL_REFRESH" }
+        .map { checkNotNull(it.metadata["manualRequest"]) }
+        .toSet()
+    assertEquals(1, manualRequestIds.size)
+    val manualRequest = manualRequestIds.single()
+    // The project capture also includes independently requested background generations.
+    // Admission IDs order retries across packets flushed from different threads.
+    val candidates =
+      candidateEvents
+        .filter {
+          it.metadata["intent"] == "MANUAL_REFRESH" && it.metadata["manualRequest"] == manualRequest
+        }
+        .sortedBy { checkNotNull(it.metadata["operation_id"]).toLong() }
+    assertEquals(
+      candidateEvents.map { it.metadata }.toString(),
+      listOf("superseded", "published"),
+      candidates.map { it.metadata["outcome"] },
+    )
+    val discardedAttempt = candidates.first().metadata["operation_id"]
+    assertTrue(
+      sink.results("index.captureInputs").any {
+        it.metadata["parent_operation_id"] == discardedAttempt &&
+          it.metadata["outcome"] == "completed"
+      }
+    )
+    val publishedGeneration = checkNotNull(candidates.last().metadata["generation"])
+    val presentation =
+      sink
+        .results("presentation.build")
+        .single { it.metadata["generation"] == publishedGeneration }
+        .metadata
+    assertEquals("completed", presentation["outcome"])
+    assertTrue(
+      sink.events.any {
+        it.name == "presentation.publication" &&
+          it.metadata["attempt"] == presentation["attempt"] &&
+          it.metadata["disposition"] == "published"
+      }
+    )
+  }
+
+  /** Captures real service work while keeping the fixture's normal recorder available afterward. */
+  private fun withResolutionTrace(block: (IdeTraceRecorder, RecordingIdeTraceSink) -> Unit) {
+    val settings = MetroSettings.getInstance(project).state
+    val previousDebugging = settings.enableDebuggingOptions
+    settings.enableDebuggingOptions = true
+    val job = SupervisorJob()
+    val sink = RecordingIdeTraceSink()
+    val finished = CompletableFuture<Throwable?>()
+    val recorder =
+      IdeTraceRecorder(
+        CoroutineScope(job + Dispatchers.Default),
+        createOutput = { IdeTraceOutput(TraceDriver(sink)) },
+        onFinished = { _, failure, _, _ -> finished.complete(failure) },
+      )
+    val tracingService = project.service<MetroIdeTracingService>()
+    val previousRecorder = tracingService.setRecorderForTest(recorder)
+    try {
+      tracingService.startCapture()
+      runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.RECORDING } } }
+      block(recorder, sink)
+    } finally {
+      val traceFailure: Throwable?
+      try {
+        recorder.stop()
+        traceFailure = PlatformTestUtil.waitForFuture(finished, 30_000)
+        runBlocking { withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } } }
+      } finally {
+        try {
+          runBlocking { job.cancelAndJoin() }
+        } finally {
+          try {
+            tracingService.setRecorderForTest(previousRecorder)
+          } finally {
+            settings.enableDebuggingOptions = previousDebugging
+          }
+        }
+      }
+      if (traceFailure != null) throw AssertionError("Trace recording failed", traceFailure)
     }
   }
 
@@ -1236,7 +1365,8 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
 
   /** Pauses after capture so real PSI writes can race publication outside its read action. */
   private fun withPausedColdManualRefresh(
-    block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit
+    onRequested: (ManualRefreshHandle) -> Unit = {},
+    block: (MetroResolutionService, AtomicInteger, CountDownLatch) -> Unit,
   ) {
     withTimedResolutionService(AutomaticRefreshWindow(0, 0)) { service ->
       MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
@@ -1253,7 +1383,7 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
         }
       }
       try {
-        service.refreshGraphData()
+        onRequested(checkNotNull(service.refreshGraphData()))
         PlatformTestUtil.waitForFuture(prepared, 30_000)
         assertTrue(service.isExplicitGraphRefreshPending)
         block(service, attempts, release)

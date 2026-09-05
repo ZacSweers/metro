@@ -23,8 +23,10 @@ import com.intellij.platform.eel.fs.EelFiles
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.tree.TreeVisitor
@@ -102,6 +104,15 @@ import org.jetbrains.kotlin.psi.KtFile
 
 /** Checks graph-browser and explicit-result rows, including platform tree refresh and selection. */
 class MetroToolWindowTreeTest : BasePlatformTestCase() {
+
+  /** Initial-load assertions require a project without retained indexes from earlier tests. */
+  override fun getProjectDescriptor(): LightProjectDescriptor? {
+    if (name == "testToolWindowWaitsForInitialGraphLoad") return InitialGraphLoadProject
+    return super.getProjectDescriptor()
+  }
+
+  /** A distinct descriptor gives the initial-load test its own light project. */
+  private object InitialGraphLoadProject : LightProjectDescriptor()
 
   override fun setUp() {
     super.setUp()
@@ -1121,6 +1132,7 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       assertEquals("Refresh graphs and bindings", event.presentation.description)
       assertEquals(true, event.presentation.getClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR))
       assertTrue(event.presentation.isEnabled)
+      assertSame(AllIcons.Actions.Refresh, event.presentation.icon)
       assertFalse(service.isGraphBrowserActivated)
 
       DumbModeTestUtils.runInDumbModeSynchronously(project) {
@@ -1128,6 +1140,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
         assertTrue(service.isExplicitGraphRefreshPending)
         action.update(event)
         assertFalse(event.presentation.isEnabled)
+        assertSame(AnimatedIcon.Default.INSTANCE, event.presentation.icon)
+        assertSame(event.presentation.icon, event.presentation.disabledIcon)
         assertEquals("Refresh", event.presentation.text)
         action.actionPerformed(event)
         assertEquals(1, refreshes)
@@ -1136,6 +1150,8 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
       PlatformTestUtil.waitForFuture(refreshed, 30_000)
       action.update(event)
       assertTrue(event.presentation.isEnabled)
+      assertSame(AllIcons.Actions.Refresh, event.presentation.icon)
+      assertNull(event.presentation.disabledIcon)
       assertEquals("Refresh", event.presentation.text)
       assertEquals("Refresh graphs and bindings", event.presentation.description)
       assertEquals(listOf("AppGraph"), service.cachedIndex(file).graphs.map { it.name })
@@ -1277,9 +1293,14 @@ class MetroToolWindowTreeTest : BasePlatformTestCase() {
     val service = project.service<MetroResolutionService>()
     MetroSettings.getInstance(project).state.automaticallyRefreshGraphData = false
     service.settingsChanged()
-    configure()
+    val file = configure()
     val settled = CompletableFuture.runAsync { runBlocking { service.awaitCoordinatorBarrier() } }
     PlatformTestUtil.waitForFuture(settled, 30_000)
+    assertSame(
+      "Initial graph loading requires an unpublished presentation index",
+      BindingIndex.EMPTY,
+      service.presentationIndex(file),
+    )
     val panel = MetroToolWindowPanel(project)
     try {
       val status = toolWindowStatus(panel)

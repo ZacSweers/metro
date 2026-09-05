@@ -39,5 +39,5 @@ internal fun MetroTreeNode.matchesRevealTarget(target: MetroRevealTarget): Boole
     return false
   var owner = parent
   while (owner != null && owner !is MetroTreeNode.Graph) owner = owner.parent
-  return (owner as? MetroTreeNode.Graph)?.context?.path == target.path
+  return owner?.context?.path == target.path
 }

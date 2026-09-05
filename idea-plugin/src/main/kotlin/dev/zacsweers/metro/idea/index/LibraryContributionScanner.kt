@@ -158,8 +158,7 @@ internal class LibraryContributionScanner(
           .orEmpty() + classReplaces
       val childType =
         if (classSymbol.hasAnyAnnotation(options.graphExtensionFactoryAnnotations)) {
-          val factoryType = contributedType as? KaClassType
-          factoryType?.let { graphExtensionFactoryTarget(it, options, recordFile) }
+          graphExtensionFactoryTarget(contributedType, options, recordFile)
         } else {
           null
         }
@@ -177,7 +176,7 @@ internal class LibraryContributionScanner(
       contributions += contribution
       if (childReference != null) onGraphReference(childReference, context)
       if (contribution.kind == ContributionEntry.Kind.GRAPH_INTERFACE) {
-        val interfaceType = contributedType as? KaClassType ?: return@analyze
+        val interfaceType = contributedType
         val graphMembers =
           GraphMemberExtractor(options, pointerManager, bindings, recordFile, { _, _ -> }, {})
         val surface = graphMembers.interfaceSurface(this, contribution, interfaceType)

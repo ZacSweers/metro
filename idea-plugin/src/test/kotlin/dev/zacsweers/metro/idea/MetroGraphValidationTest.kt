@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package dev.zacsweers.metro.idea
 
+import androidx.tracing.wire.TraceDriver
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
@@ -28,6 +29,11 @@ import dev.zacsweers.metro.idea.model.BindingIndex
 import dev.zacsweers.metro.idea.model.DeclarationResolutionScope
 import dev.zacsweers.metro.idea.model.GraphQueryContext
 import dev.zacsweers.metro.idea.model.KaBinding
+import dev.zacsweers.metro.idea.tracing.IdeTraceOutput
+import dev.zacsweers.metro.idea.tracing.IdeTraceRecorder
+import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.RecordingIdeTraceSink
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -36,8 +42,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -91,6 +103,59 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
     } finally {
       settings.resolveFromLibraries = previous
     }
+  }
+
+  /** Uses the real service entrypoints with an isolated in-memory capture for this assertion. */
+  private fun recordValidationTrace(block: () -> Unit): RecordingIdeTraceSink {
+    val captureScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val sink = RecordingIdeTraceSink()
+    val recorder = IdeTraceRecorder(captureScope, { IdeTraceOutput(TraceDriver(sink)) })
+    val tracing = project.service<MetroIdeTracingService>()
+    val previous = tracing.setRecorderForTest(recorder)
+    try {
+      recorder.start()
+      runBlocking {
+        withTimeout(30_000) { recorder.state.first { it == IdeTraceState.RECORDING } }
+      }
+      block()
+    } finally {
+      try {
+        recorder.stop()
+        runBlocking {
+          withTimeout(30_000) { recorder.state.first { it == IdeTraceState.IDLE } }
+        }
+      } finally {
+        tracing.setRecorderForTest(previous)
+        captureScope.cancel()
+      }
+    }
+    return sink
+  }
+
+  fun testTracingReportsCacheReuseWithoutRepeatingTheGraphSeal() {
+    val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
+    val index = refreshedIndex(file)
+    val context = index.contextsFor(index.graphs.single()).single()
+    val validation = project.service<MetroGraphValidationService>()
+
+    val sink = recordValidationTrace {
+      val first = validation.validate(file, context)
+      assertSame(first, validation.validate(file, context))
+    }
+
+    val operations = sink.results("validation")
+    assertEquals(2, operations.size)
+    assertEquals(listOf("miss", "hit"), operations.map { it.metadata["cache"] })
+    assertEquals(listOf("1", "0"), operations.map { it.metadata["sealed_graphs"] })
+    assertEquals(1, sink.results("validation.seal").size)
+    val captures = sink.results("validation.capture")
+    assertEquals(2, captures.size)
+    assertTrue(captures.all { it.metadata["read_attempts"] == "1" })
+    assertEquals(
+      listOf("published", "no_changes"),
+      sink.results("validation.publish").map { it.metadata["outcome"] },
+    )
+    assertEquals(1, sink.closeCount)
   }
 
   fun testUnexpectedFailureReturnsInternalError() {
@@ -4753,6 +4818,18 @@ class MetroGraphValidationTest : BasePlatformTestCase() {
   }
 
   fun testSupersededAsyncValidationDoesNotPublishOrDeliverItsResult() {
+    val sink = recordValidationTrace { assertSupersededAsyncValidation() }
+    assertEquals(
+      listOf("completed", "superseded"),
+      sink.results("validation").map { it.metadata.getValue("outcome") }.sorted(),
+    )
+    assertEquals(2, sink.results("validation.capture").size)
+    assertEquals(2, sink.results("validation.publish").size)
+    assertEquals(1, sink.closeCount)
+  }
+
+  /** Pauses a completed run while its replacement computes and publishes under the same capture. */
+  private fun assertSupersededAsyncValidation() {
     val file = myFixture.configureMetroFile("@DependencyGraph interface AppGraph")
     val index = refreshedIndex(file)
     val context = index.contextsFor(index.graphs.single()).single()

@@ -26,16 +26,20 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.TreeSpeedSearch
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.tree.AsyncTreeModel
 import com.intellij.ui.tree.StructureTreeModel
 import com.intellij.ui.tree.TreeVisitor
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
 import dev.zacsweers.metro.idea.GraphContextPinService
 import dev.zacsweers.metro.idea.MetroDaemonRestartService
 import dev.zacsweers.metro.idea.MetroIcons
 import dev.zacsweers.metro.idea.MetroNavigationService
+import dev.zacsweers.metro.idea.MetroSettings
 import dev.zacsweers.metro.idea.graph.GraphValidationProgress
 import dev.zacsweers.metro.idea.graph.KaGraphValidationResult
 import dev.zacsweers.metro.idea.graph.MetroGraphValidationService
@@ -46,6 +50,11 @@ import dev.zacsweers.metro.idea.model.GraphPath
 import dev.zacsweers.metro.idea.model.KaGraphDeclaration
 import dev.zacsweers.metro.idea.navigation.MetroRevealTarget
 import dev.zacsweers.metro.idea.presentableName
+import dev.zacsweers.metro.idea.tracing.IdeTraceState
+import dev.zacsweers.metro.idea.tracing.MetroIdeTracingService
+import dev.zacsweers.metro.idea.tracing.RefreshMetroTraceAction
+import dev.zacsweers.metro.idea.tracing.StartMetroTraceAction
+import dev.zacsweers.metro.idea.tracing.StopMetroTraceAction
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -78,12 +87,20 @@ internal class MetroToolWindowPanel(
   private val resolutionService = project.service<MetroResolutionService>()
   private val validationService = project.service<MetroGraphValidationService>()
   private val validationRequestService = project.service<MetroValidationRequestService>()
+  private val tracingService = project.service<MetroIdeTracingService>()
   private val pinService = project.service<GraphContextPinService>()
   private val indexBuildStatus = IndexBuildStatusPanel()
   private val validationStatus = ValidationStatusPanel()
+  private val traceStatus =
+    JBLabel().apply {
+      isVisible = false
+      foreground = UIUtil.getContextHelpForeground()
+      border = JBUI.Borders.empty(6, 8)
+    }
   private var indexBuildProgress: IndexBuildProgress? = null
   private var validationProgress: List<GraphValidationProgress> = emptyList()
-  private lateinit var actionToolbar: ActionToolbar
+  /** State listeners can run before the toolbar is attached during construction. */
+  private var actionToolbar: ActionToolbar? = null
   private val treeStructure =
     MetroTreeStructure(project, resolutionService::indexForToolWindow, pinService) { searchText }
 
@@ -107,7 +124,7 @@ internal class MetroToolWindowPanel(
   private val validationResults = MetroValidationResultPanel(project, ::clearValidationResults)
 
   internal val refreshGraphsAction =
-    RefreshGraphsAction(resolutionService) {
+    RefreshGraphsAction(resolutionService, RefreshMetroTraceAction(project)) {
       updateIndexBuildStatus()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
@@ -117,7 +134,7 @@ internal class MetroToolWindowPanel(
   internal val graphRefreshModeAction =
     GraphRefreshModeAction(project) {
       updateIndexBuildStatus()
-      actionToolbar.updateActionsImmediately()
+      actionToolbar?.updateActionsAsync()
     }
   internal val pinSelectedGraphAction =
     PinSelectedGraphAction(pinService) { selectedGraphNode()?.context }
@@ -153,6 +170,7 @@ internal class MetroToolWindowPanel(
       )
     resolutionService.addIndexListener(this) {
       updateIndexBuildStatus()
+      updateTraceStatus()
       refreshValidationStaleness()
       treeStructure.clearContextOptions()
       treeModel.invalidateAsync()
@@ -174,6 +192,7 @@ internal class MetroToolWindowPanel(
       updateValidationStatus()
     }
     validationService.addResultListener(this, ::refreshValidationStaleness)
+    tracingService.addStateListener(this) { updateTraceStatus() }
 
     searchField.addDocumentListener(
       object : DocumentAdapter() {
@@ -190,6 +209,8 @@ internal class MetroToolWindowPanel(
         templatePresentation.icon = AllIcons.Actions.More
         add(treeNavigation.autoscrollAction)
         add(ExportGraphDebugInfoAction(project) { selectedGraphNode()?.context })
+        add(StartMetroTraceAction(project))
+        add(StopMetroTraceAction(project))
       }
     val actionGroup =
       DefaultActionGroup(
@@ -204,12 +225,13 @@ internal class MetroToolWindowPanel(
         ),
         overflowGroup,
       )
-    actionToolbar =
+    val toolbar =
       ActionManager.getInstance().createActionToolbar("MetroToolWindow", actionGroup, true)
-    actionToolbar.targetComponent = tree
+    toolbar.targetComponent = tree
+    actionToolbar = toolbar
 
     val header = JPanel(BorderLayout())
-    header.add(actionToolbar.component, BorderLayout.WEST)
+    header.add(toolbar.component, BorderLayout.WEST)
     header.add(searchField, BorderLayout.CENTER)
     setToolbar(header)
     val content = JPanel(BorderLayout())
@@ -217,8 +239,11 @@ internal class MetroToolWindowPanel(
       JPanel().apply {
         isOpaque = false
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        add(indexBuildStatus)
-        add(validationStatus)
+        // All status rows share the same leading edge, including labels narrower than the panel.
+        for (status in listOf(indexBuildStatus, validationStatus, traceStatus)) {
+          status.alignmentX = LEFT_ALIGNMENT
+          add(status)
+        }
       }
     content.add(statusContainer, BorderLayout.NORTH)
     browserAndResults.firstComponent = JBScrollPane(tree)
@@ -244,7 +269,7 @@ internal class MetroToolWindowPanel(
       resolutionService.isGraphDataRefreshRequired -> indexBuildStatus.showRefreshRequired()
       else -> indexBuildStatus.clear()
     }
-    if (::actionToolbar.isInitialized) actionToolbar.updateActionsImmediately()
+    actionToolbar?.updateActionsAsync()
   }
 
   private fun updateValidationStatus() {
@@ -259,9 +284,24 @@ internal class MetroToolWindowPanel(
     } else {
       validationStatus.show(progress)
     }
-    if (::actionToolbar.isInitialized) {
-      actionToolbar.updateActionsImmediately()
-    }
+    actionToolbar?.updateActionsAsync()
+  }
+
+  /** Shows capture lifetime as a secondary note while debugging controls are enabled. */
+  private fun updateTraceStatus() {
+    if (disposed || project.isDisposed) return
+    val enabled = MetroSettings.getInstance(project).state.enableDebuggingOptions
+    val state = tracingService.state.value
+    traceStatus.text =
+      when (state) {
+        IdeTraceState.IDLE -> ""
+        IdeTraceState.STARTING -> "Starting Metro performance trace…"
+        IdeTraceState.RECORDING -> "Tracing enabled…"
+        IdeTraceState.DRAINING -> "Finishing traced work…"
+        IdeTraceState.SAVING -> "Saving Metro performance trace…"
+      }
+    traceStatus.isVisible = enabled && state != IdeTraceState.IDLE
+    actionToolbar?.updateActionsAsync()
   }
 
   /** Selects the declaration or exact path requested by an explicit validation action. */
@@ -564,6 +604,7 @@ internal class MetroToolWindowPanel(
     browserAndResults.secondComponent = null
     indexBuildStatus.clear()
     validationStatus.clear()
+    traceStatus.isVisible = false
   }
 }
 

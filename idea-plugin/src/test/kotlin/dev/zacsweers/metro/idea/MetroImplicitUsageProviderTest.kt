@@ -66,6 +66,9 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertTrue(declarations.klass("ContributedSetService").isMetroImplicitUsage())
     assertTrue(declarations.klass("ContributedMapService").isMetroImplicitUsage())
     assertTrue(declarations.obj("ContributedObjectService").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedGraphInterface").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedBindingContainer").isMetroImplicitUsage())
+    assertTrue(declarations.obj("ContributedObjectContainer").isMetroImplicitUsage())
     assertTrue(
       declarations
         .klass("ConstructorAssistedInjectedService")
@@ -80,6 +83,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
 
     assertFalse(declarations.function("provideService").isMetroImplicitUsage())
     assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("ContributedGraphInterface").isMetroImplicitUsage())
   }
 
   fun testProductionEdtWarmsColdMetroStateInBackground() {
@@ -501,6 +505,54 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.klass("UnrelatedService").isMetroImplicitUsage())
   }
 
+  fun testContributedTypesAreUsedWithoutContributionProviderGeneration() {
+    project.setMetroOptions(
+      "contributes-as-inject" to "false",
+      "generate-contribution-providers" to "false",
+    )
+    val declarations = kotlinFileDeclarations()
+
+    assertTrue(declarations.klass("ContributedGraphInterface").isMetroImplicitUsage())
+    assertTrue(declarations.klass("ContributedBindingContainer").isMetroImplicitUsage())
+    assertTrue(declarations.obj("ContributedObjectContainer").isMetroImplicitUsage())
+    assertFalse(declarations.klass("UnrelatedType").isMetroImplicitUsage())
+  }
+
+  fun testContributesToRequiresExactAnnotationIdentity() {
+    myFixture.addFileToProject(
+      "other/ContributesTo.kt",
+      """
+      package other
+
+      import kotlin.reflect.KClass
+
+      annotation class ContributesTo(val scope: KClass<*>)
+      """
+        .trimIndent(),
+    )
+    val file =
+      myFixture.configureByText(
+        "ContributedTypes.kt",
+        """
+        package test
+
+        import dev.zacsweers.metro.ContributesTo as MetroContributesTo
+        import other.ContributesTo
+
+        object AppScope
+        @MetroContributesTo(AppScope::class) interface AliasedContribution
+        @dev.zacsweers.metro.ContributesTo(AppScope::class) interface QualifiedContribution
+        @ContributesTo(AppScope::class) interface UnrelatedContribution
+        """
+          .trimIndent(),
+      ) as KtFile
+    val declarations = file.declarationsIncludingNested()
+
+    assertTrue(declarations.klass("AliasedContribution").isMetroImplicitUsage())
+    assertTrue(declarations.klass("QualifiedContribution").isMetroImplicitUsage())
+    assertFalse(declarations.klass("UnrelatedContribution").isMetroImplicitUsage())
+  }
+
   fun testMarksContributionProviderDeclarationsAsImplicitlyUsedWhenConfigured() {
     project.setMetroOptions(
       "contributes-as-inject" to "false",
@@ -635,6 +687,7 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.function("unusedFunction").isMetroImplicitUsage())
     assertFalse(declarations.klass("ClassAnnotatedInject").isMetroImplicitUsage())
     assertFalse(declarations.property("memberInject").isMetroImplicitUsage())
+    assertFalse(declarations.klass("UnrelatedType").isMetroImplicitUsage())
   }
 
   fun testDoesNotMarkMetroDeclarationsWhenSuppressionSettingIsDisabled() {
@@ -645,6 +698,8 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
 
       assertFalse(declarations.function("bindService").isMetroImplicitUsage())
       assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
+      assertFalse(declarations.klass("ContributedGraphInterface").isMetroImplicitUsage())
+      assertFalse(declarations.obj("ContributedObjectContainer").isMetroImplicitUsage())
     } finally {
       settings.suppressUnusedWarnings = true
     }
@@ -661,6 +716,8 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     assertFalse(declarations.klass("InjectedService").isMetroImplicitUsage())
     assertFalse(declarations.function("functionInject").isMetroImplicitUsage())
     assertFalse(declarations.klass("ContributedBindingService").isMetroImplicitUsage())
+    assertFalse(declarations.klass("ContributedGraphInterface").isMetroImplicitUsage())
+    assertFalse(declarations.obj("ContributedObjectContainer").isMetroImplicitUsage())
   }
 
   fun testUnusedDeclarationSuppressorRespectsMetroEnabledState() {
@@ -712,6 +769,19 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
     }
     assertTrue("unusedFunction should still be reported as unused:\n$warningText") {
       warningDescriptions.contains("""Function "unusedFunction" is never used""")
+    }
+    for (name in
+      listOf(
+        "ContributedGraphInterface",
+        "ContributedBindingContainer",
+        "ContributedObjectContainer",
+      )) {
+      assertFalse("$name should not be reported as unused:\n$warningText") {
+        warnings.any { it.text == name && it.description.orEmpty().contains("is never used") }
+      }
+    }
+    assertTrue("UnrelatedType should still be reported as unused:\n$warningText") {
+      warningDescriptions.contains("""Class "UnrelatedType" is never used""")
     }
   }
 
@@ -772,6 +842,8 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       package test
 
       import dev.zacsweers.metro.Binds
+      import dev.zacsweers.metro.BindingContainer
+      import dev.zacsweers.metro.ContributesTo
       import dev.zacsweers.metro.Inject
       import dev.zacsweers.metro.Multibinds
       import dev.zacsweers.metro.Provides
@@ -815,6 +887,12 @@ class MetroImplicitUsageProviderTest : BasePlatformTestCase() {
       @ContributesIntoSet(AppScope::class) class ContributedSetService : Service
       @ContributesIntoMap(AppScope::class) class ContributedMapService : Service
       @ContributesBinding(AppScope::class) object ContributedObjectService : Service
+      @ContributesTo(AppScope::class) interface ContributedGraphInterface
+      @BindingContainer
+      @ContributesTo(AppScope::class) class ContributedBindingContainer
+      @BindingContainer
+      @ContributesTo(AppScope::class) object ContributedObjectContainer
+      class UnrelatedType
       @OptIn(ExperimentalMetroApi::class)
       @ExposeImplBinding
       @ContributesBinding(AppScope::class)
