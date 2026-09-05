@@ -19,8 +19,10 @@ import dev.zacsweers.metro.idea.hasAnyAnnotation
 import dev.zacsweers.metro.idea.index.graph.GraphMemberExtractor
 import dev.zacsweers.metro.idea.index.graph.graphExtensionFactoryTarget
 import dev.zacsweers.metro.idea.index.graph.graphReference
+import dev.zacsweers.metro.idea.index.snapshot.SnapshotReadExecutor
 import dev.zacsweers.metro.idea.model.ConsumerEntry
 import dev.zacsweers.metro.idea.model.ContributionEntry
+import dev.zacsweers.metro.idea.model.GraphDeclarationId
 import dev.zacsweers.metro.idea.model.GraphReference
 import dev.zacsweers.metro.idea.model.HintAvailability
 import dev.zacsweers.metro.idea.model.KaBinding
@@ -50,31 +52,47 @@ internal class LibraryContributionScanner(
   private val graphs: List<KaGraphDeclaration>,
   private val sourceContributions: List<ContributionEntry>,
   private val consumers: List<ConsumerEntry>,
-  private val onGraphReference: (GraphReference, KtElement) -> Unit = { _, _ -> },
-  private val onDeclarationFile: (PsiFile, KtElement) -> Unit = { _, _ -> },
 ) {
   private val pointerManager = SmartPointerManager.getInstance(project)
-  private val bindings = mutableListOf<KaBinding>()
-  private val contributions = mutableListOf<ContributionEntry>()
-  private val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
-  private val processedLibraryContributionScopes = HashMap<KtClassOrObject, MutableSet<ClassId>>()
+  private val processedLibraryContributionScopes = hashSetOf<ContributionHintId>()
   private val scannedScopes = hashSetOf<ClassId>()
-  // Every scope batch uses the same source snapshot inside one read action.
-  private val useSites by
-    lazy(LazyThreadSafetyMode.NONE) {
-      sourceUseSitesByModule(project, graphs, sourceContributions, consumers)
-    }
 
-  /** Returns only metadata added by this scope batch; prior scopes stay memoized. */
-  fun scan(scopeIds: Set<ClassId>): LibraryContributions {
-    val bindingStart = bindings.size
-    val contributionStart = contributions.size
-    val interfaceStart = graphInterfaces.size
-    scanLibraryContributionHints(scopeIds)
-    return LibraryContributions(
-      bindings.drop(bindingStart),
-      contributions.drop(contributionStart),
-      graphInterfaces.drop(interfaceStart),
+  /**
+   * Each hint owns its visibility checks and extracted metadata. The caller merges successful reads
+   * in index order, preserving the first visible declaration for each class and scope.
+   */
+  suspend fun scan(
+    scopeIds: Set<ClassId>,
+    executor: SnapshotReadExecutor,
+  ): LibraryContributionScan {
+    val scopes = scopeIds.filter { scannedScopes.add(it) }
+    if (scopes.isEmpty()) {
+      return LibraryContributionScan.EMPTY
+    }
+    val batch = executor.read { discoverHints(scopes) }
+    val captured =
+      executor.map(batch.hints, ::describeHint) { hint -> captureHint(hint, batch.useSites) }
+    val bindings = mutableListOf<KaBinding>()
+    val contributions = mutableListOf<ContributionEntry>()
+    val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
+    val references = mutableListOf<LibraryGraphRequest>()
+    val dependencies = SourceClassDependencies.Builder(pointerManager, batch.dependencies)
+    for (hint in captured) {
+      ProgressManager.checkCanceled()
+      dependencies.include(hint.dependencies)
+      val id = hint.id ?: continue
+      if (!processedLibraryContributionScopes.add(id)) {
+        continue
+      }
+      bindings += hint.metadata.bindings
+      contributions += hint.metadata.contributions
+      graphInterfaces += hint.metadata.graphInterfaces
+      references += hint.references
+    }
+    return LibraryContributionScan(
+      LibraryContributions(bindings, contributions, graphInterfaces),
+      references,
+      dependencies.build(),
     )
   }
 
@@ -82,37 +100,80 @@ internal class LibraryContributionScanner(
    * Discovers contributions from compiled dependencies the way the compiler does for classpath
    * merging (`ContributionHintFirGenerator` / `ContributedInterfaceSupertypeGenerator`): scanning
    * top-level hint functions in the `metro.hints` package, named after the scope class, whose
-   * single parameter type is the contributing class.
+   * single parameter type is the contributing class. Only pointers leave this discovery read.
    */
-  private fun scanLibraryContributionHints(scopeIds: Set<ClassId>) {
-    if (scopeIds.isEmpty()) return
+  private fun discoverHints(scopeIds: List<ClassId>): HintBatch {
     val fileIndex = ProjectFileIndex.getInstance(project)
     val allScope = GlobalSearchScope.allScope(project)
     val hints = mutableListOf<LibraryHint>()
     for (scopeId in scopeIds) {
       ProgressManager.checkCanceled()
-      if (!scannedScopes.add(scopeId)) continue
       val hintFqName = MetroHints.hintCallableId(scopeId).asSingleFqName().asString()
       for (hintFunction in KotlinTopLevelFunctionFqnNameIndex[hintFqName, project, allScope]) {
         ProgressManager.checkCanceled()
         val virtualFile = hintFunction.containingFile.virtualFile ?: continue
         // Project-source contributions are already covered by the annotation sweeps; hints only
         // exist as generated declarations in binaries.
-        if (fileIndex.isInContent(virtualFile)) continue
-        hints += LibraryHint(scopeId, hintFunction)
+        if (fileIndex.isInContent(virtualFile)) {
+          continue
+        }
+        hints +=
+          LibraryHint(
+            scopeId,
+            pointerManager.createSmartPsiElementPointer(hintFunction),
+            hintFunction.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
+              hintFunction.hasModifier(KtTokens.PRIVATE_KEYWORD),
+          )
       }
     }
-    if (hints.isEmpty()) return
+    val dependencies = SourceClassDependencies.Builder(pointerManager)
+    val useSites =
+      sourceUseSitesByModule(project, graphs, sourceContributions, consumers).map { (module, site)
+        ->
+        val file = site.containingFile
+        dependencies.recordContext(file)
+        HintUseSite(module, ptr(site))
+      }
+    // Retain these stamps even when no hints exist or a context disappears before its worker runs.
+    return HintBatch(hints, useSites, dependencies.build())
+  }
 
-    val visibleModulesByHint = visibleModulesByHint(hints, useSites)
-    for (hint in hints) {
-      ProgressManager.checkCanceled()
-      val visibleModules = visibleModulesByHint.getValue(hint.function)
-      if (visibleModules.isEmpty()) continue
-      val hintAvailability = if (hint.isNonPublic) HintAvailability(visibleModules) else null
-      val context = useSites.getValue(visibleModules.first())
-      processLibraryHint(hint.function, hint.scopeId, context, hintAvailability)
+  private fun describeHint(hint: LibraryHint): IndexBuildFile {
+    val function = hint.pointer.element
+    val file = function?.containingFile?.virtualFile
+    return IndexBuildFile(
+      hint.scopeId.asSingleFqName().asString(),
+      file?.presentableUrl ?: "Contribution hint",
+    )
+  }
+
+  /** Resolves one hint's complete visibility and declaration within a single retryable read. */
+  private fun captureHint(hint: LibraryHint, useSites: List<HintUseSite>): CapturedHint {
+    val dependencies = SourceClassDependencies.Builder(pointerManager)
+    // Visibility can reject a hint or fail to resolve its type. Those reads still depend on the
+    // source contexts from which the binary declaration was examined.
+    for (site in useSites) {
+      val file = site.context.element?.containingFile ?: continue
+      dependencies.recordContext(file)
     }
+    fun empty(): CapturedHint =
+      CapturedHint(
+        null,
+        LibraryContributions(emptyList(), emptyList(), emptyList()),
+        emptyList(),
+        dependencies.build(),
+      )
+    val function = hint.pointer.element ?: return empty()
+    val visibleSites = visibleUseSites(hint, function, useSites)
+    val context = visibleSites.firstOrNull()?.context?.element ?: return empty()
+    val availability =
+      if (hint.isNonPublic) {
+        HintAvailability(visibleSites.mapTo(linkedSetOf()) { it.module })
+      } else {
+        null
+      }
+    return processLibraryHint(function, hint.scopeId, context, availability, dependencies)
+      ?: empty()
   }
 
   private fun processLibraryHint(
@@ -120,16 +181,41 @@ internal class LibraryContributionScanner(
     scopeId: ClassId,
     context: KtElement,
     hintAvailability: HintAvailability?,
-  ) {
+    dependencies: SourceClassDependencies.Builder,
+  ): CapturedHint? =
     analyze(context) {
-      val recordFile: (PsiFile) -> Unit = { onDeclarationFile(it, context) }
-      val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze
+      val bindings = mutableListOf<KaBinding>()
+      val contributions = mutableListOf<ContributionEntry>()
+      val graphInterfaces = mutableListOf<GraphInterfaceSurface>()
+      val references = mutableListOf<LibraryGraphRequest>()
+      val fileIndex = ProjectFileIndex.getInstance(project)
+      val recordFile: (PsiFile) -> Unit = { file ->
+        val virtualFile = file.virtualFile
+        if (virtualFile != null && fileIndex.isInContent(virtualFile)) {
+          dependencies.record(file, context.containingFile?.virtualFile)
+        }
+      }
+      val recordReference: (GraphReference) -> Unit = { reference ->
+        references += LibraryGraphRequest.capture(project, pointerManager, reference, context)
+      }
+      val symbol = hintFunction.symbol as? KaNamedFunctionSymbol ?: return@analyze null
       val contributedType =
-        symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze
+        symbol.valueParameters.singleOrNull()?.returnType?.fullyExpandedType ?: return@analyze null
       val classSymbol = (contributedType as? KaClassType)?.symbol as? KaNamedClassSymbol
-      val ktClass = classSymbol?.psi as? KtClassOrObject ?: return@analyze
-      val processedScopes = processedLibraryContributionScopes.getOrPut(ktClass) { mutableSetOf() }
-      if (!processedScopes.add(scopeId)) return@analyze
+      val ktClass = classSymbol?.psi as? KtClassOrObject ?: return@analyze null
+      recordFile(ktClass.containingFile)
+      val id =
+        ContributionHintId(
+          GraphDeclarationId(classSymbol.classId, ktClass.containingFile.virtualFile),
+          scopeId,
+        )
+      fun captured(): CapturedHint =
+        CapturedHint(
+          id,
+          LibraryContributions(bindings, contributions, graphInterfaces),
+          references,
+          dependencies.build(),
+        )
 
       // Contribution-provider containers carry @Origin pointing back at the real contributing
       // class; prefer it for presentation and as the contribution anchor.
@@ -140,6 +226,7 @@ internal class LibraryContributionScanner(
           ?.firstOrNull { it.name.asString() == "value" }
           ?.let { classLiteralClassId(it.expression) }
       val originPsi = originClassId?.let { findClass(it)?.psi as? KtClassOrObject }
+      originPsi?.containingFile?.let(recordFile)
       val contributionAnchor = originPsi ?: ktClass
 
       val contributedClassId = originClassId ?: ktClass.getClassId()
@@ -148,8 +235,11 @@ internal class LibraryContributionScanner(
           .filter { it.classId in options.allContributesAnnotations }
           .flatMapToSet { classListArgument(it, "replaces") }
       val originSymbol =
-        if (originPsi != null && originPsi != ktClass) originPsi.symbol as? KaNamedClassSymbol
-        else classSymbol
+        if (originPsi != null && originPsi != ktClass) {
+          originPsi.symbol as? KaNamedClassSymbol
+        } else {
+          classSymbol
+        }
       val contributionReplaces =
         originSymbol
           ?.annotations
@@ -174,21 +264,27 @@ internal class LibraryContributionScanner(
           graphExtension = childReference,
         )
       contributions += contribution
-      if (childReference != null) onGraphReference(childReference, context)
+      if (childReference != null) {
+        recordReference(childReference)
+      }
       if (contribution.kind == ContributionEntry.Kind.GRAPH_INTERFACE) {
         val interfaceType = contributedType
         val graphMembers =
           GraphMemberExtractor(options, pointerManager, bindings, recordFile, { _, _ -> }, {})
         val surface = graphMembers.interfaceSurface(this, contribution, interfaceType)
         graphInterfaces += surface
-        for (reference in surface.extensionCreations) onGraphReference(reference, context)
-        return@analyze
+        for (reference in surface.extensionCreations) {
+          recordReference(reference)
+        }
+        return@analyze captured()
       }
       val classBindings = ktClass.bindingData(this, options, recordFile)
       val originBindings =
-        if (originPsi != null && originPsi != ktClass)
+        if (originPsi != null && originPsi != ktClass) {
           originPsi.bindingData(this, options, recordFile)
-        else emptyList()
+        } else {
+          emptyList()
+        }
       val mapContributionAnnotations =
         options.contributesIntoMapAnnotations + options.customContributesIntoSetAnnotations
       val priorityAnnotations = options.contributesBindingAnnotations + mapContributionAnnotations
@@ -278,52 +374,44 @@ internal class LibraryContributionScanner(
           }
         }
       }
+      captured()
     }
-  }
 
   /**
-   * Modules from which Kotlin considers each [LibraryHint] visible.
-   *
-   * Public hints need only one module whose classpath contains the declaration. Internal/private
-   * hints retain their complete use-site visibility sets so friend and source-set rules remain
-   * authoritative, but unrelated module/hint pairs never enter an Analysis API session.
+   * Public hints stop at the first module containing the declaration. Internal/private hints retain
+   * every visible use site so friend and source-set rules remain authoritative. Classpath filtering
+   * keeps unrelated module/hint pairs outside Analysis API sessions.
    */
   @OptIn(KaExperimentalApi::class, KaPlatformInterface::class)
-  private fun visibleModulesByHint(
-    hints: List<LibraryHint>,
-    useSites: Map<KaModule, KtElement>,
-  ): Map<KtNamedFunction, Set<KaModule>> {
-    val result = hints.associateTo(linkedMapOf()) { it.function to linkedSetOf<KaModule>() }
-    val pendingPublic = hints.filterTo(linkedSetOf()) { !it.isNonPublic }
-    val nonPublic = hints.filter { it.isNonPublic }
-    for ((module, useSite) in useSites) {
+  private fun visibleUseSites(
+    hint: LibraryHint,
+    function: KtNamedFunction,
+    useSites: List<HintUseSite>,
+  ): List<HintUseSite> {
+    val result = mutableListOf<HintUseSite>()
+    for (site in useSites) {
       ProgressManager.checkCanceled()
-      val resolutionScope = KaResolutionScope.forModule(module)
-      val publicIterator = pendingPublic.iterator()
-      while (publicIterator.hasNext()) {
-        ProgressManager.checkCanceled()
-        val hint = publicIterator.next()
-        if (!resolutionScope.contains(hint.function)) continue
-        result.getValue(hint.function) += module
-        publicIterator.remove()
+      val context = site.context.element ?: continue
+      val resolutionScope = KaResolutionScope.forModule(site.module)
+      if (!resolutionScope.contains(function)) {
+        continue
       }
-
-      val candidates = nonPublic.filter { resolutionScope.contains(it.function) }
-      if (candidates.isEmpty()) continue
-      analyze(useSite) {
-        val checker =
-          createUseSiteVisibilityChecker(
-            useSiteFile = useSite.containingKtFile.symbol,
-            receiverExpression = null,
-            position = useSite,
-          )
-        for (hint in candidates) {
-          ProgressManager.checkCanceled()
-          val hintSymbol = hint.function.symbol as? KaNamedFunctionSymbol ?: continue
-          if (checker.isVisible(hintSymbol)) {
-            result.getValue(hint.function) += module
-          }
+      if (!hint.isNonPublic) {
+        return listOf(site)
+      }
+      val visible =
+        analyze(context) {
+          val checker =
+            createUseSiteVisibilityChecker(
+              useSiteFile = context.containingKtFile.symbol,
+              receiverExpression = null,
+              position = context,
+            )
+          val symbol = function.symbol as? KaNamedFunctionSymbol
+          symbol != null && checker.isVisible(symbol)
         }
+      if (visible) {
+        result += site
       }
     }
     return result
@@ -333,10 +421,44 @@ internal class LibraryContributionScanner(
     return pointerManager.createSmartPsiElementPointer(element)
   }
 
-  private class LibraryHint(val scopeId: ClassId, val function: KtNamedFunction) {
-    val isNonPublic: Boolean =
-      function.hasModifier(KtTokens.INTERNAL_KEYWORD) ||
-        function.hasModifier(KtTokens.PRIVATE_KEYWORD)
+  private class LibraryHint(
+    val scopeId: ClassId,
+    val pointer: SmartPsiElementPointer<KtNamedFunction>,
+    val isNonPublic: Boolean,
+  )
+
+  private class HintUseSite(val module: KaModule, val context: SmartPsiElementPointer<KtElement>)
+
+  private class HintBatch(
+    val hints: List<LibraryHint>,
+    val useSites: List<HintUseSite>,
+    val dependencies: SourceClassDependencies,
+  )
+
+  private data class ContributionHintId(val declaration: GraphDeclarationId, val scopeId: ClassId)
+
+  /** A successful read owns all of its output until ordered acceptance. */
+  private class CapturedHint(
+    val id: ContributionHintId?,
+    val metadata: LibraryContributions,
+    val references: List<LibraryGraphRequest>,
+    val dependencies: SourceClassDependencies,
+  )
+}
+
+/** Detached metadata and graph work discovered by one ordered hint batch. */
+internal class LibraryContributionScan(
+  val metadata: LibraryContributions,
+  val references: List<LibraryGraphRequest>,
+  val dependencies: SourceClassDependencies,
+) {
+  companion object {
+    val EMPTY =
+      LibraryContributionScan(
+        LibraryContributions(emptyList(), emptyList(), emptyList()),
+        emptyList(),
+        SourceClassDependencies.EMPTY,
+      )
   }
 }
 
@@ -358,9 +480,13 @@ internal fun sourceUseSitesByModule(
   val fileIndex = ProjectFileIndex.getInstance(project)
 
   fun addUseSite(element: PsiElement?) {
-    if (element !is KtElement) return
+    if (element !is KtElement) {
+      return
+    }
     val virtualFile = element.containingFile?.virtualFile ?: return
-    if (!fileIndex.isInContent(virtualFile)) return
+    if (!fileIndex.isInContent(virtualFile)) {
+      return
+    }
     val module = KaModuleProvider.getModule(project, element, useSiteModule = null)
     result.putIfAbsent(module, element)
   }

@@ -409,18 +409,27 @@ internal class ResolutionSnapshotBuilder(
 
     val metadata =
       trace.phaseSuspend("library.discoverMetadata") { phase ->
-        progress.phase(IndexBuildPhase.READING_DEPENDENCY_METADATA)
-        readSnapshotStage(project, checkCurrent, phase) {
-          LibraryGraphDiscovery(
-              project,
-              fingerprint.options,
-              source.graphs,
-              source.contributions,
-              source.consumers,
-              source.graphInterfaceSurfaces,
-            )
-            .discover()
-        }
+        SnapshotReadExecutor(
+            project,
+            parallelism,
+            progress,
+            IndexBuildPhase.READING_DEPENDENCY_METADATA,
+            phase,
+            checkCurrent,
+          )
+          .run { executor ->
+            val discovery = executor.read {
+              LibraryGraphDiscovery(
+                project,
+                fingerprint.options,
+                source.graphs,
+                source.contributions,
+                source.consumers,
+                source.graphInterfaceSurfaces,
+              )
+            }
+            discovery.discover(executor)
+          }
       }
     val shard =
       trace.phaseSuspend("library.resolveClasses") { phase ->
