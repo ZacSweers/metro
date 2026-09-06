@@ -1,0 +1,15 @@
+/AssistedFactorySuspendMultibindings.kt:13:3: error: [Metro/MultibindingOverSuspendBindings] Set<String> aggregates suspend bindings, which is unsupported. Provider-valued set multibindings are not supported. Remove the suspend contribution(s) or provide them eagerly.
+
+Trace:
+    Set<String> is injected at
+        [ExampleGraph] Target(…, values) // ❌ needs suspend support
+    @MultibindingElement("kotlin.String", "2040696630") String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideElement(…)
+
+/AssistedFactorySuspendMultibindings.kt:14:3: error: [Metro/MultibindingOverSuspendBindings] Map<String, String> aggregates suspend bindings and must be consumed as `Map<String, suspend () -> String>` so each value is initialized only when its provider is invoked.
+
+Trace:
+    Map<String, String> is injected at
+        [ExampleGraph] Target(…, valuesByName) // ❌ needs suspend support
+    @MultibindingElement("kotlin.String_kotlin.String", "1626177339") String is provided at
+        [ExampleGraph] suspend ExampleGraph.provideMapValue(…)

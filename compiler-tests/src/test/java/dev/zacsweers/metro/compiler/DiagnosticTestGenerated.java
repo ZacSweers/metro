@@ -1917,6 +1917,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("AssistedFactorySuspendMultibindings.kt")
+    public void testAssistedFactorySuspendMultibindings() {
+      run("AssistedFactorySuspendMultibindings.kt");
+    }
+
+    @Test
     @TestMetadata("AssistedFactorySuspendRequired.kt")
     public void testAssistedFactorySuspendRequired() {
       run("AssistedFactorySuspendRequired.kt");
