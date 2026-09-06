@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 @file:OptIn(ExperimentalWasmDsl::class)
 
+import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -407,7 +408,25 @@ if (excludeJsBoxTests) {
 }
 
 tasks.withType<Test> {
-  outputs.upToDateWhen { false }
+  val updateTestData = providers.gradleProperty("updateTestData").isPresent
+  val debugCompilerTests = providers.gradleProperty("metro.debugCompilerTests").isPresent
+  // Golden updates and debugging need a fresh test JVM on every invocation.
+  outputs.upToDateWhen { !updateTestData && !debugCompilerTests && !debug }
+  outputs.doNotCacheIf("Golden updates or compiler debugging requested") {
+    updateTestData || debugCompilerTests || debug
+  }
+
+  // FULL_JDK tests and KSP use the selected test JDK during compilation.
+  inputs.property("testJavaRuntimeVersion", javaLauncher.map { it.metadata.javaRuntimeVersion })
+  inputs.property("testJvmVersion", javaLauncher.map { it.metadata.jvmVersion })
+  inputs.property("testJavaVendor", javaLauncher.map { it.metadata.vendor })
+  inputs.property("operatingSystem", providers.systemProperty("os.name"))
+  inputs.property("architecture", providers.systemProperty("os.arch"))
+  inputs.property("ci", environment["CI"]?.toString().orEmpty())
+  // The JVM reads these options directly from its environment.
+  for (variable in listOf("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS")) {
+    inputs.property(variable, environment[variable]?.toString().orEmpty())
+  }
   dependsOn(runtimeTracingClasspath)
   maxParallelForks = compilerTestMaxParallelForks.get()
 
@@ -444,7 +463,7 @@ tasks.withType<Test> {
 
   workingDir = rootDir
 
-  if (providers.gradleProperty("metro.debugCompilerTests").isPresent) {
+  if (debugCompilerTests) {
     testLogging {
       showStandardStreams = true
       showStackTraces = true
@@ -514,11 +533,15 @@ tasks.withType<Test> {
     setLibraryProperty("kotlin-test-wasm-wasi", wasmKlibClasspath)
 
     val d8EnvSpec = project.the<D8EnvSpec>()
-    dependsOn(d8EnvSpec.run { project.d8SetupTaskProvider })
-    systemProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
+    val d8Setup = d8EnvSpec.run { project.d8SetupTaskProvider }
+    dependsOn(d8Setup)
+    // D8 can load support files from its installation directory.
+    inputs.files(d8Setup).withPropertyName("d8Distribution").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.property("d8ExecutableName", d8EnvSpec.executable.map { File(it).name })
+    setLocationProperty("javascript.engine.path.V8", d8EnvSpec.executable.get())
   }
-  systemProperty("javascript.engine.path.repl", layout.projectDirectory.file("repl.js").asFile)
-  systemProperty(
+  setFilesProperty("javascript.engine.path.repl", files(layout.projectDirectory.file("repl.js")))
+  setLocationProperty(
     "kotlin.js.test.root.out.dir",
     layout.buildDirectory.dir("js-test-output").get().asFile.absolutePath,
   )
@@ -527,48 +550,133 @@ tasks.withType<Test> {
   testOmitRedundantMirrors?.let { systemProperty("metro.testOmitRedundantMirrors", it) }
 
   // Regenerate golden files in place: ./gradlew :compiler-tests:test -PupdateTestData=true
-  if (providers.gradleProperty("updateTestData").isPresent) {
+  if (updateTestData) {
     systemProperty("kotlin.test.update.test.data", "true")
   }
 
-  systemProperty("metroRuntime.classpath", metroRuntimeClasspath.asPath)
-  systemProperty("metroRuntimeCoroutines.classpath", metroRuntimeCoroutinesClasspath.asPath)
-  systemProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath.asPath)
-  systemProperty(
+  setClasspathProperty("metroRuntime.classpath", metroRuntimeClasspath)
+  setClasspathProperty("metroRuntimeCoroutines.classpath", metroRuntimeCoroutinesClasspath)
+  setFilesProperty("metroRuntime.klibClasspath", metroRuntimeKlibClasspath)
+  setFilesProperty(
     "metroRuntimeCoroutines.klibClasspath",
-    metroRuntimeCoroutinesKlibClasspath.asPath,
+    metroRuntimeCoroutinesKlibClasspath,
   )
-  systemProperty("coroutines.classpath", coroutinesClasspath.asPath)
-  systemProperty("coroutines.klibClasspath", coroutinesKlibClasspath.asPath)
-  systemProperty("runtimeTracing.classpath", runtimeTracingClasspath.asPath)
-  systemProperty("anvilRuntime.classpath", anvilRuntimeClasspath.asPath)
-  systemProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath.asPath)
-  systemProperty("daggerRuntime.classpath", daggerRuntimeClasspath.asPath)
-  systemProperty("daggerInterop.classpath", daggerInteropClasspath.asPath)
-  systemProperty("hiltCore.classpath", hiltCoreClasspath.asPath)
-  systemProperty("guice.classpath", guiceClasspath.asPath)
-  systemProperty("javaxInterop.classpath", javaxInteropClasspath.asPath)
-  systemProperty("jakartaInterop.classpath", jakartaInteropClasspath.asPath)
-  systemProperty("circuit.classpath", circuitRuntimeClasspath.asPath)
-  systemProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath.asPath)
-  systemProperty("ksp.testRuntimeClasspath", configurations.testRuntimeClasspath.get().asPath)
+  setClasspathProperty("coroutines.classpath", coroutinesClasspath)
+  setFilesProperty("coroutines.klibClasspath", coroutinesKlibClasspath)
+  setClasspathProperty("runtimeTracing.classpath", runtimeTracingClasspath)
+  setClasspathProperty("anvilRuntime.classpath", anvilRuntimeClasspath)
+  setClasspathProperty("kiAnvilRuntime.classpath", kiAnvilRuntimeClasspath)
+  setClasspathProperty("daggerRuntime.classpath", daggerRuntimeClasspath)
+  setClasspathProperty("daggerInterop.classpath", daggerInteropClasspath)
+  setClasspathProperty("hiltCore.classpath", hiltCoreClasspath)
+  setClasspathProperty("guice.classpath", guiceClasspath)
+  setClasspathProperty("javaxInterop.classpath", javaxInteropClasspath)
+  setClasspathProperty("jakartaInterop.classpath", jakartaInteropClasspath)
+  setClasspathProperty("circuit.classpath", circuitRuntimeClasspath)
+  setFilesProperty("circuit.klibClasspath", circuitRuntimeKlibClasspath)
+  setClasspathProperty("ksp.testRuntimeClasspath", testRuntimeClasspath)
 
   // Properties required to run the internal test framework.
   systemProperty("idea.ignore.disabled.plugins", "true")
-  systemProperty("idea.home.path", rootDir)
+  // The framework locates the tracked test data through this home path.
+  setLocationProperty("idea.home.path", rootDir.absolutePath)
 }
 
+/** Tracks JVM library contents while constructing absolute paths for the test process. */
+abstract class CompilerTestClasspathArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyNames: ListProperty<String>
+  @get:Classpath abstract val classpath: ConfigurableFileCollection
+
+  override fun asArguments(): Iterable<String> =
+    propertyNames.get().map { "-D$it=${classpath.asPath}" }
+}
+
+/** Tracks KLIB and script bytes, including their names and argument order. */
+abstract class CompilerTestFilesArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyNames: ListProperty<String>
+  @get:InputFiles
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  abstract val files: ConfigurableFileCollection
+
+  @get:Input
+  val fileNames: List<String>
+    get() = files.map { it.name }
+
+  override fun asArguments(): Iterable<String> =
+    propertyNames.get().map { "-D$it=${files.asPath}" }
+}
+
+/** Passes output locations and paths whose contents are already tracked separately. */
+abstract class CompilerTestLocationArgumentProvider : CommandLineArgumentProvider {
+  @get:Input abstract val propertyName: Property<String>
+  @get:Internal abstract val location: Property<String>
+
+  override fun asArguments(): Iterable<String> =
+    listOf("-D${propertyName.get()}=${location.get()}")
+}
+
+/** Adds content-tracked JVM libraries without putting checkout paths in the cache key. */
+fun Test.setClasspathProperty(propertyName: String, classpath: FileCollection) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
+      propertyNames.set(listOf(propertyName))
+      this.classpath.from(classpath)
+    }
+  )
+}
+
+/** Adds content-tracked KLIBs or scripts in the order used by the test framework. */
+fun Test.setFilesProperty(propertyName: String, files: FileCollection) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
+      propertyNames.set(listOf(propertyName))
+      this.files.from(files)
+    }
+  )
+}
+
+/** Callers must track input contents separately when a location points to an input. */
+fun Test.setLocationProperty(propertyName: String, location: String) {
+  jvmArgumentProviders.add(
+    objects.newInstance<CompilerTestLocationArgumentProvider>().apply {
+      this.propertyName.set(propertyName)
+      this.location.set(location)
+    }
+  )
+}
+
+/** Supplies the framework's aliases for one selected Kotlin library. */
 fun Test.setLibraryProperty(
   extraPropName: String,
   jarName: String,
   configuration: Configuration,
 ) {
   val regex = """$jarName-\d.*""".toRegex()
-  val path = configuration.files.find { regex.matches(it.name) }?.absolutePath ?: return
-  systemProperty("org.jetbrains.kotlin.test.$jarName", path)
-  if (extraPropName.isNotEmpty()) systemProperty(extraPropName, path)
+  val library = configuration.files.find { regex.matches(it.name) } ?: return
+  val propertyNames = buildList {
+    add("org.jetbrains.kotlin.test.$jarName")
+    if (extraPropName.isNotEmpty()) {
+      add(extraPropName)
+    }
+  }
+  if (library.extension == "klib") {
+    jvmArgumentProviders.add(
+      objects.newInstance<CompilerTestFilesArgumentProvider>().apply {
+        this.propertyNames.set(propertyNames)
+        files.from(library)
+      }
+    )
+  } else {
+    jvmArgumentProviders.add(
+      objects.newInstance<CompilerTestClasspathArgumentProvider>().apply {
+        this.propertyNames.set(propertyNames)
+        classpath.from(library)
+      }
+    )
+  }
 }
 
+/** Uses the framework's standard property name for a Kotlin library. */
 fun Test.setLibraryProperty(
   jarName: String,
   configuration: Configuration,
