@@ -19,7 +19,7 @@ Changelog
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
 - **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
 - **[IR]** Keep dynamic graph arguments aligned when container order changes.
-- **[IR]** Give generic container specializations distinct generated dynamic graph classes.
+- **[IR]** Prevent dynamic graph class name collisions when a generic binding container is used with different type arguments. Basically, graphs using `Bindings<Int>` and `Bindings<Long>` can coexist in the same file.
 - **[IR]** Avoid generated dynamic graph name collisions across sibling files.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
