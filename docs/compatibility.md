@@ -57,6 +57,14 @@ Pre-release versions are normally only tested during their development cycle. Af
 
 Some releases may introduce prohibitively difficult breaking changes that require companion release, so check Metro's open PRs for one targeting that Kotlin version for details. There is a tested versions table at the bottom of this page that is updated with each Metro release.
 
+## Annotation Defaults in KLIB Dependencies
+
+Kotlin `2.3.0` and `2.3.10` can leave annotation defaults unavailable to compiler plugins when the annotation class comes from a KLIB dependency. Metro keeps these values omitted during annotation comparison. An explicit value might fail to match an equivalent omitted default, including defaults inside nested annotations. This can affect binding lookup and duplicate detection. Source annotation defaults, explicit argument values, and JVM binary defaults remain supported.
+
+We recommend upgrading to Kotlin `2.3.20` or newer. If you're staying on an affected version, supply the values explicitly at every affected annotation use, including nested annotations. Update affected annotation uses in dependencies too and rebuild those binaries.
+
+Kotlin `2.3.0` and `2.3.10` also serialize omitted array arguments as empty arrays, even when their defaults are nonempty. That metadata is indistinguishable from an explicit empty array. Metro can't recover the original default from it. Rebuild affected dependencies with Kotlin `2.3.20` or newer, or supply the array values explicitly before rebuilding.
+
 ## IDE Support
 
 IDEs have their own compatibility story with Kotlin versions. The Kotlin IDE plugin embeds Kotlin versions built from source, so Metro's IDE support selects the nearest compatible version and tries to support the latest stable IntelliJ and Android Studio releases + the next IntelliJ EAP release.

@@ -57,8 +57,8 @@ class IntHolderImpl : IntHolder {
       @Binds
       @IntoMap
       @IntKey(value = 3)
-      @CallableMetadata(callableName = "bindIntoMapAsIntHolder4013004651", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsIntHolder40130046514013004651_intomap(instance: IntHolderImpl): IntHolder {
+      @CallableMetadata(callableName = "bindIntoMapAsIntHolder3311390791", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsIntHolder33113907913311390791_intomap(instance: IntHolderImpl): IntHolder {
         return error(message = "Never called")
       }
 
@@ -68,7 +68,7 @@ class IntHolderImpl : IntHolder {
     @Binds
     @IntKey(value = 3)
     @ComptimeOnly
-    fun bindIntoMapAsIntHolder4013004651(instance: IntHolderImpl): IntHolder {
+    fun bindIntoMapAsIntHolder3311390791(instance: IntHolderImpl): IntHolder {
       return error(message = "Never called")
     }
 

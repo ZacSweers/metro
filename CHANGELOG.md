@@ -21,6 +21,9 @@ Changelog
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
+- **[IR]** Compare annotation values structurally so hash collisions don't merge distinct bindings.
+- **[IR]** Preserve JVM array component types and dimensions in source class-literal qualifiers.
+- **[IR]** Resolve JVM binary annotation defaults on Kotlin `2.3.0` and `2.3.10`.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
 - **[IR/interop]** Fix a runtime `ClassCastException` when a `Class`-keyed map is injected into a provider-created class across modules with `KClass`/`Class` interop enabled.
 - **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
@@ -28,6 +31,7 @@ Changelog
 
 ### Changes
 
+- **[IR]** Annotation default matching is limited for KLIB dependencies on Kotlin `2.3.0` and `2.3.10`. We recommend upgrading to Kotlin `2.3.20` or newer.
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
 - Update embedded Okio dependency to `3.18.2`.
