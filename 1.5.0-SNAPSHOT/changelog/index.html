@@ -7895,6 +7895,7 @@
 <li><strong>[FIR/IR/interop]</strong> Fix recognition of <code>@get:BindsOptionalOf</code> properties when Dagger interop is enabled.</li>
 <li><strong>[IR]</strong> Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.</li>
 <li><strong>[IR]</strong> Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.</li>
+<li><strong>[IR]</strong> Report an error when an assisted-injected constructor requests a set or eager map backed by suspend providers. Basically, assisted factories now get the same suspend-multibinding checks as ordinary injection.</li>
 <li><strong>[IR]</strong> Fix missing bindings for internal contributed objects across modules when <code>generateContributionProviders</code>, <code>generateClassesInIr</code>, and <code>contributesAsInject</code> are enabled together.</li>
 <li><strong>[IR]</strong> Report duplicate map keys when different key annotations unwrap to the same value, including implicit class keys.</li>
 <li><strong>[IR]</strong> Report missing required graph bindings even when an <code>@OptionalBinding</code> accessor requests the same type, regardless of declaration order.</li>
