@@ -8,6 +8,7 @@ Changelog
 
 - **[FIR]** Warn when a `@ContributesTo` interface only exposes bindings and recommend making it a binding container with `@BindingContainer`.
 - **[FIR/IR]** Support `priority` on `@ContributesBinding` and `@ContributesIntoMap`, allowing higher-priority contributions to replace conflicting bindings or map entries without directly referencing the lower-priority implementation.
+- **[IR]** Reuse completed member-injector lookups for classes without injectable members.
 - **[IR]** Support suspend providers with switching providers.
 - **[IR]** Avoid revisiting shared supertypes when resolving generic bindings through diamond inheritance.
 - **[IR]** Reduce repeated work when validating suspend multibindings and reporting suspend-binding errors. Error traces now use cached, deterministic shortest paths to a suspend binding.

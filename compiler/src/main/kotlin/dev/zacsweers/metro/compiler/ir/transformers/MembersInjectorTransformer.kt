@@ -193,8 +193,10 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
 
   fun getOrGenerateInjector(declaration: IrClass): MemberInjectClass? {
     val injectedClassId: ClassId = declaration.classId ?: return null
-    generatedInjectors[injectedClassId]?.getOrNull()?.let {
-      return it
+    val cachedInjector = generatedInjectors[injectedClassId]
+    if (cachedInjector != null) {
+      // Empty entries record completed lookups for classes without injectable members.
+      return cachedInjector.getOrNull()
     }
 
     val isExternal = declaration.isExternalParent
