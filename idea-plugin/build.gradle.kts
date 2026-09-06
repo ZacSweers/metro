@@ -5,7 +5,6 @@ import foundry.gradle.properties.StartParameterProperties
 import foundry.gradle.properties.createPropertiesProvider
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
-import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -322,10 +321,6 @@ intellijPlatform {
       create(IntelliJPlatformType.AndroidStudio, "2026.1.1.8")
     }
   }
-}
-
-tasks.withType<VerifyPluginTask>().configureEach {
-  setJvmArgs(jvmArgs.filterNot { it == "--sun-misc-unsafe-memory-access=allow" })
 }
 
 tasks.test {
