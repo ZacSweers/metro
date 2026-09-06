@@ -1506,9 +1506,21 @@ internal class IrBindingGraph(
     val extraNotes = buildList {
       addAll(locationDiagnostics.flatMap { it.notes }.distinct())
       if (shouldUnwrapMapKeyValues(mapKey.ir)) {
+        // Use the populated keys from code generation so inferred class keys name their class.
+        val mapKeys =
+          locatedContributions
+            .map { (contribution, _) ->
+              val annotatedBinding = contribution as IrBinding.BindingWithAnnotations
+              val emittedMapKey =
+                contribution.typeKey.multibindingKeyData?.mapKey
+                  ?: checkNotNull(annotatedBinding.annotations.mapKey)
+              emittedMapKey.render(short = false)
+            }
+            .distinct()
         add(
           Note.note(
-            "Map key annotations unwrap to their values. Different annotations can share a key."
+            "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
+              "Metro uses the value inside each annotation as the map key, and those values are equal."
           )
         )
       }

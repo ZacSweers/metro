@@ -16,7 +16,9 @@
   trace (in ExplicitKeysGraph):
       Map<String, Int> is requested at ExplicitKeysGraph.strings
 
-  note: Map key annotations unwrap to their values. Different annotations can share a key.
+  note: These bindings use @FirstStringKey("shared"), @SecondStringKey("shared") with unwrapValue =
+        true. Metro uses the value inside each annotation as the map key, and those values are
+        equal.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -38,7 +40,9 @@
   trace (in ExplicitKeysGraph):
       Map<Entry, Int> is requested at ExplicitKeysGraph.enums
 
-  note: Map key annotations unwrap to their values. Different annotations can share a key.
+  note: These bindings use @FirstEnumKey(Entry.VALUE), @SecondEnumKey(Entry.VALUE) with unwrapValue
+        = true. Metro uses the value inside each annotation as the map key, and those values are
+        equal.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -61,7 +65,9 @@
   trace (in ExplicitKeysGraph):
       Map<KClass<*>, Int> is requested at ExplicitKeysGraph.classes
 
-  note: Map key annotations unwrap to their values. Different annotations can share a key.
+  note: These bindings use @dev.zacsweers.metro.ClassKey(kotlin.String::class),
+        @OtherClassKey(kotlin.String::class) with unwrapValue = true. Metro uses the value inside
+        each annotation as the map key, and those values are equal.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
 
 
@@ -85,5 +91,8 @@
   trace (in ImplicitKeysGraph):
       Map<KClass<*>, Item> is requested at ImplicitKeysGraph.items
 
-  note: Map key annotations unwrap to their values. Different annotations can share a key.
+  note: These bindings use @dev.zacsweers.metro.ClassKey(ItemImpl::class),
+        @InferredClassKey(ItemImpl::class) with unwrapValue = true. Metro uses the value inside each
+        annotation as the map key, and those values are equal.
   docs: https://zacsweers.github.io/metro/latest/diagnostics/#duplicatemapkeys
+
