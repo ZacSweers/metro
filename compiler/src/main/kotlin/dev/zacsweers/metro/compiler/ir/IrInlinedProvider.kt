@@ -270,17 +270,32 @@ internal class IrInlinedProvider private constructor(private val value: Value) {
       }
     }
 
+    /** Restores the selected metadata value, including zero, false, and empty strings. */
     private fun InlinedValueProto.toValue(): Value? {
-      int_value?.let(::IntValue)
-      long_value?.let(::LongValue)
-      float_value?.let(::FloatValue)
-      double_value?.let(::DoubleValue)
-      bool_value?.let(::BooleanValue)
-      string_value?.let(::StringValue)
+      int_value?.let(::IntValue)?.let {
+        return it
+      }
+      long_value?.let(::LongValue)?.let {
+        return it
+      }
+      float_value?.let(::FloatValue)?.let {
+        return it
+      }
+      double_value?.let(::DoubleValue)?.let {
+        return it
+      }
+      bool_value?.let(::BooleanValue)?.let {
+        return it
+      }
+      string_value?.let(::StringValue)?.let {
+        return it
+      }
       char_value?.let {
         return CharValue(it.toChar())
       }
-      if (is_null == true) return NullValue
+      if (is_null == true) {
+        return NullValue
+      }
       object_class_id?.let {
         return ObjectValue(ClassId.fromString(it))
       }
