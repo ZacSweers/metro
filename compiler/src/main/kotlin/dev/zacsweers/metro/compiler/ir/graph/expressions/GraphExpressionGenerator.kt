@@ -429,12 +429,16 @@ private constructor(
                 // below.
                 val materialized = inlinedValue.materialize(binding.typeKey.type)
                 if (materialized != null) {
+                  codegenStats?.run { providerInlines++ }
                   return materialized.toTargetType(
                     actual = AccessType.INSTANCE,
                     contextualTypeKey = contextualTypeKey,
                     bindingKind = bindingKind,
                   )
                 }
+                codegenStats?.run { providerInlineUnavailableValue++ }
+              } else {
+                codegenStats?.run { providerInlineDeferredAccess++ }
               }
             }
           }

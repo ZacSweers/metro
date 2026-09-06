@@ -78,6 +78,8 @@ public data class GraphOptimizationStatsMetadata(
   val shardedSupertypes: Int = 0,
   val shardedInitFunctions: Int = 0,
   val providerInlines: Int = 0,
+  /** Known inline candidates that fell back, counted by reason at emitted access sites. */
+  val providerInlineFallbacks: Map<String, Int> = emptyMap(),
 )
 
 /** Root entry points into the graph. */

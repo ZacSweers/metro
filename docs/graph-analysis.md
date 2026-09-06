@@ -38,6 +38,24 @@ Explanation collection is enabled with `reportsDestination`. It does not change 
 JSON reports are written during code generation, so a compilation that stops earlier may have no
 report for the failing graph.
 
+## Provider inlining counts
+
+Each graph's JSON report includes `stats.optimizations.providerInlines`, the number of inline
+value expressions emitted for that graph. A provider used at two generated access sites can count
+twice. These counts don't measure runtime calls.
+
+`providerInlineFallbacks` records known inline candidates that use another code path:
+
+| Field | Meaning |
+|-------|---------|
+| `deferredAccess` | Provider or lazy access needs to keep value evaluation deferred. |
+| `unavailableValue` | The compiler couldn't materialize the value in the consuming compilation. |
+
+Providers without inline metadata aren't included in the fallback counts. Their bodies may be
+ineligible for inlining, or inlining may be disabled.
+
+The counters are available in per-graph and aggregated metadata.
+
 ## Available Tasks
 
 !!! warning

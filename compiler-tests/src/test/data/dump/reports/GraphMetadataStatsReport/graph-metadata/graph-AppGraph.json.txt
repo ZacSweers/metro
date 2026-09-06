@@ -17,6 +17,10 @@
         "isDeferrable": false
       },
       {
+        "key": "kotlin.Int",
+        "isDeferrable": false
+      },
+      {
         "key": "A",
         "isDeferrable": false
       },
@@ -112,11 +116,11 @@
     "maxGeneratedClassNameLength": 233
   },
   "stats": {
-    "providerFactories": 1,
+    "providerFactories": 2,
     "bindsCallables": 0,
     "multibindsCallables": 0,
     "optionalBindings": 0,
-    "accessors": 5,
+    "accessors": 6,
     "injectors": 0,
     "graphExtensionAccessors": 0,
     "graphExtensionFactories": 0,
@@ -125,9 +129,9 @@
     "dynamicBindings": 0,
     "graphPrivateKeys": 0,
     "publishedBindsKeys": 0,
-    "populatedKeys": 7,
-    "validatedKeys": 7,
-    "reachableKeys": 7,
+    "populatedKeys": 8,
+    "validatedKeys": 8,
+    "reachableKeys": 8,
     "deferredKeys": 0,
     "unusedInputs": 0,
     "providerProperties": 6,
@@ -142,7 +146,11 @@
       "shardsGenerated": 2,
       "shardedSupertypes": 2,
       "shardedInitFunctions": 2,
-      "providerInlines": 0
+      "providerInlines": 1,
+      "providerInlineFallbacks": {
+        "deferredAccess": 0,
+        "unavailableValue": 0
+      }
     }
   },
   "bindings": [
@@ -251,6 +259,16 @@
       "isSynthetic": false,
       "origin": "GraphMetadataStatsReport.kt:42:13",
       "declaration": "provideG"
+    },
+    {
+      "key": "kotlin.Int",
+      "bindingKind": "Provided",
+      "isScoped": false,
+      "nameHint": "provideInt",
+      "dependencies": [],
+      "isSynthetic": false,
+      "origin": "GraphMetadataStatsReport.kt:44:13",
+      "declaration": "provideInt"
     }
   ],
   "bindingExplanations": [
@@ -686,6 +704,41 @@
       ],
       "request": {
         "key": "G",
+        "hasDefault": false,
+        "isOptional": false
+      },
+      "details": [
+        "Records the candidates reached by this lookup; later fallbacks remain unevaluated."
+      ]
+    },
+    {
+      "context": {
+        "id": "8:AppGraph",
+        "label": "AppGraph"
+      },
+      "phase": "lookup",
+      "outcome": "selected",
+      "candidates": [
+        {
+          "id": "10:kotlin.Int|47:StatsModule.provideInt(StatsModule): kotlin.Int",
+          "key": "kotlin.Int",
+          "status": "selected",
+          "reason": "selected_explicit",
+          "declaration": {
+            "id": "StatsModule.provideInt(StatsModule): kotlin.Int",
+            "label": "StatsModule.provideInt",
+            "source": {
+              "path": "GraphMetadataStatsReport.kt",
+              "line": 44,
+              "column": 13
+            }
+          },
+          "relatedDeclarations": [],
+          "details": []
+        }
+      ],
+      "request": {
+        "key": "kotlin.Int",
         "hasDefault": false,
         "isOptional": false
       },

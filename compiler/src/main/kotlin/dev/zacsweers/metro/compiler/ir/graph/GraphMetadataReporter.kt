@@ -216,7 +216,14 @@ internal class GraphMetadataReporter(
           put("shardsGenerated", JsonPrimitive(codegenStats.shards))
           put("shardedSupertypes", JsonPrimitive(shardedSupertypes))
           put("shardedInitFunctions", JsonPrimitive(codegenStats.shardedInitFunctions))
-          put("providerInlines", JsonPrimitive(0))
+          put("providerInlines", JsonPrimitive(codegenStats.providerInlines))
+          put(
+            "providerInlineFallbacks",
+            buildJsonObject {
+              put("deferredAccess", JsonPrimitive(codegenStats.providerInlineDeferredAccess))
+              put("unavailableValue", JsonPrimitive(codegenStats.providerInlineUnavailableValue))
+            },
+          )
         },
       )
     }
@@ -392,6 +399,7 @@ internal class GraphMetadataReporter(
     }
   }
 
+  /** Counts emitted code sites. Repeated runtime calls don't change these counts. */
   class CodegenStats {
     var providerProperties: Int = 0
     var scopedProviderProperties: Int = 0
@@ -400,6 +408,10 @@ internal class GraphMetadataReporter(
     var classConstructorNewInstanceCalls: Int = 0
     var providerDirectInvocations: Int = 0
     var providerNewInstanceCalls: Int = 0
+    var providerInlines: Int = 0
+    // Count only known inline candidates that fall back while generating an access expression.
+    var providerInlineDeferredAccess: Int = 0
+    var providerInlineUnavailableValue: Int = 0
     var shardedInitFunctions: Int = 0
   }
 }

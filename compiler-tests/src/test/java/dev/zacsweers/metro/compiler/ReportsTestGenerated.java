@@ -56,6 +56,12 @@ public class ReportsTestGenerated extends AbstractReportsTest {
   }
 
   @Test
+  @TestMetadata("ProviderInlineFallbacks.kt")
+  public void testProviderInlineFallbacks() {
+    run("ProviderInlineFallbacks.kt");
+  }
+
+  @Test
   @TestMetadata("SimpleTraceGeneration.kt")
   public void testSimpleTraceGeneration() {
     run("SimpleTraceGeneration.kt");

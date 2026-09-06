@@ -515,7 +515,11 @@ class MetroArtifactsTest {
                   "shardsGenerated": 0,
                   "shardedSupertypes": 0,
                   "shardedInitFunctions": 0,
-                  "providerInlines": 0
+                  "providerInlines": 0,
+                  "providerInlineFallbacks": {
+                    "deferredAccess": 0,
+                    "unavailableValue": 0
+                  }
                 }
               },
               "bindings": [

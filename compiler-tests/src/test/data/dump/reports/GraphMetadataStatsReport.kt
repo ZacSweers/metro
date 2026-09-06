@@ -39,6 +39,8 @@ class G(val f: F)
 @ContributesTo(AppScope::class)
 object StatsModule {
   @Provides fun provideG(f: F): G = G(f)
+
+  @Provides fun provideInt(): Int = 42
 }
 
 @MergeContributionsInIr
@@ -46,4 +48,5 @@ object StatsModule {
 interface AppGraph {
   val f: F
   val g: G
+  val number: Int
 }

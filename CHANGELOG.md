@@ -14,6 +14,8 @@ Changelog
 - **[IR]** Reduce repeated dependency scans when checking cycles in graphs with large multibindings.
 - **[IR]** Avoid initializing the rich terminal renderer for plain compiler diagnostics.
 - **[Reports]** Explain binding choices in graph reports. Includes things like selection precedence, contribution filtering, and parent-graph ownership.
+- **[Reports]** Count emitted provider inlines in graph reports.
+- **[Reports]** Report when deferred access or unavailable values prevent provider inlining.
 
 ### Fixes
 
