@@ -1,0 +1,24 @@
+/RequiredProviderDependencyWinsOptionalDependency.kt:16:5: error: [Metro/MissingBinding] No binding found for Missing
+
+  OptionalFirstGraph.value -> Int -> Missing
+
+  trace (in OptionalFirstGraph):
+      Missing is injected at OptionalFirstGraph.provideValue(…, required)
+      Int is requested at OptionalFirstGraph.value
+
+  help: ensure Missing has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to OptionalFirstGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding
+
+
+/RequiredProviderDependencyWinsOptionalDependency.kt:26:5: error: [Metro/MissingBinding] No binding found for Missing
+
+  RequiredFirstGraph.value -> Int -> Missing
+
+  trace (in RequiredFirstGraph):
+      Missing is injected at RequiredFirstGraph.provideValue(…, required)
+      Int is requested at RequiredFirstGraph.value
+
+  help: ensure Missing has an @Inject constructor or is provided by an @Provides or @Binds
+        declaration visible to RequiredFirstGraph
+  docs: https://zacsweers.github.io/metro/latest/diagnostics/#missingbinding

@@ -75,6 +75,62 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `required dependencies survive optional misses in either order`() {
+    val missingType = "Missing".typeKey
+    val optional = StringContextualTypeKey.create(missingType, hasDefault = true)
+    val required = missingType.contextualTypeKey
+    // Class lookups can return transient absence without adding a graph node.
+    val absent =
+      object :
+        BaseBinding<String, StringTypeKey, StringContextualTypeKey> by missingType.toBinding() {
+        override val isTransient = true
+      }
+
+    for (dependencies in listOf(listOf(optional, required), listOf(required, optional))) {
+      val validationRequests = mutableListOf<StringContextualTypeKey>()
+      val graph =
+        MutableBindingGraph<
+          String,
+          StringTypeKey,
+          StringContextualTypeKey,
+          BaseBinding<String, StringTypeKey, StringContextualTypeKey>,
+          StringBindingStack.Entry,
+          StringBindingStack,
+        >(
+          newBindingStack = { StringBindingStack("AppGraph") },
+          newBindingStackEntry = { contextKey, _, _ ->
+            validationRequests += contextKey
+            StringBindingStack.Entry(contextKey)
+          },
+          computeBindings = { _, _, _ -> setOf(absent) },
+        )
+      graph.tryPut("Consumer".typeKey.toBinding(dependencies), StringBindingStack("AppGraph"))
+
+      val failure =
+        assertFailsWith<IllegalStateException> {
+          graph.seal(
+            shrinkUnusedBindings = false,
+            onPopulated = { validationRequests.clear() },
+          )
+        }
+
+      assertThat(failure).hasMessageThat().contains("[Metro/MissingBinding]")
+      assertThat(validationRequests.single()).isSameInstanceAs(required)
+    }
+  }
+
+  @Test
+  fun `dependencies with defaults can all remain absent`() {
+    val optional = StringContextualTypeKey.create("Missing".typeKey, hasDefault = true)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Consumer".typeKey.toBinding(optional, optional))
+
+    val result = graph.seal(shrinkUnusedBindings = false)
+
+    assertThat(result.sortedKeys).containsExactly("Consumer".typeKey)
+  }
+
+  @Test
   fun `new graph roots use one map write without a lookup`() {
     val key = StringContextualTypeKey.create(StringTypeKey("Root"))
     val entry = StringBindingStack.Entry(key)

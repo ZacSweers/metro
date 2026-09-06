@@ -80,7 +80,13 @@ internal class BindingLookup(
   // Single cache for all bindings, storing lists to track duplicates naturally
   private val bindingsCache = mutableMapOf<IrTypeKey, IrBinding>()
   private val duplicateBindings = mutableMapOf<IrTypeKey, MutableSet<IrBinding>>()
-  private val classBindingsCache = mutableMapOf<IrContextualTypeKey, Set<IrBinding>>()
+  private val classBindingsCache = mutableMapOf<ClassBindingKey, Set<IrBinding>>()
+
+  /** Keeps optional misses separate because contextual-key equality ignores default values. */
+  private data class ClassBindingKey(
+    val contextKey: IrContextualTypeKey,
+    val hasDefault: Boolean,
+  )
 
   private data class ParentGraphDepKey(val owner: IrClass, val typeKey: IrTypeKey)
 
@@ -869,7 +875,8 @@ internal class BindingLookup(
     currentBindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
   ): Set<IrBinding> {
-    return classBindingsCache.getOrPut(contextKey) {
+    val cacheKey = ClassBindingKey(contextKey, contextKey.hasDefault)
+    return classBindingsCache.getOrPut(cacheKey) {
       val key = contextKey.typeKey
       val irClass = key.type.rawType()
 

@@ -534,7 +534,7 @@ internal fun bindingStackEntryForDependency(
       Entry.injectedAt(
         contextKey,
         originConstructor ?: callingBinding.providerFactory.function,
-        callingBinding.parameterFor(targetKey),
+        callingBinding.parameterFor(contextKey),
         displayTypeKey = targetKey,
         isSignatureFunction = false,
       )

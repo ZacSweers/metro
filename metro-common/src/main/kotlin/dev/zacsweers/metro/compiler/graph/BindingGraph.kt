@@ -181,8 +181,13 @@ public open class MutableBindingGraph<
           ensureActive = ensureActive,
         ) { source, missing ->
           val binding = bindings.getValue(source)
-          val contextKey = binding.dependencies.first { it.typeKey == missing }
-          if (!contextKey.hasDefault) {
+          // Adjacency merges requests for the same type. Any required request must be reported.
+          val contextKey =
+            binding.dependencies.firstOrNull {
+              ensureActive()
+              it.typeKey == missing && !it.hasDefault
+            }
+          if (contextKey != null) {
             val stackCopy = stack.copy()
             val stackEntry = stackCopy.newBindingStackEntry(contextKey, binding, roots)
 

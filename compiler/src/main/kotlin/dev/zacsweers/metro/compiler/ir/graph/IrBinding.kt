@@ -195,12 +195,17 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
      */
     fun canBypassFactory(): Boolean = !isAssisted && injectedMembers.isEmpty()
 
-    fun parameterFor(contextualTypeKey: IrContextualTypeKey) =
-      classFactory.function.regularParameters.getOrNull(
+    /** Finds the factory parameter for a request, including its default-value status. */
+    fun parameterFor(contextualTypeKey: IrContextualTypeKey): IrValueParameter? {
+      val index =
         parameters.regularParameters.indexOfFirst {
-          !it.isAssisted && it.contextualTypeKey == contextualTypeKey
+          if (it.isAssisted) {
+            return@indexOfFirst false
+          }
+          it.contextualTypeKey == contextualTypeKey && it.hasDefault == contextualTypeKey.hasDefault
         }
-      )
+      return classFactory.function.regularParameters.getOrNull(index)
+    }
 
     override fun renderDescriptionDiagnostic(short: Boolean, underlineTypeKey: Boolean): String =
       buildString {
@@ -339,13 +344,16 @@ internal sealed interface IrBinding : BaseBinding<IrType, IrTypeKey, IrContextua
         return if (name != null) "$name (Contributing class)" else super.diagnosticTypeName
       }
 
-    fun parameterFor(typeKey: IrTypeKey): IrValueParameter {
+    /** Finds the source parameter for a request, including wrappers and default-value status. */
+    fun parameterFor(contextualTypeKey: IrContextualTypeKey): IrValueParameter {
       return parameters.allParameters
-        .find { it.typeKey == typeKey }
+        .find {
+          it.contextualTypeKey == contextualTypeKey && it.hasDefault == contextualTypeKey.hasDefault
+        }
         ?.ir
         ?.expectAs<IrValueParameter>()
         ?: reportCompilerBug(
-          "No value parameter found for key $typeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
+          "No value parameter found for request $contextualTypeKey in ${providerFactory.callableId.asSingleFqName().asString()}."
         )
     }
 

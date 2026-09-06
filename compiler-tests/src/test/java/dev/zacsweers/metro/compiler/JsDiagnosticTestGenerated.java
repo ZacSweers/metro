@@ -804,6 +804,18 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
       public void testRequiredAnnotationResultsInMissingBindings() {
         run("RequiredAnnotationResultsInMissingBindings.kt");
       }
+
+      @Test
+      @TestMetadata("RequiredConstructorDependencyWinsOptionalDependency.kt")
+      public void testRequiredConstructorDependencyWinsOptionalDependency() {
+        run("RequiredConstructorDependencyWinsOptionalDependency.kt");
+      }
+
+      @Test
+      @TestMetadata("RequiredProviderDependencyWinsOptionalDependency.kt")
+      public void testRequiredProviderDependencyWinsOptionalDependency() {
+        run("RequiredProviderDependencyWinsOptionalDependency.kt");
+      }
     }
 
     @Nested
