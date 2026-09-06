@@ -743,6 +743,18 @@ public class JsBoxTestGenerated extends AbstractJsBoxTest {
     }
 
     @Test
+    @TestMetadata("NestedBindingContainersRespectScopes.kt")
+    public void testNestedBindingContainersRespectScopes() {
+      run("NestedBindingContainersRespectScopes.kt");
+    }
+
+    @Test
+    @TestMetadata("NestedBindingContainersRespectScopesAcrossModules.kt")
+    public void testNestedBindingContainersRespectScopesAcrossModules() {
+      run("NestedBindingContainersRespectScopesAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("PrivateBindsProperty.kt")
     public void testPrivateBindsProperty() {
       run("PrivateBindsProperty.kt");
