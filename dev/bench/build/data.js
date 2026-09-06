@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788725798734,
+  "lastUpdate": 1788727668107,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22736,6 +22736,62 @@ window.BENCHMARK_DATA = {
             "value": 19844.095,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: +2.92%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "30d059ca~1",
+          "message": "[before] Cache complete binding container closures (#2776)",
+          "timestamp": "2026-09-06T19:34:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/30d059cac6b2cbaa3a8e7b882128eb23eb605fcf"
+        },
+        "date": 1788727668107,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19764.477,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "30d059cac6b2cbaa3a8e7b882128eb23eb605fcf",
+          "message": "[after] Cache complete binding container closures (#2776)",
+          "timestamp": "2026-09-06T19:34:43Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/30d059cac6b2cbaa3a8e7b882128eb23eb605fcf"
+        },
+        "date": 1788727668108,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19724.156,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: -0.20%"
           }
         ]
       }
