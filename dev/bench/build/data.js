@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788585585499,
+  "lastUpdate": 1788725798734,
   "repoUrl": "https://github.com/ZacSweers/metro",
   "entries": {
     "Build Time Benchmark": [
@@ -22680,6 +22680,62 @@ window.BENCHMARK_DATA = {
             "value": 19820.225,
             "unit": "ms",
             "extra": "after (HEAD)\ndelta: -0.27%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b607e102~1",
+          "message": "[before] Fix generic assisted factory parameter checks (#27",
+          "timestamp": "2026-09-06T19:16:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b607e1028b32d6790d0ba634e4deed21cb84bc55"
+        },
+        "date": 1788725798734,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19280.239999999998,
+            "unit": "ms",
+            "extra": "before (HEAD~1)"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "committer": {
+            "name": "Zac Sweers",
+            "username": "ZacSweers"
+          },
+          "distinct": true,
+          "id": "b607e1028b32d6790d0ba634e4deed21cb84bc55",
+          "message": "[after] Fix generic assisted factory parameter checks (#27",
+          "timestamp": "2026-09-06T19:16:33Z",
+          "tree_id": "",
+          "url": "https://github.com/ZacSweers/metro/commit/b607e1028b32d6790d0ba634e4deed21cb84bc55"
+        },
+        "date": 1788725798735,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Build Time",
+            "value": 19844.095,
+            "unit": "ms",
+            "extra": "after (HEAD)\ndelta: +2.92%"
           }
         ]
       }
