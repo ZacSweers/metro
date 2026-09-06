@@ -26,6 +26,30 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
   }
 
   @Test
+  @TestMetadata("ArrayClassKeyArguments.kt")
+  public void testArrayClassKeyArguments() {
+    run("ArrayClassKeyArguments.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDefaults.kt")
+  public void testArrayClassKeyDefaults() {
+    run("ArrayClassKeyDefaults.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDirectLiterals.kt")
+  public void testArrayClassKeyDirectLiterals() {
+    run("ArrayClassKeyDirectLiterals.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyScopeDefaults.kt")
+  public void testArrayClassKeyScopeDefaults() {
+    run("ArrayClassKeyScopeDefaults.kt");
+  }
+
+  @Test
   @TestMetadata("ConflictingAnnotationRoles.kt")
   public void testConflictingAnnotationRoles() {
     run("ConflictingAnnotationRoles.kt");

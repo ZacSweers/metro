@@ -1,0 +1,1 @@
+/ArrayClassKeyHiltScopes.kt:11:12: warning: kotlinc can read `Array<String>::class` as `String::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.

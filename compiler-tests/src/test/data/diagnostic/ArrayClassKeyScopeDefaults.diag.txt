@@ -1,0 +1,5 @@
+/ArrayClassKeyScopeDefaults.kt:13:26: warning: kotlinc can read `NestedPrimitiveArrays::class` as `IntArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyScopeDefaults.kt:14:45: warning: kotlinc can read `NestedPrimitiveArrays::class` as `IntArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.
+
+/ArrayClassKeyScopeDefaults.kt:22:26: warning: kotlinc can read `NestedPrimitiveArrays::class` as `IntArray::class` when reading annotations from another module. This can make distinct qualifier values, map keys, or scopes match. Use a dedicated non-array key class.

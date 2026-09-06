@@ -26,6 +26,30 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
   }
 
   @Test
+  @TestMetadata("ArrayClassKeyArguments.kt")
+  public void testArrayClassKeyArguments() {
+    run("ArrayClassKeyArguments.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDefaults.kt")
+  public void testArrayClassKeyDefaults() {
+    run("ArrayClassKeyDefaults.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyDirectLiterals.kt")
+  public void testArrayClassKeyDirectLiterals() {
+    run("ArrayClassKeyDirectLiterals.kt");
+  }
+
+  @Test
+  @TestMetadata("ArrayClassKeyScopeDefaults.kt")
+  public void testArrayClassKeyScopeDefaults() {
+    run("ArrayClassKeyScopeDefaults.kt");
+  }
+
+  @Test
   @TestMetadata("ConflictingAnnotationRoles.kt")
   public void testConflictingAnnotationRoles() {
     run("ConflictingAnnotationRoles.kt");
@@ -1479,6 +1503,18 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
       @Test
       public void testAllFilesPresentInDagger() {
         KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler-tests/src/test/data/diagnostic/interop/dagger"), Pattern.compile("^(.+)\\.kt$"), null, true, "_reports");
+      }
+
+      @Test
+      @TestMetadata("ArrayClassKeyArgumentsInterop.kt")
+      public void testArrayClassKeyArgumentsInterop() {
+        run("ArrayClassKeyArgumentsInterop.kt");
+      }
+
+      @Test
+      @TestMetadata("ArrayClassKeyHiltScopes.kt")
+      public void testArrayClassKeyHiltScopes() {
+        run("ArrayClassKeyHiltScopes.kt");
       }
 
       @Test

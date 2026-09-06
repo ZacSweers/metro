@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.fir
 
 import dev.zacsweers.metro.compiler.fir.checkers.AggregationChecker
+import dev.zacsweers.metro.compiler.fir.checkers.ArrayClassKeyChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AsContributionChecker
 import dev.zacsweers.metro.compiler.fir.checkers.AssistedInjectChecker
 import dev.zacsweers.metro.compiler.fir.checkers.BindingContainerCallableChecker
@@ -45,6 +46,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
             BindingContainerClassChecker,
             MergedContributionChecker,
             MapKeyChecker,
+            ArrayClassKeyChecker.Defaults,
             DefaultBindingChecker,
           )
 
@@ -58,6 +60,7 @@ internal class MetroFirCheckers(session: FirSession) : FirAdditionalCheckersExte
         get() {
           return buildSet {
             add(ConflictingAnnotationRolesChecker)
+            add(ArrayClassKeyChecker)
             if (session.metroFirBuiltIns.options.interopAnnotationsNamedArgSeverity.isEnabled) {
               add(InteropAnnotationChecker)
             }
