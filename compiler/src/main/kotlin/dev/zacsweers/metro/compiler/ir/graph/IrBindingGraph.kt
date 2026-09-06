@@ -54,11 +54,13 @@ import dev.zacsweers.metro.compiler.ir.hasErrorTypes
 import dev.zacsweers.metro.compiler.ir.implements
 import dev.zacsweers.metro.compiler.ir.injectedFunctionOrNull
 import dev.zacsweers.metro.compiler.ir.isAnnotatedWithAny
+import dev.zacsweers.metro.compiler.ir.isImplicitClassKeySentinel
 import dev.zacsweers.metro.compiler.ir.locationOrNull
 import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.padForConsole
+import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.render
 import dev.zacsweers.metro.compiler.ir.renderSourceLocation
@@ -67,6 +69,8 @@ import dev.zacsweers.metro.compiler.ir.requireMapKeyType
 import dev.zacsweers.metro.compiler.ir.requireMapValueType
 import dev.zacsweers.metro.compiler.ir.requireSetElementType
 import dev.zacsweers.metro.compiler.ir.requireSimpleType
+import dev.zacsweers.metro.compiler.ir.resolveImplicitClassKeyType
+import dev.zacsweers.metro.compiler.ir.shouldUnwrapMapKeyValues
 import dev.zacsweers.metro.compiler.ir.sourceGraphIfMetroGraph
 import dev.zacsweers.metro.compiler.ir.toDiagnosticSpan
 import dev.zacsweers.metro.compiler.ir.writeDiagnostic
@@ -79,6 +83,10 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
+import org.jetbrains.kotlin.ir.expressions.IrClassReference
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.isAny
@@ -86,6 +94,7 @@ import org.jetbrains.kotlin.ir.types.isMarkedNullable
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.types.typeOrFail
+import org.jetbrains.kotlin.ir.types.typeOrNull
 import org.jetbrains.kotlin.ir.types.typeWith
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
@@ -95,8 +104,11 @@ import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.nestedClasses
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.parentClassOrNull
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.StandardClassIds
+import org.jetbrains.kotlin.platform.jvm.isJvm
 
 private const val MAX_SUSPICIOUS_UNUSED_MULTIBINDINGS_TO_REPORT = 3
 
@@ -112,6 +124,16 @@ private typealias IrMutableBindingGraph =
 
 private typealias IrDiagnosticRoutes =
   DiagnosticRoutes<IrType, IrTypeKey, IrContextualTypeKey, IrBindingStack.Entry>
+
+/** Groups map contributions by the keys emitted in generated code. */
+private class EffectiveMapKey(private val identity: Any) {
+  override fun equals(other: Any?): Boolean = other is EffectiveMapKey && identity == other.identity
+
+  override fun hashCode(): Int = identity.hashCode()
+}
+
+/** Class literals erase generic arguments. JVM array classes retain their component classes. */
+private data class MapClassKey(val classId: ClassId, val arrayComponent: MapClassKey? = null)
 
 internal data class ChildGraphScopeInfo(
   val reachableKeys: Set<IrTypeKey>,
@@ -1099,6 +1121,49 @@ internal class IrBindingGraph(
     }
   }
 
+  /** Matches the unwrapping and implicit class resolution used when generating map keys. */
+  private fun effectiveMapKey(binding: IrBinding): EffectiveMapKey? {
+    val annotation = (binding as IrBinding.BindingWithAnnotations).annotations.mapKey ?: return null
+    val emittedAnnotation = binding.typeKey.multibindingKeyData?.mapKey ?: annotation
+    val mapKey = emittedAnnotation.ir
+    val identity =
+      if (!shouldUnwrapMapKeyValues(mapKey)) {
+        emittedAnnotation
+      } else if (isImplicitClassKeySentinel(mapKey)) {
+        mapClassKey(resolveImplicitClassKeyType(binding))
+      } else {
+        when (val value = mapKey.arguments[0]) {
+          is IrConst -> checkNotNull(value.value)
+          is IrClassReference -> mapClassKey(value.classType)
+          is IrGetEnumValue ->
+            value.symbol.owner.parentAsClass.classIdOrFail to value.symbol.owner.name
+          is IrConstructorCall -> IrAnnotation(value)
+          else -> reportCompilerBug("Unsupported map key value: $value in $annotation")
+        }
+      }
+    return EffectiveMapKey(identity)
+  }
+
+  /** Uses the referenced class for both KClass and Class map accessors. */
+  private fun mapClassKey(type: IrType): MapClassKey {
+    val classId = type.rawType().classIdOrFail
+    if (classId != StandardClassIds.Array) {
+      return MapClassKey(classId)
+    }
+    // Other backends erase the element type and dimensions to a single Array class literal.
+    if (!pluginContext.platform.isJvm()) {
+      return MapClassKey(classId)
+    }
+    val componentType = type.requireSimpleType().arguments.single().typeOrNull
+    val component =
+      if (componentType == null) {
+        MapClassKey(StandardClassIds.Any)
+      } else {
+        mapClassKey(componentType)
+      }
+    return MapClassKey(classId, component)
+  }
+
   private fun validateBindings(
     bindings: ScatterMap<IrTypeKey, IrBinding>,
     stack: IrBindingStack,
@@ -1133,11 +1198,11 @@ internal class IrBindingGraph(
         multibindingAllowsEmpty = { (it as IrBinding.Multibinding).allowEmpty },
         multibindingSourceKeys = { (it as IrBinding.Multibinding).sourceBindings },
         isMapContribution = { it is IrBinding.BindingWithAnnotations },
-        mapKeyOf = { (it as IrBinding.BindingWithAnnotations).annotations.mapKey },
+        mapKeyOf = ::effectiveMapKey,
         rootKeys = rootsByTypeKey.keys,
         reverseAdjacency = adjacency.reverse,
       )
-    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>) -> Unit =
+    val reportIssue: (GraphValidationIssue<IrBinding, IrAnnotation, EffectiveMapKey>) -> Unit =
       { issue ->
         reportStructuralIssue(issue, stack, diagnosticRoutes, rootsByTypeKey)
       }
@@ -1198,7 +1263,7 @@ internal class IrBindingGraph(
   }
 
   private fun reportStructuralIssue(
-    issue: GraphValidationIssue<IrBinding, IrAnnotation, IrAnnotation>,
+    issue: GraphValidationIssue<IrBinding, IrAnnotation, EffectiveMapKey>,
     stack: IrBindingStack,
     diagnosticRoutes: IrDiagnosticRoutes,
     roots: Map<IrTypeKey, IrBindingStack.Entry>,
@@ -1216,7 +1281,6 @@ internal class IrBindingGraph(
           checkNotNull(issue.multibinding as? IrBinding.Multibinding) {
             "Only multibindings can produce duplicate map key issues"
           },
-          issue.mapKey,
           issue.contributions,
           diagnosticRoutes,
         )
@@ -1409,23 +1473,58 @@ internal class IrBindingGraph(
 
   private fun reportDuplicateMapKey(
     binding: IrBinding.Multibinding,
-    mapKey: IrAnnotation?,
     contributions: List<IrBinding>,
     diagnosticRoutes: IrDiagnosticRoutes,
   ) {
-    if (mapKey == null) {
-      reportCompilerBug("Map key should not be null for map multibindings")
-    }
-
     val stack = buildStackToRoot(binding.typeKey, diagnosticRoutes)
 
-    val locationDiagnostics = contributions.map { contribution ->
-      contribution.renderLocationDiagnostic(
-        shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
-        underlineTypeKey = false,
-      )
-    }
+    // Equal runtime keys can come from different annotations. Keep the representative annotation
+    // and contribution order stable when annotation hashes or graph traversal order change.
+    val locatedContributions =
+      contributions
+        .map { contribution ->
+          contribution to
+            contribution.renderLocationDiagnostic(
+              shortLocation = MetroOptions.SystemProperties.SHORTEN_LOCATIONS,
+              underlineTypeKey = false,
+            )
+        }
+        .sortedWith(
+          compareBy(
+            { it.second.span?.filePath ?: it.second.location },
+            { it.second.span?.line ?: Int.MAX_VALUE },
+            { it.second.span?.column ?: Int.MAX_VALUE },
+            { it.second.description },
+          )
+        )
+    val representative = locatedContributions.first().first as IrBinding.BindingWithAnnotations
+    val mapKey =
+      representative.annotations.mapKey
+        ?: reportCompilerBug("Map key should not be null for map multibindings")
+    val locationDiagnostics = locatedContributions.map { it.second }
     val locationItems = locationDiagnostics.map { it.toLocatedItem() }
+    val extraNotes = buildList {
+      addAll(locationDiagnostics.flatMap { it.notes }.distinct())
+      if (shouldUnwrapMapKeyValues(mapKey.ir)) {
+        // Use the populated keys from code generation so inferred class keys name their class.
+        val mapKeys =
+          locatedContributions
+            .map { (contribution, _) ->
+              val annotatedBinding = contribution as IrBinding.BindingWithAnnotations
+              val emittedMapKey =
+                contribution.typeKey.multibindingKeyData?.mapKey
+                  ?: checkNotNull(annotatedBinding.annotations.mapKey)
+              emittedMapKey.render(short = false)
+            }
+            .distinct()
+        add(
+          Note.note(
+            "These bindings use ${mapKeys.joinToString()} with unwrapValue = true. " +
+              "Metro uses the value inside each annotation as the map key, and those values are equal."
+          )
+        )
+      }
+    }
 
     val diagnostic =
       duplicateMapKeysDiagnostic(
@@ -1433,7 +1532,7 @@ internal class IrBindingGraph(
         mapKeyRender = mapKey.render(short = false),
         locations = locationItems,
         trace = stack.toTraceSection(),
-        extraNotes = locationDiagnostics.flatMap { it.notes }.distinct(),
+        extraNotes = extraNotes,
       )
     report(diagnostic, stack)
   }

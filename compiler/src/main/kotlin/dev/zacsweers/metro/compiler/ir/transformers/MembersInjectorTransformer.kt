@@ -26,6 +26,7 @@ import dev.zacsweers.metro.compiler.ir.annotationClass
 import dev.zacsweers.metro.compiler.ir.annotationsCompat
 import dev.zacsweers.metro.compiler.ir.asContextualTypeKey
 import dev.zacsweers.metro.compiler.ir.assignConstructorParamsToFields
+import dev.zacsweers.metro.compiler.ir.createIrAnnotation
 import dev.zacsweers.metro.compiler.ir.createIrBuilder
 import dev.zacsweers.metro.compiler.ir.declaredCallableMembers
 import dev.zacsweers.metro.compiler.ir.deepRemapperFor
@@ -893,7 +894,7 @@ internal class MembersInjectorTransformer(context: IrMetroContext, traceScope: T
     return annotationsCompat()
       .asSequence()
       .filterNot { it.annotationClass.classId in metroSymbols.classIds.optionalBindingAnnotations }
-      .map(::IrAnnotation)
+      .map(this@MembersInjectorTransformer::createIrAnnotation)
       .distinct()
       .singleOrNull()
   }

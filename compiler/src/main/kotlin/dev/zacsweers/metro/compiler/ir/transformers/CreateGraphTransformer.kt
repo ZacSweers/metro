@@ -8,6 +8,8 @@ import dev.zacsweers.metro.compiler.expectAs
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.ir.IrMetroContext
 import dev.zacsweers.metro.compiler.ir.IrScope
+import dev.zacsweers.metro.compiler.ir.IrTypeKey
+import dev.zacsweers.metro.compiler.ir.createAndAddTemporaryVariable
 import dev.zacsweers.metro.compiler.ir.getOrCreateGraphImplClassShell
 import dev.zacsweers.metro.compiler.ir.graph.IrDynamicGraphGenerator
 import dev.zacsweers.metro.compiler.ir.graph.generatedDynamicGraphData
@@ -18,11 +20,11 @@ import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.requireSimpleFunction
 import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
 import dev.zacsweers.metro.compiler.ir.withIrBuilder
-import dev.zacsweers.metro.compiler.mapToSet
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.tracing.TraceScope
 import org.jetbrains.kotlin.ir.builders.IrBuilderWithScope
+import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -155,6 +157,7 @@ internal class CreateGraphTransformer(
     }
   }
 
+  /** Matches shared constructor layouts while preserving the call site's argument evaluation. */
   private fun handleDynamicGraphCreation(
     expression: IrCall,
     isFactory: Boolean,
@@ -169,11 +172,8 @@ internal class CreateGraphTransformer(
       expression.arguments[0]?.expectAs<IrVararg>()
         ?: reportCompilerBug("Expected vararg argument for dynamic graph creation")
 
-    val containerTypes =
-      varargArg.elements.mapToSet { element ->
-        // Each element should be an expression whose type is the container type
-        element.expectAs<IrExpression>().type
-      }
+    val containerExpressions = varargArg.elements.map { it.expectAs<IrExpression>() }
+    val containerTypeKeys = containerExpressions.map { IrTypeKey(it.type) }
 
     val nearestDeclaration = expression.symbol.owner
 
@@ -181,36 +181,48 @@ internal class CreateGraphTransformer(
     val dynamicGraph =
       dynamicGraphGenerator.getOrBuildDynamicGraph(
         targetType = targetType,
-        containerTypes = containerTypes,
+        containerTypeKeys = containerTypeKeys,
         isFactory = isFactory,
         context = context,
         containingFunction = nearestDeclaration,
         sourceExpression = expression,
       )
 
-    // Replace with constructor call or factory creation
-    return withIrBuilder(expression.symbol) {
+    val graphData =
+      dynamicGraph.generatedDynamicGraphData
+        ?: reportCompilerBug("Dynamic graph missing generatedDynamicGraphData")
+    val implementation =
       if (isFactory) {
-        // For factories, create an instance of the factory impl
-        val factoryImplData =
-          dynamicGraph.generatedDynamicGraphData
-            ?: reportCompilerBug("Dynamic graph factory missing generatedDynamicGraphData")
-        val factoryImpl =
-          factoryImplData.factoryImpl
-            ?: reportCompilerBug("Dynamic graph factory missing factoryImpl")
+        graphData.factoryImpl ?: reportCompilerBug("Dynamic graph factory missing factoryImpl")
+      } else {
+        dynamicGraph
+      }
+    val constructor = implementation.primaryConstructor!!.symbol
+    val needsReordering = containerTypeKeys != graphData.containerTypeKeys
+    // Temporary variables belong to the caller's scope, including property initializers.
+    val scopeOwner =
+      context.currentScopeAccess?.scope?.scopeOwnerSymbol ?: context.currentFileAccess.symbol
 
-        irCallConstructor(factoryImpl.primaryConstructor!!.symbol, emptyList()).apply {
-          // Pass the container instances as constructor arguments
-          varargArg.elements.forEachIndexed { index, element ->
-            arguments[index] = element.expectAs<IrExpression>()
+    return withIrBuilder(scopeOwner) {
+      if (needsReordering) {
+        val sourceIndices = containerTypeKeys.withIndex().associate { (index, key) -> key to index }
+        val argumentOrder = graphData.containerTypeKeys.map(sourceIndices::getValue)
+        irBlock(resultType = expression.type) {
+          // Evaluate every original argument once, from left to right, before arranging the
+          // constructor arguments to match the implementation shared by these call sites.
+          val containers = containerExpressions.mapIndexed { index, value ->
+            createAndAddTemporaryVariable(value, nameHint = "container$index")
+          }
+          +irCallConstructor(constructor, emptyList()).apply {
+            argumentOrder.forEachIndexed { index, sourceIndex ->
+              arguments[index] = irGet(containers[sourceIndex])
+            }
           }
         }
       } else {
-        // For non-factories, directly create the graph
-        irCallConstructor(dynamicGraph.primaryConstructor!!.symbol, emptyList()).apply {
-          // Pass the container instances as constructor arguments
-          varargArg.elements.forEachIndexed { index, element ->
-            arguments[index] = element.expectAs<IrExpression>()
+        irCallConstructor(constructor, emptyList()).apply {
+          containerExpressions.forEachIndexed { index, value ->
+            arguments[index] = value
           }
         }
       }

@@ -3,6 +3,7 @@
 package dev.zacsweers.metro.compiler.ir
 
 import dev.zacsweers.metro.compiler.MetroAnnotations
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
 import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
@@ -48,6 +49,19 @@ internal sealed class ProviderFactory : IrMetroFactory, IrBindingContainerCallab
   abstract val newInstanceName: Name
   abstract override val function: IrSimpleFunction
   open val inlinedValue: IrInlinedProvider? = null
+
+  /**
+   * Owns the binding for this factory's parameter types within its compilation. Remapped factories
+   * get separate values, and memoize publishes completed bindings to parallel graph builders.
+   */
+  val providedBinding: IrBinding.Provided by memoize {
+    IrBinding.Provided(
+      providerFactory = this,
+      contextualTypeKey = IrContextualTypeKey(typeKey),
+      parameters = parameters,
+      annotations = annotations,
+    )
+  }
 
   /**
    * The class that contains this provider function. For instance methods, this is the graph or

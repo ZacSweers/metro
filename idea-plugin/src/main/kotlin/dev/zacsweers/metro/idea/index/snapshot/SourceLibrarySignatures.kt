@@ -90,6 +90,7 @@ private fun contributionLibrarySignature(
     contribution.kind,
     contribution.replaces,
     contribution.graphExtension,
+    contribution.originClassIds,
     contribution.pointer.virtualFile,
     contribution.pointer.element != null,
   )
@@ -287,6 +288,7 @@ private data class ContributionLibrarySignature(
   val kind: ContributionEntry.Kind,
   val replaces: Set<ClassId>,
   val graphExtension: GraphReference?,
+  val originClassIds: Set<ClassId>,
   val file: VirtualFile?,
   val pointerIsValid: Boolean,
 )

@@ -320,6 +320,96 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
   }
 
   @Test
+  fun `seal indexes hard dependencies once per source`() {
+    val targetKeys = List(64) { "Element$it".contextualTypeKey }
+    val dependencies = CountingDependencyList(targetKeys)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Aggregate".typeKey.toBinding(dependencies))
+    for (target in targetKeys) {
+      graph.tryPut(target.typeKey.toBinding("() -> Aggregate".contextualTypeKey))
+    }
+
+    val result =
+      graph.seal(
+        shrinkUnusedBindings = false,
+        onPopulated = { dependencies.reads = 0 },
+      )
+
+    assertThat(result.deferredTypes).containsExactlyElementsIn(targetKeys.map { it.typeKey })
+    // Adjacency reads each dependency once, and the hard-edge index reads it once more.
+    assertThat(dependencies.reads).isEqualTo(targetKeys.size * 2)
+  }
+
+  @Test
+  fun `eager parallel requests keep cycles hard in either order`() {
+    val eager = "B".contextualTypeKey
+    val deferred = "() -> B".contextualTypeKey
+    for (dependencies in listOf(listOf(eager, deferred), listOf(deferred, eager))) {
+      val graph = newStringBindingGraph()
+      graph.tryPut("A".typeKey.toBinding(dependencies))
+      graph.tryPut("B".typeKey.toBinding("A".contextualTypeKey))
+
+      val failure =
+        assertFailsWith<IllegalStateException> {
+          graph.seal(shrinkUnusedBindings = false)
+        }
+
+      assertThat(failure).hasMessageThat().contains("[Metro/DependencyCycle]")
+    }
+  }
+
+  @Test
+  fun `implicit deferral permits eager parallel requests in either order`() {
+    val eager = "B".contextualTypeKey
+    val deferred = "() -> B".contextualTypeKey
+    for (dependencies in listOf(listOf(eager, deferred), listOf(deferred, eager))) {
+      val graph = newStringBindingGraph()
+      graph.tryPut("A".typeKey.toBinding(dependencies))
+      graph.tryPut(
+        StringBinding(
+          "B".contextualTypeKey,
+          listOf("A".contextualTypeKey),
+          kind = WorkloadBindingKind.INSTANCE,
+        )
+      )
+
+      val result = graph.seal(shrinkUnusedBindings = false)
+
+      assertThat(result.deferredTypes).containsExactly("A".typeKey)
+    }
+  }
+
+  @Test
+  fun `hard dependency indexing observes cancellation`() {
+    val targetKeys = List(64) { "Element$it".contextualTypeKey }
+    val dependencies = CountingDependencyList(targetKeys)
+    val graph = newStringBindingGraph()
+    graph.tryPut("Aggregate".typeKey.toBinding(dependencies))
+    for (target in targetKeys) {
+      graph.tryPut(target.typeKey.toBinding("() -> Aggregate".contextualTypeKey))
+    }
+    var cancelAtReadCount = Int.MAX_VALUE
+
+    assertFailsWith<BindingGraphCancellationException> {
+      graph.seal(
+        shrinkUnusedBindings = false,
+        onPopulated = {
+          dependencies.reads = 0
+          // Allow adjacency to finish, then interrupt the hard-edge index partway through.
+          cancelAtReadCount = targetKeys.size + 8
+        },
+        ensureActive = {
+          if (dependencies.reads >= cancelAtReadCount) {
+            throw BindingGraphCancellationException()
+          }
+        },
+      )
+    }
+
+    assertThat(dependencies.reads).isEqualTo(cancelAtReadCount)
+  }
+
+  @Test
   fun `seal ignores soft cycles and reports only the hard cycle within a complex SCC`() {
     val a = "A".typeKey
     val b = "B".typeKey
@@ -598,6 +688,20 @@ class BindingGraphTest : TraceScope by TraceScope.noop() {
 }
 
 private class BindingGraphCancellationException : RuntimeException()
+
+/** Counts element reads so graph tests can bound dependency scans. */
+private class CountingDependencyList(private val dependencies: List<StringContextualTypeKey>) :
+  AbstractList<StringContextualTypeKey>() {
+  var reads = 0
+
+  override val size: Int
+    get() = dependencies.size
+
+  override fun get(index: Int): StringContextualTypeKey {
+    reads++
+    return dependencies[index]
+  }
+}
 
 private val String.typeKey: StringTypeKey
   get() = contextualTypeKey.typeKey

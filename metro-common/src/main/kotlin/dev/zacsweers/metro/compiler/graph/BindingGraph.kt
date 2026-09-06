@@ -360,22 +360,26 @@ public open class MutableBindingGraph<
         }
       }
 
-    // Adjacency collapses parallel requests, so check every original request for an eager edge.
+    // Index each source when a cycle first needs its edge kinds. Adjacency collapses parallel
+    // requests, so any eager request makes the target hard.
+    val hardDependenciesBySource = HashMap<TypeKey, Set<TypeKey>>()
     val isHardEdge: (TypeKey, TypeKey) -> Boolean = { from, to ->
       ensureActive()
       if (bindings.getValue(to).isImplicitlyDeferrable) {
         false
       } else {
-        var hasHardDependency = false
-        // TODO we can cache these dep lookups some day if needed
-        for (dependency in bindings.getValue(from).dependencies) {
-          ensureActive()
-          if (dependency.typeKey == to && !dependency.isDeferrable) {
-            hasHardDependency = true
-            break
+        val hardDependencies =
+          hardDependenciesBySource.getOrPut(from) {
+            buildSet {
+              for (dependency in bindings.getValue(from).dependencies) {
+                ensureActive()
+                if (!dependency.isDeferrable) {
+                  add(dependency.typeKey)
+                }
+              }
+            }
           }
-        }
-        hasHardDependency
+        to in hardDependencies
       }
     }
 

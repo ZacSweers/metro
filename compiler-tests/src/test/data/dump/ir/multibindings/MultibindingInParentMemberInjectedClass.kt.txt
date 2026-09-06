@@ -122,8 +122,8 @@ class AFragmentInjector : Injector {
       @Binds
       @IntoMap
       @ClassKey(value = AFragment::class)
-      @CallableMetadata(callableName = "bindIntoMapAsInjector3288387779", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsInjector32883877793288387779_intomap(instance: AFragmentInjector): Injector {
+      @CallableMetadata(callableName = "bindIntoMapAsInjector2845990353", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsInjector28459903532845990353_intomap(instance: AFragmentInjector): Injector {
         return error(message = "Never called")
       }
 
@@ -133,7 +133,7 @@ class AFragmentInjector : Injector {
     @Binds
     @ClassKey(value = AFragment::class)
     @ComptimeOnly
-    fun bindIntoMapAsInjector3288387779(instance: AFragmentInjector): Injector {
+    fun bindIntoMapAsInjector2845990353(instance: AFragmentInjector): Injector {
       return error(message = "Never called")
     }
 
@@ -204,8 +204,8 @@ class AViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = AViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel2182965618", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsViewModel21829656184203417713_intomap(instance: AViewModel): ViewModel {
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel1768861808", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsViewModel17688618083761020287_intomap(instance: AViewModel): ViewModel {
         return error(message = "Never called")
       }
 
@@ -215,7 +215,7 @@ class AViewModel : ViewModel {
     @Binds
     @ClassKey(value = AViewModel::class)
     @ComptimeOnly
-    fun bindIntoMapAsViewModel2182965618(instance: AViewModel): ViewModel {
+    fun bindIntoMapAsViewModel1768861808(instance: AViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -360,8 +360,8 @@ class BFragmentInjector : Injector {
       @Binds
       @IntoMap
       @ClassKey(value = BFragment::class)
-      @CallableMetadata(callableName = "bindIntoMapAsInjector3091874274", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsInjector30918742743091874274_intomap(instance: BFragmentInjector): Injector {
+      @CallableMetadata(callableName = "bindIntoMapAsInjector2649476848", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsInjector26494768482649476848_intomap(instance: BFragmentInjector): Injector {
         return error(message = "Never called")
       }
 
@@ -371,7 +371,7 @@ class BFragmentInjector : Injector {
     @Binds
     @ClassKey(value = BFragment::class)
     @ComptimeOnly
-    fun bindIntoMapAsInjector3091874274(instance: BFragmentInjector): Injector {
+    fun bindIntoMapAsInjector2649476848(instance: BFragmentInjector): Injector {
       return error(message = "Never called")
     }
 
@@ -442,8 +442,8 @@ class BViewModel : ViewModel {
       @Binds
       @IntoMap
       @ClassKey(value = BViewModel::class)
-      @CallableMetadata(callableName = "bindIntoMapAsViewModel386014259", propertyName = "", startOffset = -1, endOffset = -1)
-      fun bindIntoMapAsViewModel3860142592406466354_intomap(instance: BViewModel): ViewModel {
+      @CallableMetadata(callableName = "bindIntoMapAsViewModel4266877745", propertyName = "", startOffset = -1, endOffset = -1)
+      fun bindIntoMapAsViewModel42668777451964068928_intomap(instance: BViewModel): ViewModel {
         return error(message = "Never called")
       }
 
@@ -453,7 +453,7 @@ class BViewModel : ViewModel {
     @Binds
     @ClassKey(value = BViewModel::class)
     @ComptimeOnly
-    fun bindIntoMapAsViewModel386014259(instance: BViewModel): ViewModel {
+    fun bindIntoMapAsViewModel4266877745(instance: BViewModel): ViewModel {
       return error(message = "Never called")
     }
 
@@ -683,8 +683,8 @@ interface AppGraph {
       private get(): Provider<Map<KClass<*>, Injector>> {
         return { // BLOCK
           val tmp0_builder: MapFactory.Builder<KClass<*>, Injector> = MapFactory/* companion */.builder<KClass<*>, Injector>(size = 2)
-          tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.put(key = AFragment::class, providerOfValue = AFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<AFragment>>(value = AFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
+          tmp0_builder.put(key = BFragment::class, providerOfValue = BFragmentInjector.MetroFactory/* companion */.create(memberInjector = InstanceFactory/* companion */.invoke<MembersInjector<BFragment>>(value = BFragment.MetroMembersInjector/* companion */.create(viewModelFactory = <this>.#viewModelFactoryProvider))))
           tmp0_builder.build()
         }
       }

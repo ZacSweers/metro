@@ -741,9 +741,9 @@ internal class DependencyGraphTransformer(
       val notes = buildList {
         // Show a hint of what direct node is including this, if any
         unusedBinding.typeKey.type.rawTypeOrNull()?.let { containerClass ->
-          // Efficient to call here as it should be already cached
+          // Intermediate containers may have been visited without caching their own closure.
           val transitivelyIncluded =
-            bindingContainerResolver.getCached(containerClass)?.mapToSet { it.typeKey }.orEmpty()
+            bindingContainerResolver.resolve(containerClass).mapToSet { it.typeKey }
           val transitivelyUsed =
             sortedKeys.intersect(transitivelyIncluded).minus(unusedBinding.typeKey)
           if (transitivelyUsed.isNotEmpty()) {

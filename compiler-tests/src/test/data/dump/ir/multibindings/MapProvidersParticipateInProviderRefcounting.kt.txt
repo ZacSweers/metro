@@ -22,7 +22,7 @@ interface AppGraph {
     @IntoMap
     @IntKey(value = 3)
     @CallableMetadata(callableName = "bindInt", propertyName = "", startOffset = 163, endOffset = 185)
-    fun Int.bindInt4013004651_intomap(): Int {
+    fun Int.bindInt3311390791_intomap(): Int {
       return error(message = "Never called")
     }
 

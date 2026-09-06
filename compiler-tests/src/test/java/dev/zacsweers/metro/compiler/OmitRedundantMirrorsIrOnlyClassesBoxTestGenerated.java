@@ -243,6 +243,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ExcludedInterfaceReplacements.kt")
+    public void testExcludedInterfaceReplacements() {
+      run("ExcludedInterfaceReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ExcludedInterfaceReplacementsAcrossModules.kt")
+    public void testExcludedInterfaceReplacementsAcrossModules() {
+      run("ExcludedInterfaceReplacementsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ExcludesWithOrigin.kt")
     public void testExcludesWithOrigin() {
       run("ExcludesWithOrigin.kt");
@@ -1343,6 +1355,18 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     }
 
     @Test
+    @TestMetadata("ArrayClassQualifiers.kt")
+    public void testArrayClassQualifiers() {
+      run("ArrayClassQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("ArrayClassQualifiersJs.kt")
+    public void testArrayClassQualifiersJs() {
+      run("ArrayClassQualifiersJs.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedAccessorsCanBeLazy.kt")
     public void testContributedAccessorsCanBeLazy() {
       run("ContributedAccessorsCanBeLazy.kt");
@@ -1568,6 +1592,42 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("ProvidingMapsDirectly.kt")
     public void testProvidingMapsDirectly() {
       run("ProvidingMapsDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierArrayDefaultsAcrossModules.kt")
+    public void testQualifierArrayDefaultsAcrossModules() {
+      run("QualifierArrayDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsAcrossModules.kt")
+    public void testQualifierDefaultsAcrossModules() {
+      run("QualifierDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsFromSource.kt")
+    public void testQualifierDefaultsFromSource() {
+      run("QualifierDefaultsFromSource.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierExplicitValuesAcrossModules.kt")
+    public void testQualifierExplicitValuesAcrossModules() {
+      run("QualifierExplicitValuesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierHashCollisions.kt")
+    public void testQualifierHashCollisions() {
+      run("QualifierHashCollisions.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierOmittedDefaultsAcrossModules.kt")
+    public void testQualifierOmittedDefaultsAcrossModules() {
+      run("QualifierOmittedDefaultsAcrossModules.kt");
     }
 
     @Test
@@ -2686,6 +2746,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("LayeredGenericDiamond.kt")
+      public void testLayeredGenericDiamond() {
+        run("LayeredGenericDiamond.kt");
+      }
+
+      @Test
       @TestMetadata("MemberInjectorRequest.kt")
       public void testMemberInjectorRequest() {
         run("MemberInjectorRequest.kt");
@@ -3256,6 +3322,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
       }
 
       @Test
+      @TestMetadata("ArrayClassMapKeysStayDistinct.kt")
+      public void testArrayClassMapKeysStayDistinct() {
+        run("ArrayClassMapKeysStayDistinct.kt");
+      }
+
+      @Test
       @TestMetadata("ClassMapKeyInjectConstructorInterop.kt")
       public void testClassMapKeyInjectConstructorInterop() {
         run("ClassMapKeyInjectConstructorInterop.kt");
@@ -3524,6 +3596,12 @@ public class OmitRedundantMirrorsIrOnlyClassesBoxTestGenerated extends AbstractO
     @TestMetadata("UnusedMultibindingsDoNotGetValidated.kt")
     public void testUnusedMultibindingsDoNotGetValidated() {
       run("UnusedMultibindingsDoNotGetValidated.kt");
+    }
+
+    @Test
+    @TestMetadata("WrappedMapKeyValuesStayDistinct.kt")
+    public void testWrappedMapKeyValuesStayDistinct() {
+      run("WrappedMapKeyValuesStayDistinct.kt");
     }
   }
 

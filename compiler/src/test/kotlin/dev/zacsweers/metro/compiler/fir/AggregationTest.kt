@@ -3323,7 +3323,7 @@ class AggregationTest : MetroCompilerTest() {
     val expectedDeclarationContext =
       if (usesDirectBindingDeclarations) {
         """
-        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.bindIntoMapAsCloseable1854383119' (no source location available)
+        Encountered while processing declaration 'feature.TestClass.MetroContributionToAppScope.bindIntoMapAsCloseable967577644' (no source location available)
         - This is Metro-generated code that contributes 'feature.TestClass' (where the problem is) to AppScope.
         """
           .trimIndent()

@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.declarations.utils.classId
 import org.jetbrains.kotlin.fir.resolve.firClassLike
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
-import org.jetbrains.kotlin.fir.scopes.impl.toConeType
 import org.jetbrains.kotlin.fir.symbols.impl.FirTypeParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -144,7 +143,8 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
         it.isAnnotatedWithAny(session, classIds.assistedAnnotations)
       }
 
-    // Extract concrete type arguments from the factory's return type
+    // Resolve constructor parameters in the factory's return type. Its arguments can nest or
+    // reorder factory type parameters.
     val returnType = function.resolvedReturnTypeRef.coneType
     val targetSubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
 
@@ -156,28 +156,15 @@ internal object AssistedInjectChecker : FirClassChecker(MppCheckerKind.Common) {
       }
     }
 
-    // Build unified substitution map for factory parameters
-    val factorySubstitutionMap = mutableMapOf<FirTypeParameterSymbol, ConeKotlinType>()
-
-    // Map factory type parameters to the same concrete types
-    declaration.typeParameters.forEachIndexed { index, factoryTypeParam ->
-      val targetTypeParam = targetType.typeParameters.getOrNull(index)
-      if (targetTypeParam != null) {
-        // Use the concrete type from the return type if available
-        val concreteType =
-          targetSubstitutionMap[targetTypeParam.symbol] ?: targetTypeParam.toConeType()
-        factorySubstitutionMap[factoryTypeParam.symbol] = concreteType
-      }
-    }
-
-    val functionSubstitutor = substitutorByMap(factorySubstitutionMap, session)
+    // The resolved function already uses the factory's type parameters, including inherited
+    // substitutions. Keep those types when matching the constructor's assisted parameters.
     val functionDeclaredInFactory = function.callableId.classId == declaration.symbol.classId
     val factoryParams = functionParams.map { param ->
       AssistedParameter(
         param,
         param.toAssistedParameterKey(
           session,
-          FirTypeKey.from(session, param, functionSubstitutor),
+          FirTypeKey.from(session, param),
         ),
       )
     }
