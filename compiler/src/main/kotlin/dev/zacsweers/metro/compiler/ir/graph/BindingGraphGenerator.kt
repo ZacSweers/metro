@@ -34,7 +34,6 @@ import dev.zacsweers.metro.compiler.ir.originContextOrNull
 import dev.zacsweers.metro.compiler.ir.originOrNull
 import dev.zacsweers.metro.compiler.ir.overriddenSymbolsSequence
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
-import dev.zacsweers.metro.compiler.ir.parameters.parameters
 import dev.zacsweers.metro.compiler.ir.rawType
 import dev.zacsweers.metro.compiler.ir.rawTypeOrNull
 import dev.zacsweers.metro.compiler.ir.regularParameters
@@ -50,7 +49,6 @@ import dev.zacsweers.metro.compiler.tracing.trace
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.irAttribute
 import org.jetbrains.kotlin.ir.types.typeWithArguments
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.parentAsClass
@@ -365,19 +363,7 @@ internal class BindingGraphGenerator(
               bindingLookup.createExplicitConstructorInjectedBinding(bindsCallable)
             }
           } else {
-            val signatureFunction = bindsCallable.callableMetadata.signatureFunction
-            // Use cached binding if available, otherwise create and cache
-            signatureFunction.cachedAliasBinding
-              ?: trace("Resolve binds alias binding") {
-                val parameters = bindsCallable.function.parameters()
-                IrBinding.Alias(
-                    typeKey = targetTypeKey,
-                    aliasedType = source,
-                    bindsCallable = bindsCallable,
-                    parameters = parameters,
-                  )
-                  .also { signatureFunction.cachedAliasBinding = it }
-              }
+            trace("Resolve binds alias binding") { bindsCallable.aliasBinding }
           }
 
         // Add the binding to the lookup (duplicates tracked as lists)
@@ -1196,7 +1182,3 @@ private data class InheritedGraphData(
   val supertypeAliases: Map<IrTypeKey, IrTypeKey>,
   val multibindingAccessors: List<GraphAccessor>,
 )
-
-/** Cached [IrBinding.Alias] binding for this binds callable's mirror function. */
-internal var IrSimpleFunction.cachedAliasBinding: IrBinding.Alias? by
-  irAttribute(copyByDefault = false)

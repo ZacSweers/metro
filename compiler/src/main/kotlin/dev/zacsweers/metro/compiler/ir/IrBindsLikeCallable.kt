@@ -5,7 +5,11 @@ package dev.zacsweers.metro.compiler.ir
 import dev.drewhamilton.poko.Poko
 import dev.zacsweers.metro.compiler.appendLineWithUnderlinedRanges
 import dev.zacsweers.metro.compiler.graph.LocationDiagnostic
+import dev.zacsweers.metro.compiler.ir.graph.IrBinding
 import dev.zacsweers.metro.compiler.ir.parameters.Parameters
+import dev.zacsweers.metro.compiler.ir.parameters.parameters
+import dev.zacsweers.metro.compiler.ir.parameters.remapTypes
+import dev.zacsweers.metro.compiler.memoize
 import dev.zacsweers.metro.compiler.reportCompilerBug
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
@@ -40,7 +44,21 @@ internal class BindsCallable(
   override val typeKey: IrTypeKey,
   /** The raw target type key without multibinding transformation. Used for diagnostics. */
   val rawTarget: IrTypeKey,
+  @Poko.Skip private val parametersLazy: Lazy<Parameters>,
 ) : BindsLikeCallable {
+
+  /**
+   * Caches the alias for this callable's concrete types. Remapped callables own separate aliases.
+   * Parameterless binds use constructor bindings.
+   */
+  val aliasBinding: IrBinding.Alias by memoize {
+    IrBinding.Alias(
+      typeKey = typeKey,
+      aliasedType = checkNotNull(source) { "Parameterless binds use constructor bindings" },
+      bindsCallable = this,
+      parameters = parametersLazy.value,
+    )
+  }
 
   /**
    * Resolves the source declaration for this callable.
@@ -70,6 +88,7 @@ internal class BindsCallable(
       source = source?.remapTypes(remapper),
       typeKey = typeKey.remapTypes(remapper),
       rawTarget = rawTarget.remapTypes(remapper),
+      parametersLazy = memoize { parametersLazy.value.remapTypes(remapper) },
     )
   }
 
@@ -161,9 +180,11 @@ internal fun MetroSimpleFunction.toBindsCallable(
   isInterop: Boolean,
   callableMetadata: IrCallableMetadata = ir.irCallableMetadata(annotations, isInterop),
 ): BindsCallable {
-  val rawTarget = IrContextualTypeKey.from(ir).typeKey
+  // Metadata reconstruction restores the container's type parameters for later specialization.
+  val sourceFunction = callableMetadata.function
+  val rawTarget = IrContextualTypeKey.from(sourceFunction).typeKey
   val typeKey = rawTarget.transformIfIntoMultibinding(callableMetadata.annotations)
-  val nonDispatchParameters = ir.nonDispatchParameters
+  val nonDispatchParameters = sourceFunction.nonDispatchParameters
   val source =
     when (nonDispatchParameters.size) {
       0 -> null
@@ -175,6 +196,7 @@ internal fun MetroSimpleFunction.toBindsCallable(
     source = source,
     typeKey = typeKey,
     rawTarget = rawTarget,
+    parametersLazy = memoize { callableMetadata.function.parameters() },
   )
 }
 
@@ -185,7 +207,8 @@ internal fun MetroSimpleFunction.toMultibindsCallable(
 ): MultibindsCallable {
   return MultibindsCallable(
     callableMetadata,
-    IrContextualTypeKey.from(ir, patchMutableCollections = isInterop).typeKey,
+    IrContextualTypeKey.from(callableMetadata.function, patchMutableCollections = isInterop)
+      .typeKey,
   )
 }
 
@@ -195,7 +218,8 @@ internal fun MetroSimpleFunction.toBindsOptionalOfCallable(
 ): BindsOptionalOfCallable {
   // Wrap this in a Java Optional
   // TODO what if we support other optionals?
-  val targetType = IrContextualTypeKey.from(ir, patchMutableCollections = true).typeKey
+  val targetType =
+    IrContextualTypeKey.from(callableMetadata.function, patchMutableCollections = true).typeKey
   val wrapped = context.metroSymbols.javaOptional.typeWith(targetType.type)
   val wrappedContextKey = targetType.copy(type = wrapped)
 

@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.callableId
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyTo
@@ -26,6 +27,7 @@ import org.jetbrains.kotlin.ir.util.isObject
 import org.jetbrains.kotlin.ir.util.isPropertyAccessor
 import org.jetbrains.kotlin.ir.util.kotlinFqName
 import org.jetbrains.kotlin.ir.util.parentAsClass
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 
@@ -145,6 +147,11 @@ internal fun IrConstructorCall.toIrCallableMetadata(
     signatureFunction.deepCopyWithSymbols().apply {
       // Property carriers are functions, so keep the getter name on the reconstructed function.
       name = callableName.asName()
+      if (clazz.name == Symbols.Names.BindsMirrorClass && typeParameters.isNotEmpty()) {
+        // The reconstructed member uses its container's type parameters.
+        remapTypes(typeRemapperFor(parentClass.typeParameters.map { it.defaultType }, this))
+        typeParameters = emptyList()
+      }
       if (signatureCarrier == SignatureCarrier.CREATOR_FUNCTION && !parentClass.isObject) {
         val instanceParameter = regularParameters.firstOrNull()
         if (instanceParameter?.name != Symbols.Names.instance) {
@@ -154,7 +161,9 @@ internal fun IrConstructorCall.toIrCallableMetadata(
         }
         parameters = parameters.filterNot { it === instanceParameter }
       }
-      setDispatchReceiver(parentClass.thisReceiverOrFail.copyTo(this))
+      // The receiver copy keeps the type parameters owned by the original class.
+      val originalReceiver = parentClass.thisReceiverOrFail
+      setDispatchReceiver(originalReceiver.copyTo(this, type = originalReceiver.type))
       // Point at the original class
       parent = parentClass
     }

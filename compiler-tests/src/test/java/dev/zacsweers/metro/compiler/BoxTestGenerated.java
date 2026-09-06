@@ -1722,9 +1722,33 @@ public class BoxTestGenerated extends AbstractBoxTest {
       }
 
       @Test
+      @TestMetadata("GenericBindingContainerAliasSpecializations.kt")
+      public void testGenericBindingContainerAliasSpecializations() {
+        run("GenericBindingContainerAliasSpecializations.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerAliasSpecializationsAcrossModules.kt")
+      public void testGenericBindingContainerAliasSpecializationsAcrossModules() {
+        run("GenericBindingContainerAliasSpecializationsAcrossModules.kt");
+      }
+
+      @Test
       @TestMetadata("GenericBindingContainerBackwardRef.kt")
       public void testGenericBindingContainerBackwardRef() {
         run("GenericBindingContainerBackwardRef.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerBinds.kt")
+      public void testGenericBindingContainerBinds() {
+        run("GenericBindingContainerBinds.kt");
+      }
+
+      @Test
+      @TestMetadata("GenericBindingContainerBindsAcrossModules.kt")
+      public void testGenericBindingContainerBindsAcrossModules() {
+        run("GenericBindingContainerBindsAcrossModules.kt");
       }
 
       @Test

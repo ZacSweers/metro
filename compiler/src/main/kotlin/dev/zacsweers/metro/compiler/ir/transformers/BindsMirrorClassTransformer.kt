@@ -25,7 +25,10 @@ import dev.zacsweers.metro.compiler.ir.isExternalParent
 import dev.zacsweers.metro.compiler.ir.metroFunctionOf
 import dev.zacsweers.metro.compiler.ir.nestedClassOrNull
 import dev.zacsweers.metro.compiler.ir.replaceAnnotationsCompat
+import dev.zacsweers.metro.compiler.ir.setDispatchReceiver
 import dev.zacsweers.metro.compiler.ir.stubExpressionBody
+import dev.zacsweers.metro.compiler.ir.thisReceiverOrFail
+import dev.zacsweers.metro.compiler.ir.typeRemapperFor
 import dev.zacsweers.metro.compiler.ir.withPopulatedImplicitClassKey
 import dev.zacsweers.metro.compiler.metroAnnotations
 import dev.zacsweers.metro.compiler.mirrorIrConstructorCalls
@@ -42,11 +45,16 @@ import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.classIdOrFail
 import org.jetbrains.kotlin.ir.util.copyParametersFrom
+import org.jetbrains.kotlin.ir.util.copyTo
+import org.jetbrains.kotlin.ir.util.copyTypeParametersFrom
 import org.jetbrains.kotlin.ir.util.isFakeOverride
 import org.jetbrains.kotlin.ir.util.nonDispatchParameters
+import org.jetbrains.kotlin.ir.util.parentAsClass
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
+import org.jetbrains.kotlin.ir.util.remapTypes
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.platform.jvm.isJvm
@@ -347,6 +355,14 @@ private fun generateMirrorFunction(
       }
       .apply {
         copyParametersFrom(targetFunction.ir)
+        val sourceClass = targetFunction.ir.parentAsClass
+        if (sourceClass.typeParameters.isNotEmpty()) {
+          // The nested mirror can't reference type parameters owned by its outer container.
+          val mirrorTypeParameters = copyTypeParametersFrom(sourceClass)
+          remapTypes(typeRemapperFor(mirrorTypeParameters.map { it.defaultType }, sourceClass))
+          val mirrorReceiver = mirrorClass.thisReceiverOrFail
+          setDispatchReceiver(mirrorReceiver.copyTo(this, type = mirrorReceiver.type))
+        }
         body = stubExpressionBody()
         replaceAnnotationsCompat(annotations.mirrorIrConstructorCalls(symbol))
       }
