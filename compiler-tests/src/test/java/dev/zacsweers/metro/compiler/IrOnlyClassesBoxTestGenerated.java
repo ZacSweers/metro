@@ -1343,6 +1343,18 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     }
 
     @Test
+    @TestMetadata("ArrayClassQualifiers.kt")
+    public void testArrayClassQualifiers() {
+      run("ArrayClassQualifiers.kt");
+    }
+
+    @Test
+    @TestMetadata("ArrayClassQualifiersJs.kt")
+    public void testArrayClassQualifiersJs() {
+      run("ArrayClassQualifiersJs.kt");
+    }
+
+    @Test
     @TestMetadata("ContributedAccessorsCanBeLazy.kt")
     public void testContributedAccessorsCanBeLazy() {
       run("ContributedAccessorsCanBeLazy.kt");
@@ -1568,6 +1580,42 @@ public class IrOnlyClassesBoxTestGenerated extends AbstractIrOnlyClassesBoxTest 
     @TestMetadata("ProvidingMapsDirectly.kt")
     public void testProvidingMapsDirectly() {
       run("ProvidingMapsDirectly.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierArrayDefaultsAcrossModules.kt")
+    public void testQualifierArrayDefaultsAcrossModules() {
+      run("QualifierArrayDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsAcrossModules.kt")
+    public void testQualifierDefaultsAcrossModules() {
+      run("QualifierDefaultsAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierDefaultsFromSource.kt")
+    public void testQualifierDefaultsFromSource() {
+      run("QualifierDefaultsFromSource.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierExplicitValuesAcrossModules.kt")
+    public void testQualifierExplicitValuesAcrossModules() {
+      run("QualifierExplicitValuesAcrossModules.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierHashCollisions.kt")
+    public void testQualifierHashCollisions() {
+      run("QualifierHashCollisions.kt");
+    }
+
+    @Test
+    @TestMetadata("QualifierOmittedDefaultsAcrossModules.kt")
+    public void testQualifierOmittedDefaultsAcrossModules() {
+      run("QualifierOmittedDefaultsAcrossModules.kt");
     }
 
     @Test

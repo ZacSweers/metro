@@ -1,13 +1,13 @@
 /EqualMapContributionPriorities.kt:19:7: error: [Metro/DuplicateMapKeys] Duplicate map keys found for multibinding Map<String, Service>
 
   The following bindings contribute the same map key '@dev.zacsweers.metro.StringKey("shared")'
-      EqualMapContributionPriorities.kt:7:1
-        FirstService contributes a binding of Service
-        ~~~~~~~~~~~~                          ~~~~~~~
-
       EqualMapContributionPriorities.kt:12:1
         SecondService contributes a binding of Service
         ~~~~~~~~~~~~~                          ~~~~~~~
+
+      EqualMapContributionPriorities.kt:7:1
+        FirstService contributes a binding of Service
+        ~~~~~~~~~~~~                          ~~~~~~~
 
   trace (in AppGraph):
       Map<String, Service> is requested at AppGraph.services

@@ -425,7 +425,7 @@ interface TestGraph {
     @IntoMap
     @IntKey(value = 1)
     @CallableMetadata(callableName = "bindB", propertyName = "", startOffset = 976, endOffset = 992)
-    fun B.bindB4013004649_intomap(): B {
+    fun B.bindB3311390729_intomap(): B {
       return error(message = "Never called")
     }
 
@@ -433,7 +433,7 @@ interface TestGraph {
     @IntoMap
     @IntKey(value = 1)
     @CallableMetadata(callableName = "bindC", propertyName = "", startOffset = 1077, endOffset = 1093)
-    fun C.bindC4013004649_intomap(): C {
+    fun C.bindC3311390729_intomap(): C {
       return error(message = "Never called")
     }
 
