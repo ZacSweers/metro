@@ -7889,6 +7889,7 @@
 <h3 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>[FIR]</strong> Fix a compiler crash on zero-parameter member-injection functions.</li>
+<li><strong>[FIR]</strong> Fix graphs accidentally implementing binding-container interfaces when contributions use different scopes. Basically, checking another scope won&rsquo;t turn a container that supplies bindings into an interface the graph implements.</li>
 <li><strong>[FIR]</strong> Keep contributed graph accessors when their replacement or its origin is excluded.</li>
 <li><strong>[FIR]</strong> Avoid annotation-cache races during concurrent IDE analysis.</li>
 <li><strong>[FIR]</strong> Fix assisted factories whose return types nest or reorder factory type parameters.</li>
