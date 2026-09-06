@@ -129,6 +129,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     }
 
     @Test
+    @TestMetadata("ContributesToGenericTypeAliasScope.kt")
+    public void testContributesToGenericTypeAliasScope() {
+      run("ContributesToGenericTypeAliasScope.kt");
+    }
+
+    @Test
     @TestMetadata("ContributesToTypeAliasScope.kt")
     public void testContributesToTypeAliasScope() {
       run("ContributesToTypeAliasScope.kt");
@@ -270,6 +276,12 @@ public class JsContributionProvidersBoxTestGenerated extends AbstractJsContribut
     @TestMetadata("ExcludesWithOriginInExtension.kt")
     public void testExcludesWithOriginInExtension() {
       run("ExcludesWithOriginInExtension.kt");
+    }
+
+    @Test
+    @TestMetadata("GenericArrayScopeAliases.kt")
+    public void testGenericArrayScopeAliases() {
+      run("GenericArrayScopeAliases.kt");
     }
 
     @Test

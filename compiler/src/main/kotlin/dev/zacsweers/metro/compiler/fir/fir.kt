@@ -1147,7 +1147,18 @@ private fun FirTypeAliasSymbol.expandedClassId(session: FirSession): ClassId? {
   }
 
   val typeResolver = session.metroFirBuiltIns.typeAliasResolverFactory.create(this) ?: return null
-  return typeResolver.resolveType(expandedTypeRef).classId.usableClassIdOrNull()
+  val userTypeRef = expandedTypeRef as? FirUserTypeRef ?: return null
+  val source = userTypeRef.source ?: return null
+  // Contribution discovery runs before generic arguments have resolved. Class identity only needs
+  // the qualifier names, and kotlinc supports resolving bare types at this phase. Use a fresh ref
+  // so normal type resolution still validates the original arguments later.
+  val classifierTypeRef =
+    typeRefFromQualifierParts(userTypeRef.isMarkedNullable, source) {
+      for (qualifier in userTypeRef.qualifier) {
+        part(qualifier.name)
+      }
+    }
+  return typeResolver.resolveType(classifierTypeRef).classId.usableClassIdOrNull()
 }
 
 private fun ClassId?.usableClassIdOrNull(): ClassId? {

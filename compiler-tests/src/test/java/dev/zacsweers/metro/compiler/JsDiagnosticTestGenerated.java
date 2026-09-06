@@ -153,6 +153,12 @@ public class JsDiagnosticTestGenerated extends AbstractJsDiagnosticTest {
     }
 
     @Test
+    @TestMetadata("InvalidGenericScopeAliases.kt")
+    public void testInvalidGenericScopeAliases() {
+      run("InvalidGenericScopeAliases.kt");
+    }
+
+    @Test
     @TestMetadata("MissingBindingInContributionProviderRedirectsToOrigin.kt")
     public void testMissingBindingInContributionProviderRedirectsToOrigin() {
       run("MissingBindingInContributionProviderRedirectsToOrigin.kt");
