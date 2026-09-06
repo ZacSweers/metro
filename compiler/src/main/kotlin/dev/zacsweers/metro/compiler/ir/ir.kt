@@ -37,7 +37,6 @@ import dev.zacsweers.metro.compiler.symbols.GuiceSymbols
 import dev.zacsweers.metro.compiler.symbols.Symbols
 import dev.zacsweers.metro.compiler.toSafeIdentifier
 import java.io.File
-import java.util.Objects
 import kotlin.io.path.name
 import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -111,7 +110,6 @@ import org.jetbrains.kotlin.ir.expressions.IrConstKind
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionExpression
-import org.jetbrains.kotlin.ir.expressions.IrGetEnumValue
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.IrVararg
@@ -165,7 +163,6 @@ import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.dumpKotlinLike
 import org.jetbrains.kotlin.ir.util.file
 import org.jetbrains.kotlin.ir.util.fileOrNull
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.getPackageFragment
 import org.jetbrains.kotlin.ir.util.getSimpleFunction
@@ -530,45 +527,6 @@ internal fun IrBuilderWithScope.irTemporaryVariable(
     )
   value?.let { temporary.initializer = it }
   return temporary
-}
-
-/**
- * Computes a hash key for this annotation instance composed of its underlying type and value
- * arguments.
- */
-internal fun IrConstructorCall.computeAnnotationHash(): Int {
-  return Objects.hash(
-    type.rawType().classIdOrFail,
-    arguments
-      .filterNotNull()
-      .map { arg ->
-        arg.computeHashSource()
-          ?: reportCompilerBug(
-            "Unknown annotation argument type: ${arg::class.java}. Annotation: ${dumpKotlinLike()}"
-          )
-      }
-      .toTypedArray()
-      .contentDeepHashCode(),
-  )
-}
-
-private fun IrExpression.computeHashSource(): Any? {
-  return when (this) {
-    is IrConst -> value
-    is IrClassReference -> classType.classOrNull?.owner?.classId
-    is IrGetEnumValue -> symbol.owner.fqNameWhenAvailable
-    is IrConstructorCall -> computeAnnotationHash()
-    is IrVararg -> {
-      elements.map {
-        when (it) {
-          is IrExpression -> it.computeHashSource()
-          else -> it
-        }
-      }
-    }
-
-    else -> null
-  }
 }
 
 // TODO create an instance of this that caches lookups?
@@ -1621,7 +1579,7 @@ internal fun IrType.renderTo(
   val type = this
   if (includeAnnotations && type.annotations.isNotEmpty()) {
     type.annotations.joinTo(appendable, separator = " ", postfix = " ") {
-      IrAnnotation(it).render(short, useRelativeClassNames = useRelativeClassNames)
+      it.renderAnnotation(short, useRelativeClassNames = useRelativeClassNames)
     }
   }
   when (type) {
@@ -2274,11 +2232,13 @@ internal fun IrConstructorCall.priority(): Int {
 
 context(context: IrMetroContext)
 internal fun IrProperty?.qualifierAnnotation(): IrAnnotation? {
-  if (this == null) return null
+  if (this == null) {
+    return null
+  }
   return allAnnotations
     .annotationsAnnotatedWith(context.metroSymbols.qualifierAnnotations)
     .singleOrNull()
-    ?.let(::IrAnnotation)
+    ?.let(context::createIrAnnotation)
 }
 
 context(context: IrMetroContext)
@@ -2289,22 +2249,25 @@ internal fun IrAnnotationContainer?.qualifierAnnotation() =
       // Guice's `@Assisted` annoyingly annotates itself as a qualifier too, so we catch that here
       it.annotationClass.classId != GuiceSymbols.ClassIds.assisted
     }
-    ?.let(::IrAnnotation)
+    ?.let(context::createIrAnnotation)
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer?.scopeAnnotations() =
-  annotationsAnnotatedWith(context.metroSymbols.scopeAnnotations).mapToSet(::IrAnnotation)
+  annotationsAnnotatedWith(context.metroSymbols.scopeAnnotations)
+    .mapToSet(context::createIrAnnotation)
 
 /** Returns the `@MapKey` annotation itself, not any annotations annotated _with_ `@MapKey`. */
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.explicitMapKeyAnnotation() =
-  annotationsIn(context.metroSymbols.mapKeyAnnotations).singleOrNull()?.let(::IrAnnotation)
+  annotationsIn(context.metroSymbols.mapKeyAnnotations)
+    .singleOrNull()
+    ?.let(context::createIrAnnotation)
 
 context(context: IrMetroContext)
 internal fun IrAnnotationContainer.mapKeyAnnotation() =
   annotationsAnnotatedWith(context.metroSymbols.mapKeyAnnotations)
     .singleOrNull()
-    ?.let(::IrAnnotation)
+    ?.let(context::createIrAnnotation)
 
 private fun IrAnnotationContainer?.annotationsAnnotatedWith(
   annotationsToLookFor: Collection<ClassId>

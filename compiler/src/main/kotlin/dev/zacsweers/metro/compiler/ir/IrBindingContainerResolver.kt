@@ -27,90 +27,76 @@ internal class IrBindingContainerResolver(private val transformer: BindingContai
    */
   private val transitiveBindingContainerCache = ConcurrentHashMap<ClassId, Set<BindingContainer>>()
 
-  /**
-   * Resolves all binding containers transitively starting from the given roots. This method handles
-   * caching and cycle detection to build the transitive closure of all included binding containers.
-   */
+  /** Resolves complete include closures for each root, preserving their iteration order. */
   context(traceScope: TraceScope)
   fun resolve(roots: Set<IrClass>): Set<BindingContainer> =
     trace("Resolve binding containers") {
-      if (roots.isEmpty()) return@trace emptySet()
-      if (roots.size == 1) return@trace resolve(roots.first())
+      if (roots.isEmpty()) {
+        return@trace emptySet()
+      }
+      if (roots.size == 1) {
+        return@trace resolve(roots.first())
+      }
 
       val result = mutableSetOf<BindingContainer>()
-      // Path tracking for cycle detection within the current traversal stack
-      val path = mutableSetOf<ClassId>()
 
       for (root in roots) {
-        result.addAll(getOrComputeClosure(root, path))
+        result.addAll(resolve(root))
       }
 
       return@trace result
     }
 
-  fun resolve(root: IrClass): Set<BindingContainer> {
-    return getOrComputeClosure(root, mutableSetOf())
-  }
+  /** Returns a complete cached closure or computes it without publishing intermediate results. */
+  fun resolve(root: IrClass): Set<BindingContainer> = getOrComputeClosure(root)
 
-  fun getCached(irClass: IrClass): Set<BindingContainer>? {
-    return transitiveBindingContainerCache[irClass.classIdOrFail]
-  }
-
-  /**
-   * Resolves all binding containers transitively starting from the given roots. This method handles
-   * caching and cycle detection to build the transitive closure of all included binding containers.
-   */
+  /** Returns the declarations in the roots' complete include closures. */
   context(traceScope: TraceScope)
   internal fun resolveTransitiveClosure(roots: Set<IrClass>): Set<IrClass> {
     return resolve(roots).mapTo(mutableSetOf()) { it.ir }
   }
 
-  private fun getOrComputeClosure(
-    irClass: IrClass,
-    path: MutableSet<ClassId>,
-  ): Set<BindingContainer> {
-    val classId = irClass.classIdOrFail
-
-    // 1. Check Global Cache (Memoization)
+  private fun getOrComputeClosure(root: IrClass): Set<BindingContainer> {
+    val classId = root.classIdOrFail
+    // Cached root closures are complete even when the include graph contains cycles.
     transitiveBindingContainerCache[classId]?.let {
       return it
     }
 
-    // 2. Cycle Detection (Recursion Stack)
-    // If we see a node currently in our path, we stop recursing to break the cycle.
-    // In a dependency graph "includes" relationship, A -> B -> A implies {A, B} are in the set.
-    // Returning emptySet here is safe because the upstream caller (A) will eventually add itself
-    // to the set.
-    if (!path.add(classId)) {
-      return emptySet()
+    val closure = buildSet {
+      val visited = mutableSetOf<ClassId>()
+      val pending = ArrayDeque<IrClass>()
+      pending.addLast(root)
+
+      while (pending.isNotEmpty()) {
+        val current = pending.removeLast()
+        val currentId = current.classIdOrFail
+        // Visit each container once per root to break cycles and skip shared includes.
+        if (!visited.add(currentId)) {
+          continue
+        }
+
+        // A cached closure already covers every include reachable from this container.
+        val cached = transitiveBindingContainerCache[currentId]
+        if (cached != null) {
+          addAll(cached)
+          continue
+        }
+
+        // A missing root container produces an empty closure that can still be cached.
+        val container = transformer.findContainer(current) ?: continue
+        add(container)
+
+        // The stack visits includes in declaration order without recursive calls.
+        for (includedClassId in container.includes.reversed()) {
+          val includedClass = current.lookupClass(includedClassId)?.owner ?: continue
+          pending.addLast(includedClass)
+        }
+      }
     }
 
-    try {
-      // 3. Resolve Direct Container
-      // If this isn't a valid container, we cache empty set to avoid re-processing.
-      val container = transformer.findContainer(irClass)
-      if (container == null) {
-        val empty = emptySet<BindingContainer>()
-        transitiveBindingContainerCache.putIfAbsent(classId, empty)
-        return empty
-      }
-
-      // 4. Compute Closure (Recursive Step)
-      val closure = mutableSetOf<BindingContainer>()
-      closure.add(container)
-
-      for (includedClassId in container.includes) {
-        // Resolve ClassId to IrClass
-        val includedClass = irClass.lookupClass(includedClassId)?.owner ?: continue
-        closure.addAll(getOrComputeClosure(includedClass, path))
-      }
-
-      // 5. Store in Global Cache
-      transitiveBindingContainerCache.putIfAbsent(classId, closure)
-      return closure
-    } finally {
-      // Backtrack
-      path.remove(classId)
-    }
+    // Only completed root traversals are safe to cache because cycles can leave subtree results
+    // incomplete.
+    return transitiveBindingContainerCache.putIfAbsent(classId, closure) ?: closure
   }
 }

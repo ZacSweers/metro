@@ -6293,6 +6293,225 @@ class MetroResolutionServiceTest : BasePlatformTestCase() {
     assertEquals(1, index.resolveConsumer(accessor).global.size)
   }
 
+  fun testOriginExcludedContributionDoesntReplaceOriginal() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class OriginTrigger
+
+        @Origin(OriginTrigger::class)
+        class ReplacementOrigin
+
+        @BindingContainer
+        @ContributesTo(AppScope::class)
+        object OriginalOriginBindings {
+          @Provides fun originalValue(): String = "original"
+        }
+
+        abstract class GeneratedOriginHolder {
+          @Origin(ReplacementOrigin::class)
+          @BindingContainer
+          @ContributesTo(AppScope::class, replaces = [OriginalOriginBindings::class])
+          object Bindings {
+            @Provides fun replacementValue(): String = "replacement"
+          }
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [OriginTrigger::class])
+        interface OriginExcludedGraph {
+          val originValue: String
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [GeneratedOriginHolder::class])
+        interface OuterExcludedGraph {
+          val outerValue: String
+        }
+
+        @DependencyGraph(AppScope::class, excludes = [GeneratedOriginHolder.Bindings::class])
+        interface DirectExcludedGraph {
+          val directValue: String
+        }
+
+        @DependencyGraph(AppScope::class)
+        interface IncludedOriginGraph {
+          val includedValue: String
+        }
+        """,
+        fileName = "OriginExclusions.kt",
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+
+    for ((graphName, propertyName) in
+      listOf(
+        "OriginExcludedGraph" to "originValue",
+        "OuterExcludedGraph" to "outerValue",
+        "DirectExcludedGraph" to "directValue",
+      )) {
+      val graph = index.graphEntryAt(declarations.klass(graphName))!!
+      val context = index.queryContext(index.contextsFor(graph).single())!!
+      val accessor = index.consumerEntryAt(declarations.property(propertyName))!!
+      assertEquals(
+        listOf("originalValue"),
+        index.bindingsFor(accessor, context).mapNotNull {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        },
+      )
+      assertEquals(
+        listOf("test.OriginalOriginBindings"),
+        index.contributionsFor(context).map { it.classId?.asFqNameString() },
+      )
+    }
+
+    // The generated container still replaces the original in graphs that include it.
+    val included = index.consumerEntryAt(declarations.property("includedValue"))!!
+    val includedGraph = index.graphEntryAt(declarations.klass("IncludedOriginGraph"))!!
+    val includedContext = index.queryContext(index.contextsFor(includedGraph).single())!!
+    assertEquals(
+      listOf("replacementValue"),
+      index.bindingsFor(included, includedContext).mapNotNull {
+        (it.pointer.element as? KtNamedDeclaration)?.name
+      },
+    )
+  }
+
+  fun testLibraryOriginExcludedContributionDoesntReplaceOriginal() {
+    module.withMetroLibFixtureLibrary {
+      val file =
+        myFixture.configureMetroFile(
+          """
+          import libtest.LibOriginScope
+          import libtest.LibOriginTrigger
+          import libtest.LibOriginReplacement
+
+          @DependencyGraph(LibOriginScope::class, excludes = [LibOriginTrigger::class])
+          interface OriginExcludedGraph {
+            val originValue: String
+          }
+
+          @DependencyGraph(
+            LibOriginScope::class,
+            excludes = [LibOriginReplacement::class],
+          )
+          interface DirectExcludedGraph {
+            val directValue: String
+          }
+
+          @DependencyGraph(LibOriginScope::class)
+          interface IncludedOriginGraph {
+            val includedValue: String
+          }
+          """,
+          fileName = "LibraryOriginExclusions.kt",
+        )
+      val index = project.service<MetroResolutionService>().awaitIndex(file)
+      val declarations = file.declarationsIncludingNested()
+
+      for ((graphName, propertyName) in
+        listOf(
+          "OriginExcludedGraph" to "originValue",
+          "DirectExcludedGraph" to "directValue",
+        )) {
+        val graph = index.graphEntryAt(declarations.klass(graphName))!!
+        val context = index.queryContext(index.contextsFor(graph).single())!!
+        val accessor = index.consumerEntryAt(declarations.property(propertyName))!!
+        assertEquals(
+          listOf("originalValue"),
+          index.bindingsFor(accessor, context).mapNotNull {
+            (it.pointer.element as? KtNamedDeclaration)?.name
+          },
+        )
+        assertEquals(
+          listOf("libtest.LibOriginOriginalBindings"),
+          index.contributionsFor(context).map { it.classId?.asFqNameString() },
+        )
+      }
+
+      val included = index.consumerEntryAt(declarations.property("includedValue"))!!
+      val includedGraph = index.graphEntryAt(declarations.klass("IncludedOriginGraph"))!!
+      val includedContext = index.queryContext(index.contextsFor(includedGraph).single())!!
+      assertEquals(
+        listOf("replacementValue"),
+        index.bindingsFor(included, includedContext).mapNotNull {
+          (it.pointer.element as? KtNamedDeclaration)?.name
+        },
+      )
+    }
+  }
+
+  fun testOriginExcludedBindingDoesntReplaceOriginal() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        class BindingOrigin
+        interface Service
+
+        @Inject @ContributesBinding(AppScope::class)
+        class OriginalService : Service
+
+        @Origin(BindingOrigin::class)
+        @Inject @ContributesBinding(AppScope::class, replaces = [OriginalService::class])
+        class GeneratedService : Service
+
+        @DependencyGraph(AppScope::class, excludes = [BindingOrigin::class])
+        interface AppGraph {
+          val service: Service
+        }
+        """,
+        fileName = "BindingOriginExclusion.kt",
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val context = index.queryContext(index.contextsFor(graph).single())!!
+    val accessor = index.consumerEntryAt(declarations.property("service"))!!
+
+    assertEquals(
+      listOf("OriginalService"),
+      index.bindingsFor(accessor, context).map { it.implementationName },
+    )
+    assertEquals(
+      listOf("test.OriginalService"),
+      index.contributionsFor(context).map { it.classId?.asFqNameString() },
+    )
+  }
+
+  fun testExcludedGeneratedBindingKeepsContributedOrigin() {
+    val file =
+      myFixture.configureMetroFile(
+        """
+        interface Service
+
+        @Inject @ContributesBinding(AppScope::class)
+        class OriginService : Service
+
+        @Origin(OriginService::class)
+        @Inject @ContributesBinding(AppScope::class)
+        class GeneratedService : Service
+
+        @DependencyGraph(AppScope::class, excludes = [GeneratedService::class])
+        interface AppGraph {
+          val service: Service
+        }
+        """,
+        fileName = "GeneratedBindingExclusion.kt",
+      )
+    val index = project.service<MetroResolutionService>().awaitIndex(file)
+    val declarations = file.declarationsIncludingNested()
+    val graph = index.graphEntryAt(declarations.klass("AppGraph"))!!
+    val context = index.queryContext(index.contextsFor(graph).single())!!
+    val accessor = index.consumerEntryAt(declarations.property("service"))!!
+
+    assertEquals(
+      listOf("OriginService"),
+      index.bindingsFor(accessor, context).map { it.implementationName },
+    )
+    assertEquals(
+      listOf("test.OriginService"),
+      index.contributionsFor(context).map { it.classId?.asFqNameString() },
+    )
+  }
+
   fun testExcludedContributionKeepsItsConcreteBindingAndConsumers() {
     val file =
       myFixture.configureMetroFile(

@@ -430,6 +430,8 @@ internal class ContributionEntry(
   override val replaces: Set<ClassId> = emptySet(),
   /** Excluding this child graph also excludes its contributed nested factory. */
   val graphExtension: GraphReference? = null,
+  /** Origin-chain aliases used for exclusions and replacements, preserving declaration identity. */
+  val originClassIds: Set<ClassId> = emptySet(),
 ) : MergeContribution {
   val sourceIdentity: BindingIndex.SourcePointerIdentity? = sourcePointerIdentity(pointer)
 
@@ -437,6 +439,14 @@ internal class ContributionEntry(
     get() = classId
 
   val declarationId: GraphReference? = classId?.let { GraphReference(it, pointer.virtualFile) }
+
+  /** Matches the direct, origin, and nested exclusions supplied to the shared merge plan. */
+  fun isExcludedFrom(excludes: Set<ClassId>): Boolean {
+    return classId in excludes ||
+      originClassIds.any(excludes::contains) ||
+      classId?.outerClassId in excludes ||
+      graphExtension?.classId in excludes
+  }
 
   enum class Kind {
     OTHER,

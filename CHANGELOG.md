@@ -17,11 +17,17 @@ Changelog
 
 - **[FIR]** Fix a compiler crash on zero-parameter member-injection functions.
 - **[FIR]** Fix graphs accidentally implementing binding-container interfaces when contributions use different scopes. Basically, checking another scope won't turn a container that supplies bindings into an interface the graph implements.
+- **[FIR]** Keep contributed graph accessors when their replacement or its origin is excluded.
 - **[FIR]** Avoid annotation-cache races during concurrent IDE analysis.
+- **[FIR]** Fix assisted factories whose return types nest or reorder factory type parameters.
 - **[FIR/IR/interop]** Fix recognition of `@get:BindsOptionalOf` properties when Dagger interop is enabled.
+- **[IR]** Keep all transitively included binding containers when multiple graphs enter the same include cycle from different containers. Basically, improve compiler caching when containers are used in multiple graphs.
 - **[IR]** Fix a runtime crash when an assisted-injected class with no assisted parameters is used across modules with IR class generation.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
+- **[IR]** Compare annotation values structurally so hash collisions don't merge distinct bindings.
+- **[IR]** Preserve JVM array component types and dimensions in source class-literal qualifiers.
+- **[IR]** Resolve JVM binary annotation defaults on Kotlin `2.3.0` and `2.3.10`.
 - **[IR/interop]** Fix `Class`-keyed maps wrapped in providers or lazy values when `KClass`/`Class` interop is enabled.
 - **[IR/interop]** Fix a runtime `ClassCastException` when a `Class`-keyed map is injected into a provider-created class across modules with `KClass`/`Class` interop enabled.
 - **[IR/interop]** Respect `@GraphPrivate` on Dagger `@BindsOptionalOf` declarations inherited by graph extensions, while preserving public declarations for the same key.
@@ -29,9 +35,14 @@ Changelog
 
 ### Changes
 
+- **[IR]** Annotation default matching is limited for KLIB dependencies on Kotlin `2.3.0` and `2.3.10`. We recommend upgrading to Kotlin `2.3.20` or newer.
+- Update embedded Okio dependency to `3.18.2`.
 - Test Kotlin `2.4.20-RC2`.
 - Test Kotlin `2.4.20-RC3`.
-- Update embedded Okio dependency to `3.18.2`.
+- Test IntelliJ `IU:2026.2.2`.
+- Test IntelliJ 2026.3 EAPs (`263.3889.65`).
+- Test Android Studio Quail 4.
+- Test Android Studio Rabbit canaries (`canary 4`).
 
 ### Contributors
 
