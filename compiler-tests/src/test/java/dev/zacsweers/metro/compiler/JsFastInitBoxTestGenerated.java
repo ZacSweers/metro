@@ -393,6 +393,18 @@ public class JsFastInitBoxTestGenerated extends AbstractJsFastInitBoxTest {
     }
 
     @Test
+    @TestMetadata("ScopeSpecificContributionReplacements.kt")
+    public void testScopeSpecificContributionReplacements() {
+      run("ScopeSpecificContributionReplacements.kt");
+    }
+
+    @Test
+    @TestMetadata("ScopeSpecificContributionReplacementsAcrossModules.kt")
+    public void testScopeSpecificContributionReplacementsAcrossModules() {
+      run("ScopeSpecificContributionReplacementsAcrossModules.kt");
+    }
+
+    @Test
     @TestMetadata("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt")
     public void testScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled() {
       run("ScopedContributedBindingCanBeAccessedFromChildWithClassHintsEnabled.kt");

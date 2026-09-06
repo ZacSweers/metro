@@ -32,6 +32,7 @@ Changelog
 - **[IR]** Report an error when an assisted-injected constructor requests a set or eager map backed by suspend providers. Basically, assisted factories now get the same suspend-multibinding checks as ordinary injection.
 - **[IR]** Fix missing bindings for internal contributed objects across modules when `generateContributionProviders`, `generateClassesInIr`, and `contributesAsInject` are enabled together.
 - **[IR]** Report duplicate map keys when different key annotations unwrap to the same value, including implicit class keys.
+- **[IR]** Apply contribution replacements only in the scopes that declare them.
 - **[IR]** Report missing required graph bindings even when an `@OptionalBinding` accessor requests the same type, regardless of declaration order.
 - **[IR]** Compare annotation values structurally so hash collisions don't merge distinct bindings.
 - **[IR]** Preserve JVM array component types and dimensions in source class-literal qualifiers.

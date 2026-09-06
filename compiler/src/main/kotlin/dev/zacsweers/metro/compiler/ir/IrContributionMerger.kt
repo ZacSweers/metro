@@ -11,6 +11,7 @@ import dev.zacsweers.metro.compiler.computeOriginClassIdChain
 import dev.zacsweers.metro.compiler.expectAsOrNull
 import dev.zacsweers.metro.compiler.fir.replacesArgument
 import dev.zacsweers.metro.compiler.fir.resolveClassId
+import dev.zacsweers.metro.compiler.fir.resolvedScopeClassId
 import dev.zacsweers.metro.compiler.getAndAdd
 import dev.zacsweers.metro.compiler.graph.explanation.BindingExplanationCandidate
 import dev.zacsweers.metro.compiler.ir.graph.reporting.ContributionDecisionCapture
@@ -398,16 +399,19 @@ internal class IrContributionMerger(
 
       trace("Process replacements") {
         for (irClass in allClassesToScan) {
+          // A class can contribute to several scopes with different replacements in each one.
           val replacedClasses =
             irClass.repeatableAnnotationsIn(
               metroSymbols.classIds.allContributesAnnotationsWithContainers,
               irBody = { annotations ->
                 annotations
+                  .filter { it.scopeOrNull() in allScopes }
                   .flatMap { annotation -> annotation.replacedClasses() }
                   .mapNotNull { replacedClass -> replacedClass.classType.rawType().classId }
               },
               firBody = { session, annotations ->
                 annotations
+                  .filter { it.resolvedScopeClassId(session) in allScopes }
                   .flatMap { it.replacesArgument(session)?.argumentList?.arguments.orEmpty() }
                   .mapNotNull {
                     it.expectAsOrNull<FirGetClassCall>()?.resolveClassId(session)
