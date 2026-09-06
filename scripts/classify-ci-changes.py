@@ -6,6 +6,8 @@
 """Select PR checks from the complete Git diff; unknown paths retain full coverage."""
 
 import argparse
+import html
+import json
 import os
 from pathlib import Path
 import re
@@ -107,6 +109,86 @@ def changed_paths(repository: Path, base_sha: str, head_sha: str) -> list[str]:
     return [os.fsdecode(path) for path in output.split(b"\0") if path]
 
 
+def summary_code(value: str) -> str:
+    """Keep arbitrary filenames printable and literal inside the Markdown summary."""
+    display = json.dumps(value, ensure_ascii=True)[1:-1]
+    if len(display) > 200:
+        display = display[:197] + "..."
+    escaped = html.escape(display)
+    for character in "`*_[]\\":
+        escaped = escaped.replace(character, f"&#{ord(character)};")
+    return f"<code>{escaped}</code>"
+
+
+def render_summary(paths: list[str], event_name: str, routes: dict[str, bool]) -> str:
+    """Explain the existing routing result with bounded examples from each path group."""
+    lines = [
+        "## CI change classification",
+        "",
+        f"Event: {summary_code(event_name)}",
+        "",
+        f"Changed paths examined: {len(paths)}",
+        "",
+        "| Route | Decision |",
+        "| --- | --- |",
+    ]
+    for name, enabled in routes.items():
+        decision = "Selected" if enabled else "Skipped"
+        lines.append(f"| {name} | {decision} |")
+    lines.extend(["", "### Reasons", ""])
+
+    if event_name != "pull_request":
+        lines.append(
+            "This event keeps full CI and IDEA plugin tests. No PR diff was inspected. "
+            "Documentation publishing uses its separate workflow."
+        )
+    elif not paths:
+        lines.append(
+            "The PR diff contains no changed paths. Full CI and IDEA plugin tests "
+            "remain selected as a conservative fallback."
+        )
+    else:
+        reasons = {
+            (True, False, True): "Other changed paths retain full CI and IDEA plugin tests",
+            (True, True, True): "Documentation workflows select docs validation and retain full CI",
+            (False, True, False): "Documentation paths select docs validation",
+            (False, False, True): "IDEA plugin paths select IDEA plugin tests",
+        }
+        examples = {key: [] for key in reasons}
+        counts = {key: 0 for key in reasons}
+        for path in paths:
+            # Derive each explanation from the same rules that selected the jobs.
+            route = classify_paths([path], event_name)
+            key = (route["full"], route["docs"], route["idea"])
+            counts[key] += 1
+            if len(examples[key]) < 5:
+                examples[key].append(path)
+        for key, reason in reasons.items():
+            count = counts[key]
+            if count == 0:
+                continue
+            noun = "path" if count == 1 else "paths"
+            lines.extend([f"{reason} ({count} changed {noun}).", ""])
+            lines.extend(f"- {summary_code(path)}" for path in examples[key])
+            omitted = count - len(examples[key])
+            if omitted:
+                lines.append(f"- {omitted} additional paths omitted.")
+            lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def write_summary(paths: list[str], event_name: str, routes: dict[str, bool]) -> None:
+    """Keep optional summary I/O failures separate from the required routing outputs."""
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    try:
+        with open(summary_path, "a", encoding="utf-8") as summary:
+            summary.write(render_summary(paths, event_name, routes))
+    except OSError as error:
+        print(f"Warning: Could not write CI classification summary: {error}", file=sys.stderr)
+
+
 def main() -> int:
     """Print boolean action outputs; Git failures fail the required classifier job."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -130,8 +212,10 @@ def main() -> int:
             print(f"Could not classify PR changes: {error}", file=sys.stderr)
             return 1
 
-    for name, enabled in classify_paths(paths, arguments.event_name).items():
+    routes = classify_paths(paths, arguments.event_name)
+    for name, enabled in routes.items():
         print(f"{name}={str(enabled).lower()}")
+    write_summary(paths, arguments.event_name, routes)
     return 0
 
 
